@@ -132,7 +132,7 @@ compute_center_cell_s(int nx, int ny, int nz,
   return np_center;
 }
 // --------------------------------------------------------------------
-py::array_t<double, py::array::f_style>
+py::array_t<double>
 compute_center_face_s(int nx, int ny, int nz,
                       py::array_t<double, py::array::f_style>& np_cx,
                       py::array_t<double, py::array::f_style>& np_cy,
