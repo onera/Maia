@@ -182,9 +182,16 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
     PT.set_value(pld, updated_pld[i].reshape((1,-1), order='F'))
   
   #Remove entity ids
-  empty_nodes = []
+  all_nodes_and_predicates = [
+    ( sol_list , [] ),
+    ( bc_list  , ['ZoneBC_t'] ),
+    ( bcds_list, ['ZoneBC_t', 'BC_t', 'BCData_t'] ),
+    ( zsr_list , [] ),
+    ( jn_list  , ['ZoneGridConnectivity_t'] ),
+  ]
+  pathes_to_empty_nodes = []
   if len(entity_ids_to_remove) > 0:
-    for node_list, data_query in all_nodes_and_queries:
+    for node_list, predicates in all_nodes_and_predicates:
       for node in node_list:
         pl_n = PT.get_child_from_name(node, 'PointList')
         pl = PT.get_value(pl_n)[0]
@@ -196,19 +203,13 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
         distri_entity[1] -= np.sum(all_ids_to_remove[0:comm.rank+1], dtype=distri_entity.dtype)
         distri_entity[2] -= np.sum(all_ids_to_remove, dtype=distri_entity.dtype)
         if distri_entity[2] == 0: # Global PointList is empty, no need to update DataArray because node will be delete
-          # print("SB if", node[0])
-          # empty_nodes.append((node_list, data_query, node[0]))
-          empty_nodes.append(node[0])
+          path_to_empty_node = os.path.join(PT.predicates_to_path(zone, predicates),PT.get_name(node))
+          pathes_to_empty_nodes.append(path_to_empty_node)
         else: # Need to update PointList and DataArray
-          # print("SB else", node[0])
-          # if node[0]=='ZSR_Data2': PT.print_tree(node)
           PT.set_value(pl_n, np.array([np.delete(pl,ids_to_remove)], dtype=pdm_gnum_dtype))
           for data_n in PT.get_children_from_label(node, 'DataArray_t'):
-            # if node[0]=='ZSR_Data2': print(data_n[0])
             data = PT.get_value(data_n)
-            # if node[0]=='ZSR_Data2': print(data, np.delete(data,ids_to_remove))
             PT.set_value(data_n, np.array(np.delete(data,ids_to_remove), dtype=pdm_gnum_dtype))
-          # if node[0]=='ZSR_Data2': PT.print_tree(node)
 
   #Cleanup after trick
   for zsr in zsr_list:
@@ -216,7 +217,8 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
       PT.rm_children_from_name(zsr, 'PointList')
   
   #Remove nodes with empty global PointList
-  # TO DO
+  for path in pathes_to_empty_nodes:
+    PT.rm_node_from_path(zone, path)
 
 # ------------------------------------------------------------------------------------------
 def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_degen_nodes_kept, degen_subset_names, comm):

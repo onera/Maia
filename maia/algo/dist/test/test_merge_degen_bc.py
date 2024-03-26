@@ -94,6 +94,10 @@ yaml_ref = f'''
           GridLocation GridLocation_t 'FaceCenter':
           FamilyName FamilyName_t 'FARFIELD':
           PointList IndexArray_t I{int_type} [[52, 55, 58, 60, 104, 107, 110, 112, 156, 159, 162, 164, 208, 211, 214, 216]]:
+      ZSR_Data2 ZoneSubRegion_t:
+        GridLocation GridLocation_t 'FaceCenter':
+        PointList IndexArray_t I{int_type} [[52]]:
+        Data2 DataArray_t I{int_type} [2]:
       NGonElements Elements_t I4 [22, 0]:
         ElementRange IndexRange_t I{int_type} [1, 224]:
         ElementStartOffset DataArray_t:
@@ -168,10 +172,6 @@ yaml_ref = f'''
                 0], [286, 0], [288, 0], [279, 0], [287, 0], [280, 0], [288, 0], [281, 0], [282, 0], [283, 0], [284, 0], [285,
                 0], [286, 0], [287, 0], [288, 0]]
 '''
-      # ZSR_Data2 ZoneSubRegion_t:
-      #   GridLocation GridLocation_t 'FaceCenter':
-      #   PointList IndexArray_t I{int_type} [[52]]:
-      #   Data2 DataArray_t I{int_type} [2]:
 
 yaml_ref_zgc = f'''
       ZoneGridConnectivity ZoneGridConnectivity_t:
@@ -201,8 +201,8 @@ yaml_ref_zgc = f'''
           FamilyName FamilyName_t 'OUTLET':
 '''
 
-@pytest_parallel.mark.parallel([1,2,7,11,23,59])
-# @pytest_parallel.mark.parallel([1,2,3])
+#@pytest_parallel.mark.parallel([1,2,7,11,23,59])
+@pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("ZSR", [False, True])
 @pytest.mark.parametrize("JN", [False, True])
 def test_merge_degen_faces(ZSR,JN,comm):
@@ -317,16 +317,9 @@ def test_merge_degen_faces(ZSR,JN,comm):
   group = comm.Get_group()
   newGroup = group.Incl([0])
   sub_comm  = comm.Create(newGroup)
-  # if comm.rank==22:
-  #   PT.print_tree(dist_tree, 'dist_tree.txt')
-  # exit()
   if comm.rank == 0:
-    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0])
-    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data1'), 'PointList')[1][0])
     maia.algo.dist.convert_elements_to_ngon(dist_tree, sub_comm)
-    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0])
-    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data1'), 'PointList')[1][0])
-    # fix bug in convert_elements_to_ngon
+    # TO DO: to delete after bug fix in convert_elements_to_ngon
     PT.set_value(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data1'), 'PointList'), 
                 [PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0][0]])
     PT.set_value(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data2'), 'PointList'), 
@@ -342,13 +335,6 @@ def test_merge_degen_faces(ZSR,JN,comm):
   fam_to_remove        = 'AXIS'
   fam_for_intersection = 'PER2'
   MDB.delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm)
-  
-  #----------------------------
-  # Prepare result with ZSR
-  if ZSR:
-    PT.rm_nodes_from_name(dist_tree, 'Ymin')
-  PT.rm_nodes_from_name(dist_tree, 'ZSR_Data1')
-  PT.rm_nodes_from_name(dist_tree, 'ZSR_Data2')
   
   #----------------------------
   # To be sure to have the same distribution with reference
