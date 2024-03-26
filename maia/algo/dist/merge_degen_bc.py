@@ -76,7 +76,7 @@ def _remove_dup_ids_in_ESO(poly, comm):
 
 def _remove_id_in_ESO(poly, index, comm) :
   """
-  Remove id in EC and update ESO
+  Remove index in EC and update ESO
   Works for ngon or nface nodes
   """
   def remove_index(array):
@@ -118,6 +118,105 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
   # B/ # Delete fake face numbered "nb_faces + 1" in EC and update ESO
   fake_face_num = face_distri_ini[2] - n_rmvd_face
   _remove_id_in_ESO(nface, fake_face_num, comm) 
+  
+# ------------------------------------------------------------------------------------------
+def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_name, comm, entity_ids_to_remove=[225]):
+  """
+  Treated for now :
+    BC, BCDataset (With or without PL), FlowSol, DiscreteData, ZoneSubRegion, JN
+
+    Careful! PointList/PointListDonor arrays of joins present in the zone are updated, but opposite joins
+    are not informed of this modification. This has to be done after the function.
+  TO DO : merge with maia.algo.dist.merge_jn._update_cgns_subsets ?
+  """
+
+  # Prepare iterators
+  matches_loc = lambda n : PT.Subset.GridLocation(n) == location
+  is_bcds_with_pl    = lambda n: PT.get_label(n) == 'BCDataSet_t'and PT.get_child_from_name(n, 'PointList') is not None
+  is_bcds_without_pl = lambda n: PT.get_label(n) == 'BCDataSet_t'and PT.get_child_from_name(n, 'PointList') is None
+
+  is_sol  = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and matches_loc(n) 
+  is_bc   = lambda n: PT.get_label(n) == 'BC_t' and matches_loc(n) 
+  is_bcds = lambda n: is_bcds_with_pl(n) and matches_loc(n) 
+  is_zsr  = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' and matches_loc(n) 
+  is_jn   = lambda n: PT.get_label(n) == 'GridConnectivity_t' and matches_loc(n) 
+
+  sol_list  = PT.getChildrenFromPredicate(zone, is_sol)
+  bc_list   = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', is_bc])
+  bcds_list = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', 'BC_t', is_bcds])
+  zsr_list  = PT.getChildrenFromPredicate(zone, is_zsr)
+  jn_list   = PT.getChildrenFromPredicates(zone, ['ZoneGridConnectivity_t', is_jn])
+  i_jn_list = [jn for jn in jn_list if PT.GridConnectivity.ZoneDonorPath(jn, base_name) == base_name + '/'+ PT.get_name(zone)]
+
+  #Loop in same order using to get apply pl using generic func
+  all_nodes_and_queries = [
+    ( sol_list , ['DataArray_t']                                 ),
+    ( bc_list  , [is_bcds_without_pl, 'BCData_t', 'DataArray_t'] ),
+    ( bcds_list, ['BCData_t', 'DataArray_t']                     ),
+    ( zsr_list , ['DataArray_t']                                 ),
+    ( jn_list  , ['PointListDonor']                              ),
+  ]
+  all_nodes = itertools.chain.from_iterable([elem[0] for elem in all_nodes_and_queries])
+
+  #Trick to add a PL to each subregion to be able to use same algo
+  for zsr in zsr_list:
+    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
+      PT.add_child(zsr, PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone) + '/PointList'))
+
+  #Get new index for every PL at once
+  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0] for fs in all_nodes]
+  part_data_pl = EP.block_to_part(old_to_new_face, entity_distri, all_pl_list, comm)
+
+  part_offset = 0
+  for node_list, data_query in all_nodes_and_queries:
+    for node in node_list:
+      MJN._update_subset(node, part_data_pl[part_offset], data_query, comm)
+      part_offset += 1
+
+  #For internal jn only, we must update PointListDonor with new face id. Non internal jn reorder the array,
+  # but do not apply old_to_new transformation.
+  # Note that we will lost symmetry PL/PLD for internal jn, we need a rule to update it afterward
+  all_pld = [PT.get_child_from_name(jn, 'PointListDonor') for jn in i_jn_list]
+  updated_pld = EP.block_to_part(old_to_new_face, entity_distri, [pld[1][0] for pld in all_pld], comm)
+  for i, pld in enumerate(all_pld):
+    PT.set_value(pld, updated_pld[i].reshape((1,-1), order='F'))
+  
+  #Remove entity ids
+  empty_nodes = []
+  if len(entity_ids_to_remove) > 0:
+    for node_list, data_query in all_nodes_and_queries:
+      for node in node_list:
+        pl_n = PT.get_child_from_name(node, 'PointList')
+        pl = PT.get_value(pl_n)[0]
+        ids_to_remove = np.where(np.isin(pl, entity_ids_to_remove))[0]
+        all_ids_to_remove = comm.allgather(len(ids_to_remove))
+        distri_entity_n = PT.get_child_from_predicates(node, ':CGNS#Distribution/Index')
+        distri_entity = PT.get_value(distri_entity_n)
+        distri_entity[0] -= np.sum(all_ids_to_remove[0:comm.rank], dtype=distri_entity.dtype)
+        distri_entity[1] -= np.sum(all_ids_to_remove[0:comm.rank+1], dtype=distri_entity.dtype)
+        distri_entity[2] -= np.sum(all_ids_to_remove, dtype=distri_entity.dtype)
+        if distri_entity[2] == 0: # Global PointList is empty, no need to update DataArray because node will be delete
+          # print("SB if", node[0])
+          # empty_nodes.append((node_list, data_query, node[0]))
+          empty_nodes.append(node[0])
+        else: # Need to update PointList and DataArray
+          # print("SB else", node[0])
+          # if node[0]=='ZSR_Data2': PT.print_tree(node)
+          PT.set_value(pl_n, np.array([np.delete(pl,ids_to_remove)], dtype=pdm_gnum_dtype))
+          for data_n in PT.get_children_from_label(node, 'DataArray_t'):
+            # if node[0]=='ZSR_Data2': print(data_n[0])
+            data = PT.get_value(data_n)
+            # if node[0]=='ZSR_Data2': print(data, np.delete(data,ids_to_remove))
+            PT.set_value(data_n, np.array(np.delete(data,ids_to_remove), dtype=pdm_gnum_dtype))
+          # if node[0]=='ZSR_Data2': PT.print_tree(node)
+
+  #Cleanup after trick
+  for zsr in zsr_list:
+    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
+      PT.rm_children_from_name(zsr, 'PointList')
+  
+  #Remove nodes with empty global PointList
+  # TO DO
 
 # ------------------------------------------------------------------------------------------
 def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_degen_nodes_kept, degen_subset_names, comm):
@@ -159,7 +258,6 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   
   # Work only on a copy of the considered zone !
   shallow_zone_n  = copy.deepcopy(PT.get_child_from_name(base_n, zone_name))
-  PT.rm_nodes_from_name(base_n, zone_name)
   shallow_ngon_n  = PT.Zone.NGonNode(shallow_zone_n)
   
   # Identify nodes to remove
@@ -212,7 +310,7 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   
   # Update all data stored at 'FaceCenter' in subsets
   old_to_new_face_unsg = np.abs(old_to_new_face)
-  MJN._update_cgns_subsets(shallow_zone_n, 'FaceCenter', face_distri_ext, old_to_new_face_unsg, base_name, comm)
+  _update_cgns_subsets(shallow_zone_n, 'FaceCenter', face_distri_ext, old_to_new_face_unsg, base_name, comm)
   
   # TO DO: delete in all FaceCenter* PL all "nb_faces+1" numbered face
   # for now: del degen_bc
@@ -227,6 +325,7 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   # TO DO: update data located at FaceCenter and CellCenter
   
   # Add zone to base
+  PT.rm_nodes_from_name(base_n, zone_name)
   PT.add_child(base_n, shallow_zone_n)
   
   # Update PointList/PointListDonor of other zones
