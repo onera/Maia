@@ -168,6 +168,10 @@ yaml_ref = f'''
                 0], [286, 0], [288, 0], [279, 0], [287, 0], [280, 0], [288, 0], [281, 0], [282, 0], [283, 0], [284, 0], [285,
                 0], [286, 0], [287, 0], [288, 0]]
 '''
+      # ZSR_Data2 ZoneSubRegion_t:
+      #   GridLocation GridLocation_t 'FaceCenter':
+      #   PointList IndexArray_t I{int_type} [[52]]:
+      #   Data2 DataArray_t I{int_type} [2]:
 
 yaml_ref_zgc = f'''
       ZoneGridConnectivity ZoneGridConnectivity_t:
@@ -198,11 +202,9 @@ yaml_ref_zgc = f'''
 '''
 
 @pytest_parallel.mark.parallel([1,2,7,11,23,59])
+# @pytest_parallel.mark.parallel([1,2,3])
 @pytest.mark.parametrize("ZSR", [False, True])
 @pytest.mark.parametrize("JN", [False, True])
-# @pytest_parallel.mark.parallel([2])
-# @pytest.mark.parametrize("ZSR", [False])
-# @pytest.mark.parametrize("JN", [False])
 def test_merge_degen_faces(ZSR,JN,comm):
   #----------------------------
   # Ref yaml
@@ -244,14 +246,30 @@ def test_merge_degen_faces(ZSR,JN,comm):
   zone_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t')
   ymin_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymin')
   pl_ymin = PT.get_value(PT.get_node_from_name(ymin_n, 'PointList'))[0]
+  ymax_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymax')
+  pl_ymax = PT.get_value(PT.get_node_from_name(ymax_n, 'PointList'))[0]
   if comm.rank == 0:
-    zsr_data = PT.new_ZoneSubRegion(name='ZSR_Data', loc='FaceCenter', point_list=[pl_ymin[0]], fields = {'PL': pl_ymin[0]}, parent=zone_n)
-    cgns_dist = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data)
-    PT.new_DataArray('Index', [0,1,1], parent=cgns_dist)
+    pl1 = np.array([[pl_ymin[0]]], dtype=pdm_gnum_dtype)
+    data1 = np.array([1], dtype=pdm_gnum_dtype)
+    zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
+    cgns_dist1 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data1)
+    PT.new_DataArray('Index', [0,1,1], parent=cgns_dist1)
+    pl2 = np.array([[pl_ymin[0], pl_ymax[0]]], dtype=pdm_gnum_dtype)
+    data2 = np.array([1,2], dtype=pdm_gnum_dtype)
+    zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
+    cgns_dist2 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data2)
+    PT.new_DataArray('Index', [0,2,2], parent=cgns_dist2)
   else:
-    zsr_data = PT.new_ZoneSubRegion(name='ZSR_Data', loc='FaceCenter', point_list=[[]], fields = {'PL': []}, parent=zone_n)
-    cgns_dist = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data)
-    PT.new_DataArray('Index', [1,1,1], parent=cgns_dist)
+    pl1 = np.array([[]], dtype=pdm_gnum_dtype)
+    data1 = np.array([], dtype=pdm_gnum_dtype)
+    zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
+    cgns_dist1 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data1)
+    PT.new_DataArray('Index', [1,1,1], parent=cgns_dist1)
+    pl2 = np.array([[]], dtype=pdm_gnum_dtype)
+    data2 = np.array([], dtype=pdm_gnum_dtype)
+    zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
+    cgns_dist2 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data2)
+    PT.new_DataArray('Index', [2,2,2], parent=cgns_dist2)
   
   #----------------------------
   # Prepare test case with ZSR
@@ -299,8 +317,21 @@ def test_merge_degen_faces(ZSR,JN,comm):
   group = comm.Get_group()
   newGroup = group.Incl([0])
   sub_comm  = comm.Create(newGroup)
+  # if comm.rank==22:
+  #   PT.print_tree(dist_tree, 'dist_tree.txt')
+  # exit()
   if comm.rank == 0:
+    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0])
+    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data1'), 'PointList')[1][0])
     maia.algo.dist.convert_elements_to_ngon(dist_tree, sub_comm)
+    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0])
+    # print(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data1'), 'PointList')[1][0])
+    # fix bug in convert_elements_to_ngon
+    PT.set_value(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data1'), 'PointList'), 
+                [PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0][0]])
+    PT.set_value(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data2'), 'PointList'), 
+                [[PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0][0],
+                  PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymax'), 'PointList')[1][0][0]]])
     full_tree = maia.factory.dist_to_full_tree(dist_tree, sub_comm, target=0)
   else:
     full_tree = None
@@ -316,7 +347,8 @@ def test_merge_degen_faces(ZSR,JN,comm):
   # Prepare result with ZSR
   if ZSR:
     PT.rm_nodes_from_name(dist_tree, 'Ymin')
-  PT.rm_nodes_from_name(dist_tree, 'ZSR_Data')
+  PT.rm_nodes_from_name(dist_tree, 'ZSR_Data1')
+  PT.rm_nodes_from_name(dist_tree, 'ZSR_Data2')
   
   #----------------------------
   # To be sure to have the same distribution with reference
