@@ -1,4 +1,7 @@
 import maia.pytree as PT
+from maia.transfer import utils as TEU
+import maia.pytree.maia as MT
+
 
 import maia.transfer as TE
 from . import data_exchange
@@ -91,3 +94,25 @@ def dist_tree_to_part_tree_all(dist_tree, part_tree, comm):
   dist_tree_to_part_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
+
+def recover_UDData_from_dist_to_part(dist_tree, part_tree, ud_predicate=[]):
+  """ Transfer nodes from a predicate and distributed tree
+  to the corresponding partitioned tree.
+  """
+
+  if ud_predicate[1] == 'Family_t':
+    for part_ud_path in PT.predicates_to_paths(part_tree, ud_predicate[:-1]):
+      part_ud_n = PT.get_node_from_path(part_tree, part_ud_path)
+      dist_ud_n = PT.get_nodes_from_predicates(dist_tree, part_ud_path+'/'+ud_predicate[-1])
+      for dist_ud_child in dist_ud_n:
+        if dist_ud_n is not None: PT.add_child(part_ud_n, PT.deep_copy(dist_ud_child))
+  elif ud_predicate[1] == 'Zone_t':
+    for part_ud_path in PT.predicates_to_paths(part_tree, ud_predicate[:-1]):
+      part_ud_n = PT.get_node_from_path(part_tree, part_ud_path)
+      part_split_path = part_ud_path.split('/')
+      part_split_path[1] = MT.conv.get_part_prefix(part_split_path[1])
+      dist_ud_path =  ('/').join(part_split_path)
+      dist_ud_n = PT.get_nodes_from_predicates(dist_tree, dist_ud_path+'/'+ud_predicate[-1])
+      for dist_ud_child in dist_ud_n:
+        if dist_ud_n is not None: PT.add_child(part_ud_n, PT.deep_copy(dist_ud_child))
+

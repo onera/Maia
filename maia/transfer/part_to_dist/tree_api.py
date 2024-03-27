@@ -1,4 +1,6 @@
+import maia
 import maia.pytree as PT
+from maia.transfer import utils as TEU
 
 import maia.transfer as TE
 from . import data_exchange
@@ -69,3 +71,18 @@ def part_tree_to_dist_tree_all(dist_tree, part_tree, comm):
   part_tree_to_dist_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
+
+def recover_UDData_from_part_to_dist(dist_tree, part_tree, comm, ud_predicate=[]):
+  """ Transfer nodes from a predicate and partitioned tree
+  to the corresponding distributed tree.
+  """
+  if ud_predicate[1] == 'Family_t':
+      base_name = ud_predicate[0]
+      dist_base = PT.get_child_from_label(dist_tree, base_name)
+      part_base = PT.get_child_from_label(part_tree, base_name)
+      maia.factory.dist_from_part.discover_nodes_from_matching(dist_base, [part_base], ud_predicate[1:], comm, child_list=['DataArray_t'], get_value='all')
+  elif ud_predicate[1] == 'Zone_t':
+      for zone_path in PT.predicates_to_paths(dist_tree, ud_predicate[:2]):
+          dist_zone = PT.get_node_from_path(dist_tree, zone_path)
+          part_zones = TEU.get_partitioned_zones(part_tree, zone_path)
+          maia.factory.dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ud_predicate[2:], comm, child_list=['DataArray_t'], get_value='all')
