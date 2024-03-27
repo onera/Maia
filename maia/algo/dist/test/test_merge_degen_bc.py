@@ -319,12 +319,6 @@ def test_merge_degen_faces(ZSR,JN,comm):
   sub_comm  = comm.Create(newGroup)
   if comm.rank == 0:
     maia.algo.dist.convert_elements_to_ngon(dist_tree, sub_comm)
-    # TO DO: to delete after bug fix in convert_elements_to_ngon
-    PT.set_value(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data1'), 'PointList'), 
-                [PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0][0]])
-    PT.set_value(PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'ZSR_Data2'), 'PointList'), 
-                [[PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymin'), 'PointList')[1][0][0],
-                  PT.get_node_from_name(PT.get_node_from_name(dist_tree, 'Ymax'), 'PointList')[1][0][0]]])
     full_tree = maia.factory.dist_to_full_tree(dist_tree, sub_comm, target=0)
   else:
     full_tree = None
