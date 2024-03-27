@@ -64,8 +64,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   if pdm_group is not None:
     group = np.copy(pdm_group)
     for i_bc, bc in enumerate(PT.iter_children_from_predicates(zone, ['ZoneBC_t', converted_bc])):
-      PT.rm_nodes_from_name(bc, 'PointRange')
-      PT.rm_nodes_from_name(bc, 'PointList')
+      PT.rm_children_from_name(bc, 'PointRange')
+      PT.rm_children_from_name(bc, 'PointList')
       start, end = group_idx[i_bc], group_idx[i_bc+1]
       PT.new_IndexArray(value=group[start:end].reshape((1,-1), order='F'), parent=bc)
 
@@ -143,6 +143,12 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
                         ngon_n)
 
 
+  # > Shift CellCenter located pointlist
+  shift = n_face if extract_dim == 3 else n_edge
+  for node in PT.iter_all_subsets(zone, ['CellCenter']):
+    pl = PT.get_child_from_name(node, 'PointList')
+    pl[1] += shift
+
   # > Remove internal holder state
   PT.rm_nodes_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
@@ -166,12 +172,37 @@ def generate_ngon_from_std_elements(dist_tree, comm):
     comm       (`MPIComm`) : MPI communicator
   """
   MJT.add_joins_donor_name(dist_tree, comm)
-  # Convert gcs into bc, so they will be converted by the function
-  for zgc in PT.iter_nodes_from_label(dist_tree, 'ZoneGridConnectivity_t'):
-    PT.set_label(zgc, 'ZoneBC_t')
-    PT.new_node('__maia::isZGC', parent=zgc)
-    for gc in PT.iter_children_from_label(zgc, 'GridConnectivity_t'):
-      PT.set_label(gc, 'BC_t')
+
+  is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'ZoneSubRegion_t', 'DiscreteData_t']
+  is_fcenter   = lambda n : PT.Subset.GridLocation(n) not in ['CellCenter', 'Vertex']
+  is_subset    = lambda n : PT.get_child_from_name(n, 'PointList') is not None \
+                         or PT.get_child_from_name(n, 'PointRange') is not None
+  
+  # Convert data having PL into bc, so they will be converted by the function
+  for dist_zone in PT.iter_all_Zone_t(dist_tree):
+    # BCDS case is specific (they are included in BCs)
+    for zbc in PT.iter_children_from_label(dist_zone, 'ZoneBC_t'):
+      for bc in PT.get_children_from_label(zbc, 'BC_t'):
+        for bcds in PT.get_children_from_predicate(bc, lambda n : PT.get_label(n) == 'BCDataSet_t' and is_subset(n)):
+          bcds[0] = f'__maia::isBCDS#@#{bc[0]}#@#{bcds[0]}'
+          bcds[3] = 'BC_t'
+          PT.add_child(zbc, bcds)
+        PT.rm_children_from_name(bc, '__maia::isBCDS#@#*')
+    # GC case is specific (they have their own container)
+    for zgc in PT.iter_children_from_label(dist_zone, 'ZoneGridConnectivity_t'):
+      PT.set_label(zgc, 'ZoneBC_t')
+      PT.new_node('__maia::isZGC', parent=zgc)
+      for gc in PT.iter_children_from_label(zgc, 'GridConnectivity_t'):
+        PT.set_label(gc, 'BC_t')
+    # Other data (as ZSR) are self contained
+    to_remove = list()
+    container = PT.new_child(dist_zone, '__maia::isSubset', 'ZoneBC_t')
+    for node in PT.get_children_from_predicate(dist_zone, lambda n: is_container(n) and is_fcenter(n) and is_subset(n)):
+      PT.new_Descriptor('__maia::initialLabel', PT.get_label(node), parent=node)
+      PT.set_label(node, 'BC_t')
+      to_remove.append(PT.get_name(node))
+      PT.add_child(container, node)
+    PT.rm_children_from_predicate(dist_zone, lambda n : PT.get_name(n) in to_remove)
 
   for base in PT.iter_all_CGNSBase_t(dist_tree):
     extract_dim = PT.get_value(base)[0]
@@ -195,13 +226,33 @@ def generate_ngon_from_std_elements(dist_tree, comm):
       result_dmesh = dmn_to_dm.get_dmesh(i_zone)
       pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim)
 
-  # > Generate correctly zone_grid_connectivity
-  for zbc in PT.iter_nodes_from_label(dist_tree, 'ZoneBC_t'):
-    if PT.get_child_from_name(zbc, '__maia::isZGC'):
-      PT.set_label(zbc, 'ZoneGridConnectivity_t')
-      PT.rm_children_from_name(zbc, '__maia::isZGC')
-      for bc in PT.iter_children_from_label(zbc, 'BC_t'):
-          PT.set_label(bc, 'GridConnectivity_t')
+  # Convert back "fake bc" containers
+  for dist_zone in PT.iter_all_Zone_t(dist_tree):
+    for zbc in PT.get_children_from_label(dist_zone, 'ZoneBC_t'):
+      # > Zone_grid_connectivity
+      if PT.get_child_from_name(zbc, '__maia::isZGC'):
+        PT.set_label(zbc, 'ZoneGridConnectivity_t')
+        PT.rm_children_from_name(zbc, '__maia::isZGC')
+        for bc in PT.iter_children_from_label(zbc, 'BC_t'):
+            PT.set_label(bc, 'GridConnectivity_t')
+      # > Original BCs
+      elif PT.get_name(zbc) != '__maia::isSubset':
+        for bcds in PT.get_nodes_from_name(zbc, '__maia::isBCDS*'):
+          _, bc_name, ds_name = bcds[0].split('#@#')
+          bc = PT.get_child_from_name(zbc, bc_name)
+          bcds[0] = ds_name
+          bcds[3] = 'BCDataSet_t'
+          PT.add_child(bc, bcds)
+        PT.rm_children_from_label(zbc, 'BCDataSet_t')
+    # > Subsets
+    container = PT.get_child_from_name(dist_zone, '__maia::isSubset')
+    for node in PT.get_children(container):
+      old_label = PT.get_child_from_name(node, '__maia::initialLabel')
+      PT.set_label(node, PT.get_value(old_label))
+      PT.rm_child(node, old_label)
+      PT.add_child(dist_zone, node)
+    PT.rm_child(dist_zone, container)
+
   MJT.copy_donor_subset(dist_tree)
 
 def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):

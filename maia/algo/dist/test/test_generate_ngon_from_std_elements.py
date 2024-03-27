@@ -98,7 +98,7 @@ class Test_compute_ngon_from_std_elements:
       assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == [12,16,20,24]).all()
       assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == [5,6,10,9, 10,6,7,11, 11,7,8,12]).all()
 
-  def test_2d_mesh_with_bc(self, comm):
+  def test_2d_mesh_with_subsets(self, comm):
     rank = comm.Get_rank()
     if comm.Get_rank() == 0:
       quad_ec = np.array([1,2,6,5,2,3,7,6,3,4,8,7], pdm_dtype)
@@ -117,22 +117,27 @@ class Test_compute_ngon_from_std_elements:
     MT.newDistribution({'Element' : np.array([0,5*(1-rank),5], pdm_dtype)}, bar)
     dist_zbc  = PT.new_ZoneBC(dist_zone)
     if rank == 0:
-      bca       = PT.new_BC('bcA', point_range = [[7,9]], parent=dist_zbc)
+      bca       = PT.new_BC('bcA', loc='EdgeCenter', point_range = [[7,9]], parent=dist_zbc)
       MT.newDistribution({'Index' : [0,2,3]}, bca)
-      bcb       = PT.new_BC('bcB', point_list = [[10]], parent=dist_zbc)
+      bcb       = PT.new_BC('bcB', loc='EdgeCenter', point_list = [[10]], parent=dist_zbc)
       MT.newDistribution({'Index' : [0,1,2]}, bcb)
-      bcc       = PT.new_BC('bcC', point_range = [[1,5]], parent=dist_zbc)
+      bcc       = PT.new_BC('bcC', loc='Vertex', point_range = [[1,5]], parent=dist_zbc)
       MT.newDistribution({'Index' : [0,3,5]}, bcb)
+      zsr       = PT.new_ZoneSubRegion('ZSR', loc='CellCenter', point_list = [[6]], parent=dist_zone)
+      MT.newDistribution({'Index' : [0,1,3]}, zsr)
+      zsrf      = PT.new_ZoneSubRegion('ZSRFace', loc='EdgeCenter', point_list = [[10]], parent=dist_zone)
+      MT.newDistribution({'Index' : [0,1,2]}, zsrf)
     elif rank == 1:
-      bca       = PT.new_BC('bcA', point_range = [[7,9]], parent=dist_zbc)
+      bca       = PT.new_BC('bcA', loc='EdgeCenter', point_range = [[7,9]], parent=dist_zbc)
       MT.newDistribution({'Index' : [2,3,3]}, bca)
-      bcb       = PT.new_BC('bcB', point_list = [[11]], parent=dist_zbc)
+      bcb       = PT.new_BC('bcB', loc='EdgeCenter', point_list = [[11]], parent=dist_zbc)
       MT.newDistribution({'Index' : [1,2,2]}, bcb)
-      bcc       = PT.new_BC('bcC', point_range = [[1,5]], parent=dist_zbc)
+      bcc       = PT.new_BC('bcC', loc='Vertex', point_range = [[1,5]], parent=dist_zbc)
       MT.newDistribution({'Index' : [3,5,5]}, bcb)
-    PT.new_GridLocation('EdgeCenter', bca)
-    PT.new_GridLocation('EdgeCenter', bcb)
-    PT.new_GridLocation('Vertex', bcc)
+      zsr       = PT.new_ZoneSubRegion('ZSR', loc='CellCenter' ,point_list = [[4,2]], parent=dist_zone)
+      MT.newDistribution({'Index' : [1,3,3]}, zsr)
+      zsrf      = PT.new_ZoneSubRegion('ZSRFace', loc='EdgeCenter', point_list = [[11]], parent=dist_zone)
+      MT.newDistribution({'Index' : [1,2,2]}, zsrf)
 
     GNG.generate_ngon_from_std_elements(dist_tree, comm)
 
@@ -148,9 +153,13 @@ class Test_compute_ngon_from_std_elements:
     if rank == 0:
       assert (PT.get_child_from_name(bca, 'PointList')[1] == [14,16]).all()
       assert (PT.get_child_from_name(bcb, 'PointList')[1] == [3]).all()
+      assert (PT.get_child_from_name(zsr, 'PointList')[1] == [23]).all()
+      assert (PT.get_child_from_name(zsrf, 'PointList')[1] == [3]).all()
     elif rank == 1:
       assert (PT.get_child_from_name(bca, 'PointList')[1] == [17]).all()
       assert (PT.get_child_from_name(bcb, 'PointList')[1] == [10]).all()
+      assert (PT.get_child_from_name(zsr, 'PointList')[1] == [21,19]).all()
+      assert (PT.get_child_from_name(zsrf, 'PointList')[1] == [10]).all()
     assert PT.Subset.GridLocation(bcc) == 'Vertex' #Vertex bc should not have changed
     assert (PT.get_child_from_name(bcc, 'PointRange')[1] == [[1,5]]).all()
 
