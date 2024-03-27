@@ -1,7 +1,0 @@
-*.swp
-*.pyc
-__pycache__
-*.bak
-.nfs*
-share/_generated/*
-build*

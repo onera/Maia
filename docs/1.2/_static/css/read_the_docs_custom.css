@@ -1,0 +1,30 @@
+@import 'theme.css'; /* for the Read the Docs theme */
+
+.rst-content div[class^="highlight"] pre {
+  font-size: 95%;
+}
+
+/*
+div.indexpage p {
+  font-size: 5.0em;
+}
+*/
+
+/* override table no-wrap */
+.wy-table-responsive table td, .wy-table-responsive table th {
+    white-space: normal;
+}
+
+.def {
+  color: #e41a1c;
+  font-weight: bold;
+}
+
+.mono {
+  font-family: 'Courier New', monospace;
+}
+
+.cgns {
+  color: #08306b;
+  font-family: 'Courier New', monospace;
+}

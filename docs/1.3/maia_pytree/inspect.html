@@ -1,0 +1,1353 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Node inspection &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Node creation presets" href="presets.html" />
+    <link rel="prev" title="Node searching" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="pytree_module.html">The pytree module</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="basic.html">Basic node editing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="search.html">Node searching</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Node inspection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#methods-detail">Methods detail</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="presets.html">Node creation presets</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="pytree_module.html">The pytree module</a> &raquo;</li>
+        
+      <li>Node inspection</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/maia_pytree/inspect.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="node-inspection">
+<span id="pt-inspect"></span><h1>Node inspection<a class="headerlink" href="#node-inspection" title="Permalink to this headline">¶</a></h1>
+<p>To avoid redoing several times the most commun operations, <code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> provide
+several functions extracting usefull data from a specific kind of CGNSNode.</p>
+<p>All these functions are CGNS/SIDS aware, meaning that they are garanteed to succeed
+only if the input tree is respecting the standard.</p>
+<p>They are also read only; i.e. input tree will not be modified by any
+of these calls.</p>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>Here is a summary of the available functions, depending of the input node:</p>
+<p><strong>Tree</strong> <em>These functions apply to CGNSTree_t node</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Tree.find_connected_zones" title="maia.pytree.Tree.find_connected_zones"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_connected_zones</span></code></a></p></td>
+<td><p>Gather the zones of the tree into groups connected by 1to1 connectivities</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Tree.find_periodic_jns" title="maia.pytree.Tree.find_periodic_jns"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_periodic_jns</span></code></a></p></td>
+<td><p>Gather the periodic joins of the tree according to their periodicity values</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Zone</strong> <em>These functions apply to Zone_t node</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.Type" title="maia.pytree.Zone.Type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Type</span></code></a></p></td>
+<td><p>Return the kind of a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.IndexDimension" title="maia.pytree.Zone.IndexDimension"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IndexDimension</span></code></a></p></td>
+<td><p>Return the IndexDimension of a Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.VertexSize" title="maia.pytree.Zone.VertexSize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VertexSize</span></code></a></p></td>
+<td><p>Return the number of vertices per direction of a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.FaceSize" title="maia.pytree.Zone.FaceSize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FaceSize</span></code></a></p></td>
+<td><p>Return the number of faces per direction of a Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.CellSize" title="maia.pytree.Zone.CellSize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CellSize</span></code></a></p></td>
+<td><p>Return the number of cells per direction of a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.VertexBoundarySize" title="maia.pytree.Zone.VertexBoundarySize"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VertexBoundarySize</span></code></a></p></td>
+<td><p>Return the number of boundary vertices per direction of a Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.NGonNode" title="maia.pytree.Zone.NGonNode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NGonNode</span></code></a></p></td>
+<td><p>Return the Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NGON_n</span></code> of a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.NFaceNode" title="maia.pytree.Zone.NFaceNode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NFaceNode</span></code></a></p></td>
+<td><p>Return the Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NFACE_n</span></code> of a Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.CellDimension" title="maia.pytree.Zone.CellDimension"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CellDimension</span></code></a></p></td>
+<td><p>Return the CellDimension of a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.n_cell" title="maia.pytree.Zone.n_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_cell</span></code></a></p></td>
+<td><p>Return the total number of cells of a Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.n_face" title="maia.pytree.Zone.n_face"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_face</span></code></a></p></td>
+<td><p>Return the total number of faces of a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.n_vtx" title="maia.pytree.Zone.n_vtx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_vtx</span></code></a></p></td>
+<td><p>Return the total number of vertices of a Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.n_vtx_bnd" title="maia.pytree.Zone.n_vtx_bnd"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_vtx_bnd</span></code></a></p></td>
+<td><p>Return the total number of boundary vertices of a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.has_ngon_elements" title="maia.pytree.Zone.has_ngon_elements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_ngon_elements</span></code></a></p></td>
+<td><p>Return True if some Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NGON_n</span></code> exists in the Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.has_nface_elements" title="maia.pytree.Zone.has_nface_elements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_nface_elements</span></code></a></p></td>
+<td><p>Return True if some Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NFACE_n</span></code> exists in the Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.coordinates" title="maia.pytree.Zone.coordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coordinates</span></code></a></p></td>
+<td><p>Return the coordinate arrays of the Zone_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.get_ordered_elements" title="maia.pytree.Zone.get_ordered_elements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ordered_elements</span></code></a></p></td>
+<td><p>Return the Elements under a Zone_t node, sorted according to their ElementRange</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.get_ordered_elements_per_dim" title="maia.pytree.Zone.get_ordered_elements_per_dim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ordered_elements_per_dim</span></code></a></p></td>
+<td><p>Return the Elements under a Zone_t node, gathered according to their dimension</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Zone.get_elt_range_per_dim" title="maia.pytree.Zone.get_elt_range_per_dim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_elt_range_per_dim</span></code></a></p></td>
+<td><p>Return the min &amp; max element number of each dimension found in a Zone_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Zone.elt_ordering_by_dim" title="maia.pytree.Zone.elt_ordering_by_dim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">elt_ordering_by_dim</span></code></a></p></td>
+<td><p>Return a flag indicating if elements belonging to a Zone_t node are sorted</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Element</strong> <em>These functions apply to Element_t node</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Element.CGNSName" title="maia.pytree.Element.CGNSName"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CGNSName</span></code></a></p></td>
+<td><p>Return the generic name of an Element_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Element.Dimension" title="maia.pytree.Element.Dimension"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Dimension</span></code></a></p></td>
+<td><p>Return the dimension of an Element_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Element.NVtx" title="maia.pytree.Element.NVtx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NVtx</span></code></a></p></td>
+<td><p>Return the number of vertices of an Element_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Element.Range" title="maia.pytree.Element.Range"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Range</span></code></a></p></td>
+<td><p>Return the value of the ElementRange of an Element_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Element.Size" title="maia.pytree.Element.Size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Size</span></code></a></p></td>
+<td><p>Return the size (number of elements) of an Element_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Element.Type" title="maia.pytree.Element.Type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Type</span></code></a></p></td>
+<td><p>Return the type of an Element_t node</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>GridConnectivity</strong> <em>These functions apply to GridConnectivity_t and GridConnectivity1to1_t nodes</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.GridConnectivity.Type" title="maia.pytree.GridConnectivity.Type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Type</span></code></a></p></td>
+<td><p>Return the type of a GridConnectivity node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.GridConnectivity.Transform" title="maia.pytree.GridConnectivity.Transform"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Transform</span></code></a></p></td>
+<td><p>Return the Transform specification of a GridConnectivity1to1 node.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.GridConnectivity.is1to1" title="maia.pytree.GridConnectivity.is1to1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is1to1</span></code></a></p></td>
+<td><p>Return True if the GridConnectivity node is of type 'Abutting1to1'</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.GridConnectivity.isperiodic" title="maia.pytree.GridConnectivity.isperiodic"><code class="xref py py-obj docutils literal notranslate"><span class="pre">isperiodic</span></code></a></p></td>
+<td><p>Return True if the GridConnectivity node is periodic</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.GridConnectivity.ZoneDonorPath" title="maia.pytree.GridConnectivity.ZoneDonorPath"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ZoneDonorPath</span></code></a></p></td>
+<td><p>Return the path of the opposite zone of a GridConnectivity node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.GridConnectivity.periodic_values" title="maia.pytree.GridConnectivity.periodic_values"><code class="xref py py-obj docutils literal notranslate"><span class="pre">periodic_values</span></code></a></p></td>
+<td><p>Return the periodic transformation of a GridConnectivity node</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Subset</strong> <em>These functions apply to nodes having a PointList or a PointRange</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Subset.getPatch" title="maia.pytree.Subset.getPatch"><code class="xref py py-obj docutils literal notranslate"><span class="pre">getPatch</span></code></a></p></td>
+<td><p>Return the PointList or PointRange node defining the Subset node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Subset.GridLocation" title="maia.pytree.Subset.GridLocation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GridLocation</span></code></a></p></td>
+<td><p>Return the GridLocation value of a Subset node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Subset.ZSRExtent" title="maia.pytree.Subset.ZSRExtent"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ZSRExtent</span></code></a></p></td>
+<td><p>Return the path of the node to which the ZoneSubRegion node maps</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.Subset.n_elem" title="maia.pytree.Subset.n_elem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">n_elem</span></code></a></p></td>
+<td><p>Return the number of mesh elements included in a Subset node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.Subset.normal_axis" title="maia.pytree.Subset.normal_axis"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normal_axis</span></code></a></p></td>
+<td><p>Return the normal direction of a structured subset.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Functions are displayed below as static methods, gathered into classes.
+This is an implementation detail to put functions into namespaces : they should
+be used as usual, with their name prefixed by the label name:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">zone_node</span><span class="p">)</span> <span class="c1"># Apply on a Zone_t node</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">GridConnectivity</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">gc_node</span><span class="p">)</span> <span class="c1">#Apply on a GC_t or GC1to1_t node</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="methods-detail">
+<h2>Methods detail<a class="headerlink" href="#methods-detail" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.pytree.Tree">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Tree</span></span><a class="headerlink" href="#maia.pytree.Tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>The following functions apply to the top level CGNSTree_t</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Tree.find_connected_zones">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">find_connected_zones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Tree.find_connected_zones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gather the zones of the tree into groups connected by 1to1 connectivities</p>
+<p>Only non periodic joins are considered. Output paths start at tree level
+(Basename/Zonename).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tree</strong> (<em>CGNSTree</em>) – Input CGNSTree_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>List[List[str]]</em> – grouped paths of zones</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">parse_yaml_cgns</span><span class="o">.</span><span class="n">to_cgns_tree</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone1 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone3&quot;:</span>
+<span class="gp">... </span><span class="s1">  Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">  Zone3 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone1&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Tree</span><span class="o">.</span><span class="n">find_connected_zones</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">[[&#39;Base/Zone2&#39;], [&#39;Base/Zone1&#39;, &#39;Base/Zone3&#39;]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Tree.find_periodic_jns">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">find_periodic_jns</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Tree.find_periodic_jns" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gather the periodic joins of the tree according to their periodicity values</p>
+<p>Returned paths starts at tree level.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input CGNSTree_t node</p></li>
+<li><p><strong>rtol</strong> (<em>float</em><em>, </em><em>optional</em>) – relative tolerance for periodicity comparaison</p></li>
+<li><p><strong>atol</strong> (<em>float</em><em>, </em><em>optional</em>) – absolute tolerance for periodicity comparaison</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p><em>Pair of lists</em> – at each indice,</p>
+<ul class="simple">
+<li><p>first list contains the periodic arrays for the group of joins</p></li>
+<li><p>second list contains the paths of joins related to this value</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.pytree.Zone">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Zone</span></span><a class="headerlink" href="#maia.pytree.Zone" title="Permalink to this definition">¶</a></dt>
+<dd><p>The following functions apply to any Zone_t node</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.CellDimension">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CellDimension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.CellDimension" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the CellDimension of a Zone_t node</p>
+<p>CellDimension is the dimensionality of the cell in the mesh, and should be equal
+to the first element of related CGNSBase_t value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – CellDimension (1,2 or 3)</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – if zone has no elements</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;PYRA&#39;</span><span class="p">,</span> <span class="s1">&#39;PYRA_5&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span>  <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">CellDimension</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.CellSize">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CellSize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.CellSize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of cells per direction of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int or ndarray of int</em> – number of cells in each direction
+for structured zones, total number of cells for unstructured zones</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">CellSize</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">10</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.FaceSize">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FaceSize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.FaceSize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of faces per direction of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int or list of int</em> – number of faces in each direction
+for structured zones, total number of faces for unstructured zones</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">FaceSize</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">[55, 60]</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Unstructured zones are supported only if they have a NGon connectivity</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.IndexDimension">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">IndexDimension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.IndexDimension" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the IndexDimension of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – IndexDimension (1,2 or 3)</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">IndexDimension</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.NFaceNode">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NFaceNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.NFaceNode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NFACE_n</span></code> of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – NFace node</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – if not exactly one <code class="docutils literal notranslate"><span class="pre">NFACE_n</span></code> element node exists in zone</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.NGonNode">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NGonNode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.NGonNode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NGON_n</span></code> of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – NGon node</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – if not exactly one <code class="docutils literal notranslate"><span class="pre">NGON_n</span></code> element node exists in zone</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.Type">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.Type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the kind of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – One of ‘Structured’, ‘Unstructured’, ‘UserDefined’ or ‘Null’</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">&#39;Unstructured&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.VertexBoundarySize">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">VertexBoundarySize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.VertexBoundarySize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of boundary vertices per direction of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int or ndarray of int</em> – number of boundary vtx in each direction
+for structured zones, total number of boundary vtx for unstructured zones</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">VertexBoundarySize</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">array([0, 0], dtype=int32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.VertexSize">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">VertexSize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.VertexSize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of vertices per direction of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int or ndarray of int</em> – number of vertices in each direction
+for structured zones, total number of vertices for unstructured zones</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">VertexSize</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">array([11, 6, 2], dtype=int32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.coordinates">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">coordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.coordinates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the coordinate arrays of the Zone_t node</p>
+<p>Only cartesian coordinates are supported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p></li>
+<li><p><strong>name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the GridCoordinates node from which coordinates are taken.
+If not specified, first container found is used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>Triplet of ndarray or None</em> – for each direction, corresponding coordinate array or <code class="docutils literal notranslate"><span class="pre">None</span></code>
+if physicalDimension is != 3</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_GridCoordinates</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;CoordinateX&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.</span><span class="p">],</span>
+<span class="gp">... </span>                               <span class="s1">&#39;CoordinateY&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">.5</span><span class="p">,</span> <span class="mf">.5</span><span class="p">,</span> <span class="mf">.5</span><span class="p">]},</span>
+<span class="gp">... </span>                       <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">coordinates</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">(array([0.,0.5,1.], dtype=float32), array([0.5,0.5,0.5], dtype=float32), None)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.elt_ordering_by_dim">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">elt_ordering_by_dim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.elt_ordering_by_dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a flag indicating if elements belonging to a Zone_t node are sorted</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p><em>int</em> – Flag indicating how elements are sorted:</p>
+<ul class="simple">
+<li><p>1 if elements of lower dimension have lower ElementRange</p></li>
+<li><p>- 1 if elements of lower dimension have higher ElementRange</p></li>
+<li><p>0 if elements are not sorted</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;TETRA&#39;</span><span class="p">,</span> <span class="s1">&#39;TETRA_4&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;TRI&#39;</span><span class="p">,</span> <span class="s1">&#39;TRI_3&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span><span class="mi">30</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">elt_ordering_by_dim</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">-1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.get_elt_range_per_dim">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_elt_range_per_dim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.get_elt_range_per_dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the min &amp; max element number of each dimension found in a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>list of 4 pairs</em> – min and max element id for each dimension</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – if elements of different dimension are interlaced</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;PYRA&#39;</span><span class="p">,</span> <span class="s1">&#39;PYRA_5&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span>  <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;TRI&#39;</span><span class="p">,</span>  <span class="s1">&#39;TRI_3&#39;</span><span class="p">,</span>  <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span><span class="mi">30</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;BAR&#39;</span><span class="p">,</span>  <span class="s1">&#39;BAR_2&#39;</span><span class="p">,</span>  <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">31</span><span class="p">,</span><span class="mi">40</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">get_elt_range_per_dim</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">[[0, 0], [31, 40], [11, 30], [1, 10]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.get_ordered_elements">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_ordered_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.get_ordered_elements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the Elements under a Zone_t node, sorted according to their ElementRange</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>list of CGNSTree</em> – Elements_t nodes</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;TETRA&#39;</span><span class="p">,</span> <span class="s1">&#39;TETRA_4&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;TRI&#39;</span><span class="p">,</span> <span class="s1">&#39;TRI_3&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span><span class="mi">30</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">node</span><span class="p">)</span> <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">get_ordered_elements</span><span class="p">(</span><span class="n">zone</span><span class="p">)]</span>
+<span class="go">[&#39;TETRA&#39;, &#39;TRI&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.get_ordered_elements_per_dim">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_ordered_elements_per_dim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.get_ordered_elements_per_dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the Elements under a Zone_t node, gathered according to their dimension</p>
+<p>Within each dimension, Elements are sorted according to their ElementRange</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>list of 4 list of CGNSTree</em> – Elements_t nodes</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;PYRA&#39;</span><span class="p">,</span> <span class="s1">&#39;PYRA_5&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span>  <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;TRI&#39;</span><span class="p">,</span>  <span class="s1">&#39;TRI_3&#39;</span><span class="p">,</span>  <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">11</span><span class="p">,</span><span class="mi">30</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;QUAD&#39;</span><span class="p">,</span> <span class="s1">&#39;QUAD_4&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">31</span><span class="p">,</span><span class="mi">40</span><span class="p">],</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">elts</span><span class="p">)</span> <span class="k">for</span> <span class="n">elts</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">get_ordered_elements_per_dim</span><span class="p">(</span><span class="n">zone</span><span class="p">)]</span>
+<span class="go">[0, 0, 2, 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.has_nface_elements">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_nface_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.has_nface_elements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if some Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NFACE_n</span></code> exists in the Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">has_nface_elements</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.has_ngon_elements">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_ngon_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.has_ngon_elements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if some Element_t node of kind <code class="docutils literal notranslate"><span class="pre">NGON_n</span></code> exists in the Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_NGonElements</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">has_ngon_elements</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.n_cell">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_cell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.n_cell" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total number of cells of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – number of cells</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_cell</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">50</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.n_face">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_face</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.n_face" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total number of faces of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – number of faces</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_face</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">115</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Unstructured zones are supported only if they have a NGon connectivity</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.n_vtx">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_vtx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.n_vtx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total number of vertices of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – number of vertices</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_vtx</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">11</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Zone.n_vtx_bnd">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_vtx_bnd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Zone.n_vtx_bnd" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the total number of boundary vertices of a Zone_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Input Zone_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – number of boundary vertices</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_vtx_bnd</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">0</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.pytree.Element">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Element</span></span><a class="headerlink" href="#maia.pytree.Element" title="Permalink to this definition">¶</a></dt>
+<dd><p>The following functions apply to any Element_t node</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Element.CGNSName">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">CGNSName</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Element.CGNSName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the generic name of an Element_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>elt_node</strong> (<em>CGNSTree</em>) – Input Element_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – CGNS name corresponding to this element kind</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">elt</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_NFaceElements</span><span class="p">(</span><span class="s1">&#39;MyElements&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">CGNSName</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span>
+<span class="go">&#39;NFACE_n&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Element.Dimension">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Dimension</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Element.Dimension" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the dimension of an Element_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>elt_node</strong> (<em>CGNSTree</em>) – Input Element_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – Dimension of this element kind (0, 1, 2 or 3)</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">elt</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;TRI_3&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Dimension</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span>
+<span class="go">2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Element.NVtx">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">NVtx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Element.NVtx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of vertices of an Element_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>elt_node</strong> (<em>CGNSTree</em>) – Input Element_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – Number of vertices for this element kind</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">elt</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;PYRA_5&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">NVtx</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span>
+<span class="go">5</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Element.Range">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Range</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Element.Range" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value of the ElementRange of an Element_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>elt_node</strong> (<em>CGNSTree</em>) – Input Element_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>ndarray</em> – ElementRange of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">elt</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;PYRA_5&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">21</span><span class="p">,</span><span class="mi">40</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Range</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span>
+<span class="go">array([21, 40], dtype=int32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Element.Size">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Element.Size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the size (number of elements) of an Element_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>elt_node</strong> (<em>CGNSTree</em>) – Input Element_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – Number of elements described by the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">elt</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;PYRA_5&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">21</span><span class="p">,</span><span class="mi">40</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span>
+<span class="go">20</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Element.Type">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Element.Type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the type of an Element_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>elt_node</strong> (<em>CGNSTree</em>) – Input Element_t node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – CGNS code corresponding to this element kind</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">elt</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;TETRA_4&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">elt</span><span class="p">)</span>
+<span class="go">10</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.pytree.GridConnectivity">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GridConnectivity</span></span><a class="headerlink" href="#maia.pytree.GridConnectivity" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.GridConnectivity.Transform">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gc_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_matrix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.GridConnectivity.Transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the Transform specification of a GridConnectivity1to1 node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gc_node</strong> (<em>CGNSTree</em>) – Input GridConnectivity1to1 node</p></li>
+<li><p><strong>as_matrix</strong> (<em>bool</em>) – If True, return the transform matrix. Otherwise, return
+the transform vector.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>ndarray</em> – Transform specification</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity1to1</span><span class="p">(</span><span class="n">transform</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">GridConnectivity</span><span class="o">.</span><span class="n">Transform</span><span class="p">(</span><span class="n">gc</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+<span class="go">array([[ 0,  0,  1],</span>
+<span class="go">       [-1,  0,  0],</span>
+<span class="go">       [ 0,  1,  0]])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.GridConnectivity.Type">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gc_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.GridConnectivity.Type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the type of a GridConnectivity node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>gc_node</strong> (<em>CGNSTree</em>) – Input GridConnectivity node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – One of ‘Null’, ‘UserDefined’, ‘Overset’, ‘Abutting’ or ‘Abutting1to1’</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity1to1</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">GridConnectivity</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
+<span class="go">&#39;Abutting1to1&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.GridConnectivity.ZoneDonorPath">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ZoneDonorPath</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gc_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cur_base_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.GridConnectivity.ZoneDonorPath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path of the opposite zone of a GridConnectivity node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gc_node</strong> (<em>CGNSTree</em>) – Input GridConnectivity node</p></li>
+<li><p><strong>cur_base_name</strong> (<em>str</em>) – Name of the parent base of this node</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – Path (Basename/Zonename) of the opposite zone</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">,</span> <span class="n">donor_name</span><span class="o">=</span><span class="s1">&#39;OtherBase/OppZone&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">GridConnectivity</span><span class="o">.</span><span class="n">ZoneDonorPath</span><span class="p">(</span><span class="n">gc</span><span class="p">,</span> <span class="s1">&#39;Base&#39;</span><span class="p">)</span>
+<span class="go">&#39;OtherBase/OppZone&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.GridConnectivity.is1to1">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is1to1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gc_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.GridConnectivity.is1to1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the GridConnectivity node is of type ‘Abutting1to1’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>gc_node</strong> (<em>CGNSTree</em>) – Input GridConnectivity node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Overset&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">GridConnectivity</span><span class="o">.</span><span class="n">is1to1</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.GridConnectivity.isperiodic">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">isperiodic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gc_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.GridConnectivity.isperiodic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return True if the GridConnectivity node is periodic</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>gc_node</strong> (<em>CGNSTree</em>) – Input GridConnectivity node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Overset&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">GridConnectivity</span><span class="o">.</span><span class="n">isperiodic</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.GridConnectivity.periodic_values">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">periodic_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gc_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.GridConnectivity.periodic_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the periodic transformation of a GridConnectivity node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>gc_node</strong> (<em>CGNSTree</em>) – Input GridConnectivity node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>Triplet of ndarray or None</em> – values of RotationCenter, RotationAngle and Translation, stored
+in a named tuple</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivityProperty</span><span class="p">({</span><span class="s1">&#39;translation&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]},</span> <span class="n">parent</span><span class="o">=</span><span class="n">gc</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">GridConnectivity</span><span class="o">.</span><span class="n">periodic_values</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
+<span class="go">PeriodicValues(RotationCenter=array([0., 0., 0.], dtype=float32),</span>
+<span class="go">               RotationAngle=array([0., 0., 0.], dtype=float32),</span>
+<span class="go">               Translation=array([1., 0., 0.], dtype=float32))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.pytree.Subset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Subset</span></span><a class="headerlink" href="#maia.pytree.Subset" title="Permalink to this definition">¶</a></dt>
+<dd><p>A subset is a node having a PointList or a PointRange</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Subset.GridLocation">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GridLocation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subset_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Subset.GridLocation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the GridLocation value of a Subset node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>subset_node</strong> (<em>CGNSTree</em>) – Input Subset node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – One of ‘Null’, ‘UserDefined’, ‘Vertex’, ‘CellCenter’, ‘FaceCenter’,
+‘IFaceCenter’, ‘JFaceCenter’, ‘KFaceCenter’, or ‘EdgeCenter’</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BC</span><span class="p">(</span><span class="s1">&#39;BC&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;FaceCenter&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">GridLocation</span><span class="p">(</span><span class="n">bc</span><span class="p">)</span>
+<span class="go">&#39;FaceCenter&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Subset.ZSRExtent">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ZSRExtent</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zsr_node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Subset.ZSRExtent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the path of the node to which the ZoneSubRegion node maps</p>
+<p>Path start from zone_node and can point to a BC, a GC or the ZSR itself.
+This function only make sense for ZoneSubRegion_t nodes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>zsr_node</strong> (<em>CGNSTree</em>) – Input ZoneSubRegion_t node</p></li>
+<li><p><strong>zone_node</strong> (<em>CGNSTree</em>) – Parent Zone_t node</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – path of zone defining the ZSR extent</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bc</span>   <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BC</span><span class="p">(</span><span class="s1">&#39;RelevantBC&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">PT</span><span class="o">.</span><span class="n">new_ZoneBC</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zsr</span>  <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_ZoneSubRegion</span><span class="p">(</span><span class="s1">&#39;ZSR&#39;</span><span class="p">,</span> <span class="n">bc_name</span><span class="o">=</span><span class="s1">&#39;RelevantBC&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">ZSRExtent</span><span class="p">(</span><span class="n">zsr</span><span class="p">,</span> <span class="n">zone</span><span class="p">)</span>
+<span class="go">&#39;ZoneBC/RelevantBC&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Subset.getPatch">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">getPatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subset_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Subset.getPatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the PointList or PointRange node defining the Subset node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>subset_node</strong> (<em>CGNSTree</em>) – Input Subset node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – PointList or PointRange node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BC</span><span class="p">(</span><span class="s1">&#39;BC&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;FaceCenter&#39;</span><span class="p">,</span> <span class="n">point_list</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">getPatch</span><span class="p">(</span><span class="n">bc</span><span class="p">)</span>
+<span class="go">[&#39;PointList&#39;, array([[1, 2, 3, 4]], dtype=int32), [], &#39;IndexArray_t&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Subset.n_elem">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_elem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subset_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Subset.n_elem" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of mesh elements included in a Subset node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>subset_node</strong> (<em>CGNSTree</em>) – Input Subset node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – Number of elements</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">gc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity1to1</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">,</span> <span class="n">point_range</span><span class="o">=</span><span class="p">[[</span><span class="mi">10</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">n_elem</span><span class="p">(</span><span class="n">gc</span><span class="p">)</span>
+<span class="go">100</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BC</span><span class="p">(</span><span class="s1">&#39;BC&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;FaceCenter&#39;</span><span class="p">,</span> <span class="n">point_list</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">n_elem</span><span class="p">(</span><span class="n">bc</span><span class="p">)</span>
+<span class="go">4</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.pytree.Subset.normal_axis">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">normal_axis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">subset_node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.Subset.normal_axis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the normal direction of a structured subset.</p>
+<p>This function is only relevant for subsets defining a 2d structured region
+(having a PointRange node).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>subset_node</strong> (<em>CGNSTree</em>) – Input Subset node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>int</em> – Normal axis of the subset (0,1 or 2)</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – if normal axis can not be determined</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">bc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BC</span><span class="p">(</span><span class="n">point_range</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">100</span><span class="p">]],</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;Vertex&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">normal_axis</span><span class="p">(</span><span class="n">bc</span><span class="p">)</span>
+<span class="go">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="presets.html" class="btn btn-neutral float-right" title="Node creation presets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="search.html" class="btn btn-neutral float-left" title="Node searching" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.3
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

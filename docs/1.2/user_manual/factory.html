@@ -1,0 +1,856 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Factory module &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Algo module" href="algo.html" />
+    <link rel="prev" title="File management" href="io.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="user_manual.html">User Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html">File management</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Factory module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#generation">Generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#partitioning">Partitioning</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#partitioning-options">Partitioning options</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#repartition">Repartition</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#reordering-options">Reordering options</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#recovering-from-partitions">Recovering from partitions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#managing-full-trees">Managing full trees</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="algo.html">Algo module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="transfer.html">Transfer module</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="user_manual.html">User Manual</a> &raquo;</li>
+        
+      <li>Factory module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/user_manual/factory.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="factory-module">
+<h1>Factory module<a class="headerlink" href="#factory-module" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">maia.factory</span></code> module can be used to generate parallel CGNS trees. Those can
+be obtained from an other kind of tree, or can be generated from user parameters.</p>
+<div class="section" id="generation">
+<h2>Generation<a class="headerlink" href="#generation" title="Permalink to this headline">¶</a></h2>
+<p>Generation functions create a distributed tree from some parameters.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.generate_dist_points">
+<span class="sig-name descname"><span class="pre">generate_dist_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_vtx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0.,</span> <span class="pre">0.,</span> <span class="pre">0.])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_coords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([1.,</span> <span class="pre">1.,</span> <span class="pre">1.])</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.generate_dist_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a distributed mesh including only cartesian points.</p>
+<p>Returns a distributed CGNSTree containing a single <span class="cgns">CGNSBase_t</span> and
+<span class="cgns">Zone_t</span>. The kind
+of the zone is controled by the <code class="docutils literal notranslate"><span class="pre">zone_type</span></code> parameter:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;Structured&quot;</span></code> (or <code class="docutils literal notranslate"><span class="pre">&quot;S&quot;</span></code>) produces a structured zone</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;Unstructured&quot;</span></code> (or <code class="docutils literal notranslate"><span class="pre">&quot;U&quot;</span></code>) produces an unstructured zone</p></li>
+</ul>
+<p>In all cases, the created zone contains only the cartesian grid coordinates; no connectivities are created.
+The <a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase">physical dimension</a> of the output
+is set equal to the length of the origin parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_vtx</strong> (<em>int</em><em> or </em><em>array of int</em>) – Number of vertices in each direction. Scalars
+automatically extend to uniform array.</p></li>
+<li><p><strong>zone_type</strong> (<em>str</em>) – requested kind of points cloud</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>origin</strong> (<em>array</em><em>, </em><em>optional</em>) – Coordinates of the origin of the generated mesh. Defaults
+to zero vector.</p></li>
+<li><p><strong>max_coords</strong> (<em>array</em><em>, </em><em>optional</em>) – Coordinates of the higher point of the generated mesh. Defaults to ones vector.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – distributed cgns tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_points</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_label</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_vtx</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span> <span class="o">==</span> <span class="mi">10</span><span class="o">**</span><span class="mi">3</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.generate_dist_block">
+<span class="sig-name descname"><span class="pre">generate_dist_block</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_vtx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cgns_elmt_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0.,</span> <span class="pre">0.,</span> <span class="pre">0.])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.generate_dist_block" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a distributed mesh with a cartesian topology.</p>
+<p>Returns a distributed CGNSTree containing a single <span class="cgns">CGNSBase_t</span> and
+<span class="cgns">Zone_t</span>. The kind
+and cell dimension of the zone is controled by the cgns_elmt_name parameter:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;Structured&quot;</span></code> (or <code class="docutils literal notranslate"><span class="pre">&quot;S&quot;</span></code>) produces a structured zone,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;Poly&quot;</span></code> produces an unstructured 3d zone with a NGon+PE connectivity,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;NFACE_n&quot;</span></code> produces an unstructured 3d zone with a NFace+NGon connectivity,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;NGON_n&quot;</span></code>  produces an unstructured 2d zone with faces described by a NGon
+node (not yet implemented),</p></li>
+<li><p>Other names must be in <code class="docutils literal notranslate"><span class="pre">[&quot;TRI_3&quot;,</span> <span class="pre">&quot;QUAD_4&quot;,</span> <span class="pre">&quot;TETRA_4&quot;,</span> <span class="pre">&quot;PYRA_5&quot;,</span> <span class="pre">&quot;PENTA_6&quot;,</span> <span class="pre">&quot;HEXA_8&quot;]</span></code>
+and produces an unstructured 2d or 3d zone with corresponding standard elements.</p></li>
+</ul>
+<p>In all cases, the created zone contains the cartesian grid coordinates and the relevant number
+of boundary conditions.</p>
+<p>When creating 2 dimensional zones, the
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase">physical dimension</a>
+is set equal to the length of the origin parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n_vtx</strong> (<em>int</em><em> or </em><em>array of int</em>) – Number of vertices in each direction. Scalars
+automatically extend to uniform array.</p></li>
+<li><p><strong>cgns_elmt_name</strong> (<em>str</em>) – requested kind of elements</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>origin</strong> (<em>array</em><em>, </em><em>optional</em>) – Coordinates of the origin of the generated mesh. Defaults
+to zero vector.</p></li>
+<li><p><strong>edge_length</strong> (<em>float</em><em>, </em><em>optional</em>) – Edge size of the generated mesh. Defaults to 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – distributed cgns tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">([</span><span class="mi">10</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">10</span><span class="p">],</span> <span class="s1">&#39;Structured&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_label</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Structured&quot;</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_label</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">CGNSName</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_child_from_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;Elements_t&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="s1">&#39;NGON_n&#39;</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;TETRA_4&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_label</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">CGNSName</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_child_from_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;Elements_t&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="s1">&#39;TETRA_4&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.generate_dist_sphere">
+<span class="sig-name descname"><span class="pre">generate_dist_sphere</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cgns_elmt_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0.,</span> <span class="pre">0.,</span> <span class="pre">0.])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.generate_dist_sphere" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a distributed mesh with a spherical topology.</p>
+<p>Returns a distributed CGNSTree containing a single <span class="cgns">CGNSBase_t</span> and
+<span class="cgns">Zone_t</span>. The kind
+and cell dimension of the zone is controled by the cgns_elmt_name parameter:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;NFACE_n&quot;</span></code> produces an unstructured 3d zone with a NFace+NGon connectivity,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;NGON_n&quot;</span></code>  produces an unstructured 2d zone with a NGon+Bar connectivity,</p></li>
+<li><p>Other names must be in <code class="docutils literal notranslate"><span class="pre">[&quot;TRI_3&quot;,</span> <span class="pre">&quot;TETRA_4&quot;]</span></code>
+and produces an unstructured 2d or 3d zone with corresponding standard elements.</p></li>
+</ul>
+<p>In all cases, the created zone contains the grid coordinates and the relevant number
+of boundary conditions.</p>
+<p>Spherical meshes are
+<a class="reference external" href="https://en.wikipedia.org/wiki/Geodesic_polyhedron">class I geodesic polyhedra</a>
+(icosahedral). Number of vertices on the external surface is equal to
+<span class="math notranslate nohighlight">\(10m^2+2\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>m</strong> (<em>int</em>) – Strict. positive integer who controls the number of vertices (see above)</p></li>
+<li><p><strong>cgns_elmt_name</strong> (<em>str</em>) – requested kind of elements</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>origin</strong> (<em>array</em><em>, </em><em>optional</em>) – Coordinates of the origin of the generated mesh. Defaults
+to zero vector.</p></li>
+<li><p><strong>radius</strong> (<em>float</em><em>, </em><em>optional</em>) – Radius of the generated sphere. Defaults to 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – distributed cgns tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_sphere</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;TRI_3&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">CGNSName</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_label</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;Elements_t&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="s1">&#39;TRI_3&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="partitioning">
+<h2>Partitioning<a class="headerlink" href="#partitioning" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.partition_dist_tree">
+<span class="sig-name descname"><span class="pre">partition_dist_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.partition_dist_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform the partitioning operation: create a partitioned tree from the input distributed tree.</p>
+<p>The input tree can be structured or unstuctured, but hybrid meshes are not yet supported.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Geometric information (such as boundary conditions, zone subregion, etc.) are reported
+on the partitioned tree; however, data fields (BCDataSet, FlowSolution, etc.) are not
+transfered automatically. See <code class="docutils literal notranslate"><span class="pre">maia.transfer</span></code> module.</p>
+</div>
+<p>See reference documentation for the description of the keyword arguments.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Distributed tree</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>**kwargs</strong> – Partitioning options</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – partitioned cgns tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="n">i_rank</span><span class="p">,</span> <span class="n">n_rank</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">(),</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span>
+<span class="n">dist_tree</span>  <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="c1">#Basic use</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="c1">#Crazy partitioning where each proc get as many partitions as its rank</span>
+<span class="n">n_part_tot</span> <span class="o">=</span> <span class="n">n_rank</span> <span class="o">*</span> <span class="p">(</span><span class="n">n_rank</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> \
+    <span class="n">zone_to_parts</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Base/zone&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="o">/</span><span class="n">n_part_tot</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">i_rank</span><span class="o">+</span><span class="mi">1</span><span class="p">)]})</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">))</span> <span class="o">==</span> <span class="n">i_rank</span><span class="o">+</span><span class="mi">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<div class="section" id="partitioning-options">
+<h3>Partitioning options<a class="headerlink" href="#partitioning-options" title="Permalink to this headline">¶</a></h3>
+<p>Partitioning can be customized with the following keywords arguments:</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="graph_part_tool">
+<span class="sig-name descname"><span class="pre">graph_part_tool</span></span><a class="headerlink" href="#graph_part_tool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Method used to split unstructured blocks. Irrelevent for structured blocks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Admissible values</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">parmetis</span></code>,  <code class="docutils literal notranslate"><span class="pre">ptscotch</span></code> : graph partitioning methods,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hilbert</span></code>  : geometric method (only for NGon connectivities),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gnum</span></code>     : cells are dispatched according to their absolute numbering.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Default value</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">parmetis</span></code>, if installed; else <code class="docutils literal notranslate"><span class="pre">ptscotch</span></code>, if installed; <code class="docutils literal notranslate"><span class="pre">hilbert</span></code> otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="zone_to_parts">
+<span class="sig-name descname"><span class="pre">zone_to_parts</span></span><a class="headerlink" href="#zone_to_parts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Control the number, size and repartition of partitions. See <a class="reference internal" href="#user-man-part-repartition"><span class="std std-ref">Repartition</span></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default value</dt>
+<dd class="field-odd"><p>Computed such that partitioning is balanced using
+<a class="reference internal" href="#maia.factory.partitioning.compute_balanced_weights" title="maia.factory.partitioning.compute_balanced_weights"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.factory.partitioning.compute_balanced_weights()</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="part_interface_loc">
+<span class="sig-name descname"><span class="pre">part_interface_loc</span></span><a class="headerlink" href="#part_interface_loc" title="Permalink to this definition">¶</a></dt>
+<dd><p><span class="cgns">GridLocation</span> for the created partitions interfaces. Pre-existing interface keep their original location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Admissible values</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">FaceCenter</span></code>, <code class="docutils literal notranslate"><span class="pre">Vertex</span></code></p>
+</dd>
+<dt class="field-even">Default value</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">FaceCenter</span></code> for unstructured zones with NGon connectivities; <code class="docutils literal notranslate"><span class="pre">Vertex</span></code> otherwise.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="reordering">
+<span class="sig-name descname"><span class="pre">reordering</span></span><a class="headerlink" href="#reordering" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dictionnary of reordering options, which are used to renumber the entities in each partitioned zone. See
+corresponding documentation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="preserve_orientation">
+<span class="sig-name descname"><span class="pre">preserve_orientation</span></span><a class="headerlink" href="#preserve_orientation" title="Permalink to this definition">¶</a></dt>
+<dd><p>If True, the created interface faces are not reversed and keep their original orientation. Consequently,
+NGonElements can have a zero left parent and a non zero right parent.
+Only relevant for U/NGon partitions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default value</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="dump_pdm_output">
+<span class="sig-name descname"><span class="pre">dump_pdm_output</span></span><a class="headerlink" href="#dump_pdm_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>If True, dump the raw arrays created by paradigm in a <span class="cgns">CGNSNode</span> at (partitioned) zone level. For debug only.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Default value</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="repartition">
+<span id="user-man-part-repartition"></span><h3>Repartition<a class="headerlink" href="#repartition" title="Permalink to this headline">¶</a></h3>
+<p>The number, size, and repartition (over the processes) of the created partitions is
+controlled through the <code class="docutils literal notranslate"><span class="pre">zone_to_parts</span></code> keyword argument: each process must provide a
+dictionary associating the path of every distributed zone to a list of floats.
+For a given distributed zone, current process will receive as many partitions
+as the length of the list (missing path or empty list means no partitions); the size of these partitions
+corresponds to the values in the list (expressed in fraction of the input zone).
+For a given distributed zone, the sum of all the fractions across all the processes must
+be 1.</p>
+<p>This dictionary can be created by hand; for convenience, Maia provides three functions in the
+<code class="xref py py-mod docutils literal notranslate"><span class="pre">maia.factory.partitioning</span></code> module to create this dictionary.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.partitioning.compute_regular_weights">
+<span class="sig-name descname"><span class="pre">compute_regular_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_part</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.partitioning.compute_regular_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a basic zone_to_parts repartition.</p>
+<p>Each process request n_part partitions on each original zone (n_part can differ
+for each proc).
+The weights of all the parts produced from a given zone are homogeneous
+and equal to the number of cells in the zone divided by the total
+number of partitions requested for this zone.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – (Minimal) distributed tree : only zone names and sizes are needed</p></li>
+<li><p><strong>comm</strong> (<em>MPI.Comm</em>) – MPI Communicator</p></li>
+<li><p><strong>n_part</strong> (<em>int</em><em>,</em><em>optional</em>) – Number of partitions to produce on each zone by the proc.
+Defaults to 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>dict</em> – <code class="docutils literal notranslate"><span class="pre">zone_to_parts</span></code> dictionnary expected by <code class="xref py py-func docutils literal notranslate"><span class="pre">partition_dist_tree()</span></code></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="kn">from</span>   <span class="nn">maia.factory</span> <span class="kn">import</span> <span class="n">partitioning</span> <span class="k">as</span> <span class="n">mpart</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;S_twoblocks.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">zone_to_parts</span> <span class="o">=</span> <span class="n">mpart</span><span class="o">.</span><span class="n">compute_regular_weights</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">zone_to_parts</span> <span class="o">==</span> <span class="p">{</span><span class="s1">&#39;Base/Large&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">],</span> <span class="s1">&#39;Base/Small&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">]}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.partitioning.compute_balanced_weights">
+<span class="sig-name descname"><span class="pre">compute_balanced_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">only_uniform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.partitioning.compute_balanced_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a well balanced zone_to_parts repartition.</p>
+<p>Each process request or not partitions with heterogeneous weight on each
+original zone such that:</p>
+<ul class="simple">
+<li><p>the computational load is well balanced, ie the total number of
+cells per process is nearly equal,</p></li>
+<li><p>the number of splits within a given zone is minimized,</p></li>
+<li><p>produced partitions are not too small.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Heterogeneous weights are not managed by ptscotch. Use parmetis as graph_part_tool
+for partitioning if repartition was computed with this function, or set optional
+argument only_uniform to True.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – (Minimal) distributed tree : only zone names and sizes are needed</p></li>
+<li><p><strong>comm</strong> (<em>MPI.Comm</em>) – MPI Communicator</p></li>
+<li><p><strong>only_uniform</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true, an alternative balancing method is used
+in order to request homogeneous weights, but load balance is less equilibrated.
+Default to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>dict</em> – <code class="docutils literal notranslate"><span class="pre">zone_to_parts</span></code> dictionnary expected by <code class="xref py py-func docutils literal notranslate"><span class="pre">partition_dist_tree()</span></code></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="kn">from</span>   <span class="nn">maia.factory</span> <span class="kn">import</span> <span class="n">partitioning</span> <span class="k">as</span> <span class="n">mpart</span>
+
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;S_twoblocks.yaml&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="n">zone_to_parts</span> <span class="o">=</span> <span class="n">mpart</span><span class="o">.</span><span class="n">compute_balanced_weights</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">zone_to_parts</span> <span class="o">==</span> <span class="p">{</span><span class="s1">&#39;Base/Large&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.375</span><span class="p">],</span> <span class="s1">&#39;Base/Small&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]}</span>
+<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">zone_to_parts</span> <span class="o">==</span> <span class="p">{</span><span class="s1">&#39;Base/Large&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.625</span><span class="p">]}</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.partitioning.compute_nosplit_weights">
+<span class="sig-name descname"><span class="pre">compute_nosplit_weights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.partitioning.compute_nosplit_weights" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute a zone_to_parts repartition without splitting the blocks.</p>
+<p>The initial blocks will be simply distributed over the available processes,
+minimizing the total number of cells affected to a proc. This leads to a poor load
+balancing and possibly to procs having no partitions at all.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – (Minimal) distributed tree : only zone names and sizes are needed</p></li>
+<li><p><strong>comm</strong> (<em>MPI.Comm</em>) – MPI Communicator</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>dict</em> – <code class="docutils literal notranslate"><span class="pre">zone_to_parts</span></code> dictionnary expected by <code class="xref py py-func docutils literal notranslate"><span class="pre">partition_dist_tree()</span></code></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="kn">from</span>   <span class="nn">maia.factory</span> <span class="kn">import</span> <span class="n">partitioning</span> <span class="k">as</span> <span class="n">mpart</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;S_twoblocks.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">zone_to_parts</span> <span class="o">=</span> <span class="n">mpart</span><span class="o">.</span><span class="n">compute_nosplit_weights</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">zone_to_parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="reordering-options">
+<h3>Reordering options<a class="headerlink" href="#reordering-options" title="Permalink to this headline">¶</a></h3>
+<p>For unstructured zones, the reordering options are transmitted to ParaDiGM in order to
+control the renumbering of mesh entities in the partitions.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%" />
+<col style="width: 29%" />
+<col style="width: 31%" />
+<col style="width: 23%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Kwarg</p></th>
+<th class="head"><p>Admissible values</p></th>
+<th class="head"><p>Effect</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>cell_renum_method</p></td>
+<td><p>“NONE”, “RANDOM”, “HILBERT”,
+“CUTHILL”, “CACHEBLOCKING”,
+“CACHEBLOCKING2”, “HPC”</p></td>
+<td><p>Renumbering method for the cells</p></td>
+<td><p>NONE</p></td>
+</tr>
+<tr class="row-odd"><td><p>face_renum_method</p></td>
+<td><p>“NONE”, “RANDOM”, “LEXICOGRAPHIC”</p></td>
+<td><p>Renumbering method for the faces</p></td>
+<td><p>NONE</p></td>
+</tr>
+<tr class="row-even"><td><p>vtx_renum_method</p></td>
+<td><p>“NONE”, “SORT_INT_EXT”</p></td>
+<td><p>Renumbering method for the vertices</p></td>
+<td><p>NONE</p></td>
+</tr>
+<tr class="row-odd"><td><p>n_cell_per_cache</p></td>
+<td><p>Integer &gt;= 0</p></td>
+<td><p>Specific to cacheblocking</p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-even"><td><p>n_face_per_pack</p></td>
+<td><p>Integer &gt;= 0</p></td>
+<td><p>Specific to cacheblocking</p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-odd"><td><p>graph_part_tool</p></td>
+<td><p>“parmetis”, “ptscotch”,
+“hyperplane”</p></td>
+<td><p>Graph partitioning library to
+use for renumbering</p></td>
+<td><p>Same as partitioning tool</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="recovering-from-partitions">
+<h3>Recovering from partitions<a class="headerlink" href="#recovering-from-partitions" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.recover_dist_tree">
+<span class="sig-name descname"><span class="pre">recover_dist_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.recover_dist_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Regenerate a distributed tree from a partitioned tree.</p>
+<p>The partitioned tree should have been created using Maia, or
+must at least contains GlobalNumbering nodes as defined by Maia
+(see <a class="reference internal" href="../introduction/introduction.html#part-tree"><span class="std std-ref">Partitioned trees</span></a>).</p>
+<p>The following nodes are managed : GridCoordinates, Elements, ZoneBC, ZoneGridConnectivity
+FlowSolution, DiscreteData and ZoneSubRegion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>part_tree</strong> (<em>CGNSTree</em>) – Partitioned CGNS Tree</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – distributed cgns tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="n">dist_tree_bck</span>  <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="s1">&#39;TETRA_4&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree_bck</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">recover_dist_tree</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">is_same_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">dist_tree_bck</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="managing-full-trees">
+<h2>Managing full trees<a class="headerlink" href="#managing-full-trees" title="Permalink to this headline">¶</a></h2>
+<p>Almost no function in maia supports <a class="reference internal" href="../introduction/introduction.html#tree-defs"><span class="std std-ref">full (not distributed) CGNS trees</span></a>,
+but they can be useful for compatibility with sequential libraries.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.full_to_dist_tree">
+<span class="sig-name descname"><span class="pre">full_to_dist_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">owner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.full_to_dist_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a distributed tree from a standard (full) CGNS Tree.</p>
+<p>Input tree can be defined on a single process (using <code class="docutils literal notranslate"><span class="pre">owner</span> <span class="pre">=</span> <span class="pre">rank_id</span></code>),
+or a copy can be known by all the processes (using <code class="docutils literal notranslate"><span class="pre">owner=None</span></code>).</p>
+<p>In both cases, output distributed tree will be equilibrated over all the processes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Full (not distributed) tree.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>owner</strong> (<em>int</em><em>, </em><em>optional</em>) – MPI rank holding the input tree. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – distributed cgns tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span>   <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="n">tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">read_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;S_twoblocks.yaml&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+  <span class="n">tree</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">full_to_dist_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">owner</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.factory.dist_to_full_tree">
+<span class="sig-name descname"><span class="pre">dist_to_full_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.factory.dist_to_full_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a standard (full) CGNS Tree from a distributed tree.</p>
+<p>The output tree can be used with sequential tools, but is no more compatible with
+maia parallel algorithms.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Distributed CGNS tree</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>target</strong> (<em>int</em><em>, </em><em>optional</em>) – MPI rank holding the output tree. Defaults to 0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Full (not distributed) tree or None</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span>   <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_sphere</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;TRI_3&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">full_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">dist_to_full_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">full_tree</span><span class="p">,</span> <span class="s2">&quot;:CGNS#Distribution&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+<span class="k">else</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">full_tree</span> <span class="ow">is</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="algo.html" class="btn btn-neutral float-right" title="Algo module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="io.html" class="btn btn-neutral float-left" title="File management" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.2
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,498 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Transfer module &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Developer Manual" href="../developer_manual/developer_manual.html" />
+    <link rel="prev" title="Algo module" href="algo.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="user_manual.html">User Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html">File management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="factory.html">Factory module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="algo.html">Algo module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Transfer module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#fields-transfer">Fields transfer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#tree-level">Tree level</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#zone-level">Zone level</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="user_manual.html">User Manual</a> &raquo;</li>
+        
+      <li>Transfer module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/user_manual/transfer.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="transfer-module">
+<h1>Transfer module<a class="headerlink" href="#transfer-module" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">maia.transfer</span></code> contains functions that exchange data between the
+partitioned and distributed meshes.</p>
+<div class="section" id="fields-transfer">
+<h2>Fields transfer<a class="headerlink" href="#fields-transfer" title="Permalink to this headline">¶</a></h2>
+<p>High level APIs allow to exchange data at CGNS <span class="cgns">Tree</span> or <span class="cgns">Zone</span> level.
+All the provided functions take similar parameters: a distributed tree (resp. zone),
+the corresponding partitioned tree (resp. list of zones), the MPI communicator and
+optionally a filtering parameter.</p>
+<p>The following kind of data are supported:
+<span class="cgns">FlowSolution_t</span>, <span class="cgns">DiscreteData_t</span>, <span class="cgns">ZoneSubRegion_t</span> and <span class="cgns">BCDataSet_t</span>.</p>
+<p>When transferring from distributed meshes to partitioned meshes, fields are supposed
+to be known on the source mesh across all the ranks (according to <a class="reference internal" href="../introduction/introduction.html#dist-tree"><span class="std std-ref">disttree definition</span></a>).
+Geometric patches (such as ZoneSubRegion or BCDataSet) must exists on the relevant partitions, meaning
+that only fields are transfered.</p>
+<p>When transferring from partitioned meshes to distributed meshes, geometric patches may or may not exist on the
+distributed zone: they will be created if needed. This allows to transfer fields that have been created
+on the partitioned meshes.
+It is however assumed that global data (<em>e.g.</em> FlowSolution) are defined on every partition.</p>
+<div class="section" id="tree-level">
+<h3>Tree level<a class="headerlink" href="#tree-level" title="Permalink to this headline">¶</a></h3>
+<p>All the functions of this section operate inplace and require the following parameters:</p>
+<ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Distributed CGNS Tree</p></li>
+<li><p><strong>part_tree</strong> (<em>CGNSTree</em>) – Corresponding partitioned CGNS Tree</p></li>
+<li><p><strong>comm</strong>      (<em>MPIComm</em>)  – MPI communicator</p></li>
+</ul>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.dist_tree_to_part_tree_all">
+<span class="sig-name descname"><span class="pre">dist_tree_to_part_tree_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.dist_tree_to_part_tree_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer all the data fields from a distributed tree
+to the corresponding partitioned tree.</p>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">sample_mesh_dir</span>
+
+<span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sample_mesh_dir</span><span class="p">,</span> <span class="s1">&#39;quarter_crown_square_8.yaml&#39;</span><span class="p">)</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">transfer</span><span class="o">.</span><span class="n">dist_tree_to_part_tree_all</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">part_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FlowSolution/DataX&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneSubRegion/Tata&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneBC/Bnd2/BCDataSet/DirichletData/TutuZ&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.part_tree_to_dist_tree_all">
+<span class="sig-name descname"><span class="pre">part_tree_to_dist_tree_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.part_tree_to_dist_tree_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer all the data fields from a partitioned tree
+to the corresponding distributed tree.</p>
+</dd></dl>
+
+<p>In addition, the next two methods expect the parameter <strong>labels</strong> (<em>list of str</em>)
+which allow to pick one or more kind of data to transfer from the supported labels.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.dist_tree_to_part_tree_only_labels">
+<span class="sig-name descname"><span class="pre">dist_tree_to_part_tree_only_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.dist_tree_to_part_tree_only_labels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer all the data fields of the specified labels from a distributed tree
+to the corresponding partitioned tree.</p>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">sample_mesh_dir</span>
+
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sample_mesh_dir</span><span class="p">,</span> <span class="s1">&#39;quarter_crown_square_8.yaml&#39;</span><span class="p">)</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">transfer</span><span class="o">.</span><span class="n">dist_tree_to_part_tree_only_labels</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">part_tree</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;FlowSolution_t&#39;</span><span class="p">,</span> <span class="s1">&#39;ZoneSubRegion_t&#39;</span><span class="p">],</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FlowSolution/DataX&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneSubRegion/Tata&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneBC/Bnd2/BCDataSet/DirichletData/TutuZ&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">transfer</span><span class="o">.</span><span class="n">dist_tree_to_part_tree_only_labels</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">part_tree</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;BCDataSet_t&#39;</span><span class="p">],</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneBC/Bnd2/BCDataSet/DirichletData/TutuZ&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.part_tree_to_dist_tree_only_labels">
+<span class="sig-name descname"><span class="pre">part_tree_to_dist_tree_only_labels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.part_tree_to_dist_tree_only_labels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer all the data fields of the specified labels from a partitioned tree
+to the corresponding distributed tree.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="zone-level">
+<h3>Zone level<a class="headerlink" href="#zone-level" title="Permalink to this headline">¶</a></h3>
+<p>All the functions of this section operate inplace and require the following parameters:</p>
+<ul class="simple">
+<li><p><strong>dist_zone</strong>  (<em>CGNSTree</em>) – Distributed CGNS Zone</p></li>
+<li><p><strong>part_zones</strong> (<em>list of CGNSTree</em>) – Corresponding partitioned CGNS Zones</p></li>
+<li><p><strong>comm</strong>       (<em>MPIComm</em>)  – MPI communicator</p></li>
+</ul>
+<p>In addition, filtering is possible with the use of the
+<strong>include_dict</strong> or <strong>exclude_dict</strong> dictionaries. These dictionaries map
+each supported label to a list of cgns paths to include (or exclude). Paths
+starts from the <code class="docutils literal notranslate"><span class="pre">Zone_t</span></code> node and ends at the targeted <code class="docutils literal notranslate"><span class="pre">DataArray_t</span></code> node.
+Wildcard <code class="docutils literal notranslate"><span class="pre">*</span></code> are allowed in paths : for example, considering the following tree
+structure,</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Zone (Zone_t)
+├── FirstSolution (FlowSolution_t)
+│   ├── Pressure (DataArray_t)
+│   ├── MomentumX (DataArray_t)
+│   └── MomentumY (DataArray_t)
+├── SecondSolution (FlowSolution_t)
+│   ├── Pressure (DataArray_t)
+│   ├── MomentumX (DataArray_t)
+│   └── MomentumY (DataArray_t)
+└── SpecialSolution (FlowSolution_t)
+    ├── Density (DataArray_t)
+    └── MomentumZ (DataArray_t)
+</pre></div>
+</div>
+<div class="line-block">
+<div class="line"><code class="docutils literal notranslate"><span class="pre">&quot;FirstSolution/Momentum*&quot;</span></code> maps to <code class="docutils literal notranslate"><span class="pre">[&quot;FirstSolution/MomentumX&quot;,</span> <span class="pre">&quot;FirstSolution/MomentumY&quot;]</span></code>,</div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">&quot;*/Pressure</span></code> maps to <code class="docutils literal notranslate"><span class="pre">[&quot;FirstSolution/Pressure&quot;,</span> <span class="pre">&quot;SecondSolution/Pressure&quot;]</span></code>, and</div>
+<div class="line"><code class="docutils literal notranslate"><span class="pre">&quot;S*/M*&quot;</span></code> maps to <code class="docutils literal notranslate"><span class="pre">[&quot;SecondSolution/MomentumX&quot;,</span> <span class="pre">&quot;SecondSolution/MomentumY&quot;,</span> <span class="pre">&quot;SpecialSolution/MomentumZ&quot;]</span></code>.</div>
+</div>
+<p>For convenience, we also provide the magic path <code class="docutils literal notranslate"><span class="pre">['*']</span></code> meaning “everything related to this
+label”.</p>
+<p>Lastly, we use the following rules to manage missing label keys in dictionaries:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>For _only functions, we do not transfer any field related to the missing labels;</p></li>
+<li><p>For _all functions, we do transfer all the  fields related to the missing labels.</p></li>
+</ul>
+</div></blockquote>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.dist_zone_to_part_zones_only">
+<span class="sig-name descname"><span class="pre">dist_zone_to_part_zones_only</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_zone</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_zones</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.dist_zone_to_part_zones_only" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer the data fields specified in include_dict from a distributed zone
+to the corresponding partitioned zones.</p>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">sample_mesh_dir</span>
+
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sample_mesh_dir</span><span class="p">,</span> <span class="s1">&#39;quarter_crown_square_8.yaml&#39;</span><span class="p">)</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">dist_zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_zones</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">)</span>
+
+<span class="n">include_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;FlowSolution_t&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="s1">&#39;FlowSolution/DataX&#39;</span><span class="p">,</span> <span class="s1">&#39;FlowSolution/DataZ&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;BCDataSet_t&#39;</span>    <span class="p">:</span> <span class="p">[</span><span class="s1">&#39;*&#39;</span><span class="p">]}</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">transfer</span><span class="o">.</span><span class="n">dist_zone_to_part_zones_only</span><span class="p">(</span><span class="n">dist_zone</span><span class="p">,</span> <span class="n">part_zones</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">include_dict</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">part_zones</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FlowSolution/DataX&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneSubRegion/Tata&#39;</span><span class="p">)</span> <span class="ow">is</span>     <span class="kc">None</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneBC/Bnd2/BCDataSet/DirichletData/TutuZ&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.part_zones_to_dist_zone_only">
+<span class="sig-name descname"><span class="pre">part_zones_to_dist_zone_only</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_zone</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_zones</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.part_zones_to_dist_zone_only" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer the data fields specified in include_dict from the partitioned zones
+to the corresponding distributed zone.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.dist_zone_to_part_zones_all">
+<span class="sig-name descname"><span class="pre">dist_zone_to_part_zones_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_zone</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_zones</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.dist_zone_to_part_zones_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer all the data fields, excepted those specified in exclude_dict,
+from a distributed zone to the corresponding partitioned zones.</p>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">sample_mesh_dir</span>
+
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">sample_mesh_dir</span><span class="p">,</span> <span class="s1">&#39;quarter_crown_square_8.yaml&#39;</span><span class="p">)</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">dist_zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_zones</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">)</span>
+
+<span class="n">exclude_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;FlowSolution_t&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="s1">&#39;FlowSolution/DataX&#39;</span><span class="p">,</span> <span class="s1">&#39;FlowSolution/DataZ&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;BCDataSet_t&#39;</span>    <span class="p">:</span> <span class="p">[</span><span class="s1">&#39;*&#39;</span><span class="p">]}</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">transfer</span><span class="o">.</span><span class="n">dist_zone_to_part_zones_all</span><span class="p">(</span><span class="n">dist_zone</span><span class="p">,</span> <span class="n">part_zones</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">exclude_dict</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">part_zones</span><span class="p">:</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FlowSolution/DataX&#39;</span><span class="p">)</span> <span class="ow">is</span>     <span class="kc">None</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FlowSolution/DataY&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneSubRegion/Tata&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneBC/Bnd2/BCDataSet/DirichletData/TutuZ&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.transfer.part_zones_to_dist_zone_all">
+<span class="sig-name descname"><span class="pre">part_zones_to_dist_zone_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_zone</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">part_zones</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude_dict</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.part_zones_to_dist_zone_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transfer all the data fields, excepted those specified in exclude_dict,
+from the partitioned zone to the corresponding distributed zone.</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../developer_manual/developer_manual.html" class="btn btn-neutral float-right" title="Developer Manual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="algo.html" class="btn btn-neutral float-left" title="Algo module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.3
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

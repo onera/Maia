@@ -1,0 +1,1030 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Node creation presets &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Release notes" href="../releases/release_notes.html" />
+    <link rel="prev" title="Node inspection" href="inspect.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="pytree_module.html">The pytree module</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="basic.html">Basic node editing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="search.html">Node searching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="inspect.html">Node inspection</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Node creation presets</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#generalities">Generalities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#module-maia.pytree.node.presets">API reference</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="pytree_module.html">The pytree module</a> &raquo;</li>
+        
+      <li>Node creation presets</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/maia_pytree/presets.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="node-creation-presets">
+<span id="pt-presets"></span><h1>Node creation presets<a class="headerlink" href="#node-creation-presets" title="Permalink to this headline">¶</a></h1>
+<p>Although any tree could be creating using exclusivelly <a class="reference internal" href="basic.html#maia.pytree.new_node" title="maia.pytree.new_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_node()</span></code></a> function,
+<code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> provide some shortcuts to create nodes with relevant information.</p>
+<p>In addition of reducing the amount of code to write, it also:</p>
+<ul class="simple">
+<li><p>hides the node structure details : if you want to create an <em>Unstructured</em> zone,
+just tell to new_Zone function: you don’t need to know that this information
+should be stored in a ZoneType node of label ZoneType_t node under the zone;</p></li>
+<li><p>performs checks to prevent you to create non CGNS/SIDS-compliant nodes.</p></li>
+</ul>
+<div class="section" id="generalities">
+<h2>Generalities<a class="headerlink" href="#generalities" title="Permalink to this headline">¶</a></h2>
+<p class="rubric" id="pt-presets-commun">Containers fields</p>
+<p>When creating a <em>Container</em> node (ie. a node storing some fields,
+such as a FlowSolution_t), a list of DataArray to create can be
+provided through the <code class="docutils literal notranslate"><span class="pre">fields</span></code> parameter, which must be a dictionnary
+mapping array names to array values: for example,</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">1.05</span><span class="p">],</span> <span class="nb">float</span><span class="p">),</span>
+<span class="gp">... </span>          <span class="s1">&#39;Temperature&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">293.</span><span class="p">,</span> <span class="mf">293.</span><span class="p">,</span> <span class="mf">296.</span><span class="p">]}</span>
+</pre></div>
+</div>
+<p>when passed to <a class="reference internal" href="#maia.pytree.node.presets.new_FlowSolution" title="maia.pytree.node.presets.new_FlowSolution"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_FlowSolution()</span></code></a>,
+will created the requested fields:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">fs</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="s1">&#39;FS&#39;</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">fs</span><span class="p">)</span>
+<span class="go">FS FlowSolution_t</span>
+<span class="go">├───Density DataArray_t R8 [1.   1.   1.05]</span>
+<span class="go">└───Temperature DataArray_t R4 [293. 293. 296.]</span>
+</pre></div>
+</div>
+<p>Notice that values which are not numpy array instance are converted following
+<a class="reference internal" href="basic.html#maia.pytree.set_value" title="maia.pytree.set_value"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_value()</span></code></a> rules.</p>
+<p class="rubric">Parent label check</p>
+<p>All the <code class="xref py py-func docutils literal notranslate"><span class="pre">new_...()</span></code> functions (appart from <code class="xref py py-func docutils literal notranslate"><span class="pre">new_CGNSTree()</span></code>) take an optionnal
+<code class="docutils literal notranslate"><span class="pre">parent</span></code> argument, which can be used to add the created node
+to the parent children list. In this case, a warning will be issued if the hierarchic
+relation is not CGNS/SIDS-compliant.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">bc</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BC</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">RuntimeWarning: Attaching node BC (BC_t) under a Zone_t parent</span>
+<span class="go">is not SIDS compliant. Admissible parent labels are [&#39;ZoneBC_t&#39;].</span>
+</pre></div>
+</div>
+<p class="rubric">Return value</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>All the functions listed in this page return a single value,
+which is the created CGNSTree. For more readability, we omit the return section
+in the API description.</p>
+</div>
+</div>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p><em>Functions creating top level structures</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_CGNSTree" title="maia.pytree.node.presets.new_CGNSTree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_CGNSTree</span></code></a></p></td>
+<td><p>Create a CGNSTree_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_CGNSBase" title="maia.pytree.node.presets.new_CGNSBase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_CGNSBase</span></code></a></p></td>
+<td><p>Create a CGNSBase_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_BaseIterativeData" title="maia.pytree.node.presets.new_BaseIterativeData"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_BaseIterativeData</span></code></a></p></td>
+<td><p>Create a BaseIterativeData_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_Zone" title="maia.pytree.node.presets.new_Zone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_Zone</span></code></a></p></td>
+<td><p>Create a Zone_t node</p></td>
+</tr>
+</tbody>
+</table>
+<p><em>Functions creating Family related nodes</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_Family" title="maia.pytree.node.presets.new_Family"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_Family</span></code></a></p></td>
+<td><p>Create a Family_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_FamilyName" title="maia.pytree.node.presets.new_FamilyName"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_FamilyName</span></code></a></p></td>
+<td><p>Create a FamilyName_t or an AdditionalFamilyName_t node</p></td>
+</tr>
+</tbody>
+</table>
+<p><em>Functions creating Zone related nodes</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_GridCoordinates" title="maia.pytree.node.presets.new_GridCoordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_GridCoordinates</span></code></a></p></td>
+<td><p>Create a GridCoordinates_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_Elements" title="maia.pytree.node.presets.new_Elements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_Elements</span></code></a></p></td>
+<td><p>Create an Element_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_NFaceElements" title="maia.pytree.node.presets.new_NFaceElements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_NFaceElements</span></code></a></p></td>
+<td><p>Create an Element_t node describing a NFACE_n connectivity</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_NGonElements" title="maia.pytree.node.presets.new_NGonElements"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_NGonElements</span></code></a></p></td>
+<td><p>Create an Element_t node describing a NGON_n connectivity</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_ZoneBC" title="maia.pytree.node.presets.new_ZoneBC"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_ZoneBC</span></code></a></p></td>
+<td><p>Create a ZoneBC_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_ZoneGridConnectivity" title="maia.pytree.node.presets.new_ZoneGridConnectivity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_ZoneGridConnectivity</span></code></a></p></td>
+<td><p>Create a ZoneGridConnectivity_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_FlowSolution" title="maia.pytree.node.presets.new_FlowSolution"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_FlowSolution</span></code></a></p></td>
+<td><p>Create a FlowSolution_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_ZoneSubRegion" title="maia.pytree.node.presets.new_ZoneSubRegion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_ZoneSubRegion</span></code></a></p></td>
+<td><p>Create a ZoneSubRegion_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_BC" title="maia.pytree.node.presets.new_BC"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_BC</span></code></a></p></td>
+<td><p>Create a BC_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_GridConnectivity" title="maia.pytree.node.presets.new_GridConnectivity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_GridConnectivity</span></code></a></p></td>
+<td><p>Create a GridConnectivity_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_GridConnectivity1to1" title="maia.pytree.node.presets.new_GridConnectivity1to1"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_GridConnectivity1to1</span></code></a></p></td>
+<td><p>Create a GridConnectivity1to1_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_GridConnectivityProperty" title="maia.pytree.node.presets.new_GridConnectivityProperty"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_GridConnectivityProperty</span></code></a></p></td>
+<td><p>Create a GridConnectivityProperty node</p></td>
+</tr>
+</tbody>
+</table>
+<p><em>Functions creating common sub nodes</em></p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_GridLocation" title="maia.pytree.node.presets.new_GridLocation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_GridLocation</span></code></a></p></td>
+<td><p>Create a GridLocation_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_DataArray" title="maia.pytree.node.presets.new_DataArray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_DataArray</span></code></a></p></td>
+<td><p>Create a DataArray_t node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_IndexArray" title="maia.pytree.node.presets.new_IndexArray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_IndexArray</span></code></a></p></td>
+<td><p>Create an IndexArray_t node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.node.presets.new_IndexRange" title="maia.pytree.node.presets.new_IndexRange"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_IndexRange</span></code></a></p></td>
+<td><p>Create an IndexRange_t node</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="module-maia.pytree.node.presets">
+<span id="api-reference"></span><h2>API reference<a class="headerlink" href="#module-maia.pytree.node.presets" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_BC">
+<span class="sig-name descname"><span class="pre">new_BC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'BC'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Null'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_BC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a BC_t node</p>
+<p>The patch defining the BC must be provided using either <code class="docutils literal notranslate"><span class="pre">point_range</span></code> or
+<code class="docutils literal notranslate"><span class="pre">point_list</span></code> parameter : both can no be used simultaneously.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/bc.html#BC">BC_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created bc node</p></li>
+<li><p><strong>type</strong> (<em>str</em>) – Type of the boundary condition</p></li>
+<li><p><strong>point_range</strong> (<em>ArrayLike</em>) – PointRange array defining the BC</p></li>
+<li><p><strong>point_list</strong> (<em>ArrayLike</em>) – PointList array defining the BC</p></li>
+<li><p><strong>loc</strong> (<em>str</em>) – If specified, create a GridLocation taking this value</p></li>
+<li><p><strong>family</strong> (<em>str</em>) – If specified, create a FamilyName taking this value</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created bc should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BC</span><span class="p">(</span><span class="s1">&#39;BC&#39;</span><span class="p">,</span> <span class="s1">&#39;BCWall&#39;</span><span class="p">,</span> <span class="n">point_list</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">15</span><span class="p">]],</span>
+<span class="gp">... </span>                 <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;FaceCenter&#39;</span><span class="p">,</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;WALL&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">BC BC_t &quot;BCWall&quot;</span>
+<span class="go">├───GridLocation GridLocation_t &quot;FaceCenter&quot;</span>
+<span class="go">├───FamilyName FamilyName_t &quot;WALL&quot;</span>
+<span class="go">└───PointList IndexArray_t I4 [[ 1  5 10 15]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_BaseIterativeData">
+<span class="sig-name descname"><span class="pre">new_BaseIterativeData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'BaseIterativeData'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">time_values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iter_values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_BaseIterativeData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a BaseIterativeData_t node</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/timedep.html#IterativeData">BaseIterativeData_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created node</p></li>
+<li><p><strong>time_values</strong> (<em>ArrayLike</em>) – if provided, create a TimeValues child array</p></li>
+<li><p><strong>iter_values</strong> (<em>ArrayLike</em>) – if provided, create an IterationValues child array</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created node should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_BaseIterativeData</span><span class="p">(</span><span class="n">time_values</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">BaseIterativeData BaseIterativeData_t I4 [3]</span>
+<span class="go">└───TimeValues DataArray_t R4 [0.  0.5 1. ]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_CGNSBase">
+<span class="sig-name descname"><span class="pre">new_CGNSBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Base'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phy_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_CGNSBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a CGNSBase_t node</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase">CGNSBase_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created base</p></li>
+<li><p><strong>cell_dim</strong> (<em>one of 1</em><em>,</em><em>2</em><em>,</em><em>3</em>) – Cell dimension of the mesh</p></li>
+<li><p><strong>phy_dim</strong> (<em>one of 1</em><em>,</em><em>2</em><em>,</em><em>3</em>) – Physical dimension of the mesh</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created base should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_CGNSBase</span><span class="p">(</span><span class="s1">&#39;Base&#39;</span><span class="p">,</span> <span class="n">cell_dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">Base CGNSBase_t I4 [2 3]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_CGNSTree">
+<span class="sig-name descname"><span class="pre">new_CGNSTree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">version</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4.2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_CGNSTree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a CGNSTree_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>version</strong> (<em>float</em>) – Number used to fill the CGNSLibraryVersion data</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_CGNSTree</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">CGNSTree CGNSTree_t</span>
+<span class="go">└───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_DataArray">
+<span class="sig-name descname"><span class="pre">new_DataArray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_DataArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a DataArray_t node</p>
+<p>The datatype of the DataArray can be enforced with the <code class="docutils literal notranslate"><span class="pre">dtype</span></code> parameter, which
+must be a str value (eg <code class="docutils literal notranslate"><span class="pre">I4</span></code>, <code class="docutils literal notranslate"><span class="pre">R8</span></code>). If not provided, default conversion of
+<a class="reference internal" href="basic.html#maia.pytree.set_value" title="maia.pytree.set_value"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_value()</span></code></a> applies.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/data.html#DataArray">DataArray_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created data array node</p></li>
+<li><p><strong>value</strong> (<em>ArrayLike</em>) – value of the data array</p></li>
+<li><p><strong>dtype</strong> (<em>DTypeLike</em>) – If used, cast <code class="docutils literal notranslate"><span class="pre">value</span></code> to the specified type</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created data array should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_DataArray</span><span class="p">(</span><span class="s1">&#39;Data&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">Data DataArray_t I4 [1 2 3]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_DataArray</span><span class="p">(</span><span class="s1">&#39;Data&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;R8&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">Data DataArray_t R8 [1. 2. 3.]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_Elements">
+<span class="sig-name descname"><span class="pre">new_Elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Elements'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Null'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">erange</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">econn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_Elements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Element_t node</p>
+<p>This function is designed to create standard elements.
+See <a class="reference internal" href="#maia.pytree.node.presets.new_NGonElements" title="maia.pytree.node.presets.new_NGonElements"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_NGonElements()</span></code></a> or <a class="reference internal" href="#maia.pytree.node.presets.new_NFaceElements" title="maia.pytree.node.presets.new_NFaceElements"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_NFaceElements()</span></code></a> to create polygonal
+elements.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Elements">Elements_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created element node</p></li>
+<li><p><strong>type</strong> (<em>str</em>) – CGNSName of the element section, for example <code class="docutils literal notranslate"><span class="pre">PYRA_5</span></code></p></li>
+<li><p><strong>erange</strong> (<em>ArrayLike</em>) – ElementRange array of the elements</p></li>
+<li><p><strong>econn</strong> (<em>ArrayLike</em>) – ElementConnectivity array of the elements</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created elements should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Elements</span><span class="p">(</span><span class="s1">&#39;Edges&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;BAR_2&#39;</span><span class="p">,</span> <span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span>
+<span class="gp">... </span>                       <span class="n">econn</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">Edges Elements_t I4 [3 0]</span>
+<span class="go">├───ElementRange IndexRange_t I4 [1 4]</span>
+<span class="go">└───ElementConnectivity DataArray_t I4 [1 2 2 3 3 4 4 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_Family">
+<span class="sig-name descname"><span class="pre">new_Family</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Family'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family_bc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_Family" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a Family_t node</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/misc.html#Family">Family_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created family</p></li>
+<li><p><strong>family_bc</strong> (<em>str</em>) – If specified, create a FamilyBC taking this value under the Family node</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created family should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Family</span><span class="p">(</span><span class="s1">&#39;WALL&#39;</span><span class="p">,</span> <span class="n">family_bc</span><span class="o">=</span><span class="s1">&#39;BCWall&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">WALL Family_t</span>
+<span class="go">└───FamilyBC FamilyBC_t &quot;BCWall&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_FamilyName">
+<span class="sig-name descname"><span class="pre">new_FamilyName</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">family_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_additional</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_FamilyName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a FamilyName_t or an AdditionalFamilyName_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>family_name</strong> (<em>str</em>) – Name of the family to which the FamilyName node refers</p></li>
+<li><p><strong>as_additional</strong> (<em>str</em>) – If provided, node is created as an AdditionalFamilyName_t node
+named after this str</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created node should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FamilyName</span><span class="p">(</span><span class="s1">&#39;MyFamily&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">FamilyName FamilyName_t &quot;MyFamily&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FamilyName</span><span class="p">(</span><span class="s1">&#39;MyFamily&#39;</span><span class="p">,</span> <span class="n">as_additional</span><span class="o">=</span><span class="s1">&#39;AddFamName&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">AddFamName AdditionalFamilyName_t &quot;MyFamily&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_FlowSolution">
+<span class="sig-name descname"><span class="pre">new_FlowSolution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'FlowSolution'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_FlowSolution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a FlowSolution_t node</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#FlowSolution">FlowSolution_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created flow solution node</p></li>
+<li><p><strong>loc</strong> (<em>str</em>) – If specified, create a GridLocation taking this value</p></li>
+<li><p><strong>fields</strong> (<em>dict</em>) – fields to create under the container (see <a class="reference internal" href="#pt-presets-commun"><span class="std std-ref">fields setting</span></a>)</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created flow solution should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="s1">&#39;FS&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;CellCenter&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                           <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">125</span><span class="p">)})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">FS FlowSolution_t</span>
+<span class="go">├───GridLocation GridLocation_t &quot;CellCenter&quot;</span>
+<span class="go">└───Density DataArray_t R8 (125,)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_GridConnectivity">
+<span class="sig-name descname"><span class="pre">new_GridConnectivity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'GC'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">donor_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Null'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_range_donor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_list_donor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_GridConnectivity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a GridConnectivity_t node</p>
+<p>The patch defining the GC must be provided using either <code class="docutils literal notranslate"><span class="pre">point_range</span></code> or
+<code class="docutils literal notranslate"><span class="pre">point_list</span></code> parameter : both can no be used simultaneously.
+The same applies for the opposite patch definition (using <code class="docutils literal notranslate"><span class="pre">point_range_donor</span></code>
+or <code class="docutils literal notranslate"><span class="pre">point_list_donor</span></code>).</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivity">GridConnectivity_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created gc node</p></li>
+<li><p><strong>donor_name</strong> (<em>str</em>) – Name or path of the opposite zone</p></li>
+<li><p><strong>type</strong> (<em>one of 'Null'</em><em>, </em><em>'UserDefined'</em><em>, </em><em>'Overset'</em><em>, </em><em>'Abutting'</em><em> or </em><em>'Abutting1to1'</em>) – Type of the gc node</p></li>
+<li><p><strong>loc</strong> (<em>str</em>) – If specified, create a GridLocation taking this value</p></li>
+<li><p><strong>point_range</strong> (<em>ArrayLike</em>) – PointRange array defining the current patch</p></li>
+<li><p><strong>point_range_donor</strong> (<em>ArrayLike</em>) – PointRange array defining the opposite patch</p></li>
+<li><p><strong>point_list</strong> (<em>ArrayLike</em>) – PointList array defining the current patch</p></li>
+<li><p><strong>point_list_donor</strong> (<em>ArrayLike</em>) – PointList array defining the opposite patch</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created gc should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">,</span> <span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="s1">&#39;Abutting1to1&#39;</span><span class="p">,</span>
+<span class="gp">... </span>          <span class="n">point_list</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">7</span><span class="p">]],</span> <span class="n">point_list_donor</span><span class="o">=</span><span class="p">[[</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">GC GridConnectivity_t &quot;Zone&quot;</span>
+<span class="go">├───GridConnectivityType GridConnectivityType_t &quot;Abutting1to1&quot;</span>
+<span class="go">├───PointList IndexArray_t I4 [[1 4 7]]</span>
+<span class="go">└───PointListDonor IndexArray_t I4 [[3 6 9]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_GridConnectivity1to1">
+<span class="sig-name descname"><span class="pre">new_GridConnectivity1to1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'GC'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">donor_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_range_donor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_GridConnectivity1to1" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a GridConnectivity1to1_t node</p>
+<p>GridConnectivity1to1_t are reserved for structured zones. See
+<a class="reference internal" href="#maia.pytree.node.presets.new_GridConnectivity" title="maia.pytree.node.presets.new_GridConnectivity"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_GridConnectivity()</span></code></a> to create general GridConnectivity_t nodes.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivity1to1">GridConnectivity1to1_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created gc node</p></li>
+<li><p><strong>donor_name</strong> (<em>str</em>) – Name or path of the opposite zone</p></li>
+<li><p><strong>point_range</strong> (<em>ArrayLike</em>) – PointRange array defining the current patch</p></li>
+<li><p><strong>point_range_donor</strong> (<em>ArrayLike</em>) – PointRange array defining the opposite patch</p></li>
+<li><p><strong>transform</strong> (<em>array of int</em>) – short notation of the transformation matrix</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created gc should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivity1to1</span><span class="p">(</span><span class="s1">&#39;GC&#39;</span><span class="p">,</span> <span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span>
+<span class="gp">... </span>    <span class="n">point_range</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">]],</span> <span class="n">point_range_donor</span><span class="o">=</span><span class="p">[[</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">],[</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">GC GridConnectivity1to1_t &quot;Zone&quot;</span>
+<span class="go">├───Transform &quot;int[IndexDimension]&quot; I4 [1 2 3]</span>
+<span class="go">├───PointRange IndexRange_t I4 [[ 1  1] [ 1 10]]</span>
+<span class="go">└───PointRangeDonor IndexRange_t I4 [[ 5  5] [10 10]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_GridConnectivityProperty">
+<span class="sig-name descname"><span class="pre">new_GridConnectivityProperty</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">periodic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_GridConnectivityProperty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a GridConnectivityProperty node</p>
+<p>The main interest of this function is to add periodic information to a GC_t node;
+this can be done with the <code class="docutils literal notranslate"><span class="pre">periodic</span></code> parameter which maps the keys
+‘rotation_angle’, ‘rotation_center’ and ‘translation’ to the corresponding arrays.</p>
+<p>Missing keys defaults to <code class="docutils literal notranslate"><span class="pre">np.zeros(3)</span></code>, users should be careful if
+when the physical dimension of the mesh if lower than 3.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivityProperty">GridConnectivityProperty_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>periodic</strong> (<em>dict</em>) – Name of the created gc node</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created gc prop should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">perio</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;translation&quot;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridConnectivityProperty</span><span class="p">(</span><span class="n">perio</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">GridConnectivityProperty GridConnectivityProperty_t</span>
+<span class="go">└───Periodic Periodic_t</span>
+<span class="go">    ├───RotationAngle DataArray_t R4 [0. 0. 0.]</span>
+<span class="go">    ├───RotationCenter DataArray_t R4 [0. 0. 0.]</span>
+<span class="go">    └───Translation DataArray_t R4 [1. 0. 0.]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_GridCoordinates">
+<span class="sig-name descname"><span class="pre">new_GridCoordinates</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'GridCoordinates'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_GridCoordinates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a GridCoordinates_t node</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#GridCoordinates">GridCoordinates_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created gc node</p></li>
+<li><p><strong>fields</strong> (<em>dict</em>) – fields to create under the container (see <a class="reference internal" href="#pt-presets-commun"><span class="std std-ref">fields setting</span></a>)</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created gc should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">coords</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;CoordinateX&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span><span class="mf">2.</span><span class="p">,</span><span class="mf">3.</span><span class="p">],</span> <span class="s1">&#39;CoordinateY&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span><span class="mf">1.</span><span class="p">,</span><span class="mf">1.</span><span class="p">]}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridCoordinates</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="n">coords</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">GridCoordinates GridCoordinates_t</span>
+<span class="go">├───CoordinateX DataArray_t R4 [1. 2. 3.]</span>
+<span class="go">└───CoordinateY DataArray_t R4 [1. 1. 1.]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_GridLocation">
+<span class="sig-name descname"><span class="pre">new_GridLocation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_GridLocation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a GridLocation_t node</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/build.html#GridLocation">GridLocation_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>loc</strong> (<em>str</em>) – Value to set in the grid location node</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created node should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_GridLocation</span><span class="p">(</span><span class="s1">&#39;FaceCenter&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">GridLocation GridLocation_t &quot;FaceCenter&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_IndexArray">
+<span class="sig-name descname"><span class="pre">new_IndexArray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'PointList'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_IndexArray" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an IndexArray_t node</p>
+<p>Note that the value array will not be reshaped and must consequently match the expected layout
+<code class="docutils literal notranslate"><span class="pre">(IndexDimension,</span> <span class="pre">N)</span></code>.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/build.html#IndexArray">IndexArray_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created index array node</p></li>
+<li><p><strong>value</strong> (<em>ArrayLike</em>) – value of the index array</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created node should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_IndexArray</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">PointList IndexArray_t I4 [[1 2 3]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_IndexRange">
+<span class="sig-name descname"><span class="pre">new_IndexRange</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'PointRange'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_IndexRange" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an IndexRange_t node</p>
+<p>Note that if needed, the value array will be reshaped to the expected layout
+<code class="docutils literal notranslate"><span class="pre">(IndexDimension,</span> <span class="pre">2)</span></code> (see example below).</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/build.html#IndexRange">IndexRange_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created index range node</p></li>
+<li><p><strong>value</strong> (<em>ArrayLike</em>) – value of the index range</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created node should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_IndexRange</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">],[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">PointRange IndexRange_t I4 [[ 1 10] [ 1 10]]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_IndexRange</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">PointRange IndexRange_t I4 [[ 1 10] [ 1 10] [ 1  1]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_NFaceElements">
+<span class="sig-name descname"><span class="pre">new_NFaceElements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NFaceElements'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">erange</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eso</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_NFaceElements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Element_t node describing a NFACE_n connectivity</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Elements">Elements_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created element node</p></li>
+<li><p><strong>erange</strong> (<em>ArrayLike</em>) – ElementRange array of the elements</p></li>
+<li><p><strong>eso</strong> (<em>ArrayLike</em>) – ElementStartOffset array of the elements</p></li>
+<li><p><strong>ec</strong> (<em>ArrayLike</em>) – ElementConnectivity array of the elements</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created elements should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_NFaceElements</span><span class="p">(</span><span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="n">eso</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span> <span class="n">ec</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">NFaceElements Elements_t I4 [23  0]</span>
+<span class="go">├───ElementRange IndexRange_t I4 [5 5]</span>
+<span class="go">├───ElementStartOffset DataArray_t I4 [0 4]</span>
+<span class="go">└───ElementConnectivity DataArray_t I4 [1 2 3 4]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_NGonElements">
+<span class="sig-name descname"><span class="pre">new_NGonElements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NGonElements'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">erange</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eso</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pepos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_NGonElements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an Element_t node describing a NGON_n connectivity</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Elements">Elements_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created element node</p></li>
+<li><p><strong>erange</strong> (<em>ArrayLike</em>) – ElementRange array of the elements</p></li>
+<li><p><strong>eso</strong> (<em>ArrayLike</em>) – ElementStartOffset array of the elements</p></li>
+<li><p><strong>ec</strong> (<em>ArrayLike</em>) – ElementConnectivity array of the elements</p></li>
+<li><p><strong>pe</strong> (<em>ArrayLike</em>) – ParentElements array of the elements</p></li>
+<li><p><strong>pepos</strong> (<em>ArrayLike</em>) – ParentElementsPosition array of the elements</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created elements should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_NGonElements</span><span class="p">(</span><span class="n">erange</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span> <span class="n">eso</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span><span class="mi">12</span><span class="p">],</span>
+<span class="gp">... </span>                           <span class="n">ec</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">NGonElements Elements_t I4 [22  0]</span>
+<span class="go">├───ElementRange IndexRange_t I4 [1 4]</span>
+<span class="go">├───ElementStartOffset DataArray_t I4 [ 0  3  6  9 12]</span>
+<span class="go">└───ElementConnectivity DataArray_t I4 (12,)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_Zone">
+<span class="sig-name descname"><span class="pre">new_Zone</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Zone'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Null'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_Zone" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a Zone_t node</p>
+<p>Note that the size array will not be reshaped and must consequently match the expected layout</p>
+<blockquote>
+<div><p>[[n_vtx, n_cell, n_bnd_vtx] for each IndexDimension]</p>
+</div></blockquote>
+<p>for example, [[11,10,0]] for an unstructured zone or [[11,10,0], [6,5,0]] for a 2D structured zone.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#Zone">Zone_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created zone</p></li>
+<li><p><strong>type</strong> (<em>{'Null'</em><em>, </em><em>'UserDefined'</em><em>, </em><em>'Structured'</em><em> or </em><em>'Unstructured'}</em>) – Type of the zone</p></li>
+<li><p><strong>size</strong> (<em>ArrayLike</em>) – Size of the zone.</p></li>
+<li><p><strong>family</strong> (<em>str</em>) – If specified, create a FamilyName refering to this family</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created Zone should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;Rotor&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">Zone Zone_t I4 [[11 10  0]]</span>
+<span class="go">├───ZoneType ZoneType_t &quot;Unstructured&quot;</span>
+<span class="go">└───FamilyName FamilyName_t &quot;Rotor&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_ZoneBC">
+<span class="sig-name descname"><span class="pre">new_ZoneBC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_ZoneBC" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a ZoneBC_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created ZBC should be attached</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_ZoneGridConnectivity">
+<span class="sig-name descname"><span class="pre">new_ZoneGridConnectivity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ZoneGridConnectivity'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_ZoneGridConnectivity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a ZoneGridConnectivity_t node</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created ZoneGridConnectivity node</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created ZGC should be attached</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.node.presets.new_ZoneSubRegion">
+<span class="sig-name descname"><span class="pre">new_ZoneSubRegion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ZoneSubRegion'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gc_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.node.presets.new_ZoneSubRegion" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a ZoneSubRegion_t node</p>
+<p>The patch defining the ZoneSubRegion must be provided using one of <code class="docutils literal notranslate"><span class="pre">point_range</span></code>,
+<code class="docutils literal notranslate"><span class="pre">point_list</span></code>, <code class="docutils literal notranslate"><span class="pre">bc_name</span></code> or <code class="docutils literal notranslate"><span class="pre">gc_name</span></code> parameter : they can no be used simultaneously.
+Setting a GridLocation with <code class="docutils literal notranslate"><span class="pre">loc</span></code> parameter makes sens only if a patch is explicitly defined
+with <code class="docutils literal notranslate"><span class="pre">point_range</span></code> or <code class="docutils literal notranslate"><span class="pre">point_list</span></code>.</p>
+<p>Link to corresponding SIDS section:
+<a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#ZoneSubRegion">ZoneSubRegion_t</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created zsr node</p></li>
+<li><p><strong>loc</strong> (<em>str</em>) – If specified, create a GridLocation taking this value</p></li>
+<li><p><strong>point_range</strong> (<em>ArrayLike</em>) – PointRange array defining the ZSR extent</p></li>
+<li><p><strong>point_list</strong> (<em>ArrayLike</em>) – PointList array defining the ZSR extent</p></li>
+<li><p><strong>bc_name</strong> (<em>str</em>) – Name of the BC_t node defining the ZSR extent</p></li>
+<li><p><strong>gc_name</strong> (<em>str</em>) – Name of the GC_t node defining the ZSR extent</p></li>
+<li><p><strong>family</strong> (<em>str</em>) – If specified, create a FamilyName refering to this family</p></li>
+<li><p><strong>fields</strong> (<em>dict</em>) – fields to create under the container (see <a class="reference internal" href="#pt-presets-commun"><span class="std std-ref">fields setting</span></a>)</p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em>) – Node to which created zsr should be attached</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_ZoneSubRegion</span><span class="p">(</span><span class="s1">&#39;Extraction&#39;</span><span class="p">,</span> <span class="n">bc_name</span> <span class="o">=</span> <span class="s1">&#39;Bottom&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                            <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">125</span><span class="p">)})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">Extraction ZoneSubRegion_t</span>
+<span class="go">├───BCRegionName Descriptor_t &quot;Bottom&quot;</span>
+<span class="go">└───Density DataArray_t R8 (125,)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_ZoneSubRegion</span><span class="p">(</span><span class="s1">&#39;Probe&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;CellCenter&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                            <span class="n">point_list</span><span class="o">=</span><span class="p">[[</span><span class="mi">104</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">Probe1 ZoneSubRegion_t</span>
+<span class="go">├───GridLocation GridLocation_t &quot;CellCenter&quot;</span>
+<span class="go">└───PointList IndexArray_t I4 [[104]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../releases/release_notes.html" class="btn btn-neutral float-right" title="Release notes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="inspect.html" class="btn btn-neutral float-left" title="Node inspection" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.3
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

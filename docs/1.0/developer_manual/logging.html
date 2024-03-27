@@ -1,0 +1,378 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Log management &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Conventions" href="maia_dev/conventions.html" />
+    <link rel="prev" title="Developer Manual" href="developer_manual.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="developer_manual.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Log management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#loggers">Loggers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#printers">Printers</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#available-printers">Available printers</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#create-your-own-printer">Create your own printer</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#configuration-file">Configuration file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#maia-specifics">Maia specifics</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="maia_dev/conventions.html">Conventions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="maia_dev/development_workflow.html">Development workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="algo_description.html">Algorithms description</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="developer_manual.html">Developer Manual</a> &raquo;</li>
+        
+      <li>Log management</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/developer_manual/logging.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="log-management">
+<span id="logging"></span><h1>Log management<a class="headerlink" href="#log-management" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="loggers">
+<h2>Loggers<a class="headerlink" href="#loggers" title="Permalink to this headline">¶</a></h2>
+<p>A <strong>logger</strong> is a global object where an application or a library can log to.
+It can be declared with</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">maia.utils.logging</span> <span class="kn">import</span> <span class="n">add_logger</span>
+
+<span class="n">add_logger</span><span class="p">(</span><span class="s2">&quot;my_logger&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or with the equivalent C++ code</p>
+<div class="highlight-C++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;std_e/logging/log.hpp&quot;</span><span class="cp"></span>
+
+<span class="n">std_e</span><span class="o">::</span><span class="n">add_logger</span><span class="p">(</span><span class="s">&quot;my_logger&quot;</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>A logger declared in Python is available in C++ and vice-versa: we do not need to create it twice.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Loggers are available to pure C/C++ programs (in particular, test programs that do not use the Python interpreter).</p>
+</div>
+<p>It can then be referred to by its name. If we want to log a string to <code class="docutils literal notranslate"><span class="pre">my_logger</span></code>, we will do it like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">maia.utils.logging</span> <span class="kn">import</span> <span class="n">log</span>
+
+<span class="n">log</span><span class="p">(</span><span class="s1">&#39;my_logger&#39;</span><span class="p">,</span> <span class="s1">&#39;my message&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-C++ notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;std_e/logging/log.hpp&quot;</span><span class="cp"></span>
+
+<span class="n">std_e</span><span class="o">::</span><span class="n">log</span><span class="p">(</span><span class="s">&quot;my_logger&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;my message&quot;</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Typically, an application will use several loggers to log messages by themes. By convention, the name of a logger in the application <code class="docutils literal notranslate"><span class="pre">my_app</span></code> should begin with <code class="docutils literal notranslate"><span class="pre">my_app</span></code>. For instance, loggers can be named: <code class="docutils literal notranslate"><span class="pre">my_app</span></code>, <code class="docutils literal notranslate"><span class="pre">my_app-stats</span></code>, <code class="docutils literal notranslate"><span class="pre">my_app-errors</span></code>…</p>
+<p>Loggers are both</p>
+<ul class="simple">
+<li><p>developper-oriented, that is, when a developper wants to output a message, he should select a logger (existing or not) encompassing the theme of the message he wants to log,</p></li>
+<li><p>user-oriented, because a user can choose what logger he wants to listen to.</p></li>
+</ul>
+</div>
+<div class="section" id="printers">
+<h2>Printers<a class="headerlink" href="#printers" title="Permalink to this headline">¶</a></h2>
+<p>By itself, a logger does not do anything with the messages it receives. For that, we need to attach <strong>printers</strong> to a logger that will handle its messages.</p>
+<p>For instance, we can attach a printer that will output the message to the console:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">maia.utils.logging</span> <span class="kn">import</span> <span class="n">add_printer_to_logger</span>
+<span class="n">add_printer_to_logger</span><span class="p">(</span><span class="s1">&#39;my_logger&#39;</span><span class="p">,</span><span class="s1">&#39;stdout_printer&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Printers are user-oriented: it is the user of the application who decides what he wants to do with the message that each logger is receiving, by attaching none or several printers to a logger.</p>
+<div class="section" id="available-printers">
+<h3>Available printers<a class="headerlink" href="#available-printers" title="Permalink to this headline">¶</a></h3>
+<dl class="simple">
+<dt>stdout_printer, stderr_printer</dt><dd><p>output messages to the console (respectively stdout and stderr)</p>
+</dd>
+<dt>mpi_stdout_printer, mpi_stderr_printer</dt><dd><p>output messages to the console, but prefix them by <code class="docutils literal notranslate"><span class="pre">MPI.COMM_WORLD.Get_rank()</span></code></p>
+</dd>
+<dt>mpi_rank_0_stdout_printer, mpi_rank_0_stderr_printer</dt><dd><p>output messages to the console, if <code class="docutils literal notranslate"><span class="pre">MPI.COMM_WORLD.Get_rank()==0</span></code></p>
+</dd>
+<dt>file_printer(‘my_file.extension’)</dt><dd><p>output messages to file <code class="docutils literal notranslate"><span class="pre">my_file.extension</span></code></p>
+</dd>
+<dt>mpi_file_printer(‘my_file.extension’)</dt><dd><p>output messages to files <code class="docutils literal notranslate"><span class="pre">my_file.{rk}.extension</span></code>, with <code class="docutils literal notranslate"><span class="pre">rk</span> <span class="pre">=</span> <span class="pre">MPI.COMM_WORLD.Get_rank()</span></code></p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>MPI-aware printers use <code class="docutils literal notranslate"><span class="pre">MPI.COMM_WORLD</span></code> rather than a local communicator. While the latter would be more correct, it would imply local instanciation of printers, at the time or after a new communicator is created. While this is certainly doable, up until now we feel that it does not worth the burden. But if the need arises, they can still be added.</p>
+</div>
+</div>
+<div class="section" id="create-your-own-printer">
+<h3>Create your own printer<a class="headerlink" href="#create-your-own-printer" title="Permalink to this headline">¶</a></h3>
+<p>Any Python type can be used as a printer as long as it provides a <code class="docutils literal notranslate"><span class="pre">log</span></code> method that accepts a string argument.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">maia.utils.logging</span> <span class="kn">import</span> <span class="n">add_printer_to_logger</span>
+
+<span class="k">class</span> <span class="nc">my_printer</span><span class="p">:</span>
+  <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+<span class="n">add_printer_to_logger</span><span class="p">(</span><span class="s1">&#39;my_logger&#39;</span><span class="p">,</span><span class="n">my_printer</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="configuration-file">
+<h2>Configuration file<a class="headerlink" href="#configuration-file" title="Permalink to this headline">¶</a></h2>
+<p>Loggers are associated to default printers. While they can be configured anytime in the Python scripts, most of the time, reading a configuration file at the start of the program is enough. The program will try to read a configuration file if the environment variable <code class="docutils literal notranslate"><span class="pre">LOGGING_CONF_FILE</span></code> is set. A logging configuration file looks like this:</p>
+<div class="highlight-Text notranslate"><div class="highlight"><pre><span></span>my_app : mpi_stdout_printer
+my_app-my_theme : mpi_file_printer(&#39;my_theme.log&#39;)
+</pre></div>
+</div>
+<p>For developpers, a logging file <code class="docutils literal notranslate"><span class="pre">logging.conf</span></code> with loggers and default printers is put in the <code class="docutils literal notranslate"><span class="pre">build/</span></code> folder, and <code class="docutils literal notranslate"><span class="pre">LOGGING_CONF_FILE</span></code> is set accordingly.</p>
+</div>
+<div class="section" id="maia-specifics">
+<h2>Maia specifics<a class="headerlink" href="#maia-specifics" title="Permalink to this headline">¶</a></h2>
+<p>Maia provides 4 convenience functions that use Maia loggers</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">maia.utils</span> <span class="kn">import</span> <span class="n">logging</span> <span class="k">as</span> <span class="n">mlog</span>
+<span class="n">mlog</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;info msg&#39;</span><span class="p">)</span> <span class="c1"># uses the &#39;maia&#39; logger</span>
+<span class="n">mlog</span><span class="o">.</span><span class="n">stat</span><span class="p">(</span><span class="s1">&#39;stat msg&#39;</span><span class="p">)</span> <span class="c1"># uses the &#39;maia-stats&#39; logger</span>
+<span class="n">mlog</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;warn msg&#39;</span><span class="p">)</span> <span class="c1"># uses the &#39;maia-warnings&#39; logger</span>
+<span class="n">mlog</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;error msg&#39;</span><span class="p">)</span> <span class="c1"># uses the &#39;maia-errors&#39; logger</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="maia_dev/conventions.html" class="btn btn-neutral float-right" title="Conventions" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="developer_manual.html" class="btn btn-neutral float-left" title="Developer Manual" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.0
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

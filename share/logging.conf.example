@@ -1,4 +1,0 @@
-maia          : mpi_rank_0_stdout_printer
-maia-warnings : mpi_stdout_printer
-maia-errors   : mpi_stdout_printer
-maia-stats    : mpi_file_printer('maia-stats.log')

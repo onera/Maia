@@ -1,0 +1,506 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>elements_to_ngons &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Release notes" href="../../releases/release_notes.html" />
+    <link rel="prev" title="Algorithms description" href="../algo_description.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../developer_manual.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../logging.html">Log management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../maia_dev/conventions.html">Conventions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../maia_dev/development_workflow.html">Development workflow</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../algo_description.html">Algorithms description</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">elements_to_ngons</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#example">Example</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#arguments">Arguments</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#output">Output</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#parallelism">Parallelism</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#complexity">Complexity</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#algorithm-explanation">Algorithm explanation</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#generate-interior-faces">Generate interior faces</a><ul>
+<li class="toctree-l6"><a class="reference internal" href="#simplified-algorithm">Simplified algorithm</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#parallel-algorithm">Parallel algorithm</a></li>
+<li class="toctree-l6"><a class="reference internal" href="#computation-of-the-cellface">Computation of the CellFace</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="#transform-all-sections-into-ngon-nface">Transform all sections into NGon/NFace</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#design-alternatives">Design alternatives</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="../developer_manual.html">Developer Manual</a> &raquo;</li>
+        
+          <li><a href="../algo_description.html">Algorithms description</a> &raquo;</li>
+        
+      <li>elements_to_ngons</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../../_sources/developer_manual/algo_description/elements_to_ngons.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="elements-to-ngons">
+<span id="elements-to-ngons-impl"></span><h1>elements_to_ngons<a class="headerlink" href="#elements-to-ngons" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="description">
+<h2>Description<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">elements_to_ngons</span><span class="p">(</span><span class="n">dist_tree_elts</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Take a <strong>distributed</strong> <span class="cgns">CGNSTree_t</span> or <span class="cgns">CGNSBase_t</span>, and transform it into a <strong>distributed</strong> <span class="cgns">NGon/NFace</span> mesh. The tree is modified in-place.</p>
+</div>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span> <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;Uelt_M6Wing.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_elements_to_ngon</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">stable_sort</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="arguments">
+<h2>Arguments<a class="headerlink" href="#arguments" title="Permalink to this headline">¶</a></h2>
+<dl class="simple">
+<dt><code class="code docutils literal notranslate"><span class="pre">dist_tree_elts</span></code></dt><dd><dl class="simple">
+<dt>a <a class="reference internal" href="../../introduction/introduction.html#dist-tree"><span class="std std-ref">distributed tree</span></a> with</dt><dd><ul class="simple">
+<li><p>unstructured zones that contain regular element sections (i.e. not NGON, not NFACE and not MIXED)</p></li>
+<li><p>the <a class="reference internal" href="../../introduction/introduction.html#maia-tree"><span class="std std-ref">Maia tree</span></a> property</p></li>
+</ul>
+</dd>
+</dl>
+</dd>
+<dt><code class="code docutils literal notranslate"><span class="pre">comm</span></code></dt><dd><p>a communicator over which <code class="code docutils literal notranslate"><span class="pre">elements_to_ngons</span></code> is called</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="output">
+<h2>Output<a class="headerlink" href="#output" title="Permalink to this headline">¶</a></h2>
+<p>The tree is modified in-place. The regular element sections are replaced by:</p>
+<ul class="simple">
+<li><p>a NGon section with:</p>
+<ul>
+<li><p>An <span class="cgns">ElementStartOffset</span>/<span class="cgns">ElementConnectivity</span> node describing:</p>
+<ul>
+<li><p>first the external faces in exactly the same order as they were (in particular, gathered by face type)</p></li>
+<li><p>then the internal faces, also gathered by face type</p></li>
+</ul>
+</li>
+<li><p>a <span class="cgns">ParentElements</span> node and a <span class="cgns">ParentElementsPosition</span> node</p></li>
+</ul>
+</li>
+<li><p>a NFace section with cells ordered as they were, with ids only shifted by the number of interior faces</p></li>
+</ul>
+</div>
+<div class="section" id="parallelism">
+<h2>Parallelism<a class="headerlink" href="#parallelism" title="Permalink to this headline">¶</a></h2>
+<p><code class="code docutils literal notranslate"><span class="pre">elements_to_ngons</span></code> is a collective function.</p>
+</div>
+<div class="section" id="complexity">
+<h2>Complexity<a class="headerlink" href="#complexity" title="Permalink to this headline">¶</a></h2>
+<p>With <span class="math notranslate nohighlight">\(N\)</span> the number of zones, <span class="math notranslate nohighlight">\(n_i\)</span> the number of elements of zone <span class="math notranslate nohighlight">\(i\)</span>, <span class="math notranslate nohighlight">\(n_{f,i}\)</span> its number of interior faces, and <span class="math notranslate nohighlight">\(K\)</span> the number of processes</p>
+<dl>
+<dt>Sequential time</dt><dd><p><span class="math notranslate nohighlight">\(\displaystyle \mathcal{O} \left( \sum_{i=0}^N n_i \cdot log(n_i) \right)\)</span></p>
+<p>The cost is dominated by the sorting of faces (interior and exterior) used to spot identical ones.</p>
+</dd>
+<dt>Parallel time</dt><dd><p><span class="math notranslate nohighlight">\(\displaystyle \mathcal{O} \left( \sum_{i=0}^N n_i/K \cdot log(n_i) \right)\)</span></p>
+<p>The parallel distributed sort algorithm consists of three steps:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>A partitioning step that locally gather faces into <span class="math notranslate nohighlight">\(K\)</span> buckets that are of equal global size. This uses a <span class="math notranslate nohighlight">\(K\)</span>-generalized variant of <a class="reference external" href="https://fr.wikipedia.org/wiki/Quickselect">quickselect</a> that is of complexity <span class="math notranslate nohighlight">\(\displaystyle \mathcal{O} \left( n_i/K \cdot log(K) \right)\)</span></p></li>
+<li><p>An all_to_all exchange step that gather the <span class="math notranslate nohighlight">\(K\)</span> buckets on the <span class="math notranslate nohighlight">\(K\)</span> processes. This step is not accounted for here (see below)</p></li>
+<li><p>A local sorting step that is <span class="math notranslate nohighlight">\(\displaystyle \mathcal{O} \left( n_i/K \cdot log(n_i/K) \right)\)</span></p></li>
+</ol>
+</div></blockquote>
+<p>If we sum up step 1 and 3, we get</p>
+</dd>
+</dl>
+<div class="math notranslate nohighlight">
+\[\begin{split}\begin{equation} \label{eq1}
+\begin{split}
+   \textrm{C}_\textrm{parallel_sort} &amp; = \mathcal{O} \left( n_i/K \cdot log(K) + n_i/K \cdot log(n_i/K) \right) \\
+                                     &amp; = \mathcal{O} \left( n_i/K \cdot \left( log(K) + log(n_i/K) \right) \right) \\
+                                     &amp; = \mathcal{O} \left( n_i/K \cdot log(n_i) \right)
+\end{split}
+\end{equation}\end{split}\]</div>
+<dl>
+<dt>Theoretical scaling</dt><dd><p><span class="math notranslate nohighlight">\(\textrm{Speedup} = K\)</span></p>
+<p>Experimentally, the scaling is much worse - under investigation.</p>
+<p>Note: the speedup is computed by <span class="math notranslate nohighlight">\(\textrm{Speedup} = t_s / t_p\)</span> where <span class="math notranslate nohighlight">\(t_s\)</span> is the sequential time and <span class="math notranslate nohighlight">\(t_p\)</span> the parallel time. A speedup of <span class="math notranslate nohighlight">\(K\)</span> is perfect, a speedup lower than <span class="math notranslate nohighlight">\(1\)</span> means that sequential execution is faster.</p>
+</dd>
+<dt>Peak memory</dt><dd><p>Approximately <span class="math notranslate nohighlight">\(\displaystyle \sum_{i=0}^N 2 n_i + n_{f,i}\)</span></p>
+<p>This is the size of the input tree + the output tree. <span class="math notranslate nohighlight">\(n_i\)</span> is counted twice: once for the input element connectivity, once for the output NFace connectivity</p>
+</dd>
+<dt>Size of communications</dt><dd><p>Approximately <span class="math notranslate nohighlight">\(\displaystyle \sum_{i=0}^N 3 n_{f,i} + n_i\)</span> <strong>all_to_all</strong> calls</p>
+<p>For each zone, one <strong>all_to_all</strong> call to sort interior faces, one to send back the faces to the NFace, one to concatenate all faces, one to concatenate all cells</p>
+</dd>
+<dt>Number of communication calls</dt><dd><p>Should be <span class="math notranslate nohighlight">\(\displaystyle \mathcal{O} \left( \sum_{i=0}^N log(n_i/K) \right)\)</span></p>
+<p>The number of communications is constant, except for the algorithm finding a balanced distribution of interior faces</p>
+</dd>
+<dt>Note</dt><dd><p>In practice, <span class="math notranslate nohighlight">\(n_{f,i}\)</span> varies from <span class="math notranslate nohighlight">\(2 n_i\)</span> (tet-dominant meshes) to <span class="math notranslate nohighlight">\(3 n_i\)</span> (hex-dominant meshes).</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="algorithm-explanation">
+<h2>Algorithm explanation<a class="headerlink" href="#algorithm-explanation" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">::</span><span class="n">elements_to_ngons</span><span class="p">(</span><span class="n">cgns</span><span class="o">::</span><span class="n">tree</span><span class="o">&amp;</span><span class="w"> </span><span class="n">dist_zone</span><span class="p">,</span><span class="w"> </span><span class="n">MPI_Comm</span><span class="w"> </span><span class="n">comm</span><span class="p">)</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The algorithm is divided in two steps:</p>
+<ol class="arabic simple">
+<li><p>Generate interior faces, insert them between exterior faces and cells. During the process, also compute the parent information (<span class="cgns">ParentElements</span> and <span class="cgns">ParentElementsPosition</span>) and add the <span class="cgns">CellFace</span> connectivity to cells. All elements keep their standard element types, in particular interior faces are inserted by section type (e.g. there will be a <span class="cgns">TRI_3_interior</span> node and a <span class="cgns">QUAD_4_interior</span> node, not a <span class="cgns">NGon</span> node)</p></li>
+<li><p>Transform all sections into <span class="cgns">NGon/NFace</span></p></li>
+</ol>
+<div class="section" id="generate-interior-faces">
+<h3>Generate interior faces<a class="headerlink" href="#generate-interior-faces" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="simplified-algorithm">
+<h4>Simplified algorithm<a class="headerlink" href="#simplified-algorithm" title="Permalink to this headline">¶</a></h4>
+<p>Let us look at a simplified sequential algorithm first:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>1. For all element sections (3D and 2D):
+  Generate faces
+    =&gt; FaceVtx arrays (one for Tris, one for Quads)
+    =&gt; Associated Parent and ParentPosition arrays
+        (only one parent by element at this stage)
+  Interior faces are generated twice (by their two parent cells)
+  Exterior faces are generated twice (by a parent cell and a boundary face)
+
+2. For each element kind in {Tri,Quad}
+  Sort the FaceVtx array
+    (ordering: lexicographical comparison of vertices)
+  Sort the parent arrays accordingly
+    =&gt; now each face appears consecutively exactly twice
+        for interior faces,
+          the FaceVtx is always inverted between the two occurences
+        for exterior faces,
+          it depends on the normal convention
+
+Note that interior and exterior faces can be distinguised
+  by looking at the id of their parents
+
+3. For each interior face appearing twice:
+  Create an interior face section where:
+    the first FaceVtx is kept
+    the two parents are stored
+4. For each exterior face appearing twice:
+  One of the face is the original boundary section face,
+    one was generated from the joint cell
+  Send back to the original boundary face its parent face id and position
+    =&gt; store the parent information of the boundary face
+</pre></div>
+</div>
+</div>
+<div class="section" id="parallel-algorithm">
+<h4>Parallel algorithm<a class="headerlink" href="#parallel-algorithm" title="Permalink to this headline">¶</a></h4>
+<p>The algorithm is very similar to the sequential one. We need to modify two operations:</p>
+<dl class="simple">
+<dt>Sorting of the FaceVtx array (step 2)</dt><dd><p>The parallel sorting is done in three steps:</p>
+<ol class="arabic simple">
+<li><p>apply a partial sort <code class="code cpp c++ docutils literal notranslate"><span class="name"><span class="pre">std_e</span></span><span class="operator"><span class="pre">::</span></span><span class="name"><span class="pre">sort_by_rank</span></span></code> that will determine the rank of each FaceVtx</p></li>
+<li><p>call an <code class="code cpp c++ docutils literal notranslate"><span class="name"><span class="pre">all_to_all</span></span></code> communication step that sends each connectivity to its rank, based on the information of the previous step</p></li>
+<li><p>sort each received FaceVtx locally</p></li>
+</ol>
+</dd>
+<dt>Send back boundary parents and position to the original boundary faces (step 4)</dt><dd><p>Since the original face can be remote, this is a parallel communication operation using <code class="code cpp c++ docutils literal notranslate"><span class="name"><span class="pre">std_e</span></span><span class="operator"><span class="pre">::</span></span><span class="name"><span class="pre">scatter</span></span></code></p>
+</dd>
+</dl>
+</div>
+<div class="section" id="computation-of-the-cellface">
+<h4>Computation of the CellFace<a class="headerlink" href="#computation-of-the-cellface" title="Permalink to this headline">¶</a></h4>
+<p>After step 2, we have all the faces exactly once, with their parent ids and parent positions.
+We can then compute the CellFace of each cell section by the following algorithm:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>For each cell section:
+  pre-allocate the CellFace array
+    (its size is n_cell_in_section * n_face_of_cell_type)
+  view it as a global distributed array
+For each unique face:
+  For each of its parent cells (could be one or two):
+    send the parent cell the id of the face and its position
+    insert the result in the CellFace array
+</pre></div>
+</div>
+<p>As previously, the send operation uses a <strong>scatter</strong> pattern</p>
+</div>
+</div>
+<div class="section" id="transform-all-sections-into-ngon-nface">
+<h3>Transform all sections into NGon/NFace<a class="headerlink" href="#transform-all-sections-into-ngon-nface" title="Permalink to this headline">¶</a></h3>
+<p>Thanks to the previous algorithm, we have:</p>
+<ul class="simple">
+<li><p>all exterior and interior faces with their parent information</p></li>
+<li><p>the CellFace connectivity of the cell sections</p></li>
+</ul>
+<p>Elements are ordered in something akin to this:</p>
+<ul class="simple">
+<li><p>boundary tris</p></li>
+<li><p>boundary quads</p></li>
+<li><p>internal tris</p></li>
+<li><p>internal quads</p></li>
+<li><p>tetras</p></li>
+<li><p>pyras</p></li>
+<li><p>prisms</p></li>
+<li><p>hexas</p></li>
+</ul>
+<p>The algorithm then just needs to:</p>
+<ul class="simple">
+<li><p>concatenate all FaceVtx of the faces into a <span class="cgns">NGon</span> node and add a <span class="cgns">ElementStartOffset</span></p></li>
+<li><p>concatenate all CellFace of the cells into a <span class="cgns">NFace</span> node and add a <span class="cgns">ElementStartOffset</span></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="design-alternatives">
+<h2>Design alternatives<a class="headerlink" href="#design-alternatives" title="Permalink to this headline">¶</a></h2>
+<p>The final step of the computation involves concatenating faces and cells global section by global section. This requires two heavyweight <strong>all_to_all</strong> calls. An alternative would be to concatenate locally. This would imply two trade-offs:</p>
+<ul class="simple">
+<li><p>the faces and cells would then not be globally gathered by type, and the exterior faces would not be first</p></li>
+<li><p>all the <span class="cgns">PointLists</span> (including those where <span class="cgns">GridLocation=FaceCenter</span>) would have to be shifted</p></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../../releases/release_notes.html" class="btn btn-neutral float-right" title="Release notes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../algo_description.html" class="btn btn-neutral float-left" title="Algorithms description" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.1
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

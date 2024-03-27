@@ -1,0 +1,1459 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Algo module &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Transfer module" href="transfer.html" />
+    <link rel="prev" title="Factory module" href="factory.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="user_manual.html">User Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="config.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="io.html">File management</a></li>
+<li class="toctree-l2"><a class="reference internal" href="factory.html">Factory module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Algo module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#distributed-algorithms">Distributed algorithms</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#connectivities-conversions">Connectivities conversions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#geometry-transformations">Geometry transformations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#data-management">Data management</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#partitioned-algorithms">Partitioned algorithms</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#geometric-calculations">Geometric calculations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#mesh-extractions">Mesh extractions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#interpolations">Interpolations</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#generic-algorithms">Generic algorithms</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sequential-algorithms">Sequential algorithms</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="transfer.html">Transfer module</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="user_manual.html">User Manual</a> &raquo;</li>
+        
+      <li>Algo module</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/user_manual/algo.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="algo-module">
+<h1>Algo module<a class="headerlink" href="#algo-module" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">maia.algo</span></code> module provides various algorithms to be applied to one of the
+two kind of trees defined by Maia:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">maia.algo.dist</span></code> module contains some operations applying on distributed trees</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">maia.algo.part</span></code> module contains some operations applying on partitioned trees</p></li>
+</ul>
+<p>In addition, some algorithms can be applied indistinctly to distributed or partitioned trees.
+These algorithms are accessible through the <code class="docutils literal notranslate"><span class="pre">maia.algo</span></code> module.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">maia.algo.seq</span></code> module contains a few sequential utility algorithms.</p>
+<div class="section" id="distributed-algorithms">
+<span id="user-man-dist-algo"></span><h2>Distributed algorithms<a class="headerlink" href="#distributed-algorithms" title="Permalink to this headline">¶</a></h2>
+<p>The following algorithms applies on maia distributed trees.</p>
+<div class="section" id="connectivities-conversions">
+<h3>Connectivities conversions<a class="headerlink" href="#connectivities-conversions" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.convert_s_to_u">
+<span class="sig-name descname"><span class="pre">convert_s_to_u</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">disttree_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">connectivity</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subset_loc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.convert_s_to_u" title="Permalink to this definition">¶</a></dt>
+<dd><p>Performs the destructuration of the input <code class="docutils literal notranslate"><span class="pre">dist_tree</span></code>.</p>
+<p>This function copies the <code class="docutils literal notranslate"><span class="pre">GridCoordinate_t</span></code> and (full) <code class="docutils literal notranslate"><span class="pre">FlowSolution_t</span></code> nodes,
+generate a NGon based connectivity and create a PointList for the following
+subset nodes:
+BC_t, BCDataSet_t and GridConnectivity1to1_t.
+In addition, a PointListDonor node is generated for GridConnectivity_t nodes.</p>
+<p>Metadata nodes (“FamilyName_t”, “ReferenceState_t”, …) at zone and base level
+are also reported on the unstructured tree.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Exists also as <code class="xref py py-func docutils literal notranslate"><span class="pre">convert_s_to_ngon()</span></code> with connectivity set to
+NGON_n and subset_loc set to FaceCenter.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>disttree_s</strong> (<em>CGNSTree</em>) – Structured tree</p></li>
+<li><p><strong>connectivity</strong> (<em>str</em>) – Type of elements used to describe the connectivity.
+Admissible values are <code class="docutils literal notranslate"><span class="pre">&quot;NGON_n&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;HEXA&quot;</span></code> (not yet implemented).</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>subset_loc</strong> (<em>dict</em><em>, </em><em>optional</em>) – Expected output GridLocation for the following subset nodes: BC_t, GC_t.
+For each label, output location can be a single location value, a list
+of locations or None to preserve the input value. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Unstructured disttree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree_s</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;S_twoblocks.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">dist_tree_u</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_s_to_u</span><span class="p">(</span><span class="n">dist_tree_s</span><span class="p">,</span> <span class="s1">&#39;NGON_n&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree_u</span><span class="p">):</span>
+  <span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;Unstructured&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.convert_elements_to_ngon">
+<span class="sig-name descname"><span class="pre">convert_elements_to_ngon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stable_sort</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.convert_elements_to_ngon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform an element based connectivity into a polyedric (NGon based)
+connectivity.</p>
+<p>Tree is modified in place : standard element are removed from the zones
+and the PointList are updated. If <code class="docutils literal notranslate"><span class="pre">stable_sort</span></code> is True, face based PointList
+keep their original values.</p>
+<p>Requirement : the <code class="docutils literal notranslate"><span class="pre">Element_t</span></code> nodes appearing in the distributed zones
+must be ordered according to their dimension (either increasing or
+decreasing).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Tree with connectivity described by standard elements</p></li>
+<li><p><strong>comm</strong> (<cite>MPIComm</cite>) – MPI communicator</p></li>
+<li><p><strong>stable_sort</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, 2D elements described in the
+elements section keep their original id. Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Note that <code class="docutils literal notranslate"><span class="pre">stable_sort</span></code> is an experimental feature that brings the additional
+constraints:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>2D meshes are not supported;</p></li>
+<li><p>2D sections must have lower ElementRange than 3D sections.</p></li>
+</ul>
+</div></blockquote>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span> <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;Uelt_M6Wing.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_elements_to_ngon</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.ngons_to_elements">
+<span class="sig-name descname"><span class="pre">ngons_to_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.ngons_to_elements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform a polyedric (NGon) based connectivity into a standard nodal
+connectivity.</p>
+<p>Tree is modified in place : Polyedric element are removed from the zones
+and Pointlist (under the BC_t nodes) are updated.</p>
+<p>Requirement : polygonal elements are supposed to describe only standard
+elements (ie tris, quads, tets, pyras, prisms and hexas)</p>
+<p>WARNING: this function has not been parallelized yet</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>disttree</strong> (<em>CGNSTree</em>) – Tree with connectivity described by NGons</p></li>
+<li><p><strong>comm</strong> (<cite>MPIComm</cite>) – MPI communicator</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.convert_elements_to_mixed">
+<span class="sig-name descname"><span class="pre">convert_elements_to_mixed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.convert_elements_to_mixed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform an element based connectivity into a mixed connectivity.</p>
+<p>Tree is modified in place : standard elements are removed from the zones.
+Note that the original ordering of elements is preserved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Tree with connectivity described by standard elements</p></li>
+<li><p><strong>comm</strong> (<cite>MPIComm</cite>) – MPI communicator</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span> <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;Uelt_M6Wing.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_elements_to_mixed</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.convert_mixed_to_elements">
+<span class="sig-name descname"><span class="pre">convert_mixed_to_elements</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.convert_mixed_to_elements" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform a mixed connectivity into an element based connectivity.</p>
+<p>Tree is modified in place : mixed elements are removed from the zones
+and the PointList are updated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Tree with connectivity described by mixed elements</p></li>
+<li><p><strong>comm</strong> (<cite>MPIComm</cite>) – MPI communicator</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span> <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;Uelt_M6Wing.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_elements_to_mixed</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_mixed_to_elements</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.rearrange_element_sections">
+<span class="sig-name descname"><span class="pre">rearrange_element_sections</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.rearrange_element_sections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rearanges Elements_t sections such that for each zone,
+sections are ordered in ascending dimensions order
+and there is only one section by ElementType.
+Sections are renamed based on their ElementType.</p>
+<p>The tree is modified in place.
+The Elements_t nodes are guaranteed to be ordered by ascending ElementRange.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Tree with an element-based connectivity</p></li>
+<li><p><strong>comm</strong> (<cite>MPIComm</cite>) – MPI communicator</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="s1">&#39;PYRA_5&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">pyras</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;PYRA_5.0&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Range</span><span class="p">(</span><span class="n">pyras</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span> <span class="c1">#Until now 3D elements are first</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">rearrange_element_sections</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">tris</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;TRI_3&#39;</span><span class="p">)</span> <span class="c1">#Now 2D elements are first</span>
+<span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Range</span><span class="p">(</span><span class="n">tris</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.generate_jns_vertex_list">
+<span class="sig-name descname"><span class="pre">generate_jns_vertex_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">have_isolated_faces</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.generate_jns_vertex_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>For each 1to1 FaceCenter matching join found in the distributed tree,
+create a corresponding 1to1 Vertex matching join.</p>
+<p>Input tree is modified inplace: Vertex <code class="docutils literal notranslate"><span class="pre">GridConnectivity_t</span></code> nodes
+are stored under distinct containers named from the original ones, suffixed
+with <cite>#Vtx</cite>. Similarly, vertex GC nodes uses the original name suffixed
+with <cite>#Vtx</cite>.</p>
+<p>Only unstructured-NGon based meshes are supported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Distributed tree</p></li>
+<li><p><strong>comm</strong> (<cite>MPIComm</cite>) – MPI communicator</p></li>
+<li><p><strong>have_isolated_faces</strong> (<em>bool</em><em>, </em><em>optional</em>) – Indicate if original joins includes
+faces who does not share any edge with other external (join) faces.
+If False, disable the special treatement needed by such faces (better performances,
+but will fail if isolated faces were actually present).
+Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree_s</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;S_twoblocks.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_s_to_ngon</span><span class="p">(</span><span class="n">dist_tree_s</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">generate_jns_vertex_list</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_nodes_from_name</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;match*#Vtx&#39;</span><span class="p">))</span> <span class="o">==</span> <span class="mi">2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="geometry-transformations">
+<h3>Geometry transformations<a class="headerlink" href="#geometry-transformations" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.duplicate_from_rotation_jns_to_360">
+<span class="sig-name descname"><span class="pre">duplicate_from_rotation_jns_to_360</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jn_paths_for_dupl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conformize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_to_fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.duplicate_from_rotation_jns_to_360" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reconstitute a circular mesh from an angular section of the geometry.</p>
+<p>Input tree is modified inplace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Input distributed tree</p></li>
+<li><p><strong>zone_paths</strong> (<em>list of str</em>) – List of pathes (BaseName/ZoneName) of the connected zones to duplicate</p></li>
+<li><p><strong>jn_paths_for_dupl</strong> (<em>pair of list of str</em>) – (listA, listB) where listA (resp. list B) stores all the
+pathes of the GridConnectivity nodes defining the first (resp. second) side of a periodic match.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>conformize</strong> (<em>bool</em><em>, </em><em>optional</em>) – If true, ensure that the generated interface vertices have exactly same
+coordinates (see <a class="reference internal" href="#maia.algo.dist.conformize_jn_pair" title="maia.algo.dist.conformize_jn_pair"><code class="xref py py-func docutils literal notranslate"><span class="pre">conformize_jn_pair()</span></code></a>). Defaults to False.</p></li>
+<li><p><strong>apply_to_fields</strong> (<em>bool</em><em>, </em><em>optional</em>) – See <a class="reference internal" href="#maia.algo.transform_affine" title="maia.algo.transform_affine"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.algo.transform_affine()</span></code></a>. Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.merge_zones">
+<span class="sig-name descname"><span class="pre">merge_zones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zone_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subset_merge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'name'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">concatenate_jns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.merge_zones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge the given zones into a single one.</p>
+<p>Input tree is modified inplace : original zones will be removed from the tree and replaced
+by the merged zone. Merged zone is added with name <em>MergedZone</em> under the first involved Base
+except if output_path is not None : in this case, the provided path defines the base and zone name
+of the merged block.</p>
+<p>Subsets of the merged block can be reduced thanks to subset_merge parameter:</p>
+<ul class="simple">
+<li><p>None   =&gt; no reduction occurs : all subset of all original zones remains on merged zone, with a
+numbering suffix.</p></li>
+<li><p>‘name’ =&gt; Subset having the same name on the original zones (within a same label) produces
+and unique subset on the output merged zone.</p></li>
+</ul>
+<p>Only unstructured-NGon trees are supported, and interfaces between the zones
+to merge must have a FaceCenter location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input distributed tree</p></li>
+<li><p><strong>zone_paths</strong> (<em>list of str</em>) – List of path (BaseName/ZoneName) of the zones to merge</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>output_path</strong> (<em>str</em><em>, </em><em>optional</em>) – Path of the output merged block. Defaults to None.</p></li>
+<li><p><strong>subset_merge</strong> (<em>str</em><em>, </em><em>optional</em>) – Merging strategy for the subsets. Defaults to ‘name’.</p></li>
+<li><p><strong>concatenate_jns</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, reduce the multiple 1to1 matching joins related
+to the merged_zone to a single one. Defaults to True.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_Naca0012_multizone.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">))</span> <span class="o">==</span> <span class="mi">3</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">merge_zones</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;BaseA/blk1&quot;</span><span class="p">,</span> <span class="s2">&quot;BaseB/blk2&quot;</span><span class="p">],</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">))</span> <span class="o">==</span> <span class="mi">2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.merge_zones_from_family">
+<span class="sig-name descname"><span class="pre">merge_zones_from_family</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">family_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.merge_zones_from_family" title="Permalink to this definition">¶</a></dt>
+<dd><p>Merge the zones belonging to the given family into a single one.</p>
+<p>See <a class="reference internal" href="#maia.algo.dist.merge_zones" title="maia.algo.dist.merge_zones"><code class="xref py py-func docutils literal notranslate"><span class="pre">merge_zones()</span></code></a> for full documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input distributed tree</p></li>
+<li><p><strong>family_name</strong> (<em>str</em>) – Name of the family (read from <code class="docutils literal notranslate"><span class="pre">FamilyName_t</span></code> node)
+used to select the zones.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>kwargs</strong> – any argument of <a class="reference internal" href="#maia.algo.dist.merge_zones" title="maia.algo.dist.merge_zones"><code class="xref py py-func docutils literal notranslate"><span class="pre">merge_zones()</span></code></a>, excepted output_path</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>Function <code class="docutils literal notranslate"><span class="pre">merge_all_zones_from_families(tree,</span> <span class="pre">comm,</span> <span class="pre">**kwargs)</span></code> does
+this operation for all the <code class="docutils literal notranslate"><span class="pre">Family_t</span></code> nodes of the input tree.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_Naca0012_multizone.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="c1"># FamilyName are not included in the mesh</span>
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">):</span>
+  <span class="n">PT</span><span class="o">.</span><span class="n">new_child</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FamilyName&#39;</span><span class="p">,</span> <span class="s1">&#39;FamilyName_t&#39;</span><span class="p">,</span> <span class="s1">&#39;Naca0012&#39;</span><span class="p">)</span>  
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">merge_zones_from_family</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;Naca0012&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">zones</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">zones</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">zones</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="s1">&#39;naca0012&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.merge_connected_zones">
+<span class="sig-name descname"><span class="pre">merge_connected_zones</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.merge_connected_zones" title="Permalink to this definition">¶</a></dt>
+<dd><p>Detect all the zones connected through 1to1 matching jns and merge them.</p>
+<p>See <a class="reference internal" href="#maia.algo.dist.merge_zones" title="maia.algo.dist.merge_zones"><code class="xref py py-func docutils literal notranslate"><span class="pre">merge_zones()</span></code></a> for full documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input distributed tree</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>kwargs</strong> – any argument of <a class="reference internal" href="#maia.algo.dist.merge_zones" title="maia.algo.dist.merge_zones"><code class="xref py py-func docutils literal notranslate"><span class="pre">merge_zones()</span></code></a>, excepted output_path</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_Naca0012_multizone.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">merge_connected_zones</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">))</span> <span class="o">==</span> <span class="mi">1</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.conformize_jn_pair">
+<span class="sig-name descname"><span class="pre">conformize_jn_pair</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jn_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.conformize_jn_pair" title="Permalink to this definition">¶</a></dt>
+<dd><p>Ensure that the vertices belonging to the two sides of a 1to1 GridConnectivity
+have the same coordinates.</p>
+<p>Matching join with Vertex or FaceCenter location are admitted. Coordinates
+of vertices are made equal by computing the arithmetic mean of the two
+values.</p>
+<p>Input tree is modified inplace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Input tree</p></li>
+<li><p><strong>jn_pathes</strong> (<em>list of str</em>) – Pathes of the two matching <code class="docutils literal notranslate"><span class="pre">GridConnectivity_t</span></code>
+nodes. Pathes must start from the root of the tree.</p></li>
+<li><p><strong>comm</strong> (<cite>MPIComm</cite>) – MPI communicator</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="data-management">
+<h3>Data management<a class="headerlink" href="#data-management" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.dist.redistribute_tree">
+<span class="sig-name descname"><span class="pre">redistribute_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">policy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'uniform'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.dist.redistribute_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Redistribute the data of the input tree according to the choosen distribution policy.</p>
+<p>Supported policies are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">uniform</span></code>  : each data array is equally reparted over all the processes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gather.N</span></code> : all the data are moved on process N</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gather</span></code>   : shortcut for <code class="docutils literal notranslate"><span class="pre">gather.0</span></code></p></li>
+</ul>
+<p>In both case, tree structure remains unchanged on all the processes
+(the tree is still a valid distributed tree).
+Input is modified inplace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_tree</strong> (<em>CGNSTree</em>) – Distributed tree</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>policy</strong> (<em>str</em>) – distribution policy (see above)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+
+<span class="n">dist_tree_ini</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">21</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">dist_tree_gathered</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">redistribute_tree</span><span class="p">(</span><span class="n">dist_tree_ini</span><span class="p">,</span> \
+    <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="s1">&#39;gather.0&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="partitioned-algorithms">
+<span id="user-man-part-algo"></span><h2>Partitioned algorithms<a class="headerlink" href="#partitioned-algorithms" title="Permalink to this headline">¶</a></h2>
+<p>The following algorithms applies on maia partitioned trees.</p>
+<div class="section" id="geometric-calculations">
+<h3>Geometric calculations<a class="headerlink" href="#geometric-calculations" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.compute_cell_center">
+<span class="sig-name descname"><span class="pre">compute_cell_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.compute_cell_center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the cell centers of a partitioned zone.</p>
+<p>Input zone must have cartesian coordinates recorded under a unique
+GridCoordinates node.
+Centers are computed using a basic average over the vertices of the cells.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone</strong> (<em>CGNSTree</em>) – Partitionned CGNS Zone</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>cell_center (array)</em> – Flat (interlaced) numpy array of cell centers</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">iter_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">):</span>
+  <span class="n">cell_center</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_cell_center</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.compute_face_center">
+<span class="sig-name descname"><span class="pre">compute_face_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.compute_face_center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the face centers of a partitioned zone.</p>
+<p>Input zone must have cartesian coordinates recorded under a unique
+GridCoordinates node, and a unstructured connectivity.</p>
+<p>Centers are computed using a basic average over the vertices of the faces.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If zone is described with standard elements, centers will be computed for elements
+explicitly defined in cgns tree.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone</strong> (<em>CGNSTree</em>) – Partitionned 2D or 3D U CGNS Zone</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>face_center (array)</em> – Flat (interlaced) numpy array of face centers</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">iter_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">):</span>
+  <span class="n">face_center</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_face_center</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.compute_edge_center">
+<span class="sig-name descname"><span class="pre">compute_edge_center</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">zone</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.compute_edge_center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the edge centers of a partitioned zone.</p>
+<p>Input zone must have cartesian coordinates recorded under a unique
+GridCoordinates node, and a unstructured standard elements connectivity.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If zone is described with standard elements, centers will be computed for elements
+explicitly defined in cgns tree.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>zone</strong> (<em>CGNSTree</em>) – Partitionned 2D or 3D U-elts CGNS Zone</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>face_center (array)</em> – Flat (interlaced) numpy array of edge centers</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s2">&quot;QUAD_4&quot;</span><span class="p">,</span>  <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">iter_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">):</span>
+  <span class="n">edge_center</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">compute_edge_center</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.compute_wall_distance">
+<span class="sig-name descname"><span class="pre">compute_wall_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cloud'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">families</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_cloud</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CellCenter'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_fs_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'WallDistance'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.compute_wall_distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute wall distances and add it in tree.</p>
+<p>For each volumic point, compute the distance to the nearest face belonging to a BC of kind wall.
+Computation can be done using “cloud” or “propagation” method.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Propagation method requires ParaDiGMa access and is only available for unstructured cell centered
+NGon connectivities grids. In addition, partitions must have been created from a single initial domain
+with this method.</p>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Distance are computed to the BCs belonging to one of the families specified in families list.
+If list is empty, we try to auto detect wall-like families.
+In both case, families are (for now) the only way to select BCs to include in wall distance computation.
+BCs who directly specify their type as value are not considered.</p>
+</div>
+<p>Tree is modified inplace: computed distance are added in a FlowSolution container whose
+name can be specified with out_fs_name parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>part_tree</strong> (<em>CGNSTree</em>) – Input partitionned tree</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>method</strong> (<em>{'cloud'</em><em>, </em><em>'propagation'}</em><em>, </em><em>optional</em>) – Choice of method. Defaults to “cloud”.</p></li>
+<li><p><strong>point_cloud</strong> (<em>str</em><em>, </em><em>optional</em>) – Points to project on the surface. Can either be one of
+“CellCenter” or “Vertex” (coordinates are retrieved from the mesh) or the name of a FlowSolution
+node in which coordinates are stored. Defaults to CellCenter.</p></li>
+<li><p><strong>families</strong> (<em>list of str</em>) – List of families to consider as wall faces.</p></li>
+<li><p><strong>out_fs_name</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the output FlowSolution_t node storing wall distance data.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_wall_distance</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">families</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;WALL&quot;</span><span class="p">])</span>
+<span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="s2">&quot;WallDistance&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.localize_points">
+<span class="sig-name descname"><span class="pre">localize_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tgt_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.localize_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Localize points between two partitioned trees.</p>
+<p>For all the points of the target tree matching the given location,
+search the cell of the source tree in which it is enclosed.
+The result, i.e. the gnum &amp; domain number of the source cell (or -1 if the point is not localized),
+are stored in a <code class="docutils literal notranslate"><span class="pre">DiscreteData_t</span></code> container called “Localization” on the target zones.</p>
+<p>Source tree must be unstructured and have a NGon connectivity.</p>
+<p>Localization can be parametred thought the options kwargs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">loc_tolerance</span></code> (default = 1E-6) – Geometric tolerance for the method.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_tree</strong> (<em>CGNSTree</em>) – Source tree, partitionned. Only U-NGon connectivities are managed.</p></li>
+<li><p><strong>tgt_tree</strong> (<em>CGNSTree</em>) – Target tree, partitionned. Structured or U-NGon connectivities are managed.</p></li>
+<li><p><strong>location</strong> (<em>{'CellCenter'</em><em>, </em><em>'Vertex'}</em>) – Target points to localize</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>**options</strong> – Additional options related to location strategy</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mpi4py</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">mpi4py</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="n">dist_tree_src</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">dist_tree_tgt</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">tgt_zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree_tgt</span><span class="p">):</span>
+  <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">transform_affine</span><span class="p">(</span><span class="n">tgt_zone</span><span class="p">,</span> <span class="n">rotation_angle</span><span class="o">=</span><span class="p">[</span><span class="mi">170</span><span class="o">*</span><span class="mf">3.14</span><span class="o">/</span><span class="mi">180</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">translation</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">part_tree_src</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree_src</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_tree_tgt</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree_tgt</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">localize_points</span><span class="p">(</span><span class="n">part_tree_src</span><span class="p">,</span> <span class="n">part_tree_tgt</span><span class="p">,</span> <span class="s1">&#39;CellCenter&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">tgt_zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree_tgt</span><span class="p">):</span>
+  <span class="n">loc_container</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_child_from_name</span><span class="p">(</span><span class="n">tgt_zone</span><span class="p">,</span> <span class="s1">&#39;Localization&#39;</span><span class="p">)</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">GridLocation</span><span class="p">(</span><span class="n">loc_container</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;CellCenter&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.find_closest_points">
+<span class="sig-name descname"><span class="pre">find_closest_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tgt_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.find_closest_points" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the closest points between two partitioned trees.</p>
+<p>For all points of the target tree matching the given location,
+search the closest point of same location in the source tree.
+The result, i.e. the gnum &amp; domain number of the source point, are stored in a <code class="docutils literal notranslate"><span class="pre">DiscreteData_t</span></code>
+container called “ClosestPoint” on the target zones.
+The ids of source points refers to cells or vertices depending on the chosen location.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_tree</strong> (<em>CGNSTree</em>) – Source tree, partitionned</p></li>
+<li><p><strong>tgt_tree</strong> (<em>CGNSTree</em>) – Target tree, partitionned</p></li>
+<li><p><strong>location</strong> (<em>{'CellCenter'</em><em>, </em><em>'Vertex'}</em>) – Entity to use to compute closest points</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mpi4py</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">mpi4py</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="n">dist_tree_src</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">dist_tree_tgt</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">tgt_zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree_tgt</span><span class="p">):</span>
+  <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">transform_affine</span><span class="p">(</span><span class="n">tgt_zone</span><span class="p">,</span> <span class="n">rotation_angle</span><span class="o">=</span><span class="p">[</span><span class="mi">170</span><span class="o">*</span><span class="mf">3.14</span><span class="o">/</span><span class="mi">180</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">translation</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="n">part_tree_src</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree_src</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_tree_tgt</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree_tgt</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">find_closest_points</span><span class="p">(</span><span class="n">part_tree_src</span><span class="p">,</span> <span class="n">part_tree_tgt</span><span class="p">,</span> <span class="s1">&#39;Vertex&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">tgt_zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree_tgt</span><span class="p">):</span>
+  <span class="n">loc_container</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_child_from_name</span><span class="p">(</span><span class="n">tgt_zone</span><span class="p">,</span> <span class="s1">&#39;ClosestPoint&#39;</span><span class="p">)</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">GridLocation</span><span class="p">(</span><span class="n">loc_container</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;Vertex&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="mesh-extractions">
+<h3>Mesh extractions<a class="headerlink" href="#mesh-extractions" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.iso_surface">
+<span class="sig-name descname"><span class="pre">iso_surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iso_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">iso_val</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">containers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.iso_surface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an isosurface from the provided field and value on the input partitioned tree.</p>
+<p>Isosurface is returned as an independant (2d) partitioned CGNSTree.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<ul class="simple">
+<li><p>Input tree must be unstructured and have a ngon connectivity.</p></li>
+<li><p>Input field for isosurface computation must be located at vertices.</p></li>
+<li><p>This function requires ParaDiGMa access.</p></li>
+</ul>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>Once created, additional fields can be exchanged from volumic tree to isosurface tree using
+<code class="docutils literal notranslate"><span class="pre">_exchange_field(part_tree,</span> <span class="pre">iso_part_tree,</span> <span class="pre">containers_name,</span> <span class="pre">comm)</span></code>.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">elt_type</span></code> is set to ‘TRI_3’, boundaries from volumic mesh are extracted as edges on
+the isosurface and FaceCenter are allowed to be exchanged.</p></li>
+</ul>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>part_tree</strong> (<em>CGNSTree</em>) – Partitioned tree on which isosurf is computed. Only U-NGon
+connectivities are managed.</p></li>
+<li><p><strong>iso_field</strong> (<em>str</em>) – Path (starting at Zone_t level) of the field to use to compute isosurface.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>iso_val</strong> (<em>float</em><em>, </em><em>optional</em>) – Value to use to compute isosurface. Defaults to 0.</p></li>
+<li><p><strong>containers_name</strong> (<em>list of str</em>) – List of the names of the FlowSolution_t nodes to transfer
+on the output isosurface tree.</p></li>
+<li><p><strong>**options</strong> – Options related to plane extraction.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>isosurf_tree (CGNSTree)</em> – Surfacic tree (partitioned)</p>
+</dd>
+</dl>
+<p>Extraction can be controled thought the optional kwargs:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">elt_type</span></code> (str) – Controls the shape of elements used to describe
+the isosurface. Admissible values are <code class="docutils literal notranslate"><span class="pre">TRI_3,</span> <span class="pre">QUAD_4,</span> <span class="pre">NGON_n</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">TRI_3</span></code>.</p></li>
+</ul>
+</div></blockquote>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_wall_distance</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">families</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;WALL&quot;</span><span class="p">],</span> <span class="n">point_cloud</span><span class="o">=</span><span class="s1">&#39;Vertex&#39;</span><span class="p">)</span>
+
+<span class="n">part_tree_iso</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">iso_surface</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="s2">&quot;WallDistance/TurbulentDistance&quot;</span><span class="p">,</span> <span class="n">iso_val</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span>\
+    <span class="n">containers_name</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;WallDistance&#39;</span><span class="p">],</span> <span class="n">comm</span><span class="o">=</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">part_tree_iso</span><span class="p">,</span> <span class="s2">&quot;WallDistance&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.plane_slice">
+<span class="sig-name descname"><span class="pre">plane_slice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plane_eq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">containers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.plane_slice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a slice from the provided plane equation <span class="math notranslate nohighlight">\(ax + by + cz - d = 0\)</span>
+on the input partitioned tree.</p>
+<p>Slice is returned as an independant (2d) partitioned CGNSTree. See <a class="reference internal" href="#maia.algo.part.iso_surface" title="maia.algo.part.iso_surface"><code class="xref py py-func docutils literal notranslate"><span class="pre">iso_surface()</span></code></a>
+for use restrictions and additional advices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>part_tree</strong> (<em>CGNSTree</em>) – Partitioned tree to slice. Only U-NGon connectivities are managed.</p></li>
+<li><p><strong>sphere_eq</strong> (<em>list of float</em>) – List of 4 floats <span class="math notranslate nohighlight">\([a,b,c,d]\)</span> defining the plane equation.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>containers_name</strong> (<em>list of str</em>) – List of the names of the FlowSolution_t nodes to transfer
+on the output slice tree.</p></li>
+<li><p><strong>**options</strong> – Options related to plane extraction (see <a class="reference internal" href="#maia.algo.part.iso_surface" title="maia.algo.part.iso_surface"><code class="xref py py-func docutils literal notranslate"><span class="pre">iso_surface()</span></code></a>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>slice_tree (CGNSTree)</em> – Surfacic tree (partitioned)</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_Naca0012_multizone.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">merge_connected_zones</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span> <span class="c1"># Isosurf requires single block mesh</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">slice_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">plane_slice</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mf">0.5</span><span class="p">],</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">elt_type</span><span class="o">=</span><span class="s1">&#39;QUAD_4&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.spherical_slice">
+<span class="sig-name descname"><span class="pre">spherical_slice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sphere_eq</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">containers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.spherical_slice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a spherical slice from the provided equation
+<span class="math notranslate nohighlight">\((x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2\)</span>
+on the input partitioned tree.</p>
+<p>Slice is returned as an independant (2d) partitioned CGNSTree. See <a class="reference internal" href="#maia.algo.part.iso_surface" title="maia.algo.part.iso_surface"><code class="xref py py-func docutils literal notranslate"><span class="pre">iso_surface()</span></code></a>
+for use restrictions and additional advices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>part_tree</strong> (<em>CGNSTree</em>) – Partitioned tree to slice. Only U-NGon connectivities are managed.</p></li>
+<li><p><strong>plane_eq</strong> (<em>list of float</em>) – List of 4 floats <span class="math notranslate nohighlight">\([x_0, y_0, z_0, R]\)</span> defining the sphere equation.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>containers_name</strong> (<em>list of str</em>) – List of the names of the FlowSolution_t nodes to transfer
+on the output slice tree.</p></li>
+<li><p><strong>**options</strong> – Options related to plane extraction (see <a class="reference internal" href="#maia.algo.part.iso_surface" title="maia.algo.part.iso_surface"><code class="xref py py-func docutils literal notranslate"><span class="pre">iso_surface()</span></code></a>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>slice_tree (CGNSTree)</em> – Surfacic tree (partitioned)</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">preserve_orientation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Add solution</span>
+<span class="n">zone</span>      <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_label</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="s2">&quot;Zone_t&quot;</span><span class="p">)</span>
+<span class="n">vol_rank</span>  <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">*</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_cell</span><span class="p">(</span><span class="n">zone</span><span class="p">))</span>
+<span class="n">src_sol</span>   <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="s1">&#39;FlowSolution&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;CellCenter&#39;</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;i_rank&#39;</span> <span class="p">:</span> <span class="n">vol_rank</span><span class="p">},</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+
+<span class="n">slice_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">spherical_slice</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.5</span><span class="p">,</span><span class="mf">0.25</span><span class="p">],</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> \
+    <span class="p">[</span><span class="s2">&quot;FlowSolution&quot;</span><span class="p">],</span> <span class="n">elt_type</span><span class="o">=</span><span class="s2">&quot;NGON_n&quot;</span><span class="p">)</span>
+
+<span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="s2">&quot;FlowSolution&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.extract_part_from_zsr">
+<span class="sig-name descname"><span class="pre">extract_part_from_zsr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zsr_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">containers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.extract_part_from_zsr" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the submesh defined by the provided ZoneSubRegion from the input volumic
+partitioned tree.</p>
+<p>Dimension of the output mesh is set up accordingly to the GridLocation of the ZoneSubRegion.
+Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.</p>
+<p>In addition, containers specified in <code class="docutils literal notranslate"><span class="pre">containers_name</span></code> list are transfered to the extracted tree.
+Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>part_tree</strong> (<em>CGNSTree</em>) – Partitioned tree from which extraction is computed. Only U-NGon
+connectivities are managed.</p></li>
+<li><p><strong>zsr_name</strong> (<em>str</em>) – Name of the ZoneSubRegion_t node</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>containers_name</strong> (<em>list of str</em>) – List of the names of the fields containers to transfer
+on the output extracted tree.</p></li>
+<li><p><strong>**options</strong> – Options related to the extraction.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>extracted_tree (CGNSTree)</em> – Extracted submesh (partitioned)</p>
+</dd>
+</dl>
+<p>Extraction can be controled by the optional kwargs:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">graph_part_tool</span></code> (str) – Partitioning tool used to balance the extracted zones.
+Admissible values are <code class="docutils literal notranslate"><span class="pre">hilbert,</span> <span class="pre">parmetis,</span> <span class="pre">ptscotch</span></code>. Note that
+vertex-located extractions require hilbert partitioning. Defaults to <code class="docutils literal notranslate"><span class="pre">hilbert</span></code>.</p></li>
+</ul>
+</div></blockquote>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<ul class="simple">
+<li><p>Input tree must be unstructured and have a ngon connectivity.</p></li>
+<li><p>Partitions must come from a single initial domain on input tree.</p></li>
+</ul>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-func docutils literal notranslate"><span class="pre">create_extractor_from_zsr()</span></code> takes the same parameters, excepted <code class="docutils literal notranslate"><span class="pre">containers_name</span></code>,
+and returns an Extractor object which can be used to exchange containers more than once through its
+<code class="docutils literal notranslate"><span class="pre">Extractor.exchange_fields(container_name)</span></code> method.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span>   <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_wall_distance</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">families</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;WALL&quot;</span><span class="p">],</span> <span class="n">point_cloud</span><span class="o">=</span><span class="s1">&#39;Vertex&#39;</span><span class="p">)</span>
+
+<span class="c1"># Create a ZoneSubRegion on procs for extracting odd cells</span>
+<span class="k">for</span> <span class="n">part_zone</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">):</span>
+  <span class="n">ncell</span>       <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_cell</span><span class="p">(</span><span class="n">part_zone</span><span class="p">)</span>
+  <span class="n">start_range</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Range</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">NFaceNode</span><span class="p">(</span><span class="n">part_zone</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+  <span class="n">point_list</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start_range</span><span class="p">,</span> <span class="n">start_range</span><span class="o">+</span><span class="n">ncell</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="s1">&#39;F&#39;</span><span class="p">)</span>
+  <span class="n">PT</span><span class="o">.</span><span class="n">new_ZoneSubRegion</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;ZoneSubRegion&#39;</span><span class="p">,</span> <span class="n">point_list</span><span class="o">=</span><span class="n">point_list</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;CellCenter&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">part_zone</span><span class="p">)</span>
+
+<span class="n">extracted_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">extract_part_from_zsr</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="s1">&#39;ZoneSubRegion&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span>
+                                                      <span class="n">containers_name</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;WallDistance&quot;</span><span class="p">])</span>
+
+<span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">extracted_tree</span><span class="p">,</span> <span class="s2">&quot;WallDistance&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.extract_part_from_bc_name">
+<span class="sig-name descname"><span class="pre">extract_part_from_bc_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">part_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bc_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">containers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.extract_part_from_bc_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract the submesh defined by the provided BC name from the input volumic
+partitioned tree.</p>
+<p>Behaviour and arguments of this function are similar to those of <a class="reference internal" href="#maia.algo.part.extract_part_from_zsr" title="maia.algo.part.extract_part_from_zsr"><code class="xref py py-func docutils literal notranslate"><span class="pre">extract_part_from_zsr()</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">zsr_name</span></code> becomes <code class="docutils literal notranslate"><span class="pre">bc_name</span></code>). Optional <code class="docutils literal notranslate"><span class="pre">transfer_dataset</span></code> argument allows to
+transfer BCDataSet from BC to the extracted mesh (default to <code class="docutils literal notranslate"><span class="pre">True</span></code>).</p>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span>   <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_ATB_45.yaml&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_wall_distance</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">families</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;WALL&quot;</span><span class="p">],</span> <span class="n">point_cloud</span><span class="o">=</span><span class="s1">&#39;Vertex&#39;</span><span class="p">)</span>
+
+<span class="n">extracted_bc</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">extract_part_from_bc_name</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> \
+               <span class="s1">&#39;wall&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">,</span> <span class="n">containers_name</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;WallDistance&quot;</span><span class="p">])</span>
+
+<span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">extracted_bc</span><span class="p">,</span> <span class="s2">&quot;WallDistance&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="interpolations">
+<h3>Interpolations<a class="headerlink" href="#interpolations" title="Permalink to this headline">¶</a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.interpolate_from_part_trees">
+<span class="sig-name descname"><span class="pre">interpolate_from_part_trees</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tgt_tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">containers_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">location</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.interpolate_from_part_trees" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolate fields between two partitionned trees.</p>
+<p>For now, interpolation is limited to lowest order: target points take the value of the
+closest point (or their englobing cell, depending of choosed options) in the source mesh.
+Interpolation strategy can be controled thought the options kwargs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">strategy</span></code> (default = ‘Closest’) – control interpolation method</p>
+<ul>
+<li><p>‘Closest’ : Target points take the value of the closest source cell center.</p></li>
+<li><p>‘Location’ : Target points take the value of the cell in which they are located.
+Unlocated points have take a <code class="docutils literal notranslate"><span class="pre">NaN</span></code> value.</p></li>
+<li><p>‘LocationAndClosest’ : Use ‘Location’ method and then ‘ClosestPoint’ method
+for the unlocated points.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">loc_tolerance</span></code> (default = 1E-6) – Geometric tolerance for Location method.</p></li>
+</ul>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<ul class="simple">
+<li><p>Source fields must be located at CellCenter.</p></li>
+<li><p>Source tree must be unstructured and have a ngon connectivity.</p></li>
+</ul>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><code class="xref py py-func docutils literal notranslate"><span class="pre">create_interpolator_from_part_trees()</span></code> takes the same parameters, excepted <code class="docutils literal notranslate"><span class="pre">containers_name</span></code>,
+and returns an Interpolator object which can be used to exchange containers more than once through its
+<code class="docutils literal notranslate"><span class="pre">Interpolator.exchange_fields(container_name)</span></code> method.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>src_tree</strong> (<em>CGNSTree</em>) – Source tree, partitionned. Only U-NGon connectivities are managed.</p></li>
+<li><p><strong>tgt_tree</strong> (<em>CGNSTree</em>) – Target tree, partitionned. Structured or U-NGon connectivities are managed.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>containers_name</strong> (<em>list of str</em>) – List of the names of the source FlowSolution_t nodes to transfer.</p></li>
+<li><p><strong>location</strong> (<em>{'CellCenter'</em><em>, </em><em>'Vertex'}</em>) – Expected target location of the fields.</p></li>
+<li><p><strong>**options</strong> – Options related to interpolation strategy</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mpi4py</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">mpi4py</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="n">dist_tree_src</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">dist_tree_tgt</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_tree_src</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree_src</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_tree_tgt</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree_tgt</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="c1"># Create fake solution</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_label</span><span class="p">(</span><span class="n">part_tree_src</span><span class="p">,</span> <span class="s2">&quot;Zone_t&quot;</span><span class="p">)</span>
+<span class="n">src_sol</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="s1">&#39;FlowSolution&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;CellCenter&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="n">PT</span><span class="o">.</span><span class="n">new_DataArray</span><span class="p">(</span><span class="s2">&quot;Field&quot;</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">n_cell</span><span class="p">(</span><span class="n">zone</span><span class="p">)),</span> <span class="n">parent</span><span class="o">=</span><span class="n">src_sol</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">interpolate_from_part_trees</span><span class="p">(</span><span class="n">part_tree_src</span><span class="p">,</span> <span class="n">part_tree_tgt</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span>\
+    <span class="p">[</span><span class="s1">&#39;FlowSolution&#39;</span><span class="p">],</span> <span class="s1">&#39;Vertex&#39;</span><span class="p">)</span>
+<span class="n">tgt_sol</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">part_tree_tgt</span><span class="p">,</span> <span class="s1">&#39;FlowSolution&#39;</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">tgt_sol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">GridLocation</span><span class="p">(</span><span class="n">tgt_sol</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;Vertex&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.part.centers_to_nodes">
+<span class="sig-name descname"><span class="pre">centers_to_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">containers_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">options</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.part.centers_to_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create Vertex located FlowSolution_t from CellCenter located FlowSolution_t.</p>
+<p>Interpolation is based on Inverse Distance Weighting
+<a class="reference external" href="https://en.wikipedia.org/wiki/Inverse_distance_weighting">(IDW)</a> method:
+each cell contributes to each of its vertices with a weight computed from the distance
+between the cell isobarycenter and the vertice.  The method can be tuned with
+the following kwargs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">idw_power</span></code> (float, default = 1) – Power to which the cell-vertex distance is elevated.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cross_domain</span></code> (bool, default = True) – If True, vertices located at domain
+interfaces also receive data from the opposite domain cells. This parameter does not
+apply to internal partitioning interfaces, which are always crossed.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Partionned tree. Only unstructured connectivities are managed.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator</p></li>
+<li><p><strong>containers_name</strong> (<em>list of str</em>) – List of the names of the FlowSolution_t nodes to transfer.</p></li>
+<li><p><strong>**options</strong> – Options related to interpolation, see above.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">CenterToNode</span></code> object can be instanciated with the same parameters, excluding <code class="docutils literal notranslate"><span class="pre">containers_name</span></code>,
+and then be used to move containers more than once with its
+<code class="docutils literal notranslate"><span class="pre">move_fields(container_name)</span></code> method.</p>
+</div>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mpi4py</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">from</span>   <span class="nn">maia.utils.test_utils</span> <span class="kn">import</span> <span class="n">mesh_dir</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">mpi4py</span><span class="o">.</span><span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="n">mesh_dir</span><span class="o">/</span><span class="s1">&#39;U_Naca0012_multizone.yaml&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="c1"># Init a FlowSolution located at Cells</span>
+<span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">):</span>
+  <span class="n">cell_center</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_cell_center</span><span class="p">(</span><span class="n">part</span><span class="p">)</span>
+  <span class="n">fields</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ccX&#39;</span><span class="p">:</span> <span class="n">cell_center</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">3</span><span class="p">],</span> <span class="s1">&#39;ccY&#39;</span><span class="p">:</span> <span class="n">cell_center</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">3</span><span class="p">],</span> <span class="s1">&#39;ccZ&#39;</span><span class="p">:</span> <span class="n">cell_center</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">3</span><span class="p">]}</span>
+  <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="s1">&#39;FSol&#39;</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;CellCenter&#39;</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="n">fields</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">part</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">centers_to_nodes</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;FSol&#39;</span><span class="p">])</span>
+
+<span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">):</span>
+  <span class="n">vtx_sol</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">part</span><span class="p">,</span> <span class="s1">&#39;FSol#Vtx&#39;</span><span class="p">)</span>
+  <span class="k">assert</span> <span class="n">PT</span><span class="o">.</span><span class="n">Subset</span><span class="o">.</span><span class="n">GridLocation</span><span class="p">(</span><span class="n">vtx_sol</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;Vertex&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="generic-algorithms">
+<span id="user-man-gen-algo"></span><h2>Generic algorithms<a class="headerlink" href="#generic-algorithms" title="Permalink to this headline">¶</a></h2>
+<p>The following algorithms applies on maia distributed or partitioned trees</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.transform_affine">
+<span class="sig-name descname"><span class="pre">transform_affine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation_center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0.,</span> <span class="pre">0.,</span> <span class="pre">0.])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation_angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0.,</span> <span class="pre">0.,</span> <span class="pre">0.])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">array([0.,</span> <span class="pre">0.,</span> <span class="pre">0.])</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apply_to_fields</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.transform_affine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Apply the affine transformation to the coordinates of the given zone.</p>
+<p>Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
+Transformation is defined by</p>
+<div class="math notranslate nohighlight">
+\[\tilde v = R \cdot (v - c) + c + t\]</div>
+<p>where c, t are the rotation center and translation vector and R is the rotation matrix.</p>
+<p>Input tree is modified inplace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>CGNSTree</em><em>(</em><em>s</em><em>)</em>) – Tree (or sequences of) starting at Zone_t level or higher.</p></li>
+<li><p><strong>rotation_center</strong> (<em>array</em>) – center coordinates of the rotation</p></li>
+<li><p><strong>rotation_angler</strong> (<em>array</em>) – angles of the rotation</p></li>
+<li><p><strong>translation</strong> (<em>array</em>) – translation vector components</p></li>
+<li><p><strong>apply_to_fields</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, apply the rotation vector to the vectorial fields found under
+following nodes : <code class="docutils literal notranslate"><span class="pre">FlowSolution_t</span></code>, <code class="docutils literal notranslate"><span class="pre">DiscreteData_t</span></code>, <code class="docutils literal notranslate"><span class="pre">ZoneSubRegion_t</span></code>, <code class="docutils literal notranslate"><span class="pre">BCDataset_t</span></code>.
+Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="n">zone</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">transform_affine</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="n">translation</span><span class="o">=</span><span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.pe_to_nface">
+<span class="sig-name descname"><span class="pre">pe_to_nface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">removePE</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.pe_to_nface" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a NFace node from a NGon node with ParentElements.</p>
+<p>Input tree is modified inplace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>CGNSTree</em><em>(</em><em>s</em><em>)</em>) – Distributed or Partitioned tree (or sequences of)
+starting at Zone_t level or higher.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator, mandatory only for distributed zones</p></li>
+<li><p><strong>remove_PE</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, remove the ParentElements node.
+Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="n">tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;Poly&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">tree</span><span class="p">):</span>
+  <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">pe_to_nface</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+  <span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_child_from_name</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;NFaceElements&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.nface_to_pe">
+<span class="sig-name descname"><span class="pre">nface_to_pe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">removeNFace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.nface_to_pe" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a ParentElements node in the NGon node from a NFace node.</p>
+<p>Input tree is modified inplace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>CGNSTree</em><em>(</em><em>s</em><em>)</em>) – Distributed or Partitioned tree (or sequences of)
+starting at Zone_t level or higher.</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – MPI communicator, mandatory only for distributed zones</p></li>
+<li><p><strong>removeNFace</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, remove the NFace node.
+Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="n">tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;NFace_n&#39;</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">nface_to_pe</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">maia</span><span class="o">.</span><span class="n">pytree</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;ParentElements&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="sequential-algorithms">
+<h2>Sequential algorithms<a class="headerlink" href="#sequential-algorithms" title="Permalink to this headline">¶</a></h2>
+<p>The following algorithms applies on regular pytrees.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.seq.poly_new_to_old">
+<span class="sig-name descname"><span class="pre">poly_new_to_old</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">full_onera_compatibility</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.seq.poly_new_to_old" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.</p>
+<p>The tree is modified in place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Tree described with new CGNS convention.</p></li>
+<li><p><strong>full_onera_compatibility</strong> (<em>bool</em>) – if <code class="docutils literal notranslate"><span class="pre">True</span></code>, shift NFace and ParentElements ids to begin at 1, irrespective of the NGon and NFace ElementRanges, and make the NFace connectivity unsigned</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.seq.poly_old_to_new">
+<span class="sig-name descname"><span class="pre">poly_old_to_new</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.seq.poly_old_to_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.</p>
+<p>The tree is modified in place.</p>
+<p>This function accepts trees with old ONERA conventions where NFace and ParentElements ids begin at 1, irrespective of the NGon and NFace ElementRanges, and where the NFace connectivity is unsigned. The resulting tree has the correct CGNS/SIDS conventions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tree</strong> (<em>CGNSTree</em>) – Tree described with old CGNS convention.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.algo.seq.enforce_ngon_pe_local">
+<span class="sig-name descname"><span class="pre">enforce_ngon_pe_local</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.algo.seq.enforce_ngon_pe_local" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shift the ParentElements values in order to make it start at 1, as requested by legacy tools.</p>
+<p>The tree is modified in place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>t</strong> (<em>CGNSTree</em><em>(</em><em>s</em><em>)</em>) – Tree (or sequences of) starting at Zone_t level or higher.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="transfer.html" class="btn btn-neutral float-right" title="Transfer module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="factory.html" class="btn btn-neutral float-left" title="Factory module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.0
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

@@ -1,0 +1,510 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Introduction &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="User Manual" href="../user_manual/user_manual.html" />
+    <link rel="prev" title="Installation" href="../installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core-concepts">Core concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dividing-data">Dividing data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#numberings">Numberings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#application-to-mpi-parallelism">Application to MPI parallelism</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#application-to-meshes">Application to meshes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#maia-cgns-trees">Maia CGNS trees</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#specification">Specification</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#distributed-trees">Distributed trees</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#partitioned-trees">Partitioned trees</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#naming-conventions">Naming conventions</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#maia-trees">Maia trees</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Introduction</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/introduction/introduction.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="introduction">
+<span id="intro"></span><h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<p>These section introduces the core concepts of distributed and partitioned data
+used in Maia, and their application to define parallel CGNS trees.</p>
+<div class="section" id="core-concepts">
+<h2>Core concepts<a class="headerlink" href="#core-concepts" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="dividing-data">
+<h3>Dividing data<a class="headerlink" href="#dividing-data" title="Permalink to this headline">¶</a></h3>
+<p><span class="def">Global data</span> is the complete data that describes an object. Let’s represent it as the
+following ordered shapes:</p>
+<img alt="../_images/data_full.svg" src="../_images/data_full.svg" /><p>Now imagine that you want to split this data into N pieces (N=3 for the next illustrations).
+Among all the possibilities, we distinguishes two ways to do it:</p>
+<ol class="arabic simple">
+<li><p>Preserving order: we call such repartition <span class="def">distributed data</span>, and we use the term <span class="def">block</span>
+to refer to a piece of this distributed data.</p></li>
+</ol>
+<blockquote>
+<div><img alt="../_images/data_dist.svg" src="../_images/data_dist.svg" /><p>Several distributions are possible, depending on where data is cut, but they all share the same properties:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>the original order is preserved across the distributed data,</p></li>
+<li><p>each element appears in one and only one block,</p></li>
+<li><p>a block can be empty as long as the global order is preserved (b).</p></li>
+</ul>
+</div></blockquote>
+</div></blockquote>
+<ol class="arabic simple" start="2">
+<li><p>Taking arbitrary subsets of the original data: we call such subsets <span class="def">partitioned data</span>, and we use the term <span class="def">partition</span>
+to refer to a piece of this partitioned data.</p></li>
+</ol>
+<blockquote>
+<div><img alt="../_images/data_part.svg" src="../_images/data_part.svg" /><p>Due to this relaxed constraint, there is much more admissible splits since we allow in our definition the following cases:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>an element can appear in several partitions, or several times within the same partition (b),</p></li>
+<li><p>it is allowed that an element does not appear in a partition (c).</p></li>
+</ul>
+</div></blockquote>
+<p>Such repartitions are often useful when trying to gather the elements depending on
+some characteristics: on the above example, we created the partition of squared shaped elements, round shaped
+elements and unfilled elements (b). Thus, some elements belong to more than one partition.</p>
+</div></blockquote>
+<p>A key point is that no <em>absolute</em> best way of diving data: depending of what we want to do with the
+data, one of the way to divide it may be more adapted. In the previous example:</p>
+<ul class="simple">
+<li><p>distributed data is fine if you want to count the number of filled shapes: you can count in each
+block and then sum the result over the blocks.</p></li>
+<li><p>Now assume that you want to renumber the elements depending on their shape, then on their color:
+if partitioned data (b) is used, partitions 1 and 2 could independently order
+their elements by color since they are already sorted by shape <a class="footnote-reference brackets" href="#f1" id="id1">1</a>.</p></li>
+</ul>
+</div>
+<div class="section" id="numberings">
+<h3>Numberings<a class="headerlink" href="#numberings" title="Permalink to this headline">¶</a></h3>
+<p>In order to describe the link between our divisions and the original global data, we need to
+define additional concepts.</p>
+<p>For distributed data, since the original ordering is respected, the link with the global data is totally implicit:
+we just need to know the number of elements in each block or, equivalently, the <span class="def">distribution array</span>
+of the data. This is an array of size <span class="mono">N+1</span> indicating the bounds of each block. By convention, distribution
+array starts at 0 and uses semi-open intervals.</p>
+<img alt="../_images/data_dist_gnum.svg" src="../_images/data_dist_gnum.svg" /><p>With this information, the global number of the jth element in the ith block is given by
+<span class="math notranslate nohighlight">\(\mathtt{dist[i] + j + 1}\)</span>.</p>
+<p>On the contrary, for partitioned data, we have to explicitly store the link with the global data:
+we use a <span class="def">local to global numbering array</span> (often called <span class="mono">LN_to_GN</span> for short).
+Each partition has its own <span class="mono">LN_to_GN</span> array whose size is the number of elements in the partition.</p>
+<img alt="../_images/data_part_gnum.svg" src="../_images/data_part_gnum.svg" /><p>Then, the global number of the jth element in the ith partition is simply given by
+<span class="math notranslate nohighlight">\(\mathtt{LN\_to\_GN[i][j]}\)</span>.</p>
+<p>For any global data, these additional informations allow to create a mapping beetween global data, partitioned
+data and distributed data. Thus, it is always possible to reconstruct one of the views from another one.</p>
+</div>
+<div class="section" id="application-to-mpi-parallelism">
+<h3>Application to MPI parallelism<a class="headerlink" href="#application-to-mpi-parallelism" title="Permalink to this headline">¶</a></h3>
+<p>The concepts introduced above make all sense in the context of distributed memory computers.
+In such architecture, the global data is in fact never detained by a single proc (it would be too heavy):
+we always use a distributed or partitioned view of this data.
+Using a good repartition is often the key of a well balanced algorithm.</p>
+<p>In the distributed view, we produce as much blocks as the number of MPI processes. Each process holds
+its own block, and the distribution array, of size <span class="mono">n_rank+1</span>, is know by each process.</p>
+<p>In the partitioned view, we often produce one partition per process; but it can sometime be useful to
+put several partitions on a given process. Each process holds the data associated to its partition,
+including the related <span class="mono">LN_to_GN</span> arrays (<span class="mono">LN_to_GN</span> related to the other partitions
+are not know by the current process).</p>
+<p>The <a class="reference internal" href="../related_projects.html#related"><span class="std std-ref">ParaDiGM</span></a> library provides some low level methods to exchange data between the partitioned and
+distributed views in a MPI context, with options to deal with redundant elements, create new distributions,
+manage variable strides, etc.</p>
+</div>
+</div>
+<div class="section" id="application-to-meshes">
+<h2>Application to meshes<a class="headerlink" href="#application-to-meshes" title="Permalink to this headline">¶</a></h2>
+<p>Until now, we have seen the definition of distributed and partitioned data for a single array
+of global data. Let see how to apply these concepts to a basic CFD mesh.</p>
+<p>Consider the following 12-vertices (green numbers), 6-quads (purple numbers) mesh and
+assume that it is described by a cell to vertex connectivity. Thus, the mesh file defines
+3 global arrays:</p>
+<ul class="simple">
+<li><p>the CoordinateX and CoordinateY arrays, each one of size 12</p></li>
+<li><p>the Connectivity array of size 6*4 = 24</p></li>
+</ul>
+<img alt="../_images/full_mesh.svg" src="../_images/full_mesh.svg" /><p>If we have 2 processes at our disposal, a parallel way to load this mesh is to
+distribute all the vertex-related entities with a <strong>distribution array</strong> of <code class="code docutils literal notranslate"><span class="pre">[0,6,12]</span></code>
+and all the element-related entities with a distribution array of <code class="code docutils literal notranslate"><span class="pre">[0,3,6]</span></code> <a class="footnote-reference brackets" href="#f2" id="id2">2</a>:</p>
+<img alt="../_images/dist_mesh_arrays.svg" src="../_images/dist_mesh_arrays.svg" /><p>Then, the blue part of the arrays will be stored on the first process and the red part on the second process.
+Looking back at the original mesh, this correspond to the following distributed meshes:</p>
+<img alt="../_images/dist_mesh.svg" src="../_images/dist_mesh.svg" /><p>with the blue entities stored on the first process, and the red ones on the second process.</p>
+<p>Notice that the distributed mesh is not suited for solver computation. For instance, cells on the domain treated by the first process are not connex. Worst yet, vertex and element quantities are distributed independently. Take a look at cell 1: it is blue so it belongs to process 0. However,its vertices 9 and 10 are on process 1, this means that there coordinates are not accessible directly on process 0. For these reasons, we want to properly partition our mesh, such as this:</p>
+<img alt="../_images/part_mesh.svg" src="../_images/part_mesh.svg" /><img alt="../_images/part_mesh_arrays.svg" src="../_images/part_mesh_arrays.svg" /><p>Now we have two semi-independent meshes and we can reason about each element with all its associated data
+present on the same process. This partitioned view of the mesh has the two following properties:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Coherency: every data array is addressable locally,</p></li>
+<li><p>Connexity: the data represents geometrical entities that define a local subregion of the mesh.</p></li>
+</ul>
+</div></blockquote>
+<p>We want to keep the link between the base mesh and its partitioned version. For that, we need to store <span class="def">global numbering arrays</span>, quantity by quantity:</p>
+<img alt="../_images/dist_part_LN_to_GN.svg" src="../_images/dist_part_LN_to_GN.svg" /><p>For example, for sub-mesh 0, we can check that element number 3 is actually element number 6 of the original mesh.
+We can also see that vertex 3 of sub-mesh 0, and vertex 1 of submesh 1 are actually the same, that is, vertex 4 of the global mesh.</p>
+<p>Thanks to these global numbering, any quantity computed on the partitioned meshes (such as a vertex based field)
+can then be transfered to the corresponding distributed vertex, before writting back the results.</p>
+</div>
+<div class="section" id="maia-cgns-trees">
+<h2>Maia CGNS trees<a class="headerlink" href="#maia-cgns-trees" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="overview">
+<h3>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h3>
+<p>Since Python/CGNS trees describe CFD meshes, we can apply the previous concepts to
+define parallel trees.</p>
+<p>A <span class="def">full tree</span> is a tree as it is inside a CGNS file, or how it would be loaded by only one process. A full tree is <strong>global data</strong>.</p>
+<p>A <span class="def">dist tree</span> is a CGNS tree where the tree structure is replicated across all processes, but array values of the nodes are distributed, that is, each process only stores a block of the complete array. See <a class="reference internal" href="#dist-tree"><span class="std std-ref">Distributed trees</span></a>.</p>
+<p>A <span class="def">part tree</span> is a partial tree, i.e. a tree for which each zone is only stored by one process. Each zone is fully stored by its process. See <a class="reference internal" href="#part-tree"><span class="std std-ref">Partitioned trees</span></a>.</p>
+<p>A <span class="def">size tree</span> is a tree in which only the size of the data is stored. A <em>size tree</em> is typically <em>global data</em> because each process needs it to know which <em>block</em> of data it will have to load and store.</p>
+<p>([Legacy] A <span class="def">skeleton tree</span> is a collective tree in which fields and element connectivities are not loaded)</p>
+<p>As explained in previous section, the standard full tree does not make sense in the context of a MPI parallel
+application: all the trees encountered within the execution of maia are <strong>distributed trees</strong> or <strong>partitioned trees</strong>.
+The next section describe the specification of these trees.</p>
+</div>
+<div class="section" id="specification">
+<h3>Specification<a class="headerlink" href="#specification" title="Permalink to this headline">¶</a></h3>
+<p>Let us use the following tree as an example:</p>
+<img alt="../_images/tree_seq.png" src="../_images/tree_seq.png" />
+<p>This tree is a <strong>global tree</strong>. It may appear like that on a HDF5/CGNS file, or if loaded entirely on one process as a Python/CGNS tree.</p>
+<div class="section" id="distributed-trees">
+<span id="dist-tree"></span><h4>Distributed trees<a class="headerlink" href="#distributed-trees" title="Permalink to this headline">¶</a></h4>
+<p>A <span class="def">dist tree</span> is a CGNS tree where the tree structure is replicated across all processes, but array values of the nodes are distributed, that is, each process only stores a block of the complete array.</p>
+<p>If we distribute our tree over two processes, we would then have something like that:</p>
+<img alt="../_images/dist_tree.png" src="../_images/dist_tree.png" />
+<p>Let us look at one of them and annotate nodes specific to the distributed tree:</p>
+<img alt="../_images/dist_tree_expl.png" src="../_images/dist_tree_expl.png" />
+<p>Arrays of non-constant size are distributed: fields, connectivities, <span class="cgns">PointLists</span>.
+Others (<span class="cgns">PointRanges</span>, <span class="cgns">CGNSBase_t</span> and <span class="cgns">Zone_t</span> dimensions…) are of limited size and therefore replicated on all processes with virtually no memory penalty.</p>
+<p>On each process, for each entity kind, a <strong>partial distribution</strong> is stored, that gives information of which block of the arrays are stored locally.</p>
+<p>For example, for process 0, the distribution array of vertices of <span class="cgns">MyZone</span> is located at <span class="cgns">MyBase/MyZone/Distribution/Vertex</span> and is equal to <code class="code docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">9,</span> <span class="pre">18]</span></code>. It means that only indices in the semi-open interval <code class="code docutils literal notranslate"><span class="pre">[0</span> <span class="pre">9)</span></code> are stored by the <strong>dist tree</strong> on this process, and that the total size of the array is <code class="code docutils literal notranslate"><span class="pre">18</span></code>.
+This partial distribution applies to arrays spaning all the vertices of the zone, e.g. <span class="cgns">CoordinateX</span>.</p>
+<p>More formally, a <span class="def">partial distribution</span> related to an entity kind <code class="code docutils literal notranslate"><span class="pre">E</span></code> is an array <code class="code docutils literal notranslate"><span class="pre">[start,end,total_size]</span></code> of 3 integers where <code class="code docutils literal notranslate"><span class="pre">[start:end)</span></code> is a closed/open interval giving, for all global arrays related to <code class="code docutils literal notranslate"><span class="pre">E</span></code>, the sub-array that is stored locally on the distributed tree, and <code class="code docutils literal notranslate"><span class="pre">total_size</span></code> is the global size of the arrays related to <code class="code docutils literal notranslate"><span class="pre">E</span></code>.</p>
+<p>The distributed entities are:</p>
+<dl class="glossary">
+<dt id="term-Vertices-and-Cells">Vertices and Cells<a class="headerlink" href="#term-Vertices-and-Cells" title="Permalink to this term">¶</a></dt><dd><p>The <strong>partial distribution</strong> are stored in <span class="cgns">Distribution/Vertex</span> and <span class="cgns">Distribution/Cell</span> nodes at the level of the <span class="cgns">Zone_t</span> node.</p>
+<p>Used for example by <span class="cgns">GridCoordinates_t</span> and <span class="cgns">FlowSolution_t</span> nodes if they do not have a <span class="cgns">PointList</span> (i.e. if they span the entire vertices/cells of the zone)</p>
+</dd>
+<dt id="term-Quantities-described-by-a-PointList-or-PointRange">Quantities described by a <span class="cgns">PointList</span> or <span class="cgns">PointRange</span><a class="headerlink" href="#term-Quantities-described-by-a-PointList-or-PointRange" title="Permalink to this term">¶</a></dt><dd><p>The <strong>partial distribution</strong> is stored in a <span class="cgns">Distribution/Index</span> node at the level of the <span class="cgns">PointList/PointRange</span></p>
+<p>For example, <span class="cgns">ZoneSubRegion_t</span> and <span class="cgns">BCDataSet_t</span> nodes.</p>
+<p>If the quantity is described by a <span class="cgns">PointList</span>, then the <span class="cgns">PointList</span> itself is distributed the same way (in contrast, a <span class="cgns">PointRange</span> is fully replicated across processes because it is lightweight)</p>
+</dd>
+<dt id="term-Connectivities">Connectivities<a class="headerlink" href="#term-Connectivities" title="Permalink to this term">¶</a></dt><dd><p>The <strong>partial distribution</strong> is stored in a <span class="cgns">Distribution/Element</span> node at the level of the <span class="cgns">Element_t</span> node. Its values are related to the elements, not the vertices of the connectivity array.</p>
+<p>If the element type is heterogenous (NGon, NFace or MIXED) a <span class="cgns">Distribution/ElementConnectivity</span> is also present, and this partial distribution is related to the <span class="cgns">ElementConnectivity</span> array.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A distributed tree object is not norm-compliant since most of its arrays are partial: on the previous example,
+<span class="cgns">CoordinateX</span> array on rank 0 has a length of 9 when <span class="cgns">MyZone</span> declares 18 vertices.
+However, the union of all the distributed tree objects represents a norm-compliant CGNS tree.</p>
+</div>
+</div>
+<div class="section" id="partitioned-trees">
+<span id="part-tree"></span><h4>Partitioned trees<a class="headerlink" href="#partitioned-trees" title="Permalink to this headline">¶</a></h4>
+<p>A <span class="def">part tree</span> is a partial CGNS tree, i.e. a tree for which each zone is only stored by one process. Each zone is fully stored by its process.</p>
+<p>If we take the global tree from before and partition it, we may get the following tree:</p>
+<img alt="../_images/part_tree.png" src="../_images/part_tree.png" />
+<p>If we annotate the first one:</p>
+<img alt="../_images/part_tree_expl.png" src="../_images/part_tree_expl.png" />
+<p>A <strong>part tree</strong> is just a regular, norm-compliant tree with additional information (in the form of <span class="cgns">GlobalNumbering</span> nodes) that keeps the link with the unpartitioned tree it comes from. Notice that the tree structure is <strong>not</strong> necessarily the same across all processes.</p>
+<p>The <span class="cgns">GlobalNumbering</span> nodes are located at the same positions that the <span class="cgns">Distribution</span> nodes were in the distributed tree.</p>
+<p>A <span class="cgns">GlobalNumbering</span> contains information to link an entity in the partition to its corresponding entity in the original tree. For example, the element section <span class="cgns">Hexa</span> has a global numbering array of value <code class="code docutils literal notranslate"><span class="pre">[3</span> <span class="pre">4]</span></code>. It means:</p>
+<ul class="simple">
+<li><p>Since it is an array of size 2, there is 2 elements in this section (which is confirmed by the <span class="cgns">ElementRange</span>) ,</p></li>
+<li><p>The first element was the element of id <code class="code docutils literal notranslate"><span class="pre">3</span></code> in the original mesh,</p></li>
+<li><p>The second element was element <code class="code docutils literal notranslate"><span class="pre">4</span></code> in the original mesh.</p></li>
+</ul>
+</div>
+<div class="section" id="naming-conventions">
+<h4>Naming conventions<a class="headerlink" href="#naming-conventions" title="Permalink to this headline">¶</a></h4>
+<p>When partitioning, some nodes are split, so there is convention to keep track of the fact they come from the same original node:</p>
+<ul class="simple">
+<li><p><span class="cgns">Zone_t</span> nodes : <span class="cgns">MyZone</span> is split in <span class="cgns">MyZone.PX.NY</span> where <cite>X</cite> is the rank of the process, and <cite>Y</cite> is the id of the zone on process <cite>X</cite>.</p></li>
+<li><p>Splitable nodes (notably <span class="cgns">GC_t</span>) : <span class="cgns">MyNode</span> is split in <span class="cgns">MyNode.N</span>. They appear in the following scenario:</p>
+<ul>
+<li><p>We partition for 3 processes</p></li>
+<li><p><span class="cgns">Zone0</span> is connected to <span class="cgns">Zone1</span> through <span class="cgns">GridConnectivity_0_to_1</span></p></li>
+<li><p><span class="cgns">Zone0</span> is not split (but goes to process 0 and becomes <span class="cgns">Zone0.P0.N0</span>). Zone1 is split into <span class="cgns">Zone1.P1.N0</span> and <span class="cgns">Zone1.P2.N0</span>. Then <span class="cgns">GridConnectivity_0_to_1</span> of <span class="cgns">Zone0</span> must be split into <span class="cgns">GridConnectivity_0_to_1.1</span> and <span class="cgns">GridConnectivity_0_to_1.2</span>.</p></li>
+</ul>
+</li>
+</ul>
+<p>Note that partitioning may induce new <span class="cgns">GC_t</span> internal to the original zone being splitted. Their name is implementation-defined and those nodes do not have a <span class="cgns">GlobalNumbering</span> since they did not exist in the original mesh.</p>
+</div>
+</div>
+<div class="section" id="maia-trees">
+<span id="maia-tree"></span><h3>Maia trees<a class="headerlink" href="#maia-trees" title="Permalink to this headline">¶</a></h3>
+<p>A CGNS tree is said to be a <span class="def">Maia tree</span> if it has the following properties:</p>
+<ul class="simple">
+<li><p>For each unstructured zone, the <span class="cgns">ElementRange</span> of all <span class="cgns">Elements_t</span> sections</p>
+<ul>
+<li><p>are contiguous</p></li>
+<li><p>are ordered by ascending dimensions (i.e. edges come first, then faces, then cells)</p></li>
+<li><p>the first section starts at 1</p></li>
+<li><p>there is at most one section by element type (e.g. not possible to have two <span class="cgns">QUAD_4</span> sections)</p></li>
+</ul>
+</li>
+</ul>
+<p>Notice that this is property is required by <strong>some</strong> functions of Maia, not all of them!</p>
+<p>A <strong>Maia tree</strong> may be a <strong>global tree</strong>, a <strong>distributed tree</strong> or a <strong>partitioned tree</strong>.</p>
+<p class="rubric">Footnotes</p>
+<dl class="footnote brackets">
+<dt class="label" id="f1"><span class="brackets"><a class="fn-backref" href="#id1">1</a></span></dt>
+<dd><p>Actually, such algorithm could be written for distributed data, but is less intuitive and require more knowledge of what
+if happening on the other blocks.</p>
+</dd>
+<dt class="label" id="f2"><span class="brackets"><a class="fn-backref" href="#id2">2</a></span></dt>
+<dd><p>Other distributions are possible : we could, for example, affect all the CoordinateX array on the first process (using the distribution array <code class="code docutils literal notranslate"><span class="pre">[0,12,12]</span></code>) and the CoordinateY array on the second, but we would have to manage a different distribution for each array.</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../user_manual/user_manual.html" class="btn btn-neutral float-right" title="User Manual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="../installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.1
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

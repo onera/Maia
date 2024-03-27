@@ -1,0 +1,839 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Basic node editing &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Node searching" href="search.html" />
+    <link rel="prev" title="The pytree module" href="pytree_module.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.3
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="pytree_module.html">The pytree module</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Basic node editing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vocabulary">Vocabulary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#node-edition">Node edition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#node-creation">Node creation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api-reference">API reference</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="search.html">Node searching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="inspect.html">Node inspection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="presets.html">Node creation presets</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="pytree_module.html">The pytree module</a> &raquo;</li>
+        
+      <li>Basic node editing</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/maia_pytree/basic.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="basic-node-editing">
+<span id="pt-node-edit"></span><h1>Basic node editing<a class="headerlink" href="#basic-node-editing" title="Permalink to this headline">¶</a></h1>
+<p>This page describe the <code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> functions to read or write
+the different attributes of a CGNSTree. These functions are simple
+but provide the basis for complex operations.</p>
+<div class="section" id="vocabulary">
+<h2>Vocabulary<a class="headerlink" href="#vocabulary" title="Permalink to this headline">¶</a></h2>
+<p>According to the CGNS standard, a CGNS <strong>node</strong> is a structure described by three attributes:</p>
+<ul class="simple">
+<li><p>a <strong>name</strong>, which is a case-sensitive identifier shorter than 32 characters;</p></li>
+<li><p>a <strong>label</strong>, which must be taken from a predefined list;</p></li>
+<li><p>a optional <strong>value</strong>, which is a (possibly multidimensional) array of data;</p></li>
+</ul>
+<p>plus a list of <strong>children</strong> which are themselves nodes. Due to that,
+nodes have in fact a hierarchic structure, which is why we rather employ the word
+<strong>tree</strong> to refer to them.</p>
+<p>The organisation of this structure (for example: what are the allowed labels
+under each node, or what are the allowed values for each label)
+is defined by the <a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/index.html">CGNS/SIDS description</a>
+and will not be described here.</p>
+<p>In addition, the <a class="reference external" href="https://cgns.github.io/CGNS_docs_current/python/index.html">sids-to-python specification</a>
+defines how to describe a node structure in python.
+<code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> conforms to this mapping which, in short, states that:</p>
+<ul class="simple">
+<li><p>node names and labels are simple <code class="docutils literal notranslate"><span class="pre">str</span></code> objects</p></li>
+<li><p>node values can be either <code class="docutils literal notranslate"><span class="pre">None</span></code>, or a numpy F-contiguous array</p></li>
+<li><p>nodes are defined by a list following the pattern <code class="docutils literal notranslate"><span class="pre">[name,</span> <span class="pre">value,</span> <span class="pre">children_list,</span> <span class="pre">label]</span></code></p></li>
+</ul>
+</div>
+<div class="section" id="node-edition">
+<h2>Node edition<a class="headerlink" href="#node-edition" title="Permalink to this headline">¶</a></h2>
+<p>Accessing to the different attributes of a node with the <code class="docutils literal notranslate"><span class="pre">[]</span></code> operator
+is possible but error-prone. Consequently, we advice the user to use
+the available getters and setters:</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.get_name" title="maia.pytree.get_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_name</span></code></a>(node)</p></td>
+<td><p>Return the name of a CGNSNode</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.set_name" title="maia.pytree.set_name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_name</span></code></a>(node, name)</p></td>
+<td><p>Set the name of a CGNSNode</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.get_label" title="maia.pytree.get_label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_label</span></code></a>(node)</p></td>
+<td><p>Return the label of a CGNSNode</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.set_label" title="maia.pytree.set_label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_label</span></code></a>(node, label)</p></td>
+<td><p>Set the label of a CGNSNode</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.get_children" title="maia.pytree.get_children"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_children</span></code></a>(node)</p></td>
+<td><p>Return the list of children of a CGNSNode</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.add_child" title="maia.pytree.add_child"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_child</span></code></a>(node, child)</p></td>
+<td><p>Append a child node to the children list of a CGNSNode</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.set_children" title="maia.pytree.set_children"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_children</span></code></a>(node, children)</p></td>
+<td><p>Set the children list of a CGNSNode</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.get_value" title="maia.pytree.get_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_value</span></code></a>(node[, raw])</p></td>
+<td><p>Return the value of a CGNSNode</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.set_value" title="maia.pytree.set_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_value</span></code></a>(node, value)</p></td>
+<td><p>Set the value of a CGNSNode</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.update_node" title="maia.pytree.update_node"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_node</span></code></a>(node[, name, label, value, children])</p></td>
+<td><p>Update some attribute of a CGNSNode</p></td>
+</tr>
+</tbody>
+</table>
+<p>Here is few examples using theses functions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;MyNode&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[],</span> <span class="s2">&quot;UserDefinedData_t&quot;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">&#39;MyNode&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">array([1, 2, 3], dtype=int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pnode</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ParentNode&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">3.14</span><span class="p">]),</span> <span class="p">[],</span> <span class="s2">&quot;UserDefinedData_t&quot;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">set_children</span><span class="p">(</span><span class="n">pnode</span><span class="p">,</span> <span class="p">[</span><span class="n">node</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">pnode</span><span class="p">))</span>
+<span class="go">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">update_node</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;MyUpdatedNode&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">pnode</span><span class="p">)]</span>
+<span class="go">[&#39;MyUpdatedNode&#39;]</span>
+</pre></div>
+</div>
+<p>Similarly, although trees can be displayed with the <code class="xref py py-func docutils literal notranslate"><span class="pre">print()</span></code> function,
+it is preferable to use <a class="reference internal" href="#maia.pytree.print_tree" title="maia.pytree.print_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">print_tree()</span></code></a> for a better rendering:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">pnode</span><span class="p">)</span>
+<span class="go">[&#39;ParentNode&#39;, array([3.14]), [[&#39;MyUpdatedNode&#39;, array([1, 2, 3], dtype=int32), [], &#39;UserDefinedData_t&#39;]], &#39;UserDefinedData_t&#39;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">pnode</span><span class="p">)</span>
+<span class="go">ParentNode UserDefinedData_t R8 [3.14]</span>
+<span class="go">└───MyUpdatedNode UserDefinedData_t I4 [1 2 3]</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>In practice, it is common to use <a class="reference internal" href="search.html#pt-node-search"><span class="std std-ref">searches</span></a>
+to navigate in tree hierarchie and <a class="reference internal" href="inspect.html#pt-inspect"><span class="std std-ref">inspection</span></a> to get
+relevant data.</p>
+</div>
+</div>
+<div class="section" id="node-creation">
+<h2>Node creation<a class="headerlink" href="#node-creation" title="Permalink to this headline">¶</a></h2>
+<p>In the same idea of avoiding to manipulate the underlying list by hand, the following functions
+can be used to create new nodes:</p>
+<table class="longtable docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 90%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.new_node" title="maia.pytree.new_node"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_node</span></code></a>([name, label, value, children, parent])</p></td>
+<td><p>Create a new CGNS node</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.pytree.new_child" title="maia.pytree.new_child"><code class="xref py py-obj docutils literal notranslate"><span class="pre">new_child</span></code></a>(parent, name[, label, value, children])</p></td>
+<td><p>Create a new CGNS node as a child of an other node</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.pytree.update_child" title="maia.pytree.update_child"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_child</span></code></a>(parent, name[, label, value, ...])</p></td>
+<td><p>Create a child or update its attributes</p></td>
+</tr>
+</tbody>
+</table>
+<p>The previous snippet can thus be rewritted in more compact form:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">pnode</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s2">&quot;ParentNode&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDefinedData_t&quot;</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_child</span><span class="p">(</span><span class="n">pnode</span><span class="p">,</span> <span class="s2">&quot;MyNode&quot;</span><span class="p">,</span> <span class="s2">&quot;UserDefinedData_t&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">update_node</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;MyUpdatedNode&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">pnode</span><span class="p">)</span>
+<span class="go">ParentNode UserDefinedData_t R8 [3.14]</span>
+<span class="go">└───MyUpdatedNode UserDefinedData_t I4 [1 2 3]</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>In practice, it is common to use <a class="reference internal" href="presets.html#pt-presets"><span class="std std-ref">presets</span></a> for a quicker
+and CGNS/SIDS-compliant creation of nodes with a specific label.</p>
+</div>
+</div>
+<div class="section" id="api-reference">
+<h2>API reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.get_name">
+<span class="sig-name descname"><span class="pre">get_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.get_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the name of a CGNSNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – Name of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;MyNodeName&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zone_t&#39;</span><span class="p">))</span>
+<span class="go">&#39;MyNodeName&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.get_label">
+<span class="sig-name descname"><span class="pre">get_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.get_label" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the label of a CGNSNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – Label of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_label</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zone_t&#39;</span><span class="p">))</span>
+<span class="go">&#39;Zone_t&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.get_value">
+<span class="sig-name descname"><span class="pre">get_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.get_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value of a CGNSNode</p>
+<p>If value is an array of characters, it returned as a (or a
+sequence of) string, unless raw parameter is True.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p></li>
+<li><p><strong>raw</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, always return the numpy array</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSValue</em> – Value of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;MyNode&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">3.14</span><span class="p">))</span>
+<span class="go">array([3.14], dtype=float32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.get_value_type">
+<span class="sig-name descname"><span class="pre">get_value_type</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.get_value_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value type of a CGNSNode</p>
+<p>This two letters string identifies the datatype of the node and belongs to
+<code class="docutils literal notranslate"><span class="pre">[&quot;MT&quot;,</span> <span class="pre">&quot;B1&quot;,</span> <span class="pre">&quot;C1&quot;,</span> <span class="pre">&quot;I4&quot;,</span> <span class="pre">&quot;U4&quot;,</span> <span class="pre">&quot;I8&quot;,</span> <span class="pre">&quot;U8&quot;,</span> <span class="pre">&quot;R4&quot;,</span> <span class="pre">&quot;R8&quot;,</span> <span class="pre">&quot;X4&quot;,</span> <span class="pre">&quot;X8&quot;]</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – Value type of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_value_type</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;MyNode&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">None</span><span class="p">))</span>
+<span class="go">&#39;MT&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.get_value_kind">
+<span class="sig-name descname"><span class="pre">get_value_kind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.get_value_kind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value kind of a CGNSNode</p>
+<p>If node is not empty, this one letter string identifies the
+datakind of the node and belongs to
+<code class="docutils literal notranslate"><span class="pre">[&quot;MT&quot;,</span> <span class="pre">&quot;B&quot;,</span> <span class="pre">&quot;C&quot;,</span> <span class="pre">&quot;I&quot;,</span> <span class="pre">&quot;U&quot;,</span> <span class="pre">&quot;R&quot;,</span> <span class="pre">&quot;X&quot;]</span></code></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>str</em> – Value kind of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_value_kind</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;MyNode&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">3.14</span><span class="p">))</span>
+<span class="go">&#39;R&#39;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.get_children">
+<span class="sig-name descname"><span class="pre">get_children</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.get_children" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the list of children of a CGNSNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>List[CGNSTree]</em> – Children of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;MyNode&#39;</span><span class="p">)))</span>
+<span class="go">0</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.set_name">
+<span class="sig-name descname"><span class="pre">set_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.set_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the name of a CGNSNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Name to be set</p></li>
+</ul>
+</dd>
+<dt class="field-even">Warns</dt>
+<dd class="field-even"><p><strong>RuntimeWarning</strong> – If name is longer than 32 characters</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If name is not valid</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Node&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="s1">&#39;UpdatedNodeName&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.set_label">
+<span class="sig-name descname"><span class="pre">set_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.set_label" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the label of a CGNSNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p></li>
+<li><p><strong>label</strong> (<em>str</em>) – Label to be set</p></li>
+</ul>
+</dd>
+<dt class="field-even">Warns</dt>
+<dd class="field-even"><p><strong>RuntimeWarning</strong> – If label does not belong to SIDS label list</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If label is not valid</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;BCNode&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">set_label</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="s1">&#39;BC_t&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.set_value">
+<span class="sig-name descname"><span class="pre">set_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.set_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the value of a CGNSNode</p>
+<p>If value is neither <code class="docutils literal notranslate"><span class="pre">None</span></code> nor a f-contiguous numpy array,
+it is converted to a suitable numpy array depending on its type:</p>
+<ul class="simple">
+<li><p>Literal (or sequence of) floats are converted to R4 arrays</p></li>
+<li><p>Literal (or sequence of) ints are converted to I4 arrays if possible, I8 otherwise</p></li>
+<li><p>Numpy scalars keep their corresponding kind</p></li>
+<li><p>Strings are converted to numpy bytearrays</p></li>
+<li><p>Sequence of N strings are converted to numpy (32,N) shaped bytearrays</p></li>
+<li><p>Nested sequence of strings (M sequences of N strings) are converted
+to numpy (32, N, M) shaped bytearrays</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p></li>
+<li><p><strong>value</strong> (<em>Any</em>) – Value to be set</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Node&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">set_value</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.set_children">
+<span class="sig-name descname"><span class="pre">set_children</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.set_children" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the children list of a CGNSNode</p>
+<p>This will replace the existing children with the provided list.
+See also: <a class="reference internal" href="#maia.pytree.add_child" title="maia.pytree.add_child"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_child()</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p></li>
+<li><p><strong>children</strong> (<em>List</em><em>[</em><em>CGNSTree</em><em>]</em>) – Children to be set</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;ZoneType&#39;</span><span class="p">,</span> <span class="s1">&#39;ZoneType_t&#39;</span><span class="p">,</span> <span class="s1">&#39;Structured&#39;</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">set_children</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="p">[])</span> <span class="c1"># Replace the children with the given list</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">node</span><span class="p">))</span>
+<span class="go">0</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.add_child">
+<span class="sig-name descname"><span class="pre">add_child</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">child</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.add_child" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append a child node to the children list of a CGNSNode</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p></li>
+<li><p><strong>child</strong> (<em>CGNSTree</em>) – Child node to be add</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>RuntimeError</strong> – If a node with same name than <code class="docutils literal notranslate"><span class="pre">child</span></code> already exists</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;ZoneType&#39;</span><span class="p">,</span> <span class="s1">&#39;ZoneType_t&#39;</span><span class="p">,</span> <span class="s1">&#39;Structured&#39;</span><span class="p">))</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.update_node">
+<span class="sig-name descname"><span class="pre">update_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">UNSET</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">UNSET</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">UNSET</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">UNSET</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.update_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>Update some attribute of a CGNSNode</p>
+<p>Parameters which are provided to the function trigger the update of their
+corresponding attribute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node</strong> (<em>CGNSTree</em>) – Input node</p></li>
+<li><p><strong>others</strong> – See <a class="reference internal" href="#maia.pytree.set_name" title="maia.pytree.set_name"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_name()</span></code></a>, <a class="reference internal" href="#maia.pytree.set_label" title="maia.pytree.set_label"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_label()</span></code></a>, <a class="reference internal" href="#maia.pytree.set_value" title="maia.pytree.set_value"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_value()</span></code></a>, <a class="reference internal" href="#maia.pytree.set_children" title="maia.pytree.set_children"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_children()</span></code></a></p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">update_node</span><span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zone_t&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="p">[[</span><span class="mi">11</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">node</span>
+<span class="go">[&#39;Zone&#39;, array([[11,10,0]], dtype=int32), [], &#39;Zone_t&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.new_node">
+<span class="sig-name descname"><span class="pre">new_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Node'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'UserDefined_t'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.new_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new CGNS node</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">parent</span></code> is not None, this node is appended as a child to the parent node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – Name of the created node – see <a class="reference internal" href="#maia.pytree.set_name" title="maia.pytree.set_name"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_name()</span></code></a></p></li>
+<li><p><strong>label</strong> (<em>str</em>) – Label of the created node – see <a class="reference internal" href="#maia.pytree.set_label" title="maia.pytree.set_label"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_label()</span></code></a></p></li>
+<li><p><strong>value</strong> (<em>Any</em>) – Value of the created node – see <a class="reference internal" href="#maia.pytree.set_value" title="maia.pytree.set_value"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_value()</span></code></a></p></li>
+<li><p><strong>children</strong> (<em>List</em><em>[</em><em>CGNSTree</em><em>]</em>) – Value of the created node – see <a class="reference internal" href="#maia.pytree.set_children" title="maia.pytree.set_children"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_children()</span></code></a></p></li>
+<li><p><strong>parent</strong> (<em>CGNSTree</em><em> or </em><em>None</em>) – Other node, where created node should be attached</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Created node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span> <span class="c1"># Basic node creation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;ZoneType&#39;</span><span class="p">,</span> <span class="s1">&#39;ZoneType_t&#39;</span><span class="p">,</span> <span class="s2">&quot;Unstructured&quot;</span><span class="p">,</span>
+<span class="gp">... </span>            <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span> <span class="c1"># Create and attach to a parent</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">Zone Zone_t</span>
+<span class="go">└───ZoneType ZoneType_t &quot;Unstructured&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.new_child">
+<span class="sig-name descname"><span class="pre">new_child</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'UserDefined_t'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.new_child" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a new CGNS node as a child of an other node</p>
+<p>This is an alternative form of <a class="reference internal" href="#maia.pytree.new_node" title="maia.pytree.new_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_node()</span></code></a>, with mandatory <code class="docutils literal notranslate"><span class="pre">parent</span></code> argument.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>all</strong> – See <a class="reference internal" href="#maia.pytree.new_node" title="maia.pytree.new_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_node()</span></code></a></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Created node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span> <span class="c1"># Basic node creation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_child</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneType&#39;</span><span class="p">,</span> <span class="s1">&#39;ZoneType_t&#39;</span><span class="p">,</span> <span class="s2">&quot;Unstructured&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">Zone Zone_t</span>
+<span class="go">└───ZoneType ZoneType_t &quot;Unstructured&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.update_child">
+<span class="sig-name descname"><span class="pre">update_child</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parent</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">UNSET</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">UNSET</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">UNSET</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.update_child" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a child or update its attributes</p>
+<p>This is an alternative form of <a class="reference internal" href="#maia.pytree.new_child" title="maia.pytree.new_child"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_child()</span></code></a>, but this function allow the parent node
+to already have a child of the given name: in this case, its attributes are updated.
+Otherwise, the child is created with the default values of <a class="reference internal" href="#maia.pytree.new_child" title="maia.pytree.new_child"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_child()</span></code></a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>all</strong> – See <a class="reference internal" href="#maia.pytree.new_child" title="maia.pytree.new_child"><code class="xref py py-func docutils literal notranslate"><span class="pre">new_child()</span></code></a></p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Created node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_node</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span> <span class="c1"># Basic node creation</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">update_child</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneType&#39;</span><span class="p">,</span> <span class="s1">&#39;ZoneType_t&#39;</span><span class="p">)</span> <span class="c1"># Child is created</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">update_child</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;ZoneType&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;Unstructured&quot;</span><span class="p">)</span> <span class="c1"># Child is updated</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">Zone Zone_t</span>
+<span class="go">└───ZoneType ZoneType_t &quot;Unstructured&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.print_tree">
+<span class="sig-name descname"><span class="pre">print_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">sys.stdout</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.print_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Display the arborescence of a CGNSTree</p>
+<p>By default, display will be done in the standard output. It is possible to print
+in a file by setting out to either a string or a python file object:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>                <span class="c1"># Print tree in stdout</span>
+<span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;tree.txt&#39;</span><span class="p">)</span>    <span class="c1"># Print tree in a tree.txt file</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;out.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>         <span class="c1"># Print tree in f</span>
+</pre></div>
+</div>
+<p>In addition, the following kwargs can be used to parametrize the output:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">colors</span></code> (bool) – If False, disable the colors in rendered text. Default to <code class="docutils literal notranslate"><span class="pre">True</span></code>
+for stdout or stderr output, and <code class="docutils literal notranslate"><span class="pre">False</span></code> for file output.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">verbose</span></code> (bool) – If True, data arrays are displayed (using numpy display settings).
+Otherwise, small arrays are printed, and large arrays only show their size.
+Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_depth</span></code> (int) – Stop printing once max_depth is reached. By default, displays all nodes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">print_if</span></code> (callable) – If set, it must be a function with the signature : <code class="docutils literal notranslate"><span class="pre">f(n:CGNSTree)</span> <span class="pre">-&gt;</span> <span class="pre">bool</span></code>.
+The branches not leading to a node that evaluates to <code class="docutils literal notranslate"><span class="pre">True</span></code> are removed from displayed tree.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Node to be printed</p></li>
+<li><p><strong>out</strong> (<em>TextIO</em>) – Where to print</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>To display a tree in custom output, use function <code class="xref py py-func docutils literal notranslate"><span class="pre">to_string()</span></code>
+which takes the same parameters, except <code class="docutils literal notranslate"><span class="pre">out</span></code>, and return the string
+representation of the tree.</p>
+</div>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">parse_yaml_cgns</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t [3,3]:</span>
+<span class="gp">... </span><span class="s1">  Wall Family_t:</span>
+<span class="gp">... </span><span class="s1">  MyZone Zone_t I4 [[16,6,0]]:</span>
+<span class="gp">... </span><span class="s1">    GridCoordinates GridCoordinates_t:</span>
+<span class="gp">... </span><span class="s1">      CoordinateX DataArray_t [0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">Base CGNSBase_t I4 [3 3]</span>
+<span class="go">├───Wall Family_t</span>
+<span class="go">└───MyZone Zone_t I4 [[16  6  0]]</span>
+<span class="go">    └───GridCoordinates GridCoordinates_t</span>
+<span class="go">        └───CoordinateX DataArray_t I4 (16,)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="go">Base CGNSBase_t I4 [3 3]</span>
+<span class="go">├───Wall Family_t</span>
+<span class="go">└───MyZone Zone_t I4 [[16  6  0]]</span>
+<span class="go">    ╵╴╴╴ (1 child masked)</span>
+</pre></div>
+</div>
+<p>On the next example, notice that the branches not leading to ‘CoordinateX’ are
+not printed; and, because of verbose option, all the coordinate array is displayed.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="gp">... </span>              <span class="n">print_if</span><span class="o">=</span><span class="k">lambda</span> <span class="n">n</span> <span class="p">:</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;CoordinateX&#39;</span><span class="p">)</span>
+<span class="go">Base CGNSBase_t I4 [3 3]</span>
+<span class="go">└───MyZone Zone_t I4 [[16  6  0]]</span>
+<span class="go">    └───GridCoordinates GridCoordinates_t</span>
+<span class="go">        └───CoordinateX DataArray_t I4 (16,)</span>
+<span class="go">            [0 1 2 3 0 1 2 3 0 1 2 3 0 1 2 3]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="search.html" class="btn btn-neutral float-right" title="Node searching" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="pytree_module.html" class="btn btn-neutral float-left" title="The pytree module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.3
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

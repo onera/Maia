@@ -1,0 +1,447 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Quick start &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="Welcome to Maia!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#environnements">Environnements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#supported-meshes">Supported meshes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#highlights">Highlights</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#resources-and-troubleshouting">Resources and Troubleshouting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual/developer_manual.html">Developer Manual</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Quick start</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/quick_start.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="quick-start">
+<span id="id1"></span><h1>Quick start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="environnements">
+<h2>Environnements<a class="headerlink" href="#environnements" title="Permalink to this headline">¶</a></h2>
+<p>We provide ready-to-go environments including Maia and its dependencies on the following clusters:</p>
+<p><strong>Spiro-EL8</strong></p>
+<p>This is the recommended environment for standalone usage of Maia. It works with intel mpi library (2021)
+and python version 3.9.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>module purge
+<span class="nb">source</span> /scratchm/sonics/dist/spiro_el8.sh --compiler<span class="o">=</span>gcc@12 --mpi<span class="o">=</span>impi
+
+<span class="nb">export</span> <span class="nv">MAIA_HOME</span><span class="o">=</span>/scratchm/jcoulet/aa_install_py3/maia/opt-impi21
+<span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$MAIA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$MAIA_HOME</span>/lib/python3.9/site-packages:<span class="nv">$PYTHONPATH</span>
+</pre></div>
+</div>
+<p>If you want to use maia in elsA framework, the next installation is compatible with
+elsA spiro-el8_mpi production :</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>module purge
+<span class="nb">source</span> /stck/elsa/Public/v5.1.03/Dist/bin/spiro-el8_mpi/source.me
+
+<span class="nb">export</span> <span class="nv">MAIA_HOME</span><span class="o">=</span>/scratchm/jcoulet/aa_install_py3/maia/opt-cfd5_21/
+<span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$MAIA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$MAIA_HOME</span>/lib/python3.7/site-packages:<span class="nv">$PYTHONPATH</span>
+</pre></div>
+</div>
+<p><strong>Sator</strong></p>
+<p>Sator’s version is compiled with intel mpi library and support of large integers.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>module purge
+<span class="nb">source</span> /tmp_user/sator/sonics/source-intel-oneapi-2021.2-sator-centos8.me --compiler gcc8.3
+
+<span class="nb">export</span> <span class="nv">MAIA_HOME</span><span class="o">=</span>/tmp_user/sator/jcoulet/opt/maia
+<span class="nb">export</span> <span class="nv">LD_LIBRARY_PATH</span><span class="o">=</span><span class="nv">$MAIA_HOME</span>/lib:<span class="nv">$LD_LIBRARY_PATH</span>
+<span class="nb">export</span> <span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$MAIA_HOME</span>/lib/python3.8/site-packages:<span class="nv">$PYTHONPATH</span>
+</pre></div>
+</div>
+<p>If you prefer to build your own version of Maia, see <a class="reference internal" href="installation.html#installation"><span class="std std-ref">Installation</span></a> section.</p>
+</div>
+<div class="section" id="supported-meshes">
+<h2>Supported meshes<a class="headerlink" href="#supported-meshes" title="Permalink to this headline">¶</a></h2>
+<p>Maia supports CGNS meshes from version 4.2, meaning that polyhedral connectivities (NGON_n, NFACE_n
+and MIXED nodes) must have the <code class="docutils literal notranslate"><span class="pre">ElementStartOffset</span></code> node.</p>
+<p>Former meshes can be converted with the (sequential) maia_poly_old_to_new script included
+in the <code class="docutils literal notranslate"><span class="pre">$PATH</span></code> once the environment is loaded:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>$&gt; maia_poly_old_to_new mesh_file.hdf
+</pre></div>
+</div>
+<p>The opposite maia_poly_new_to_old script can be used to put back meshes
+in old conventions, insuring compatibility with legacy tools.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>CGNS databases should respect the <a class="reference external" href="https://cgns.github.io/CGNS_docs_current/sids/index.html">SIDS</a>.
+The most commonly observed non-compliant practices are:</p>
+<ul class="simple">
+<li><p>Empty <code class="docutils literal notranslate"><span class="pre">DataArray_t</span></code> (of size 0) under <code class="docutils literal notranslate"><span class="pre">FlowSolution_t</span></code> containers.</p></li>
+<li><p>2D shaped (N1,N2) <code class="docutils literal notranslate"><span class="pre">DataArray_t</span></code> under <code class="docutils literal notranslate"><span class="pre">BCData_t</span></code> containers.
+These arrays should be flat (N1xN2,).</p></li>
+<li><p>Implicit <code class="docutils literal notranslate"><span class="pre">BCDataSet_t</span></code> location for structured meshes: if <code class="docutils literal notranslate"><span class="pre">GridLocation_t</span></code>
+and <code class="docutils literal notranslate"><span class="pre">PointRange_t</span></code> of a given <code class="docutils literal notranslate"><span class="pre">BCDataSet_t</span></code> differs from the
+parent <code class="docutils literal notranslate"><span class="pre">BC_t</span></code> node, theses nodes should be explicitly defined at <code class="docutils literal notranslate"><span class="pre">BCDataSet_t</span></code>
+level.</p></li>
+</ul>
+<p>Several non-compliant practices can be detected with the <code class="docutils literal notranslate"><span class="pre">cgnscheck</span></code> utility. Do not hesitate
+to check your file if Maia is unable to read it.</p>
+</div>
+<p>Note also that ADF files are not supported; CGNS files should use the HDF binary format. ADF files can
+be converted to HDF thanks to <code class="docutils literal notranslate"><span class="pre">cgnsconvert</span></code>.</p>
+</div>
+<div class="section" id="highlights">
+<h2>Highlights<a class="headerlink" href="#highlights" title="Permalink to this headline">¶</a></h2>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Download sample files of this section:
+<a class="reference download internal" download="" href="_downloads/1ed8318e8901b7e753ee4b97343fad2d/S_twoblocks.cgns"><code class="xref download docutils literal notranslate"><span class="pre">S_twoblocks.cgns</span></code></a>,
+<a class="reference download internal" download="" href="_downloads/26be40da44a755a9b14f190564484749/U_ATB_45.cgns"><code class="xref download docutils literal notranslate"><span class="pre">U_ATB_45.cgns</span></code></a></p>
+</div>
+<p class="rubric">Daily user-friendly pre &amp; post processing</p>
+<p>Maia provides simple Python APIs to easily setup pre or post processing operations:
+for example, converting a structured tree into an unstructured (NGon) tree
+is as simple as</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span>   <span class="nn">mpi4py.MPI</span> <span class="kn">import</span> <span class="n">COMM_WORLD</span> <span class="k">as</span> <span class="n">comm</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+
+<span class="n">tree_s</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="s1">&#39;S_twoblocks.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">tree_u</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_s_to_ngon</span><span class="p">(</span><span class="n">tree_s</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">dist_tree_to_file</span><span class="p">(</span><span class="n">tree_u</span><span class="p">,</span> <span class="s1">&#39;U_twoblocks.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+<a class="reference internal image-reference" href="_images/qs_basic.png"><img alt="_images/qs_basic.png" class="align-center" src="_images/qs_basic.png" style="width: 75%;" /></a>
+<p>In addition of being parallel, the algorithms are as much as possible topologic, meaning that
+they do not rely on a geometric tolerance. This also allow us to preserve the boundary groups
+included in the input mesh (colored on the above picture).</p>
+<p class="rubric">Building efficient workflows</p>
+<p>By chaining this elementary blocks, you can build a <strong>fully parallel</strong> advanced workflow
+running as a <strong>single job</strong> and <strong>minimizing file usage</strong>.</p>
+<p>In the following example, we load an angular section of the
+<a class="reference external" href="https://turbmodels.larc.nasa.gov/axibump_val.html">ATB case</a>,
+duplicate it to a 180° case, split it, and perform some slices and extractions.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span>   <span class="nn">mpi4py.MPI</span> <span class="kn">import</span> <span class="n">COMM_WORLD</span> <span class="k">as</span> <span class="n">comm</span>
+<span class="kn">import</span> <span class="nn">maia.pytree</span> <span class="k">as</span> <span class="nn">PT</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+
+<span class="c1"># Read the file. Tree is distributed</span>
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="s1">&#39;U_ATB_45.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="c1"># Duplicate the section to a 180° mesh</span>
+<span class="c1"># and merge all the blocks into one</span>
+<span class="n">opposite_jns</span> <span class="o">=</span> <span class="p">[[</span><span class="s1">&#39;Base/bump_45/ZoneGridConnectivity/matchA&#39;</span><span class="p">],</span>
+                <span class="p">[</span><span class="s1">&#39;Base/bump_45/ZoneGridConnectivity/matchB&#39;</span><span class="p">]]</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">duplicate_from_periodic_jns</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span>
+    <span class="p">[</span><span class="s1">&#39;Base/bump_45&#39;</span><span class="p">],</span> <span class="n">opposite_jns</span><span class="p">,</span> <span class="mi">22</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">merge_connected_zones</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="c1"># Split the mesh to have a partitioned tree</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="c1"># Create a ZSR as well</span>
+<span class="k">for</span> <span class="n">part_zone</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">part_tree</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name_and_label</span><span class="p">(</span><span class="n">part_zone</span><span class="p">,</span> <span class="s1">&#39;wall&#39;</span><span class="p">,</span> <span class="s1">&#39;BC_t&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">PT</span><span class="o">.</span><span class="n">new_ZoneSubRegion</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;ZSRWall&#39;</span><span class="p">,</span> <span class="n">bc_name</span><span class="o">=</span><span class="s1">&#39;wall&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">part_zone</span><span class="p">)</span>
+
+<span class="c1"># Now we can call some partitioned algorithms</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_wall_distance</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> 
+    <span class="n">families</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;WALL&#39;</span><span class="p">],</span> <span class="n">point_cloud</span><span class="o">=</span><span class="s1">&#39;Vertex&#39;</span><span class="p">)</span>
+<span class="n">extract_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">extract_part_from_zsr</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="s2">&quot;ZSRWall&quot;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">slice_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">plane_slice</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">comm</span><span class="p">,</span>
+      <span class="n">containers_name</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;WallDistance&#39;</span><span class="p">])</span>
+
+<span class="c1"># Merge extractions in a same tree in order to save it</span>
+<span class="n">base</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_child_from_label</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="s1">&#39;CGNSBase_t&#39;</span><span class="p">)</span>
+<span class="n">PT</span><span class="o">.</span><span class="n">set_name</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;PlaneSlice&#39;</span><span class="p">)</span>
+<span class="n">PT</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">extract_tree</span><span class="p">,</span> <span class="n">base</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">pe_to_nface</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span><span class="n">comm</span><span class="p">)</span>
+
+<span class="n">extract_tree_dist</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">recover_dist_tree</span><span class="p">(</span><span class="n">extract_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">dist_tree_to_file</span><span class="p">(</span><span class="n">extract_tree_dist</span><span class="p">,</span> <span class="s1">&#39;ATB_extract.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/qs_workflow.png" src="_images/qs_workflow.png" />
+<p>The above illustration represents the input mesh (gray volumic block) and the
+extracted surfacic tree (plane slice and extracted wall BC). Curved lines are
+the outline of the volumic mesh after duplication.</p>
+<p class="rubric">Compliant with the pyCGNS world</p>
+<p>Finally, since Maia uses the standard <a class="reference external" href="https://cgns.github.io/CGNS_docs_current/python/sidstopython.pdf">CGNS/Python mapping</a>,
+you can set up applications involving multiple python packages:
+here, we create and split a mesh with maia, but we then call Cassiopee functions
+to compute the gradient of a field on each partition.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span>   <span class="nn">mpi4py.MPI</span> <span class="kn">import</span> <span class="n">COMM_WORLD</span> <span class="k">as</span> <span class="n">comm</span>
+<span class="kn">import</span> <span class="nn">maia</span>
+<span class="kn">import</span> <span class="nn">Transform.PyTree</span> <span class="k">as</span> <span class="nn">CTransform</span>
+<span class="kn">import</span> <span class="nn">Converter.PyTree</span> <span class="k">as</span> <span class="nn">CConverter</span>
+<span class="kn">import</span> <span class="nn">Post.PyTree</span>      <span class="k">as</span> <span class="nn">CPost</span>
+
+<span class="n">dist_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">generate_dist_block</span><span class="p">([</span><span class="mi">101</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">],</span> <span class="s1">&#39;TETRA_4&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">CTransform</span><span class="o">.</span><span class="n">_scale</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">X</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="n">CConverter</span><span class="o">.</span><span class="n">_initVars</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">{Field}</span><span class="s1">=sin({nodes:CoordinateX})&#39;</span><span class="p">)</span>
+<span class="n">part_tree</span> <span class="o">=</span> <span class="n">CPost</span><span class="o">.</span><span class="n">computeGrad</span><span class="p">(</span><span class="n">part_tree</span><span class="p">,</span> <span class="s1">&#39;Field&#39;</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">transfer</span><span class="o">.</span><span class="n">part_tree_to_dist_tree_all</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="n">part_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">dist_tree_to_file</span><span class="p">(</span><span class="n">dist_tree</span><span class="p">,</span> <span class="s1">&#39;out.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+<img alt="_images/qs_pycgns.png" src="_images/qs_pycgns.png" />
+<p>Be aware that other tools often expect to receive geometrically
+consistent data, which is why we send the partitioned tree to
+Cassiopee functions. The outline of this partitions (using 4 processes)
+are materialized by the white lines on the above figure.</p>
+</div>
+<div class="section" id="resources-and-troubleshouting">
+<h2>Resources and Troubleshouting<a class="headerlink" href="#resources-and-troubleshouting" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference internal" href="user_manual/user_manual.html#user-manual"><span class="std std-ref">user manual</span></a> describes most of the high level APIs provided by Maia.
+If you want to be comfortable with the underlying concepts of distributed and
+partitioned trees, have a look at the <a class="reference internal" href="introduction/introduction.html#intro"><span class="std std-ref">introduction</span></a> section.</p>
+<p>The user manual is illustrated with basic examples. Additional
+test cases can be found in
+<a class="reference external" href="https://gitlab.onera.net/numerics/mesh/maia/-/tree/dev/test">the sources</a>.</p>
+<p>Issues can be reported on
+<a class="reference external" href="https://gitlab.onera.net/numerics/mesh/maia/-/issues">the gitlab board</a>
+and help can also be asked on the dedicated
+<a class="reference external" href="https://synapse.onera.fr/#/room/!OcgyjrTUlihJWTYWbq:synapse.onera.fr?via=synapse.onera.fr">Element room</a>.</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to Maia!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.0
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
