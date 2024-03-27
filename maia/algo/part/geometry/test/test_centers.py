@@ -43,6 +43,36 @@ def test_compute_cell_center(comm):
   cell_center = centers.compute_cell_center(zoneS)
   assert (cell_center == expected_cell_center).all()
 
+  #TestU cylindrical
+  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+  tree = maia.factory.partition_dist_tree(tree, comm)
+  maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
+  zoneU = PT.get_all_Zone_t(tree)[0]
+  expected = [0.4267767 , 0.58904862, 0.25, 
+              0.83128519, 0.31226144, 0.75,
+              0.83128519, 1.25853488, 0.75,
+              1.08934708, 0.78539816, 0.25,
+              0.4267767 , 0.58904862, 0.75,
+              0.83128519, 0.31226144, 0.25,
+              0.83128519, 1.25853488, 0.25,
+              1.08934708, 0.78539816, 0.75]
+  assert np.allclose(centers.compute_cell_center(zoneU), expected)
+
+  #TestS cylindrical
+  tree = maia.factory.generate_dist_block(3, 'S', comm)
+  tree = maia.factory.partition_dist_tree(tree, comm)
+  maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
+  zoneS = PT.get_all_Zone_t(tree)[0]
+  expected = np.array([0.35355339, 0.78539816, 0.25,
+                       0.79056942, 0.32175055, 0.25,
+                       0.79056942, 1.24904577, 0.25,
+                       1.06066017, 0.78539816, 0.25,
+                       0.35355339, 0.78539816, 0.75,
+                       0.79056942, 0.32175055, 0.75, 
+                       0.79056942, 1.24904577, 0.75,
+                       1.06066017, 0.78539816, 0.75])
+  assert np.allclose(centers.compute_cell_center(zoneS), expected)
+
   #Test Elts
   tree = maia.factory.generate_dist_block(3, 'HEXA_8', comm)
   zoneU = PT.get_all_Zone_t(tree)[0]
@@ -90,6 +120,41 @@ def test_compute_face_center_3d(comm):
      0.25,0.75,0.5 , 0.75,0.75,0.5 , 0.25,0.25,1.  ,
      0.75,0.25,1.  , 0.25,0.75,1.  , 0.75,0.75,1.  ]) # End of KFaces
   assert np.array_equal(centers.compute_face_center(zone), expected)
+  
+  # Test structured in cylindrical coordinates
+  maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
+  expected = np.array([0.25      , 0.78539816, 0.25, 0.60355339, 0.39269908, 0.25, 1.05901699, 0.2318238 , 0.25, 
+                       0.75      , 1.57079633, 0.25, 0.91257038, 0.94627344, 0.25, 1.26612378, 0.62452289, 0.25, 
+                       0.25      , 0.78539816, 0.75, 0.60355339, 0.39269908, 0.75, 1.05901699, 0.2318238 , 0.75, 
+                       0.75      , 1.57079633, 0.75, 0.91257038, 0.94627344, 0.75, 1.26612378, 0.62452289, 0.75, # End of IFace
+                       0.25      , 0.        , 0.25, 0.75      , 0.        , 0.25, 0.60355339, 1.17809725, 0.25, 
+                       0.91257038, 0.62452289, 0.25, 1.05901699, 1.33897252, 0.25, 1.26612378, 0.94627344, 0.25, 
+                       0.25      , 0.        , 0.75, 0.75      , 0.        , 0.75, 0.60355339, 1.17809725, 0.75,
+                       0.91257038, 0.62452289, 0.75, 1.05901699, 1.33897252, 0.75, 1.26612378, 0.94627344, 0.75, # End of JFace
+                       0.4267767 , 0.58904862, 0.  , 0.83128519, 0.31226144, 0.  , 0.83128519, 1.25853488, 0.  , 
+                       1.08934708, 0.78539816, 0.  , 0.4267767 , 0.58904862, 0.5 , 0.83128519, 0.31226144, 0.5 ,
+                       0.83128519, 1.25853488, 0.5 , 1.08934708, 0.78539816, 0.5 , 0.4267767 , 0.58904862, 1.  , 
+                       0.83128519, 0.31226144, 1.  , 0.83128519, 1.25853488, 1.  , 1.08934708, 0.78539816, 1.  ]) # End of KFaceCenter
+  assert np.allclose(centers.compute_face_center(zone), expected)
+
+  # Test unstructured in cylindrical coordinates
+  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+  tree = maia.factory.partition_dist_tree(tree, comm)
+  maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
+  zone = PT.get_all_Zone_t(tree)[0]
+  expected = [0.4267767 , 0.58904862, 0.  , 0.83128519, 0.31226144, 0.  , 0.83128519, 1.25853488, 0.  ,
+              1.08934708, 0.78539816, 0.  , 0.4267767 , 0.58904862, 0.5 , 0.83128519, 0.31226144, 0.5 , 
+              0.83128519, 1.25853488, 0.5 , 1.08934708, 0.78539816, 0.5 , 0.4267767 , 0.58904862, 1.  , 
+              0.83128519, 0.31226144, 1.  , 0.83128519, 1.25853488, 1.  , 1.08934708, 0.78539816, 1.  , 
+              0.25      , 0.78539816, 0.25, 0.75      , 1.57079633, 0.25, 0.25      , 0.78539816, 0.75,
+              0.75      , 1.57079633, 0.75, 0.60355339, 0.39269908, 0.25, 0.91257038, 0.94627344, 0.25, 
+              0.60355339, 0.39269908, 0.75, 0.91257038, 0.94627344, 0.75, 1.05901699, 0.2318238 , 0.25, 
+              1.26612378, 0.62452289, 0.25, 1.05901699, 0.2318238 , 0.75, 1.26612378, 0.62452289, 0.75, 
+              0.25      , 0.        , 0.25, 0.25      , 0.        , 0.75, 0.75      , 0.        , 0.25,
+              0.75      , 0.        , 0.75, 0.60355339, 1.17809725, 0.25, 0.60355339, 1.17809725, 0.75,
+              0.91257038, 0.62452289, 0.25, 0.91257038, 0.62452289, 0.75, 1.05901699, 1.33897252, 0.25,
+              1.05901699, 1.33897252, 0.75, 1.26612378, 0.94627344, 0.25, 1.26612378, 0.94627344, 0.75]  
+  assert np.allclose(centers.compute_face_center(zone), expected)
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(1)
