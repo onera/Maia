@@ -235,6 +235,88 @@ class Zone:
     return n_face
 
   @staticmethod
+  def IFaceSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+    """
+    Return the number of faces per direction of a structured Zone_t node
+
+    Args:
+      zone_node (CGNSTree): Input structured Zone_t node
+    Returns:
+      int or list of int : number of faces in each direction 
+      only for structured zones
+    Example:
+      >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
+      >>> PT.Zone.IFaceSize(zone)
+      [11, 5]
+    """
+
+    # Find face number
+    vtx_size  = Zone.VertexSize(zone_node)
+    cell_size = Zone.CellSize(zone_node)
+    if Zone.Type(zone_node) == "Structured":
+      dim = len(vtx_size)
+      n_iface = [vtx_size[0], cell_size[1]]
+      if dim == 3:
+        n_iface.append(cell_size[2])
+      return n_iface
+    else:
+      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
+    
+  def JFaceSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+    """
+    Return the number of faces per direction of a structured Zone_t node
+
+    Args:
+      zone_node (CGNSTree): Input structured Zone_t node
+    Returns:
+      int or list of int : number of faces in each direction 
+      only for structured zones
+    Example:
+      >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
+      >>> PT.Zone.IFaceSize(zone)
+      [6, 10]
+    """
+
+    # Find face number
+    vtx_size  = Zone.VertexSize(zone_node)
+    cell_size = Zone.CellSize(zone_node)
+    if Zone.Type(zone_node) == "Structured":
+      dim = len(vtx_size)
+      n_iface = [cell_size[0], vtx_size[1]]
+      if dim == 3:
+        n_iface.append(cell_size[2])
+      return n_iface
+    else:
+      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
+    
+  def KFaceSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+    """
+    Return the number of faces per direction of a structured Zone_t node
+
+    Args:
+      zone_node (CGNSTree): Input structured Zone_t node
+    Returns:
+      int or list of int : number of faces in each direction 
+      only for structured zones
+    Example:
+      >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
+      >>> PT.Zone.IFaceSize(zone)
+      [11, 10]
+    """
+
+    # Find face number
+    vtx_size  = Zone.VertexSize(zone_node)
+    cell_size = Zone.CellSize(zone_node)
+    if Zone.Type(zone_node) == "Structured":
+      dim = len(vtx_size)
+      n_iface = [cell_size[0], cell_size[1]]
+      if dim == 3:
+        n_iface.append(vtx_size[2])
+      return n_iface
+    else:
+      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
+
+  @staticmethod
   def NGonNode(zone_node:CGNSTree) -> CGNSTree:
     """Return the Element_t node of kind ``NGON_n`` of a Zone_t node
     
