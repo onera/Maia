@@ -1,5 +1,6 @@
 import numpy as np
 
+import maia
 import maia.pytree as PT
 from maia.utils import py_utils, np_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
@@ -8,8 +9,12 @@ from maia.utils import logging as mlog
 
 def _to_xyz(r, theta, z):
   return r*np.cos(theta), r*np.sin(theta), z
+def _to_xyz_vectors(vr, vtheta, vz, theta):
+  return vr*np.cos(theta)-vtheta*np.sin(theta), vtheta*np.cos(theta)+vr*np.sin(theta), vz
 def _to_rthetaz(x, y, z):
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
+def _to_rthetaz_vectors(vx, vy, vz, theta):
+  return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
 def transform_affine_zone(zone,
                           vtx_mask,
@@ -188,16 +193,32 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply
     if apply_to_fields:
       predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
 
+    n_face = PT.Zone.FaceSize(zone)
+    loc_to_theta  = {'CellCenter' : None, 'FaceCenter' : None, 'IFaceCenter' : None, 'JFaceCenter' : None, 'KFaceCenter' : None, 'Vertex' : None}
+    compute_theta = {'CellCenter'  : lambda z : maia.algo.part.compute_cell_center(z)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
+                     'FaceCenter'  : lambda z : maia.algo.part.compute_face_center(z)[1::3],
+                     'IFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][:n_face[0]].reshape(PT.Zone.IFaceSize(z), order='F'),
+                     'JFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[0]:n_face[1]+n_face[0]].reshape(PT.Zone.JFaceSize(z), order='F'),
+                     'KFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[1]+n_face[0]:].reshape(PT.Zone.KFaceSize(z), order='F'),
+                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1],}
+
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
+        if PT.get_label(container) != "GridCoordinates_t":
+          grid_loc_container = PT.Subset.GridLocation(container)
+          if loc_to_theta[grid_loc_container] is None:
+            loc_to_theta[grid_loc_container] = compute_theta[grid_loc_container](zone)
+          theta = loc_to_theta[grid_loc_container]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
         for basename in vectors_basenames:
-          
+
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
           ordered_fields = [fields_n[i] for i in idx_order]
-
-          cyl_values = _to_rthetaz(*[PT.get_value(n) for n in ordered_fields])
+          if basename == "Coordinate":
+            cyl_values = _to_rthetaz(*[PT.get_value(n) for n in ordered_fields])
+          else:
+            cyl_values = _to_rthetaz_vectors(*[PT.get_value(n) for n in ordered_fields], theta)
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
      
@@ -231,16 +252,33 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply
 
     predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
+      predicates += ['ZoneBC_t/BC_t/BCDataSet_t/BCData_t', 'ZoneSubRegion_t', 'DiscreteData_t', 'FlowSolution_t']
+      predicates = predicates[::-1]
 
+    n_face = PT.Zone.FaceSize(zone)
+    loc_to_theta  = {'CellCenter' : None, 'FaceCenter' : None, 'IFaceCenter' : None, 'JFaceCenter' : None, 'KFaceCenter' : None, 'Vertex' : None}
+    compute_theta = {'CellCenter'  : lambda z : maia.algo.part.compute_cell_center(z)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
+                     'FaceCenter'  : lambda z : maia.algo.part.compute_face_center(z)[1::3],
+                     'IFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][:n_face[0]].reshape(PT.Zone.IFaceSize(z), order='F'),
+                     'JFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[0]:n_face[1]+n_face[0]].reshape(PT.Zone.JFaceSize(z), order='F'),
+                     'KFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[1]+n_face[0]:].reshape(PT.Zone.KFaceSize(z), order='F'),
+                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1],}
+  
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
+        if PT.get_label(container) != "GridCoordinates_t":
+          grid_loc_container = PT.Subset.GridLocation(container)
+          if loc_to_theta[grid_loc_container] is None:
+            loc_to_theta[grid_loc_container] = compute_theta[grid_loc_container](zone)
+          theta = loc_to_theta[grid_loc_container]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
         for basename in cylindric_vectors_basenames:
-
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
-          cart_values = _to_xyz(*[PT.get_value(n) for n in fields_n])
+          if basename == "Coordinate":
+            cart_values = _to_xyz(*[PT.get_value(n) for n in fields_n])
+          else:
+            cart_values = _to_xyz_vectors(*[PT.get_value(n) for n in fields_n], theta)
 
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])

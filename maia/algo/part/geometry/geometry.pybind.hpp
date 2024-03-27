@@ -20,11 +20,25 @@ compute_center_cell_s(int nx, int ny, int nz,
 
 // --------------------------------------------------------------------
 pybind11::array_t<double>
+compute_center_cell_s_cyl(int nx, int ny, int nz,
+                          pybind11::array_t<double, pybind11::array::f_style>& np_cx,
+                          pybind11::array_t<double, pybind11::array::f_style>& np_cy,
+                          pybind11::array_t<double, pybind11::array::f_style>& np_cz);
+
+// --------------------------------------------------------------------
+pybind11::array_t<double>
 compute_center_face_s(int nx, int ny, int nz,
                       pybind11::array_t<double, pybind11::array::f_style>& np_cx,
                       pybind11::array_t<double, pybind11::array::f_style>& np_cy,
                       pybind11::array_t<double, pybind11::array::f_style>& np_cz);
 
+// --------------------------------------------------------------------
+pybind11::array_t<double, pybind11::array::f_style>
+compute_center_face_s_cyl(int nx, int ny, int nz,
+                          pybind11::array_t<double, pybind11::array::f_style>& np_cx,
+                          pybind11::array_t<double, pybind11::array::f_style>& np_cy,
+                          pybind11::array_t<double, pybind11::array::f_style>& np_cz);
+    
 // --------------------------------------------------------------------
 pybind11::array_t<double>
 compute_face_normal_u(pybind11::array_t<int   >& np_face_vtx_idx,

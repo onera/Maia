@@ -79,8 +79,8 @@ def compute_face_normal(zone, comm):
     face_normal (array): Flat (interlaced) numpy array of face normal
 
   """
-  cx, cy, cz  = PT.Zone.coordinates(zone)
-  dist_coords = {'CoordinateX' : cx, 'CoordinateY': cy, 'CoordinateZ': cz}
+  coords = PT.Zone.coordinates(zone)
+  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
   if PT.Zone.Type(zone) == "Unstructured":
@@ -91,7 +91,7 @@ def compute_face_normal(zone, comm):
       np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
       part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
-      coords = [part_data[f'Coordinate{key}'][0] for key in ['X', 'Y', 'Z']]
+      coords = [part_data[key][0] for key in part_data.keys()]
 
       return cpart_algo.compute_face_normal_u(_face_vtx_idx, *coords)
   raise NotImplementedError("Only NGON zones are managed")
@@ -110,8 +110,8 @@ def compute_face_center(zone, comm):
     face_normal (array): Flat (interlaced) numpy array of face centers
 
   """
-  cx, cy, cz  = PT.Zone.coordinates(zone)
-  dist_coords = {'CoordinateX' : cx, 'CoordinateY': cy, 'CoordinateZ': cz}
+  coords = PT.Zone.coordinates(zone)
+  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
   if PT.Zone.Type(zone) == "Unstructured":
@@ -122,7 +122,7 @@ def compute_face_center(zone, comm):
       np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
       part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
-      coords = [part_data[f'Coordinate{key}'][0] for key in ['X', 'Y', 'Z']]
+      coords = [part_data[key][0] for key in part_data.keys()]
 
       return _mean_coords_from_connectivity(_face_vtx_idx, *coords)
   raise NotImplementedError("Only NGON zones are managed")
@@ -134,11 +134,11 @@ def compute_cell_center(zone, comm):
 
   cell_vtx_idx, cell_vtx = _cell_vtx_connectivity(zone, comm)
 
-  cx, cy, cz  = PT.Zone.coordinates(zone)
-  dist_coords = {'CoordinateX' : cx, 'CoordinateY': cy, 'CoordinateZ': cz}
+  coords = PT.Zone.coordinates(zone)
+  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
   part_data = EP.block_to_part(dist_coords, vtx_distri, [cell_vtx], comm)
-  coords = [part_data[f'Coordinate{key}'][0] for key in ['X', 'Y', 'Z']]
+  coords = [part_data[key][0] for key in part_data.keys()]
 
   return _mean_coords_from_connectivity(cell_vtx_idx, *coords)

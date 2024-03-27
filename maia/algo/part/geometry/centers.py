@@ -34,18 +34,21 @@ def compute_cell_center(zone):
         :end-before: #compute_cell_center@end
         :dedent: 2
   """
-  cx, cy, cz = PT.Zone.coordinates(zone)
+  coords = PT.Zone.coordinates(zone)
 
   if PT.Zone.Type(zone) == "Unstructured":
     n_cell     = PT.Zone.n_cell(zone)
     if PT.Zone.has_ngon_elements(zone):
       face_vtx_idx, face_vtx, ngon_pe = PT.Zone.ngon_connectivity(zone)
-      center_cell = cpart_algo.compute_center_cell_u(n_cell, cx, cy, cz, face_vtx, face_vtx_idx, ngon_pe)
+      center_cell = cpart_algo.compute_center_cell_u(n_cell, *coords, face_vtx, face_vtx_idx, ngon_pe)
     else:
       cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone)
-      center_cell = _mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx, cy, cz)
+      center_cell = _mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, *coords)
   else:
-    center_cell = cpart_algo.compute_center_cell_s(*PT.Zone.CellSize(zone), cx, cy, cz)
+    if isinstance(coords, PT.CylindricalCoordinates):
+      center_cell = cpart_algo.compute_center_cell_s_cyl(*PT.Zone.CellSize(zone), *coords)
+    elif isinstance(coords, PT.CartesianCoordinates):
+      center_cell = cpart_algo.compute_center_cell_s(*PT.Zone.CellSize(zone), *coords)
 
   return center_cell
 
@@ -72,7 +75,7 @@ def compute_face_center(zone):
         :end-before: #compute_face_center@end
         :dedent: 2
   """
-  cx, cy, cz = PT.Zone.coordinates(zone)
+  coords = PT.Zone.coordinates(zone)
 
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone):
@@ -81,7 +84,7 @@ def compute_face_center(zone):
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
     else:
       face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
-    return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, cx, cy, cz)
+    return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *coords)
   else:
     zone_dim = PT.get_value(zone).shape[0]
     assert zone_dim >= 2, "1d zones are not managed"
@@ -89,13 +92,17 @@ def compute_face_center(zone):
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
     # Create cz if zone_dim == 2 & cz is None
     remove_z = False
-    if zone_dim == 2 and cz is None:
-      cz = np.zeros(vtx_size, dtype=float, order='F')
+    _cx = np.atleast_3d(coords[0]) # Auto expand arrays if zone_dim == 2
+    _cy = np.atleast_3d(coords[1])
+    if zone_dim == 2 and coords[2] is None:
+      _cz = np.zeros(vtx_size, dtype=float, order='F')
       remove_z = True
-    _cx = np.atleast_3d(cx) # Auto expand arrays if zone_dim == 2
-    _cy = np.atleast_3d(cy)
-    _cz = np.atleast_3d(cz)
-    centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
+    else:
+      _cz = np.atleast_3d(coords[2])
+    if isinstance(coords, PT.CylindricalCoordinates):
+      centers = cpart_algo.compute_center_face_s_cyl(*vtx_size, _cx, _cy, _cz)
+    elif isinstance(coords, PT.CartesianCoordinates):
+      centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
     if remove_z:
         centers = np.delete(centers, 3*np.arange(centers.size // 3)+2)
 
@@ -122,10 +129,10 @@ def compute_edge_center(zone):
         :end-before: #compute_edge_center@end
         :dedent: 2
   """
-  cx, cy, cz = PT.Zone.coordinates(zone)
+  coords = PT.Zone.coordinates(zone)
 
   if PT.Zone.Type(zone) == "Unstructured":
     edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
-    return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, cx, cy, cz)
+    return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, *coords)
   else:
     raise NotImplementedError("Only U-elts zones are managed")

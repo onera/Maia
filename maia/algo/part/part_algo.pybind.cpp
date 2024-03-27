@@ -133,7 +133,23 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("np_cy").noconvert(),
         py::arg("np_cz").noconvert());
 
+  m.def("compute_center_cell_s_cyl", &compute_center_cell_s_cyl,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert());
+
   m.def("compute_center_face_s", &compute_center_face_s,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert());
+  
+  m.def("compute_center_face_s_cyl", &compute_center_face_s,
         py::arg("nx").noconvert(),
         py::arg("ny").noconvert(),
         py::arg("nz").noconvert(),

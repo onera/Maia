@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include "std_e/algorithm/permutation.hpp"
+#include <math.h> 
 
 namespace py = pybind11;
 
@@ -131,6 +132,42 @@ compute_center_cell_s(int nx, int ny, int nz,
 
   return np_center;
 }
+
+// --------------------------------------------------------------------
+py::array_t<double>
+compute_center_cell_s_cyl(int nx, int ny, int nz,
+                          py::array_t<double, py::array::f_style>& np_r,
+                          py::array_t<double, py::array::f_style>& np_theta,
+                          py::array_t<double, py::array::f_style>& np_z)
+{
+
+  auto cr     = np_r.mutable_unchecked<3>();
+  auto ctheta = np_theta.mutable_unchecked<3>();
+  auto cz     = np_z.mutable_unchecked<3>();
+
+  py::array_t<double, py::array::f_style> np_center(3*nx*ny*nz);
+  auto center = np_center.mutable_data();
+
+  int idx = 0;
+  for(int k = 0; k < nz; ++k) {
+    for(int j = 0; j < ny; ++j) {
+      for(int i = 0; i < nx; ++i) {
+        double y = cr(i  ,j,k) * sin(ctheta(i  ,j,k)) + cr(i  ,j+1,k) * sin(ctheta(i  ,j+1,k)) + cr(i  ,j+1,k+1) * sin(ctheta(i  ,j+1,k+1)) + cr(i  ,j,k+1) * sin(ctheta(i  ,j,k+1)) 
+                 + cr(i+1,j,k) * sin(ctheta(i+1,j,k)) + cr(i+1,j+1,k) * sin(ctheta(i+1,j+1,k)) + cr(i+1,j+1,k+1) * sin(ctheta(i+1,j+1,k+1)) + cr(i+1,j,k+1) * sin(ctheta(i+1,j,k+1));
+        double x = cr(i  ,j,k) * cos(ctheta(i  ,j,k)) + cr(i  ,j+1,k) * cos(ctheta(i  ,j+1,k)) + cr(i  ,j+1,k+1) * cos(ctheta(i  ,j+1,k+1)) + cr(i  ,j,k+1) * cos(ctheta(i  ,j,k+1)) 
+                 + cr(i+1,j,k) * cos(ctheta(i+1,j,k)) + cr(i+1,j+1,k) * cos(ctheta(i+1,j+1,k)) + cr(i+1,j+1,k+1) * cos(ctheta(i+1,j+1,k+1)) + cr(i+1,j,k+1) * cos(ctheta(i+1,j,k+1)); 
+        center[3*idx+0] = 0.125*sqrt(pow(x, 2) + pow(y, 2));                         
+        center[3*idx+1] = atan2(y,x);                            
+        center[3*idx+2] = 0.125*(cz(i  ,j,k) + cz(i  ,j+1,k) + cz(i  ,j+1,k+1) + cz(i  ,j,k+1)
+                               + cz(i+1,j,k) + cz(i+1,j+1,k) + cz(i+1,j+1,k+1) + cz(i+1,j,k+1));
+        idx++;
+      }
+    }
+  }
+
+  return np_center;
+}
+
 // --------------------------------------------------------------------
 py::array_t<double>
 compute_center_face_s(int nx, int ny, int nz,
@@ -174,6 +211,63 @@ compute_center_face_s(int nx, int ny, int nz,
       for(int i = 0; i < nx-1; ++i) {
         center[3*idx+0] = 0.250 * (cx(i, j, k) + cx(i+1, j, k) + cx(i, j+1, k) + cx(i+1, j+1, k));
         center[3*idx+1] = 0.250 * (cy(i, j, k) + cy(i+1, j, k) + cy(i, j+1, k) + cy(i+1, j+1, k));
+        center[3*idx+2] = 0.250 * (cz(i, j, k) + cz(i+1, j, k) + cz(i, j+1, k) + cz(i+1, j+1, k));
+        idx++;
+      }
+    }
+  }
+  return np_center;
+}
+
+// --------------------------------------------------------------------
+py::array_t<double, py::array::f_style>
+compute_center_face_s_cyl(int nx, int ny, int nz,
+                          py::array_t<double, py::array::f_style>& np_cr,
+                          py::array_t<double, py::array::f_style>& np_ctheta,
+                          py::array_t<double, py::array::f_style>& np_cz)
+{
+
+  auto cr     = np_cr.mutable_unchecked<3>();
+  auto ctheta = np_ctheta.mutable_unchecked<3>();
+  auto cz     = np_cz.mutable_unchecked<3>();
+
+  int n_face_tot = (nz - 1)*(nx - 1)*ny + (nz - 1)*(ny - 1)*nx + nz*(ny - 1)*(nx - 1); // A CHANGER
+
+  py::array_t<double, py::array::f_style> np_center(3*n_face_tot);
+  auto center = np_center.mutable_data();
+
+  int idx = 0;
+  for(int k = 0; k < nz-1; ++k) {
+    for(int j = 0; j < ny-1; ++j) {
+      for(int i = 0; i < nx; ++i) {
+        double y = cr(i, j, k) * sin(ctheta(i, j, k)) + cr(i, j+1, k) * sin(ctheta(i, j+1, k)) + cr(i, j, k+1) * sin(ctheta(i, j, k+1)) + cr(i, j+1, k+1) * sin(ctheta(i, j+1, k+1));
+        double x = cr(i, j, k) * cos(ctheta(i, j, k)) + cr(i, j+1, k) * cos(ctheta(i, j+1, k)) + cr(i, j, k+1) * cos(ctheta(i, j, k+1)) + cr(i, j+1, k+1) * cos(ctheta(i, j+1, k+1));
+        center[3*idx+0] = 0.250 * sqrt(pow(x, 2) + pow(y, 2));
+        center[3*idx+1] = atan2(y,x);
+        center[3*idx+2] = 0.250 * ((cz(i, j, k) + cz(i, j+1, k) + cz(i, j, k+1) + cz(i, j+1, k+1)));
+        idx++;
+      }
+    }
+  };
+  for(int k = 0; k < nz-1; ++k) {
+    for(int j = 0; j < ny; ++j) {
+      for(int i = 0; i < nx-1; ++i) {
+        double y = cr(i, j, k) * sin(ctheta(i, j, k)) + cr(i+1, j, k) * sin(ctheta(i+1, j, k)) + cr(i, j, k+1) * sin(ctheta(i, j, k+1)) + cr(i+1, j, k+1) * sin(ctheta(i+1, j, k+1));
+        double x = cr(i, j, k) * cos(ctheta(i, j, k)) + cr(i+1, j, k) * cos(ctheta(i+1, j, k)) + cr(i, j, k+1) * cos(ctheta(i, j, k+1)) + cr(i+1, j, k+1) * cos(ctheta(i+1, j, k+1));
+        center[3*idx+0] = 0.250 * sqrt(pow(x, 2) + pow(y, 2));
+        center[3*idx+1] = atan2(y,x);
+        center[3*idx+2] = 0.250 * ((cz(i, j, k) + cz(i+1, j, k) + cz(i, j, k+1) + cz(i+1, j, k+1)));
+        idx++;
+      }
+    }
+  };
+  for(int k = 0; k < nz; ++k) {
+    for(int j = 0; j < ny-1; ++j) {
+      for(int i = 0; i < nx-1; ++i) {
+        double y = cr(i, j, k) * sin(ctheta(i, j, k)) + cr(i+1, j, k) * sin(ctheta(i+1, j, k)) + cr(i, j+1, k) * sin(ctheta(i, j+1, k)) + cr(i+1, j+1, k) * sin(ctheta(i+1, j+1, k));
+        double x = cr(i, j, k) * cos(ctheta(i, j, k)) + cr(i+1, j, k) * cos(ctheta(i+1, j, k)) + cr(i, j+1, k) * cos(ctheta(i, j+1, k)) + cr(i+1, j+1, k) * cos(ctheta(i+1, j+1, k));
+        center[3*idx+0] = 0.250 * sqrt(pow(x, 2) + pow(y, 2));
+        center[3*idx+1] = atan2(y,x);
         center[3*idx+2] = 0.250 * (cz(i, j, k) + cz(i+1, j, k) + cz(i, j+1, k) + cz(i+1, j+1, k));
         idx++;
       }
