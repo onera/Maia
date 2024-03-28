@@ -234,10 +234,15 @@ def test_zone_s_size():
 
   assert np.all(SIDS.Zone.VertexSize(zone_s) == [10,5,2])
   assert np.all(SIDS.Zone.CellSize(zone_s) == [9,4,1])
+  assert np.all(SIDS.Zone.FaceSize(zone_s) == [10*(5-1)*(2-1), (10-1)*5*(2-1), (10-1)*(5-1)*2]) # [10*4*1, 9*5*1, 9*4*2]
+  assert np.all(SIDS.Zone.IFaceSize(zone_s) == [10, (5-1), (2-1)]) # [10, 4, 1]
+  assert np.all(SIDS.Zone.JFaceSize(zone_s) == [(10-1), 5, (2-1)]) # [9, 5, 1]
+  assert np.all(SIDS.Zone.KFaceSize(zone_s) == [(10-1), (5-1), 2]) # [9, 4, 2]
   assert np.all(SIDS.Zone.VertexBoundarySize(zone_s) == [0,0,0])
 
   assert SIDS.Zone.n_vtx(zone_s) == 10*5*2
   assert SIDS.Zone.n_cell(zone_s) == 9*4*1
+  assert SIDS.Zone.n_face(zone_s) == 10*(5-1)*(2-1) + (10-1)*5*(2-1) + (10-1)*(5-1)*2 # 10*9*1 + 9*5*1 + 9*4*2
   assert SIDS.Zone.n_vtx_bnd(zone_s) == 0
 
 def test_get_ordered_elements():
