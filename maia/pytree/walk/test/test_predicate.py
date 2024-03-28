@@ -49,14 +49,15 @@ ZoneBC ZoneBC_t:
       FamilyName FamilyName_t "FirstFamily":
   BC4 BC_t:
     FamilyName FamilyName_t "SecondFamily":
-    AdditionalFamilyName AdditionalFamilyName_t "ThirdFamily":
-    AdditionalFamilyName AdditionalFamilyName_t "FirstFamily":
+    AdditionalFamilyName1 AdditionalFamilyName_t "ThirdFamily":
+    AdditionalFamilyName2 AdditionalFamilyName_t "FirstFamily":
 """
   node = parse_yaml_cgns.to_node(yt)
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC1'), 'SecondFamily')  == True
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC3'), 'FirstFamily') == False
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily') == False
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
+  assert P.belongs_to_family(W.get_node_from_path(node, 'BC1/FamilyName'), 'SecondFamily') == False
 
  
 def test_auto_predicate():

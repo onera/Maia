@@ -47,11 +47,11 @@ def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
   whose value is target_family
   """
   from .walkers_api import get_node_from_predicate, iter_nodes_from_predicate
-  family_name_n = get_node_from_predicate(n, 'FamilyName_t', depth=1)
+  family_name_n = get_node_from_predicate(n, 'FamilyName_t', depth=[1,1])
   if family_name_n and N.get_value(family_name_n) == target_family:
     return True
   if allow_additional:
-    for additional_family_n in iter_nodes_from_predicate(n, 'AdditionalFamilyName_t', depth=1):
+    for additional_family_n in iter_nodes_from_predicate(n, 'AdditionalFamilyName_t', depth=[1,1]):
       if N.get_value(additional_family_n) == target_family:
         return True
   return False
