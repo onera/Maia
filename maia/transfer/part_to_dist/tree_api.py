@@ -1,15 +1,14 @@
-import maia
 import maia.pytree as PT
-from maia.transfer import utils as TEU
 
 import maia.transfer as TE
 from . import data_exchange
-from maia.factory.dist_from_part import _recover_base_iterative_data
+from maia.factory.dist_from_part import _recover_base_iterative_data, discover_nodes_from_matching
 
 __all__ = ['part_zones_to_dist_zone_only',
            'part_zones_to_dist_zone_all',
            'part_tree_to_dist_tree_only_labels',
-           'part_tree_to_dist_tree_all']
+           'part_tree_to_dist_tree_all',
+           'part_tree_to_dist_tree_node_copy']
 
 #Managed labels and corresponding funcs
 LABELS = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
@@ -72,17 +71,25 @@ def part_tree_to_dist_tree_all(dist_tree, part_tree, comm):
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
 
-def recover_UDData_from_part_to_dist(dist_tree, part_tree, comm, ud_predicate=[]):
+def part_tree_to_dist_tree_node_copy(dist_tree, part_tree, comm, ud_predicate):
   """ Transfer nodes from a predicate and partitioned tree
   to the corresponding distributed tree.
   """
-  if ud_predicate[1] == 'Family_t':
-      base_name = ud_predicate[0]
-      dist_base = PT.get_child_from_label(dist_tree, base_name)
-      part_base = PT.get_child_from_label(part_tree, base_name)
-      maia.factory.dist_from_part.discover_nodes_from_matching(dist_base, [part_base], ud_predicate[1:], comm, child_list=['DataArray_t'], get_value='all')
-  elif ud_predicate[1] == 'Zone_t':
-      for zone_path in PT.predicates_to_paths(dist_tree, ud_predicate[:2]):
-          dist_zone = PT.get_node_from_path(dist_tree, zone_path)
-          part_zones = TEU.get_partitioned_zones(part_tree, zone_path)
-          maia.factory.dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ud_predicate[2:], comm, child_list=['DataArray_t'], get_value='all')
+  # Capture start of predicate, because last node may not exist on dist tree
+  _ud_predicate = PT.path_head(ud_predicate) if isinstance(ud_predicate, str) else ud_predicate[:-1]
+  for path in PT.predicates_to_paths(dist_tree, _ud_predicate):
+    names = path.split('/')
+    if len(names) >= 2:
+      dist_root_path = f'{names[0]}/{names[1]}'
+      dist_root = PT.get_node_from_path(dist_tree, dist_root_path)
+      if PT.get_label(dist_root) == 'Zone_t':
+        # Deal zone (names differ on partitionned tree)
+        part_roots = TE.utils.get_partitioned_zones(part_tree, dist_root_path)
+      else:
+        # Deal others
+        part_root = PT.get_node_from_path(part_tree, dist_root_path)
+        part_roots = [] if part_root is None else [part_root]
+      _child_predicate = PT.path_tail(ud_predicate, 2) if isinstance(ud_predicate, str) else ud_predicate[2:]
+      discover_nodes_from_matching(dist_root, part_roots, _child_predicate, comm, child_list=['*'], get_value='leaf')
+    else:
+      pass # Should no append, because we can not transer data not attached to a Base

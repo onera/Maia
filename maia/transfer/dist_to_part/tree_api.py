@@ -1,5 +1,4 @@
-import maia.pytree as PT
-from maia.transfer import utils as TEU
+import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 
@@ -9,7 +8,8 @@ from . import data_exchange
 __all__ = ['dist_zone_to_part_zones_only',
            'dist_zone_to_part_zones_all',
            'dist_tree_to_part_tree_only_labels',
-           'dist_tree_to_part_tree_all']
+           'dist_tree_to_part_tree_all',
+           'dist_tree_to_part_tree_node_copy']
 
 #Managed labels and corresponding funcs
 LABELS = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
@@ -95,24 +95,20 @@ def dist_tree_to_part_tree_all(dist_tree, part_tree, comm):
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
 
-def recover_UDData_from_dist_to_part(dist_tree, part_tree, ud_predicate=[]):
+def dist_tree_to_part_tree_node_copy(dist_tree, part_tree, ud_predicate):
   """ Transfer nodes from a predicate and distributed tree
   to the corresponding partitioned tree.
   """
-
-  if ud_predicate[1] == 'Family_t':
-    for part_ud_path in PT.predicates_to_paths(part_tree, ud_predicate[:-1]):
-      part_ud_n = PT.get_node_from_path(part_tree, part_ud_path)
-      dist_ud_n = PT.get_nodes_from_predicates(dist_tree, part_ud_path+'/'+ud_predicate[-1])
-      for dist_ud_child in dist_ud_n:
-        if dist_ud_n is not None: PT.add_child(part_ud_n, PT.deep_copy(dist_ud_child))
-  elif ud_predicate[1] == 'Zone_t':
-    for part_ud_path in PT.predicates_to_paths(part_tree, ud_predicate[:-1]):
-      part_ud_n = PT.get_node_from_path(part_tree, part_ud_path)
-      part_split_path = part_ud_path.split('/')
-      part_split_path[1] = MT.conv.get_part_prefix(part_split_path[1])
-      dist_ud_path =  ('/').join(part_split_path)
-      dist_ud_n = PT.get_nodes_from_predicates(dist_tree, dist_ud_path+'/'+ud_predicate[-1])
-      for dist_ud_child in dist_ud_n:
-        if dist_ud_n is not None: PT.add_child(part_ud_n, PT.deep_copy(dist_ud_child))
-
+  for path in PT.predicates_to_paths(dist_tree, ud_predicate):
+    # If path include a Zone_t node, we must loop over corresponding partitioned zones
+    # so we update the correponding name to include wildcard *
+    names = path.split('/')
+    if len(names) >= 2:
+      if PT.get_label(PT.get_node_from_path(dist_tree, f'{names[0]}/{names[1]}')) == 'Zone_t':
+        names[1] += '.P*.N*'
+    
+    # Now copy dist_node to partitioned tree
+    dist_node = PT.get_node_from_path(dist_tree, path)
+    for part_node in PT.get_children_from_names(part_tree, names[:-1]):
+      PT.rm_children_from_name(part_node, names[-1])
+      PT.add_child(part_node, PT.deep_copy(dist_node))
