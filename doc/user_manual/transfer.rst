@@ -13,7 +13,7 @@ the corresponding partitioned tree (resp. list of zones), the MPI communicator a
 optionally a filtering parameter.
 
 The following kind of data are supported: 
-:cgns:`FlowSolution_t`, :cgns:`DiscreteData_t`, :cgns:`ZoneSubRegion_t` and :cgns:`BCDataSet_t`.
+:cgns:`FlowSolution_t`, :cgns:`DiscreteData_t`, :cgns:`ArbitraryGridMotion_t`, :cgns:`ZoneSubRegion_t` and :cgns:`BCDataSet_t`.
 
 When transferring from distributed meshes to partitioned meshes, fields are supposed
 to be known on the source mesh across all the ranks (according to :ref:`disttree definition<dist_tree>`).

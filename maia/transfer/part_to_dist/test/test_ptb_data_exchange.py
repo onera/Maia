@@ -294,6 +294,9 @@ ZoneU Zone_t [[6,0,0]]:
       GridLocation GridLocation_t "Vertex":
       field2 DataArray_t R8 [0,0,0]:
       field3 DataArray_t R8 [0,0,0]:
+    NewAGM ArbitraryGridMotion_t "DeformingGrid":
+      GridLocation GridLocation_t "Vertex":
+      field4 DataArray_t R8 [1,2,3]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [3,4,1]:
     """.format(dtype)
@@ -321,6 +324,9 @@ ZoneU Zone_t [[6,0,0]]:
       GridLocation GridLocation_t "Vertex":
       field2 DataArray_t R8 [1,1,1]:
       field3 DataArray_t R8 [-1,-1,-1]:
+    NewAGM ArbitraryGridMotion_t "DeformingGrid":
+      GridLocation GridLocation_t "Vertex":
+      field4 DataArray_t R8 [4,5,6]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Vertex DataArray_t {0} [5,6,2]:
   """.format(dtype)
@@ -333,19 +339,23 @@ ZoneU Zone_t [[6,0,0]]:
   else:
     PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
     PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, comm)
+    PTB.part_gridmotion_to_dist_gridmotion(dist_zone, part_zones, comm)
 
   if filter:
     assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field2') is None
   else:
     assert PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1].dtype == np.int32
+    assert PT.get_value(PT.get_child_from_name(dist_zone, 'NewAGM')) == 'DeformingGrid'
   assert PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1].dtype == np.float64
   if comm.Get_rank () == 0:
     if not filter:
       assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [-30]).all()
+      assert (PT.get_node_from_path(dist_zone, 'NewAGM/field4')[1] == [3.,6,1]).all()
     assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,0]).all()
   if comm.Get_rank () == 1:
     if not filter:
       assert (PT.get_node_from_path(dist_zone, 'FlowSolWithPL/field1')[1] == [-10, -20]).all()
+      assert (PT.get_node_from_path(dist_zone, 'NewAGM/field4')[1] == [2.,4,5]).all()
     assert (PT.get_node_from_path(dist_zone, 'NewFlowSol/field3')[1] == [0,-1,-1]).all()
 
 @pytest_parallel.mark.parallel(2)

@@ -83,7 +83,8 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   """
   distrib_vtx  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
   distrib_cell = PT.get_value(MT.getDistribution(zone, 'Cell'))
-  for flow_solution in PT.iter_children_from_label(zone, 'FlowSolution_t'):
+  is_fs_like = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t']
+  for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)
     grid_location = PT.Subset.GridLocation(flow_solution)
     distrib_ud_n = MT.getDistribution(flow_solution)

@@ -900,7 +900,7 @@ class GridConnectivity:
 
 
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \
-        "BC_t", "BCDataSet_t", "GridConnectivity_t", "GridConnectivity1to1_t"]))
+        "BC_t", "BCDataSet_t", "GridConnectivity_t", "GridConnectivity1to1_t", "ArbitraryGridMotion_t"]))
 class Subset:
   """
   A subset is a node having a PointList or a PointRange
