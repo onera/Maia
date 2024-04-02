@@ -9,7 +9,7 @@ __all__ = ['dist_zone_to_part_zones_only',
            'dist_zone_to_part_zones_all',
            'dist_tree_to_part_tree_only_labels',
            'dist_tree_to_part_tree_all',
-           'dist_tree_to_part_tree_node_copy']
+           'dist_tree_to_part_tree_copy']
 
 #Managed labels and corresponding funcs
 LABELS = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
@@ -95,11 +95,22 @@ def dist_tree_to_part_tree_all(dist_tree, part_tree, comm):
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
 
-def dist_tree_to_part_tree_node_copy(dist_tree, part_tree, ud_predicate):
-  """ Transfer nodes from a predicate and distributed tree
-  to the corresponding partitioned tree.
+def dist_tree_to_part_tree_copy(dist_tree, part_tree, predicates, comm):
+  """ Copy nodes matching the input predicates chain from dist_tree to part_tree
+
+  Args:
+    dist_tree (CGNSTree): Distributed tree
+    part_tree (CGNSTree): Corresponding partitioned tree
+    predicates (str or list): Predicates chain, starting from tree level
+    comm (MPIComm) : MPI communicator
+  
+  Example:
+      .. literalinclude:: snippets/test_transfer.py
+        :start-after: #dist_tree_to_part_tree_copy@start
+        :end-before: #dist_tree_to_part_tree_copy@end
+        :dedent: 2
   """
-  for path in PT.predicates_to_paths(dist_tree, ud_predicate):
+  for path in PT.predicates_to_paths(dist_tree, predicates):
     # If path include a Zone_t node, we must loop over corresponding partitioned zones
     # so we update the correponding name to include wildcard *
     names = path.split('/')

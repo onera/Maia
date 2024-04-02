@@ -94,3 +94,38 @@ def test_dist_tree_to_part_tree_only_labels():
   assert PT.get_node_from_path(zone, 'ZoneBC/Bnd2/BCDataSet/DirichletData/TutuZ') is not None
   #dist_tree_to_part_tree_only_labels@end
 
+
+def test_dist_tree_to_part_tree_copy():
+  #dist_tree_to_part_tree_copy@start
+  from mpi4py.MPI import COMM_WORLD
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_block(11, 'HEXA_8', COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, COMM_WORLD)
+
+  dist_base = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
+  PT.new_Family('BCWall', family_bc='BCWall', parent=dist_base)
+
+  maia.transfer.dist_tree_to_part_tree_copy(dist_tree, part_tree,
+                               'CGNSBase_t/Family_t', COMM_WORLD)
+  assert len(PT.get_nodes_from_label(part_tree, 'Family_t')) == 1
+  #dist_tree_to_part_tree_copy@end
+
+def test_part_tree_to_dist_tree_copy():
+  #part_tree_to_dist_tree_copy@start
+  from mpi4py.MPI import COMM_WORLD
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_block(11, 'TRI_3', COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, COMM_WORLD)
+
+  for bc in PT.iter_nodes_from_label(part_tree, 'BC_t'):
+    PT.new_UserDefinedData('.solver#BC',       parent=bc)
+    PT.new_UserDefinedData('.solver#Property', parent=bc)
+
+  maia.transfer.part_tree_to_dist_tree_copy(dist_tree, part_tree,
+                   'Base/zone/ZoneBC/*max/.solver#*', COMM_WORLD)
+  assert len(PT.get_nodes_from_name(dist_tree, '.solver#*')) == 4
+  #part_tree_to_dist_tree_copy@end

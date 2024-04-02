@@ -75,7 +75,7 @@ def test_recover_UDData(missing_part_node, comm):
   ud_predicates = [['CGNSBase_t', 'Family_t', lambda n : PT.get_name(n).startswith('.Solver#')],
                   'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/.Solver#*']
   for ud_predicate in ud_predicates:
-    PTB.part_tree_to_dist_tree_node_copy(dist_tree, part_tree, comm, ud_predicate)
+    PTB.part_tree_to_dist_tree_copy(dist_tree, part_tree, ud_predicate, comm)
 
   for dist_ud, part_ud in zip(PT.get_nodes_from_name(dist_tree, '.Solver#*'), PT.get_nodes_from_name(part_tree, '.Solver#*')):
     assert PT.is_same_node(dist_ud, part_ud) # Nodes are matched in same order, so this comparison is OK

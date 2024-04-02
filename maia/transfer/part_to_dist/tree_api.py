@@ -8,7 +8,7 @@ __all__ = ['part_zones_to_dist_zone_only',
            'part_zones_to_dist_zone_all',
            'part_tree_to_dist_tree_only_labels',
            'part_tree_to_dist_tree_all',
-           'part_tree_to_dist_tree_node_copy']
+           'part_tree_to_dist_tree_copy']
 
 #Managed labels and corresponding funcs
 LABELS = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
@@ -71,12 +71,23 @@ def part_tree_to_dist_tree_all(dist_tree, part_tree, comm):
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
 
-def part_tree_to_dist_tree_node_copy(dist_tree, part_tree, comm, ud_predicate):
-  """ Transfer nodes from a predicate and partitioned tree
-  to the corresponding distributed tree.
+def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
+  """ Copy nodes matching the input predicates chain from part_tree to dist_tree
+
+  Args:
+    dist_tree (CGNSTree): Distributed tree
+    part_tree (CGNSTree): Corresponding partitioned tree
+    predicates (str or list): Predicates chain, starting from tree level
+    comm (MPIComm) : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_transfer.py
+        :start-after: #part_tree_to_dist_tree_copy@start
+        :end-before: #part_tree_to_dist_tree_copy@end
+        :dedent: 2
   """
   # Capture start of predicate, because last node may not exist on dist tree
-  _ud_predicate = PT.path_head(ud_predicate) if isinstance(ud_predicate, str) else ud_predicate[:-1]
+  _ud_predicate = PT.path_head(predicates) if isinstance(predicates, str) else predicates[:-1]
   for path in PT.predicates_to_paths(dist_tree, _ud_predicate):
     names = path.split('/')
     if len(names) >= 2:
@@ -89,7 +100,7 @@ def part_tree_to_dist_tree_node_copy(dist_tree, part_tree, comm, ud_predicate):
         # Deal others
         part_root = PT.get_node_from_path(part_tree, dist_root_path)
         part_roots = [] if part_root is None else [part_root]
-      _child_predicate = PT.path_tail(ud_predicate, 2) if isinstance(ud_predicate, str) else ud_predicate[2:]
+      _child_predicate = PT.path_tail(predicates, 2) if isinstance(predicates, str) else predicates[2:]
       discover_nodes_from_matching(dist_root, part_roots, _child_predicate, comm, child_list=['*'], get_value='leaf')
     else:
       pass # Should no append, because we can not transer data not attached to a Base
