@@ -71,6 +71,9 @@ ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
     CoordinateY DataArray_t [2,2,2]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [0,3,6]:
+  ArbitraryGridMotion ArbitraryGridMotion_t "DeformingGrid":
+    GridVelocityX DataArray_t [0.,0,0.5]:
+    GridVelocityY DataArray_t [0.,1,0.]:
 """.format(dtype)
 
 dt1 = """
@@ -133,6 +136,9 @@ ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
     CoordinateY DataArray_t [1,1,1]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [3,6,6]:
+  ArbitraryGridMotion ArbitraryGridMotion_t "DeformingGrid":
+    GridVelocityX DataArray_t [0.5, 1.,1.]:
+    GridVelocityY DataArray_t [1.,.0,1.]:
 """.format(dtype)
 
 
@@ -216,6 +222,46 @@ def test_dist_coords_to_part_coords_S(comm):
         np.array([5,6,3,4]).reshape((2,2,1),order='F')).all()
     assert (PT.get_node_from_path(part_zones[0], 'GridCoordinates/CoordinateY')[1] == \
         np.array([1,1,2,1]).reshape((2,2,1),order='F')).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_dist_motion_to_part_motion_S(comm):
+  if comm.Get_rank() == 0:
+    dt = dt0
+    pt = """
+  ZoneS.P0.N0 Zone_t [[2,0,0],[1,0,0],[1,0,0]]:
+    ZoneType ZoneType_t "Structured":
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [1,2]:
+    """.format(dtype)
+  elif comm.Get_rank() == 1:
+    dt = dt1
+    pt = """
+  ZoneS.P1.N0 Zone_t [[2,0,0],[2,0,0],[1,0,0]]:
+    ZoneType ZoneType_t "Structured":
+    :CGNS#GlobalNumbering UserDefinedData_t:
+      Vertex DataArray_t {0} [5,6,3,4]:
+  """.format(dtype)
+
+  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[1]
+  part_zones = PT.get_all_Zone_t(part_tree)
+  BTP.dist_gridmotion_to_part_gridmotion(dist_zone, part_zones, comm)
+
+  grid_motion = PT.get_node_from_label(part_zones[0], 'ArbitraryGridMotion_t')
+  assert PT.get_label(grid_motion) == 'ArbitraryGridMotion_t'
+  assert PT.get_value(grid_motion) == 'DeformingGrid'
+  if comm.Get_rank() == 0:
+    assert (PT.get_node_from_name(grid_motion, 'GridVelocityX')[1] == \
+        np.array([0.,0]).reshape((2,1,1), order='F')).all()
+    assert (PT.get_node_from_name(grid_motion, 'GridVelocityY')[1] == \
+        np.array([0.,1.]).reshape((2,1,1), order='F')).all()
+  elif comm.Get_rank() == 1:
+    assert (PT.get_node_from_name(grid_motion, 'GridVelocityX')[1] == \
+        np.array([1.,1,.5,.5]).reshape((2,2,1),order='F')).all()
+    assert (PT.get_node_from_name(grid_motion, 'GridVelocityY')[1] == \
+        np.array([0.,1,0,1]).reshape((2,2,1),order='F')).all()
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("include", [["FlowSolution/field1"], ["FlowSolution/field*", "*/field2"], []])
