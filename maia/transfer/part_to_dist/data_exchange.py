@@ -162,6 +162,20 @@ def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], excl
   for dist_sol in PT.iter_children_from_label(dist_zone, 'DiscreteData_t'):
     PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
 
+def part_gridmotion_to_dist_gridmotion(dist_zone, part_zones, comm, include=[], exclude=[], reduce_func=None):
+  """
+  Transfert all the data included in ArbitraryGridMotion_t from partitioned
+  zones to the distributed zone. Data created on (one or more) partitions and not present in dist_tree
+  is also reported to the distributed zone.
+  """
+  # Complete distree with partitioned fields and exchange PL if needed
+  _discover_wrapper(dist_zone, part_zones, 'ArbitraryGridMotion_t', 'ArbitraryGridMotion_t/DataArray_t', comm)
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['ArbitraryGridMotion_t', 'DataArray_t'], include, exclude)
+  _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_func)
+  #Cleanup : if field is None, data has been added by wrapper and must be removed
+  for dist_sol in PT.iter_children_from_label(dist_zone, 'ArbitraryGridMotion_t'):
+    PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
+
 def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], exclude=[], reduce_func=None):
   """
   Transfert all the data included in ZoneSubRegion_t nodes from the partitioned

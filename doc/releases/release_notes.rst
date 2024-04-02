@@ -22,6 +22,7 @@ Developpement version
 - adapt_mesh_with_feflo: manage axisymmetric meshes when ``perio=True``
 - compute_wall_distance: use volumic face global numbering in ClosestEltGnum result
 - closest_points: allow meshes of any cell dimension
+- Manage ArbitraryGridMotion_t nodes in IO, split and data transfer
 
 🐞 Fixes
 ^^^^^^^^

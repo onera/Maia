@@ -19,7 +19,7 @@ def load_data(names, labels):
     return False
   if labels[-1] == 'DataArray_t': # Arrays -> it depends
     if labels[-2] in ['GridCoordinates_t', 'FlowSolution_t', 'DiscreteData_t', \
-        'ZoneSubRegion_t', 'Elements_t']:
+        'ZoneSubRegion_t', 'Elements_t', 'ArbitraryGridMotion_t']:
       return False
     if names[-2] in [':elsA#Hybrid']: # Do not load legacy nodes
       return False

@@ -116,7 +116,7 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
           p_sol = PT.get_child_from_name(part_zone, PT.get_name(d_sol))
           shape = PT.get_child_from_name(p_sol, 'PointList')[1].shape[1]
         else:
-          p_sol = PT.new_child(part_zone, PT.get_name(d_sol), PT.get_label(d_sol))
+          p_sol = PT.new_child(part_zone, PT.get_name(d_sol), PT.get_label(d_sol), PT.get_value(d_sol))
           PT.new_GridLocation(location, parent=p_sol)
           shape = PT.Zone.VertexSize(part_zone) if location == 'Vertex' else PT.Zone.CellSize(part_zone)
         for data_name, data in part_data.items():
@@ -138,6 +138,14 @@ def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], excl
   zone to the partitioned zones
   """
   mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
+  _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
+
+def dist_gridmotion_to_part_gridmotion(dist_zone, part_zones, comm, include=[], exclude=[]):
+  """
+  Transfert all the data included in ArbitraryGridMotion_t nodes from a distributed
+  zone to the partitioned zones
+  """
+  mask_tree = te_utils.create_mask_tree(dist_zone, ['ArbitraryGridMotion_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
 def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):

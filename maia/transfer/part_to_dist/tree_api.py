@@ -11,9 +11,10 @@ __all__ = ['part_zones_to_dist_zone_only',
            'part_tree_to_dist_tree_copy']
 
 #Managed labels and corresponding funcs
-LABELS = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
+LABELS = ['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t', 'ZoneSubRegion_t', 'BCDataSet_t']
 FUNCS = [data_exchange.part_sol_to_dist_sol, 
          data_exchange.part_discdata_to_dist_discdata,
+         data_exchange.part_gridmotion_to_dist_gridmotion,
          data_exchange.part_subregion_to_dist_subregion,
          data_exchange.part_dataset_to_dist_dataset]
 
