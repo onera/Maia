@@ -1,4 +1,6 @@
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
 
 import maia.transfer as TE
 from . import data_exchange
@@ -6,7 +8,8 @@ from . import data_exchange
 __all__ = ['dist_zone_to_part_zones_only',
            'dist_zone_to_part_zones_all',
            'dist_tree_to_part_tree_only_labels',
-           'dist_tree_to_part_tree_all']
+           'dist_tree_to_part_tree_all',
+           'dist_tree_to_part_tree_copy']
 
 #Managed labels and corresponding funcs
 LABELS = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
@@ -91,3 +94,32 @@ def dist_tree_to_part_tree_all(dist_tree, part_tree, comm):
   dist_tree_to_part_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
+
+def dist_tree_to_part_tree_copy(dist_tree, part_tree, predicates, comm):
+  """ Copy nodes matching the input predicates chain from dist_tree to part_tree
+
+  Args:
+    dist_tree (CGNSTree): Distributed tree
+    part_tree (CGNSTree): Corresponding partitioned tree
+    predicates (str or list): Predicates chain, starting from tree level
+    comm (MPIComm) : MPI communicator
+  
+  Example:
+      .. literalinclude:: snippets/test_transfer.py
+        :start-after: #dist_tree_to_part_tree_copy@start
+        :end-before: #dist_tree_to_part_tree_copy@end
+        :dedent: 2
+  """
+  for path in PT.predicates_to_paths(dist_tree, predicates):
+    # If path include a Zone_t node, we must loop over corresponding partitioned zones
+    # so we update the correponding name to include wildcard *
+    names = path.split('/')
+    if len(names) >= 2:
+      if PT.get_label(PT.get_node_from_path(dist_tree, f'{names[0]}/{names[1]}')) == 'Zone_t':
+        names[1] += '.P*.N*'
+    
+    # Now copy dist_node to partitioned tree
+    dist_node = PT.get_node_from_path(dist_tree, path)
+    for part_node in PT.get_children_from_names(part_tree, names[:-1]):
+      PT.rm_children_from_name(part_node, names[-1])
+      PT.add_child(part_node, PT.deep_copy(dist_node))

@@ -90,3 +90,30 @@ Lastly, we use the following rules to manage missing label keys in dictionaries:
 .. autofunction:: maia.transfer.part_zones_to_dist_zone_only
 .. autofunction:: maia.transfer.dist_zone_to_part_zones_all
 .. autofunction:: maia.transfer.part_zones_to_dist_zone_all
+
+Metadata transfer
+-----------------
+
+The functions described in the previous section allows to transfer *local* data (*ie* 
+fields defined on entities of the mesh such as cells, vertices, etc.).
+
+In addition, we provide two functions helping users to copy *global* data between
+their meshes. Nodes are simply copied from one tree to the other, regardless of their
+content. These functions are suited to transfer metadata (such as Family_t nodes) or
+UserDefinedData nodes storing global data.
+
+For these two functions, ``predicates`` must be a pattern leading to the nodes to copy, starting
+from the root of the dist_tree (see maia.pytree :ref:`corresponding section <pt_node_search>`).
+When nodes names are used in ``predicates``, they should by provided in their original version,
+**without** maia splitting conventions. For example,
+
+  - ``"Base/AIRFOIL/ZoneBC_t/BC_t/.Solver#Property"`` will transfer nodes named ``.Solver#Property``
+    found under any BC, only for zone ``AIRFOIL``,
+  - ``"CGNSBase_t/Zone_t/ZoneBC_t/BC_t/.Solver#Property"`` will do the same for all the zones of the mesh,
+  - ``["CGNSBase_t", "Family_t", lambda n: PT.get_name(n).startswith('.Solver#')]`` will transfer
+    any node whose names starts with ``.Solver#`` under all the families of the tree.
+
+If requested nodes already exists on the target tree, they will be updated.
+
+.. autofunction:: maia.transfer.dist_tree_to_part_tree_copy
+.. autofunction:: maia.transfer.part_tree_to_dist_tree_copy

@@ -15,6 +15,7 @@ Developpement version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``cartesian_to_cylindrical``/``cylindrical_to_cartesian`` to change axis system
+- Transfer module: add two functions to copy nodes between distributed and partitioned trees
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
