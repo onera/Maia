@@ -107,11 +107,11 @@ def test_union():
   tree1a = parse_yaml_cgns.to_cgns_tree(yt1a)
   tree1b = parse_yaml_cgns.to_cgns_tree(yt1b)
   
-  union_tree1 = PLO.union(tree1a, tree1b)  
+  union_tree1 = PLO.union(tree1a, tree1b)
   assert PT.is_same_tree(union_tree1, ref_union_tree)
   
   tree2a = parse_yaml_cgns.to_cgns_tree(yt2a)
   tree2b = parse_yaml_cgns.to_cgns_tree(yt2b)
   
-  union_tree2 = PLO.union(tree2a, tree2b)  
+  union_tree2 = PLO.union(tree2a, tree2b)
   assert PT.is_same_tree(union_tree2, ref_union_tree)
