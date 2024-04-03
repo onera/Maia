@@ -209,7 +209,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
           PT.set_value(pl_n, np.array([np.delete(pl,ids_to_remove)], dtype=pdm_gnum_dtype))
           for data_n in PT.get_children_from_label(node, 'DataArray_t'):
             data = PT.get_value(data_n)
-            PT.set_value(data_n, np.array(np.delete(data,ids_to_remove), dtype=pdm_gnum_dtype))
+            PT.set_value(data_n, np.array(np.delete(data,ids_to_remove)))
 
   #Cleanup after trick
   for zsr in zsr_list:

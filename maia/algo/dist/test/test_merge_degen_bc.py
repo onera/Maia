@@ -97,7 +97,7 @@ yaml_ref = f'''
       ZSR_Data2 ZoneSubRegion_t:
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I{int_type} [[52]]:
-        Data2 DataArray_t I{int_type} [2]:
+        Data2 DataArray_t R8 [2.]:
       NGonElements Elements_t I4 [22, 0]:
         ElementRange IndexRange_t I{int_type} [1, 224]:
         ElementStartOffset DataArray_t:
@@ -249,27 +249,27 @@ def test_merge_degen_faces(ZSR,JN,comm):
   ymax_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymax')
   pl_ymax = PT.get_value(PT.get_node_from_name(ymax_n, 'PointList'))[0]
   if comm.rank == 0:
-    pl1 = np.array([[pl_ymin[0]]], dtype=pdm_gnum_dtype)
-    data1 = np.array([1], dtype=pdm_gnum_dtype)
+    pl1 = np.array([[pl_ymin[0]]], order='F', dtype=pdm_gnum_dtype)
+    data1 = np.array([1.])
     zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
     cgns_dist1 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data1)
-    PT.new_DataArray('Index', [0,1,1], parent=cgns_dist1)
-    pl2 = np.array([[pl_ymin[0], pl_ymax[0]]], dtype=pdm_gnum_dtype)
-    data2 = np.array([1,2], dtype=pdm_gnum_dtype)
+    PT.new_DataArray('Index', np.array([0,1,1], pdm_gnum_dtype), parent=cgns_dist1)
+    pl2 = np.array([[pl_ymin[0], pl_ymax[0]]], order='F', dtype=pdm_gnum_dtype)
+    data2 = np.array([1.,2])
     zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
     cgns_dist2 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data2)
-    PT.new_DataArray('Index', [0,2,2], parent=cgns_dist2)
+    PT.new_DataArray('Index', np.array([0,2,2], pdm_gnum_dtype), parent=cgns_dist2)
   else:
-    pl1 = np.array([[]], dtype=pdm_gnum_dtype)
-    data1 = np.array([], dtype=pdm_gnum_dtype)
+    pl1 = np.array([[]], order='F', dtype=pdm_gnum_dtype)
+    data1 = np.array([])
     zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
     cgns_dist1 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data1)
-    PT.new_DataArray('Index', [1,1,1], parent=cgns_dist1)
-    pl2 = np.array([[]], dtype=pdm_gnum_dtype)
-    data2 = np.array([], dtype=pdm_gnum_dtype)
+    PT.new_DataArray('Index', np.array([1,1,1], pdm_gnum_dtype), parent=cgns_dist1)
+    pl2 = np.array([[]], order='F', dtype=pdm_gnum_dtype)
+    data2 = np.array([])
     zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
     cgns_dist2 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data2)
-    PT.new_DataArray('Index', [2,2,2], parent=cgns_dist2)
+    PT.new_DataArray('Index', np.array([2,2,2], pdm_gnum_dtype), parent=cgns_dist2)
   
   #----------------------------
   # Prepare test case with ZSR
