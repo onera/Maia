@@ -1,15 +1,12 @@
 import maia.pytree as PT
 
-def _add_children_to_node_from_another(node1, node2, copy=True):
+def _add_children_to_node_from_another(node1, node2):
     for child2 in PT.get_children(node2):
         child1 = PT.get_child_from_name(node1, PT.get_name(child2))
         if child1 is None:
-            if copy:
-                PT.add_child(node1, PT.deep_copy(child2))
-            else:
-                PT.add_child(node1, child2)
+            PT.add_child(node1, child2)
         else:
-            _add_children_to_node_from_another(child1, child2, copy)
+            _add_children_to_node_from_another(child1, child2)
 
 def _rm_not_common_children(node1, node2):
     child1_to_del = []
@@ -91,14 +88,11 @@ def union(node1, node2, copy=True):
     """
     if PT.get_label(node1) != PT.get_label(node2):
         raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
-    if copy:
-        union_nodes = PT.deep_copy(node1)
-    else:
-        union_nodes = node1
-    _add_children_to_node_from_another(union_nodes, node2, copy)
+    union_nodes = PT.shallow_copy(node1)
+    _add_children_to_node_from_another(union_nodes, node2)
     return union_nodes
 
-def intersection(node1, node2, copy=True):
+def intersection(node1, node2):
     """
     Return a new node intersection of node1 and node2
     Remark: node1 and node2 must have the same CGNS label
@@ -134,14 +128,11 @@ def intersection(node1, node2, copy=True):
     """
     if PT.get_label(node1) != PT.get_label(node2):
         raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
-    if copy:
-        intersect_nodes = PT.deep_copy(node1)
-    else:
-        intersect_nodes = node1
+    intersect_nodes = PT.shallow_copy(node1)
     _rm_not_common_children(intersect_nodes, node2)
     return intersect_nodes
 
-def diff(node1, node2, copy=True):
+def diff(node1, node2):
     """
     Return a new node that correspond to node1 without node2's nodes
     Remark: node1 and node2 must have the same CGNS label
@@ -178,9 +169,6 @@ def diff(node1, node2, copy=True):
     """
     if PT.get_label(node1) != PT.get_label(node2):
         raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
-    if copy:
-        diff_nodes = PT.deep_copy(node1)
-    else:
-        diff_nodes = node1
+    diff_nodes = PT.shallow_copy(node1)
     _rm_common_children(diff_nodes, node2)
     return diff_nodes

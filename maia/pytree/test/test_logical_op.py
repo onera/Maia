@@ -113,17 +113,19 @@ def test_union():
   tree1a = parse_yaml_cgns.to_cgns_tree(yt1a)
   tree1b = parse_yaml_cgns.to_cgns_tree(yt1b)
   
-  union_tree1ab = PLO.union(tree1a, tree1b, copy=True)
+  union_tree1ab = PT.deep_copy(PLO.union(tree1a, tree1b))
   assert PT.is_same_tree(union_tree1ab, ref_union_tree)
-  union_tree1ba = PLO.union(tree1b, tree1a)
+  
+  union_tree1ba = PT.deep_copy(PLO.union(tree1b, tree1a))
   assert PT.is_same_tree(union_tree1ba, ref_union_tree)
   
   tree2a = parse_yaml_cgns.to_cgns_tree(yt2a)
   tree2b = parse_yaml_cgns.to_cgns_tree(yt2b)
   
-  union_tree2ab = PLO.union(tree2a, tree2b, copy=True)
+  union_tree2ab = PT.deep_copy(PLO.union(tree2a, tree2b))
   assert PT.is_same_tree(union_tree2ab, ref_union_tree)
-  union_tree2ba = PLO.union(tree2b, tree2a)
+  
+  union_tree2ba = PT.deep_copy(PLO.union(tree2b, tree2a))
   assert PT.is_same_tree(union_tree2ba, ref_union_tree)
 
 def test_intersection():
@@ -148,17 +150,19 @@ def test_intersection():
   tree1a = parse_yaml_cgns.to_cgns_tree(yt1a)
   tree1b = parse_yaml_cgns.to_cgns_tree(yt1b)
   
-  intersect_tree1ab = PLO.intersection(tree1a, tree1b, copy=True)
+  intersect_tree1ab = PT.deep_copy(PLO.intersection(tree1a, tree1b))
   assert PT.is_same_tree(intersect_tree1ab, ref_intersect_tree1)
-  intersect_tree1ba = PLO.intersection(tree1b, tree1a)
+  
+  intersect_tree1ba = PT.deep_copy(PLO.intersection(tree1b, tree1a))
   assert PT.is_same_tree(intersect_tree1ba, ref_intersect_tree1)
   
   tree2a = parse_yaml_cgns.to_cgns_tree(yt2a)
   tree2b = parse_yaml_cgns.to_cgns_tree(yt2b)
   
-  intersect_tree2ab = PLO.intersection(tree2a, tree2b, copy=True)
+  intersect_tree2ab = PT.deep_copy(PLO.intersection(tree2a, tree2b))
   assert PT.is_same_tree(intersect_tree2ab, ref_intersect_tree2)
-  intersect_tree2ba = PLO.intersection(tree2b, tree2a)
+  
+  intersect_tree2ba = PT.deep_copy(PLO.intersection(tree2b, tree2a))
   assert PT.is_same_tree(intersect_tree2ba, ref_intersect_tree2)
 
 
@@ -233,17 +237,19 @@ def test_diff():
   tree1a = parse_yaml_cgns.to_cgns_tree(yt1a)
   tree1b = parse_yaml_cgns.to_cgns_tree(yt1b)
   
-  diff_tree1ab = PLO.diff(tree1a, tree1b, copy=True)
+  diff_tree1ab = PT.deep_copy(PLO.diff(tree1a, tree1b))
   assert PT.is_same_tree(diff_tree1ab, ref_diff_tree1ab)
-  diff_tree1ba = PLO.diff(tree1b, tree1a)
+  
+  diff_tree1ba = PT.deep_copy(PLO.diff(tree1b, tree1a))
   assert PT.is_same_tree(diff_tree1ba, ref_diff_tree1ba)
   
   tree2a = parse_yaml_cgns.to_cgns_tree(yt2a)
   tree2b = parse_yaml_cgns.to_cgns_tree(yt2b)
   
-  diff_tree2ab = PLO.diff(tree2a, tree2b, copy=True)
+  diff_tree2ab = PT.deep_copy(PLO.diff(tree2a, tree2b))
   assert PT.is_same_tree(diff_tree2ab, ref_diff_tree2ab)
-  diff_tree2ba = PLO.diff(tree2b, tree2a)
+  
+  diff_tree2ba = PT.deep_copy(PLO.diff(tree2b, tree2a))
   assert PT.is_same_tree(diff_tree2ba, ref_diff_tree2ba)
 
 
@@ -254,11 +260,11 @@ def test_combination1():
   tree1a = parse_yaml_cgns.to_cgns_tree(yt1a)
   tree1b = parse_yaml_cgns.to_cgns_tree(yt1b)
   
-  diff_tree1ab              = PLO.diff(        tree1a,        tree1b,            copy=True)
-  intersect_tree1ab         = PLO.intersection(tree1a,        tree1b,            copy=True)
-  union_tree1ab             = PLO.union(       tree1a,        tree1b,            copy=True)
-  diff_tree1a_intersect1ab  = PLO.diff(        tree1a,        intersect_tree1ab, copy=True)
-  diff_union_tree1ab_tree1b = PLO.diff(        union_tree1ab, tree1b,            copy=True)
+  diff_tree1ab              = PT.deep_copy(PLO.diff(        tree1a,        tree1b,))
+  intersect_tree1ab         = PT.deep_copy(PLO.intersection(tree1a,        tree1b,))
+  union_tree1ab             = PT.deep_copy(PLO.union(       tree1a,        tree1b,))
+  diff_tree1a_intersect1ab  = PT.deep_copy(PLO.diff(        tree1a,        intersect_tree1ab))
+  diff_union_tree1ab_tree1b = PT.deep_copy(PLO.diff(        union_tree1ab, tree1b,))
   
   assert PT.is_same_tree(diff_tree1ab, diff_tree1a_intersect1ab)
   assert PT.is_same_tree(diff_tree1ab, diff_union_tree1ab_tree1b)
@@ -266,11 +272,11 @@ def test_combination1():
   tree2a = parse_yaml_cgns.to_cgns_tree(yt2a)
   tree2b = parse_yaml_cgns.to_cgns_tree(yt2b)
   
-  diff_tree2ab              = PLO.diff(        tree2a,        tree2b,            copy=True)
-  intersect_tree2ab         = PLO.intersection(tree2a,        tree2b,            copy=True)
-  union_tree2ab             = PLO.union(       tree2a,        tree2b,            copy=True)
-  diff_tree2a_intersect2ab  = PLO.diff(        tree2a,        intersect_tree2ab, copy=True)
-  diff_union_tree2ab_tree2b = PLO.diff(        union_tree2ab, tree2b,            copy=True)
+  diff_tree2ab              = PT.deep_copy(PLO.diff(        tree2a,        tree2b,))
+  intersect_tree2ab         = PT.deep_copy(PLO.intersection(tree2a,        tree2b,))
+  union_tree2ab             = PT.deep_copy(PLO.union(       tree2a,        tree2b,))
+  diff_tree2a_intersect2ab  = PT.deep_copy(PLO.diff(        tree2a,        intersect_tree2ab))
+  diff_union_tree2ab_tree2b = PT.deep_copy(PLO.diff(        union_tree2ab, tree2b,))
   
   assert PT.is_same_tree(diff_tree2ab, diff_tree2a_intersect2ab)
   assert PT.is_same_tree(diff_tree2ab, diff_union_tree2ab_tree2b)
@@ -284,23 +290,23 @@ def test_combination2():
   tree1a = parse_yaml_cgns.to_cgns_tree(yt1a)
   tree1b = parse_yaml_cgns.to_cgns_tree(yt1b)
   
-  union_tree1ab                = PLO.union(       tree1a,                tree1b,            copy=True)
-  diff_tree1ab                 = PLO.diff(        tree1a,                tree1b,            copy=True)
-  diff_tree1ba                 = PLO.diff(        tree1b,                tree1a,            copy=True)
-  union_diff1ab_diff1ba        = PLO.union(       diff_tree1ab,          diff_tree1ba,      copy=True)
-  intersect_tree1ab            = PLO.intersection(tree1a,                tree1b,            copy=True)
-  union_uniond1abd1ba_inter1ab = PLO.union(       union_diff1ab_diff1ba, intersect_tree1ab, copy=True)
+  union_tree1ab                = PT.deep_copy(PLO.union(       tree1a,                tree1b,))
+  diff_tree1ab                 = PT.deep_copy(PLO.diff(        tree1a,                tree1b,))
+  diff_tree1ba                 = PT.deep_copy(PLO.diff(        tree1b,                tree1a,))
+  union_diff1ab_diff1ba        = PT.deep_copy(PLO.union(       diff_tree1ab,          diff_tree1ba))
+  intersect_tree1ab            = PT.deep_copy(PLO.intersection(tree1a,                tree1b,))
+  union_uniond1abd1ba_inter1ab = PT.deep_copy(PLO.union(       union_diff1ab_diff1ba, intersect_tree1ab))
   
   assert PT.is_same_tree(union_tree1ab, union_uniond1abd1ba_inter1ab)
   
   tree2a = parse_yaml_cgns.to_cgns_tree(yt2a)
   tree2b = parse_yaml_cgns.to_cgns_tree(yt2b)
   
-  union_tree2ab                = PLO.union(       tree2a,                tree2b,            copy=True)
-  diff_tree2ab                 = PLO.diff(        tree2a,                tree2b,            copy=True)
-  diff_tree2ba                 = PLO.diff(        tree2b,                tree2a,            copy=True)
-  union_diff2ab_diff2ba        = PLO.union(       diff_tree2ab,          diff_tree2ba,      copy=True)
-  intersect_tree2ab            = PLO.intersection(tree2a,                tree2b,            copy=True)
-  union_uniond2abd2ba_inter2ab = PLO.union(       union_diff2ab_diff2ba, intersect_tree2ab, copy=True)
+  union_tree2ab                = PT.deep_copy(PLO.union(       tree2a,                tree2b,))
+  diff_tree2ab                 = PT.deep_copy(PLO.diff(        tree2a,                tree2b,))
+  diff_tree2ba                 = PT.deep_copy(PLO.diff(        tree2b,                tree2a,))
+  union_diff2ab_diff2ba        = PT.deep_copy(PLO.union(       diff_tree2ab,          diff_tree2ba))
+  intersect_tree2ab            = PT.deep_copy(PLO.intersection(tree2a,                tree2b,))
+  union_uniond2abd2ba_inter2ab = PT.deep_copy(PLO.union(       union_diff2ab_diff2ba, intersect_tree2ab))
   
   assert PT.is_same_tree(union_tree2ab, union_uniond2abd2ba_inter2ab)
