@@ -364,13 +364,14 @@ def extract_part_from_family(part_tree, family_name, comm,
                 there_is_bcdataset[path] = True
             related_path = PT.Subset.ZSRExtent(fam_node, part_zone)
             fam_node = PT.get_node_from_path(part_zone, related_path)
+
           pl_n = PT.get_child_from_name(fam_node, 'PointList')
           fam_pl.append(PT.get_value(pl_n))
 
       fam_pl = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
       if fam_pl.size!=0:
         fam_pl = np.unique(fam_pl, axis=1) # If pl.size == 0, this line fails with numpy 1.17
-        PT.new_ZoneSubRegion(name=family_name, point_list=fam_pl, loc=location[0], parent=part_zone)
+        PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl, loc=location[0], parent=part_zone)
 
   # Synchronize container names
   for node_path, there_is in there_is_bcdataset.items():
@@ -379,7 +380,7 @@ def extract_part_from_family(part_tree, family_name, comm,
       if node_name not in l_containers_name:
         l_containers_name.append(node_name) # not to change the initial containers_name list
 
-  return extract_part_from_zsr(local_part_tree, family_name, comm, 
+  return extract_part_from_zsr(local_part_tree, f"__{family_name}", comm, 
                                transfer_dataset=False,
                                containers_name=l_containers_name,
                              **options)
