@@ -35,7 +35,7 @@ class AttributeRW:
     _name.read(self.buff_S33, _name.get_type())
     #                         ^ Copy attribute type from file, otherwise h5py
     # will create a default that may clash (H5T_CSET_UTF8 vs H5T_CSET_ASCII)
-    return self.buff_S33.tobytes().decode().rstrip('\x00') ###UGLY
+    return self.buff_S33.tobytes().partition(b'\x00')[0].decode() ###UGLY
 
   def read_bytes_3(self, gid, attr_name):
     """ Read the attribute attr_name in the object gid and return it
@@ -358,7 +358,7 @@ def load_tree_links(filename):
           array_view = array.T
           hdf_dataset.read(h5s.ALL, h5s.ALL, array_view)
           array.dtype = 'S1'
-          link.append(array.tobytes().decode().rstrip('\x00'))
+          link.append(array.tobytes().partition(b'\x00')[0].decode())
         path = '/'.join([self.attr_reader.read_str_33(id, b'name') for id in node_ids[1:]])
         link.append(path) #Current path
         self.links.append(link)
