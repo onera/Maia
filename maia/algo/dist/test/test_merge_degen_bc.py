@@ -1,26 +1,16 @@
-import copy
-import itertools
-import mpi4py.MPI      as MPI
-import numpy           as np
-
 import pytest
 import pytest_parallel
+import numpy           as np
+from mpi4py import MPI
 
 import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-import maia.algo.part.point_cloud_utils as PCU
-
 from maia                     import npy_pdm_gnum_dtype    as pdm_gnum_dtype
 from maia.algo.dist           import merge_degen_bc        as MDB
-from maia.algo.dist           import remove_element        as RME
-from maia.algo.dist.merge_ids import merge_distributed_ids
-from maia.transfer            import protocols             as EP
-from maia.utils               import par_utils
 
-import Pypdm.Pypdm as PDM
-
+from maia.utils import np_utils
 int_type = 4 if pdm_gnum_dtype==np.int32 else 8
 
 yaml_ref = f'''
@@ -212,19 +202,12 @@ def test_merge_degen_faces(ZSR,JN,comm):
   
   #----------------------------
   # Parameters
-  nx = 5
-  ny = 5
-  nz = 5
+  nx, ny, nz = 5, 5, 5
   sector_angle = np.pi/4
   
   fam_l = ['INLET', 'OUTLET', 'AXIS', 'FARFIELD', 'PER1', 'PER2']
-  bc2fam = {}
-  bc2fam['Xmin'] = fam_l[0]
-  bc2fam['Xmax'] = fam_l[1]
-  bc2fam['Ymin'] = fam_l[2]
-  bc2fam['Ymax'] = fam_l[3]
-  bc2fam['Zmin'] = fam_l[4]
-  bc2fam['Zmax'] = fam_l[5]
+  bc_l = ['Xmin', 'Xmax', 'Ymin', 'Ymax', 'Zmin', 'Zmax']
+  bc2fam = {bc:fam for bc,fam in zip(bc_l, fam_l)}
   
   #----------------------------
   # Generate cube
@@ -233,17 +216,17 @@ def test_merge_degen_faces(ZSR,JN,comm):
   
   #----------------------------
   # Add families
-  base_n = PT.get_all_CGNSBase_t(dist_tree)[0] 
   for bc_n in PT.get_nodes_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t'):
       PT.set_value(bc_n, 'FamilySpecified')
       PT.update_child(bc_n,'FamilyName',label='FamilyName_t',value=bc2fam[bc_n[0]])
   
+  base_n = PT.get_all_CGNSBase_t(dist_tree)[0] 
   for fam in fam_l:
       PT.update_child(base_n,fam,label='Family_t')
   
   #----------------------------
   # Add families
-  zone_n = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t')
+  zone_n = PT.get_node_from_label(dist_tree, 'Zone_t')
   ymin_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymin')
   pl_ymin = PT.get_value(PT.get_node_from_name(ymin_n, 'PointList'))[0]
   ymax_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymax')
@@ -251,25 +234,21 @@ def test_merge_degen_faces(ZSR,JN,comm):
   if comm.rank == 0:
     pl1 = np.array([[pl_ymin[0]]], order='F', dtype=pdm_gnum_dtype)
     data1 = np.array([1.])
-    zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
-    cgns_dist1 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data1)
-    PT.new_DataArray('Index', np.array([0,1,1], pdm_gnum_dtype), parent=cgns_dist1)
+    distri1 = np.array([0,1,1], dtype=pdm_gnum_dtype)
     pl2 = np.array([[pl_ymin[0], pl_ymax[0]]], order='F', dtype=pdm_gnum_dtype)
     data2 = np.array([1.,2])
-    zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
-    cgns_dist2 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data2)
-    PT.new_DataArray('Index', np.array([0,2,2], pdm_gnum_dtype), parent=cgns_dist2)
+    distri2 = np.array([0,2,2], dtype=pdm_gnum_dtype)
   else:
     pl1 = np.array([[]], order='F', dtype=pdm_gnum_dtype)
     data1 = np.array([])
-    zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
-    cgns_dist1 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data1)
-    PT.new_DataArray('Index', np.array([1,1,1], pdm_gnum_dtype), parent=cgns_dist1)
+    distri1 = np.array([1,1,1], dtype=pdm_gnum_dtype)
     pl2 = np.array([[]], order='F', dtype=pdm_gnum_dtype)
     data2 = np.array([])
-    zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
-    cgns_dist2 = PT.new_UserDefinedData(name=':CGNS#Distribution', parent=zsr_data2)
-    PT.new_DataArray('Index', np.array([2,2,2], pdm_gnum_dtype), parent=cgns_dist2)
+    distri2 = np.array([2,2,2], dtype=pdm_gnum_dtype)
+  zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
+  MT.new_distribution({'Index': distri1}, parent=zsr_data1)
+  zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
+  MT.new_distribution({'Index': distri2}, parent=zsr_data2)
   
   #----------------------------
   # Prepare test case with ZSR
@@ -285,16 +264,10 @@ def test_merge_degen_faces(ZSR,JN,comm):
   
   #----------------------------
   # Move nodes to generate sector of cylinder
-  theta_x = sector_angle/(nz-1)
-  theta_y = 0.
-  theta_z = 0.
+  theta_x, theta_y, theta_z = sector_angle/(nz-1), 0., 0.
   
-  zone_n = PT.get_node_from_label(dist_tree, 'Zone_t')
-  vtx_distri = PT.get_value(PT.maia.getDistribution(zone_n, 'Vertex'))
-  
-  coords_n = PT.get_node_from_label(dist_tree, 'GridCoordinates_t')
-  coord_x_n, coord_y_n, coord_z_n = [PT.get_node_from_name(coords_n, f"Coordinate{suffix}") for suffix in ['X', 'Y', 'Z']]
-  coord_x,   coord_y,   coord_z   = [PT.get_value(coord) for coord in [coord_x_n, coord_y_n, coord_z_n]]
+  vtx_distri = PT.get_value(MT.getDistribution(zone_n, 'Vertex'))
+  coord_x, coord_y, coord_z = PT.Zone.coordinates(zone_n)
   
   multiple, remainder = np.divmod(vtx_distri, nx*ny)
   assert remainder[2] == 0
@@ -306,7 +279,8 @@ def test_merge_degen_faces(ZSR,JN,comm):
     beg = max(i*nx*ny, vtx_distri[0]) - vtx_distri[0]
     end = min((i+1)*nx*ny, vtx_distri[1]) - vtx_distri[0]
     coord_z[beg:end] = 0.
-    coord_x[beg:end], coord_y[beg:end], coord_z[beg:end] = maia.utils.ndarray.np_utils.transform_cart_vectors(coord_x[beg:end], coord_y[beg:end], coord_z[beg:end], rotation_angle = np.array([i*theta_x,theta_y,theta_z]))
+    coord_x[beg:end], coord_y[beg:end], coord_z[beg:end] = np_utils.transform_cart_vectors(coord_x[beg:end], coord_y[beg:end], coord_z[beg:end], 
+                                                                                           rotation_angle = np.array([i*theta_x,theta_y,theta_z]))
   
   #----------------------------
   # Convert to ngon
@@ -314,12 +288,9 @@ def test_merge_degen_faces(ZSR,JN,comm):
   # could be reduce to
   # maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
   maia.algo.dist.redistribute_tree(dist_tree, 'gather', comm)
-  group = comm.Get_group()
-  newGroup = group.Incl([0])
-  sub_comm  = comm.Create(newGroup)
   if comm.rank == 0:
-    maia.algo.dist.convert_elements_to_ngon(dist_tree, sub_comm)
-    full_tree = maia.factory.dist_to_full_tree(dist_tree, sub_comm, target=0)
+    maia.algo.dist.convert_elements_to_ngon(dist_tree, MPI.COMM_SELF)
+    full_tree = maia.factory.dist_to_full_tree(dist_tree, MPI.COMM_SELF, target=0)
   else:
     full_tree = None
   dist_tree = maia.factory.full_to_dist_tree(full_tree, comm, owner=0)
