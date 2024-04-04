@@ -242,7 +242,8 @@ def generate_ngon_from_std_elements(dist_tree, comm):
           bc = PT.get_child_from_name(zbc, bc_name)
           bcds[0] = ds_name
           bcds[3] = 'BCDataSet_t'
-          PT.add_child(bc, bcds)
+          if bc is not None: # BC may have been removed (eg. EdgeCenter BCs)
+            PT.add_child(bc, bcds)
         PT.rm_children_from_label(zbc, 'BCDataSet_t')
     # > Subsets
     container = PT.get_child_from_name(dist_zone, '__maia::isSubset')
