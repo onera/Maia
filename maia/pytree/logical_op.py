@@ -47,10 +47,12 @@ def _rm_common_children(node1, node2):
         if child2 is not None:
             _rm_common_children(child1, child2)
 
-def union(node1, node2, copy=True):
+def union(node1, node2):
     """
     Return a new node union of node1 and node2
     Remark: node1 and node2 must have the same CGNS label
+    Remark: if a node from node2 have the same name of a node from node1
+            we keep the node from node1
 
     Args:
       node1 (CGNSNode): First CGNS node
@@ -123,7 +125,7 @@ def intersection(node1, node2):
       >>> maia.pytree.logical_op.intersection(tree1, tree2)
       CGNSTree CGNSTree_t
       ├───Base CGNSBase_t
-      │   ├───Zone2 Zone_t
+      │   └───Zone2 Zone_t
       └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
     """
     if PT.get_label(node1) != PT.get_label(node2):
