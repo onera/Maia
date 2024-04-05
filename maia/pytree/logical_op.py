@@ -11,59 +11,48 @@ def _add_children_to_node_from_another(node1, node2):
         else:
             _add_children_to_node_from_another(child1, child2)
 
-def _rm_not_common_children(node1, node2, check_label, check_value):
+def _rm_not_common_children(node1, node2, comp_func):
     child1_to_del = []
     for child1 in PT.get_children(node1):
         child1_name = PT.get_name(child1)
         child2 = PT.get_child_from_name(node2, child1_name)
         if child2 is None:
             child1_to_del.append(child1_name)
-        elif check_label and not(PTC.is_same_label(child1,child2)):
-            child1_to_del.append(child1_name)
-        elif check_value and not(PTC.is_same_value(child1,child2)):
+        elif not(comp_func(child1,child2)):
             child1_to_del.append(child1_name)
     for child_name in child1_to_del:
         PT.rm_node_from_path(node1, child_name)
     for child1 in PT.get_children(node1):
         child2 = PT.get_child_from_name(node2, PT.get_name(child1))
         if child2 is not None:
-            _rm_not_common_children(child1, child2, check_label, check_value)
+            _rm_not_common_children(child1, child2, comp_func)
             
-def _have_common_children(node1, node2, check_label, check_value):
+def _have_common_children(node1, node2, comp_func):
     for child1 in PT.get_children(node1):
         child2 = PT.get_child_from_name(node2, PT.get_name(child1))
         if child2 is None:
             return False
-        elif check_label and not(PTC.is_same_label(child1,child2)):
-            return False
-        elif check_value and not(PTC.is_same_value(child1,child2)):
+        elif not(comp_func(child1,child2)):
             return False
         else:
-            if not _have_common_children(child1, child2, check_label, check_value):
+            if not _have_common_children(child1, child2, comp_func):
                 return False
     return True
 
-def _rm_common_children(node1, node2, check_label, check_value):
+def _rm_common_children(node1, node2, comp_func):
     child1_to_del = []
     for child1 in PT.get_children(node1):
         child1_name = PT.get_name(child1)
         child2 = PT.get_child_from_name(node2, child1_name)
         if child2 is not None:
-            delete_child = np.zeros(3,dtype=np.int32)
-            if _have_common_children(child1, child2, check_label, check_value):
-                delete_child[0] = 1
-            if (not check_label) or (check_label and PTC.is_same_label(child1,child2)):
-                delete_child[1] = 1
-            if (not check_value) or (check_value and PTC.is_same_value(child1,child2)):
-                delete_child[2] = 1
-            if (delete_child == [1,1,1]).all():
+            if _have_common_children(child1, child2, comp_func) and comp_func(child1,child2):
                 child1_to_del.append(child1_name)
     for child_name in child1_to_del:
         PT.rm_node_from_path(node1, child_name)
     for child1 in PT.get_children(node1):
         child2 = PT.get_child_from_name(node2, PT.get_name(child1))
         if child2 is not None:
-            _rm_common_children(child1, child2, check_label, check_value)
+            _rm_common_children(child1, child2, comp_func)
 
 def union(node1, node2):
     """
@@ -73,10 +62,10 @@ def union(node1, node2):
             we keep the node from node1
 
     Args:
-      node1 (CGNSNode): First CGNS node
-      node2 (CGNSNode): Second CGNS node
+      node1 (CGNSTree): First CGNS node
+      node2 (CGNSTree): Second CGNS node
     Returns:
-      CGNSNode: union of nodes
+      CGNSTree: union of nodes
     Example:
       >>> tree1 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
       ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
@@ -112,17 +101,18 @@ def union(node1, node2):
     _add_children_to_node_from_another(union_nodes, node2)
     return union_nodes
 
-def intersection(node1, node2, check_label=False, check_value=False):
+def intersection(node1, node2, comp_func=lambda n1,n2: PTC.is_same_node(n1,n2)):
     """
     Return a new node intersection of node1 and node2
     Remark: node1 and node2 must have the same CGNS label
     Remark: if the intersection is empty, return only the CGNSTree_t node
 
     Args:
-      node1 (CGNSNode): First CGNS node
-      node2 (CGNSNode): Second CGNS node
+      node1 (CGNSTree): First CGNS node
+      node2 (CGNSTree): Second CGNS node
+      comp_func (Callable): Fonction to compare node1 to node2
     Returns:
-      CGNSNode: intersection of nodes
+      CGNSTree: intersection of nodes
     Example:
       >>> tree1 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
       ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
@@ -149,20 +139,21 @@ def intersection(node1, node2, check_label=False, check_value=False):
     if PT.get_label(node1) != PT.get_label(node2):
         raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
     intersect_nodes = PT.shallow_copy(node1)
-    _rm_not_common_children(intersect_nodes, node2, check_label, check_value)
+    _rm_not_common_children(intersect_nodes, node2, comp_func)
     return intersect_nodes
 
-def diff(node1, node2, check_label=False, check_value=False):
+def diff(node1, node2, comp_func=lambda n1,n2: PTC.is_same_node(n1,n2)):
     """
     Return a new node that correspond to node1 without node2's nodes
     Remark: node1 and node2 must have the same CGNS label
     Remark: if the intersection is empty, return only the CGNSTree_t node
 
     Args:
-      node1 (CGNSNode): First CGNS node
-      node2 (CGNSNode): Second CGNS node
+      node1 (CGNSTree): First CGNS node
+      node2 (CGNSTree): Second CGNS node
+      comp_func (Callable): Fonction to compare node1 to node2
     Returns:
-      CGNSNode: differences between nodes
+      CGNSTree: differences between nodes
     Example:
       >>> tree1 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
       ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
@@ -190,5 +181,5 @@ def diff(node1, node2, check_label=False, check_value=False):
     if PT.get_label(node1) != PT.get_label(node2):
         raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
     diff_nodes = PT.shallow_copy(node1)
-    _rm_common_children(diff_nodes, node2, check_label, check_value)
+    _rm_common_children(diff_nodes, node2, comp_func)
     return diff_nodes
