@@ -91,17 +91,19 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
   _ud_predicate = PT.path_head(predicates) if isinstance(predicates, str) else predicates[:-1]
   for path in PT.predicates_to_paths(dist_tree, _ud_predicate):
     names = path.split('/')
-    if len(names) >= 2:
+    if len(names) == 1: # Data directly attached to a Base (e.g. Family_t nodes)
+      cut = 1
+      dist_root = PT.get_node_from_path(dist_tree, names[0])
+      part_root = PT.get_node_from_path(part_tree, names[0])
+      part_roots = [] if part_root is None else [part_root]
+    else: # Deeper data
+      cut = 2
       dist_root_path = f'{names[0]}/{names[1]}'
       dist_root = PT.get_node_from_path(dist_tree, dist_root_path)
-      if PT.get_label(dist_root) == 'Zone_t':
-        # Deal zone (names differ on partitionned tree)
+      if PT.get_label(dist_root) == 'Zone_t': # Deal zone (names differ on partitionned tree)
         part_roots = TE.utils.get_partitioned_zones(part_tree, dist_root_path)
-      else:
-        # Deal others
+      else: # Deal others
         part_root = PT.get_node_from_path(part_tree, dist_root_path)
         part_roots = [] if part_root is None else [part_root]
-      _child_predicate = PT.path_tail(predicates, 2) if isinstance(predicates, str) else predicates[2:]
-      discover_nodes_from_matching(dist_root, part_roots, _child_predicate, comm, child_list=['*'], get_value='leaf')
-    else:
-      pass # Should no append, because we can not transer data not attached to a Base
+    _child_predicate = PT.path_tail(predicates, cut) if isinstance(predicates, str) else predicates[cut:]
+    discover_nodes_from_matching(dist_root, part_roots, _child_predicate, comm, child_list=['*'], get_value='leaf')

@@ -60,6 +60,9 @@ def test_recover_UDData(missing_part_node, comm):
   part_base = PT.get_all_CGNSBase_t(part_tree)[0]
   dist_base = PT.get_all_CGNSBase_t(dist_tree)[0]
   part_zone = PT.get_all_Zone_t(part_tree)[0]
+
+  PT.new_Family('MyFamily', parent=part_base)
+  PT.new_Family('MyOtherFamily', parent=part_base)
   for i in range(3):
     part_family_n = PT.new_Family(f'WALL_{i}', family_bc='BCWall', parent=part_base)
     PT.new_Family(f'WALL_{i}', family_bc='BCWall', parent=dist_base)
@@ -73,9 +76,12 @@ def test_recover_UDData(missing_part_node, comm):
     PT.rm_nodes_from_label(part_tree, 'ZoneBC_t')
 
   ud_predicates = [['CGNSBase_t', 'Family_t', lambda n : PT.get_name(n).startswith('.Solver#')],
-                  'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/.Solver#*']
+                  'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/.Solver#*',
+                  'CGNSBase_t/MyFamily']
   for ud_predicate in ud_predicates:
     PTB.part_tree_to_dist_tree_copy(dist_tree, part_tree, ud_predicate, comm)
 
   for dist_ud, part_ud in zip(PT.get_nodes_from_name(dist_tree, '.Solver#*'), PT.get_nodes_from_name(part_tree, '.Solver#*')):
     assert PT.is_same_node(dist_ud, part_ud) # Nodes are matched in same order, so this comparison is OK
+  assert PT.get_label(PT.get_child_from_name(dist_base, 'MyFamily')) == 'Family_t'
+  assert PT.get_child_from_name(dist_base, 'MyOtherFamily') is None
