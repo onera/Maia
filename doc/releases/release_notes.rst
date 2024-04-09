@@ -31,6 +31,7 @@ Developpement version
 - recover_dist_tree: prevent a crash if some Elements_t nodes does not exist in every zones
 - recover_dist_tree: use gnum_dtype as output kind of created zones
 - convert_elements_to_ngon: update FaceCenter / CellCenter PointList arrays
+- partitioning: fix creation of cells global numbering for multisection element meshes
 
 v1.3 (January 2024)
 -------------------

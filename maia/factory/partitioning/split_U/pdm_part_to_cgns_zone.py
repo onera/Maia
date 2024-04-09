@@ -284,12 +284,23 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
       save_additional_connectivities(part_zone, data)
 
     requested_lngn = [key.lower() for key in options['additional_ln_to_gn']]
+    # Careful ! Raw numberings are shared between "all elt of dim", so on multi section elt meshes, 
+    # we need to reorder it from first section to last section 
+    # We can not do that on face / edge elts, coming from "additional_ln_to_gn", because
+    # they are defined on all face whereas only boundary elts are created in mesh
     numberings = {'Vertex' : vtx_lngn}
     if base_dim >= 2 and 'edge' in requested_lngn and data['np_edge_ln_to_gn'] is not None:
       numberings['Edge'] = data['np_edge_ln_to_gn']
     if base_dim == 3 and 'face' in requested_lngn and data['np_face_ln_to_gn'] is not None:
       numberings['Face'] = data['np_face_ln_to_gn']
-    numberings['Cell'] = cell_lngn
+    if PT.Zone.has_ngon_elements(part_zone):
+      numberings['Cell'] = cell_lngn
+    else:
+      is_dim_elt = lambda n : PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n) == base_dim
+      elts = PT.get_nodes_from_predicate(part_zone, is_dim_elt)
+      section_gnum = [PT.maia.get_global_numbering(elt, 'Sections')[1] for elt in elts]
+      numberings['Cell'] = np_utils.concatenate_np_arrays(section_gnum, cell_lngn.dtype)[1]
+
     MT.newGlobalNumbering(numberings, parent=part_zone)
 
     part_zones.append(part_zone)

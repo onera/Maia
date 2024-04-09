@@ -2,12 +2,13 @@ import pytest
 import pytest_parallel
 from mpi4py import MPI
 import numpy as np
+import pathlib
 
 import maia
 from maia.pytree.yaml   import parse_yaml_cgns, parse_cgns_yaml
 from maia.factory import generate_dist_block
 from maia.factory import partition_dist_tree
-from maia.utils import par_utils, s_numbering
+from maia.utils import par_utils, s_numbering, test_utils
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
@@ -330,3 +331,17 @@ def test_split_structured_1d(comm):
     assert (MT.getGlobalNumbering(part_zone, 'Cell')[1] == [6,7,8,9]).all()
   assert MT.getGlobalNumbering(part_zone, 'Face') is None
   assert len(PT.get_nodes_from_label(part_zone, 'GridConnectivity1to1_t'))
+
+@pytest_parallel.mark.parallel(1)
+def test_split_multi_elt(comm):
+  mesh_dir = test_utils.mesh_dir
+  mesh_file = mesh_dir / pathlib.Path('hex_2_prism_2.yaml')
+  tree = maia.io.file_to_dist_tree(mesh_file, comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm, reordering={'cell_renum_method' : 'CUTHILL'})
+  # With CUTHILL reordering we have following order : [1st prism, 1st hexa, 2nd hexa, 2nd prism]
+  # If we do nothing, CellGnum is thus [3,1,2,4]
+  # But, on partitioned mesh, sections are organized as follow : [1st hexa, 2nd hexa], [1st prism, 2nd prism]
+  # so reordered gnum should be [1,2,3,4]
+  zone = PT.get_node_from_label(ptree, 'Zone_t')
+  cell_gum = PT.maia.getGlobalNumbering(zone, 'Cell')[1]
+  assert (cell_gum == [1,2,3,4]).all()

@@ -105,22 +105,22 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   dims = {'n_section' :2, 'n_elt' : [6,1]}
   data = {'0dsections' : [
             {'np_connec' : np.array([3,4], dtype=np.int32), 'np_numabs' : np.array([3,4], dtype=np.int32),
-             'np_parent_num' : np.array([3,4]), 'np_parent_entity_g_num' : np.array([3,4])},
+             'np_parent_num' : np.array([2,3]), 'np_parent_entity_g_num' : np.array([3,4])},
             {'np_connec' : np.array([1,2], dtype=np.int32), 'np_numabs' : np.array([1,2], dtype=np.int32),
-             'np_parent_num' : np.array([1,2]), 'np_parent_entity_g_num' : np.array([1,2])},
+             'np_parent_num' : np.array([0,1]), 'np_parent_entity_g_num' : np.array([1,2])},
           ],
           '1dsections' : [{'np_connec' : np.array([], dtype=np.int32), 'np_numabs' : np.array([], dtype=np.int32),
                            'np_parent_num' : np.array([]), 'np_parent_entity_g_num' : np.array([])}],
           '2dsections' : [
             {'np_connec' : np.array([1,4,3,2,1,2,6,5,2,3,7,6,3,4,8,7,1,5,8,4,5,6,7,8], dtype=np.int32),
              'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32),
-             'np_parent_num' : np.array([1,2,3,4,5,6]),
+             'np_parent_num' : np.array([0,1,2,3,4,5]),
              'np_parent_entity_g_num' : np.array([101,8,6,12,102,103])}
           ],
           '3dsections' : [
             {'np_connec' : np.array([1,2,3,4,5,6,7,8], dtype=np.int32),
              'np_numabs' : np.array([42], dtype=pdm_dtype),
-             'np_parent_num' : np.array([1]),
+             'np_parent_num' : np.array([0]),
              'np_parent_entity_g_num' : None}
             ]
          }
@@ -166,13 +166,13 @@ def test_pdm_part_to_cgns_zone(fields):
             '2dsections' : [
               {'np_connec' : np.array([1,4,3,2,1,2,6,5,2,3,7,6,3,4,8,7,1,5,8,4,5,6,7,8], dtype=np.int32),
                'np_numabs' : np.array([12,5,9,13,18,4], dtype=np.int32),
-               'np_parent_num' : np.array([1,2,3,4,5,6]),
+               'np_parent_num' : np.array([0,1,2,3,4,5]),
                'np_parent_entity_g_num' : np.array([101,8,6,12,102,103])}
             ],
            '3dsections' : [
               {'np_connec' : np.array([1,2,3,4,5,6,7,8], dtype=np.int32),
                'np_numabs' : np.array([42], dtype=pdm_dtype),
-               'np_parent_num' : np.array([1]),
+               'np_parent_num' : np.array([0]),
                'np_parent_entity_g_num' : None}
              ],
            'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64),
