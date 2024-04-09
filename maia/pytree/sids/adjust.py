@@ -1,7 +1,6 @@
 from maia.pytree.typing import *
 
 import maia.pytree as PT
-from . import explore
 
 def enforceDonorAsPath(tree:CGNSTree):
   """ Force the GCs to indicate their opposite zone under the form BaseName/ZoneName """
