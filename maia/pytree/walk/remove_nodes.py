@@ -1,6 +1,6 @@
 from maia.pytree.typing import *
 
-# Keys to access TreeNode values
+# Keys to access CGNSTree values
 __NAME__     = 0
 __VALUE__    = 1
 __CHILDREN__ = 2

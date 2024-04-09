@@ -3,7 +3,7 @@ from maia.pytree.typing import *
 from . import predicate
 from . import walkers_api as WAPI
 
-# Keys to access TreeNode values
+# Keys to access CGNSTree values
 __NAME__     = 0
 __VALUE__    = 1
 __CHILDREN__ = 2

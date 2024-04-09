@@ -1,13 +1,7 @@
-from typing import List, Optional, Union, Callable
-# from functools import partial
-import numpy as np
-
 from ._node_parsers import NodesIterator
 from ._node_parsers import ShallowNodesIterator
 from ._node_parsers import RangeLevelNodesIterator
 from ._node_parsers import ShallowRangeLevelNodesIterator
-
-TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 # --------------------------------------------------------------------------
 class NodesWalker:
@@ -16,7 +10,7 @@ class NodesWalker:
   FORWARD  = lambda children:children
   BACKWARD = lambda children:reversed(children)
 
-  def __init__(self, root: TreeNode,
+  def __init__(self, root,
                      predicate,
                      search: str=NodesIterator.DEFAULT,
                      explore: str='shallow',
@@ -27,12 +21,12 @@ class NodesWalker:
     Hold all the manner to explore and parse the CGNS Tree
 
     Args:
-        root (TreeNode): CGNS node root searching
-        predicate (Callable[[TreeNode], bool]): condition to select node
+        root (CGNSTree): CGNS node root searching
+        predicate (Callable[[CGNSTree], bool]): condition to select node
         search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
         explore (str, optional): 'deep' explore the whole tree or 'shallow' stop exploring node child when the node is found
         depth (int, optional): stop exploring after the limited depth
-        sort (Callable[TreeNode], optional): parsing children sort
+        sort (Callable[CGNSTree], optional): parsing children sort
         caching (bool, optional): Results is store into a list. Avoid parsing next call(s).
     """
     self.root      = root
@@ -52,7 +46,7 @@ class NodesWalker:
     return self._root
 
   @root.setter
-  def root(self, node: TreeNode):
+  def root(self, node):
     self._root = node
     self.clean()
 
@@ -61,7 +55,7 @@ class NodesWalker:
     return self._predicate
 
   @predicate.setter
-  def predicate(self, predicate: Callable[[TreeNode], bool]):
+  def predicate(self, predicate):
     if callable(predicate):
       self._predicate = predicate
       self.clean()

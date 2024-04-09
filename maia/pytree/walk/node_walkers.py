@@ -1,9 +1,4 @@
-from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
-import numpy as np
-
 from .node_walker import NodeWalker
-
-TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 
 # --------------------------------------------------------------------------
@@ -59,7 +54,7 @@ class NodeWalkers:
     return self._root
 
   @root.setter
-  def root(self, node: TreeNode):
+  def root(self, node):
     self._root = node
 
   @property
