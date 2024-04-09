@@ -204,12 +204,14 @@ def ensure_signed_nface_connectivity(dist_tree, comm):
   return n_fixed
 
 def rm_legacy_nodes(tree):
-  eh_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/:elsA#Hybrid')
-  if len(eh_paths) > 0:
-    logging.warning(f"Legacy nodes ':elsA#Hybrid' skipped when reading file")
-    for eh_path in eh_paths:
-      PT.rm_node_from_path(tree, eh_path)
-  
+
+  for name in [':elsA#Hybrid', '.cedre#Geometry']:
+    eh_paths = PT.predicates_to_paths(tree, f'CGNSBase_t/Zone_t/{name}')
+    if len(eh_paths) > 0:
+      logging.warning(f"Legacy nodes '{name}' skipped when reading file")
+      for eh_path in eh_paths:
+        PT.rm_node_from_path(tree, eh_path)
+      
   arrays_removed = False
   for zone in PT.iter_all_Zone_t(tree):
     for fs in PT.iter_nodes_from_label(zone, 'FlowSolution_t'):

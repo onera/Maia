@@ -244,6 +244,7 @@ def test_rm_legacy_nodes():
     :elsA#Hybrid UserDefinedData_t:
       SortedCrossTable DataArray_t:
       IndexNGONCrossTable DataArray_t:
+    .cedre#Geometry UserDefinedData_t:
   ZoneB Zone_t [[11,10,0]]:
     FlowSol FlowSolution_t:
       GridLocation GridLocation_t "CellCenter":
@@ -252,11 +253,13 @@ def test_rm_legacy_nodes():
       WrongArray DataArray_t:
   ZoneC Zone_t [[11,10,0]]:
     :elsA#Hybrid UserDefinedData_t:
+    .cedre#Geometry UserDefinedData_t:
   """
   tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.rm_legacy_nodes(tree)
   assert PT.get_node_from_name(tree, ':elsA#Hybrid') is None
-
+  assert PT.get_node_from_name(tree, '.cedre#Geometry') is None
+  
   assert PT.get_node_from_name(tree, 'GoodArray') is not None
   assert PT.get_node_from_name(tree, 'WrongArray') is None
 

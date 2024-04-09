@@ -21,7 +21,7 @@ def load_data(names, labels):
     if labels[-2] in ['GridCoordinates_t', 'FlowSolution_t', 'DiscreteData_t', \
         'ZoneSubRegion_t', 'Elements_t', 'ArbitraryGridMotion_t']:
       return False
-    if names[-2] in [':elsA#Hybrid']: # Do not load legacy nodes
+    if names[-2] in [':elsA#Hybrid', '.cedre#Geometry']: # Do not load legacy nodes
       return False
     if names[-2] in [':CGNS#GlobalNumbering']:
       return False
