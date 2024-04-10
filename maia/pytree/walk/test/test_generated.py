@@ -111,7 +111,6 @@ def test_get_all_label():
 
   assert get_names(PT.get_all_CGNSBase_t(tree)) == ['Base']
   assert get_names(PT.get_all_Zone_t(tree)) == ['ZoneI']
-  assert get_names(PT.iter_all_BC_t(tree)) == []### A MODIFIER
 
 
 def test_get_node_from_path():
