@@ -1,22 +1,20 @@
+import sys
 import re
 import inspect
 from   functools import partial
-import numpy as np
 
-from .predicate import match_name, match_value, match_label, \
-    match_name_value, match_name_label, match_value_label, match_name_value_label
+from maia.pytree.typing import *
 
-MAXDEPTH = 3
+from .predicate import match_name
+from .predicate import match_label
+from .predicate import match_value
+from .predicate import match_name_label
 
-allfuncs = {
-  'Name' : (match_name,  ('name',)),
-  'Value': (match_value, ('value',)),
-  'Label': (match_label, ('label',)),
-  'NameAndLabel' : (match_name_label,  ('name', 'label',)),
-  #'NameAndValue' : (match_name_value,  ('name', 'value',)),
-  #'ValueAndLabel': (match_value_label, ('value', 'label',)),
-  #'NameValueAndLabel': (match_name_value_label, ('name', 'value', 'label',)),
-}
+from . import walkers_api as WAPI
+
+_MODULE_OBJECT = sys.modules[__name__]
+
+# Generation utils 
 
 def _func_name(function):
   #Partial functions does not have __name__, but .func.__name__ Manage both with try/except
@@ -83,13 +81,13 @@ def _overload_predicate(function, suffix, predicate_signature):
 
   func = create_specialized_func(predicate, nargs)
   if 'predicate' in input_name:
-    func.__name__ = input_name.replace('predicate', camel_to_snake(suffix))
+    func.__name__ = input_name.replace('predicate', _camel_to_snake(suffix))
   elif 'Predicate' in input_name:
     func.__name__ = input_name.replace('Predicate', suffix)
   func.__doc__   = f"Specialization of {input_name} with embedded predicate\n  {predicate_info}"
   return func
 
-def camel_to_snake(text, keep_upper=False):
+def _camel_to_snake(text, keep_upper=False):
   """
   Return a snake_case string from a camelCase string.
   If keep_upper is True, upper case words in camelCase are keeped upper case
@@ -106,7 +104,7 @@ def camel_to_snake(text, keep_upper=False):
     return word.lower()
 
 
-def generate_functions(function, maxdepth=MAXDEPTH, child=True, easypredicates=allfuncs):
+def _generate_functions(function, maxdepth, child, easypredicates):
   """
   From a XXX_from_predicate function, generate :
     - the depth variants XXX_from_predicateN from 1 to maxdepth
@@ -141,3 +139,34 @@ def generate_functions(function, maxdepth=MAXDEPTH, child=True, easypredicates=a
       generated[dfunc.__name__] = dfunc
 
   return generated
+
+
+
+# Run generation for Specialization of legacy functions
+
+#Generation for Node(s)Walker(s) based funcs
+_base_functions = [
+    WAPI.requestNodeFromPredicate,
+    WAPI.getNodeFromPredicate,
+    WAPI.getNodesFromPredicate,
+    WAPI.iterNodesFromPredicate,
+    ]
+
+_generated = {}
+for _base_function in _base_functions:
+  #Todo : raise DeprecationWarning
+  _easypredicates = {
+    'Name' : (match_name,  ('name',)),
+    'Value': (match_value, ('value',)),
+    'Label': (match_label, ('label',)),
+    'Type' : (match_label, ('label',)),
+    'NameAndType'  : (match_name_label,  ('name', 'label',)),
+    'NameAndLabel' : (match_name_label,  ('name', 'label',)),
+  }
+  _generated.update(_generate_functions(_base_function, maxdepth=3, child=True, easypredicates=_easypredicates))
+for _base_function in [WAPI.getNodesFromPredicates, WAPI.iterNodesFromPredicates]:
+  _generated.update(_generate_functions(_base_function, maxdepth=3, child=True, easypredicates={}))
+
+for _name, _func in _generated.items():
+  setattr(_MODULE_OBJECT, _name, _func)
+

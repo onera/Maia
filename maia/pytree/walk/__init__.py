@@ -1,4 +1,4 @@
-from .generate import *
+from .legacy import *
 from .remove_nodes import *
 from .node_walker import *
 from .nodes_walker import *

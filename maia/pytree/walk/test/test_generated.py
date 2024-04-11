@@ -427,4 +427,10 @@ def test_getNodeFromPredicate():
   zonegcs_from_type_name1 = ['ZGCB']
   assert [PT.get_name(n) for n in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) == CGL.ZoneGridConnectivity_t.name and PT.get_name(n) != "ZGCA")] == zonegcs_from_type_name1
 
+def test_camel_to_snake():
+  from maia.pytree.walk import legacy
+  assert legacy._camel_to_snake("already_snake") == "already_snake"
+  assert legacy._camel_to_snake("stringInCamelCase") == "string_in_camel_case"
+  assert legacy._camel_to_snake("StringInCamelCase") == "string_in_camel_case"
+  assert legacy._camel_to_snake("stringINCamelCase", keep_upper=True) == "string_IN_camel_case"
 
