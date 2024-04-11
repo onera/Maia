@@ -651,6 +651,31 @@ def iter_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> Iter
 # ---------------------------------------------------------------------------- #
 
 # ---------------------------------------------------------------------------- #
+# Searches returning pathes
+
+def predicates_to_paths(root:CGNSTree, predicates) -> List[str]:
+  """
+  An utility function searching descendants matching predicates,
+  and returning the path of these nodes (instead of the nodes themselves)
+  """
+  paths = []
+  for nodes in iter_nodes_from_predicates(root, predicates, depth=[1,1], ancestors=True):
+    paths.append('/'.join([n[0] for n in nodes]))
+  return paths
+
+def predicates_to_path(root:CGNSTree, predicates) -> Optional[str]:
+  """
+  An utility function searching descendants matching predicates,
+  and returning the path of the first matching nodes (instead of the node itself)
+  """
+  nodes = get_node_from_predicates(root, predicates, depth=[1,1], ancestors=True)
+  if None in nodes:
+    return None
+  else:
+    return '/'.join([n[0] for n in nodes])
+# ---------------------------------------------------------------------------- #
+
+# ---------------------------------------------------------------------------- #
 # Aliases for legacy code -- using default argument deep instead of shallow for search
 
 def getNodeFromPredicate(root, predicate, *args, **kwargs):

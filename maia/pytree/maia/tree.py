@@ -2,7 +2,8 @@ import numpy as np
 
 from maia.pytree.typing import *
 from maia.pytree.meta   import api_export
-import maia.pytree      as PT
+import maia.pytree       as PT
+from   maia.pytree.utils import path_tail
 
 from maia.transfer import protocols as EP
 
@@ -57,7 +58,7 @@ def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
   # Update tree
   for i, path in enumerate(zones_path_ini):
     zone = PT.get_node_from_path(part_tree, path)
-    PT.set_name(zone, PT.path_tail(new_names[i]))
+    PT.set_name(zone, path_tail(new_names[i]))
   for gc, new_name in zip(gcs, recv_names):
     PT.set_value(gc, new_name)
 

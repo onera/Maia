@@ -86,7 +86,7 @@ class Tree:
       group     = [zone_path]
       zone = PT.get_node_from_path(tree, zone_path)
       for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', matching_gcs]):
-        opp_zone_path = GridConnectivity.ZoneDonorPath(gc, PT.path_head(zone_path))
+        opp_zone_path = GridConnectivity.ZoneDonorPath(gc, zone_path.split('/')[0])
         utils.append_unique(group, opp_zone_path)
       connected_zones.append(group)
 

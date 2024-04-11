@@ -6,7 +6,10 @@ else:
 
 import numpy as np
 
+from maia.pytree.meta import begin_api_export, end_api_export
 import maia.pytree as PT
+
+begin_api_export()
 
 # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
 def flatten_cgns(items):
@@ -47,3 +50,5 @@ def gc_transform_window(gc, window):
                                 PT.GridConnectivity.Transform(gc, True))
 
 
+
+end_api_export()

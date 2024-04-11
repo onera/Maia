@@ -2,6 +2,8 @@ from maia.pytree.typing import *
 from maia.pytree.meta   import begin_api_export, end_api_export
 
 from maia.pytree.predicate import match_name, match_label, match_value, match_name_label
+from maia.pytree.utils     import path_head, path_tail
+
 from .walkers_api import get_node_from_path
 
 # Keys to access CGNSTree values
@@ -194,7 +196,6 @@ def rm_node_from_path(root:CGNSTree, path:str):
   pop_node_from_path(root, path)
 
 def pop_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
-  from maia.pytree.path_utils import path_head, path_tail
   if not '/' in path:
     parent = root
     name = path
