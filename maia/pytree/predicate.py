@@ -46,7 +46,7 @@ def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
   If allow_additional is True, also return True if node n has a AdditionalFamilyName_t child
   whose value is target_family
   """
-  from .walkers_api import get_node_from_predicate, iter_nodes_from_predicate
+  from maia.pytree import get_node_from_predicate, iter_nodes_from_predicate
   family_name_n = get_node_from_predicate(n, 'FamilyName_t', depth=[1,1])
   if family_name_n and N.get_value(family_name_n) == target_family:
     return True

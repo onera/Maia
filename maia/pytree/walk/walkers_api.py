@@ -2,8 +2,8 @@ from maia.pytree.typing import *
 from maia.pytree.meta   import begin_api_export, end_api_export
 from maia.pytree.meta   import CGNSNodeFromPredicateNotFoundError
 
-from .predicate     import auto_predicate, auto_predicates, \
-                           match_name, match_label, match_value, match_name_label
+from maia.pytree.predicate     import auto_predicate, auto_predicates, \
+                                      match_name, match_label, match_value, match_name_label
 
 begin_api_export()
 

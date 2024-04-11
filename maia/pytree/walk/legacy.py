@@ -6,10 +6,7 @@ from   functools import partial
 from maia.pytree.typing import *
 from maia.pytree.meta   import begin_api_export, end_api_export
 
-from .predicate import match_name
-from .predicate import match_label
-from .predicate import match_value
-from .predicate import match_name_label
+from maia.pytree.predicate import match_name, match_label, match_value, match_name_label
 
 from . import walkers_api as WAPI
 

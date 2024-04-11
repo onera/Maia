@@ -1,13 +1,16 @@
 from maia.pytree.typing import *
+from maia.pytree.meta   import begin_api_export, end_api_export
 
 from . import predicate
-from . import walkers_api as WAPI
+from maia.pytree.walk import walkers_api as WAPI
 
 # Keys to access CGNSTree values
 __NAME__     = 0
 __VALUE__    = 1
 __CHILDREN__ = 2
 __LABEL__    = 3
+
+begin_api_export()
 
 
 def path_head(path:str, i:int=-1) -> str:
@@ -95,3 +98,5 @@ def paths_to_tree(paths:List[str], root_name='CGNSTree') -> CGNSTree:
   unroll(path_tree)
   return path_tree
 
+
+end_api_export()

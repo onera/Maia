@@ -1,7 +1,8 @@
 import pytest
 
-import maia.pytree as PT
-from maia.pytree.yaml   import parse_yaml_cgns
+import maia.pytree           as PT
+import maia.pytree.yaml      as PTy
+import maia.pytree.predicate as PTp
 
 from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
 
@@ -22,7 +23,7 @@ get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 def test_get_node_from_predicate():
   tree = parse_yaml_cgns.to_node(yt)
 
-  assert PT.get_node_from_predicate(tree, lambda n: PT.match_name(n, 'bc2')) == PT.get_node_from_predicate(tree, 'bc2')
+  assert PT.get_node_from_predicate(tree, lambda n: PTp.match_name(n, 'bc2')) == PT.get_node_from_predicate(tree, 'bc2')
   assert PT.get_node_from_predicate(tree, 'bc8') is None
   assert PT.getNodeFromPredicate(tree, 'BC_t') == PT.get_node_from_predicate(tree, 'BC_t')
   assert PT.get_node_from_predicate(tree, 'BC_t', sort=lambda l:reversed(l))[0] == 'bc2'
@@ -43,7 +44,7 @@ def test_get_nodes_from_predicate():
   assert isinstance(PT.get_nodes_from_predicate(tree, 'bc*'), list)
 
   #Auto predicate
-  assert PT.get_nodes_from_predicate(tree, lambda n: PT.match_name(n, 'bc*')) == PT.get_nodes_from_predicate(tree, 'bc*')
+  assert PT.get_nodes_from_predicate(tree, lambda n: PTp.match_name(n, 'bc*')) == PT.get_nodes_from_predicate(tree, 'bc*')
 
   # snake_case => shallow search, CamelCase => Deep seach
   bc_or_family = lambda n: PT.get_label(n) in ['BC_t', 'FamilyName_t']
@@ -56,7 +57,7 @@ def test_iter_nodes_from_predicate():
   assert not isinstance(PT.iter_nodes_from_predicate(tree, 'bc*'), list) #Generator
 
   #Auto predicate
-  assert list(PT.iter_nodes_from_predicate(tree, lambda n: PT.match_name(n, 'bc*'))) == list(PT.iter_nodes_from_predicate(tree, 'bc*'))
+  assert list(PT.iter_nodes_from_predicate(tree, lambda n: PTp.match_name(n, 'bc*'))) == list(PT.iter_nodes_from_predicate(tree, 'bc*'))
 
   # snake_case => shallow search, CamelCase => Deep seach
   bc_or_family = lambda n: PT.get_label(n) in ['BC_t', 'FamilyName_t']
@@ -71,9 +72,9 @@ def test_get_node_from_predicates():
 
   # Auto predicate
   assert PT.get_node_from_predicates(tree, ["BC_t", "FamilyName_t"]) == \
-      PT.get_node_from_predicates(tree, [lambda n: PT.match_label(n, 'BC_t'), lambda n: PT.match_label(n, 'FamilyName_t')])
+      PT.get_node_from_predicates(tree, [lambda n: PTp.match_label(n, 'BC_t'), lambda n: PTp.match_label(n, 'FamilyName_t')])
   assert PT.get_node_from_predicates(tree, "BC_t/FamilyName_t") == \
-      PT.get_node_from_predicates(tree, [lambda n: PT.match_label(n, 'BC_t'), lambda n: PT.match_label(n, 'FamilyName_t')])
+      PT.get_node_from_predicates(tree, [lambda n: PTp.match_label(n, 'BC_t'), lambda n: PTp.match_label(n, 'FamilyName_t')])
 
   assert PT.get_value(PT.get_node_from_predicates(tree, ["BC_t", "FamilyName_t"])) == "BC1" # Only one is returned
 
@@ -91,11 +92,11 @@ def test_get_nodes_from_predicates():
 
   # Auto predicate
   assert PT.get_nodes_from_predicates(tree, ["BC_t", "FamilyName_t"]) == \
-      PT.get_nodes_from_predicates(tree, [lambda n: PT.match_label(n, 'BC_t'), lambda n: PT.match_label(n, 'FamilyName_t')])
+      PT.get_nodes_from_predicates(tree, [lambda n: PTp.match_label(n, 'BC_t'), lambda n: PTp.match_label(n, 'FamilyName_t')])
   assert PT.get_nodes_from_predicates(tree, "BC_t/FamilyName_t") == \
-      PT.get_nodes_from_predicates(tree, [lambda n: PT.match_label(n, 'BC_t'), lambda n: PT.match_label(n, 'FamilyName_t')])
+      PT.get_nodes_from_predicates(tree, [lambda n: PTp.match_label(n, 'BC_t'), lambda n: PTp.match_label(n, 'FamilyName_t')])
   assert PT.getNodesFromPredicates(tree, "BC_t/FamilyName_t") == \
-      PT.getNodesFromPredicates(tree, [lambda n: PT.match_label(n, 'BC_t'), lambda n: PT.match_label(n, 'FamilyName_t')])
+      PT.getNodesFromPredicates(tree, [lambda n: PTp.match_label(n, 'BC_t'), lambda n: PTp.match_label(n, 'FamilyName_t')])
 
   # With ancestors
   results = PT.get_nodes_from_predicates(tree, "BC_t/FamilyName_t", ancestors=True)
