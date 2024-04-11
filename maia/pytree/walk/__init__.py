@@ -1,7 +1,5 @@
 from .legacy import *
 from .remove_nodes import *
-from .node_walker import *
-from .nodes_walker import *
-from .node_walkers import *
-from .nodes_walkers import *
 from .walkers_api import *
+
+__all__ = remove_nodes.__all__ + walkers_api.__all__ + legacy.__all__

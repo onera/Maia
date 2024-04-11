@@ -16,7 +16,6 @@ def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz):
 
   return np_utils.interweave_arrays([mean_x, mean_y, mean_z])
 
-@PT.check_is_label("Zone_t")
 def compute_cell_center(zone):
   """Compute the cell centers of a partitioned zone.
 
@@ -50,7 +49,6 @@ def compute_cell_center(zone):
 
   return center_cell
 
-@PT.check_is_label("Zone_t")
 def compute_face_center(zone):
   """Compute the face centers of a partitioned zone.
 
@@ -103,7 +101,6 @@ def compute_face_center(zone):
 
     return centers
 
-@PT.check_is_label("Zone_t")
 def compute_edge_center(zone):
   """Compute the edge centers of a partitioned zone.
 

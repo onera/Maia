@@ -4,6 +4,7 @@ import inspect
 from   functools import partial
 
 from maia.pytree.typing import *
+from maia.pytree.meta   import begin_api_export, end_api_export
 
 from .predicate import match_name
 from .predicate import match_label
@@ -167,6 +168,9 @@ for _base_function in _base_functions:
 for _base_function in [WAPI.getNodesFromPredicates, WAPI.iterNodesFromPredicates]:
   _generated.update(_generate_functions(_base_function, maxdepth=3, child=True, easypredicates={}))
 
+begin_api_export()
+
 for _name, _func in _generated.items():
   setattr(_MODULE_OBJECT, _name, _func)
 
+end_api_export()

@@ -82,7 +82,6 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn
 
-@PT.check_is_label('Zone_t')
 def get_entities_numbering(part_zone):
   """
   Shortcut to return vertex, edge, face and cell global numbering of a partitioned

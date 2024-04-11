@@ -1,3 +1,4 @@
+import inspect
 import types
 from functools import wraps
 
@@ -78,3 +79,39 @@ def for_all_methods(decorator):
     return cls
 
   return _cls_decorator
+
+_GLOBAL_VAR_NAME = '_do_not_include_all'
+def _get_globals():
+  """Get global dict from stack."""
+  calling_module = inspect.stack()[2]
+  local_stack = calling_module[0]
+  return local_stack.f_globals
+
+def begin_api_export():
+  """ Start defining externally accessible objects.  """
+  globs = _get_globals()
+  globs[_GLOBAL_VAR_NAME] = list(globs.keys()) + [_GLOBAL_VAR_NAME]
+
+
+def end_api_export():
+  """ Finish defining externally accessible objects.  """
+  globs = _get_globals()
+  globs['__all__'] = list(
+    set(list(globs.keys())) - set(globs[_GLOBAL_VAR_NAME])
+  )
+
+def api_export(func: Callable):
+    """Decorator that adds a function to the modules __all__ list."""
+
+    local_stack = inspect.stack()[1][0]
+
+    global_vars = local_stack.f_globals
+
+    if '__all__' not in global_vars:
+        global_vars['__all__'] = []
+
+    all_var = global_vars['__all__']
+
+    all_var.append(func.__name__)
+
+    return func

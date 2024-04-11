@@ -1,13 +1,16 @@
 from maia.pytree.typing import *
+from maia.pytree.meta   import begin_api_export, end_api_export
+from maia.pytree.meta   import CGNSNodeFromPredicateNotFoundError
+
+from .predicate     import auto_predicate, auto_predicates, \
+                           match_name, match_label, match_value, match_name_label
+
+begin_api_export()
 
 from .node_walker   import NodeWalker
 from .nodes_walker  import NodesWalker
 from .node_walkers  import NodeWalkers
 from .nodes_walkers import NodesWalkers
-from .predicate     import auto_predicate, auto_predicates, \
-                           match_name, match_label, match_value, match_name_label
-
-from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
 
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker
@@ -690,3 +693,4 @@ def iterNodesFromPredicates(root, predicate, *args, **kwargs):
 # ---------------------------------------------------------------------------- #
 
 
+end_api_export()

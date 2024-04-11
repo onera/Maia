@@ -1,5 +1,8 @@
 from maia.pytree.typing import *
+from maia.pytree.meta   import begin_api_export, end_api_export
 import maia.pytree as PT
+
+begin_api_export()
 
 def shorten_names(t:CGNSTree, quiet:bool=False, labels_to_shorten:Optional[List[str]]=None):
   old_name = PT.get_name(t)
@@ -36,3 +39,5 @@ def rename_zone(t:CGNSTree, name:str, new_name:str):
       PT.set_name(zone, new_name)
     for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
       PT.set_value(gc, new_name)
+
+end_api_export()
