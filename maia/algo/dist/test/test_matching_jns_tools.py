@@ -1,11 +1,9 @@
 import pytest
 import pytest_parallel
-
-import mpi4py.MPI as MPI
 import numpy as np
+
 import maia.pytree as PT
 
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.factory import full_to_dist
 
@@ -100,7 +98,7 @@ Base1 CGNSBase_t [3,3]:
         PointList IndexArray_t [[1,3]]:
         PointListDonor IndexArray_t [[32,34]]:
 """
-  full_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  full_tree = PT.yaml.to_cgns_tree(yt)
   dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
 
   MJT.add_joins_donor_name(dist_tree, comm)
@@ -129,7 +127,7 @@ Base0 CGNSBase_t:
         PointListDonor IndexArray_t [1,4,7,10]:
         GridConnectivityDonorName Descriptor_t "WrongOldValue":
 """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
   jn_donor_path = 'Base0/ZoneA/ZGC/matchAB/GridConnectivityDonorName'
   assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
   MJT.add_joins_donor_name(dist_tree, comm)
@@ -164,7 +162,7 @@ Base0 CGNSBase_t:
         PointList IndexArray_t [7,10]:
         PointListDonor IndexArray_t [7,10]:
 """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
   MJT.add_joins_donor_name(dist_tree, comm)
 
 class Test_gcdonorname_utils:
@@ -193,7 +191,7 @@ Base CGNSBase_t:
         PointList IndexArray_t [[-100,-10]]:
         GridLocation GridLocation_t "FaceCenter":
   """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  dist_tree = PT.yaml.to_cgns_tree(dt)
 
   def test_get_jn_donor_path(self):
     assert MJT.get_jn_donor_path(self.dist_tree, 'Base/ZoneA/ZGC/perio2') == 'Base/ZoneA/ZGC/perio1'
@@ -243,7 +241,7 @@ Base0 CGNSBase_t:
       matchBA GridConnectivity_t "ZoneA":
         PointList IndexArray_t [[13,16,7,10]]:
 """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
   MJT.clear_interface_ids(dist_tree)
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceId')  is None
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceOrd') is None
@@ -266,7 +264,7 @@ Base CGNSBase_t:
         PointList IndexArray_t [[11,12,13]]:
         PointListDonor IndexArray_t [[7,5,3]]:
 """
-  full_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  full_tree = PT.yaml.to_cgns_tree(yt)
   dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
 
   MJT.sort_jn_pointlist(dist_tree, comm)

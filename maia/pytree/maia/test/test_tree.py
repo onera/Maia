@@ -5,14 +5,11 @@ import numpy as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.pytree.yaml   import parse_yaml_cgns
-
-from maia.pytree.maia import tree
 
 @pytest_parallel.mark.parallel(3)
 def test_rename_zones(comm):
   if comm.Get_rank() == 0:
-    tree = parse_yaml_cgns.to_cgns_tree("""
+    tree = PT.yaml.to_cgns_tree("""
     Base CGNSBase_t:
       ZoneA Zone_t:
       ZoneB Zone_t:
@@ -21,7 +18,7 @@ def test_rename_zones(comm):
     """)
     old_to_new = {'Base/ZoneA' : 'Base/ZoneI', 'Base/ZoneB': 'Base/ZoneII'}
   elif comm.Get_rank() == 1:
-    tree = parse_yaml_cgns.to_cgns_tree("""
+    tree = PT.yaml.to_cgns_tree("""
     Base CGNSBase_t:
       ZoneC Zone_t:
         ZGC ZoneGridConnectivity_t:
@@ -30,7 +27,7 @@ def test_rename_zones(comm):
     """)
     old_to_new = {'Base/ZoneC' : 'Base/ZoneIII'}
   elif comm.Get_rank() == 2:
-    tree = parse_yaml_cgns.to_cgns_tree("""
+    tree = PT.yaml.to_cgns_tree("""
     Base CGNSBase_t:
       ZoneD Zone_t:
         ZGC ZoneGridConnectivity_t:

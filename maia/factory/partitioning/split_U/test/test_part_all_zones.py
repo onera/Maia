@@ -7,7 +7,6 @@ import Pypdm.Pypdm as PDM
 import maia.pytree as PT
 
 from maia                      import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.yaml          import parse_yaml_cgns
 from maia.factory.partitioning.split_U import part_all_zones as partU
 
 def test_prepare_part_weight():
@@ -70,7 +69,7 @@ ZoneB Zone_t [[1,1,0]]:
     Vertex DataArray_t {dtype} [0,0,0]:
     Cell DataArray_t {dtype} [0,0,0]:
 """
-  dzones = parse_yaml_cgns.to_nodes(dt)
+  dzones = PT.yaml.to_nodes(dt)
 
   # Empty array is badly shaped
   pe = PT.get_node_from_name(dzones[0], 'ParentElements')

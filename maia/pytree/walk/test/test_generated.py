@@ -10,7 +10,6 @@ import maia.pytree           as PT
 import maia.pytree.predicate as PTp
 from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
 
-from maia.pytree.yaml   import parse_yaml_cgns
 
 yt = """
 Base CGNSBase_t:
@@ -72,7 +71,7 @@ Base CGNSBase_t I4 [3,3]:
 get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 
 def test_generated_walkers():          
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
 
   assert PT.get_node_from_name(tree, "ZoneI") == PT.get_node_from_predicate(tree, lambda n: PTp.match_name(n, "ZoneI"))
   assert PT.get_node_from_value(tree, np.array([22,0])) == \
@@ -91,7 +90,7 @@ def test_generated_walkers():
 
 
 def test_generated_walkers_leg():
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
 
   assert PT.getNodesFromType(tree, "IndexArray_t") == list(PT.iter_nodes_from_label(tree, "IndexArray_t"))
   assert PT.getNodesFromType2(tree, "IndexArray_t") == list(PT.iter_nodes_from_label(tree, "IndexArray_t", depth=2))
@@ -99,8 +98,8 @@ def test_generated_walkers_leg():
 
 
 def test_generated_remove():
-  treeA = parse_yaml_cgns.to_cgns_tree(yt)
-  treeB = parse_yaml_cgns.to_cgns_tree(yt)
+  treeA = PT.yaml.to_cgns_tree(yt)
+  treeB = PT.yaml.to_cgns_tree(yt)
 
   PT.rm_nodes_from_predicate(treeA, lambda n: PTp.match_name(n, "gc*"))
   PT.rm_nodes_from_name(treeB, "gc*")
@@ -108,20 +107,20 @@ def test_generated_remove():
 
 
 def test_get_all_label():
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
 
   assert get_names(PT.get_all_CGNSBase_t(tree)) == ['Base']
   assert get_names(PT.get_all_Zone_t(tree)) == ['ZoneI']
 
 
 def test_get_node_from_path():
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   assert PT.get_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3') is None
   assert PT.get_node_from_path(tree, '') == tree
 
 def test_request_node_from_path():
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   assert PT.request_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
   default = PT.new_node("Default", value="Null")
   assert PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3', default=default) == default
@@ -131,7 +130,7 @@ def test_request_node_from_path():
 
 
 def test_pop_node_from_path():
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   zgc = PT.get_node_from_name(tree, 'ZGCA')
   zgc_bck = PT.deep_copy(zgc)
   node = PT.pop_node_from_path(zgc, 'gc1/NonExistingNode')
@@ -141,7 +140,7 @@ def test_pop_node_from_path():
   assert PT.get_node_from_name(tree, 'Index_i') is None
 
 def test_rm_node_from_path():
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   zgc = PT.get_node_from_name(tree, 'ZGCA')
   zgc_bck = PT.deep_copy(zgc)
   PT.rm_node_from_path(zgc, 'gc1/NonExistingNode')
@@ -157,7 +156,7 @@ def test_rm_node_from_path():
 
 
 def test_get_all_subsets():
-  tree = parse_yaml_cgns.to_cgns_tree(yt2)
+  tree = PT.yaml.to_cgns_tree(yt2)
 
   all_tested_subsets_nodes = []
 
@@ -197,7 +196,7 @@ def test_get_all_subsets():
 
 
 def test_iter_all_subsets():
-  tree = parse_yaml_cgns.to_cgns_tree(yt2)
+  tree = PT.yaml.to_cgns_tree(yt2)
 
   all_tested_subsets_nodes = []
 
@@ -246,7 +245,7 @@ def test_getNodeFromPredicate():
   is_gc1     = lambda n: PT.get_name(n) == 'gc1'     and PT.get_label(n) == 'GridConnectivity_t'
   is_index_i = lambda n: PT.get_name(n) == 'Index_i' and PT.get_label(n) == 'IndexArray_t'
 
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
 
   # getNodeFrom...
   # ******************
@@ -376,7 +375,7 @@ def test_getNodeFromPredicate():
   assert is_ngon (PT.request_node_from_label(tree, "Elements_t")                  )
   assert is_nface(PT.request_node_from_name_and_label(tree, "NFace", "Elements_t"))
 
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
 
   # Camel case
   # ----------

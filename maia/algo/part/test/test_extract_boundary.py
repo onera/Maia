@@ -7,7 +7,6 @@ import maia.pytree as PT
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 from maia.factory.dcube_generator import dcube_generate
-from  maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.algo.part import extract_boundary as EXB
 
@@ -146,13 +145,13 @@ def test_extract_surf_from_bc(comm):
       Cell DataArray_t {dtype} [5,6,7,8]:
   """
   if comm.Get_rank() == 0:
-    part_zones = [parse_yaml_cgns.to_node(part_0)]
+    part_zones = [PT.yaml.to_node(part_0)]
     bc_pl = np.array([15,16,9,10])
     expt_face_lngn = [3,5,1,2]
     expt_face_parent = [25, 27, 13, 14]
     expt_vtx_lngn = [1,2,3,4,5,6,7,8,9,10]
   elif comm.Get_rank() == 1:
-    part_zones = [parse_yaml_cgns.to_node(part_1)]
+    part_zones = [PT.yaml.to_node(part_1)]
     bc_pl = np.array([15,16])
     expt_face_lngn = [4,6]
     expt_face_parent = [26, 28]

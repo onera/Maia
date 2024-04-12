@@ -9,7 +9,6 @@ from h5py    import h5f, h5g
 
 import maia.pytree as PT
 
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.utils.test_utils import sample_mesh_dir
 
 
@@ -243,10 +242,10 @@ def test_load_node_partial(partial, ref_hdf_file):
         CoordinateY DataArray_t R8 [-1,-2,-3,-4,-5,-6]:
     """
 
-  assert PT.is_same_tree(parent, parse_yaml_cgns.to_node(yt))
+  assert PT.is_same_tree(parent, PT.yaml.to_node(yt))
 
 def test_write_node_partial(tmp_hdf_file):
-  tree = parse_yaml_cgns.to_cgns_tree(sample_tree)
+  tree = PT.yaml.to_cgns_tree(sample_tree)
   node = PT.get_node_from_path(tree, 'Base/ZoneU/GridCoordinates')
   ancestors_stack = (['Base', 'ZoneU', 'GridCoordinates'], ['CGNSBase_t', 'Zone_t', 'GridCoordinates_t'])
 
@@ -297,10 +296,10 @@ def test_load_tree_partial(partial, ref_hdf_file):
   else:
     tree = HCG.load_tree_partial(ref_hdf_file, lambda N,L : True)
     yt = sample_tree
-  assert PT.is_same_tree(tree, parse_yaml_cgns.to_cgns_tree(yt))
+  assert PT.is_same_tree(tree, PT.yaml.to_cgns_tree(yt))
 
 def test_write_tree_partial(tmp_path, ref_hdf_file):
-  tree = parse_yaml_cgns.to_cgns_tree(sample_tree)
+  tree = PT.yaml.to_cgns_tree(sample_tree)
   outfile = str(tmp_path / Path('only_coords.hdf'))
   HCG.write_tree_partial(tree, outfile, lambda N,L : True)
   cmd = ["h5diff", f"{ref_hdf_file}", f"{outfile}", "Base"] #hdf5version dataset can vary

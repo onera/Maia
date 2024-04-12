@@ -1,11 +1,8 @@
 import pytest_parallel
-import mpi4py.MPI as MPI
-import numpy      as np
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from   maia.pytree.yaml    import parse_yaml_cgns
 from   maia.utils.parallel import utils as par_utils
 from   maia.io             import distribution_tree
 
@@ -74,7 +71,7 @@ Zone Zone_t [[27,8,0]]:
     PointList IndexArray_t None:
     PointList#Size IndexArray [1,10]:
   """
-    zone = parse_yaml_cgns.to_node(yt)
+    zone = PT.yaml.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 5
     assert len(PT.get_nodes_from_name(zone, 'Element')) == 1
@@ -91,7 +88,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
   ZSR ZoneSubRegion_t:
     PointRange IndexRange_t [[2,2],[2,2],[1,1]]:
   """
-    zone = parse_yaml_cgns.to_node(yt)
+    zone = PT.yaml.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
     assert PT.get_node_from_name(zone, 'PointList#Size') is None
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
@@ -100,7 +97,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
 
 @pytest_parallel.mark.parallel(2)
 def test_add_distribution_info(comm):
-  dist_tree = parse_yaml_cgns.to_cgns_tree("""
+  dist_tree = PT.yaml.to_cgns_tree("""
 Base CGNSBase_t [3,3]:
   ZoneU Zone_t [[27,8,0]]:
     ZoneType ZoneType_t "Unstructured":
@@ -159,7 +156,7 @@ Base0 CGNSBase_t [3,3]:
       :CGNS#Distribution UserDefinedData_t:
     :CGNS#Distribution UserDefinedData_t:
 """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
   distribution_tree.clean_distribution_info(dist_tree)
   assert PT.get_node_from_name(dist_tree, ':CGNS#Distribution') is None
   assert len(PT.get_nodes_from_name(dist_tree, 'PointList')) == 2

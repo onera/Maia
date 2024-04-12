@@ -1,11 +1,10 @@
 import pytest
 
 import maia.pytree as PT
-from maia.pytree.yaml import parse_yaml_cgns
 
 from maia.pytree.graph.cgns import depth_first_search, zip_depth_first_search, pytree_zip_adaptor
 
-t0 = parse_yaml_cgns.to_node("""
+t0 = PT.yaml.to_node("""
 Base CGNSBase_t:
   ZoneI0 Zone_t:
     NGon Elements_t [22,0]:
@@ -16,7 +15,7 @@ Base CGNSBase_t:
 """)
 
 # same as t0 but NGon/NFace swapped
-t1 = parse_yaml_cgns.to_node("""
+t1 = PT.yaml.to_node("""
 Base CGNSBase_t:
   ZoneI1 Zone_t:
     NFace Elements_t [23,0]:

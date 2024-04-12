@@ -5,7 +5,6 @@ import shutil
 import maia
 import maia.pytree as PT
 import maia.algo.dist.adaptation_utils as adapt_utils
-from   maia.pytree.yaml import parse_yaml_cgns
 from   maia.utils import par_utils
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
@@ -193,7 +192,7 @@ def test_apply_offset_to_elts():
           GridLocation GridLocation_t 'FaceCenter':
           PointList IndexArray_t I4 [[23, 24, 25]]:
     """
-  zone = parse_yaml_cgns.to_node(yt)
+  zone = PT.yaml.to_node(yt)
   elt_n = PT.get_child_from_name(zone, 'TETRA')
   min_range = PT.Element.Range(elt_n)[1]
   maia.algo.dist.adaptation_utils.apply_offset_to_elts(zone, -2, min_range)
@@ -397,7 +396,7 @@ def test_constraint_other_side_join(comm):
                       np.array([ 8,13, 3],dtype=pdm_dtype)]
                      ][comm.rank]
 
-  zone     = parse_yaml_cgns.to_node(yt)
+  zone     = PT.yaml.to_node(yt)
   elt_n    = PT.get_child_from_name_and_label(zone, 'TRI', 'Elements_t')
   bc_names = ['BC1_c','BC2']
   adapt_utils.constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm)

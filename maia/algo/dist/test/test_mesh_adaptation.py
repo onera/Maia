@@ -4,7 +4,6 @@ import shutil
 
 import maia
 import maia.pytree as PT
-from maia.pytree.yaml          import parse_yaml_cgns
 
 from maia.algo.dist import mesh_adaptation as MA
 
@@ -29,7 +28,7 @@ def test_unpack_metric():
         WrongB   DataArray_t R8 [1., 1., 1.]:
         WrongC   DataArray_t R8 [1., 1., 1.]:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yz)
+  tree = PT.yaml.to_cgns_tree(yz)
 
   # > Wrong because leads to unexistant field
   with pytest.raises(ValueError):

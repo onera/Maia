@@ -6,7 +6,6 @@ from mpi4py import MPI
 import maia
 import maia.pytree        as PT
 
-from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.factory import dist_to_full
 
@@ -20,7 +19,7 @@ def test_reshape_S_arrays():
       GridLocation GridLocation_t "CellCenter":
       Sol DataArray_t [1,2,3,4]:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   dist_to_full._reshape_S_arrays(tree)
   assert (PT.get_node_from_name(tree, 'Sol')[1] == [ [[1],[3]], [[2],[4]] ]).all()
   assert (PT.get_node_from_name(tree, 'CoordinateX')[1] == \

@@ -3,6 +3,7 @@ import pytest_parallel
 import numpy      as np
 
 import maia.pytree      as PT
+import maia.pytree.yaml as PTy
 import maia.pytree.maia as MT
 
 
@@ -10,7 +11,6 @@ from maia import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.transfer import part_to_dist
 import maia.transfer.part_to_dist.data_exchange as PTB
 import maia.transfer.protocols as EP
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
@@ -94,8 +94,8 @@ class Test__discover_wrapper:
         PointList IndexArray_t [[1,4,3]]:
         field DataArray_t:
       """.format(dtype)
-    dist_zone  = parse_yaml_cgns.to_node(dt)
-    part_zones = parse_yaml_cgns.to_nodes(pt)
+    dist_zone  = PTy.to_node(dt)
+    part_zones = PTy.to_nodes(pt)
 
     PTB._discover_wrapper(dist_zone, part_zones, \
         'DiscreteData_t', 'DiscreteData_t/DataArray_t', comm)
@@ -146,8 +146,8 @@ class Test__discover_wrapper:
       CreatedZSR.1 ZoneSubRegion_t:
         GridConnectivityRegionName Descriptor_t "gc.1":
       """
-    dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-    part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+    dist_tree = PTy.to_cgns_tree(dt)
+    part_tree = PTy.to_cgns_tree(pt)
 
     PTB._discover_wrapper(PT.get_all_Zone_t(dist_tree)[0], PT.get_all_Zone_t(part_tree), \
         'ZoneSubRegion_t', 'DataArray_t', comm)
@@ -198,8 +198,8 @@ class Test__discover_wrapper:
             BCData BCData_t:
               newField4 DataArray_t:
       """
-    dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-    part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+    dist_tree = PTy.to_cgns_tree(dt)
+    part_tree = PTy.to_cgns_tree(pt)
 
     bc_ds_path = 'ZoneBC_t/BC_t/BCDataSet_t'
     PTB._discover_wrapper(PT.get_all_Zone_t(dist_tree)[0], PT.get_all_Zone_t(part_tree), \
@@ -253,8 +253,8 @@ ZoneU Zone_t [[6,0,0]]:
       CoordinateY DataArray_t [2,1]:
   """.format(dtype)
 
-  dist_zone  = parse_yaml_cgns.to_node(dt)
-  part_zones = parse_yaml_cgns.to_nodes(pt)
+  dist_zone  = PTy.to_node(dt)
+  part_zones = PTy.to_nodes(pt)
 
   PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 
@@ -331,8 +331,8 @@ ZoneU Zone_t [[6,0,0]]:
       Vertex DataArray_t {0} [5,6,2]:
   """.format(dtype)
 
-  dist_zone  = parse_yaml_cgns.to_node(dt)
-  part_zones = parse_yaml_cgns.to_nodes(pt)
+  dist_zone  = PTy.to_node(dt)
+  part_zones = PTy.to_nodes(pt)
 
   if filter:
     part_to_dist.part_zones_to_dist_zone_only(dist_zone, part_zones, comm, {'DiscreteData_t' : ['NewFlowSol/field3']})
@@ -415,8 +415,8 @@ ZoneU Zone_t [[6,0,0]]:
       Vertex DataArray_t {0} [5,6,2,1]:
   """.format(dtype)
 
-  dist_zone  = parse_yaml_cgns.to_node(dt)
-  part_zones = parse_yaml_cgns.to_nodes(pt)
+  dist_zone  = PTy.to_node(dt)
+  part_zones = PTy.to_nodes(pt)
 
   PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm,reduce_func=EP.reduce_sum)
   PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, comm,reduce_func=EP.reduce_mean)
@@ -537,8 +537,8 @@ ZoneU Zone_t [[6,0,0]]:
       field DataArray_t R8 [300]:
   """.format(dtype)
 
-  dist_zone  = parse_yaml_cgns.to_node(dt)
-  part_zones = parse_yaml_cgns.to_nodes(pt)
+  dist_zone  = PTy.to_node(dt)
+  part_zones = PTy.to_nodes(pt)
 
   if from_api:
     part_to_dist.part_zones_to_dist_zone_all(dist_zone, part_zones, comm)
@@ -629,8 +629,8 @@ ZoneU Zone_t:
             field DataArray_t [1,4,3,1]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = PT.get_all_Zone_t(part_tree)
 
@@ -721,8 +721,8 @@ ZoneU Zone_t:
             field DataArray_t [1,4,3,1]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = PT.get_all_Zone_t(part_tree)
 

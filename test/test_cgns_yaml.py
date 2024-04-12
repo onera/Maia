@@ -2,10 +2,7 @@ import pytest
 import os
 import tempfile
 
-from maia.pytree.yaml import parse_cgns_yaml
-from maia.pytree.yaml import parse_yaml_cgns
-
-from maia       import pytree     as PT
+import maia.pytree as PT
 from maia.utils import test_utils as TU
 
 def test_yaml_loading():
@@ -19,7 +16,7 @@ def test_yaml_loading():
   # Here, the yaml file is converted into a complete cgns tree
   filename = os.path.join(TU.mesh_dir,'S_twoblocks.yaml')
   with open(filename, 'r') as f:
-    tree = parse_yaml_cgns.to_cgns_tree(f)
+    tree = PT.yaml.to_cgns_tree(f)
 
   assert tree[3] == 'CGNSTree_t'
 
@@ -32,14 +29,14 @@ FlowSolution FlowSolution_t:
   Array2 DataArray_t R4 [-10., -20., -30., -40.]:
 """
   # In this case, the parser can load this node using
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   assert node[3] == 'FlowSolution_t' and len(node[2]) == 3
 
   # Note that the yaml parser works on stream : loading from a file or a string is equivalent
   with tempfile.TemporaryFile(mode='w+') as f:
     f.write(yt)
     f.seek(0)
-    node_from_tree = parse_yaml_cgns.to_node(f)
+    node_from_tree = PT.yaml.to_node(f)
   assert PT.is_same_tree(node_from_tree, node)
 
 @pytest.mark.parametrize("filename", ["U_ATB_45.yaml", "S_twoblocks.yaml"])
@@ -53,10 +50,10 @@ def test_cgns_yaml_conversion(filename):
   input_yaml_lines = [line for line in input_yaml_lines if line[0] != '#'] #Filter comments in file
   input_yaml = ''.join(input_yaml_lines)
 
-  tree = parse_yaml_cgns.to_cgns_tree(input_yaml)
+  tree = PT.yaml.to_cgns_tree(input_yaml)
 
   #Convert the CGNS tree to a yaml lines
-  yaml = parse_cgns_yaml.to_yaml(tree, write_root=False)
+  yaml = PT.yaml.to_yaml(tree, write_root=False)
   yaml = '\n'.join(yaml) #yaml is now a huge string
 
   for input_line, new_line in zip(input_yaml_lines, yaml.split('\n')):
@@ -67,6 +64,6 @@ def test_cgns_yaml_conversion(filename):
     f.write(yaml)
     #Re read file for check
     f.seek(0)
-    new_tree = parse_yaml_cgns.to_cgns_tree(f)
+    new_tree = PT.yaml.to_cgns_tree(f)
 
   assert PT.is_same_tree(tree, new_tree)

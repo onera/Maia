@@ -3,7 +3,6 @@ import pytest_parallel
 
 import maia.pytree        as PT
 
-from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.factory import full_to_dist
 
@@ -17,7 +16,7 @@ def test_distribute_pl_node(comm):
       BCData BCData_t:
         Data DataArray_t [1,2,11,11]:
   """
-  bc = parse_yaml_cgns.to_node(yt)
+  bc = PT.yaml.to_node(yt)
   dist_bc = full_to_dist.distribute_pl_node(bc, comm)
   assert PT.get_node_from_path(dist_bc, ':CGNS#Distribution/Index') is not None
   assert PT.get_node_from_path(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is None
@@ -34,7 +33,7 @@ def test_distribute_pl_node(comm):
       BCData BCData_t:
         Data DataArray_t [1,2]:
   """
-  bc = parse_yaml_cgns.to_node(yt)
+  bc = PT.yaml.to_node(yt)
   dist_bc = full_to_dist.distribute_pl_node(bc, comm)
   assert PT.get_node_from_path(dist_bc, ':CGNS#Distribution/Index') is not None
   assert PT.get_node_from_path(dist_bc, 'BCDataSet/:CGNS#Distribution/Index') is not None
@@ -62,7 +61,7 @@ def test_distribute_element(comm):
     ElementRange IndexRange_t [16,20]:
     ElementConnectivity DataArray_t [4,1,3, 8,2,1, 9,7,4, 11,4,2, 10,4,1]:
   """
-  elem = parse_yaml_cgns.to_node(yt)
+  elem = PT.yaml.to_node(yt)
   dist_elem = full_to_dist.distribute_element_node(elem, comm)
 
   assert (PT.Element.Range(dist_elem) == [16,20]).all()
@@ -80,7 +79,7 @@ def test_distribute_element(comm):
       ElementConnectivity DataArray_t [4,1,3,8, 8,2,3,1, 9,7,4, 11,4,2,10,1]:
       ParentElements DataArray_t [[1,0], [2,3], [2,0], [3,0]]:
     """
-    elem = parse_yaml_cgns.to_node(yt)
+    elem = PT.yaml.to_node(yt)
     dist_elem = full_to_dist.distribute_element_node(elem, comm)
 
     assert (PT.Element.Range(dist_elem) == [1,4]).all()
@@ -129,7 +128,7 @@ def test_full_to_dist_tree(owner, comm):
       Array DataArray_t [21, 12, 20, 12]:
       BCRegionName Descriptor_t "bc":
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=owner)
 
   zone = PT.get_all_Zone_t(dist_tree)[0]

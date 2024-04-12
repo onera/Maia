@@ -1,10 +1,11 @@
 import pytest
-import numpy      as np
-import maia.pytree        as PT
-
 import pytest_parallel
+import numpy      as np
 
-from   maia.pytree.yaml   import parse_yaml_cgns
+import maia.pytree      as PT
+import maia.pytree.yaml as PTy
+
+
 from   maia.transfer import dist_to_part
 import maia.transfer.dist_to_part.data_exchange as BTP
 from maia import npy_pdm_gnum_dtype as pdm_dtype
@@ -166,8 +167,8 @@ def test_dist_coords_to_part_coords_U(from_mblock, comm):
       Vertex DataArray_t {0} [3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = PT.get_all_Zone_t(part_tree)
@@ -205,8 +206,8 @@ def test_dist_coords_to_part_coords_S(comm):
       Vertex DataArray_t {0} [5,6,3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[1]
   part_zones = PT.get_all_Zone_t(part_tree)
@@ -242,8 +243,8 @@ def test_dist_motion_to_part_motion_S(comm):
       Vertex DataArray_t {0} [5,6,3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[1]
   part_zones = PT.get_all_Zone_t(part_tree)
@@ -287,8 +288,8 @@ def test_dist_sol_to_part_sol_allvtx(comm, include):
       Vertex DataArray_t {0} [3,4]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = PT.get_all_Zone_t(part_tree)
@@ -337,9 +338,9 @@ def test_dist_sol_to_part_sol_pl(comm, exclude):
         Index DataArray_t {0} [3,1]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
+  dist_tree = PTy.to_cgns_tree(dt)
   PT.rm_nodes_from_name(dist_tree, 'FlowSolution') #Test only pl sol here
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  part_tree = PTy.to_cgns_tree(pt)
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = PT.get_all_Zone_t(part_tree)
@@ -387,8 +388,8 @@ def test_dist_dataset_to_part_dataset(comm, from_api):
             Index DataArray_t {0} [1]:
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = PT.get_all_Zone_t(part_tree)
@@ -474,8 +475,8 @@ def test_dist_subregion_to_part_subregion(comm, api_mode):
       GridConnectivityRegionName Descriptor_t "GC.0":
   """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
 
   dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
   part_zones = [zone for zone in PT.iter_all_Zone_t(part_tree) if 'ZoneU' in PT.get_name(zone)]

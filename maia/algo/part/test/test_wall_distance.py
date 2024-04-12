@@ -5,7 +5,6 @@ import numpy as np
 import maia.pytree        as PT
 
 import maia
-from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.algo.part import wall_distance as WD
 
@@ -21,7 +20,7 @@ def test_detect_wall_families():
       FamilyBC FamilyBC_t "BCWall":
   BaseC CGNSBase_t:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
 
   assert WD.detect_wall_families(tree) == ['SomeWall', 'SomeOtherWall']
 
@@ -34,11 +33,11 @@ from maia.algo.part.test.test_interpolate import src_part_0, src_part_1
 @pytest_parallel.mark.parallel(2)
 def test_wall_distance_U(perio, comm):
   if comm.Get_rank() == 0:
-    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
+    part_tree = PT.yaml.to_cgns_tree(src_part_0)
     expected_wd = [0.75, 0.25, 0.25, 0.75]
     expected_gnum = [21, 21, 22, 22]
   elif comm.Get_rank() == 1:
-    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
+    part_tree = PT.yaml.to_cgns_tree(src_part_1)
     expected_wd = [0.75, 0.25, 0.75, 0.25]
     expected_gnum = [23, 23, 24, 24]
   base = PT.get_all_CGNSBase_t(part_tree)[0]
@@ -47,7 +46,7 @@ def test_wall_distance_U(perio, comm):
   zone[0] += f'.P{comm.Get_rank()}.N0'
 
   # Add BC
-  zone_bc = parse_yaml_cgns.to_node("""
+  zone_bc = PT.yaml.to_node("""
     ZoneBC ZoneBC_t:
       BC BC_t "FamilySpecified":
         PointList IndexArray_t [[13,14]]:
@@ -84,11 +83,11 @@ def test_wall_distance_U(perio, comm):
 @pytest_parallel.mark.parallel(2)
 def test_projection_to(comm):
   if comm.Get_rank() == 0:
-    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
+    part_tree = PT.yaml.to_cgns_tree(src_part_0)
     expected_wd = [0.75, 0.25, 0.25, 0.75]
     expected_gnum = [21, 21, 22, 22]
   elif comm.Get_rank() == 1:
-    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
+    part_tree = PT.yaml.to_cgns_tree(src_part_1)
     expected_wd = [0.75, 0.25, 0.75, 0.25]
     expected_gnum = [23, 23, 24, 24]
   base = PT.get_all_CGNSBase_t(part_tree)[0]
@@ -97,7 +96,7 @@ def test_projection_to(comm):
   zone[0] += f'.P{comm.Get_rank()}.N0'
 
   # Add BC
-  zone_bc = parse_yaml_cgns.to_node("""
+  zone_bc = PT.yaml.to_node("""
     ZoneBC ZoneBC_t:
       BC BC_t "FamilySpecified":
         PointList IndexArray_t [[13,14]]:
@@ -195,11 +194,11 @@ def test_walldistance_perio(comm):
 @pytest_parallel.mark.parallel(2)
 def test_walldistance_vtx(comm):
   if comm.Get_rank() == 0:
-    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_0)
+    part_tree = PT.yaml.to_cgns_tree(src_part_0)
     expected_wd = [1, 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0 ]
     expected_gnum = [21,21,21,21,21,21,22,22,22,21,21,21,21,21,21,22,22,22]
   elif comm.Get_rank() == 1:
-    part_tree = parse_yaml_cgns.to_cgns_tree(src_part_1)
+    part_tree = PT.yaml.to_cgns_tree(src_part_1)
     expected_wd = [1, 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0, 1., 0.5, 0 ]
     expected_gnum = [23,23,23,23,23,23,24,24,24,21,21,21,21,21,21,22,22,22]
   base = PT.get_all_CGNSBase_t(part_tree)[0]
@@ -208,7 +207,7 @@ def test_walldistance_vtx(comm):
   zone[0] += f'.P{comm.Get_rank()}.N0'
 
   # Add BC
-  zone_bc = parse_yaml_cgns.to_node("""
+  zone_bc = PT.yaml.to_node("""
     ZoneBC ZoneBC_t:
       BC BC_t "FamilySpecified":
         PointList IndexArray_t [[13,14]]:

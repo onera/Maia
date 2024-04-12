@@ -2,7 +2,7 @@ import pytest
 import pytest_parallel
 import numpy as np
 
-from maia.pytree.yaml import parse_yaml_cgns
+import maia.pytree as PT
 
 import maia.algo.part.multidom_gnum as MGM
 
@@ -73,7 +73,7 @@ def test_get_mdom_gnum_vtx(unify_jns, comm):
     else:
       expected_gn = [[], [np.array([7,8])]]
 
-  all_part_zones = parse_yaml_cgns.to_nodes(yt)
+  all_part_zones = PT.yaml.to_nodes(yt)
   part_per_doms = {'Base/ZoneA' : [z for z in all_part_zones if 'ZoneA' in z[0]],
                    'Base/ZoneB' : [z for z in all_part_zones if 'ZoneB' in z[0]]}
 

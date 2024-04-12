@@ -5,7 +5,6 @@ import numpy      as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.pytree.yaml import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 import maia.transfer.part_to_dist.index_exchange as IPTB
 
@@ -170,7 +169,7 @@ def test_part_pl_to_dist_pl_S(comm):
   dist_zone = PT.new_Zone('Zone', type='Structured', size=[[3,2,0],[3,2,0],[3,2,0]])
   dist_zsr = PT.new_ZoneSubRegion("ZSR", loc='KFaceCenter', parent=dist_zone)
   
-  part_zone = parse_yaml_cgns.to_node("""
+  part_zone = PT.yaml.to_node("""
   Zone.P0.N0 Zone_t [[3,2,0], [2,1,0], [3,2,0]]:
     ZoneType ZoneType_t "Structured":
     ZSR ZoneSubRegion_t:
@@ -196,7 +195,7 @@ def test_part_pr_to_dist_pr(comm, allow_mult):
     ZoneBC ZoneBC_t:
       bc.0 BC_t:
   """
-  dist_zone = parse_yaml_cgns.to_node(yt)
+  dist_zone = PT.yaml.to_node(yt)
 
   suffix = '.0' if allow_mult else ''
   if comm.Get_rank() == 0:
@@ -253,14 +252,14 @@ def test_part_pr_to_dist_pr(comm, allow_mult):
   if comm.Get_rank() == 3:
     part_zones = [] # Not concerned by this zone
   else:
-    part_zones = parse_yaml_cgns.to_nodes(yt)
+    part_zones = PT.yaml.to_nodes(yt)
 
   IPTB.part_pr_to_dist_pr(dist_zone, part_zones, "ZoneBC/bc.0", comm, allow_mult)
   assert np.array_equal(PT.get_node_from_name(dist_zone, 'PointRange')[1], [[1,3], [1,3], [1,1]])
 
 @pytest_parallel.mark.parallel(2)
 def test_part_pr_to_dist_pr_2d(comm):
-  dist_zone = parse_yaml_cgns.to_node("""
+  dist_zone = PT.yaml.to_node("""
   Zone Zone_t [[4,3,0], [3,2,0]]: #Cube 3*2 cells
     ZoneType ZoneType_t "Structured":
     ZoneBC ZoneBC_t:
@@ -268,7 +267,7 @@ def test_part_pr_to_dist_pr_2d(comm):
   """)
 
   if comm.Get_rank() == 0:
-    part_zones = parse_yaml_cgns.to_nodes(""" # Know the BC on one part
+    part_zones = PT.yaml.to_nodes(""" # Know the BC on one part
     Zone.P0.N0 Zone_t [[4,3,0], [2,1,0]]:
       ZoneType ZoneType_t "Structured":
       :CGNS#GlobalNumbering UserDefinedData_t:
@@ -278,7 +277,7 @@ def test_part_pr_to_dist_pr_2d(comm):
           PointRange IndexRange_t [[4,4], [1,2]]:
     """)
   elif comm.Get_rank() == 1:
-    part_zones = parse_yaml_cgns.to_nodes(""" # Know the zone, but has no BC
+    part_zones = PT.yaml.to_nodes(""" # Know the zone, but has no BC
     Zone.P1.N0 Zone_t [[4,3,0], [2,1,0]]:
       ZoneType ZoneType_t "Structured":
       :CGNS#GlobalNumbering UserDefinedData_t:
@@ -332,7 +331,7 @@ Zone.P2.N0 Zone_t:
 
   expected_elt_distri_full  = np.array([0, 3, 6, 8])
 
-  pT = parse_yaml_cgns.to_cgns_tree(yt)
+  pT = PT.yaml.to_cgns_tree(yt)
 
   IPTB.part_elt_to_dist_elt(dist_zone, PT.get_all_Zone_t(pT), 'Quad', comm)
 
@@ -423,7 +422,7 @@ Zone.P2.N1 Zone_t:
   expected_elt_distri_full  = np.array([0, 12, 24, 36])
   expected_eltc_distri_full = np.array([0, 48, 96, 144])
 
-  pT = parse_yaml_cgns.to_cgns_tree(yt)
+  pT = PT.yaml.to_cgns_tree(yt)
 
   IPTB.part_ngon_to_dist_ngon(dist_zone, PT.get_all_Zone_t(pT), 'Ngon', comm)
 
@@ -499,7 +498,7 @@ Zone.P2.N1 Zone_t:
   expected_elt_distri_full  = np.array([0,3,6,8])
   expected_eltc_distri_full = np.array([0,18,36,48])
 
-  pT = parse_yaml_cgns.to_cgns_tree(yt)
+  pT = PT.yaml.to_cgns_tree(yt)
 
   IPTB.part_nface_to_dist_nface(dist_zone, PT.get_all_Zone_t(pT), 'NFace', 'Ngon', comm)
 

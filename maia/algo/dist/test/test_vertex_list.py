@@ -5,7 +5,6 @@ import pytest_parallel
 import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.pytree.yaml import parse_yaml_cgns
 
 from maia           import npy_pdm_gnum_dtype as pdm_dtype
 from maia.factory   import dcube_generator
@@ -391,7 +390,7 @@ Base CGNSBase_t I4 [3, 3]:
             RotationCenter DataArray_t R4 [0.0, 0.0, 0.0]:
             Translation DataArray_t R4 [0.0, 0.0, -0.25]:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   tree = maia.factory.full_to_dist_tree(tree, comm)
   maia.algo.dist.convert_s_to_ngon(tree, comm)
   VL.generate_jns_vertex_list(tree, comm)

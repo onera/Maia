@@ -5,7 +5,6 @@ import os
 from mpi4py import MPI
 
 from maia.utils import test_utils as TU
-from maia.pytree.yaml   import parse_yaml_cgns
 
 import cmaia
 import maia

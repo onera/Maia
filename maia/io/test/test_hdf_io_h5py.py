@@ -5,7 +5,6 @@ import numpy as np
 from pathlib import Path
 
 import maia.pytree as PT
-from maia.pytree.yaml import parse_yaml_cgns
 
 import maia.utils.test_utils as TU
 
@@ -50,7 +49,7 @@ def test_load_size_tree(comm):
         CoordinateY#Size DataArray_t I8 [2,2]:
   """
   sizetree = IOH.load_size_tree(filename, comm)
-  assert PT.is_same_tree(sizetree, parse_yaml_cgns.to_cgns_tree(yt))
+  assert PT.is_same_tree(sizetree, PT.yaml.to_cgns_tree(yt))
 
 def test_load_partial():
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
@@ -63,7 +62,7 @@ def test_load_partial():
         CoordinateY DataArray_t:
   """
   # Nb : Low level load/write are tested in other file
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = {'Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]]}
   IOH.load_partial(filename, tree, hdf_filter)
   assert np.allclose(PT.get_node_from_name(tree, 'CoordinateX')[1], [5., 6.])
@@ -93,7 +92,7 @@ def test_write_partial(comm, tmp_path):
     hdf_filter = {'Base/ZoneU/GridCoordinates/CoordinateX' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]],
                   'Base/ZoneU/GridCoordinates/CoordinateY' : [[0], [1], [2], [1], [4], [1], [2], [1], [6], [1]]}
   # Nb : Low level load/write are tested in other file
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   with TU.collective_tmp_dir(comm) as tmpdir:
     filename = str(Path(tmpdir) / 'out.hdf')
     IOH.write_partial(filename, tree, hdf_filter, comm)
@@ -109,4 +108,4 @@ def test_write_partial(comm, tmp_path):
             CoordinateX DataArray_t R8 [1,2,3,4,5,6]:
             CoordinateY DataArray_t R8 [-1,-2,-3,-4,-5,-6]:
       """
-      assert PT.is_same_tree(tree, parse_yaml_cgns.to_cgns_tree(ytfull))
+      assert PT.is_same_tree(tree, PT.yaml.to_cgns_tree(ytfull))

@@ -6,7 +6,6 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.yaml    import parse_yaml_cgns
 from maia.utils          import par_utils
 from maia.factory        import full_to_dist as F2D
 
@@ -28,7 +27,7 @@ def test_concatenate_subset_nodes(comm):
       BCData BCData_t:
         Data DataArray_t [1., 2., 3., 4., 5., 6., 7., 8.]:
   """
-  subset_nodes_f = parse_yaml_cgns.to_nodes(yt)
+  subset_nodes_f = PT.yaml.to_nodes(yt)
   subset_nodes = [F2D.distribute_pl_node(node, comm) for node in subset_nodes_f]
 
   expected_distri = par_utils.uniform_distribution(4+8, comm)
@@ -85,7 +84,7 @@ def test_concatenate_jns(comm, mode):
         PointList IndexArray_t [[50]]:
         PointListDonor IndexArray_t [[5]]:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   dist_tree = F2D.full_to_dist_tree(tree, comm)
   zones = PT.get_all_Zone_t(dist_tree)
 

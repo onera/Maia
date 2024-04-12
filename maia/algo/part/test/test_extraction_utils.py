@@ -4,7 +4,6 @@ import numpy as np
 
 import maia
 import maia.pytree        as PT
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.algo.part import extraction_utils as EU
 
@@ -15,7 +14,7 @@ import Pypdm.Pypdm as PDM
 
 @pytest_parallel.mark.parallel(2)
 def test_discover_containers(comm):
-  part_zone = [parse_yaml_cgns.to_node(
+  part_zone = [PT.yaml.to_node(
     """
     VolZone.P0.N0 Zone_t:
       FS1 FlowSolution_t:
@@ -32,7 +31,7 @@ def test_discover_containers(comm):
         GC GridConnectivity_t:
           GridLocation GridLocation_t "FaceCenter":
           PointList    IndexArray_t   [[4,3,7]]:
-    """),parse_yaml_cgns.to_node(
+    """),PT.yaml.to_node(
     """
     VolZone.P1.N0 Zone_t:
       FS2 FlowSolution_t:
@@ -74,7 +73,7 @@ def test_discover_containers(comm):
     mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR4', 'PointList', 'IndexArray_t', comm)
 
 def test_get_relative_pl():
-  part_zone = parse_yaml_cgns.to_node(
+  part_zone = PT.yaml.to_node(
   """
   VolZone.P0.N0 Zone_t:
     ZSR1 ZoneSubRegion_t:
@@ -213,7 +212,7 @@ def test_get_partial_container_stride_and_order(comm):
   '''
 
 
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  part_tree = PT.yaml.to_cgns_tree(pt)
   part_zones = PT.get_all_Zone_t(part_tree)
 
   # > P2P Object

@@ -6,8 +6,6 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.pytree.yaml import parse_yaml_cgns
-
 from maia.algo.dist  import s_to_u
 
 ###############################################################################

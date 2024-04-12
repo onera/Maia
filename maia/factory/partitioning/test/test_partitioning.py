@@ -5,7 +5,6 @@ import numpy as np
 import pathlib
 
 import maia
-from maia.pytree.yaml   import parse_yaml_cgns, parse_cgns_yaml
 from maia.factory import generate_dist_block
 from maia.factory import partition_dist_tree
 from maia.utils import par_utils, s_numbering, test_utils

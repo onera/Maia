@@ -7,7 +7,6 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory     import full_to_dist as F2D
 from maia.factory.dcube_generator import dcube_generate

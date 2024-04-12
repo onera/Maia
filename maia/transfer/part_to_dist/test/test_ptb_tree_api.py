@@ -6,18 +6,17 @@ import maia.pytree      as PT
 
 import maia
 import maia.transfer.part_to_dist.tree_api as PTB
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 
 @pytest_parallel.mark.parallel(2)
 class Test_IterativeData:
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree("""
+  dist_tree = PT.yaml.to_cgns_tree("""
   Base CGNSBase_t:
     Zone Zone_t:
   """)
   part_trees = [
-    parse_yaml_cgns.to_cgns_tree("""
+    PT.yaml.to_cgns_tree("""
     Base CGNSBase_t:
       Zone.P0.N0 Zone_t:
         ZoneIterativeData ZoneIterativeData_t:
@@ -25,7 +24,7 @@ class Test_IterativeData:
       BaseIterativeData BaseIterativeData_t [2]:
         TimeValues DataArray_t [0., 1]:
     """), # Rank 0
-    parse_yaml_cgns.to_cgns_tree("""
+    PT.yaml.to_cgns_tree("""
     Base CGNSBase_t:
       Zone.P1.N0 Zone_t:
         ZoneIterativeData ZoneIterativeData_t:

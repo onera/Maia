@@ -1,7 +1,6 @@
 import pytest_parallel
 
 import maia.pytree as PT
-from maia.pytree.yaml import parse_yaml_cgns
 
 from cmaia.part_algo                   import cgns_registry as CGR
 from maia.pytree.cgns_keywords         import Label as CGL
@@ -49,7 +48,7 @@ Base0 CGNSBase_t [3,3]:
 def test_cgns_registry_1p(comm):
   """
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt_1p)
+  tree = PT.yaml.to_cgns_tree(yt_1p)
 
   cgr = make_cgns_registry(tree, comm)
 
@@ -123,7 +122,7 @@ def test_cgns_registry_1p(comm):
 def test_cgns_registry_2p(comm):
   """
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[comm.Get_rank()])
+  tree = PT.yaml.to_cgns_tree(yt_2p[comm.Get_rank()])
   cgr = make_cgns_registry(tree, comm)
 
   if comm.Get_rank()==0:
@@ -197,7 +196,7 @@ def test_cgns_registry_2p(comm):
 def test_add_cgns_registry_information_1p(comm):
   """
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt_1p)
+  tree = PT.yaml.to_cgns_tree(yt_1p)
   cgr = add_cgns_registry_information(tree, comm)
 
   zone1_id_n = PT.get_node_from_path(tree, "Base0/ZoneU1/:CGNS#Registry")
@@ -210,7 +209,7 @@ def test_add_cgns_registry_information_1p(comm):
 def test_add_cgns_registry_information_2p(comm):
   """
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt_2p[comm.Get_rank()])
+  tree = PT.yaml.to_cgns_tree(yt_2p[comm.Get_rank()])
   cgr = add_cgns_registry_information(tree, comm)
 
   if comm.Get_rank()==0:

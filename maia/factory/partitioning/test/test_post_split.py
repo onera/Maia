@@ -4,7 +4,6 @@ import pytest_parallel
 import numpy as np
 import maia.pytree        as PT
 
-from maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning import post_split as PS
 
 def test_pl_idx_ijk():
@@ -19,7 +18,7 @@ Zone Zone_t [[10,9,0], [10,9,0], [10,9,0]]:
       PointRange IndexRange_t [[1,9], [10,10], [1,9]]:
       GridLocation GridLocation_t "JFaceCenter":
   """
-  zone = parse_yaml_cgns.to_node(yt)
+  zone = PT.yaml.to_node(yt)
   bca = PT.get_node_from_name(zone, 'BCa')
   bcb = PT.get_node_from_name(zone, 'BCb')
 
@@ -66,7 +65,7 @@ def test_hybrid_jns_as_ijk(comm):
           GridLocation GridLocation_t "IFaceCenter":
           GridConnectivityDonorName Descriptor_t "GCS":
     """
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  part_tree = PT.yaml.to_cgns_tree(pt)
   PS.hybrid_jns_as_ijk(part_tree, comm)
 
   expected_pl  = np.array([[101,102,103,104]])
@@ -107,8 +106,8 @@ Zone.P2.N3 Zone_t:
       PointList IndexArray_t:
 """
 
-  dist_zone = parse_yaml_cgns.to_node(dt)
-  part_zone = parse_yaml_cgns.to_node(pt)
+  dist_zone = PT.yaml.to_node(dt)
+  part_zone = PT.yaml.to_node(pt)
   PS.copy_additional_nodes(dist_zone, part_zone)
   assert PT.get_label(PT.get_node_from_name(dist_zone, '.Solver#BC')) == PT.get_label(PT.get_node_from_name(part_zone, '.Solver#BC'))
   assert PT.get_value(PT.get_node_from_name(dist_zone, 'GridConnectivityDonorName')) == PT.get_value(PT.get_node_from_name(part_zone, 'GridConnectivityDonorName'))
@@ -118,7 +117,7 @@ Zone.P2.N3 Zone_t:
          PT.get_value(PT.get_node_from_name(part_zone, 'FlowSolutionPointers'))
 
 def test_update_zone_pointers():
-  part_tree = parse_yaml_cgns.to_cgns_tree("""
+  part_tree = PT.yaml.to_cgns_tree("""
   ZoneA.P0.N0 Zone_t:
   ZoneA.P1.N0 Zone_t:
   BaseIterativeData BaseIterativeData_t [2]:
@@ -131,7 +130,7 @@ def test_update_zone_pointers():
   assert PT.get_value(PT.get_node_from_name(part_tree, 'ZonePointers'))[0] == ["ZoneA.P0.N0", "ZoneA.P1.N0"]
   assert PT.get_value(PT.get_node_from_name(part_tree, 'ZonePointers'))[1] == ["ZoneA.P0.N0", "ZoneA.P1.N0"]
 
-  part_tree = parse_yaml_cgns.to_cgns_tree("""
+  part_tree = PT.yaml.to_cgns_tree("""
   ZoneC.P0.N0 Zone_t:
   BaseIterativeData BaseIterativeData_t [2]:
     TimeValues DataArray_t [0., 1.]:
@@ -141,7 +140,7 @@ def test_update_zone_pointers():
   PS.update_zone_pointers(part_tree)
   assert PT.get_value(PT.get_node_from_name(part_tree, 'ZonePointers')) == [[], []]
 
-  part_tree = parse_yaml_cgns.to_cgns_tree("""
+  part_tree = PT.yaml.to_cgns_tree("""
   ZoneA.P0.N0 Zone_t:
   BaseIterativeData BaseIterativeData_t [2]:
     TimeValues DataArray_t [0., 1.]:
@@ -185,8 +184,8 @@ Zone.P2.N3 Zone_t:
     JN.P2.N3.LT.P1.N0 GridConnectivity_t: # Simulate an intra JN
 """
 
-  dist_zone = parse_yaml_cgns.to_node(dt)
-  part_zone = parse_yaml_cgns.to_node(pt)
+  dist_zone = PT.yaml.to_node(dt)
+  part_zone = PT.yaml.to_node(pt)
   PS.generate_related_zsr(dist_zone, part_zone)
   assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'ZSR_BC'), PT.get_node_from_name(part_zone, 'ZSR_BC'))
   assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.0/Descriptor_t'))=='GC.0'
@@ -205,7 +204,7 @@ ZoneB.P1.N0 Zone_t:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t [5,3,1,2,6]:
 """
-  p_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  p_tree = PT.yaml.to_cgns_tree(pt)
   p_zone = PT.get_all_Zone_t(p_tree)[0]
   PS.split_original_joins(p_tree)
 
@@ -253,7 +252,7 @@ def test_update_gc_donor_name(comm):
             GridConnectivityDonorName Descriptor_t "matchAB":
     """
     expected = ['matchAB.1']
-  p_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  p_tree = PT.yaml.to_cgns_tree(pt)
   PS.update_gc_donor_name(p_tree, comm)
 
   assert [PT.get_value(n) for n in PT.get_nodes_from_name(p_tree, 'GridConnectivityDonorName')] == expected

@@ -11,7 +11,6 @@ import maia.pytree.maia   as MT
 from   maia.utils         import par_utils
 from   maia.utils         import test_utils   as TU
 from   maia.algo.dist     import redistribute as RDT
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
@@ -49,7 +48,7 @@ def test_redistribute_pl_node_U(comm):
         Index DataArray_t {dtype} [8, 11, 11]:
     """
   
-  dist_bc = parse_yaml_cgns.to_node(yt_bc)
+  dist_bc = PT.yaml.to_node(yt_bc)
   
   RDT.redistribute_pl_node(dist_bc, distribution, comm)
   
@@ -119,7 +118,7 @@ def test_redistribute_data_node_U(comm):
     old_distrib = np.array([4,6,6])
     new_distrib = np.array([6,6,6])
   
-  dist_fs = parse_yaml_cgns.to_node(yt_fs)
+  dist_fs = PT.yaml.to_node(yt_fs)
   
   RDT.redistribute_data_node(dist_fs, old_distrib, new_distrib, comm)
   
@@ -186,7 +185,7 @@ def test_redistribute_elements_node_U(elt, comm):
         {str_DEC[elt]}
     """
   
-  dist_elt = parse_yaml_cgns.to_node(yt_bc)
+  dist_elt = PT.yaml.to_node(yt_bc)
 
   RDT.redistribute_elements_node(dist_elt, distribution, comm)
 
@@ -251,7 +250,7 @@ def test_redistribute_mixed_elements_node_U(comm):
         ElementConnectivity DataArray_t {dtype} [12, 24, 24]:
     """
 
-  dist_elt = parse_yaml_cgns.to_node(yt)
+  dist_elt = PT.yaml.to_node(yt)
 
   RDT.redistribute_elements_node(dist_elt, distribution, comm)
 
@@ -322,7 +321,7 @@ def test_redistribute_gc_node_U(comm):
                 Index DataArray_t {dtype} [4, 4, 4]:
                     """
 
-  zgc_n = parse_yaml_cgns.to_node(yt_gc)
+  zgc_n = PT.yaml.to_node(yt_gc)
 
   for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity_t') :
     RDT.redistribute_pl_node(gc_n, distribution, comm)

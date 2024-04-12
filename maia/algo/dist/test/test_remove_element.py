@@ -5,7 +5,6 @@ import numpy as np
 import maia
 import maia.pytree as PT
 
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.utils import par_utils
 
 from maia.algo.dist import remove_element as RME
@@ -200,7 +199,7 @@ def test_remove_elts_from_pl_conflict_bc(comm):
   bc_pl   = ['[2,3]'        ,'[6]'       ][rank]
   bc_dn   = ['[0,2,3]'      ,'[2,3,3]'   ][rank]
 
-  dist_zone = parse_yaml_cgns.to_node(f"""
+  dist_zone = PT.yaml.to_node(f"""
     Zone Zone_t:
       ZoneType ZoneType_t 'Unstructured':
       :CGNS#Distribution UserDefinedData_t:

@@ -1,5 +1,4 @@
 import os
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 import maia.pytree as PT
 from maia.pytree.utils import path_utils as PU
@@ -26,7 +25,7 @@ def test_update_path_elt():
 
 def test_concretize_paths():
   with open(os.path.join(dir_path, "test", "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+    tree = PT.yaml.to_cgns_tree(yt)
   paths = PU.concretize_paths(tree, ["Base/Zone*/ZGCA", "Base/ZoneI/*", "Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t'])
   assert paths == ['Base/ZoneI/ZGCA', 'Base/ZoneI/ZGCB']
   assert PU.concretize_paths(tree, ["Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t']) == []
@@ -44,7 +43,7 @@ def test_paths_to_tree():
         B None:
           2 None:
     """
-    expected = parse_yaml_cgns.to_node(yt)
+    expected = PT.yaml.to_node(yt)
     #Fix None
     for node in PT.iter_nodes_from_predicate(expected, lambda n: True, explore='deep'):
       node[3] = None

@@ -4,7 +4,6 @@ import maia.pytree as PT
 import numpy as np
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.yaml   import parse_yaml_cgns
 from maia.transfer.dist_to_part import recover_jn as JBTP
 
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
@@ -90,8 +89,8 @@ ZoneB.P1.N1 Zone_t:
         Index DataArray_t {0} [4]:
 """.format(dtype)
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(dt)
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  dist_tree = PT.yaml.to_cgns_tree(dt)
+  part_tree = PT.yaml.to_cgns_tree(pt)
 
   JBTP.get_pl_donor(dist_tree, part_tree, comm)
   

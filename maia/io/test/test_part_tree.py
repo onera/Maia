@@ -8,10 +8,6 @@ import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-import maia.utils.test_utils as TU
-from   maia.pytree.yaml    import parse_yaml_cgns
-from   maia.utils.parallel import utils as par_utils
-
 from maia.io import part_tree as PIO
 
 dtype = 'I8' if maia.npy_pdm_gnum_dtype == np.int64 else 'I4'
@@ -44,7 +40,7 @@ def test_write_part_tree(mpi_tmpdir, single_file, comm):
     assert PT.get_value(PT.get_node_from_path(tree, 'Base/zone.P1.N0/ZoneType')) == 'Unstructured'
 
     # Parallelism dependant ...
-    # ref = parse_yaml_cgns.to_node(f"""
+    # ref = PT.yaml.to_node(f"""
     # Xmax BC_t "Null":
       # GridLocation GridLocation_t "FaceCenter":
       # PointList IndexArray_t [[19,20,21,22,23,24]]:
