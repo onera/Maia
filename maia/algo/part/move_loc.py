@@ -25,7 +25,7 @@ class CenterToNode:
 
     gnum_list   = []
     for i_dom, zone_path in enumerate(parts_per_dom):
-      dim = PT.get_value(PT.get_child_from_name(tree, PT.path_head(zone_path)))[0]
+      dim = PT.get_value(PT.get_child_from_name(tree, PT.utils.path_head(zone_path)))[0]
       for i_part, zone in enumerate(parts_per_dom[zone_path]):
 
           n_vtx = PT.Zone.n_vtx(zone)

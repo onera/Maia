@@ -127,7 +127,7 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
   # Transform wildcard into concrete path
   replace_super_wildcard = lambda p: '*/*' if p == '*' else p
   zone_paths = [replace_super_wildcard(p) for p in zone_paths]
-  zone_paths = PT.concretize_paths(tree, zone_paths, ['CGNSBase_t', 'Zone_t'])
+  zone_paths = PT.utils.concretize_paths(tree, zone_paths, ['CGNSBase_t', 'Zone_t'])
 
   assert all([sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured' for path in zone_paths])
   #Those one will be needed for jn recovering

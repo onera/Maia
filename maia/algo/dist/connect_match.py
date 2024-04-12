@@ -1,7 +1,8 @@
 from mpi4py import MPI
 
-import maia.pytree      as PT
-import maia.pytree.maia as MT
+import maia.pytree       as PT
+import maia.pytree.utils as PTu
+import maia.pytree.maia  as MT
 import Pypdm.Pypdm as PDM
 import numpy as np
 from maia.utils import np_utils, par_utils, as_pdm_gnum
@@ -180,7 +181,7 @@ def get_vtx_cloud_from_subset(dist_tree, subset_path, comm, dmesh_cache={}):
   and a list of node paths.
   Node path must refer to nodes having a FaceCenter PointList 
   """
-  zone_path = PT.path_head(subset_path, 2)
+  zone_path = PTu.path_head(subset_path, 2)
   zone = PT.get_node_from_path(dist_tree, zone_path)
   try:
     dmesh = dmesh_cache[zone_path]
@@ -262,7 +263,7 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
     for j, side in enumerate(['lgnum_cur', 'lgnum_opp']):
       i_cloud = matching_face['np_cloud_pair'][2*i_itrf+j]
       parent_face_num = clouds[i_cloud]['parent_face']
-      parent_zone = PT.get_node_from_path(dist_tree, PT.path_head(clouds_path[i_cloud], 2))
+      parent_zone = PT.get_node_from_path(dist_tree, PTu.path_head(clouds_path[i_cloud], 2))
       distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
       gnum_2d = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
       # At this point face are in gnum but local to 2d dimension : shift back
@@ -303,10 +304,10 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
         _gnum_opp = gnum_cur[i_interface]
         _periodic = perio_opp
 
-      leaf_name_cur = PT.path_tail(origin_path_cur)
-      leaf_name_opp = PT.path_tail(origin_path_opp)
-      zone_cur_path = PT.path_head(origin_path_cur, 2)
-      zone_opp_path = PT.path_head(origin_path_opp, 2)
+      leaf_name_cur = PTu.path_tail(origin_path_cur)
+      leaf_name_opp = PTu.path_tail(origin_path_opp)
+      zone_cur_path = PTu.path_head(origin_path_cur, 2)
+      zone_opp_path = PTu.path_head(origin_path_opp, 2)
       zone_cur  = PT.get_node_from_path(dist_tree, zone_cur_path)
       zgc = PT.update_child(zone_cur, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
 

@@ -213,7 +213,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
 
     if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
       # Joins have been split so search multiple part nodes
-      ancestor, leaf = PT.path_head(matching_region_path), PT.path_tail(matching_region_path)
+      ancestor, leaf = PT.utils.path_head(matching_region_path), PT.utils.path_tail(matching_region_path)
       lngn_list    = list()
       for i_part, part_zone in enumerate(part_zones):
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
@@ -228,7 +228,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
     if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
       i_pseudo_part = 0
       # Use same loop order than data lngn collecting
-      ancestor, leaf = PT.path_head(matching_region_path), PT.path_tail(matching_region_path)
+      ancestor, leaf = PT.utils.path_head(matching_region_path), PT.utils.path_tail(matching_region_path)
       for i_part, part_zone in enumerate(part_zones):
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
           # Get corresponding part ZSR

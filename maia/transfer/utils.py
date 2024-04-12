@@ -1,7 +1,8 @@
 import numpy as np
 
-import maia.pytree      as PT
-import maia.pytree.maia as MT
+import maia.pytree       as PT
+import maia.pytree.utils as PTu
+import maia.pytree.maia  as MT
 
 from maia.utils import np_utils, par_utils
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -11,7 +12,7 @@ def get_partitioned_zones(part_tree, dist_zone_path):
   Return a list of the partitioned zones created from a distributed zone name
   found in part_tree
   """
-  base_name, zone_name = PT.path_head(dist_zone_path), PT.path_tail(dist_zone_path)
+  base_name, zone_name = PTu.path_head(dist_zone_path), PTu.path_tail(dist_zone_path)
   part_base = PT.get_node_from_path(part_tree, base_name)
   if part_base:
     return [part for part in PT.iter_all_Zone_t(part_base) if \
@@ -114,14 +115,14 @@ def create_mask_tree(root, labels, include, exclude):
     raise ValueError("`include` and `exclude` args are mutually exclusive")
 
   if len(include) > 0:
-    to_include = PT.concretize_paths(root, include, labels)
+    to_include = PTu.concretize_paths(root, include, labels)
   elif len(exclude) > 0:
     #In exclusion mode, we get all the paths matching labels and exclude the one founded
     all_paths = PT.predicates_to_paths(root, labels)
-    to_exclude = PT.concretize_paths(root, exclude, labels)
+    to_exclude = PTu.concretize_paths(root, exclude, labels)
     to_include = [p for p in all_paths if not p in to_exclude]
   else:
     to_include = PT.predicates_to_paths(root, labels)
 
-  return PT.paths_to_tree(to_include, PT.get_name(root))
+  return PTu.paths_to_tree(to_include, PT.get_name(root))
 

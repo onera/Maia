@@ -65,7 +65,6 @@ def _mean_coords_from_connectivity(vtx_id_idx, cx_expd, cy_expd, cz_expd):
 
   return np_utils.interweave_arrays([mean_x, mean_y, mean_z])
 
-@PT.check_is_label("Zone_t")
 def compute_face_normal(zone, comm):
   """Compute the face normal of a distributed zone.
 
@@ -97,7 +96,6 @@ def compute_face_normal(zone, comm):
       return cpart_algo.compute_face_normal_u(_face_vtx_idx, *coords)
   raise NotImplementedError("Only NGON zones are managed")
 
-@PT.check_is_label("Zone_t")
 def compute_face_center(zone, comm):
   """Compute the face center of a distributed zone.
 
@@ -129,7 +127,6 @@ def compute_face_center(zone, comm):
       return _mean_coords_from_connectivity(_face_vtx_idx, *coords)
   raise NotImplementedError("Only NGON zones are managed")
 
-@PT.check_is_label("Zone_t")
 def compute_cell_center(zone, comm):
 
   if PT.Zone.Type(zone) == "Structured":

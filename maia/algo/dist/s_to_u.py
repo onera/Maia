@@ -361,7 +361,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
             PT.update_child(gc_s, 'PointList', value=pl_idx)
             # Now update PointListDonor of the opposite (already U) join
             for opp_jn in PT.get_nodes_from_predicates(opp_zone, 'GridConnectivity_t'):
-              opp_base_name = PT.path_head(opp_zone_path,1)
+              opp_base_name = PT.utils.path_head(opp_zone_path,1)
               if PT.GridConnectivity.ZoneDonorPath(opp_jn, opp_base_name) == zone_path:
                 pld_n = PT.get_child_from_name(opp_jn, 'PointListDonor')
                 if pld_n is not None and np.array_equal(pld_n[1], pl):

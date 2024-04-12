@@ -1,7 +1,8 @@
 import numpy as np
 
-import maia.pytree      as PT
-import maia.pytree.maia as MT
+import maia.pytree       as PT
+import maia.pytree.utils as PTu
+import maia.pytree.maia  as MT
 
 from maia.utils     import np_utils
 from maia.transfer  import protocols as EP
@@ -35,7 +36,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
   part_data = {key : [] for key in ['pl', 'irank', 'ipart', 'ijoin']}
   part_stride = []
   for p_gc_path in PT.predicates_to_paths(part_tree, ini_gc_query):
-    d_gc_path = PT.update_path_elt(p_gc_path, 1, lambda name: MT.conv.get_part_prefix(name))
+    d_gc_path = PTu.update_path_elt(p_gc_path, 1, lambda name: MT.conv.get_part_prefix(name))
     p_zone_name = p_gc_path.split('/')[1]
     i_proc, i_part = MT.conv.get_part_suffix(p_zone_name)
 
@@ -66,7 +67,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
   #Post treat
   i_join = 0
   for p_gc_path in PT.predicates_to_paths(part_tree, ini_gc_query):
-    d_gc_path = PT.update_path_elt(p_gc_path, 1, lambda name: MT.conv.get_part_prefix(name))
+    d_gc_path = PTu.update_path_elt(p_gc_path, 1, lambda name: MT.conv.get_part_prefix(name))
     p_zone_name = p_gc_path.split('/')[1]
     i_rank, i_part = MT.conv.get_part_suffix(p_zone_name)
 

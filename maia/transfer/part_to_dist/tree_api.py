@@ -88,7 +88,7 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
         :dedent: 2
   """
   # Capture start of predicate, because last node may not exist on dist tree
-  _ud_predicate = PT.path_head(predicates) if isinstance(predicates, str) else predicates[:-1]
+  _ud_predicate = PT.utils.path_head(predicates) if isinstance(predicates, str) else predicates[:-1]
   for path in PT.predicates_to_paths(dist_tree, _ud_predicate):
     names = path.split('/')
     if len(names) == 1: # Data directly attached to a Base (e.g. Family_t nodes)
@@ -105,5 +105,5 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
       else: # Deal others
         part_root = PT.get_node_from_path(part_tree, dist_root_path)
         part_roots = [] if part_root is None else [part_root]
-    _child_predicate = PT.path_tail(predicates, cut) if isinstance(predicates, str) else predicates[cut:]
+    _child_predicate = PT.utils.path_tail(predicates, cut) if isinstance(predicates, str) else predicates[cut:]
     discover_nodes_from_matching(dist_root, part_roots, _child_predicate, comm, child_list=['*'], get_value='leaf')

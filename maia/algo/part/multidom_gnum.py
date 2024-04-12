@@ -97,8 +97,8 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
 
       interface_dn_v.append(pl.size)
       interface_ids_v.append(np_utils.interweave_arrays([pl,pld]))
-      interface_dom.append((zone_to_dom[PT.path_head(gc_path_cur,2)], 
-                            zone_to_dom[PT.path_head(gc_path_opp,2)]))
+      interface_dom.append((zone_to_dom[PT.utils.path_head(gc_path_cur,2)], 
+                            zone_to_dom[PT.utils.path_head(gc_path_opp,2)]))
 
   if len(interface_dn_v) == 0: # Early return if no joins
     return shifted_lngn
