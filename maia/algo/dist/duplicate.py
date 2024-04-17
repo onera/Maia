@@ -8,7 +8,7 @@ import maia.algo.dist.conformize_jn as CCJ
 import maia.algo.dist.matching_jns_tools as MJT
 
 def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_nb, comm,
-      conformize=False, apply_to_fields = False):
+      conformize=False, apply_to_fields = True):
   """
   Function to duplicate n times a set of connected zones
   > dist_tree : distributed tree from wich 'zones' come and in wich duplicated zones will be added
@@ -21,7 +21,8 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
                  the previous coordinates for each vertices. In this case, the matching is perfect.
   > comm : MPI communicator
   > apply_to_fields : apply only the rotation to all vector fields in CGNS nodes of type : 
-                      "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t"  
+                      "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t".
+                      Defaults to ``True``.
   """
   
   #############
@@ -186,7 +187,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   
 
 def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl, comm,
-      conformize=False, apply_to_fields=False):
+      conformize=False, apply_to_fields=True):
   """Reconstitute a circular mesh from an angular section of the geometry.
 
   Input tree is modified inplace.
@@ -199,7 +200,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
     comm       (MPIComm) : MPI communicator
     conformize (bool, optional): If true, ensure that the generated interface vertices have exactly same
         coordinates (see :func:`conformize_jn_pair`). Defaults to False.
-    apply_to_fields (bool, optional): See :func:`maia.algo.transform_affine`. Defaults to False.
+    apply_to_fields (bool, optional): See :func:`maia.algo.transform_affine`. Defaults to ``True``.
 
   See also:
     Instead of recovering the circular mesh, it is also possible to perfom a custom number 

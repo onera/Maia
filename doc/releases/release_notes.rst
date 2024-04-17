@@ -33,6 +33,10 @@ Developpement version
 - convert_elements_to_ngon: update FaceCenter / CellCenter PointList arrays
 - partitioning: fix creation of cells global numbering for multisection element meshes
 
+🚧 API change
+^^^^^^^^^^^^^
+- default value for ``apply_to_fields`` is now ``True`` in exposed functions
+
 v1.3 (January 2024)
 -------------------
 

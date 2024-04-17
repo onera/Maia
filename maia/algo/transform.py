@@ -76,7 +76,7 @@ def transform_affine(t,
                      rotation_center = np.zeros(3),
                      rotation_angle  = np.zeros(3),
                      translation     = np.zeros(3),
-                     apply_to_fields = False):
+                     apply_to_fields = True):
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -99,7 +99,7 @@ def transform_affine(t,
     apply_to_fields (bool, optional) : 
         if True, apply the rotation vector to the vectorial fields found under 
         following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
-        Defaults to False.
+        Defaults to ``True``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -245,7 +245,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
 
-def auxiliary_coords_system(t, transition_matrix, apply_to_fields=False):
+def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
   """Convert the input tree from or to an auxiliary coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, and can have cartesian or 
@@ -264,7 +264,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=False):
     transition_matrix (array or None) : 3x3 array of floats or None (see above)
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
-      Defaults to ``False``.
+      Defaults to ``True``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -309,7 +309,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=False):
             PT.update_node(node, f'{basename}{s}', value=new_val)
     
 
-def cartesian_to_cylindrical(t, axis, apply_to_fields=False):
+def cartesian_to_cylindrical(t, axis, apply_to_fields=True):
   """Convert the input tree into a cylindrical coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
@@ -322,7 +322,7 @@ def cartesian_to_cylindrical(t, axis, apply_to_fields=False):
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
-      Defaults to ``False``.
+      Defaults to ``True``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -341,7 +341,7 @@ def cartesian_to_cylindrical(t, axis, apply_to_fields=False):
   revolution_axis_unit = axis / np.linalg.norm(axis)
   cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis_unit, apply_to_fields)
 
-def cylindrical_to_cartesian(t, axis, apply_to_fields=False):
+def cylindrical_to_cartesian(t, axis, apply_to_fields=True):
   """Convert the input tree into a cartesian coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindrical coordinates.
@@ -355,7 +355,7 @@ def cylindrical_to_cartesian(t, axis, apply_to_fields=False):
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
-      Defaults to ``False``.
+      Defaults to ``True``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py

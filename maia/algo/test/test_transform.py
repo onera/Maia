@@ -78,7 +78,7 @@ def test_transform_affine(comm):
   PT.new_DataArray('fieldZ', np.random.random(n_cell_loc), parent=fs)
 
   dist_zone_ini = PT.deep_copy(dist_zone)
-  transform.transform_affine(dist_zone, rotation_angle=np.array([0.,0.,np.pi]), apply_to_fields=True)
+  transform.transform_affine(dist_zone, rotation_angle=np.array([0.,0.,np.pi]))
 
   check_vect_field(dist_zone_ini, dist_zone, "Coordinate")
   check_vect_field(dist_zone_ini, dist_zone, "field")
@@ -99,7 +99,7 @@ def test_transform_affine_2d(comm):
   PT.new_DataArray('fieldY', np.random.random(n_cell_loc), parent=fs)
 
   dist_zone_ini = PT.deep_copy(dist_zone)
-  transform.transform_affine(dist_zone, rotation_center=np.zeros(2), translation=np.zeros(2), rotation_angle=np.pi, apply_to_fields=True)
+  transform.transform_affine(dist_zone, rotation_center=np.zeros(2), translation=np.zeros(2), rotation_angle=np.pi)
   assert np.allclose(PT.get_node_from_name(dist_zone_ini, 'scalar')[1],
                      PT.get_node_from_name(dist_zone,     'scalar')[1])
   assert np.allclose(   PT.get_node_from_name(dist_zone_ini, 'fieldX')[1],
@@ -124,7 +124,7 @@ def test_transform_affine_s_part(comm):
   PT.new_DataArray('fieldX', np.random.random(PT.Zone.n_cell(part_zone)), parent=fs)
   PT.new_DataArray('fieldY', np.random.random(PT.Zone.n_cell(part_zone)), parent=fs)
   part_tree_bck = PT.deep_copy(part_tree)
-  transform.transform_affine(part_tree, rotation_center=np.zeros(2), translation=np.zeros(2), rotation_angle=0.5*np.pi, apply_to_fields=True)
+  transform.transform_affine(part_tree, rotation_center=np.zeros(2), translation=np.zeros(2), rotation_angle=0.5*np.pi)
   assert np.allclose(PT.get_node_from_name(part_tree, 'fieldX')[1], -PT.get_node_from_name(part_tree_bck, 'fieldY')[1])
   assert np.allclose(PT.get_node_from_name(part_tree, 'fieldY')[1],  PT.get_node_from_name(part_tree_bck, 'fieldX')[1])
 
@@ -178,11 +178,11 @@ class Test_change_basis_simple:
       
       part_tree_cart_ref = PT.deep_copy(part_tree)
         
-      transform.auxiliary_coords_system(part_tree, transform_matrix, apply_to_fields=True)
-      transform.auxiliary_coords_system(part_tree, transform_matrix, apply_to_fields=True)
+      transform.auxiliary_coords_system(part_tree, transform_matrix)
+      transform.auxiliary_coords_system(part_tree, transform_matrix)
 
-      # Compute the former coordinates in ther former basis
-      transform.auxiliary_coords_system(part_tree, None, apply_to_fields=True)
+      # Compute the former coordinates in the former basis
+      transform.auxiliary_coords_system(part_tree, None)
       assert PT.is_same_tree(part_tree_cart_ref, part_tree, abs_tol=1e-10)
 
   def test_cyl_cart(self, zonetype, revolution_axis, comm):
@@ -240,7 +240,7 @@ class Test_cart_to_cyl:
       PT.set_label(dd, 'DiscreteData_t')
 
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindrical(part_tree, revolution_axis, True)  
+    transform.cartesian_to_cylindrical(part_tree, revolution_axis)  
      
     if comm.size == 1:
       radius_ref = np.array([[[0. , 1.41421356], [1. ,  1.73205081]], [[0.5, 1.5       ], [0.5,  1.5       ]], [[1. , 1.73205081], [0. ,  1.41421356]]])
@@ -280,7 +280,7 @@ class Test_cart_to_cyl:
       PT.new_ZoneSubRegion('ZoneSubRegion', fields={f'ZSR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
     
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindrical(part_tree, revolution_axis, True)
+    transform.cartesian_to_cylindrical(part_tree, revolution_axis)
 
     if comm.size == 1:
       radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 
