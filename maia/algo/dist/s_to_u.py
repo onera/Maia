@@ -1,4 +1,3 @@
-import os
 import numpy              as np
 
 import maia.pytree        as PT
@@ -279,11 +278,6 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
-  if not os.environ.get('MAIA_SILENT_API_WARNINGS') and i_rank == 0:
-    mlog.warning("API change -- convert_s_to_u and convert_s_to_ngon functions now operate inplace, "
-                 "and will return None in next release. "
-                 "Export MAIA_SILENT_API_WARNINGS=1 to remove this warning.")
-
   zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.get_node_from_path(dist_tree, path))
                               for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
 
@@ -379,19 +373,17 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         distri = MT.getDistribution(zone)
         PT.rm_children_from_name(distri, 'Face')
 
-  return dist_tree
 ###############################################################################
-def convert_s_to_ngon(disttree_s, comm):
+def convert_s_to_ngon(dist_tree, comm):
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
-  return convert_s_to_u(disttree_s,
-                        'NGON_n',
-                        comm,
-                        {'BC_t' : 'FaceCenter', 'GC_t' : 'FaceCenter'})
+  convert_s_to_u(dist_tree,
+                 'NGON_n',
+                 comm,
+                 {'BC_t' : 'FaceCenter', 'GC_t' : 'FaceCenter'})
 
-def convert_s_to_poly(disttree_s, comm):
+def convert_s_to_poly(dist_tree, comm):
   """Same as convert_s_to_ngon, but also creates the NFace connectivity"""
   from maia.algo import pe_to_nface
-  disttree_u = convert_s_to_ngon(disttree_s, comm)
-  for z in PT.iter_all_Zone_t(disttree_u):
+  convert_s_to_ngon(dist_tree, comm)
+  for z in PT.iter_all_Zone_t(dist_tree):
     pe_to_nface(z,comm)
-  return disttree_u
