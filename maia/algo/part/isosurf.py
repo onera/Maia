@@ -541,7 +541,7 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
 
   Args:
     part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
-    sphere_eq     (list of float): List of 4 floats :math:`[a,b,c,d]` defining the plane equation.
+    plane_eq     (list of float): List of 4 floats :math:`[a,b,c,d]` defining the plane equation.
     comm          (MPIComm)     : MPI communicator
     containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
       on the output slice tree.
@@ -585,7 +585,7 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
 
   Args:
     part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
-    plane_eq      (list of float): List of 4 floats :math:`[x_0, y_0, z_0, R]` defining the sphere equation.
+    sphere_eq      (list of float): List of 4 floats :math:`[x_0, y_0, z_0, R]` defining the sphere equation.
     comm          (MPIComm)     : MPI communicator
     containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
       on the output slice tree.

@@ -64,6 +64,10 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
   If ``redispatch == True``, the CGNS zones are dispatched over the
   available processes, and renamed to follow maia's conventions.
 
+  Important:
+    This function **does not** perfom the partitioning operation; input file is supposed
+    to contain an already partitioned tree, eg. saved with ``part_tree_to_file``.
+
   Args:
     filename (str) : Path of the file
     comm     (MPIComm) : MPI communicator
