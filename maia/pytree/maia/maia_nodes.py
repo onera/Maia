@@ -1,7 +1,10 @@
 from maia.pytree.typing import *
+from maia.pytree.meta   import begin_api_export, end_api_export
 
 from maia.pytree import walk as W
 from maia.pytree import node as N
+
+begin_api_export()
 
 def getDistribution(node:CGNSTree, distri_name:str=None) -> Optional[CGNSTree]:
   """
@@ -56,3 +59,5 @@ get_distribution                      = getDistribution
 get_global_numbering                  = getGlobalNumbering
 new_distribution                      = newDistribution
 new_global_numbering                  = newGlobalNumbering
+
+end_api_export()

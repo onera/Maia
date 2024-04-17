@@ -1,10 +1,9 @@
 import os
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 import maia.pytree as PT
-from maia.pytree import path_utils as PU
+from maia.pytree.utils import path_utils as PU
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+dir_path = PT.__path__[0]
 
 def test_path_head():
   assert PU.path_head('some/path/to/node', 2) == 'some/path'
@@ -24,25 +23,9 @@ def test_update_path_elt():
   assert PU.update_path_elt(path, -1, lambda n : n.upper()) == 'some/path/to/NODE'
   assert PU.update_path_elt(path, 1, lambda n : 'crazy' + n) == 'some/crazypath/to/node'
 
-def test_predicates_to_paths():
-  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  paths = PU.predicates_to_paths(tree, ["Base", "Zone_t", "ZGC*", lambda n: int(n[0][-1]) >= 2 and int(n[0][-1]) <= 4])
-  assert paths == ['Base/ZoneI/ZGCA/gc2', 'Base/ZoneI/ZGCB/gc3', 'Base/ZoneI/ZGCB/gc4']
-  assert PU.predicates_to_paths(tree, 'Nope/*') == []
-
-def test_predicates_to_path():
-  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
-
-  path = PU.predicates_to_path(tree, ["Base", "Zone_t", "ZGC*", lambda n: int(n[0][-1]) >= 2 and int(n[0][-1]) <= 4])
-  assert path == 'Base/ZoneI/ZGCA/gc2'
-  assert PU.predicates_to_path(tree, 'Nope/*') is None
-
 def test_concretize_paths():
-  with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+  with open(os.path.join(dir_path, "test", "minimal_tree.yaml"), 'r') as yt:
+    tree = PT.yaml.to_cgns_tree(yt)
   paths = PU.concretize_paths(tree, ["Base/Zone*/ZGCA", "Base/ZoneI/*", "Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t'])
   assert paths == ['Base/ZoneI/ZGCA', 'Base/ZoneI/ZGCB']
   assert PU.concretize_paths(tree, ["Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t']) == []
@@ -60,7 +43,7 @@ def test_paths_to_tree():
         B None:
           2 None:
     """
-    expected = parse_yaml_cgns.to_node(yt)
+    expected = PT.yaml.to_node(yt)
     #Fix None
     for node in PT.iter_nodes_from_predicate(expected, lambda n: True, explore='deep'):
       node[3] = None

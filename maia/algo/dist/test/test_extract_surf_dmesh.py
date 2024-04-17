@@ -5,7 +5,6 @@ import numpy as np
 import maia.pytree        as PT
 
 from maia              import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.yaml  import parse_yaml_cgns
 from maia.factory      import dcube_generator
 from maia.factory      import full_to_dist as F2D
 
@@ -33,7 +32,7 @@ def test_extract_surf_zone(comm):
     ElementConnectivity DataArray_t:
       {dtype} : [2,5,4,1,3,6,5,2,5,8,7,4,6,9,8,5,10,11,6,3,11,12,9,6,13,14,11,10,14,15,12,11]
   """
-  expected_ngon_full = parse_yaml_cgns.to_node(yt)
+  expected_ngon_full = PT.yaml.to_node(yt)
   expected_ngon = F2D.distribute_element_node(expected_ngon_full, comm)
 
   ngon = PT.Zone.NGonNode(surf_zone)

@@ -9,7 +9,6 @@ import maia.pytree.maia   as MT
 
 import maia
 from maia.utils         import test_utils as TU
-from maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory import generate_dist_block
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
@@ -42,7 +41,7 @@ Zone.P2.N1 Zone_t:
       Family FamilyName_t "myfamily":
   """]
   def test_simple(self, comm):
-    part_zones = parse_yaml_cgns.to_nodes(self.pt[comm.Get_rank()])
+    part_zones = PT.yaml.to_nodes(self.pt[comm.Get_rank()])
 
     dist_zone = PT.new_Zone('Zone')
     DFP.discover_nodes_from_matching(dist_zone, part_zones, 'ZoneBC_t/BC_t', comm)
@@ -66,7 +65,7 @@ Zone.P2.N1 Zone_t:
     assert (PT.get_label(PT.get_node_from_path(dist_zone, 'ZBC/BCB')) == "BC_t")
 
   def test_short(self, comm):
-    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[comm.Get_rank()])
+    part_tree = PT.yaml.to_cgns_tree(self.pt[comm.Get_rank()])
     part_nodes = [PT.get_node_from_path(zone, 'ZBC') for zone in PT.get_all_Zone_t(part_tree)\
       if PT.get_node_from_path(zone, 'ZBC') is not None]
 
@@ -82,7 +81,7 @@ Zone.P2.N1 Zone_t:
     assert (PT.get_label(PT.get_node_from_path(dist_node, 'BCB')) == "BC_t")
 
   def test_getvalue(self, comm):
-    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[comm.Get_rank()])
+    part_tree = PT.yaml.to_cgns_tree(self.pt[comm.Get_rank()])
     for zbc in PT.get_nodes_from_name(part_tree, 'ZBC'):
       PT.set_value(zbc, 'test')
 
@@ -127,7 +126,7 @@ Zone.P2.N1 Zone_t:
     assert PT.get_value(PT.get_node_from_path(dist_zone, 'ZBC/BCB')) == 'farfield'
 
   def test_with_childs(self, comm):
-    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[comm.Get_rank()])
+    part_tree = PT.yaml.to_cgns_tree(self.pt[comm.Get_rank()])
 
     dist_zone = PT.new_Zone('Zone')
     DFP.discover_nodes_from_matching(dist_zone, PT.get_all_Zone_t(part_tree), 'ZoneBC_t/BC_t', comm,
@@ -145,7 +144,7 @@ Zone.P2.N1 Zone_t:
     assert (PT.get_label(PT.get_node_from_path(dist_zone, 'ZBC/BCB/GridLocation')) == "GridLocation_t")
 
   def test_with_rule(self, comm):
-    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[comm.Get_rank()])
+    part_tree = PT.yaml.to_cgns_tree(self.pt[comm.Get_rank()])
 
     # Exclude from node name
     dist_zone = PT.new_Zone('Zone')
@@ -165,7 +164,7 @@ Zone.P2.N1 Zone_t:
 
   def test_multiple(self, comm):
     gc_path = 'ZoneGridConnectivity_t/GridConnectivity_t'
-    part_tree = parse_yaml_cgns.to_cgns_tree(self.pt[comm.Get_rank()])
+    part_tree = PT.yaml.to_cgns_tree(self.pt[comm.Get_rank()])
 
     dist_zone = PT.new_Zone('Zone')
     DFP.discover_nodes_from_matching(dist_zone, PT.get_all_Zone_t(part_tree), gc_path, comm)
@@ -217,7 +216,7 @@ def test_get_parts_per_blocks(comm):
     BaseII CGNSBase_t:
       ZoneA.P1.N0 Zone_t:
     """
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  part_tree = PT.yaml.to_cgns_tree(pt)
   part_per_blocks = DFP.get_parts_per_blocks(part_tree, comm)
   get_names = lambda nodes : [PT.get_name(n) for n in nodes]
   if comm.Get_rank() == 0:
@@ -259,8 +258,8 @@ def test_get_joins_dist_tree(comm):
           :CGNS#Distribution UserDefinedData_t:
             Index DataArray_t {dtype} [0,3,3]: 
   """
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
-  expected_base = parse_yaml_cgns.to_node(expected_dt)
+  part_tree = PT.yaml.to_cgns_tree(pt)
+  expected_base = PT.yaml.to_node(expected_dt)
   dist_tree_jn = DFP.get_joins_dist_tree(part_tree, comm)
   assert PT.is_same_tree(PT.get_all_CGNSBase_t(dist_tree_jn)[0], expected_base)
 
@@ -290,7 +289,7 @@ def test_recover_dist_block_size(idx_dim, comm):
         JN.P1.N0.LT.P0.N0 GridConnectivity1to1_t "Zone.P0.N0":
           PointRange IndexRange_t [[1,1], [1,3], [1,4]]:
     """
-  part_zones = parse_yaml_cgns.to_nodes(pt)
+  part_zones = PT.yaml.to_nodes(pt)
   expected = np.array([[4,3,0],[3,2,0],[4,3,0]])
 
   if idx_dim == 2:
@@ -306,7 +305,7 @@ def test_recover_dist_block_size(idx_dim, comm):
 @pytest_parallel.mark.parallel(2)
 def test_recover_base_iterative_data(comm):
   if comm.Get_rank() == 0:
-    part_tree = parse_yaml_cgns.to_cgns_tree("""
+    part_tree = PT.yaml.to_cgns_tree("""
     StaticBase CGNSBase_t:
     SimpleBase CGNSBase_t:
       BaseIterativeData BaseIterativeData_t [3]:
@@ -323,7 +322,7 @@ def test_recover_base_iterative_data(comm):
         NumberOfZones DataArray_t [1,1]:
     """)
   elif comm.Get_rank() == 1:
-    part_tree = parse_yaml_cgns.to_cgns_tree("""
+    part_tree = PT.yaml.to_cgns_tree("""
     StaticBase CGNSBase_t:
     SimpleBase CGNSBase_t:
       BaseIterativeData BaseIterativeData_t [3]:
@@ -339,13 +338,13 @@ def test_recover_base_iterative_data(comm):
         ZonePointers DataArray_t [[], ["ZoneB.P1.N0"]]:
         NumberOfZones DataArray_t [0,1]:
     """)
-  dist_tree = parse_yaml_cgns.to_cgns_tree("""
+  dist_tree = PT.yaml.to_cgns_tree("""
   StaticBase CGNSBase_t:
   Base CGNSBase_t:
   SimpleBase CGNSBase_t:
   DynamicBase CGNSBase_t:
   """)
-  expected_tree = parse_yaml_cgns.to_cgns_tree("""
+  expected_tree = PT.yaml.to_cgns_tree("""
   StaticBase CGNSBase_t:
   Base CGNSBase_t:
     BaseIterativeData BaseIterativeData_t [2]:

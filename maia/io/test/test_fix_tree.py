@@ -4,7 +4,6 @@ import numpy as np
 
 import maia
 import maia.pytree as PT
-from maia.pytree.yaml  import parse_yaml_cgns
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import logging as mlog
 
@@ -26,7 +25,7 @@ def test_check_datasize():
   log_collector = log_capture()
   mlog.add_printer_to_logger('maia-warnings', log_collector)
 
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.check_datasize(tree)
   assert log_collector.logs == ''
   grid_co = PT.get_node_from_name(tree, 'GridCoordinates')
@@ -40,7 +39,7 @@ def test_fix_zone_datatype():
     ZoneA Zone_t I4 [[11,10,0]]:
     ZoneB Zone_t I4 [[11,10,0]]:
   """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   size_data = {'/CGNSLibraryVersion': (1, 'R4', (1,)),
                '/Base': (1, 'I4', (2,)),
                '/Base/ZoneA': (1, 'I4', (1, 3)),
@@ -65,7 +64,7 @@ Base0 CGNSBase_t [3,3]:
         PointRangeDonor IndexRange_t [[17,17],[3,9],[1,5]]:
         Transform "int[IndexDimension]" [-2,-1,-3]:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.fix_point_ranges(size_tree)
   gcA = PT.get_node_from_name(size_tree, 'matchAB')
   gcB = PT.get_node_from_name(size_tree, 'matchBA')
@@ -88,7 +87,7 @@ Base0 CGNSBase_t [3,3]:
         PointRange IndexRange_t [[1,7],[9,9],[1,5]]:
         PointRangeDonor IndexRange_t [[17,17],[9,3],[1,5]]:
 """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.ensure_symmetric_gc1to1(tree)
   gcA = PT.get_node_from_name(tree, 'matchAB')
   gcB = PT.get_node_from_name(tree, 'matchBA')
@@ -135,7 +134,7 @@ Base0 CGNSBase_t [3,3]:
         BCDS BCDataSet_t:
           GridLocation GridLocation_t "FaceCenter":
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.add_missing_pr_in_bcdataset(size_tree)
   bcA1 = PT.get_node_from_name(size_tree, 'BCA1')
   bcdsA1 = PT.get_child_from_label(bcA1, 'BCDataSet_t')
@@ -174,7 +173,7 @@ def test_enforce_pdm_dtype():
           PointList IndexArray_t {wrong_type} [[11,12,13]]:
           PointListDonor IndexArray_t {wrong_type} [[1,2,3]]:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   assert PT.get_node_from_name(tree, 'PointList')[1].dtype == wrong_pdm_type
   assert PT.get_node_from_name(tree, 'ElementConnectivity')[1].dtype == wrong_pdm_type
   assert PT.get_node_from_name(tree, 'ElementStartOffset')[1].dtype == wrong_pdm_type
@@ -254,7 +253,7 @@ def test_rm_legacy_nodes():
   ZoneC Zone_t [[11,10,0]]:
     :elsA#Hybrid UserDefinedData_t:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.rm_legacy_nodes(tree)
   assert PT.get_node_from_name(tree, ':elsA#Hybrid') is None
 
@@ -271,7 +270,7 @@ Base0 CGNSBase_t [3,3]:
       BCB BC_t:
         WrongName IndexRange_t:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.corr_index_range_names(size_tree)
   bcA = PT.get_node_from_name(size_tree, 'BCA')
   bcB = PT.get_node_from_name(size_tree, 'BCB')

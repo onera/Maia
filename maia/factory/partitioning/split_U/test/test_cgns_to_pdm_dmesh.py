@@ -5,7 +5,6 @@ import Pypdm.Pypdm as PDM
 
 import maia
 import maia.pytree as PT
-from   maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh as CTP
 
 from maia import npy_pdm_gnum_dtype
@@ -49,7 +48,7 @@ ZoneU Zone_t [[12,0,0]]:
     Vertex DataArray_t [6,12,12]:
     Cell DataArray_t [0,0,0]:
   """
-  dist_zone = parse_yaml_cgns.to_node(dt)
+  dist_zone = PT.yaml.to_node(dt)
   dmesh = CTP.cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, comm)
   #No getters for dmesh so we can not check data
   assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
@@ -120,7 +119,7 @@ ZoneU Zone_t [[18,6,0]]:
     Cell DataArray_t [3,4,4]:
   """
 
-  dist_zone = parse_yaml_cgns.to_node(dt)
+  dist_zone = PT.yaml.to_node(dt)
 
   dmesh = CTP.cgns_dist_zone_to_pdm_dmesh(dist_zone, comm)
   #No getters for dmesh so we can not check data
@@ -197,7 +196,7 @@ ZoneU Zone_t [[18,6,0]]:
     expected_dnface = 8
     expected_facecell = [3, 4, 1, 0, 3, 0, 4, 0, 2, 0, 4, 0, 3, 0, 4, 0]
 
-  dist_zone = parse_yaml_cgns.to_node(dt)
+  dist_zone = PT.yaml.to_node(dt)
 
   dmeshnodal = CTP.cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm)
 

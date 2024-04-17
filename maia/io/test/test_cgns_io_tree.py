@@ -4,7 +4,6 @@ import pytest_parallel
 import maia.io
 import maia.pytree as PT
 
-from maia.pytree.yaml import parse_yaml_cgns
 import maia.utils.test_utils as TU
 
 import os
@@ -22,7 +21,7 @@ Base CGNSBase_t I4 [3, 3]:
       Cell DataArray_t I4 [0, 0, 0]:
 """
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
 
   tmp_dir = TU.create_collective_tmp_dir(comm)
   out_file = os.path.join(tmp_dir, 'yt.cgns')
@@ -58,7 +57,7 @@ Base CGNSBase_t I4 [3, 3]:
       Cell DataArray_t I4 [0, 0, 0]:
 """
 
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
 
   tmp_dir = TU.create_collective_tmp_dir(comm)
   out_file = os.path.join(tmp_dir, 'yt.cgns')

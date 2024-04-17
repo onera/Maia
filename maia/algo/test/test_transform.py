@@ -7,7 +7,6 @@ import maia.pytree.maia     as MT
 from maia.utils             import np_utils
 
 import maia
-from maia.pytree.yaml  import parse_yaml_cgns
 from maia.factory.dcube_generator import dcube_generate
 
 from maia.algo import transform
@@ -47,7 +46,7 @@ def test_transformation_zone_void():
                     1,1,1,
                     1,1,1 ]
        """
-  zone            = parse_yaml_cgns.to_node(yz)
+  zone            = PT.yaml.to_node(yz)
   zone_bck        = PT.deep_copy(zone)
   transform.transform_affine(zone)
   assert PT.is_same_tree(zone_bck, zone) 

@@ -198,7 +198,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
     part_data = {field : [] for field in fields}
     if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
       # ZSR have been split
-      ancestor, leaf = PT.path_head(matching_region_path), PT.path_tail(matching_region_path)
+      ancestor, leaf = PT.utils.path_head(matching_region_path), PT.utils.path_tail(matching_region_path)
       lngn_list = []
       for part_zone in part_zones:
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):

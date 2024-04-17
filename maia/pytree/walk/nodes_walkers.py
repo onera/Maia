@@ -1,10 +1,7 @@
-from typing import List, Optional, NoReturn, Union, Tuple, Callable, Any
-import numpy as np
 import copy
 
 from .nodes_walker import NodesWalker
 
-TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 #We put here subfunctions used by NodesWalkers (based on NodesWalker)
 #since they don't do directly tree parsing
@@ -65,7 +62,7 @@ class NodesWalkers:
     return self._root
 
   @root.setter
-  def root(self, node: TreeNode):
+  def root(self, node):
     self._root = node
     self.clean()
 

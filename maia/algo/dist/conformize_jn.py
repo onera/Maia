@@ -37,7 +37,7 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
   mean_coords = {}
   vtx_distris = []
   for i, path in enumerate(jn_paths):
-    zone = PT.get_node_from_path(dist_tree, PT.path_head(path, 2))
+    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 2))
     vtx_distri = PT.get_value(MT.getDistribution(zone, 'Vertex'))
     dist_coords = {}
     for grid_co_n, coord_n in PT.iter_nodes_from_predicates(zone, coord_query, ancestors=True):
@@ -54,7 +54,7 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
   
   # Send back the mean value to the two zones, and update tree
   for i, path in enumerate(jn_paths):
-    zone = PT.get_node_from_path(dist_tree, PT.path_head(path, 2))
+    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 2))
     mean_coords['NodeId'] = [pl_vtx_list[i]]
     dist_data = EP.part_to_block(mean_coords, vtx_distris[i], [pl_vtx_list[i]], comm)
 

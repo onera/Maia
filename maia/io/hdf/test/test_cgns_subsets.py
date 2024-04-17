@@ -1,6 +1,5 @@
 import pytest
 import maia.pytree as PT
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.io.hdf import cgns_subsets
 
 def test_create_pl_filter():
@@ -14,7 +13,7 @@ def test_create_pl_filter():
       Index DataArray_t [5,10,10]:
   """
   hdf_filter = dict()
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
 
   distri = PT.maia.getDistribution(node, 'Index')[1]
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
@@ -33,7 +32,7 @@ def test_create_pl_filter():
       Index DataArray_t [2,4,6]:
   """
   hdf_filter = dict()
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   distri = PT.maia.getDistribution(node, 'Index')[1]
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
   assert len(hdf_filter) == 0
@@ -72,7 +71,7 @@ Base CGNSBase_t [3,3]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,50,50]:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = dict()
   cgns_subsets.create_zone_bc_filter(PT.get_all_Zone_t(size_tree)[0], "Base/Zone", hdf_filter)
   assert len(hdf_filter.keys()) == 8
@@ -115,7 +114,7 @@ Base CGNSBase_t [3,3]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [5,9,9]:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = dict()
   zoneU = PT.get_node_from_name(size_tree, 'ZoneU')
   zoneS = PT.get_node_from_name(size_tree, 'ZoneS')
@@ -147,7 +146,7 @@ Base CGNSBase_t [3,3]:
       Vertex DataArray_t [12,27,27]:
       Cell DataArray_t [0,8,8]:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = dict()
   cgns_subsets.create_flow_solution_filter(PT.get_all_Zone_t(size_tree)[0], "Base/Zone", hdf_filter)
   assert len(hdf_filter.keys()) == 4
@@ -166,7 +165,7 @@ Base CGNSBase_t [3,3]:
       Vertex DataArray_t [12,27,27]:
       Cell DataArray_t [0,8,8]:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = dict()
   with pytest.raises(RuntimeError):
     cgns_subsets.create_flow_solution_filter(PT.get_all_Zone_t(size_tree)[0], "Base/Zone", hdf_filter)
@@ -205,7 +204,7 @@ Base CGNSBase_t [3,3]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,40,40]:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = dict()
   cgns_subsets.create_zone_subregion_filter(PT.get_all_Zone_t(size_tree)[0], "Base/Zone", hdf_filter)
   assert len(hdf_filter.keys()) == 7
@@ -224,7 +223,7 @@ Base CGNSBase_t [3,3]:
       array1 DataArray_t None:
       array2 DataArray_t None:
 """
-  size_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  size_tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = dict()
   with pytest.raises(RuntimeError):
     cgns_subsets.create_zone_subregion_filter(PT.get_all_Zone_t(size_tree)[0], "Base/Zone", hdf_filter)

@@ -1,7 +1,7 @@
 import pytest_parallel
 import numpy as np
+
 import maia.pytree as PT
-from   maia.pytree.yaml   import parse_yaml_cgns
 from maia.factory.partitioning.split_S import part_zone as splitS
 
 def test_collect_S_bnd_per_dir():
@@ -38,7 +38,7 @@ Zone Zone_t:
     gc1 GridConnectivity1to1_t:
       PointRange IndexRange_t [[17,17],[3,9],[1,5]]:
 """
-  zone = parse_yaml_cgns.to_node(yt)
+  zone = PT.yaml.to_node(yt)
 
   out = splitS.collect_S_bnd_per_dir(zone)
   assert out["xmin"] == [PT.get_node_from_name(zone, name) for name in ['bc1']]
@@ -134,7 +134,7 @@ Small.P2.N1 Zone_t:
       distPRDonor IndexRange_t [[17,17],[3,9],[1,5]]:
       zone_offset DataArray_t [4,6,1]:
   """
-  part_tree  = parse_yaml_cgns.to_cgns_tree(pt)
+  part_tree  = PT.yaml.to_cgns_tree(pt)
   part_zones = PT.get_all_Zone_t(part_tree)
   splitS.split_original_joins_S(part_zones, comm)
 

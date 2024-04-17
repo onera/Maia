@@ -3,6 +3,7 @@ import numpy       as np
 from typing import TextIO
 
 from maia.pytree.typing import *
+from maia.pytree.meta import api_export
 import maia.pytree.cgns_keywords as CGK
 import maia.pytree.walk as W
 
@@ -161,6 +162,7 @@ def print_node(node, depth, is_last_child, line_prefix, plabel, cst_props, out_l
     sons_w = "child" if n_sons == 1 else "children"
     out_lines.append(f"{line_prefix}╵╴╴╴ ({n_sons} {sons_w} masked)\n")
 
+@api_export
 def to_string(tree:CGNSTree, 
               *, 
               verbose:bool=False,
@@ -191,6 +193,7 @@ def to_string(tree:CGNSTree,
   print_node(masked_tree, 0, False, "", "", print_traits, out_lines)
   return out_lines
 
+@api_export
 def print_tree(tree:CGNSTree, 
                out:TextIO =sys.stdout,
                *, 

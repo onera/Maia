@@ -1,7 +1,6 @@
 import pytest
 
 import maia.pytree as PT
-from maia.pytree.yaml import parse_yaml_cgns
 
 yt = """
 FamilyBC FamilyBC_t:
@@ -14,7 +13,7 @@ FamilyBC FamilyBC_t:
 """
 
 def test_create():
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   pattern = lambda n : PT.get_name(n).startswith("Momentum")
   
   walker = PT.NodesWalker(node, pattern)
@@ -48,7 +47,7 @@ def test_create():
 
 @pytest.mark.parametrize("explore", ["deep", "shallow"])
 def test_explore(explore):
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicate = lambda n: PT.get_label(n) == "DataArray_t"
   walker = PT.NodesWalker(node, predicate, explore=explore)
   if explore == "deep":
@@ -59,7 +58,7 @@ def test_explore(explore):
 
 @pytest.mark.parametrize("search", ["bfs", "dfs"])
 def test_search(search):
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicate = lambda n: PT.get_label(n) == "DataArray_t"
 
   walker = PT.NodesWalker(node, predicate, explore="deep", search=search)
@@ -70,7 +69,7 @@ def test_search(search):
 
 @pytest.mark.parametrize("caching", [False, True])
 def test_caching(caching):
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicate = lambda n: 'FamilyBC' in PT.get_name(n) and not 'Ref' in PT.get_name(n)
   #TODO si explore == shallow, on en capte 2 et pas 1 ??
   walker = PT.NodesWalker(node, predicate, explore='deep', caching=caching)
@@ -81,7 +80,7 @@ def test_caching(caching):
 
 @pytest.mark.parametrize("caching", [False, True])
 def test_apply(caching):
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicate = lambda n: PT.get_label(n) == "DataArray_t"
   
   walker = PT.NodesWalker(node, predicate, caching=caching)
@@ -91,7 +90,7 @@ def test_apply(caching):
     assert [PT.get_name(n) for n in walker.cache] == ['DENSITY', 'MOMENTUMX', 'SOMEDATA']
 
 def test_sort():
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicate = lambda n: PT.get_label(n) == "DataArray_t"
 
   walker = PT.NodesWalker(node, predicate, explore='deep', search='dfs')
@@ -105,7 +104,7 @@ def test_sort():
   assert [PT.get_name(n) for n in walker()] == ['SomeData', 'MomentumX', 'Density', 'Density2']
 
 def test_depth():
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicate = lambda n: PT.get_label(n) == "DataArray_t"
 
   walker = PT.NodesWalker(node, predicate, explore='deep', search='bfs')

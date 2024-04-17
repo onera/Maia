@@ -5,7 +5,6 @@ import numpy as np
 import maia.pytree as PT
 
 import maia
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.factory     import full_to_dist as F2D
 from maia.factory     import dcube_generator  as DCG
 
@@ -37,7 +36,7 @@ def test_conformize_jn_pair(comm, from_loc):
     PointList IndexArray_t {isize} {pld}:
     PointListDonor IndexArray_t {isize} {pl}:
   """
-  gcs = [F2D.distribute_pl_node(gc, comm) for gc in parse_yaml_cgns.to_nodes(yt)]
+  gcs = [F2D.distribute_pl_node(gc, comm) for gc in PT.yaml.to_nodes(yt)]
   zone = PT.get_all_Zone_t(dist_tree)[0]
   PT.new_child(zone, "ZGC", "ZoneGridConnectivity_t", children=gcs)
 

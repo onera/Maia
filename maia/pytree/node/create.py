@@ -1,8 +1,12 @@
 from maia.pytree.typing import *
+from maia.pytree.meta import begin_api_export, end_api_export
 from maia.pytree import walk
 from .           import access as NA
 
 UNSET = Ellipsis
+
+
+begin_api_export()
 
 def new_node(name:str='Node', label:str='UserDefined_t', value:Any=None, children:List[CGNSTree]=[], parent:CGNSTree=None) -> CGNSTree:
   """ Create a new CGNS node
@@ -159,5 +163,4 @@ def deep_copy(t:CGNSTree) -> CGNSTree:
     out[2].append(deep_copy(child))
   return out
 
-
-
+end_api_export()

@@ -2,7 +2,7 @@
 import argparse
 import pathlib
 
-from maia.pytree.yaml      import parse_yaml_cgns
+from maia.pytree.yaml      import to_cgns_tree
 from maia.utils.test_utils import mesh_dir
 from maia.io               import write_tree
 
@@ -20,5 +20,5 @@ for full_mesh_name in mesh_dir.iterdir():
   if (extension==".yaml"):
     outfile = (args.output_dir / mesh_name).with_suffix('.cgns')
     with open(full_mesh_name) as yt:
-      t = parse_yaml_cgns.to_cgns_tree(yt)
+      t = to_cgns_tree(yt)
       write_tree(t, str(outfile))

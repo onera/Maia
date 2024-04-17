@@ -5,7 +5,6 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.transfer import utils
 import pytest_parallel
 
@@ -26,7 +25,7 @@ BaseA CGNSBase_t:
 BaseB CGNSBase_t:
   Zone3.P0.N0 Zone_t:
 """
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  part_tree = PT.yaml.to_cgns_tree(pt)
   get_names = lambda nodes : [PT.get_name(n) for n in nodes]
   assert get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone1')) == ['Zone1.P0.N1', 'Zone1.P0.N2']
   assert get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone2.With.dot')) == ['Zone2.With.dot.P0.N0']
@@ -44,14 +43,14 @@ Zone Zone_t:
   :CGNS#Distribution UserDefinedData_t:
     Cell DataArray_t [1,2,4]:
 """
-  dist_zone = parse_yaml_cgns.to_node(yt)
+  dist_zone = PT.yaml.to_node(yt)
   zone_distri = utils.get_cgns_distribution(dist_zone, 'Cell')
   bc_distri   = utils.get_cgns_distribution(PT.get_node_from_path(dist_zone, 'ZBC/bc1'), 'Index')
   assert (zone_distri == [1,2,4]).all()
   assert (bc_distri   == [1,4,4]).all()
 
 def test_get_subset_distribution():
-  zone = parse_yaml_cgns.to_node("""
+  zone = PT.yaml.to_node("""
   Zone Zone_t [[1,1,0]]:
     ZoneType ZoneType_t "Unstructured":
     :CGNS#Distribution UserDefinedData_t:
@@ -95,7 +94,7 @@ def test_create_all_elt_distribution(comm):
   Tetra Elements_t:
     ElementRange IndexRange_t [81,100]:
 """
-  dist_elts = parse_yaml_cgns.to_nodes(yt)
+  dist_elts = PT.yaml.to_nodes(yt)
   distri = utils.create_all_elt_distribution(dist_elts, comm)
   assert distri.dtype == npy_pdm_gnum_dtype
   if comm.Get_rank() == 0:
@@ -118,7 +117,7 @@ Zone.P0.N1 Zone_t:
   :CGNS#GlobalNumbering UserDefinedData_t:
     Cell DataArray_t [3,4]:
 """
-  part_zones = parse_yaml_cgns.to_nodes(yt)
+  part_zones = PT.yaml.to_nodes(yt)
   cell_lngn = utils.collect_cgns_g_numbering(part_zones, 'Cell')
   bc1_lngn  = utils.collect_cgns_g_numbering(part_zones, 'Index', 'ZBC/bc1')
   assert len(cell_lngn) == len(bc1_lngn) == 2
@@ -152,7 +151,7 @@ Zone.P0.N1 Zone_t:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t [2,3,5]:
 """
-  part_zones = parse_yaml_cgns.to_nodes(yt)
+  part_zones = PT.yaml.to_nodes(yt)
   dist_elts = [PT.new_Elements('Hexa',  erange=[7,8]),
                PT.new_Elements('Quad',  erange=[1,6]),
                PT.new_Elements('Tetra', erange=[9,12])]

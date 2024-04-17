@@ -4,7 +4,6 @@ import numpy as np
 
 import maia.pytree as PT
 
-from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.pytree import compare as CP
 
@@ -46,7 +45,7 @@ def test_is_same_value():
 
 def test_is_same_node():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+    tree = PT.yaml.to_cgns_tree(yt)
   node1 = PT.get_node_from_name(tree, 'gc3')
   node2 = PT.get_node_from_name(tree, 'gc5')
   assert not CP.is_same_node(node1, node2)
@@ -83,7 +82,7 @@ def test_str_comp():
 
 def test_is_same_tree():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    tree = parse_yaml_cgns.to_cgns_tree(yt)
+    tree = PT.yaml.to_cgns_tree(yt)
   t1 = PT.get_node_from_name(tree, 'gc5')
   t2 = PT.deep_copy(t1)
   assert CP.is_same_tree(t1, t2)
@@ -107,7 +106,7 @@ def test_is_same_tree():
 
 def test_diff_tree():
   with open(os.path.join(dir_path, "minimal_tree.yaml"), 'r') as yt:
-    t1 = parse_yaml_cgns.to_cgns_tree(yt)
+    t1 = PT.yaml.to_cgns_tree(yt)
   t2 = PT.deep_copy(t1)
   assert CP.diff_tree(t1, t2)[1] == ''
 

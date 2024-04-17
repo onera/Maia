@@ -2,7 +2,12 @@ from .sids import *
 from .walk import *
 from .node import *
 
-from .compare       import *
-from .path_utils    import *
+from .compare import *
 
-import maia.pytree.utils as utils
+from . import utils
+
+# Optional modules
+try:
+  from . import yaml
+except ModuleNotFoundError:
+  pass

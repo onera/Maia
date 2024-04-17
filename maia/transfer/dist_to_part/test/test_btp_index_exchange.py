@@ -8,7 +8,6 @@ import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 import maia.utils.py_utils as py_utils
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.transfer.dist_to_part import index_exchange as IBTP
 
@@ -128,8 +127,8 @@ ZoneU Zone_t [[6,0,0]]:
       Vertex DataArray_t {0} [1,5,2]:
   """.format(dtype)
 
-  dist_zone  = parse_yaml_cgns.to_node(dt)
-  part_zones = parse_yaml_cgns.to_nodes(pt)
+  dist_zone  = PT.yaml.to_node(dt)
+  part_zones = PT.yaml.to_nodes(pt)
 
   IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['ZoneSubRegion_t'], 'Vertex', comm)
 
@@ -185,8 +184,8 @@ ZoneU.P1.N0 Zone_t [[3,0,0]]:
   ZoneType ZoneType_t "Unstructured":
 """.format(dtype)
 
-  dist_zone = parse_yaml_cgns.to_node(dt)
-  part_zone = parse_yaml_cgns.to_node(pt)
+  dist_zone = PT.yaml.to_node(dt)
+  part_zone = PT.yaml.to_node(pt)
 
   group_part = {'npZSRGroupIdx': np.array([0, 0, 1], dtype=np.int32),
                 'npZSRGroup': np.array([42], dtype=np.int32),

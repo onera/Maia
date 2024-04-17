@@ -4,7 +4,6 @@ import numpy as np
 
 import maia
 import maia.pytree        as PT
-from   maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.algo.part import isosurf as ISO
 
@@ -13,14 +12,14 @@ dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
 
 def test_copy_referenced_families():
-  source_base = parse_yaml_cgns.to_node(
+  source_base = PT.yaml.to_node(
   """
   Base CGNSBase_t:
     Toto Family_t:
     Tata Family_t:
     Titi Family_t:
   """)
-  target_base = parse_yaml_cgns.to_node(
+  target_base = PT.yaml.to_node(
   """
   Base CGNSBase_t:
     Tyty Family_t: #Already in target tree
@@ -128,13 +127,13 @@ def test_exchange_field_one_domain(from_api, comm):
     expected_D = np.array([-3.])
 
   if from_api:
-    iso_tree  = parse_yaml_cgns.to_cgns_tree(yt_surf)
-    vol_tree  = parse_yaml_cgns.to_cgns_tree(yt_vol)
+    iso_tree  = PT.yaml.to_cgns_tree(yt_surf)
+    vol_tree  = PT.yaml.to_cgns_tree(yt_vol)
     ISO._exchange_field(vol_tree, iso_tree, ["FSolCell", "FSolVtx", "FSolBC"], comm)
     iso_zone = PT.get_all_Zone_t(iso_tree)[0]
   else:
-    iso_zone  = parse_yaml_cgns.to_node(yt_surf)
-    vol_zones = parse_yaml_cgns.to_nodes(yt_vol)
+    iso_zone  = PT.yaml.to_node(yt_surf)
+    vol_zones = PT.yaml.to_nodes(yt_vol)
     ISO.exchange_field_one_domain(vol_zones, iso_zone, ["FSolCell", "FSolVtx", "FSolBC"], comm)
 
   assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolCell")) == "CellCenter"

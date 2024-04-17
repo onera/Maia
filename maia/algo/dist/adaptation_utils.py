@@ -927,8 +927,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
 
     # > 1/ Defining the internal surface, that will be constrained in mesh adaptation
-    bc_name1= PT.path_tail(gc_paths[0])
-    bc_name2= PT.path_tail(gc_paths[1])
+    bc_name1= PT.utils.path_tail(gc_paths[0])
+    bc_name2= PT.utils.path_tail(gc_paths[1])
     mask    = par_algo.gnum_isin(gc_vtx_pld, gc_vtx_pl, comm, invert=True)
     cell_pl = tag_elmt_owning_vtx(tetra_elt, gc_vtx_pld[mask], comm, elt_full=False) # Tetra made of at least one gc opp vtx
     face_pl = add_undefined_faces(zone, tetra_elt, cell_pl, tri_elt, comm, bc_names=[bc_name1])
@@ -1002,8 +1002,8 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     dist_transform.transform_affine_zone(zone, vtx_pl, comm, **periodic, apply_to_fields=True)
 
     # > 5/ Merge two GCs that are now overlaping
-    bc_name1 = PT.path_tail(gc_paths[0])
-    bc_name2 = PT.path_tail(gc_paths[1])
+    bc_name1 = PT.utils.path_tail(gc_paths[0])
+    bc_name2 = PT.utils.path_tail(gc_paths[1])
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
     vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
@@ -1082,8 +1082,8 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
     cell_bc_pl = PT.get_value(PT.Subset.getPatch(cell_bc_n))[0]
     vtx_pl = elmt_pl_to_vtx_pl(zone, tetra_elt, cell_bc_pl, comm)
 
-    still_here_gc_name  = PT.path_tail(gc_paths[0])
-    to_retrieve_gc_name = PT.path_tail(gc_paths[1])
+    still_here_gc_name  = PT.utils.path_tail(gc_paths[0])
+    to_retrieve_gc_name = PT.utils.path_tail(gc_paths[1])
     bc_n = PT.get_child_from_name(zone_bc_n, still_here_gc_name)
     face_pl = PT.get_value(PT.Subset.getPatch(bc_n))[0]
 

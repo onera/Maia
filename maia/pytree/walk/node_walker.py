@@ -1,9 +1,5 @@
-from typing import List, Optional, Union, Callable
-import numpy as np
-
 from ._node_parsers import NodeParser, RangeLevelNodeParser
 
-TreeNode = List[Union[str, Optional[np.ndarray], List["TreeNode"]]]
 
 # --------------------------------------------------------------------------
 class NodeWalker:
@@ -12,7 +8,7 @@ class NodeWalker:
   FORWARD  = lambda children:children
   BACKWARD = lambda children:reversed(children)
 
-  def __init__(self, root: TreeNode,
+  def __init__(self, root,
                      predicate,
                      search: str=NodeParser.DEFAULT,
                      depth=None,
@@ -21,11 +17,11 @@ class NodeWalker:
     Hold all the manner to explore and parse the CGNS Tree
 
     Args:
-        root (TreeNode): CGNS node root searching
-        predicate (Callable[[TreeNode], bool]): condition to select node
+        root (CGNSTree): CGNS node root searching
+        predicate (Callable[[CGNSTree], bool]): condition to select node
         search (str, optional): 'dfs' for Depth-First-Search or 'bfs' for Breath-First-Search
         depth (int, optional): stop exploring after the limited depth
-        sort (Callable[TreeNode], optional): parsing children sort
+        sort (Callable[CGNSTree], optional): parsing children sort
     """
     self.root      = root
     self.predicate = predicate
@@ -39,7 +35,7 @@ class NodeWalker:
     return self._root
 
   @root.setter
-  def root(self, node: TreeNode):
+  def root(self, node):
     self._root = node
 
   @property
@@ -47,7 +43,7 @@ class NodeWalker:
     return self._predicate
 
   @predicate.setter
-  def predicate(self, predicate: Callable[[TreeNode], bool]):
+  def predicate(self, predicate):
     if callable(predicate):
       self._predicate = predicate
     else:

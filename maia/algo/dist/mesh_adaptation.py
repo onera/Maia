@@ -4,6 +4,7 @@ from pathlib import Path
 
 import maia
 import maia.pytree        as PT
+import maia.pytree.utils  as PTu
 import maia.utils.logging as mlog
 
 from maia.io.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
@@ -217,7 +218,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
 
   mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
-  gc_constraints = [PT.path_tail(gc_path) for pair in perio_jns_pairs for gc_path in pair]
+  gc_constraints = [PTu.path_tail(gc_path) for pair in perio_jns_pairs for gc_path in pair]
   maia.algo.dist.redistribute_tree(tree, 'gather.0', comm)
   tree = _adapt_mesh_with_feflo(tree, metric, comm, container_names, gc_constraints, feflo_opts)
 
@@ -232,7 +233,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
   # > Set family name in BCs for connect_match
   for i_jn, jn_pair in enumerate(perio_jns_pairs):
     for i_gc, gc_path in enumerate(jn_pair):
-      bc_path = PT.update_path_elt(gc_path, 2, lambda n: 'ZoneBC') # gc has been stored as a BC
+      bc_path = PTu.update_path_elt(gc_path, 2, lambda n: 'ZoneBC') # gc has been stored as a BC
       bc_n = PT.get_node_from_path(tree, bc_path)
       PT.update_child(bc_n, 'FamilyName', 'FamilyName_t', f'BC_TO_CONVERT_{i_jn}_{i_gc}')
 
@@ -244,7 +245,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
   for jn_pair in perio_jns_pairs:
     for gc_path in jn_pair:
       gc_n = PT.get_node_from_path(tree, gc_path+'_0')
-      PT.set_name(gc_n, PT.path_tail(gc_path))
+      PT.set_name(gc_n, PTu.path_tail(gc_path))
       gcd_name_n = PT.get_child_from_name(gc_n, 'GridConnectivityDonorName')
       PT.set_value(gcd_name_n, PT.get_value(gcd_name_n)[:-2])
       PT.rm_children_from_label(gc_n, 'FamilyName_t')

@@ -3,7 +3,7 @@ import numpy as np
 
 from maia.pytree.cgns_keywords import Label as CGL
 from maia.pytree      import walk      as W
-from maia.pytree.walk import predicate as P
+from maia.pytree      import predicate as P
 
 from maia.pytree.yaml   import parse_yaml_cgns
 

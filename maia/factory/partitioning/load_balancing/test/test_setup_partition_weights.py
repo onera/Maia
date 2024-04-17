@@ -1,9 +1,7 @@
 import pytest_parallel
-import numpy as np
 from mpi4py import MPI
 
 import maia.pytree as PT
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.factory.partitioning.load_balancing import setup_partition_weights
 
 @pytest_parallel.mark.parallel(3)
@@ -17,7 +15,7 @@ Base0 CGNSBase_t [3,3]:
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
     ZoneType ZoneType_t "Structured":
 """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
   def test_one_part(self, comm):
     zone_to_weights = setup_partition_weights.npart_per_zone(self.dist_tree, comm)
     for zone in PT.get_all_Zone_t(self.dist_tree):
@@ -45,7 +43,7 @@ Base0 CGNSBase_t [3,3]:
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
     ZoneType ZoneType_t "Structured":
 """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
 
   def test_uniform(self, comm):
     zone_to_weights = setup_partition_weights.balance_multizone_tree(self.dist_tree,
@@ -81,7 +79,7 @@ Base0 CGNSBase_t [3,3]:
   ZoneS Zone_t [[21,20,0],[21,20,0],[2,1,0]]:
     ZoneType ZoneType_t "Structured":
 """
-  dist_tree = parse_yaml_cgns.to_cgns_tree(yt)
+  dist_tree = PT.yaml.to_cgns_tree(yt)
   zone_to_weights = setup_partition_weights.compute_nosplit_weights(dist_tree, comm)
   if comm.Get_size() == 2:
     if comm.Get_rank() == 0:

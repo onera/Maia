@@ -8,7 +8,6 @@ import maia.pytree.maia   as MT
 
 from maia.io          import file_to_dist_tree, dist_tree_to_file
 from maia.utils       import test_utils as TU
-from maia.pytree.yaml import parse_yaml_cgns
 
 from maia.algo.dist import generate_jns_vertex_list
 
@@ -36,7 +35,7 @@ def test_jn_vertexlist(comm, write_output):
 
   # Compare to reference solution
   with open(ref_file, 'r') as f:
-    reference_tree = parse_yaml_cgns.to_cgns_tree(f)
+    reference_tree = PT.yaml.to_cgns_tree(f)
   for ref_gc in PT.iter_nodes_from_label(reference_tree, 'GridConnectivity_t'):
     gc = PT.get_node_from_name(dist_tree, PT.get_name(ref_gc))
     distri = MT.getDistribution(gc, 'Index')[1]

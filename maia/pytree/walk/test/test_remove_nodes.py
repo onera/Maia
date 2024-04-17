@@ -1,6 +1,7 @@
 import pytest
 
 import maia.pytree as PT
+import maia.pytree.predicate as PTp
 from maia.pytree.yaml   import parse_yaml_cgns
 
 yt = """
@@ -22,26 +23,26 @@ def values(nodes):
 def test_rm_children_from_predicate():
   tree = parse_yaml_cgns.to_node(yt)
   for bc_node in PT.iterNodesFromLabel(tree, "BC_t"):
-    PT.rm_children_from_predicate(bc_node, lambda n: PT.match_label(n, "FamilyName_t") and int(PT.get_value(n)[-1]) > 1)
+    PT.rm_children_from_predicate(bc_node, lambda n: PTp.match_label(n, "FamilyName_t") and int(PT.get_value(n)[-1]) > 1)
   assert values(PT.getNodesFromLabel(tree, "FamilyName_t")) == ['BC1', 'ROW1']
 
 def test_keep_children_from_predicate():
   tree = parse_yaml_cgns.to_node(yt)
   for bc_node in PT.iterNodesFromLabel(tree, "BC_t"):
-    PT.keep_children_from_predicate(bc_node, lambda n: PT.match_label(n, "FamilyName_t") and int(PT.get_value(n)[-1]) > 1)
+    PT.keep_children_from_predicate(bc_node, lambda n: PTp.match_label(n, "FamilyName_t") and int(PT.get_value(n)[-1]) > 1)
   assert values(PT.getNodesFromLabel(tree, "FamilyName_t")) == ['BC2', 'ROW1']
 
 def test_rm_nodes_from_predicate():
   tree = parse_yaml_cgns.to_node(yt)
-  PT.rm_nodes_from_predicate(tree, lambda n: PT.match_label(n, "FamilyName_t"))
+  PT.rm_nodes_from_predicate(tree, lambda n: PTp.match_label(n, "FamilyName_t"))
   assert len(PT.getNodesFromLabel(tree, "FamilyName_t")) == 0
 
   tree = parse_yaml_cgns.to_node(yt)
-  PT.rm_nodes_from_predicate(tree, lambda n: PT.match_label(n, "FamilyName_t"), depth=1)
+  PT.rm_nodes_from_predicate(tree, lambda n: PTp.match_label(n, "FamilyName_t"), depth=1)
   assert len(PT.getNodesFromLabel(tree, "FamilyName_t")) == 3
 
   tree = parse_yaml_cgns.to_node(yt)
-  PT.rm_nodes_from_predicate(tree, lambda n: PT.match_label(n, "FamilyName_t"), depth=3)
+  PT.rm_nodes_from_predicate(tree, lambda n: PTp.match_label(n, "FamilyName_t"), depth=3)
   assert len(PT.getNodesFromLabel(tree, "FamilyName_t")) == 2
 
 

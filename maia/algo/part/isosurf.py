@@ -363,11 +363,11 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_par
 
       if partial_gnum.size != 0:
         zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')  
-        bc_n = PT.new_BC(PT.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
+        bc_n = PT.new_BC(PT.utils.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
         PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
     for i_group, gc_path in enumerate(gdom_gcs_path):
-      gc_name = PT.path_tail(gc_path)
+      gc_name = PT.utils.path_tail(gc_path)
       gc_val  = PT.get_value(PT.get_node_from_path(dist_zone, gc_path))
 
       i_group+=n_gdom_bcs

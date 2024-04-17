@@ -9,7 +9,6 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.factory.dcube_generator import dcube_generate, dcube_struct_generate
 
 from maia.utils import par_utils
@@ -20,7 +19,7 @@ dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 
 def test_shift_face_num():
-  zone = parse_yaml_cgns.to_node(f"""
+  zone = PT.yaml.to_node(f"""
   Zone Zone_t:
     NGON Elements_t [22,0]:
       ElementRange IndexRange_t [1, 25]:
@@ -34,7 +33,7 @@ def test_shift_face_num():
   assert (connect_match._shift_face_num([10,5], zone, True) == [20,15]).all()
 
   # Elements
-  zone = parse_yaml_cgns.to_node(f"""
+  zone = PT.yaml.to_node(f"""
   Zone Zone_t:
     Tetra Elements_t [10,0]:
       ElementRange IndexRange_t [1, 20]:
@@ -95,7 +94,7 @@ def test_simple(input_loc, output_loc, comm):                    #    __
     expected_pld = np.array([[19,20,21,22,23,24,25,26,27]], pdm_dtype)
 
   # Redistribute and compare on rank 0 to avoid managing parallelism
-  expected_zmin_full = parse_yaml_cgns.to_node(f"""
+  expected_zmin_full = PT.yaml.to_node(f"""
   Zmin_0 GridConnectivity_t "Base/zone1":
     GridConnectivityType GridConnectivityType_t "Abutting1to1":
     GridLocation GridLocation_t "{output_loc}":
@@ -107,7 +106,7 @@ def test_simple(input_loc, output_loc, comm):                    #    __
   PT.new_child(expected_zmin_full, 'PointList', 'IndexArray_t', expected_pl)
   PT.new_child(expected_zmin_full, 'PointListDonor', 'IndexArray_t', expected_pld)
 
-  expected_zmax_full = parse_yaml_cgns.to_node(f"""
+  expected_zmax_full = PT.yaml.to_node(f"""
   Zmax_0 GridConnectivity_t "Base/zone2":
     GridConnectivityType GridConnectivityType_t "Abutting1to1":
     GridLocation GridLocation_t "{output_loc}":

@@ -1,6 +1,7 @@
 import os
 import maia
 import maia.pytree        as PT
+import maia.pytree.utils  as PTu
 import maia.pytree.maia   as MT
 
 import maia.utils.logging as mlog
@@ -108,12 +109,12 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
 
     nodes =  Filter.readNodesFromPaths(filename, to_read)
     for path, node in zip(to_read, nodes):
-      base = PT.get_node_from_path(tree, PT.path_head(path))
+      base = PT.get_node_from_path(tree, PTu.path_head(path))
       PT.add_child(base, node)
   else:
     # Remove zones not going to this rank
     for base in PT.get_children_from_label(tree, 'CGNSBase_t'):
-      _zones_to_read = [PT.path_tail(zpath) for zpath in zones_to_read if PT.path_head(zpath) == PT.get_name(base)]
+      _zones_to_read = [PTu.path_tail(zpath) for zpath in zones_to_read if PTu.path_head(zpath) == PT.get_name(base)]
       PT.rm_children_from_predicate(base, lambda n: PT.get_label(n) == 'Zone_t' and PT.get_name(n) not in _zones_to_read)
 
     # Now load full data of affected zones

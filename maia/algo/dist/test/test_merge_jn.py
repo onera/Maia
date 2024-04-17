@@ -6,7 +6,6 @@ import maia.pytree.maia   as MT
 
 from maia              import npy_pdm_gnum_dtype as pdm_dtype
 from maia.factory      import dcube_generator
-from maia.pytree.yaml  import parse_yaml_cgns
 from maia.utils        import par_utils
 
 from maia.algo.dist    import merge_jn as MJ
@@ -164,7 +163,7 @@ def test_shift_cgns_subsets():
       GridLocation GridLocation_t "CellCenter":
       PointList IndexArray_t [[100]]:
   """
-  zone = parse_yaml_cgns.to_node(yt)
+  zone = PT.yaml.to_node(yt)
 
   MJ._shift_cgns_subsets(zone, 'CellCenter', -4)
 

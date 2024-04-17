@@ -54,7 +54,7 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
 
 def convert_subset_as_facelist(dist_tree, subset_path, comm):
   node = PT.get_node_from_path(dist_tree, subset_path)
-  zone_path = PT.path_head(subset_path, 2)
+  zone_path = PT.utils.path_head(subset_path, 2)
   if PT.Subset.GridLocation(node) == 'Vertex':
     zone = PT.get_node_from_path(dist_tree, zone_path)
     pl_vtx = PT.get_child_from_name(node, 'PointList')[1][0]

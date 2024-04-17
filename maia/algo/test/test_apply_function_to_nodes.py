@@ -2,7 +2,6 @@ import pytest
 
 import maia.pytree as PT
 
-from maia.pytree.yaml                  import parse_yaml_cgns
 from maia.algo.apply_function_to_nodes import apply_to_zones, zones_iterator
 
 def test_apply_to_zones():
@@ -19,7 +18,7 @@ def test_apply_to_zones():
       ZoneType ZoneType_t "Unstructured":
       ZoneBC ZoneBC_t:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   zoneI = PT.get_node_from_name(tree, 'zoneI')
   zoneII = PT.get_node_from_name(tree, 'zoneII')
   other_base = PT.get_node_from_name(tree, 'BaseB')
@@ -49,7 +48,7 @@ def test_zones_iterator():
       ZoneBC ZoneBC_t:
   """
 
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   zone = PT.get_node_from_name(tree, 'zoneI')
   other_base = PT.get_node_from_name(tree, 'BaseB')
 

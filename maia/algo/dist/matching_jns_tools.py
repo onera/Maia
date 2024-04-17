@@ -12,7 +12,7 @@ def gc_is_reference(gc_s, zone_path):
   The opposite GC is not needed to do that (paths and pointrange are
   compared)
   """
-  zone_path_opp = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.path_head(zone_path))
+  zone_path_opp = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.utils.path_head(zone_path))
   if zone_path < zone_path_opp:
     return True
   elif zone_path > zone_path_opp:

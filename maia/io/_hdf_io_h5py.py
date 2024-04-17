@@ -92,8 +92,8 @@ def write_full(filename, dist_tree, links=[]):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
   for link in links:
     target_dir, target_file, target_node, local_node = link
-    parent_node_path = PT.path_head(local_node)
-    local_node_name  = PT.path_tail(local_node)
+    parent_node_path = PT.utils.path_head(local_node)
+    local_node_name  = PT.utils.path_tail(local_node)
     gid = open_from_path(fid, parent_node_path)
     write_link(gid, local_node_name, target_file, target_node)
   fid.close()

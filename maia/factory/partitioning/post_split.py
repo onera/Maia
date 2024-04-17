@@ -219,7 +219,7 @@ def hybrid_jns_as_ijk(part_tree, comm):
   zone_s_data_all = comm.allgather(zone_s_data)
 
   for zone_u_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', is_zone_u]):
-    basename = PT.path_head(zone_u_path, 1)
+    basename = PT.utils.path_head(zone_u_path, 1)
     zone_u = PT.get_node_from_path(part_tree, zone_u_path)
     for gc in PT.get_children_from_predicates(zone_u, gc_predicate):
       opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, basename)

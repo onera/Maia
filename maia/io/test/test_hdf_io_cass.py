@@ -7,7 +7,6 @@ except ImportError:
   know_cassiopee = False
 
 import maia.pytree as PT
-from maia.pytree.yaml import parse_yaml_cgns
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 def test_add_sizes_to_zone_tree():
@@ -33,7 +32,7 @@ Zone Zone_t:
   FSPL FlowSolution_t:
     PointList IndexArray_t None:
 """
-  zone = parse_yaml_cgns.to_node(yt)
+  zone = PT.yaml.to_node(yt)
   size_data = {'/Zone/Hexa/ElementConnectivity' : (1, 'I4', 160),
                '/Zone/ZBC/bc/PointList' : (1, 'I4', (1,30)),
                '/Zone/ZBC/bc_withds/PointList' : (1, 'I4', (1,100)),
@@ -81,7 +80,7 @@ BaseA CGNSBase_t:
     ZSR ZoneSubRegion_t:
       PointList IndexArray_t None:
 """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
   size_data_tree = {'/BaseA/Zone/Hexa/ElementConnectivity' : (1, 'I4', 160),
                     '/BaseA/Zone/ZBC/bc/PointList' : (1, 'I4', (1,30)),
                     '/BaseA/Zone/ZBC/bc_withds/PointList' : (1, 'I4', (1,100)),

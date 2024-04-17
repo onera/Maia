@@ -11,7 +11,6 @@ from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity, _enforce_pdm_dtype
 
 from maia.factory     import full_to_dist
-from maia.pytree.yaml import parse_yaml_cgns
 
 def load_size_tree(filename, comm, legacy=False):
   if legacy:
@@ -67,7 +66,7 @@ def read_tree(filename, legacy=False):
   filename = str(filename)
   if os.path.splitext(filename)[1] == '.yaml':
     with open(filename, 'r') as f:
-      tree = parse_yaml_cgns.to_cgns_tree(f)
+      tree = PT.yaml.to_cgns_tree(f)
     return tree
   else:
     if legacy:
@@ -174,7 +173,7 @@ def file_to_dist_tree(filename, comm, legacy=False):
   if os.path.splitext(filename)[1] == '.yaml':
     if comm.Get_rank() == 0:
       with open(filename, 'r') as f:
-        tree = parse_yaml_cgns.to_cgns_tree(f)
+        tree = PT.yaml.to_cgns_tree(f)
         _enforce_pdm_dtype(tree)  
     else:
       tree = None

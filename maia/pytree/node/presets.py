@@ -1,5 +1,6 @@
 import warnings
 from maia.pytree.typing import *
+from maia.pytree.meta import begin_api_export, end_api_export
 
 from maia.pytree.cgns_keywords import cgns_to_dtype
 
@@ -14,6 +15,7 @@ def _check_parent_label(node, parent, allowed_list):
           f" is not SIDS compliant. Admissible parent labels are {allowed_list}."
     warnings.warn(msg, RuntimeWarning, stacklevel=3)
 
+begin_api_export()
 
 # Specialized
 def new_CGNSTree(*, version:float=4.2):
@@ -835,3 +837,5 @@ def new_GasModel(value='Ideal',
   """
   assert value in ['Null', 'UserDefined', 'Ideal', 'VanderWaals', 'CaloricallyPerfect', 'ThermallyPerfect', 'ConstantDensity', 'RedlichKwong']
   return new_node('GasModel', label='GasModel_t', value=value, parent=parent)
+
+end_api_export()

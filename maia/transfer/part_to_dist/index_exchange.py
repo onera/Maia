@@ -3,8 +3,9 @@ import numpy              as np
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-import maia.pytree      as PT
-import maia.pytree.maia as MT
+import maia.pytree       as PT
+import maia.pytree.utils as PTu
+import maia.pytree.maia  as MT
 
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils     as te_utils
@@ -138,7 +139,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   If allow_mult is True, leaf node of node_path is expanded search all partitioned leaf*. This can
   be usefull eg to merge splitted joins (match.0, match.1, ...)
   """
-  ancestor, leaf = PT.path_head(node_path), PT.path_tail(node_path)
+  ancestor, leaf = PTu.path_head(node_path), PTu.path_tail(node_path)
   dist_node = PT.get_node_from_path(dist_zone, node_path)
 
   if allow_mult:
@@ -229,7 +230,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   be usefull eg to merge splitted joins (match.0, match.1, ...)
   """
   idx_dim = PT.Zone.IndexDimension(dist_zone)
-  ancestor_n, leaf_n = PT.path_head(node_path), PT.path_tail(node_path)
+  ancestor_n, leaf_n = PTu.path_head(node_path), PTu.path_tail(node_path)
 
   if allow_mult:
     name_predicate = lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == leaf_n

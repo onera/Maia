@@ -2,12 +2,15 @@ import numpy as np
 import itertools
 
 from maia.pytree.typing import *
+from maia.pytree.meta   import begin_api_export, end_api_export
 from maia.pytree.meta   import check_is_label, check_in_labels, for_all_methods
 
 from maia.pytree         import node as N
 from maia.pytree         import walk as W
 from . import elements_utils as EU
 from . import utils
+
+begin_api_export()
 
 # Custom NamedTuple list
 class PeriodicValues(NamedTuple):
@@ -38,6 +41,7 @@ class AuxiliaryCoordinates(NamedTuple):
   CoordinateXi:Optional[np.ndarray]
   CoordinateEta:Optional[np.ndarray]
   CoordinateZeta:Optional[np.ndarray]
+
 Coordinates = Union[CartesianCoordinates, CylindricalCoordinates, SphericalCoordinates, AuxiliaryCoordinates]
 
 # --------------------------------------------------------------------------
@@ -82,7 +86,7 @@ class Tree:
       group     = [zone_path]
       zone = PT.get_node_from_path(tree, zone_path)
       for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', matching_gcs]):
-        opp_zone_path = GridConnectivity.ZoneDonorPath(gc, PT.path_head(zone_path))
+        opp_zone_path = GridConnectivity.ZoneDonorPath(gc, zone_path.split('/')[0])
         utils.append_unique(group, opp_zone_path)
       connected_zones.append(group)
 
@@ -1056,3 +1060,5 @@ class PointList:
   def n_elem(point_list_node:CGNSTree) -> int:
     return N.get_value(point_list_node).shape[1]
 
+
+end_api_export()

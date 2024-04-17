@@ -2,7 +2,6 @@ import pytest
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.pytree.yaml import parse_yaml_cgns
 from maia.io.hdf import cgns_elements
 
 def test_gen_elemts():
@@ -12,7 +11,7 @@ Zone Zone_t [[27],[8],[0]]:
   Hexa Elements_t [17, 0]:
   SomeOtherNode OtherType_t:
 """
-  zone = parse_yaml_cgns.to_node(yt)
+  zone = PT.yaml.to_node(yt)
   elmt_gen = cgns_elements.gen_elemts(zone)
   assert hasattr(elmt_gen, '__next__')
   assert [PT.get_name(n) for n in elmt_gen] == ['NGon', 'Hexa']
@@ -28,7 +27,7 @@ Tri Elements_t [5, 0]:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [40,60,60]:
 """
-  elements = parse_yaml_cgns.to_nodes(yt)
+  elements = PT.yaml.to_nodes(yt)
   hdf_filter = dict()
   cgns_elements.create_zone_std_elements_filter(elements[0], "path/to/zone", hdf_filter)
   cgns_elements.create_zone_std_elements_filter(elements[1], "path/to/zone", hdf_filter)
@@ -49,7 +48,7 @@ NGon Elements_t [22, 0]:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [2,7,10]:
 """
-  element = parse_yaml_cgns.to_node(yt)
+  element = PT.yaml.to_node(yt)
   hdf_filter = dict()
   cgns_elements.load_element_connectivity_from_eso(element, 'pathtozone', hdf_filter)
   assert hdf_filter['pathtozone/NGon/ElementConnectivity'] == \
@@ -67,7 +66,7 @@ NGon Elements_t [22, 0]:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [2,7,10]:
 """
-  element = parse_yaml_cgns.to_node(yt)
+  element = PT.yaml.to_node(yt)
   read_filter, write_filter = dict(), dict()
   cgns_elements.create_zone_eso_elements_filter(element, 'pathtozone', read_filter, 'read')
   cgns_elements.create_zone_eso_elements_filter(element, 'pathtozone', write_filter, 'write')
@@ -95,7 +94,7 @@ Zone Zone_t:
     :CGNS#Distribution UserDefinedData_t:
       Element DataArray_t [30,60,120]:
 """
-  zone = parse_yaml_cgns.to_node(yt)
+  zone = PT.yaml.to_node(yt)
   hdf_filter = dict()
   cgns_elements.create_zone_elements_filter(zone, 'zone', hdf_filter, 'read')
   ngon = PT.get_node_from_name(zone, 'NGon')

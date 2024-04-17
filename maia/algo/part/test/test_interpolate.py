@@ -9,7 +9,6 @@ import maia.pytree.maia   as MT
 
 import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.pytree.yaml  import parse_yaml_cgns
 from maia.factory      import dcube_generator as DCG
 
 from maia.algo.part import interpolate as ITP
@@ -162,7 +161,7 @@ def test_create_src_to_tgt(comm):
     pt = src_part_0
   else:
     pt = src_part_1
-  zones = parse_yaml_cgns.to_nodes(pt)
+  zones = PT.yaml.to_nodes(pt)
   for zone in zones:
     pe = PT.get_node_from_name(zone, 'ParentElements')
     #Put it in F order
@@ -222,7 +221,7 @@ def test_interpolate_fields(comm):
   else:
     pt = src_part_1
     expected_sol = np.array([6.,6.,6.,8.,8.,8.,8.,8.,8., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
-  part_tree = parse_yaml_cgns.to_cgns_tree(pt)
+  part_tree = PT.yaml.to_cgns_tree(pt)
 
   src_parts_per_dom = [PT.get_all_Zone_t(part_tree)]
   tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in PT.get_all_Zone_t(part_tree)]]
@@ -247,11 +246,11 @@ def test_interpolate_fields(comm):
 
 @pytest_parallel.mark.parallel(2)
 class Test_interpolation_api():
-  src_zone_0 = parse_yaml_cgns.to_node(src_part_0)
-  src_zone_1 = parse_yaml_cgns.to_node(src_part_1)
-  tgt_zone_0 = parse_yaml_cgns.to_node(tgt_part_0)
-  tgt_zone_1 = parse_yaml_cgns.to_node(tgt_part_1)
-  tgt_zone_2 = parse_yaml_cgns.to_node(tgt_part_2)
+  src_zone_0 = PT.yaml.to_node(src_part_0)
+  src_zone_1 = PT.yaml.to_node(src_part_1)
+  tgt_zone_0 = PT.yaml.to_node(tgt_part_0)
+  tgt_zone_1 = PT.yaml.to_node(tgt_part_1)
+  tgt_zone_2 = PT.yaml.to_node(tgt_part_2)
   # - For  1 to 9 (bottom)  : 1 2 2 4 3 3 4 3 3
   # - For 10 to 18 (middle) : 1 2 2 4 3 3 4 3 3
   # - For 19 to 27 (top)    : 5 6 6 7 8 8  7 8 8
