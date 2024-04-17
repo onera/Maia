@@ -41,8 +41,8 @@ def test_generate_jns_vertex_list():
   from mpi4py import MPI
   import maia
   from   maia.utils.test_utils import mesh_dir
-  dist_tree_s = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
-  dist_tree = maia.algo.dist.convert_s_to_ngon(dist_tree_s, MPI.COMM_WORLD)
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'S_twoblocks.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.convert_s_to_ngon(dist_tree, MPI.COMM_WORLD)
 
   maia.algo.dist.generate_jns_vertex_list(dist_tree, MPI.COMM_WORLD)
   assert len(maia.pytree.get_nodes_from_name(dist_tree, 'match*#Vtx')) == 2

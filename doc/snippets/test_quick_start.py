@@ -25,9 +25,9 @@ def test_basic_algo(convert_yaml):
   from   mpi4py.MPI import COMM_WORLD as comm
   import maia
 
-  tree_s = maia.io.file_to_dist_tree('S_twoblocks.cgns', comm)
-  tree_u = maia.algo.dist.convert_s_to_ngon(tree_s, comm)
-  maia.io.dist_tree_to_file(tree_u, 'U_twoblocks.cgns', comm)
+  tree = maia.io.file_to_dist_tree('S_twoblocks.cgns', comm)
+  maia.algo.dist.convert_s_to_ngon(tree, comm)
+  maia.io.dist_tree_to_file(tree, 'U_twoblocks.cgns', comm)
   #basic_algo@end
 
 def test_workflow(convert_yaml):
