@@ -32,6 +32,7 @@ Developpement version
 - recover_dist_tree: use gnum_dtype as output kind of created zones
 - convert_elements_to_ngon: update FaceCenter / CellCenter PointList arrays
 - partitioning: fix creation of cells global numbering for multisection element meshes
+- merge_zones: fix type mismatch occurring on I4 meshes with I8 production
 
 🚧 API change
 ^^^^^^^^^^^^^

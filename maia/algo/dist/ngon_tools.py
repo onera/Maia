@@ -50,6 +50,7 @@ def pe_to_nface(zone, comm, remove_PE=False):
   cell_face_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Zone.n_face(zone)
   nface_ec_distr_f = par_utils.gather_and_shift(cell_face_idx[-1], comm)
   nface_ec_distri  = par_utils.full_to_partial_distribution(nface_ec_distr_f, comm)
+  nface_ec_distri  = np_utils.safe_int_cast(nface_ec_distri, nface_distri.dtype)
   eso = cell_face_idx + nface_ec_distri[0]
 
   nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=cell_face, parent=zone)

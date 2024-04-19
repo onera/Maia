@@ -7,7 +7,7 @@ import maia.pytree.sids   as sids
 import maia.pytree.maia   as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum
+from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, logging
 
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
@@ -247,6 +247,19 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   zones = PT.get_all_Zone_t(tree)
   assert min([sids.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
 
+  expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones])
+  output_dtype = PT.get_value(zones[0]).dtype
+  if expected_elt_tot > np.iinfo(np.int32).max:
+    if pdm_dtype == np.int32:
+      msg = f"_merge_zones would overflow this I4 production of maia/ParaDiGM. "\
+            f"Please try with an I8 production (using -D_PDM_ENABLE_LONG_G_NUM=ON)."
+      raise OverflowError(msg)
+    elif output_dtype == np.int32:
+      output_dtype = np.dtype(np.int64)
+      msg = f"Input meshes uses I4 integers, but result of _merge_zones would overflow it. "\
+            f"Kind of output zone has thus be changed to I8."
+      logging.warning(msg)
+
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
 
   is_perio = lambda n : PT.get_child_from_label(n, 'GridConnectivityProperty_t') is not None
@@ -341,11 +354,11 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   merged_distri_face = mbm_face.get_merged_distri()
   merged_distri_cell = mbm_cell.get_merged_distri()
   
-  zone_dims = np.array([[merged_distri_vtx[-1], merged_distri_cell[-1], 0]], order='F')
+  zone_dims = np.array([[merged_distri_vtx[-1], merged_distri_cell[-1], 0]], dtype=output_dtype, order='F')
   merged_zone = PT.new_Zone('MergedZone', size=zone_dims, type='Unstructured')
 
   # NGon
-  PT.add_child(merged_zone, _merge_ngon(all_mbm, tree, comm))
+  _merge_ngon(all_mbm, tree, merged_zone, comm)
 
   # Generate NFace (TODO)
   pass
@@ -466,6 +479,9 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       location = sids.Subset.GridLocation(PT.get_node_from_path(master_node, pl_path))
       mbm = all_mbm[location.split('Center')[0]]
       merged_pl = _merge_pl_data(mbm, zones, pl_path, location, rules, comm)
+      # Enforce zone dtype for output PL
+      for pl in PT.get_children_from_name(merged_pl, 'PointList*'):
+        pl[1] = np_utils.safe_int_cast(pl[1], merged_zone[1].dtype)
       #Rebuild structure until last node
       for child_name in pl_path.split('/')[:-1]:
         master_node = PT.get_child_from_name(master_node, child_name)
@@ -619,10 +635,11 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
 
   return merged_node
 
-def _merge_ngon(all_mbm, tree, comm):
+def _merge_ngon(all_mbm, tree, merged_zone, comm):
   """
   Internal function used by _merge_zones to create the merged NGonNode
   """
+  out_dtype = merged_zone[1].dtype
 
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
@@ -636,7 +653,7 @@ def _merge_ngon(all_mbm, tree, comm):
     if sids.Element.Range(ngon_node)[0] == 1:
       np_utils.shift_nonzeros(pe, -sids.Element.Size(ngon_node))
     PT.new_DataArray('UpdatedPE', pe, parent=ngon_node)
-    PT.new_DataArray('PEDomain',  dom_id * np.ones_like(pe_bck), parent=ngon_node)
+    PT.new_DataArray('PEDomain',  dom_id * np.ones_like(pe_bck, dtype=np.int32), parent=ngon_node)
 
   # First, we need to update the PE node to include cells of opposite zone
   query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
@@ -685,10 +702,10 @@ def _merge_ngon(all_mbm, tree, comm):
   for zone_path in zone_paths:
     ngon_node = sids.Zone.NGonNode(PT.get_node_from_path(tree, zone_path))
     eso    = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-    pe     = PT.get_child_from_name(ngon_node, 'UpdatedPE')[1]
+    pe     = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'UpdatedPE')[1])
     pe_dom = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
 
-    ec_l.append(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1])
+    ec_l.append(as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]))
     ec_stride_l.append(np_utils.safe_int_cast(np.diff(eso), np.int32))
 
     #We have to detect and remove bnd faces from PE to use PDM stride
@@ -708,22 +725,24 @@ def _merge_ngon(all_mbm, tree, comm):
   # Reshift ESO to make it global
   eso_loc = np_utils.sizes_to_indices(merged_ec_stri, pdm_dtype)
   ec_distri = par_utils.gather_and_shift(eso_loc[-1], comm)
-  eso = eso_loc + ec_distri[comm.Get_rank()]
+  eso = np_utils.safe_int_cast(eso_loc,out_dtype) + ec_distri[comm.Get_rank()]
 
   #Post treat PE : we need to reintroduce 0 on boundary faces (TODO : could avoid tmp array ?)
   bnd_faces = np.where(merged_pe_stri == 1)[0]
   merged_pe_idx  = np_utils.sizes_to_indices(merged_pe_stri)
   merged_pe_full = np.insert(merged_pe, merged_pe_idx[bnd_faces]+1, 0)
   assert (merged_pe_full.size == 2*merged_pe_stri.size)
-  pe = np.empty((merged_pe_stri.size, 2), order='F', dtype=merged_pe.dtype)
+  pe = np.empty((merged_pe_stri.size, 2), order='F', dtype=out_dtype)
   pe[:,0] = merged_pe_full[0::2]
   pe[:,1] = merged_pe_full[1::2]
   np_utils.shift_nonzeros(pe, merged_distri_face[-1])
 
   # Finally : create ngon node
-  merged_ngon = PT.new_NGonElements(erange=[1, merged_distri_face[-1]], eso=eso, ec=merged_ec, pe=pe)
+  erange = np.array([1, merged_distri_face[-1]], out_dtype)
+  merged_ec = np_utils.safe_int_cast(merged_ec, out_dtype)
+  merged_ngon = PT.new_NGonElements(erange=erange, eso=eso, ec=merged_ec, pe=pe)
   MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(merged_distri_face, comm),
                       'ElementConnectivity' : par_utils.full_to_partial_distribution(ec_distri, comm)},
                       merged_ngon)
-  return merged_ngon
+  PT.add_child(merged_zone, merged_ngon)
   

@@ -9,9 +9,16 @@ import maia.pytree.maia   as MT
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory     import full_to_dist as F2D
+from maia.utils       import logging as mlog
 from maia.factory.dcube_generator import dcube_generate
 
 from maia.algo.dist import merge
+
+class log_capture:
+  def __init__(self):
+    self.logs = ''
+  def log(self, msg):
+    self.logs += msg
 
 @pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("merge_bc_from_name", [True, False])   #       __
@@ -202,3 +209,29 @@ def test_equilibrate_data(comm):
   assert (distri == expected_distri).all()
   assert (data_eq['rank'] == expected_rank_f[distri[0]:distri[1]]).all()
   assert (data_eq['range'] == expected_range_f[distri[0]:distri[1]]).all()
+
+@pytest_parallel.mark.parallel([2])
+def test_input_overflow(comm):
+  tree = PT.yaml.to_cgns_tree("""
+  Zone1 Zone_t I4 [[1, 400000000, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    NGON Elements_t [22, 0]:
+      ElementRange IndexRange_t I4 [1, 800000000]: # Fake value to overflow
+    NFace Elements_t [23, 0]:
+      ElementRange IndexRange_t I4 [800000001, 1200000000]: # Fake value to overflow
+  Zone2 Zone_t [[1, 500000000, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    NGON Elements_t [22, 0]:
+      ElementRange IndexRange_t I4 [1, 900000000]: # Fake value to overflow
+    NFace Elements_t [23, 0]:
+      ElementRange IndexRange_t I4 [900000001, 1400000000]: # Fake value to overflow
+  """)
+  if pdm_dtype == np.int32:
+    with pytest.raises(OverflowError):
+      merge.merge_zones(tree, ['Base/Zone1', 'Base/Zone2'], comm)
+  else:
+    log_collector = log_capture()
+    mlog.add_printer_to_logger('maia-warnings', log_collector)
+    with pytest.raises(Exception): # Test will fail but we should get the warning
+      merge.merge_zones(tree, ['Base/Zone1', 'Base/Zone2'], comm)
+    assert "I4 integers, but result of _merge_zones would overflow it" in log_collector.logs

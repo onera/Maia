@@ -309,17 +309,21 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
       zone_cur_path = PTu.path_head(origin_path_cur, 2)
       zone_opp_path = PTu.path_head(origin_path_opp, 2)
       zone_cur  = PT.get_node_from_path(dist_tree, zone_cur_path)
+      zone_opp  = PT.get_node_from_path(dist_tree, zone_opp_path)
       zgc = PT.update_child(zone_cur, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
 
       jn_name_cur = f"{leaf_name_cur}_{n_spawn[origin_path_cur]}"
       jn_name_opp = f"{leaf_name_opp}_{n_spawn[origin_path_opp]}"
 
+      pl_cur = np_utils.safe_int_cast(_gnum_cur.reshape((1,-1), order='F'), zone_cur[1].dtype)
+      pl_opp = np_utils.safe_int_cast(_gnum_opp.reshape((1,-1), order='F'), zone_opp[1].dtype)
+
       jn = PT.new_GridConnectivity(jn_name_cur,
                                    zone_opp_path,
                                    'Abutting1to1',
                                    loc=output_loc,
-                                   point_list = _gnum_cur.reshape((1,-1), order='F'),
-                                   point_list_donor = _gnum_opp.reshape((1,-1), order='F'),
+                                   point_list = pl_cur,
+                                   point_list_donor = pl_opp,
                                    parent=zgc)
       PT.new_child(jn, "GridConnectivityDonorName", "Descriptor_t", jn_name_opp)
 
