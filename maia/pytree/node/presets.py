@@ -837,5 +837,30 @@ def new_GasModel(value='Ideal',
   """
   assert value in ['Null', 'UserDefined', 'Ideal', 'VanderWaals', 'CaloricallyPerfect', 'ThermallyPerfect', 'ConstantDensity', 'RedlichKwong']
   return new_node('GasModel', label='GasModel_t', value=value, parent=parent)
+  
+def new_ReferenceState(name:str = 'ReferenceState',
+                      *,
+                      fields:Dict[str, ArrayLike] = {},
+                      parent:CGNSTree = None):
+  """ Create a ReferenceState_t node
+
+  Link to corresponding SIDS section:
+  `ReferenceState_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#ReferenceState>`_
+
+  Args:
+    name (str): Name of the created reference state node
+    fields (dict) : fields to create under the container (see :ref:`fields setting <pt_presets_commun>`)
+    parent (CGNSTree): Parent node to which the new node should be attached
+  Example:
+    >>> node = PT.new_ReferenceState("RefState", fields={"Density" : 1.})
+    >>> PT.print_tree(node)
+    RefState ReferenceState_t 
+    └───Density DataArray_t R4 [1.]
+  """
+  ref_state = new_node(name, 'ReferenceState_t', None, [], parent)
+  _check_parent_label(ref_state, parent, ['CGNSBase_t', 'Zone_t', 'ZoneBC_t', 'BC_t', 'BCDataSet_t', 'FamilyBCDataSet_t'])
+  for field_name, field_val in fields.items():
+    new_DataArray(field_name, field_val, parent=ref_state)
+  return ref_state
 
 end_api_export()

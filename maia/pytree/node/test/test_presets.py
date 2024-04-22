@@ -298,3 +298,9 @@ def test_new_GasModel():
 
   with pytest.raises(AssertionError):
     gm = presets.new_GasModel('UnknownGasModel')
+
+def test_new_reference_state():
+  rs = presets.new_ReferenceState("RefState", fields={"Temperature" : 273.})
+  assert rs[0] == 'RefState' and rs[3] == 'ReferenceState_t'
+  assert W.get_child_from_name(rs, 'Temperature') is not None
+  assert W.get_child_from_name(rs, 'Pressure')    is None
