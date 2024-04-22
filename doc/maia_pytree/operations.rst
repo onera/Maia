@@ -11,8 +11,20 @@ in :ref:`pt_inspect` or :ref:`pt_presets` pages.
 Tree construction
 -----------------
 
+.. rubric:: Copy
+
+The following functions return a copy of the input tree:
+
 .. autofunction:: maia.pytree.shallow_copy
 .. autofunction:: maia.pytree.deep_copy
+
+.. rubric:: Logical operations
+
+The following functions construct a new tree from logical operations:
+
+.. autofunction:: maia.pytree.union
+.. autofunction:: maia.pytree.intersection
+.. autofunction:: maia.pytree.difference
 
 Tree editing
 ------------
