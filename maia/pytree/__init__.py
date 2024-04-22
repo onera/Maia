@@ -2,7 +2,8 @@ from .sids import *
 from .walk import *
 from .node import *
 
-from .compare import *
+from .compare    import *
+from .logical_op import *
 
 from . import utils
 

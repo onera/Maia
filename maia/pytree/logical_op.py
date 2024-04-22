@@ -1,185 +1,210 @@
-import numpy as np
+from maia.pytree.typing import *
+from maia.pytree.meta import begin_api_export, end_api_export
 
-import maia.pytree         as PT
-import maia.pytree.compare as PTC
+import maia.pytree as PT
 
 def _add_children_to_node_from_another(node1, node2):
-    for child2 in PT.get_children(node2):
-        child1 = PT.get_child_from_name(node1, PT.get_name(child2))
-        if child1 is None:
-            PT.add_child(node1, child2)
-        else:
-            _add_children_to_node_from_another(child1, child2)
+  for child2 in node2[2]:
+    try:
+      child1 = next(c for c in node1[2] if c[0] == child2[0])
+      _add_children_to_node_from_another(child1, child2)
+    except StopIteration:
+      PT.add_child(node1, PT.shallow_copy(child2))
 
 def _rm_not_common_children(node1, node2, comp_func):
-    child1_to_del = []
-    for child1 in PT.get_children(node1):
-        child1_name = PT.get_name(child1)
-        child2 = PT.get_child_from_name(node2, child1_name)
-        if child2 is None:
-            child1_to_del.append(child1_name)
-        elif not(comp_func(child1,child2)):
-            child1_to_del.append(child1_name)
-    for child_name in child1_to_del:
-        PT.rm_node_from_path(node1, child_name)
-    for child1 in PT.get_children(node1):
-        child2 = PT.get_child_from_name(node2, PT.get_name(child1))
-        if child2 is not None:
-            _rm_not_common_children(child1, child2, comp_func)
+  child1_to_del = []
+  for child1 in PT.get_children(node1):
+    child1_name = PT.get_name(child1)
+    child2 = PT.get_child_from_name(node2, child1_name)
+    if child2 is None or not comp_func(child1, child2):
+      child1_to_del.append(child1_name)
+  PT.rm_children_from_predicate(node1, lambda n : PT.get_name(n) in child1_to_del)
+
+  for child1 in PT.get_children(node1):
+    child2 = PT.get_child_from_name(node2, PT.get_name(child1))
+    _rm_not_common_children(child1, child2, comp_func)
             
 def _have_common_children(node1, node2, comp_func):
-    for child1 in PT.get_children(node1):
-        child2 = PT.get_child_from_name(node2, PT.get_name(child1))
-        if child2 is None:
-            return False
-        elif not(comp_func(child1,child2)):
-            return False
-        else:
-            if not _have_common_children(child1, child2, comp_func):
-                return False
-    return True
+  for child1 in PT.get_children(node1):
+    child2 = PT.get_child_from_name(node2, PT.get_name(child1))
+    if child2 is None:
+      return False
+    elif not comp_func(child1,child2):
+      return False
+    else:
+      if not _have_common_children(child1, child2, comp_func):
+        return False
+  return True
 
 def _rm_common_children(node1, node2, comp_func):
-    child1_to_del = []
-    for child1 in PT.get_children(node1):
-        child1_name = PT.get_name(child1)
-        child2 = PT.get_child_from_name(node2, child1_name)
-        if child2 is not None:
-            if _have_common_children(child1, child2, comp_func) and comp_func(child1,child2):
-                child1_to_del.append(child1_name)
-    for child_name in child1_to_del:
-        PT.rm_node_from_path(node1, child_name)
-    for child1 in PT.get_children(node1):
-        child2 = PT.get_child_from_name(node2, PT.get_name(child1))
-        if child2 is not None:
-            _rm_common_children(child1, child2, comp_func)
+  child1_to_del = []
+  for child1 in PT.get_children(node1):
+    child1_name = PT.get_name(child1)
+    child2 = PT.get_child_from_name(node2, child1_name)
+    if child2 is not None:
+      if _have_common_children(child1, child2, comp_func) and comp_func(child1,child2):
+        child1_to_del.append(child1_name)
+  PT.rm_children_from_predicate(node1, lambda n : PT.get_name(n) in child1_to_del)
 
-def union(node1, node2):
-    """
-    Return a new node union of node1 and node2
-    Remark: node1 and node2 must have the same CGNS label
-    Remark: if a node from node2 have the same name of a node from node1
-            we keep the node from node1
+  for child1 in PT.get_children(node1):
+    child2 = PT.get_child_from_name(node2, PT.get_name(child1))
+    if child2 is not None:
+      _rm_common_children(child1, child2, comp_func)
 
-    Args:
-      node1 (CGNSTree): First CGNS node
-      node2 (CGNSTree): Second CGNS node
-    Returns:
-      CGNSTree: union of nodes
-    Example:
-      >>> tree1 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
-      ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
-      ... Base CGNSBase_t:
-      ...   Zone1 Zone_t:
-      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
-      ...       match GridConnectivity1to1_t "Zone3":
-      ...   Zone2 Zone_t:
-      ... ''')
-      >>> tree2 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
-      ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
-      ... Base CGNSBase_t:
-      ...   Zone2 Zone_t:
-      ...   Zone3 Zone_t:
-      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
-      ...       match GridConnectivity1to1_t "Zone1":
-      ... ''')
-      >>> maia.pytree.logical_op.union(tree1, tree2)
-      CGNSTree CGNSTree_t
-      ├───Base CGNSBase_t
-      │   ├───Zone1 Zone_t
-      │   │   └───ZoneGridConnectivity ZoneGridConnectivity_t
-      │   │       └───match GridConnectivity1to1_t "Zone3"
-      │   ├───Zone2 Zone_t
-      │   └───Zone3 Zone_t
-      │       └───ZoneGridConnectivity ZoneGridConnectivity_t
-      │           └───match GridConnectivity1to1_t "Zone1"
-      └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
-    """
-    if PT.get_label(node1) != PT.get_label(node2):
-        raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
-    union_nodes = PT.shallow_copy(node1)
-    _add_children_to_node_from_another(union_nodes, node2)
-    return union_nodes
+begin_api_export()
 
-def intersection(node1, node2, comp_func=lambda n1,n2: PTC.is_same_node(n1,n2)):
-    """
-    Return a new node intersection of node1 and node2
-    Remark: node1 and node2 must have the same CGNS label
-    Remark: if the intersection is empty, return only the CGNSTree_t node
+def union(t1:CGNSTree, t2:CGNSTree) -> CGNSTree:
+  """ Create a new tree from the union of the input trees.
 
-    Args:
-      node1 (CGNSTree): First CGNS node
-      node2 (CGNSTree): Second CGNS node
-      comp_func (Callable): Fonction to compare node1 to node2
-    Returns:
-      CGNSTree: intersection of nodes
-    Example:
-      >>> tree1 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
-      ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
-      ... Base CGNSBase_t:
-      ...   Zone1 Zone_t:
-      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
-      ...       match GridConnectivity1to1_t "Zone3":
-      ...   Zone2 Zone_t:
-      ... ''')
-      >>> tree2 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
-      ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
-      ... Base CGNSBase_t:
-      ...   Zone2 Zone_t:
-      ...   Zone3 Zone_t:
-      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
-      ...       match GridConnectivity1to1_t "Zone1":
-      ... ''')
-      >>> maia.pytree.logical_op.intersection(tree1, tree2)
-      CGNSTree CGNSTree_t
-      ├───Base CGNSBase_t
-      │   └───Zone2 Zone_t
-      └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
-    """
-    if PT.get_label(node1) != PT.get_label(node2):
-        raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
-    intersect_nodes = PT.shallow_copy(node1)
-    _rm_not_common_children(intersect_nodes, node2, comp_func)
-    return intersect_nodes
+  Nodes existing on both input trees keeps the value and label of ``t1``.
+  Note also that output values are shared references to input trees.
+  Uses :func:`deep_copy` afterwards if you want an independant copy.
 
-def diff(node1, node2, comp_func=lambda n1,n2: PTC.is_same_node(n1,n2)):
-    """
-    Return a new node that correspond to node1 without node2's nodes
-    Remark: node1 and node2 must have the same CGNS label
-    Remark: if the intersection is empty, return only the CGNSTree_t node
+  Important: 
+    Input root nodes must have the same name. An exception will be raised otherwise.
 
-    Args:
-      node1 (CGNSTree): First CGNS node
-      node2 (CGNSTree): Second CGNS node
-      comp_func (Callable): Fonction to compare node1 to node2
-    Returns:
-      CGNSTree: differences between nodes
-    Example:
-      >>> tree1 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
-      ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
-      ... Base CGNSBase_t:
-      ...   Zone1 Zone_t:
-      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
-      ...       match GridConnectivity1to1_t "Zone3":
-      ...   Zone2 Zone_t:
-      ... ''')
-      >>> tree2 = PT.yaml.parse_yaml_cgns.to_cgns_tree('''
-      ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
-      ... Base CGNSBase_t:
-      ...   Zone2 Zone_t:
-      ...   Zone3 Zone_t:
-      ...     ZoneGridConnectivity ZoneGridConnectivity_t:
-      ...       match GridConnectivity1to1_t "Zone1":
-      ... ''')
-      >>> maia.pytree.logical_op.intersection(tree1, tree2)
-      CGNSTree CGNSTree_t
-      └───Base CGNSBase_t
-          └───Zone1 Zone_t
-              └───ZoneGridConnectivity ZoneGridConnectivity_t
-                  └───match GridConnectivity1to1_t "Zone3":
-    """
-    if PT.get_label(node1) != PT.get_label(node2):
-        raise TypeError(f"{PT.get_name(node1)} and {PT.get_name(node2)} have different CGNS labels ({PT.get_label(node1)} vs {PT.get_label(node2)})")
-    diff_nodes = PT.shallow_copy(node1)
-    _rm_common_children(diff_nodes, node2, comp_func)
-    return diff_nodes
+  Args:
+    t1 (CGNSTree): First CGNS node
+    t2 (CGNSTree): Second CGNS node
+  Returns:
+    CGNSTree: Tree created from union
+  Example:
+    >>> tree1 = PT.yaml.to_node('''
+    ... Base CGNSBase_t:
+    ...   Zone1 Zone_t:
+    ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+    ...       match GridConnectivity1to1_t "Zone3":
+    ...   Zone2 Zone_t:
+    ... ''')
+    >>> tree2 = PT.yaml.to_node('''
+    ... Base CGNSBase_t:
+    ...   Zone2 Zone_t:
+    ...   Zone3 Zone_t:
+    ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+    ...       match GridConnectivity1to1_t "Zone1":
+    ... ''')
+    >>> tree = PT.union(tree1, tree2)
+    >>> PT.print_tree(tree)
+    Base CGNSBase_t 
+    ├───Zone1 Zone_t 
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───match GridConnectivity1to1_t "Zone3"
+    ├───Zone2 Zone_t 
+    └───Zone3 Zone_t 
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───match GridConnectivity1to1_t "Zone1"
+  """
+  in_names = [PT.get_name(n) for n in [t1, t2]]
+  if len(set(in_names)) != 1:
+    raise ValueError(f"Mismatching names for input nodes : {in_names}")
+  union_nodes = PT.shallow_copy(t1)
+  _add_children_to_node_from_another(union_nodes, t2)
+  return union_nodes
+
+def intersection(t1:CGNSTree, t2:CGNSTree, 
+                 comp_func:Callable[[CGNSTree, CGNSTree],bool]=PT.is_same_node) -> CGNSTree:
+  """ Create a new tree from the intersection of the input trees.
+
+  At each tree level, input nodes are considered equal if the
+  binary predicate ``comp_func(n1, n2)`` returns ``True``.
+  If not provided, the function :func:`is_same_node` is used.
+
+  If the intersection is empty, result contains only the root node.
+  Note also that output values are shared references to input tree ``t1``.
+  Uses :func:`deep_copy` afterwards if you want an independant copy.
+
+  Important: 
+    Input root nodes must have the same name. An exception will be raised otherwise.
+
+  Args:
+    t1 (CGNSTree): First CGNS node
+    t2 (CGNSTree): Second CGNS node
+    comp_func (Callable): Binary predicate used for comparison (see above)
+  Returns:
+    CGNSTree: Tree created from intersection
+  Example:
+    >>> tree1 = PT.yaml.to_cgns_tree('''
+    ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
+    ... Base CGNSBase_t:
+    ...   Zone1 Zone_t:
+    ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+    ...       match GridConnectivity1to1_t "Zone3":
+    ...   Zone2 Zone_t:
+    ... ''')
+    >>> tree2 = PT.yaml.to_cgns_tree('''
+    ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
+    ... Base CGNSBase_t:
+    ...   Zone2 Zone_t:
+    ...   Zone3 Zone_t:
+    ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+    ...       match GridConnectivity1to1_t "Zone1":
+    ... ''')
+    >>> tree = PT.intersection(tree1, tree2)
+    >>> PT.print_tree(tree)
+    CGNSTree CGNSTree_t 
+    ├───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
+    └───Base CGNSBase_t 
+        └───Zone2 Zone_t 
+  """
+  in_names = [PT.get_name(n) for n in [t1, t2]]
+  if len(set(in_names)) != 1:
+    raise ValueError(f"Mismatching names for input nodes : {in_names}")
+  intersect_nodes = PT.shallow_copy(t1)
+  _rm_not_common_children(intersect_nodes, t2, comp_func)
+  return intersect_nodes
+
+def difference(t1:CGNSTree, t2:CGNSTree,
+               comp_func:Callable[[CGNSTree, CGNSTree],bool]=PT.is_same_node) -> CGNSTree:
+  """ Create a new tree from the difference of the input trees.
+  
+  At each tree level, input nodes are considered equal if the
+  binary predicate ``comp_func(n1, n2)`` returns ``True``.
+  If not provided, the function :func:`is_same_node` is used.
+
+  This operation is not symmetric. Ouput contains nodes belonging *only*
+  to first input.
+  Note also that output values are shared references to input tree ``t1``.
+  Uses :func:`deep_copy` afterwards if you want an independant copy.
+
+  Important: 
+    Input root nodes must have the same name. An exception will be raised otherwise.
+
+  Args:
+    t1 (CGNSTree): First CGNS node
+    t2 (CGNSTree): Second CGNS node
+    comp_func (Callable): Binary predicate used for comparison (see above)
+  Returns:
+    CGNSTree: Tree created from difference
+  Example:
+    >>> tree1 = PT.yaml.to_cgns_tree('''
+    ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
+    ... Base CGNSBase_t:
+    ...   Zone1 Zone_t:
+    ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+    ...       match GridConnectivity1to1_t "Zone3":
+    ...   Zone2 Zone_t:
+    ... ''')
+    >>> tree2 = PT.yaml.to_cgns_tree('''
+    ... CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:
+    ... Base CGNSBase_t:
+    ...   Zone2 Zone_t:
+    ...   Zone3 Zone_t:
+    ...     ZoneGridConnectivity ZoneGridConnectivity_t:
+    ...       match GridConnectivity1to1_t "Zone1":
+    ... ''')
+    >>> tree = PT.difference(tree1, tree2)
+    >>> PT.print_tree(tree)
+    CGNSTree CGNSTree_t 
+    └───Base CGNSBase_t 
+        └───Zone1 Zone_t 
+            └───ZoneGridConnectivity ZoneGridConnectivity_t 
+                └───match GridConnectivity1to1_t "Zone3"
+  """
+  in_names = [PT.get_name(n) for n in [t1, t2]]
+  if len(set(in_names)) != 1:
+    raise ValueError(f"Mismatching names for input nodes : {in_names}")
+  diff_nodes = PT.shallow_copy(t1)
+  _rm_common_children(diff_nodes, t2, comp_func)
+  return diff_nodes
+
+end_api_export()
