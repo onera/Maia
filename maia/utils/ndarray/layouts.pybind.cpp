@@ -4,6 +4,98 @@
 
 namespace py = pybind11;
 
+void take_stridedDI(py::array_t<int64_t> counts, 
+                    py::buffer           read_buff,
+                    py::array_t<int64_t> ind, 
+                    py::array            write_buff)
+
+{
+  py::buffer_info in_buff_info = read_buff.request();
+  size_t s_data = in_buff_info.itemsize;
+  char* _read_buff = static_cast<char *> (in_buff_info.ptr);
+
+  std::vector<int64_t> displs;
+  displs.reserve(counts.size()+1);
+  displs[0] = 0;
+  std::partial_sum(counts.data(), counts.data()+counts.size(), &displs[1]);
+
+  auto _counts = counts.unchecked<1>();
+
+  auto _ind = ind.unchecked<1>();
+  int w_start = 0;
+  for (int i=0; i < ind.size(); ++i) {
+    int __ind = _ind[i];
+    if (_counts[__ind] > 0) { //Avoid undefined behaviour if read_buff is null
+      std::memcpy(write_buff.mutable_data(w_start), 
+                  //read_buff.data(displs[__ind]), 
+                  _read_buff + s_data*displs[__ind], 
+                  _counts[__ind]*s_data); 
+      w_start += _counts[__ind];
+    }
+  }
+
+}
+
+template<typename T>
+void from_mpi(py::array_t<int64_t> idx, 
+              py::array_t<int64_t> counts, 
+              py::array_t<T> read_buff, 
+              py::array_t<T> write_buff)
+{
+
+  auto _idx = idx.data();
+  auto _counts = counts.data();
+  auto _read_buff = idx.data();
+  auto _write_buff = write_buff.mutable_data();
+
+  std::vector<int64_t> displs(counts.size()+1, 0);
+  for(size_t i=0; i < counts.size(); ++i) {
+    displs[i+1] = displs[i] + _counts[i];
+  }
+
+  int w_start = 0;
+  for (int i=0; i < idx.size(); ++i) {
+    int __idx = _idx[i];
+    int w_end = w_start + _counts[__idx];
+    for (int j=0; j < w_end-w_start; ++j) {
+      _write_buff[w_start+j] = _read_buff[displs[__idx]+j];
+    }
+    w_start = w_end;
+  }
+}
+
+std::tuple<py::array_t<int64_t>, py::array_t<int64_t>>
+counting_sort(py::array_t<int64_t>& np_array, int n_bins) {
+  size_t size = np_array.size();
+
+  auto np_counts = py::array_t<int>(n_bins);
+  auto counts = np_counts.mutable_data();
+  for(size_t i=0; i < n_bins; ++i) {
+    counts[i] = 0;
+  }
+
+  std::vector<int> displs(n_bins+1, 0);
+
+  auto array = np_array.data();
+  for(size_t i=0; i < size; ++i) {
+    counts[array[i]]++;
+  }
+
+  for(size_t i=0; i < n_bins; ++i) {
+    displs[i+1] = displs[i] + counts[i];
+    counts[i] = 0;
+  }
+
+  auto np_out = py::array_t<int>(size);
+  auto out = np_out.mutable_data();
+  for(size_t i=0; i < size; ++i) {
+    out[i] = displs[array[i]] + counts[array[i]];
+    counts[array[i]]++;
+  }
+
+  return std::make_tuple(np_out, np_counts);
+}
+
 template<typename T>
 py::array_t<T>
 extract_from_indices(py::array_t<T>& np_array, 
@@ -356,6 +448,19 @@ void register_layouts_module(py::module_& parent) {
         py::arg("array1").noconvert(),
         py::arg("idx2"  ).noconvert(),
         py::arg("array2").noconvert());
+  m.def("counting_sort", &counting_sort,
+        py::arg("array").noconvert(),
+        py::arg("n_bins").noconvert());
+  m.def("from_mpi", &from_mpi<double>,
+        py::arg("idx").noconvert(),
+        py::arg("counts").noconvert(),
+        py::arg("read_buff").noconvert(),
+        py::arg("write_buff").noconvert());
+  m.def("take_stridedDI", &take_stridedDI,
+        py::arg("counts").noconvert(),
+        py::arg("values").noconvert(),
+        py::arg("indices").noconvert(),
+        py::arg("out").noconvert());
   m.def("take_strided", &take_strided,
         py::arg("displs").noconvert(),
         py::arg("values").noconvert(),
