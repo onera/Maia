@@ -75,34 +75,6 @@ void take_stridedDI(py::array_t<int64_t> counts,
 
 }
 
-template<typename T>
-void from_mpi(py::array_t<int64_t> idx, 
-              py::array_t<int64_t> counts, 
-              py::array_t<T> read_buff, 
-              py::array_t<T> write_buff)
-{
-
-  auto _idx = idx.data();
-  auto _counts = counts.data();
-  auto _read_buff = idx.data();
-  auto _write_buff = write_buff.mutable_data();
-
-  std::vector<int64_t> displs(counts.size()+1, 0);
-  for(size_t i=0; i < counts.size(); ++i) {
-    displs[i+1] = displs[i] + _counts[i];
-  }
-
-  int w_start = 0;
-  for (int i=0; i < idx.size(); ++i) {
-    int __idx = _idx[i];
-    int w_end = w_start + _counts[__idx];
-    for (int j=0; j < w_end-w_start; ++j) {
-      _write_buff[w_start+j] = _read_buff[displs[__idx]+j];
-    }
-    w_start = w_end;
-  }
-}
-
 std::tuple<py::array_t<int64_t>, py::array_t<int64_t>>
 counting_sort(py::array_t<int64_t>& np_array, int n_bins) {
   size_t size = np_array.size();
@@ -490,11 +462,6 @@ void register_layouts_module(py::module_& parent) {
   m.def("counting_sort", &counting_sort,
         py::arg("array").noconvert(),
         py::arg("n_bins").noconvert());
-  m.def("from_mpi", &from_mpi<double>,
-        py::arg("idx").noconvert(),
-        py::arg("counts").noconvert(),
-        py::arg("read_buff").noconvert(),
-        py::arg("write_buff").noconvert());
   m.def("take_stridedDI", &take_stridedDI,
         py::arg("counts").noconvert(),
         py::arg("values").noconvert(),

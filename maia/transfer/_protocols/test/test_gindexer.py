@@ -3,12 +3,12 @@ import pytest_parallel
 
 import numpy as np
 
-from maia.transfer._protocols.g_indexer import DIndexer
+from maia.transfer._protocols.g_indexer import GIndexer
 
 @pytest_parallel.mark.parallel(4)
 class Test_g_indexer:
 
-  # DIndexer wraps MPI AllToAll exchanges to perfom read/write operations
+  # GIndexer wraps MPI AllToAll exchanges to perfom read/write operations
   # from global indices on a distributed array
 
   # To create the object, the following data are required :
@@ -26,7 +26,7 @@ class Test_g_indexer:
 
     self.g_idx = g_idx
     self.distri = distri
-    return DIndexer(distri, g_idx, comm)
+    return GIndexer(distri, g_idx, comm)
 
   def test_create(self, comm):
     DI = self.init_p(comm)
@@ -249,7 +249,7 @@ class Test_g_indexer:
              np.array([1,1,15,1,2]) # Indices can be requested more than once
             ][comm.rank]
     with pytest.raises(IndexError):
-      DI = DIndexer(distri, g_idx, comm)
+      DI = GIndexer(distri, g_idx, comm)
 
 
 
@@ -268,10 +268,10 @@ def test_perfo(comm):
   gnum = np.random.randint(0, distri[-1], 10000000) + 1
   comm.barrier()
   st = time.time()
-  DI = DIndexer(distri, gnum, comm)
+  DI = GIndexer(distri, gnum, comm)
   ed = time.time()
   if comm.rank == 0:
-    print("Creation time DIndexer", ed-st)
+    print("Creation time GIndexer", ed-st)
 
   import Pypdm.Pypdm as PDM
   #PDM.BlockToPart
