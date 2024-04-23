@@ -66,6 +66,16 @@ def take_strided(a_counts, a_val, indices, out):
   from cmaia.utils import layouts
   layouts.take_stridedDI(a_counts, a_val, indices, out)
 
+def put_strided(a, indices, indices_count, read_counts, read):
+  """
+  Write in an array strided array (a) at provided indices (indices, indices_count)
+  from an input data (read, read_count).
+  If an index occurs multiple times in indices array, it erase the previously written
+  value. A check is performed on counts to write only compatible data
+  """
+  from cmaia.utils import layouts
+  layouts.put_strided(a, indices, indices_count, read_counts, read)
+
 class DIndexer:
 
   @classmethod
@@ -458,19 +468,8 @@ class DIndexer:
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
     st = time.time()
-    data_out_displ = np.empty(counts_out.size+1, dtype=int)
-    data_out_displ[0] = 0
-    np.cumsum(counts_out, out=data_out_displ[1:])
-    data_out = np.empty(data_out_displ[-1], data_in.dtype)
-    r_idx = 0
-    for i,idx in enumerate(self.dist_select_idx):
-      w_start = data_out_displ[idx]
-      w_end = w_start + counts_out[idx]
-      # Carefull! If data come from a rank that will not be selected,
-      # shape can be different than the one coming from selected rank.
-      if _counts_out[i] == w_end - w_start:
-        data_out[w_start:w_end] = recv_buff[r_idx:r_idx+_counts_out[i]]
-      r_idx += _counts_out[i]
+    data_out = np.empty(counts_out.sum(), data_in.dtype)
+    put_strided(data_out, self.dist_select_idx, counts_out, _counts_out, recv_buff)
     ed = time.time()
     if self.comm.rank == 0:  print("  write recv buff", ed-st)
 

@@ -4,6 +4,45 @@
 
 namespace py = pybind11;
 
+
+void put_strided(py::buffer            write_buff,
+                 py::array_t<int64_t>  write_idx,
+                 py::array_t<int64_t>  write_counts,
+                 py::array_t<int64_t>  read_counts,
+                 py::buffer            read_buff)                
+{
+  auto _write_idx    = write_idx.data();
+  auto _write_counts = write_counts.data();
+  auto _read_counts  = read_counts.data();
+
+  py::buffer_info in_buff_info  = read_buff.request();
+  py::buffer_info out_buff_info = write_buff.request();
+  char* _read_buff  = static_cast<char *> (in_buff_info.ptr);
+  char* _write_buff = static_cast<char *> (out_buff_info.ptr);
+
+  assert (out_buff_info.itemsize == in_buff_info.itemsize);
+  size_t s_data = out_buff_info.itemsize;
+  
+  std::vector<int64_t> write_displs;
+  write_displs.reserve(write_counts.size()+1);
+  write_displs[0] = 0;
+
+  std::partial_sum(_write_counts, _write_counts+write_counts.size(), &write_displs[1]);
+
+  int r_idx = 0;
+  for (int i=0; i < write_idx.size(); ++i) {
+    int idx = _write_idx[i];
+    int w_start = write_displs[idx];
+    int w_end   = write_displs[idx+1];
+    if (_read_counts[i] > 0 && (_read_counts[i] == w_end - w_start)) {
+      std::memcpy(_write_buff + s_data*w_start, 
+                  _read_buff  + s_data*r_idx, 
+                  _read_counts[i]*s_data); 
+    }
+    r_idx += _read_counts[i];
+  }
+}
+
 void take_stridedDI(py::array_t<int64_t> counts, 
                     py::buffer           read_buff,
                     py::array_t<int64_t> ind, 
@@ -461,6 +500,12 @@ void register_layouts_module(py::module_& parent) {
         py::arg("values").noconvert(),
         py::arg("indices").noconvert(),
         py::arg("out").noconvert());
+  m.def("put_strided", &put_strided, 
+        py::arg("write_buff").noconvert(),
+        py::arg("write_idx").noconvert(),
+        py::arg("write_counts").noconvert(),
+        py::arg("read_counts").noconvert(),
+        py::arg("read_buff").noconvert());
   m.def("take_strided", &take_strided,
         py::arg("displs").noconvert(),
         py::arg("values").noconvert(),
