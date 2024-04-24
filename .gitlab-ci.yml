@@ -25,12 +25,17 @@ stages:
 
 job:init:
   stage: init
-  variables:
-    GIT_STRATEGY: clone
-    GIT_SUBMODULE_STRATEGY: none
   before_script: 
   script: # explicitly load modules one by one, so that if one fails, it will be easy to identify
-    - echo "CUSTOM_CI_DIR=$PWD" >> build.env
+    - INIT_ORIGINAL_REPO=$(pwd)
+    - cd ~/.jacamar-ci/builds
+    - mkdir -p ${CI_PROJECT_NAME}
+    - cd ${CI_PROJECT_NAME}
+    #- git clone --depth 10 ${CI_REPOSITORY_URL} ${CI_PIPELINE_ID}
+    - git clone ${CI_REPOSITORY_URL} ${CI_PIPELINE_ID}
+    - cd ${CI_PIPELINE_ID}
+    - git checkout ${CI_COMMIT_SHA}
+    - echo "CUSTOM_CI_DIR=$PWD" >> ${INIT_ORIGINAL_REPO}/build.env
     - git submodule update --init external/project_utils
     - git submodule update --init external/cpp_cgns
     - git submodule update --init external/std_e
