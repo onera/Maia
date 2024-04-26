@@ -27,8 +27,11 @@ def uniform_distribution(n_elt, comm):
 def dn_to_distribution(dn_elt, comm):
   """
   """
-  distri_full = gather_and_shift(dn_elt, comm, npy_pdm_gnum_dtype)
-  distri      = full_to_partial_distribution(distri_full, comm)
+  distri = np.zeros(3, dtype=npy_pdm_gnum_dtype)
+  comm.Exscan(np.array([dn_elt], dtype=npy_pdm_gnum_dtype), distri[0:1])
+  
+  distri[1:] = distri[0] + dn_elt
+  comm.Bcast(distri[2:], root=comm.Get_size()-1)
   return distri
 
 def partial_to_full_distribution(partial_distrib, comm):
