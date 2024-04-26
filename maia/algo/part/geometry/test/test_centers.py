@@ -167,10 +167,9 @@ def test_compute_face_center_2d(comm):
   pslice_tree = maia.factory.partition_dist_tree(dslice_tree, comm)
   zone = PT.get_all_Zone_t(pslice_tree)[0]
 
-  expected = np.array([0.16, 0.16, 0.,   0.83, 0.50, 0.,   0.50, 0.83, 0.,
-                       0.16, 0.83, 0.,   0.50, 0.50, 0.,   0.50, 0.16, 0.,
-                       0.16, 0.50, 0.,   0.83, 0.16, 0.,   0.83, 0.83, 0., ])
-
+  expected = np.array([0.16, 0.16, 0.,   0.50, 0.16, 0.,   0.83, 0.16, 0.,
+                       0.16, 0.50, 0.,   0.50, 0.50, 0.,   0.83, 0.50, 0.,
+                       0.16, 0.83, 0.,   0.50, 0.83, 0.,   0.83, 0.83, 0.])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-2)
 
 def test_compute_face_center_2d_S(comm):

@@ -188,7 +188,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                     None,
                     vtx_ln_to_gn , vtx_coords)
 
-    pdm_ep.selected_lnum_set(i_part, point_list[i_part][0] - local_pl_offset(part_zone, dim) - 1)
+    pdm_ep.selected_lnum_set(i_part, point_list[i_part][0] - local_pl_offset(part_zone, dim))
 
 
     # Add BCs info
@@ -200,7 +200,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
           bc_gn = PT.get_value(MT.getGlobalNumbering(bc_n, 'Index')) if bc_n is not None else np.empty(0, pdm_gnum_dtype)
-          pdm_ep.part_group_set(i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) -1 , bc_gn)
+          pdm_ep.part_group_set(i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) , bc_gn)
       bc_type +=1
 
   pdm_ep.compute()
@@ -270,7 +270,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     if LOC_TO_DIM[dim_name]<=dim:
       for i_bc, bc_path in enumerate(gdom_bcs_path):
         bc_info = pdm_ep.extract_part_group_get(0, i_bc, bc_type)
-        bc_pl = bc_info['group_entity'] +1
+        bc_pl = bc_info['group_entity']
         bc_gn = bc_info['group_entity_ln_to_gn']
         if bc_pl.size != 0:
           bc_name = bc_path.split('/')[-1]

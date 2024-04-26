@@ -138,6 +138,7 @@ job:portability_cfd6:
     - mkdir -p build_cfd6 && cd build_cfd6
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug 
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 
+                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
     - make -j
     - source $ELSASPIRO/.env_elsA
@@ -232,6 +233,7 @@ deploy_spiro_socle6:
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd6 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd6.log
       EOF

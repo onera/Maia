@@ -174,15 +174,15 @@ def test_walldistance_perio(comm):
   expected_wd     = [0.35355339, 0.35355339, 1.06066017, 1.06066017,
                      0.35355339, 0.35355339, 1.06066017, 1.06066017]
   if comm.rank == 0:
-    expected_gnum   = [[25, 28, 27, 26, 26, 27, 28, 25],
-                       [25, 26, 25, 26, 26, 25, 26, 25]]
-    expected_dom_id = [[0, 0, 0, 3, 0, 0, 2, 1],
-                       [1, 0, 0, 2, 1, 0, 2, 0]]
+    expected_gnum   = [[25, 27, 28, 26, 26, 28, 27, 25],
+                       [25, 25, 26, 26, 26, 26, 25, 25]]
+    expected_dom_id = [[0, 0, 2, 3, 0, 0, 0, 1],
+                       [1, 0, 2, 2, 1, 0, 0, 0]]
   elif comm.rank == 1:
-    expected_gnum   = [[25, 28, 27, 26, 26, 27, 28, 25],
-                       [25, 26, 25, 26, 26, 25, 26, 25]]
-    expected_dom_id = [[2, 2, 2, 1, 2, 2, 0, 3],
-                       [3, 2, 2, 0, 3, 2, 0, 2]]
+    expected_gnum   = [[25, 27, 28, 26, 26, 28, 27, 25],
+                       [25, 25, 26, 26, 26, 26, 25, 25]]
+    expected_dom_id = [[2, 2, 0, 1, 2, 2, 2, 3],
+                       [3, 2, 0, 0, 3, 2, 2, 2]]
 
   for z, zone in enumerate(PT.get_all_Zone_t(part_tree)):
     fs = PT.get_child_from_name_and_label(zone, 'WallDistance', 'FlowSolution_t')
