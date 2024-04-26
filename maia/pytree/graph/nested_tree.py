@@ -1,5 +1,6 @@
 import weakref
 from maia.pytree.graph.utils import list_iterator_type
+from maia.pytree.graph.algo import step, depth_first_search
 
 INDENT_SIZE = 4
 
@@ -23,7 +24,7 @@ SYMBOLIC_ROOT = _SymbolicRoot()
 # Mixins {
 ## Note: a 'mixin' is an implementation class that factorizes implementation of a partial interface,
 ##   and that can be inherited be several classes that want to provide this interface.
-## Here we have the `_TreeToStrMixin` and `_TreeDepthFirstSearchInterfaceMixing` mixins
+## Here we have the `_TreeToStrMixin` and `_TreeDepthFirstSearchInterfaceMixin` mixins
 ##   that are inherited by `Tree` and `ForwardBackwardTree`.
 class _TreeToStrMixin:
   @staticmethod
@@ -43,7 +44,7 @@ class _TreeToStrMixin:
   def __str__(self):
     return _TreeToStrMixin._to_string(self)
 
-class _TreeDepthFirstSearchInterfaceMixing: # depth_first_search interface
+class _TreeDepthFirstSearchInterfaceMixin: # depth_first_search interface
   def child_iterator(self, tree) -> list_iterator_type:
     return iter(tree.children)
   def root_iterator(self) -> list_iterator_type:
@@ -51,12 +52,13 @@ class _TreeDepthFirstSearchInterfaceMixing: # depth_first_search interface
 # Mixins }
 
 
-class Tree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
+class Tree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixin):
   """ Nested tree structure
       A nested tree is a recursive structure: it has
         - a `node` attribute,
         - a `children` attribute that is a sequence of `Tree`s.
   """
+  # TODO use mechanism similar to _ForwardBackwardTreeList to test `is_sub_tree` when adding children
   def __init__(self, node, children = None):
     # Can't write `children = []` directly because of mutable default arguments
     if children is None: 
@@ -68,6 +70,20 @@ class Tree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
 
     self.node = node
     self.children  = children
+
+def is_sub_tree(potential_sub_tree, tree):
+  class visitor:
+    def __init__(self):
+      self.found = False
+    def pre(self, sub):
+      if sub is potential_sub_tree:
+        self.found = True
+        return step.out
+      else:
+        return step.into
+  v = visitor()
+  depth_first_search(tree, v)
+  return v.found
 
 class _ForwardBackwardTreeList:
   """
@@ -91,7 +107,7 @@ class _ForwardBackwardTreeList:
   # Same methods as list {
   ## Note: these could be delegated through inheritance,
   ##       but on the other hand, inheritance is dangerous,
-  ##       since we might inherit methods that should be replaced
+  ##       since we might inherit methods that should be replaced in this context
   ##       without noticing they are present
   def __len__(self):
     return len(self._list)
@@ -109,29 +125,34 @@ class _ForwardBackwardTreeList:
   ## We make the `.parent` of the element be the one of `self`
   def append(self, x):
     assert isinstance(x, ForwardBackwardTree)
-    x.parent = self._parent
+    assert not is_sub_tree(self._parent, x)
+    x._set_parent(self._parent)
     self._list.append(x)
   def __setitem__(self, i, x):
     assert isinstance(x, ForwardBackwardTree)
-    x.parent = self._parent
-    self._list[i].parent = None # the previous child is orphaned
+    assert not is_sub_tree(self._parent, x)
+    x._set_parent(self._parent)
+    self._list[i]._set_parent(None) # the previous child is orphaned
     self._list[i] = x
   def __iadd__(self, other):
+    for x in other:
+      assert not is_sub_tree(self._parent, x)
     if isinstance(other, _ForwardBackwardTreeList):
       self._list += other._list
     else:
       self._list += other
     for x in other:
-      x.parent = self._parent
+      x._set_parent(self._parent)
     return self
   def insert(self, i, x):
     assert isinstance(x, ForwardBackwardTree)
-    x.parent = self._parent
+    assert not is_sub_tree(self._parent, x)
+    x._set_parent(self._parent)
     self._list.insert(i, x)
   # Methods to mutate elements to the list }
 
 
-class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
+class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixin):
   """
   `ForwardBackwardTree` means that we can go both directions within the tree:
     - either get the `children` trees
@@ -143,7 +164,6 @@ class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
       children = []
 
     # Precondition: all `children` and `parent` should be `ForwardBackwardTree`s
-
     for c in children:
       assert isinstance(c, ForwardBackwardTree)
     if parent is not None:
@@ -153,9 +173,9 @@ class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
 
     self._sub_nodes = children
     for sub_node in self._sub_nodes:
-      sub_node.parent = self
+      sub_node._set_parent(self)
 
-    self.parent = parent
+    self._set_parent(parent)
 
   @property
   def parent(self):
@@ -164,8 +184,7 @@ class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
     else:
       return self._parent_weakref()
 
-  @parent.setter
-  def parent(self, p):
+  def _set_parent(self, p):
     if p is None:
       self._parent_weakref = None
     else:
@@ -182,4 +201,4 @@ class ForwardBackwardTree(_TreeToStrMixin,_TreeDepthFirstSearchInterfaceMixing):
     else:
       self._sub_nodes = cs
     for sub_node in self._sub_nodes:
-      sub_node.parent = self
+      sub_node._set_parent(self)

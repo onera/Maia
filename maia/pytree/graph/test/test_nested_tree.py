@@ -1,3 +1,4 @@
+import pytest
 from maia.pytree.graph.nested_tree import Tree, ForwardBackwardTree, SYMBOLIC_ROOT
 from maia.pytree.graph.algo import depth_first_search
 
@@ -118,3 +119,19 @@ def test_forward_backward_nested_tree_ref_counting():
   gc.collect() # since the old `A` is unreachable, it should be collected
 
   assert B.parent is None # since the old `A` has been collected, `B` no longer has a parent
+
+
+def test_refuse_cycles():
+  A =  ForwardBackwardTree('A', [
+         ForwardBackwardTree('B',[
+           ForwardBackwardTree('C'),
+           ForwardBackwardTree('D'),
+         ]),
+         ForwardBackwardTree('E'),
+       ])
+
+  D = A.children[0].children[1]
+
+  print('type D  = ', type(D))
+  with pytest.raises(AssertionError):
+    D.children.append(A)
