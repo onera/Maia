@@ -8,7 +8,8 @@ Description
 
 .. code-block:: python
 
-  maia.algo.dist.elements_to_ngons(dist_tree_elts, comm)
+  from maia.algo.dist.elements_to_ngons import elements_to_ngons
+  elements_to_ngons(dist_tree_elts, comm)
 
 Take a **distributed** :cgns:`CGNSTree_t` or :cgns:`CGNSBase_t`, and transform it into a **distributed** :cgns:`NGon/NFace` mesh. The tree is modified in-place.
 

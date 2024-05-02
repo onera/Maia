@@ -17,7 +17,7 @@ def test_ngons_to_elements(comm, write_output):
   mesh_file = os.path.join(TU.mesh_dir, 'Uelt_M6Wing.yaml')
   dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
   # Note: `elements_to_ngons` is supposed to work, because it is tested in another test
-  maia.algo.dist.elements_to_ngons(dist_tree, comm)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
 
   maia.algo.dist.ngons_to_elements(dist_tree, comm)
 
