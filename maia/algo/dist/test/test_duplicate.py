@@ -78,10 +78,15 @@ def test_duplicate_from_periodic_jns(comm):
 
 ###############################################################################
 @pytest_parallel.mark.parallel(2)
-def test_duplicate_zones_from_periodic_join_by_rotation_to_360(comm):
+@pytest.mark.parametrize("from_family", [False, True])
+def test_duplicate_zones_from_periodic_join_by_rotation_to_360(from_family, comm):
 
   yaml_path = os.path.join(TU.sample_mesh_dir, 'quarter_crown_square_8.yaml')
   dist_tree = file_to_dist_tree(yaml_path,comm)
+
+  if from_family:
+    for zone in PT.get_all_Zone_t(dist_tree):
+      PT.new_FamilyName('FAM', parent=zone)
   
   match_perio_by_rot_a = 'Base/Zone/ZoneGridConnectivity/MatchRotationA'
   match_perio_by_rot_b = 'Base/Zone/ZoneGridConnectivity/MatchRotationB'
@@ -90,8 +95,13 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(comm):
   zone_basename = PT.get_name(PT.get_all_Zone_t(dist_tree)[0])
   zone_paths = ['Base/' + PT.get_name(zone) for zone in PT.get_all_Zone_t(dist_tree)]
   
-  duplicate.duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, 
-      jn_paths_for_dupl, comm, conformize=True)
+  if from_family:
+    with pytest.raises(RuntimeError): # Translation + Rotation in mesh => KO
+      duplicate.duplicate_family_from_rotation_jns_to_360(dist_tree, 'FAM', comm, conformize=True)
+    return
+  else:
+    duplicate.duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, 
+        jn_paths_for_dupl, comm, conformize=True)
   
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 4
@@ -151,7 +161,8 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(comm):
 
 
 @pytest_parallel.mark.parallel(1)
-def test_duplicate_2d(comm):
+@pytest.mark.parametrize("from_family", [False, True])
+def test_duplicate_2d(from_family, comm):
 
   # Prepare 2D periodic case
   dist_tree = maia.factory.generate_dist_block([5,2,1], 'TRI_3', comm, origin=[.5, -0.5])
@@ -189,6 +200,11 @@ def test_duplicate_2d(comm):
   match_perio_by_rot_b = 'Base/zone/ZoneGridConnectivity/Top'
   jn_paths_for_dupl = [[match_perio_by_rot_a],[match_perio_by_rot_b]]
 
-  duplicate.duplicate_from_rotation_jns_to_360(dist_tree, ['Base/zone'], jn_paths_for_dupl, comm)
+  if from_family:
+    for zone in PT.get_all_Zone_t(dist_tree):
+      PT.new_FamilyName('FAM', parent=zone)
+    duplicate.duplicate_family_from_rotation_jns_to_360(dist_tree, 'FAM', comm)
+  else:
+    duplicate.duplicate_from_rotation_jns_to_360(dist_tree, ['Base/zone'], jn_paths_for_dupl, comm)
 
   assert len(PT.get_nodes_from_label(dist_tree, 'Zone_t')) == 4
