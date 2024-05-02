@@ -20,6 +20,8 @@ in the following table:
 | maia-stats   | More detailed timings | No output                 |
 |              | and memory usage      |                           |
 +--------------+-----------------------+---------------------------+
+| maia-debug   | Debug information     | No output                 |
++--------------+-----------------------+---------------------------+
 
 The easiest way to change this default configuration is to 
 set the environment variable ``LOGGING_CONF_FILE`` to provide a file

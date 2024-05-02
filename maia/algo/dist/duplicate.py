@@ -6,6 +6,8 @@ import maia.algo.transform as TRF
 import maia.algo.dist.conformize_jn as CCJ
 import maia.algo.dist.matching_jns_tools as MJT
 
+from maia.utils import logging as mlog
+
 def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_nb, comm,
       conformize=False, apply_to_fields=True):
   """Duplicate a mesh from a transformation defined in its periodic connectivities.
@@ -284,7 +286,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
       CCJ.conformize_jn_pair(dist_tree, [jn_path_a_init, jn_path_b_last], comm)
 
 
-def _family_name_to_zones_and_jns_paths(dist_tree, family_name, comm):
+def _family_name_to_zones_and_jns_paths(dist_tree, family_name):
   is_z_in_fam = lambda n : PT.get_label(n) == 'Zone_t' and PT.predicate.belongs_to_family(n, family_name)
   zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_z_in_fam])
 
@@ -293,6 +295,10 @@ def _family_name_to_zones_and_jns_paths(dist_tree, family_name, comm):
       PT.keep_children_from_predicate(mask_base, is_z_in_fam)
 
   _, perio_jns = PT.Tree.find_periodic_jns(mask_tree)
+
+  mlog.debug(f"The following zones have been detected for duplication:\n  {zone_paths}")
+  mlog.debug(f"The following joins have been detected for duplication:\n  {perio_jns}")
+
   if len(perio_jns) < 2:
     raise RuntimeError("Not enought periodic transformation found in input tree")
   elif len(perio_jns) > 2:
@@ -328,12 +334,12 @@ def duplicate_family_from_periodic_jns(dist_tree, family_name, dupl_nb, comm, **
         :dedent: 2
   """
       
-  zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name, comm)
+  zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name)
   duplicate_from_periodic_jns(dist_tree, zone_paths, perio_jns, dupl_nb, comm, **kwargs)
 
 def duplicate_family_from_rotation_jns_to_360(dist_tree, family_name, comm, **kwargs):
   """Reconstitute a circular mesh from an angular section of the geometry for zones
   belonging to the provided family"""
       
-  zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name, comm)
+  zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name)
   duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, perio_jns, comm, **kwargs)

@@ -1,4 +1,4 @@
-from cmaia.utils.logging import *
+from cmaia.utils.logging import log, add_logger, turn_on, turn_off
 
 
 def add_printer_to_logger(logger_name, printer):
@@ -34,6 +34,8 @@ def info(msg):
   log("maia", msg)
 def stat(msg):
   log("maia-stats", msg)
+def debug(msg):
+  log("maia-debug", msg)
 def warning(msg):
   log("maia-warnings", "Warning: "+msg)
 def error(msg):

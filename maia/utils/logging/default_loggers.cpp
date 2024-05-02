@@ -9,6 +9,7 @@ bool init_maia_default_loggers() {
   std_e::add_logger_if_absent(std_e::logger{"maia-warnings"    ,std_e::mpi_rank_0_stdout_printer{}});
   std_e::add_logger_if_absent(std_e::logger{"maia-errors"      ,std_e::mpi_rank_0_stdout_printer{}});
   std_e::add_logger_if_absent(std_e::logger{"maia-stats"       ,                                {}});
+  std_e::add_logger_if_absent(std_e::logger{"maia-debug"       ,                                {}});
   std_e::add_logger_if_absent(std_e::logger{"maia perf level 0",std_e::mpi_rank_0_stdout_printer{}});
   std_e::add_logger_if_absent(std_e::logger{"maia perf level 1",std_e::mpi_stdout_printer{}});
   std_e::add_logger_if_absent(std_e::logger{"maia perf level 2",std_e::mpi_stdout_printer{}});
