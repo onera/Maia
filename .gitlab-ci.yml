@@ -85,8 +85,9 @@ job:ctest:
     - coverage report --rcfile=.coveragerc_unit_tests
     - coverage xml --rcfile=.coveragerc_unit_tests -o coverage_unit_tests.xml
     - sed 's@'"$CI_PROJECT_DIR"'/@@' -i coverage_unit_tests.xml
-
-    - mv ./coverage_unit_tests.xml ./reports  $INIT_ORIGINAL_FOLDER # GitLab needs artifacts to be in the folder of the job
+    # GitLab needs artifacts to be in the folder of the job so move it
+    - rm -rf $INIT_ORIGINAL_FOLDER/reports # Cleanup old builds reports if existing
+    - mv ./coverage_unit_tests.xml $INIT_ORIGINAL_FOLDER && mv ./reports  $INIT_ORIGINAL_FOLDER
   when: on_success # s'exécutera uniquement si le job `job:build` passe
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
