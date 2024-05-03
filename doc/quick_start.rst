@@ -23,12 +23,12 @@ and python version 3.9.
   module load maia/dev-default
 
 If you want to use Maia within the standard Spiro environment, the next installation is compatible with
-the socle socle-cfd/5.0-intel2120-impi:
+the socle socle-cfd/6.0-intel2220-impi:
 
 .. code-block:: sh
 
   module use --append /scratchm/sonics/usr/modules/
-  module load maia/dev-dsi-cfd5
+  module load maia/dev-dsi-cfd6
 
 Note that this is the environment used by elsA for its production spiro-el8_mpi.
 
@@ -45,7 +45,16 @@ on Sator cluster. Sator's version is compiled with support of large integers.
 
   # Versions based on socle-cfd compilers and tools
   module use --append /tmp_user/sator/sonics/usr/modules/
-  module load maia/dev-dsi-cfd5
+  module load maia/dev-dsi-cfd6
+
+**Juno**
+
+Maia is available on Juno since v1.3. This installation relies on socle-cfd/6.0-intel2220-impi.
+
+.. code-block:: sh
+
+  module use --append /tmp_user/juno/sonics/usr/modules/
+  module load maia/dev-dsi-cfd6
 
 
 If you prefer to build your own version of Maia, see :ref:`installation` section.

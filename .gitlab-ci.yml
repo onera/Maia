@@ -124,7 +124,7 @@ job:portability_gnum:
     - source source.sh
     - mpirun -np 4 python3 -m pytest ../maia/
 
-job:portability_cfd5:
+job:portability_cfd6:
   stage: test
   variables:
     SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --exclusive --nodes=1-1 --time=00:15:00"
@@ -132,13 +132,12 @@ job:portability_cfd5:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   before_script: 
     - module purge
-    - module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
+    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
   script:
     - cd $CUSTOM_CI_DIR
-    - mkdir -p build_cfd5 && cd build_cfd5
+    - mkdir -p build_cfd6 && cd build_cfd6
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug 
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 
-                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2'
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
     - make -j
     - source $ELSASPIRO/.env_elsA
@@ -154,6 +153,7 @@ pages:
   before_script: 
     - ''
   script:
+    - rm -rf public
     - mkdir public
     - cp -r /scratchm/sonics/usr/maia/v1.0/doc/html public/1.0
     - cp -r /scratchm/sonics/usr/maia/v1.1/doc/html public/1.1
@@ -171,7 +171,7 @@ pages:
     paths:
       - public
 
-job:init_deploy:
+init_deploy:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
@@ -185,11 +185,12 @@ job:init_deploy:
   script:
     - rsync -a . sonics@spiro02:/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a . sonics@sator:/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
+    - rsync -a . sonics@juno:/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a --delete . sonics@spiro02:/stck/sonics/tmp/maia-ci-dev #This one is for LD8
 
-job:deploy_spiro_socle5:
+deploy_spiro_socle5:
   stage: deploy
-  needs: ["job:init_deploy"]
+  needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   tags:
@@ -201,14 +202,11 @@ job:deploy_spiro_socle5:
       module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
 
-      cmake ../ -DCMAKE_BUILD_TYPE=Debug \
-                -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5_dbg \
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
                 -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install > dsi-cfd5_dbg.log
-
-      cmake . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5
       make -j install > dsi-cfd5.log
       EOF
   script:
@@ -217,9 +215,35 @@ job:deploy_spiro_socle5:
     - rsync build_spiro5.sh sonics@spiro02:${JOB_BUILD_DIR}
     - ssh sonics@spiro01 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro5.sh"
 
-job:deploy_spiro_sonics:
+deploy_spiro_socle6:
   stage: deploy
-  needs: ["job:init_deploy"]
+  needs: ["init_deploy"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
+  before_script:
+    - |
+      cat > build_spiro6.sh << EOF
+      module purge
+      module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+      export https_proxy=http://proxy.onera:80
+
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd6 \
+                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+      make -j install > dsi-cfd6.log
+      EOF
+  script:
+    - export JOB_BUILD_DIR=/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_spiro6.sh sonics@spiro02:${JOB_BUILD_DIR}
+    - ssh sonics@spiro01 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro6.sh"
+
+deploy_spiro_sonics:
+  stage: deploy
+  needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   tags:
@@ -232,9 +256,7 @@ job:deploy_spiro_sonics:
       export https_proxy=http://proxy.onera:80
       export PREFIX=/scratchm/sonics/usr/maia/dev
              FLAGS="-DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON"
-      cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=\$PREFIX/default_dbg \$FLAGS ../
-      make -j install > default_dbg.log
-      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/default .
+      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/default \$FLAGS ../
       make -j install > default.log
       EOF
   script:
@@ -243,9 +265,9 @@ job:deploy_spiro_sonics:
     - rsync build_spiro.sh sonics@spiro02:${JOB_BUILD_DIR}
     - ssh sonics@spiro02 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro.sh"
 
-job:deploy_sator_socle5:
+deploy_sator_socle5:
   stage: deploy
-  needs: ["job:init_deploy"]
+  needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   tags:
@@ -269,9 +291,34 @@ job:deploy_sator_socle5:
     - rsync build_sator5.sh sonics@sator:${JOB_BUILD_DIR}
     - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator5.sh"
 
-job:deploy_sator_sonics:
+deploy_sator_socle6:
   stage: deploy
-  needs: ["job:init_deploy"]
+  needs: ["init_deploy"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
+  before_script:
+    - |
+      cat > build_sator6.sh << EOF
+      module purge
+      module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+      export https_proxy=http://proxy.onera:80
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/dsi-cfd6 \
+                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+                -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+      make -j install > dsi-cfd6.log
+      EOF
+  script:
+    - export JOB_BUILD_DIR=/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_sator6.sh sonics@sator:${JOB_BUILD_DIR}
+    - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator6.sh"
+
+deploy_sator_sonics:
+  stage: deploy
+  needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   tags:
@@ -292,9 +339,34 @@ job:deploy_sator_sonics:
     - rsync build_sator.sh sonics@sator:${JOB_BUILD_DIR}
     - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator.sh"
 
-job:post_deploy:
+deploy_juno_socle6:
   stage: deploy
-  needs: ["job:deploy_spiro_socle5", "job:deploy_spiro_sonics", "job:deploy_sator_socle5", "job:deploy_sator_sonics"]
+  needs: ["init_deploy"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  tags:
+    - shell
+  before_script:
+    - |
+      cat > build_juno6.sh << EOF
+      module purge
+      module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+      export https_proxy=http://proxy.onera:80
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/tmp_user/juno/sonics/usr/maia/dev/dsi-cfd6 \
+                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+                -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+      make -j install > dsi-cfd6.log
+      EOF
+  script:
+    - export JOB_BUILD_DIR=/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_juno6.sh sonics@juno:${JOB_BUILD_DIR}
+    - ssh sonics@juno "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_juno6.sh"
+
+post_deploy:
+  stage: deploy
+  needs: ["deploy_spiro_socle5", "deploy_spiro_socle6", "deploy_spiro_sonics", "deploy_sator_socle5", "deploy_sator_socle6", "deploy_sator_sonics", "deploy_juno_socle6"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   tags:
@@ -303,3 +375,4 @@ job:post_deploy:
   script:
     - ssh sonics@spiro02 "rm -rf /scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
     - ssh sonics@sator   "rm -rf /tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
+    - ssh sonics@juno    "rm -rf /tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
