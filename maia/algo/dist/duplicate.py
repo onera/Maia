@@ -2,27 +2,39 @@ import numpy as np
 
 import maia.pytree        as PT
 
-from   maia.utils import py_utils
 import maia.algo.transform as TRF
 import maia.algo.dist.conformize_jn as CCJ
 import maia.algo.dist.matching_jns_tools as MJT
 
+from maia.utils import logging as mlog
+
 def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_nb, comm,
-      conformize=False, apply_to_fields = True):
-  """
-  Function to duplicate n times a set of connected zones
-  > dist_tree : distributed tree from wich 'zones' come and in wich duplicated zones will be added
-  > zone_paths : list of pathes (BaseName/ZoneName) of the connected zones to duplicate
-  > jn_paths_for_dupl : list of 2 lists (listA,listB) where listA (resp listB) is the list 
-                               that contains all GridConnectivity nodes defining the first (resp 
-                               second) part of a periodic matching
-  > dupl_nb : is the number of duplication apply to 'zones'
-  > conformize : if True, compute the coordinates mean of each connected vertices and this mean replace
-                 the previous coordinates for each vertices. In this case, the matching is perfect.
-  > comm : MPI communicator
-  > apply_to_fields : apply only the rotation to all vector fields in CGNS nodes of type : 
-                      "FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", "BCDataset_t".
-                      Defaults to ``True``.
+      conformize=False, apply_to_fields=True):
+  """Duplicate a mesh from a transformation defined in its periodic connectivities.
+
+  Input tree is modified inplace.
+
+  Args:
+    dist_tree (CGNSTree): Input distributed tree
+    zone_paths (list of str): List of pathes (BaseName/ZoneName) of the connected zones to duplicate
+    jn_paths_for_dupl (pair of list of str): (listA, listB) where listA (resp. list B) stores all the
+        pathes of the GridConnectivity nodes defining the first (resp. second) side of a periodic match.
+    dupl_nb (int) : Number of duplications to perform
+    comm       (MPIComm) : MPI communicator
+    conformize (bool, optional): If true, ensure that the generated interface vertices have exactly same
+        coordinates (see :func:`conformize_jn_pair`). Defaults to False.
+    apply_to_fields (bool, optional): See :func:`maia.algo.transform_affine`. Defaults to ``True``.
+
+  See also:
+    For rotating periodicities, it is also possible to automatically recover a circular (360°) mesh
+    with the function :func:`duplicate_from_rotation_jns_to_360`, which takes the same arguments,
+    excepted ``dupl_nb``.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #duplicate_from_rotation_to_360@start
+        :end-before: #duplicate_from_rotation_to_360@end
+        :dedent: 2
   """
   
   #############
@@ -272,3 +284,62 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
       jn_path_a_init = PT.utils.update_path_elt(jn_path_a, 1, lambda zn : zn + f".D{0}")
       jn_path_b_last = PT.utils.update_path_elt(jn_path_b, 1, lambda zn : zn + f".D{sectors_number-1}")
       CCJ.conformize_jn_pair(dist_tree, [jn_path_a_init, jn_path_b_last], comm)
+
+
+def _family_name_to_zones_and_jns_paths(dist_tree, family_name):
+  is_z_in_fam = lambda n : PT.get_label(n) == 'Zone_t' and PT.predicate.belongs_to_family(n, family_name)
+  zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_z_in_fam])
+
+  mask_tree = PT.shallow_copy(dist_tree)
+  for mask_base in PT.get_all_CGNSBase_t(mask_tree):
+      PT.keep_children_from_predicate(mask_base, is_z_in_fam)
+
+  _, perio_jns = PT.Tree.find_periodic_jns(mask_tree)
+
+  mlog.debug(f"The following zones have been detected for duplication:\n  {zone_paths}")
+  mlog.debug(f"The following joins have been detected for duplication:\n  {perio_jns}")
+
+  if len(perio_jns) < 2:
+    raise RuntimeError("Not enought periodic transformation found in input tree")
+  elif len(perio_jns) > 2:
+    raise RuntimeError("Too many periodic transformation found in input tree")
+
+  return zone_paths, perio_jns
+
+def duplicate_family_from_periodic_jns(dist_tree, family_name, dupl_nb, comm, **kwargs):
+  """Duplicate zones belonging to the specified family.
+
+  This is a shortcut for :func:`duplicate_from_periodic_jns` with autodetection of:
+
+  - Zones to duplicate (every zone belonging to the provided family)
+  - Periodic connectivities to use for duplication. Note that **this function will fail** 
+    if the number of periodic transformation found in the group of zones is not exactly one.
+
+  Args:
+    dist_tree (CGNSTree): Input distributed tree
+    family_name (str): Name of family gathering the zones to duplicate
+    dupl_nb (int) : Number of duplications to perform
+    comm       (MPIComm) : MPI communicator
+    kwargs: See :func:`duplicate_from_periodic_jns`
+
+  See also:
+    For rotating periodicities, it is also possible to automatically recover a circular (360°) mesh
+    with the function :func:`duplicate_family_from_rotation_jns_to_360`, which takes the same arguments,
+    excepted ``dupl_nb``.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #duplicate_family_from_periodic_jns@start
+        :end-before: #duplicate_family_from_periodic_jns@end
+        :dedent: 2
+  """
+      
+  zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name)
+  duplicate_from_periodic_jns(dist_tree, zone_paths, perio_jns, dupl_nb, comm, **kwargs)
+
+def duplicate_family_from_rotation_jns_to_360(dist_tree, family_name, comm, **kwargs):
+  """Reconstitute a circular mesh from an angular section of the geometry for zones
+  belonging to the provided family"""
+      
+  zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name)
+  duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, perio_jns, comm, **kwargs)

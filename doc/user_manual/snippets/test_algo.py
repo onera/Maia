@@ -63,6 +63,19 @@ def test_duplicate_from_rotation_jns_to_360():
   assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 45
   #duplicate_from_rotation_to_360@end
 
+def test_duplicate_family_from_periodic_jns():
+  #duplicate_family_from_periodic_jns@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.duplicate_family_from_periodic_jns(dist_tree,
+                                                    'ATB',
+                                                    17,
+                                                    MPI.COMM_WORLD)
+  assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 18
+  #duplicate_family_from_periodic_jns@end
+
 def test_merge_zones():
   #merge_zones@start
   from mpi4py import MPI

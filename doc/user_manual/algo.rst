@@ -35,7 +35,8 @@ Connectivities conversions
 Geometry transformations
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: maia.algo.dist.duplicate_from_rotation_jns_to_360
+.. autofunction:: maia.algo.dist.duplicate_from_periodic_jns
+.. autofunction:: maia.algo.dist.duplicate_family_from_periodic_jns
 .. autofunction:: maia.algo.dist.merge_zones
 .. autofunction:: maia.algo.dist.merge_zones_from_family
 .. autofunction:: maia.algo.dist.merge_connected_zones

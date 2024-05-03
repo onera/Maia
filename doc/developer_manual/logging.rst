@@ -111,12 +111,13 @@ For developpers, a logging file ``logging.conf`` with loggers and default printe
 Maia specifics
 --------------
 
-Maia provides 4 convenience functions that use Maia loggers
+Maia provides 5 convenience functions that use Maia loggers
 
 .. code-block:: python
 
   from maia.utils import logging as mlog
   mlog.info('info msg') # uses the 'maia' logger
   mlog.stat('stat msg') # uses the 'maia-stats' logger
+  mlog.debug('debug msg') # uses the 'maia-debug' logger
   mlog.warning('warn msg') # uses the 'maia-warnings' logger
   mlog.error('error msg') # uses the 'maia-errors' logger
