@@ -593,6 +593,24 @@ class Zone:
     return range_by_dim
 
   @staticmethod
+  def get_max_elt_range(zone_node:CGNSTree) -> int:
+    """ Return the max element number found in a Zone_t node
+
+    Args:
+      zone_node (CGNSTree): Input Zone_t node
+    Returns:
+      int : max element id
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured')
+      >>> PT.new_Elements('PYRA', 'PYRA_5', erange=[1,10],  parent=zone)
+      >>> PT.new_Elements('TRI',  'TRI_3',  erange=[11,30], parent=zone)
+      >>> PT.new_Elements('BAR',  'BAR_2',  erange=[31,40], parent=zone)
+      >>> PT.Zone.get_max_elt_range(zone)
+      40
+    """
+    return np.max([np.max(N.get_value(er)) for er in W.get_nodes_from_predicates(zone_node, 'Elements_t/ElementRange')])
+
+  @staticmethod
   def elt_ordering_by_dim(zone_node:CGNSTree):
     """Return a flag indicating if elements belonging to a Zone_t node are sorted
     

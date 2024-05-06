@@ -305,6 +305,13 @@ def test_get_elt_range_per_dim():
   with pytest.raises(RuntimeError):
     SIDS.Zone.get_elt_range_per_dim(zone)
 
+def test_get_max_elt_range():
+  zone = N.new_Zone()
+  N.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
+  N.new_Elements('ElemB', type='HEXA_8', erange=[1, 10],  parent=zone)
+  N.new_Elements('ElemC', type='TRI_3',  erange=[54,60],  parent=zone)
+  assert SIDS.Zone.get_max_elt_range(zone) == 60
+
 def test_elt_ordering_by_dim():
   zone = N.new_Zone()
   N.new_Elements('ElemA', type='HEXA_8', erange=[11, 53], parent=zone)
