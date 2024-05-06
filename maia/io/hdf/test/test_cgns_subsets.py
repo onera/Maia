@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 import maia.pytree as PT
 from maia.io.hdf import cgns_subsets
 
@@ -37,7 +38,8 @@ def test_create_pl_filter():
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
   assert len(hdf_filter) == 0
 
-def test_create_zone_bc_filter():
+@pytest.mark.parametrize("mode", ['r', 'w'])
+def test_create_zone_bc_filter(mode):
   #Don't test the value of value of dataspace, this is done by test_hdf_dataspace
   yt = """
 Base CGNSBase_t [3,3]:
@@ -54,7 +56,10 @@ Base CGNSBase_t [3,3]:
         BCDataSet BCDataSet_t:
           BCData BCData_t:
             array1 DataArray_t None:
+            array1#Size DataArray_t [50]:
             array2 DataArray_t None:
+            array2#Size DataArray_t [50]:
+            localArray DataArray_t [42.]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,50,50]:
       bc_with_subds BC_t "wall":
@@ -66,14 +71,35 @@ Base CGNSBase_t [3,3]:
           BCData BCData_t:
             array1 DataArray_t None:
             array2 DataArray_t None:
+            array1#Size DataArray_t [30]:
+            array2#Size DataArray_t [30]:
           :CGNS#Distribution UserDefinedData_t:
             Index DataArray_t [20,30,30]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,50,50]:
 """
-  size_tree = PT.yaml.to_cgns_tree(yt)
+  tree = PT.yaml.to_cgns_tree(yt)
+  if mode == 'w': # This test simulate write mode: no #Size + Well shaped arrays
+    PT.rm_nodes_from_name(tree, '*Size')
+    for bc in PT.get_nodes_from_label(tree, 'BC_t'):
+      bc_distri = PT.maia.getDistribution(bc, 'Index')
+      dn = bc_distri[1][1] - bc_distri[1][0]
+      pl = PT.get_child_from_name(bc, 'PointList')
+      PT.set_value(pl, np.ones((1,dn), dtype=int, order='F'))
+      for bcds in PT.get_nodes_from_label(bc, 'BCDataSet_t'):
+        ds_distri = PT.maia.getDistribution(bcds, 'Index')
+        if ds_distri is None:
+          ds_distri = bc_distri
+        dn = ds_distri[1][1] - ds_distri[1][0]
+        pl = PT.get_child_from_name(bcds, 'PointList')
+        if pl is not None:
+          PT.set_value(pl, np.ones((1,dn), dtype=int, order='F'))
+        is_empty_da = lambda n : PT.get_label(n) == 'DataArray_t' and PT.get_value(n) is None
+        for array in PT.get_nodes_from_predicates(bc, ['BCData_t', is_empty_da]):
+          PT.set_value(array, np.empty(dn))
+
   hdf_filter = dict()
-  cgns_subsets.create_zone_bc_filter(PT.get_all_Zone_t(size_tree)[0], "Base/Zone", hdf_filter)
+  cgns_subsets.create_zone_bc_filter(PT.get_all_Zone_t(tree)[0], "Base/Zone", hdf_filter)
   assert len(hdf_filter.keys()) == 8
   prefix = 'Base/Zone/ZBC/'
   assert prefix+'bc_only/PointList' in hdf_filter

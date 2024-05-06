@@ -124,7 +124,7 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
       PT.rm_children_from_label(base, 'Zone_t')
       for zone_name in zone_names:
         gid = open_from_path(fid, f'{PT.get_name(base)}/{zone_name}')
-        _load_node_partial(gid, base, lambda X,Y:True, ([],[]))
+        _load_node_partial(gid, base, lambda X,Y,s:True, ([],[]))
         gid.close()
     fid.close()
 
@@ -185,7 +185,7 @@ def save_part_tree(part_tree, filename, comm, single_file=False, legacy=False):
           for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
             zone = PT.get_node_from_path(part_tree, zone_path)
             gid = open_from_path(fid, zone_path.split('/')[0])
-            _write_node_partial(gid, zone, lambda X,Y: True, ([],[]))
+            _write_node_partial(gid, zone, lambda X,Y,s: True, ([],[]))
             gid.close()
           fid.close()
       comm.barrier()

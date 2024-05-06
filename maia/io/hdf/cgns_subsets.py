@@ -55,7 +55,14 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
 
         for bcdata in PT.iter_children_from_label(bcds, 'BCData_t'):
           bcdata_path = bcds_path + "/" + bcdata[0]
-          utils.apply_dataspace_to_arrays(bcdata, bcdata_path, data_space_array, hdf_filter)
+          # BCData can be either local (size == N) or global (size == 1). If they are global,
+          # we do not want them to be distributed
+          for data_array in PT.iter_children_from_label(bcdata, 'DataArray_t'):
+            is_global = PT.get_child_from_name(bcdata, PT.get_name(data_array)+'#Size') is None \
+                        and PT.get_value(data_array).size == 1
+            if not is_global:
+              path = bcdata_path+"/"+data_array[0]
+              hdf_filter[path] = data_space_array
 
 
 def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
