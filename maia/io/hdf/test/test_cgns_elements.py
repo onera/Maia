@@ -67,16 +67,12 @@ NGon Elements_t [22, 0]:
     Element DataArray_t [2,7,10]:
 """
   element = PT.yaml.to_node(yt)
-  read_filter, write_filter = dict(), dict()
-  cgns_elements.create_zone_eso_elements_filter(element, 'pathtozone', read_filter, 'read')
-  cgns_elements.create_zone_eso_elements_filter(element, 'pathtozone', write_filter, 'write')
+  read_filter = dict()
+  cgns_elements.create_zone_eso_elements_filter(element, 'pathtozone', read_filter)
   assert read_filter['pathtozone/NGon/ParentElements'] == \
       [[0, 0], [1, 1], [(7-2), 2], [1, 1], [2, 0], [1, 1], [(7-2), 2], [1, 1], [10, 2], [1]]
   assert read_filter['pathtozone/NGon/ElementStartOffset'] == \
       [[0], [1], [(7-2)+1], [1], [2], [1], [(7-2)+1], [1], [10+1], [0]]
-  assert write_filter['pathtozone/NGon/ParentElements'] == read_filter['pathtozone/NGon/ParentElements']
-  assert write_filter['pathtozone/NGon/ElementStartOffset'] == \
-      [[0], [1], [(7-2)], [1], [2], [1], [(7-2)], [1], [10+1], [0]]
   partial_func = read_filter['pathtozone/NGon/ElementConnectivity']
   assert partial_func.func is cgns_elements.load_element_connectivity_from_eso
   assert partial_func.args == (element, 'pathtozone')
@@ -96,11 +92,11 @@ Zone Zone_t:
 """
   zone = PT.yaml.to_node(yt)
   hdf_filter = dict()
-  cgns_elements.create_zone_elements_filter(zone, 'zone', hdf_filter, 'read')
+  cgns_elements.create_zone_elements_filter(zone, 'zone', hdf_filter)
   ngon = PT.get_node_from_name(zone, 'NGon')
   tri  = PT.get_node_from_name(zone, 'Tri')
   ngon_filter, tri_filter = dict(), dict()
-  cgns_elements.create_zone_eso_elements_filter(ngon, 'zone', ngon_filter, 'read')
+  cgns_elements.create_zone_eso_elements_filter(ngon, 'zone', ngon_filter)
   cgns_elements.create_zone_std_elements_filter(tri, 'zone', tri_filter)
   for key,value in tri_filter.items():
     assert hdf_filter[key] == value

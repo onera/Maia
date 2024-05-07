@@ -28,7 +28,7 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
     grid_coord_path = zone_path + "/" + PT.get_name(grid_c)
     utils.apply_dataspace_to_arrays(grid_c, grid_coord_path, all_vtx_dataspace, hdf_filter)
 
-  create_zone_elements_filter(zone, zone_path, hdf_filter, mode)
+  create_zone_elements_filter(zone, zone_path, hdf_filter)
 
   create_zone_bc_filter(zone, zone_path, hdf_filter)
   create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter)
