@@ -62,6 +62,7 @@ Base CGNSBase_t [3,3]:
             localArray DataArray_t [42.]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t [20,50,50]:
+          BCDataGlobal Descriptor_t "BCDataSet/BCData/localArray":
       bc_with_subds BC_t "wall":
         PointList IndexArray_t None:
         PointList#Size IndexArray_t [1,50]:

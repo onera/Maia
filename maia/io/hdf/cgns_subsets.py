@@ -33,7 +33,8 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
     for bc in PT.iter_children_from_label(zone_bc, 'BC_t'):
       bc_path = zone_bc_path+"/"+bc[0]
 
-      distrib_bc   = PT.get_value(MT.getDistribution(bc, 'Index'))
+      distrib_bc_n = MT.getDistribution(bc)
+      distrib_bc   = PT.get_child_from_name(distrib_bc_n, 'Index')[1]
 
       _create_pl_filter(bc, bc_path, 'PointList', distrib_bc, hdf_filter)
 
@@ -42,8 +43,10 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
         distrib_bcds_n = MT.getDistribution(bcds)
 
         if distrib_bcds_n is None: #BCDS uses BC distribution
+          distrib_node = distrib_bc_n
           distrib_data = distrib_bc
         else: #BCDS has its own distribution
+          distrib_node = distrib_bcds_n
           distrib_data = PT.get_child_from_name(distrib_bcds_n, 'Index')[1]
           _create_pl_filter(bcds, bcds_path, 'PointList', distrib_data, hdf_filter)
 
@@ -53,15 +56,17 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
         data_shape = PT.get_value(size_node) if size_node else None
         data_space_array = create_data_array_filter(distrib_data, data_shape)
 
+        global_arrays_node = PT.get_child_from_name(distrib_node, 'BCDataGlobal')
+        global_arrays_list = PT.get_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
         for bcdata in PT.iter_children_from_label(bcds, 'BCData_t'):
           bcdata_path = bcds_path + "/" + bcdata[0]
-          # BCData can be either local (size == N) or global (size == 1). If they are global,
-          # we do not want them to be distributed
-          for data_array in PT.iter_children_from_label(bcdata, 'DataArray_t'):
-            is_global = PT.get_child_from_name(bcdata, PT.get_name(data_array)+'#Size') is None \
-                        and PT.get_value(data_array).size == 1
-            if not is_global:
-              path = bcdata_path+"/"+data_array[0]
+          for data_array in PT.iter_children_from_predicate(bcdata, lambda n : PT.get_label(n) == 'DataArray_t' \
+                                                                               and not PT.get_name(n).endswith('#Size')):
+            path = bcdata_path+"/"+data_array[0]
+            _path = PT.utils.path_tail(path, -2) if distrib_bcds_n is not None else PT.utils.path_tail(path, -3)
+            # BCData can be either local (size == N) or global (size == 1). If they are global,
+            # we do not want them to be distributed
+            if _path not in global_arrays_list:
               hdf_filter[path] = data_space_array
 
 

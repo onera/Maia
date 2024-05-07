@@ -61,7 +61,11 @@ def load_partial(filename, dist_tree, hdf_filter):
 def write_partial(filename, dist_tree, hdf_filter, comm):
 
   if comm.Get_rank() == 0:
-    write_tree_partial(dist_tree, filename, load_data)
+    def write_data(N,L,s):
+      if L[-1] in ['DataArray_t', 'IndexArray_t']:
+        return '/'.join(N) not in hdf_filter
+      return True
+    write_tree_partial(dist_tree, filename, write_data)
   comm.barrier()
 
   fapl = h5p.create(h5p.FILE_ACCESS)
