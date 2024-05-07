@@ -175,10 +175,13 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
-        dist_data = {data_path : PT.get_node_from_path(d_dataset, data_path)[1] for data_path in data_paths}
+        dist_data = {data_path : PT.get_node_from_path(d_dataset, data_path)[1] \
+                     for data_path in data_paths}
+        dist_data_loc  = {path: data for path, data in dist_data.items() if data.size > 1} # Filter global data
+        dist_data_glob = {path: data for path, data in dist_data.items() if data.size == 1}
 
-        #Exchange
-        part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
+        #Exchange (local data)
+        part_data = EP.block_to_part(dist_data_loc, distribution, lngn_list, comm)
 
         #Put part data in tree
         for ipart, part_zone in enumerate(part_zones):
@@ -192,6 +195,10 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
               container_name, field_name = data_name.split('/')
               p_container = PT.update_child(part_ds, container_name, 'BCData_t')
               PT.new_DataArray(field_name, data[ipart], parent=p_container)
+            for data_name, data in dist_data_glob.items(): # Copy global data
+              container_name, field_name = data_name.split('/')
+              p_container = PT.update_child(part_ds, container_name, 'BCData_t')
+              PT.new_DataArray(field_name, data.copy(), parent=p_container)
 
 def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
   """

@@ -574,10 +574,10 @@ ZoneU Zone_t:
           field DataArray_t:
       BCDSWithPL BCDataSet_t:
         DirichletData BCData_t:
-          field DataArray_t R8 [100]:
-        PointList IndexArray_t [[10]]:
+          field DataArray_t R8 [100,101]:
+        PointList IndexArray_t [[10,12]]:
         :CGNS#Distribution UserDefinedData_t:
-          Index DataArray_t {0} [0,1,1]:
+          Index DataArray_t {0} [0,2,2]:
   """.format(dtype)
     pt = """
   ZoneU.P0.N0 Zone_t:
@@ -608,7 +608,7 @@ ZoneU Zone_t:
           field DataArray_t R8 []:
         PointList IndexArray_t [[]]:
         :CGNS#Distribution UserDefinedData_t:
-          Index DataArray_t {0} [1,1,1]:
+          Index DataArray_t {0} [2,2,2]:
   """.format(dtype)
     pt = """
   ZoneU.P1.N0 Zone_t:
@@ -620,10 +620,11 @@ ZoneU Zone_t:
           Index DataArray_t {0} [6,3,4,1]:
         BCDSWithPL BCDataSet_t:
           DirichletData BCData_t:
-            field DataArray_t R8 [200.]:
-          PointList IndexArray_t [[108]]:
+            field DataArray_t R8 [200., 201.]:
+            globfield DataArray_t R8 [1234.]:
+          PointList IndexArray_t [[108,21]]:
           :CGNS#GlobalNumbering UserDefinedData_t:
-            Index DataArray_t {0} [1]:
+            Index DataArray_t {0} [2,1]:
         BCDSWithoutPL BCDataSet_t:
           DirichletData BCData_t:
             field DataArray_t [1,4,3,1]:
@@ -641,8 +642,9 @@ ZoneU Zone_t:
 
   assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64
   assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int32
+  assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/globfield')[1] == [1234.]).all()
   if comm.Get_rank () == 0:
-    assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [200.]).all()
+    assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [201., 200.]).all()
     assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,2]).all()
   if comm.Get_rank () == 1:
     assert len(PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1]) == 0

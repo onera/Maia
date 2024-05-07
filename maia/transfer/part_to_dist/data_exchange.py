@@ -1,3 +1,6 @@
+import mpi4py.MPI as MPI
+import numpy      as np
+
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
@@ -272,17 +275,36 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
             for path in data_paths:
               part_data[path].append(PT.get_node_from_path(p_dataset, path)[1])
 
+        # Filter global (size == 1) data
+        size_1_loc = {path : all([t.size == 1 for t in data]) for path,data in part_data.items()}
+        loc_values = np.array([v for v in size_1_loc.values()])
+        glo_values = np.empty_like(loc_values)
+        comm.Allreduce(loc_values, glo_values, MPI.LAND)
+        part_data_loc = {path: data for i,(path,data) in enumerate(part_data.items()) if not glo_values[i]}
+        part_data_glo = {path: data for i,(path,data) in enumerate(part_data.items()) if     glo_values[i]}
+
         #Partitions having no data must be removed from lngn list since they have no contribution
         empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
             if PT.get_node_from_path(part_zone, ds_path) is None]
         for ipart in empty_parts_ids[::-1]:
           lngn_list.pop(ipart)
 
-        #Exchange
-        dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_func)
+        #Exchange local data
+        dist_data = EP.part_to_block(part_data_loc, distribution, lngn_list, comm, reduce_func)
         for field, array in dist_data.items():
           dist_field = PT.get_node_from_path(d_dataset, field)
           PT.set_value(dist_field, array)
+        
+        # Exchange global data (take first partition knowing a value)
+        master = comm.allreduce(comm.Get_rank() if len(lngn_list) > 0 else comm.Get_size()+1, op=MPI.MIN)
+        glob_data_send = None
+        if comm.Get_rank() == master:
+          glob_data_send = {path: data[0] for path,data in part_data_glo.items()}
+        glob_data_dist = comm.bcast(glob_data_send, root=master)
+        for field, array in glob_data_dist.items():
+          dist_field = PT.get_node_from_path(d_dataset, field)
+          PT.set_value(dist_field, array)
+
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_ddata in PT.iter_nodes_from_predicates(dist_zone, bc_ds_path+'/BCData_t'):
     PT.rm_children_from_predicate(dist_ddata, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
