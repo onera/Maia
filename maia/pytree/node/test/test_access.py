@@ -29,6 +29,10 @@ def test_convert_value():
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1'
   assert converted.tobytes().decode() == "Spam, eggs"
 
+  #Numpy scalars
+  assert NA._convert_value(np.float32(4.2)).dtype == np.float32
+  assert NA._convert_value(np.float64(4.2)).dtype == np.float64
+
   # Arrays
   np_array = np.array([[1,2,3], [4,5,6]], order='F')
   assert NA._convert_value(np_array) is np_array
@@ -50,6 +54,8 @@ def test_convert_value():
   assert (converted == np.array([13, 14000000000, 15])).all() and converted.dtype==np.int64
   converted = NA._convert_value([13.3, 14.2, 15.3])
   assert np.allclose(converted, np.array([13.3, 14.2, 15.3])) and converted.dtype==np.float32
+  converted = NA._convert_value([np.float64(13.3), np.float64(14.2), np.float64(15.3)])
+  assert np.allclose(converted, np.array([13.3, 14.2, 15.3])) and converted.dtype==np.float64
   converted = NA._convert_value([['Spam', 'eggs'], ["Bacon"]])
   assert isinstance(converted, np.ndarray) and converted.dtype=='S1' and converted.shape == (32,2,2)
   converted = NA._convert_value([['Bacon'], ['Spam', 'eggs', 'Bacon']])

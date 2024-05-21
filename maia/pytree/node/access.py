@@ -38,6 +38,9 @@ def _convert_value(value):
       result = value
     else:
       result = np.asfortranarray(value)
+  # value as a single numpy value
+  elif isinstance(value, CGK.dtypes): # Numpy scalar -- put before float, because isinstance(np.float64, float) is True
+    result = np.array([value], np.dtype(value))
   # value as a single value
   elif isinstance(value, float):   # R4
     result = np.array([value],'f')
@@ -46,14 +49,14 @@ def _convert_value(value):
     result = np.array([value], dtype)
   elif isinstance(value, str):     # C1
     result = np.array([c for c in value], CGK.cgns_to_dtype[CGK.C1])
-  elif isinstance(value, CGK.dtypes): # Numpy scalar
-    result = np.array([value], np.dtype(value))
   # value as an iterable (list, tuple, set, ...)
   elif isinstance(value, Iterable):
     # print(f"-> value as Iterable : {_flatten(value)}")
     try:
       first_value = next(_flatten(value))
-      if isinstance(first_value, float):                       # R4
+      if isinstance(first_value, CGK.dtypes):
+        result = np.array(value, dtype=np.dtype(first_value), order='F')
+      elif isinstance(first_value, float):                     # R4
         result = np.array(value, dtype=np.float32, order='F')
       elif isinstance(first_value, int):                       # I4 if possible, I8 otherwise
         max_val = max([abs(x) for x in _flatten(value)])
@@ -78,8 +81,6 @@ def _convert_value(value):
               s = min(len(value[c][d]),size)
               v[0:s,d,c] = value[c][d][0:s]
           result = v
-      elif isinstance(first_value, CGK.dtypes):
-        result = np.array(value, dtype=np.dtype(first_value), order='F')
     except StopIteration:
       # empty iterable -> default to I4
       result = np.array(value, dtype=np.int32, order='F')
