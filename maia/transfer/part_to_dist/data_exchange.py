@@ -257,13 +257,15 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
       for mask_dataset in PT.get_children(mask_bc):
         ds_path = bc_path + '/' + PT.get_name(mask_dataset)
         d_dataset = PT.get_node_from_path(dist_zone, ds_path) #True DataSet
+        has_own_distri = MT.getDistribution(d_dataset) is not None
         #If dataset has its own PointList, we must override bc distribution and lngn
-        if MT.getDistribution(d_dataset) is not None:
-          distribution = te_utils.get_cgns_distribution(d_dataset, 'Index')
+        if has_own_distri:
+          distri_node  = MT.getDistribution(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
-          distribution = te_utils.get_cgns_distribution(d_bc, 'Index')
+          distri_node  = MT.getDistribution(d_bc)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
+        distribution = PT.get_child_from_name(distri_node, 'Index')[1]
 
         #Discover data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
@@ -276,7 +278,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
               part_data[path].append(PT.get_node_from_path(p_dataset, path)[1])
 
         # Filter global (size == 1) data
-        size_1_loc = {path : all([t.size == 1 for t in data]) for path,data in part_data.items()}
+        size_1_loc = {path : all([t.size == 1 and gn.size != 1 for t,gn in zip(data, lngn_list)]) for path,data in part_data.items()}
         loc_values = np.array([v for v in size_1_loc.values()])
         glo_values = np.empty_like(loc_values)
         comm.Allreduce(loc_values, glo_values, MPI.LAND)
@@ -304,6 +306,23 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
         for field, array in glob_data_dist.items():
           dist_field = PT.get_node_from_path(d_dataset, field)
           PT.set_value(dist_field, array)
+        # Update BCDataGlobal node  
+        global_arrays_node = PT.get_child_from_name(distri_node, 'BCDataGlobal')
+        old_global_arrays = PT.get_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
+        if has_own_distri:
+          prefix = ''
+          new_global_arrays = [] # Init to empty 
+        else:
+          prefix = f"{PT.get_name(d_dataset)}/"
+          new_global_arrays = [path for path in old_global_arrays if not path.startswith(prefix)] # Init with other dataset
+          old_global_arrays = [PT.utils.path_tail(path, 1) for path in old_global_arrays if path.startswith(prefix)] # Filter prefix 
+
+        new_global_arrays += [f"{prefix}{path}" for path in old_global_arrays if path not in dist_data]         # Old arrays, if not transformed into local 
+        new_global_arrays += [f"{prefix}{path}" for path in glob_data_dist    if path not in old_global_arrays] # New arrays, if not already existing 
+        if len(new_global_arrays) > 0:
+          PT.update_child(distri_node, 'BCDataGlobal', 'Descriptor_t', '\n'.join(new_global_arrays))
+        else:
+          PT.rm_children_from_name(distri_node, 'BCDataGlobal')
 
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_ddata in PT.iter_nodes_from_predicates(dist_zone, bc_ds_path+'/BCData_t'):

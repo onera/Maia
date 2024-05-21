@@ -643,6 +643,7 @@ ZoneU Zone_t:
   assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1].dtype    == np.float64
   assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1].dtype == np.int32
   assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/globfield')[1] == [1234.]).all()
+  assert (PT.get_value(PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/:CGNS#Distribution/BCDataGlobal')) == 'DirichletData/globfield')
   if comm.Get_rank () == 0:
     assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [201., 200.]).all()
     assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,2]).all()
