@@ -16,7 +16,8 @@ def redistribute_pl_node(node, distribution, comm):
   using a given distribution function. Mainly useful for unit tests. Node must be known by
   each process.
   """
-  node_distrib = MT.getDistribution(node, 'Index')[1]
+  distri_n = MT.getDistribution(node)
+  node_distrib = PT.get_child_from_name(distri_n, 'Index')[1]
   new_distrib = distribution(node_distrib[2], comm)
   new_size = new_distrib[1] - new_distrib[0]
   MT.newDistribution({'Index' : new_distrib}, node)
@@ -29,14 +30,22 @@ def redistribute_pl_node(node, distribution, comm):
       new_pl[ip,:] = MTP.block_to_block(np.ascontiguousarray(array_n[1][ip]), node_distrib, new_distrib, comm)
     array_n[1] = new_pl
 
-  #Data Arrays
+  # Standard Data Arrays
+  for array_n in PT.iter_children_from_label(node, 'DataArray_t'):
+    array_n[1] = MTP.block_to_block(array_n[1], node_distrib, new_distrib, comm)
+
+  # BCData_t arrays case : can be scalar or vector
+  global_data_node = PT.get_child_from_name(distri_n, 'BCDataGlobal')
+  global_data_list = PT.get_value(global_data_node).split('\n') if global_data_node else []
   has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
   bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)
   bcds_without_pl_query = [bcds_without_pl, 'BCData_t', 'DataArray_t']
-  for array_path in ['DataArray_t', 'BCData_t/DataArray_t', bcds_without_pl_query]:
-    for array_n in PT.iter_children_from_predicates(node, array_path):
-      array_n[1] = MTP.block_to_block(array_n[1], node_distrib, new_distrib, comm)
-
+  for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
+    for array_path in PT.predicates_to_paths(node, query):
+      array_n = PT.get_node_from_path(node, array_path)
+      if not array_path in global_data_list:
+        array_n[1] = MTP.block_to_block(array_n[1], node_distrib, new_distrib, comm)
+      
   #Additionnal treatement for subnodes with PL (eg bcdataset)
   has_pl = lambda n : PT.get_name(n) not in ['PointList', 'PointRange'] and has_subset(n)
   for child in [node for node in PT.get_children(node) if has_pl(node)]:
