@@ -20,15 +20,15 @@ def test_compute_cell_center(comm):
       node[1] = node[1].astype(np.int32)
 
   cell_center = centers.compute_cell_center(zoneU)
-  expected_cell_center = np.array([0.25, 0.25, 0.25, 
-                                   0.75, 0.25, 0.25, 
-                                   0.25, 0.75, 0.25, 
-                                   0.75, 0.75, 0.25, 
-                                   0.25, 0.25, 0.75, 
-                                   0.75, 0.25, 0.75, 
-                                   0.25, 0.75, 0.75, 
-                                   0.75, 0.75, 0.75])
-  assert (cell_center == expected_cell_center).all()
+  expected_cart = np.array([0.25, 0.25, 0.25, 
+                            0.75, 0.25, 0.25, 
+                            0.25, 0.75, 0.25, 
+                            0.75, 0.75, 0.25, 
+                            0.25, 0.25, 0.75, 
+                            0.75, 0.25, 0.75, 
+                            0.25, 0.75, 0.75, 
+                            0.75, 0.75, 0.75])
+  assert (cell_center == expected_cart).all()
 
   #Test S
   cx_s = PT.get_node_from_name(zoneU, 'CoordinateX')[1].reshape((3,3,3), order='F')
@@ -41,22 +41,26 @@ def test_compute_cell_center(comm):
   PT.new_DataArray('CoordinateY', cy_s, parent=grid_coords)
   PT.new_DataArray('CoordinateZ', cz_s, parent=grid_coords)
   cell_center = centers.compute_cell_center(zoneS)
-  assert (cell_center == expected_cell_center).all()
+  assert (cell_center == expected_cart).all()
 
   #TestU cylindrical
-  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-  tree = maia.factory.partition_dist_tree(tree, comm)
-  maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
+  tree = dcube_generate(3, 1., [0,0,0], comm)
   zoneU = PT.get_all_Zone_t(tree)[0]
-  expected = [0.4267767 , 0.58904862, 0.25, 
-              0.83128519, 0.31226144, 0.75,
-              0.83128519, 1.25853488, 0.75,
-              1.08934708, 0.78539816, 0.25,
-              0.4267767 , 0.58904862, 0.75,
-              0.83128519, 0.31226144, 0.25,
-              0.83128519, 1.25853488, 0.25,
-              1.08934708, 0.78539816, 0.75]
-  assert np.allclose(centers.compute_cell_center(zoneU), expected)
+  #On partitions, element are supposed to be I4
+  for elt_node in PT.iter_children_from_label(zoneU, 'Elements_t'):
+    for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
+      node = PT.get_child_from_name(elt_node, name)
+      node[1] = node[1].astype(np.int32)
+  maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
+  expected_cyl = np.array([0.35355339, 0.78539816, 0.25, 
+                           0.79056942, 0.32175055, 0.25, 
+                           0.79056942, 1.24904577, 0.25, 
+                           1.06066017, 0.78539816, 0.25, 
+                           0.35355339, 0.78539816, 0.75, 
+                           0.79056942, 0.32175055, 0.75, 
+                           0.79056942, 1.24904577, 0.75, 
+                           1.06066017, 0.78539816, 0.75])
+  assert np.allclose(centers.compute_cell_center(zoneU), expected_cyl)
 
   #TestS cylindrical
   tree = maia.factory.generate_dist_block(3, 'S', comm)
@@ -82,7 +86,19 @@ def test_compute_cell_center(comm):
       node = PT.get_child_from_name(elt_node, name)
       node[1] = node[1].astype(np.int32)
   cell_center = centers.compute_cell_center(zoneU)
-  assert (cell_center == expected_cell_center).all()
+  assert (cell_center == expected_cart).all()
+
+  #Test Elts // Cyl
+  tree = maia.factory.generate_dist_block(3, 'HEXA_8', comm)
+  zoneU = PT.get_all_Zone_t(tree)[0]
+  #On partitions, element are supposed to be I4
+  for elt_node in PT.iter_children_from_label(zoneU, 'Elements_t'):
+    for name in ['ElementConnectivity']:
+      node = PT.get_child_from_name(elt_node, name)
+      node[1] = node[1].astype(np.int32)
+  maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
+  cell_center = centers.compute_cell_center(zoneU)
+  assert np.allclose(cell_center, expected_cyl)
 
 @pytest_parallel.mark.parallel(1)
 def test_compute_face_center_3d(comm):

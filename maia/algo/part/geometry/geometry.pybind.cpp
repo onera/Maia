@@ -37,7 +37,6 @@ compute_center_cell_u(int n_cell,
     center_cell[3*icell  ] = 0.;
     center_cell[3*icell+1] = 0.;
     center_cell[3*icell+2] = 0.;
-    countc[icell] = 0;
   }
 
   // Loop over faces
@@ -95,6 +94,98 @@ compute_center_cell_u(int n_cell,
     // std::cout << "compute_center_cell_u: center_cell[3*icell  ] = " << center_cell[3*icell  ]
     //                                << ", center_cell[3*icell+1] = " << center_cell[3*icell+1]
     //                                << ", center_cell[3*icell+2] = " << center_cell[3*icell+2] << std::endl;
+  }
+
+  return np_center_cell;
+}
+
+// --------------------------------------------------------------------
+py::array_t<double>
+compute_center_cell_u_cyl(int n_cell,
+                          py::array_t<double>& np_cr,
+                          py::array_t<double>& np_ctheta,
+                          py::array_t<double>& np_cz,
+                          py::array_t<int>& np_face_vtx,
+                          py::array_t<int>& np_face_vtx_idx,
+                          py::array_t<int, py::array::f_style>& np_parent_elements)
+{
+  auto cr              = np_cr.data();
+  auto ctheta          = np_ctheta.data();
+  auto cz              = np_cz.data();
+  auto face_vtx        = np_face_vtx.data();
+  auto face_vtx_idx    = np_face_vtx_idx.data();
+  auto parent_elements = np_parent_elements.unchecked<2>();
+
+  py::array_t<double> np_center_cell(3*n_cell);
+  auto center_cell     = np_center_cell.mutable_data();
+
+  int n_face = np_parent_elements.shape()[0];
+  std::vector<int> countc(n_cell, 0);
+
+  // Init volume to ZERO
+  // ---------------
+  for (int icell = 0; icell < n_cell; ++icell) {
+    center_cell[3*icell  ] = 0.;
+    center_cell[3*icell+1] = 0.;
+    center_cell[3*icell+2] = 0.;
+  }
+
+  // Loop over faces
+  // ---------------
+  int f_shift(0); // To go back to local cell numbering if ngons are before nface
+  if (n_face > 0) {
+    if (std::max(parent_elements(0,0), parent_elements(0,1)) > n_face ) {
+      f_shift = n_face;
+    }
+  }
+  for (int iface = 0; iface < n_face; ++iface) {
+    // -> Face -> Cell connectivity
+    int il = parent_elements(iface,0)-1-(f_shift*(parent_elements(iface,0) > 0));
+    int ir = parent_elements(iface,1)-1-(f_shift*(parent_elements(iface,1) > 0));
+    
+    assert(((il >= -1) && (il < n_cell)));
+    assert(((ir >= -1) && (ir < n_cell)));
+
+    // Compute the indices of vtx on faces
+    int begin_vtx = face_vtx_idx[iface  ];
+    int end_vtx   = face_vtx_idx[iface+1];
+
+    // Loop over  vertex of each face
+    for (int indvtx = begin_vtx; indvtx < end_vtx; ++indvtx) {
+
+      int ivtx = face_vtx[indvtx]-1;
+
+       double x = cr[ivtx] * cos(ctheta[ivtx]);
+       double y = cr[ivtx] * sin(ctheta[ivtx]);
+       if (il >= 0) {
+         center_cell[3*il  ] += x;
+         center_cell[3*il+1] += y;
+         center_cell[3*il+2] += cz[ivtx];
+         countc[il] += 1;
+       }
+
+       if (ir >= 0) {
+         center_cell[3*ir  ] += x;
+         center_cell[3*ir+1] += y;
+         center_cell[3*ir+2] += cz[ivtx];
+         countc[ir] += 1;
+       }
+    }
+  }
+
+  // Finalize center cell computation
+  // --------------------------------
+  for(int icell = 0; icell < n_cell; ++icell) {
+    assert(countc[icell] > 0);
+    double center_x = center_cell[3*icell  ] / countc[icell];
+    double center_y = center_cell[3*icell+1] / countc[icell];
+    double center_z = center_cell[3*icell+2] / countc[icell];
+    // Back to cylindrical coords
+    double center_r = sqrt(center_x*center_x + center_y*center_y);
+    double center_theta = atan2(center_y, center_x);
+    center_cell[3*icell  ] = center_r;
+    center_cell[3*icell+1] = center_theta;
+    center_cell[3*icell+2] = center_z;
   }
 
   return np_center_cell;

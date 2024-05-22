@@ -6,6 +6,11 @@ from   maia.utils     import np_utils
 
 import cmaia.part_algo as cpart_algo
 
+def _to_xyz(r, theta, z):
+  return r*np.cos(theta), r*np.sin(theta), z
+def _to_rthetaz(x, y, z):
+  return np.sqrt(x**2+y**2), np.arctan2(y, x), z
+
 def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz):
 
   vtx_id_n = np.diff(vtx_id_idx)
@@ -16,10 +21,22 @@ def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz):
 
   return np_utils.interweave_arrays([mean_x, mean_y, mean_z])
 
+def _mean_coords_from_connectivity_cyl(vtx_id_idx, vtx_id, cr, ctheta, cz):
+
+  vtx_id_n = np.diff(vtx_id_idx)
+
+  cx,cy,cz = _to_xyz(cr, ctheta, cz)
+
+  mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+  
+  return np_utils.interweave_arrays(_to_rthetaz(mean_x, mean_y, mean_z))
+
 def compute_cell_center(zone):
   """Compute the cell centers of a partitioned zone.
 
-  Input zone must have cartesian coordinates recorded under a unique
+  Input zone must have cartesian or cylindrical coordinates recorded under a unique
   GridCoordinates node.
   Centers are computed using a basic average over the vertices of the cells.
 
@@ -40,10 +57,16 @@ def compute_cell_center(zone):
     n_cell     = PT.Zone.n_cell(zone)
     if PT.Zone.has_ngon_elements(zone):
       face_vtx_idx, face_vtx, ngon_pe = PT.Zone.ngon_connectivity(zone)
-      center_cell = cpart_algo.compute_center_cell_u(n_cell, *coords, face_vtx, face_vtx_idx, ngon_pe)
+      if isinstance(coords, PT.CylindricalCoordinates):
+        center_cell = cpart_algo.compute_center_cell_u_cyl(n_cell, *coords, face_vtx, face_vtx_idx, ngon_pe)
+      elif isinstance(coords, PT.CartesianCoordinates):
+        center_cell = cpart_algo.compute_center_cell_u(n_cell, *coords, face_vtx, face_vtx_idx, ngon_pe)
     else:
       cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone)
-      center_cell = _mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, *coords)
+      if isinstance(coords, PT.CylindricalCoordinates):
+        center_cell = _mean_coords_from_connectivity_cyl(cell_vtx_idx, cell_vtx, *coords)
+      elif isinstance(coords, PT.CartesianCoordinates):
+        center_cell = _mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, *coords)
   else:
     if isinstance(coords, PT.CylindricalCoordinates):
       center_cell = cpart_algo.compute_center_cell_s_cyl(*PT.Zone.CellSize(zone), *coords)

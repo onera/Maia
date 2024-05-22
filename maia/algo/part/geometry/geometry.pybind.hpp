@@ -11,6 +11,15 @@ compute_center_cell_u(int n_cell,
                       pybind11::array_t<int>& np_face_vtx_idx,
                       pybind11::array_t<int, pybind11::array::f_style>& np_parent_elements);
 
+pybind11::array_t<double>
+compute_center_cell_u_cyl(int n_cell,
+                          pybind11::array_t<double>& np_cr,
+                          pybind11::array_t<double>& np_ctheta,
+                          pybind11::array_t<double>& np_cz,
+                          pybind11::array_t<int>& np_face_vtx,
+                          pybind11::array_t<int>& np_face_vtx_idx,
+                          pybind11::array_t<int, pybind11::array::f_style>& np_parent_elements);
+
 // --------------------------------------------------------------------
 pybind11::array_t<double>
 compute_center_cell_s(int nx, int ny, int nz,

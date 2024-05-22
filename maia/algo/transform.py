@@ -193,8 +193,9 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply
     if apply_to_fields:
       predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
 
-    n_face = PT.Zone.FaceSize(zone)
     loc_to_theta  = {'CellCenter' : None, 'FaceCenter' : None, 'IFaceCenter' : None, 'JFaceCenter' : None, 'KFaceCenter' : None, 'Vertex' : None}
+    if PT.Zone.Type(zone) == 'Structured':
+      n_face = PT.Zone.FaceSize(zone)
     compute_theta = {'CellCenter'  : lambda z : maia.algo.part.compute_cell_center(z)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
                      'FaceCenter'  : lambda z : maia.algo.part.compute_face_center(z)[1::3],
                      'IFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][:n_face[0]].reshape(PT.Zone.IFaceSize(z), order='F'),
@@ -255,8 +256,9 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply
       predicates += ['ZoneBC_t/BC_t/BCDataSet_t/BCData_t', 'ZoneSubRegion_t', 'DiscreteData_t', 'FlowSolution_t']
       predicates = predicates[::-1]
 
-    n_face = PT.Zone.FaceSize(zone)
     loc_to_theta  = {'CellCenter' : None, 'FaceCenter' : None, 'IFaceCenter' : None, 'JFaceCenter' : None, 'KFaceCenter' : None, 'Vertex' : None}
+    if PT.Zone.Type(zone) == 'Structured':
+      n_face = PT.Zone.FaceSize(zone)
     compute_theta = {'CellCenter'  : lambda z : maia.algo.part.compute_cell_center(z)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
                      'FaceCenter'  : lambda z : maia.algo.part.compute_face_center(z)[1::3],
                      'IFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][:n_face[0]].reshape(PT.Zone.IFaceSize(z), order='F'),
