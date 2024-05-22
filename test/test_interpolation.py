@@ -65,7 +65,7 @@ def test_interpolation_non_overlaping_cubes(comm, strategy, write_output):
   # Interpolation
   # With Location strategy, non located point will have a NaN sol. With LocationAndClosest,
   # a ClosestPoint algorithm is applied to the non located points
-  MA.part.interpolate_from_part_trees(part_tree_src, part_tree_target, comm,\
+  MA.part.interpolate(part_tree_src, part_tree_target, comm,\
       containers_name=['FlowSolution#Init'], location='CellCenter', strategy=strategy) 
 
   if write_output:
@@ -132,7 +132,7 @@ def test_interpolation_refined(comm, n_part_tgt, write_output):
   MT.dist_tree_to_part_tree_all(dist_tree_tgt, part_tree_tgt, comm)
 
   # Here we use the Interpolator API, who could allow us to redo an interpolation later
-  interpolator = MA.part.create_interpolator_from_part_trees(part_tree_src, part_tree_tgt,\
+  interpolator = MA.part.create_interpolator(part_tree_src, part_tree_tgt,\
       comm, src_location='CellCenter', location='CellCenter', strategy='Location')
   interpolator.exchange_fields('FlowSolution#Init')
 

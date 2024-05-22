@@ -17,8 +17,11 @@ from .geometry               import compute_cell_center,\
                                     compute_edge_center,\
                                     compute_face_center
 
-from .interpolate            import interpolate_from_part_trees,\
-                                    create_interpolator_from_part_trees
+from .interpolation          import interpolate,\
+                                    interpolate_from_part_trees,\
+                                    create_interpolator,\
+                                    create_interpolator_from_part_trees,\
+                                    Interpolator
 
 from .isosurf                import iso_surface,\
                                     plane_slice,\

@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import numpy as np
+import warnings
 
 import Pypdm.Pypdm as PDM
 
@@ -225,7 +226,7 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
   for container_name in containers_name:
     interpolator.exchange_fields(container_name)
 
-def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, location, **options):
+def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   """Interpolate fields between two partitionned trees.
 
   For now, interpolation is limited to lowest order: target points take the value of the
@@ -247,7 +248,7 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
     connectivity and CellCenter located fields.
 
   See also:
-    :func:`create_interpolator_from_part_trees` takes the same parameters (excepted ``containers_name``,
+    :func:`create_interpolator` takes the same parameters (excepted ``containers_name``,
     which must be replaced by ``src_location``), and returns an Interpolator object which can be used
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
 
@@ -261,8 +262,8 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #interpolate_from_part_trees@start
-        :end-before: #interpolate_from_part_trees@end
+        :start-after: #interpolate@start
+        :end-before: #interpolate@end
         :dedent: 2
   """
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
@@ -270,9 +271,13 @@ def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, locat
 
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
+def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, location, **options):
+  warnings.warn("This function is deprecated in favor of interpolate, and will be removed in next release",
+    DeprecationWarning, stacklevel=2)
+  return interpolate(src_tree, tgt_tree, comm, containers_name, location, **options)
 
-def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, src_location, location, **options):
-  """Same as interpolate_from_part_trees, but return the interpolator object instead
+def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options):
+  """Same as interpolate, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange
   fields without recomputing the src_to_tgt indirection (geometry must remain the same).
   """
@@ -283,3 +288,7 @@ def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, src_location, 
   return Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, src_location, location, comm)
 
 
+def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, src_location, location, **options):
+  warnings.warn("This function is deprecated in favor of create_interpolator, and will be removed in next release",
+    DeprecationWarning, stacklevel=2)
+  return create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options)

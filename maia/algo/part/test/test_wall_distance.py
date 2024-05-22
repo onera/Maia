@@ -26,7 +26,7 @@ def test_detect_wall_families():
 
 
 # For U, we reuse the meshes defined in test_interpolate
-from maia.algo.part.test.test_interpolate import src_part_0, src_part_1
+from maia.algo.part.test.test_interpolation import src_part_0, src_part_1
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("perio", [True, False])
