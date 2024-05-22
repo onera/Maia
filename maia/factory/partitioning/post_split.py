@@ -1,4 +1,5 @@
 import numpy as np
+import os
 
 import maia
 import maia.pytree        as PT
@@ -8,6 +9,7 @@ import maia.transfer.dist_to_part.index_exchange as IBTP
 import maia.transfer.dist_to_part.recover_jn     as JBTP
 
 from maia.utils     import s_numbering
+from maia.utils     import logging as mlog
 
 is_zone_s = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Structured'
 is_zone_u = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Unstructured'
@@ -65,24 +67,32 @@ def update_zone_pointers(part_tree):
 def copy_additional_nodes(dist_zone, part_zone):
   """
   """
+  legacy_added = []
   #Zone data
-  names = ['.Solver#Param']
+  legacy_names = ['.Solver#Param']
   types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ZoneIterativeData_t']
   for node in PT.get_children(dist_zone):
-    if PT.get_name(node) in names or PT.get_label(node) in types:
+    if PT.get_label(node) in types:
       PT.add_child(part_zone, node)
+    if PT.get_name(node) in legacy_names:
+      PT.add_child(part_zone, node)
+      legacy_added.append(PT.get_name(node))
   #BCs
-  names = ['.Solver#BC', 'BoundaryMarker']
+  legacy_names = ['.Solver#BC', 'BoundaryMarker']
   types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ReferenceState_t', 'Ordinal_t']
   for p_zbc, p_bc in PT.iter_nodes_from_predicates(part_zone, 'ZoneBC_t/BC_t', ancestors=True):
     d_bc = PT.get_node_from_path(dist_zone, PT.get_name(p_zbc)+'/'+PT.get_name(p_bc))
     if d_bc: #Tmp, since S splitting store external JNs as bnd
       for node in PT.get_children(d_bc):
-        if PT.get_name(node) in names or PT.get_label(node) in types:
+        if PT.get_label(node) in types:
           PT.add_child(p_bc, node)
+        if PT.get_name(node) in legacy_names:
+          PT.add_child(p_bc, node)
+          legacy_added.append(PT.get_name(node))
   #GCs
-  names = ['.Solver#Property', 'GridConnectivityDonorName', 'DistInterfaceId', 'DistInterfaceOrd']
+  names = ['GridConnectivityDonorName']
   types = ['FamilyName_t', 'GridConnectivityProperty_t', 'GridConnectivityType_t']
+  legacy_names = ['.Solver#Property', 'DistInterfaceId', 'DistInterfaceOrd']
   gc_predicate = 'ZoneGridConnectivity_t/GridConnectivity_t'
   for p_zgc, p_gc in PT.iter_nodes_from_predicates(part_zone, gc_predicate, ancestors=True):
     d_gc = PT.get_node_from_path(dist_zone, PT.get_name(p_zgc)+'/'+PT.get_name(p_gc))
@@ -90,6 +100,15 @@ def copy_additional_nodes(dist_zone, part_zone):
       for node in PT.get_children(d_gc):
         if PT.get_name(node) in names or PT.get_label(node) in types:
           PT.add_child(p_gc, node)
+        if PT.get_name(node) in legacy_names:
+          PT.add_child(p_gc, node)
+          legacy_added.append(PT.get_name(node))
+
+  legacy_added = list(set(legacy_added))
+  if not os.environ.get('MAIA_SILENT_API_WARNINGS') and len(legacy_added) > 0:
+    mlog.warning("API change -- function `partition_dist_tree` will no longer copy UserDefinedData_t nodes "
+                 f"such as {legacy_added} in next release.\nThis has to be done explicitly with `dist_tree_to_part_tree_copy`. "
+                 "Export MAIA_SILENT_API_WARNINGS=1 to silent this warning.")
 
 def generate_related_zsr(dist_zone, part_zone):
   """
