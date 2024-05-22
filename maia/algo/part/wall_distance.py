@@ -429,14 +429,6 @@ def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name
         :dedent: 2
   """
 
-  try:
-    options.pop('families')
-  except KeyError:
-    pass
-  else:
-    warnings.warn("Parameter families is deprecated; wall-like BC_t are automatically detected",
-      DeprecationWarning, stacklevel=2)
-
   start = time.time()
   
   # Retrieve Wall Families (warning -- if we have a Family_t appearing under two bases 
