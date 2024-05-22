@@ -78,7 +78,7 @@ def compute_cell_center(zone):
 def compute_face_center(zone):
   """Compute the face centers of a partitioned zone.
 
-  Input zone must have cartesian coordinates recorded under a unique
+  Input zone must have cartesian or cylindrical coordinates recorded under a unique
   GridCoordinates node.
 
   Centers are computed using a basic average over the vertices of the faces.
@@ -107,7 +107,10 @@ def compute_face_center(zone):
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
     else:
       face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
-    return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *coords)
+    if isinstance(coords, PT.CartesianCoordinates):
+      return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *coords)
+    elif isinstance(coords, PT.CylindricalCoordinates):
+      return _mean_coords_from_connectivity_cyl(face_vtx_idx, face_vtx, *coords)
   else:
     zone_dim = PT.get_value(zone).shape[0]
     assert zone_dim >= 2, "1d zones are not managed"
@@ -122,10 +125,10 @@ def compute_face_center(zone):
       remove_z = True
     else:
       _cz = np.atleast_3d(coords[2])
-    if isinstance(coords, PT.CylindricalCoordinates):
-      centers = cpart_algo.compute_center_face_s_cyl(*vtx_size, _cx, _cy, _cz)
-    elif isinstance(coords, PT.CartesianCoordinates):
+    if isinstance(coords, PT.CartesianCoordinates):
       centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
+    elif isinstance(coords, PT.CylindricalCoordinates):
+      centers = cpart_algo.compute_center_face_s_cyl(*vtx_size, _cx, _cy, _cz)
     if remove_z:
         centers = np.delete(centers, 3*np.arange(centers.size // 3)+2)
 
@@ -134,7 +137,7 @@ def compute_face_center(zone):
 def compute_edge_center(zone):
   """Compute the edge centers of a partitioned zone.
 
-  Input zone must have cartesian coordinates recorded under a unique
+  Input zone must have cartesian or cylindrical coordinates recorded under a unique
   GridCoordinates node, and a unstructured standard elements connectivity.
 
   Note:
@@ -156,6 +159,9 @@ def compute_edge_center(zone):
 
   if PT.Zone.Type(zone) == "Unstructured":
     edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
-    return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, *coords)
+    if isinstance(coords, PT.CartesianCoordinates):
+      return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, *coords)
+    elif isinstance(coords, PT.CylindricalCoordinates):
+      return _mean_coords_from_connectivity_cyl(edge_vtx_idx, edge_vtx, *coords)
   else:
     raise NotImplementedError("Only U-elts zones are managed")
