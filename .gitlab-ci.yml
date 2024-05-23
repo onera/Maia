@@ -204,6 +204,7 @@ deploy_spiro_socle5:
 
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd5 \
+                -DPython_EXECUTABLE=/opt/tools/python/3.7.4-intel2120-hpc/bin/python3 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
                 -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
@@ -231,6 +232,7 @@ deploy_spiro_socle6:
 
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd6 \
+                -DPython_EXECUTABLE=/opt/tools/python/3.8.14-intel2220-hpc/bin/python3 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd6.log
@@ -254,9 +256,10 @@ deploy_spiro_sonics:
       module purge
       source /scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
       export https_proxy=http://proxy.onera:80
-      export PREFIX=/scratchm/sonics/usr/maia/dev
-             FLAGS="-DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON"
-      cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\$PREFIX/default \$FLAGS ../
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/default \
+                -DPython_EXECUTABLE=/scratchm/sonics/opt_el8/linux-rhel8-broadwell/gcc-8.3.1/python-3.9.12-enb6bk6hdesnoo6ppwn5jnb3jivt2jcz/bin/python3 \
+                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > default.log
       EOF
   script:
