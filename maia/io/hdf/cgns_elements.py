@@ -32,7 +32,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
   hdf_filter[ec_path] = DSMMRYEC + DSFILEEC + DSGLOBEC + DSFORMEC
 
-def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
+def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
   distrib_elmt = PT.get_value(MT.getDistribution(elmt, 'Element'))
@@ -52,10 +52,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode):
     # Distribution for NGon/NFace -> ElementStartOffset is the same than DistrbutionFace, except
     # that the last proc have one more element
     n_elmt      = distrib_elmt[2]
-    if(mode == 'read'):
-      dn_elmt_idx = dn_elmt + 1 # + int(distrib_elmt[1] == n_elmt)
-    elif(mode == 'write'):
-      dn_elmt_idx = dn_elmt + int((distrib_elmt[1] == n_elmt) and (distrib_elmt[0] != distrib_elmt[1]))
+    dn_elmt_idx = dn_elmt + 1
     DSMMRYESO = [[0              ], [1], [dn_elmt_idx], [1]]
     DSFILEESO = [[distrib_elmt[0]], [1], [dn_elmt_idx], [1]]
     DSGLOBESO = [[n_elmt+1]]
@@ -97,14 +94,14 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
       hdf_filter[f"{zone_path}/{PT.get_name(elmt)}/ParentElementsPosition"] = data_space
 
 
-def create_zone_elements_filter(zone_tree, zone_path, hdf_filter, mode):
+def create_zone_elements_filter(zone_tree, zone_path, hdf_filter):
   """
   Prepare the hdf_filter for all the Element_t nodes found in the zone.
   """
   zone_elmts = gen_elemts(zone_tree)
   for elmt in zone_elmts:
     if PT.Element.CGNSName(elmt) in ['NGON_n', 'NFACE_n', 'MIXED']:
-      create_zone_eso_elements_filter(elmt, zone_path, hdf_filter, mode)
+      create_zone_eso_elements_filter(elmt, zone_path, hdf_filter)
     else:
       create_zone_std_elements_filter(elmt, zone_path, hdf_filter)
 

@@ -225,7 +225,7 @@ def test_load_node_partial(partial, ref_hdf_file):
 
   if partial:
     # Load only one array
-    HCG._load_node_partial(gid, parent, lambda N,L : N[-1] != 'CoordinateY', ancestors_stack)
+    HCG._load_node_partial(gid, parent, lambda N,L,s : N[-1] != 'CoordinateY', ancestors_stack)
     yt = """
     ZoneU Zone_t:
       GridCoordinates GridCoordinates_t:
@@ -234,7 +234,7 @@ def test_load_node_partial(partial, ref_hdf_file):
         CoordinateY#Size DataArray_t I8 [6]:
     """
   else:
-    HCG._load_node_partial(gid, parent, lambda N,L : True, ancestors_stack)
+    HCG._load_node_partial(gid, parent, lambda N,L,s : True, ancestors_stack)
     yt = """
     ZoneU Zone_t:
       GridCoordinates GridCoordinates_t:
@@ -253,7 +253,7 @@ def test_write_node_partial(tmp_hdf_file):
   gid = HCG.open_from_path(fid, 'Base/ZoneU')
 
   gid.unlink(b'GridCoordinates') # Remove before writting
-  HCG._write_node_partial(gid, node, lambda N,L: N[-1] != 'CoordinateY', ancestors_stack)
+  HCG._write_node_partial(gid, node, lambda N,L,s: N[-1] != 'CoordinateY', ancestors_stack)
 
   gid.close()
   fid.close()
@@ -277,7 +277,7 @@ def test_write_node_partial(tmp_hdf_file):
 @pytest.mark.parametrize('partial', [True,False])
 def test_load_tree_partial(partial, ref_hdf_file):
   if partial:
-    tree = HCG.load_tree_partial(ref_hdf_file, lambda N,L : N[-1] != 'CoordinateY')
+    tree = HCG.load_tree_partial(ref_hdf_file, lambda N,L,s : N[-1] != 'CoordinateY')
     yt = """
     Base CGNSBase_t [2,2]:
       ZoneU Zone_t [[6, 0, 0]]:
@@ -294,13 +294,13 @@ def test_load_tree_partial(partial, ref_hdf_file):
           CoordinateY#Size DataArray_t I8 [2,2]:
     """
   else:
-    tree = HCG.load_tree_partial(ref_hdf_file, lambda N,L : True)
+    tree = HCG.load_tree_partial(ref_hdf_file, lambda N,L,s : True)
     yt = sample_tree
   assert PT.is_same_tree(tree, PT.yaml.to_cgns_tree(yt))
 
 def test_write_tree_partial(tmp_path, ref_hdf_file):
   tree = PT.yaml.to_cgns_tree(sample_tree)
   outfile = str(tmp_path / Path('only_coords.hdf'))
-  HCG.write_tree_partial(tree, outfile, lambda N,L : True)
+  HCG.write_tree_partial(tree, outfile, lambda N,L,s : True)
   cmd = ["h5diff", f"{ref_hdf_file}", f"{outfile}", "Base"] #hdf5version dataset can vary
   assert subprocess.run(cmd).returncode == 0

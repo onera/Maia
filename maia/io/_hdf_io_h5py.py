@@ -1,5 +1,6 @@
 from mpi4py import MPI
 from h5py   import h5p, h5f, h5fd
+from math   import prod
 
 import maia.pytree as PT
 
@@ -11,7 +12,7 @@ from .fix_tree      import fix_point_ranges, corr_index_range_names,\
                            ensure_symmetric_gc1to1, rm_legacy_nodes,\
                            add_missing_pr_in_bcdataset, check_datasize
 
-def load_data(names, labels):
+def load_data(names, labels, data_shape):
   """ Function used to determine if the data is heavy or not """
   if len(names) == 1: #First level (Base, CGLibVersion, ...) -> always load + early return
     return True
@@ -26,7 +27,7 @@ def load_data(names, labels):
     if names[-2] in [':CGNS#GlobalNumbering']:
       return False
     if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
-      return False
+      return prod(data_shape) == 1 # BCData_t arrays can have scalar (load) of vectorial (dont load) size
   return True
 
 def load_size_tree(filename, comm):
@@ -60,7 +61,11 @@ def load_partial(filename, dist_tree, hdf_filter):
 def write_partial(filename, dist_tree, hdf_filter, comm):
 
   if comm.Get_rank() == 0:
-    write_tree_partial(dist_tree, filename, load_data)
+    def write_data(N,L,s):
+      if L[-1] in ['DataArray_t', 'IndexArray_t']:
+        return '/'.join(N) not in hdf_filter
+      return True
+    write_tree_partial(dist_tree, filename, write_data)
   comm.barrier()
 
   fapl = h5p.create(h5p.FILE_ACCESS)
@@ -77,7 +82,7 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
   fid.close()
 
 def read_full(filename):
-  return load_tree_partial(filename, lambda X,Y: True)
+  return load_tree_partial(filename, lambda X,Y,s: True)
 
 def read_links(filename):
   return load_tree_links(filename)
@@ -86,7 +91,7 @@ def write_full(filename, dist_tree, links=[]):
   _dist_tree = PT.shallow_copy(dist_tree)
   for link in links: # Links override data, so delete data
     PT.rm_node_from_path(_dist_tree, link[3])
-  write_tree_partial(_dist_tree, filename, lambda X,Y: True)
+  write_tree_partial(_dist_tree, filename, lambda X,Y,s: True)
 
   # Add links if any
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)

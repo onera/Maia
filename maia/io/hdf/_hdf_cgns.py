@@ -251,15 +251,20 @@ def _load_node_partial(gid, parent, load_if, ancestors_stack):
   ancestors_stack[0].append(name)
   ancestors_stack[1].append(label)
 
-  if load_if(*ancestors_stack):
+  if b_kind != b'MT':
+    _data = h5d.open(gid, b' data')
+    _shape = _data.shape[::-1]
+  else:
+    _shape = ()
+
+  if load_if(*ancestors_stack, _shape):
     if b_kind != b'MT':
       value = load_data(gid)
       if b_kind==b'C1':
         value.dtype = 'S1'
   elif b_kind != b'MT':
-    _data = h5d.open(gid, b' data')
     size_node = [name + '#Size', 
-                 np.array(_data.shape[::-1]),
+                 np.array(_shape),
                  [],
                  'DataArray_t']
     parent[2].append(size_node)
@@ -297,7 +302,9 @@ def _write_node_partial(gid, node, write_if, ancestors_stack):
   attr_writter.write_str_3 (node_id, b'type',  cgtype)
   attr_writter.write_flag(node_id) 
 
-  if write_if(*ancestors_stack) and node[1] is not None:
+  node_data       = node[1]
+  node_data_shape = node_data.shape if node_data is not None else ()
+  if node_data is not None and write_if(*ancestors_stack, node_data_shape):
     write_data(node_id, node[1])
 
   # Write children

@@ -163,11 +163,12 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
         ds_path = bc_path + '/' + PT.get_name(mask_dataset)
         d_dataset = PT.get_node_from_path(dist_zone, ds_path) #True DataSet
         #If dataset has its own PointList, we must override bc distribution and lngn
-        if MT.getDistribution(d_dataset) is not None:
-          distribution = te_utils.get_cgns_distribution(d_dataset, 'Index')
+        has_own_distri = MT.getDistribution(d_dataset) is not None
+        if has_own_distri:
+          distri_node  = MT.getDistribution(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
-          distribution = te_utils.get_cgns_distribution(d_bc, 'Index')
+          distri_node  = MT.getDistribution(d_bc)
           if not par_utils.exists_anywhere(part_zones, bc_path+'/:CGNS#GlobalNumbering/Index', comm):
             # For structured zones, gnum are not created during partitioning so add it now
             assert PT.Zone.Type(dist_zone) == "Structured"
@@ -175,10 +176,18 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
-        dist_data = {data_path : PT.get_node_from_path(d_dataset, data_path)[1] for data_path in data_paths}
+        dist_data = {data_path : PT.get_node_from_path(d_dataset, data_path)[1] \
+                     for data_path in data_paths}
+        # Filter global / local data
+        global_arrays_node = PT.get_child_from_name(distri_node, 'BCDataGlobal')
+        global_arrays_list = PT.get_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
+        as_path = lambda path : path if has_own_distri else f"{PT.get_name(d_dataset)}/{path}" #Add DS name if required, to search in global_arrays_list  
+        dist_data_loc  = {path: data for path, data in dist_data.items() if as_path(path) not in global_arrays_list}
+        dist_data_glob = {path: data for path, data in dist_data.items() if as_path(path)     in global_arrays_list}
 
-        #Exchange
-        part_data = EP.block_to_part(dist_data, distribution, lngn_list, comm)
+        #Exchange (local data)
+        distribution = PT.get_child_from_name(distri_node, 'Index')[1]
+        part_data = EP.block_to_part(dist_data_loc, distribution, lngn_list, comm)
 
         #Put part data in tree
         for ipart, part_zone in enumerate(part_zones):
@@ -192,6 +201,10 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
               container_name, field_name = data_name.split('/')
               p_container = PT.update_child(part_ds, container_name, 'BCData_t')
               PT.new_DataArray(field_name, data[ipart], parent=p_container)
+            for data_name, data in dist_data_glob.items(): # Copy global data
+              container_name, field_name = data_name.split('/')
+              p_container = PT.update_child(part_ds, container_name, 'BCData_t')
+              PT.new_DataArray(field_name, data.copy(), parent=p_container)
 
 def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
   """

@@ -23,6 +23,7 @@ Developpement version
 - compute_wall_distance: use volumic face global numbering in ClosestEltGnum result
 - closest_points: allow meshes of any cell dimension
 - Manage ArbitraryGridMotion_t nodes in IO, split and data transfer
+- Manage global BCData_t arrays in IO, split and data transfer
 - Add shortcut functions to duplicate zones belonging to a family
 
 🐞 Fixes

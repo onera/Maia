@@ -19,13 +19,21 @@ def distribute_pl_node(node, comm):
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(dist_node, 'IndexArray_t'):
     array_n[1] = array_n[1][:, distri[0]:distri[1]]
-  #Data Arrays
+  # Standard Data Arrays
+  for array_n in PT.iter_children_from_label(dist_node, 'DataArray_t'):
+    array_n[1] = array_n[1][distri[0]:distri[1]]
+  # BCData_t arrays case : can be scalar or vector
   has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
   bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)
   bcds_without_pl_query = [bcds_without_pl, 'BCData_t', 'DataArray_t']
-  for array_path in ['DataArray_t', 'BCData_t/DataArray_t', bcds_without_pl_query]:
-    for array_n in PT.iter_children_from_predicates(dist_node, array_path):
-      array_n[1] = array_n[1][distri[0]:distri[1]]
+  global_arrays_list = []
+  for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
+    for array_path in PT.predicates_to_paths(dist_node, query):
+      array_n = PT.get_node_from_path(dist_node, array_path)
+      if array_n[1].size != 1:
+        array_n[1] = array_n[1][distri[0]:distri[1]]
+      else:
+        global_arrays_list.append(array_path)
 
   #Additionnal treatement for subnodes with PL (eg bcdataset)
   has_pl = lambda n : PT.get_name(n) not in ['PointList', 'PointRange'] and has_subset(n)
@@ -33,7 +41,9 @@ def distribute_pl_node(node, comm):
     dist_child = distribute_pl_node(child, comm)
     child[2] = dist_child[2]
 
-  MT.newDistribution({'Index' : distri}, dist_node)
+  distri_n = MT.newDistribution({'Index' : distri}, dist_node)
+  if len(global_arrays_list) > 0:
+    PT.new_Descriptor('BCDataGlobal', '\n'.join(global_arrays_list), parent=distri_n)
 
   return dist_node
 
@@ -180,7 +190,9 @@ def _broadcast_full_to_dist(tree, comm, owner):
         for node in PT.get_children_from_predicate(container, 'DataArray_t'):
           if PT.get_name(node) != 'ParentElements':
             node[1] = node[1].reshape((-1), order='F')
-          PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node[1].shape, parent=container)
+          scalar_ds = PT.get_label(container) == 'BCData_t' and PT.get_value(node).size == 1
+          if not scalar_ds:
+            PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node[1].shape, parent=container)
         for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
           PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node[1].shape, parent=container)
 
@@ -192,6 +204,8 @@ def _broadcast_full_to_dist(tree, comm, owner):
           # Be carefull with PE
           if PT.get_name(node) == 'ParentElements':
             PT.set_value(node, np.empty((0,2), dtype=node[1].dtype, order='F'))
+          elif PT.get_label(container) == 'BCData_t' and PT.get_value(node).size == 1:
+            pass # skip scalar BCDS   
           else:
             PT.set_value(node, np.empty(0, dtype=node[1].dtype))
         for node in PT.get_children_from_predicate(container, 'IndexArray_t'):

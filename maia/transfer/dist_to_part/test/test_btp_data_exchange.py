@@ -24,8 +24,10 @@ ZoneU Zone_t [[6,0,0]]:
       PointList IndexArray_t [[18, 22]]:
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {0} [0,2,6]:
+        BCDataGlobal Descriptor_t "BCDSWithoutPL/DirichletData/globfield":
       BCDSWithoutPL BCDataSet_t:
         DirichletData BCData_t:
+          globfield DataArray_t [42]:
           field DataArray_t [1,2]:
       BCDSWithPL BCDataSet_t:
         DirichletData BCData_t:
@@ -89,8 +91,10 @@ ZoneU Zone_t [[6,0,0]]:
       PointList IndexArray_t [[13, 39, 41, 9]]:
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {0} [2,6,6]:
+        BCDataGlobal Descriptor_t "BCDSWithoutPL/DirichletData/globfield":
       BCDSWithoutPL BCDataSet_t:
         DirichletData BCData_t:
+          globfield DataArray_t [42]:
           field DataArray_t [4,3,2,1]:
       BCDSWithPL BCDataSet_t:
         DirichletData BCData_t:
@@ -400,10 +404,12 @@ def test_dist_dataset_to_part_dataset(comm, from_api):
 
   if comm.Get_rank() == 0:
     assert (PT.get_node_from_path(part_zones[0], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [2,2,1]).all()
+    assert (PT.get_node_from_path(part_zones[0], 'ZBC/BC/BCDSWithoutPL/DirichletData/globfield')[1] == [42]).all()
     assert PT.get_node_from_path(part_zones[0], 'ZBC/BC/BCDSWitPL/DirichletData/field') is None
   elif comm.Get_rank() == 1:
     assert PT.get_node_from_path(part_zones[0], 'ZBC/BC') is None
     assert (PT.get_node_from_path(part_zones[1], 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [1,4,3]).all()
+    assert (PT.get_node_from_path(part_zones[1], 'ZBC/BC/BCDSWithoutPL/DirichletData/globfield')[1] == [42]).all()
     assert (PT.get_node_from_path(part_zones[1], 'ZBC/BC/BCDSWithPL/DirichletData/field')[1] == [100.]).all()
 
 @pytest_parallel.mark.parallel(2)

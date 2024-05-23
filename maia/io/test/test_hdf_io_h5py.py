@@ -12,23 +12,26 @@ from maia.io import _hdf_io_h5py as IOH
 
 def test_load_data():
   names, labels = 'Base/Zone', 'CGNSBase_t/Zone_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), (3,)) == True
   names, labels = 'Base/Zone/GCo/CX', 'CGNSBase_t/Zone_t/GridCoordinates_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), (20,50)) == False
   names, labels = 'Base/Zone/GCo/CX', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), (20,50)) == True
   names, labels = 'GC/GCP/Perio/RotationAngle', 'GridConnectivity_t/GridConnectivityProperty_t/Periodic_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), (100,)) == True
   names, labels = 'ZBC/BC/PointList', 'ZoneBC_t/BC_t/IndexArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), ()) == False
   names, labels = 'Base/Zone/:elsA#Hybrid/IndexNGONCrossTable', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), ()) == False
   names, labels = 'Base/Zone/.cedre#Geometry/CustomData', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), ()) == False
   names, labels = 'ZBC/BC/PointRange', 'ZoneBC_t/BC_t/IndexRange_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), (2,3)) == True
   names, labels = 'FSSeq/GM/Coeff', 'FlowEquationSet_t/GasModel_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/')) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), (1,)) == True
+  names, labels = 'BC/BCDataSet/NeumannData/Pressure', 'BC_t/BCDataSet_t/BCData_t/DataArray_t'
+  assert IOH.load_data(names.split('/'), labels.split('/'), (100,)) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), (1,)) == True
 
 @pytest_parallel.mark.parallel(3)
 def test_load_size_tree(comm):
