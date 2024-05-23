@@ -229,6 +229,37 @@ The distributed entities are:
 
         If the quantity is described by a :cgns:`PointList`, then the :cgns:`PointList` itself is distributed the same way (in contrast, a :cgns:`PointRange` is fully replicated across processes because it is lightweight)
 
+        .. admonition:: Specific case of global BCData_t arrays
+
+          The CGNS standard allows 
+          `global data <https://cgns.github.io/CGNS_docs_current/sids/bc.html#global&local>`_
+          to be stored in BCDataSet_t nodes. To distinguishe these arrays, which are not distributed,
+          from the classical one, an additional
+          :cgns:`Descriptor_t` node named :cgns:`BCDataGlobal` must be added under the related
+          :cgns:`Distribution` container. This descriptor stores the ``\n``-separated list of paths (starting from parent node)
+          of the global arrays:
+
+          ::
+
+            ├───BC BC_t "Null"
+            │   ├───GridLocation GridLocation_t "FaceCenter"
+            │   ├───PointList IndexArray_t I4 (1, 50)
+            │   ├───BCDataSet BCDataSet_t "Null"
+            │   │   └───DirichletData BCData_t 
+            │   │       ├───Pressure DataArray_t R8 (50,)
+            │   │       ├───Density DataArray_t R8 (50,)
+            │   │       └───Temperature DataArray_t R8 [42.]
+            │   └───:CGNS#Distribution UserDefinedData_t 
+            │       ├───Index DataArray_t I4 [  0 50 100]
+            │       └───BCDataGlobal Descriptor_t 
+            │           "BCDataSet/DirichletData/Temperature"
+
+          In the avove example, Temperature is flagged as a global data, whereas Pressure and Density are
+          usual distributed arrays.
+
+          Be aware that some of maia functionalities may not support this kind of global data.
+          
+
       Connectivities
         The **partial distribution** is stored in a :cgns:`Distribution/Element` node at the level of the :cgns:`Element_t` node. Its values are related to the elements, not the vertices of the connectivity array.
 
