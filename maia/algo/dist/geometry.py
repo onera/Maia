@@ -154,24 +154,33 @@ def compute_face_center(zone, comm):
     face_normal (array): Flat (interlaced) numpy array of face centers
 
   """
-  coords = PT.Zone.coordinates(zone)
-  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
-
-  if PT.Zone.Type(zone) == "Unstructured":
+  # TODO Implementation for U/elts
+  if PT.Zone.Type(zone) == "Structured":
+    face_vtx_idx, face_vtx = _cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone))
+  else:
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
       face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
       _face_vtx_idx = np.empty(face_vtx_idx.size, np.int32)
       np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-      part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
-      coords = [part_data[key][0] for key in part_data.keys()]
+    else:
+      raise NotImplementedError("U/elt zones are not managed")
 
-      return _mean_coords_from_connectivity(_face_vtx_idx, *coords)
-  raise NotImplementedError("Only NGON zones are managed")
+  coords = PT.Zone.coordinates(zone)
+  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
+  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+
+  part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
+  local_coords = [part_data[key][0] for key in part_data.keys()]
+
+  if isinstance(coords, PT.CartesianCoordinates):
+    return _mean_coords_from_connectivity(_face_vtx_idx, *local_coords)
+  elif isinstance(coords, PT.CylindricalCoordinates):
+    return _mean_coords_from_connectivity_cyl(_face_vtx_idx, *local_coords)
 
 def compute_cell_center(zone, comm):
+  # TODO Implementation for U/elts
 
   if PT.Zone.Type(zone) == "Structured":
     cell_vtx_idx, cell_vtx = _cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone))
