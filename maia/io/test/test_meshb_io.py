@@ -40,7 +40,7 @@ def test_get_tree_info():
 def test_cgns_to_meshb(tmp_path):
     # ---- Loading yaml/cgns mesh file
     yaml_path = os.path.join(TU.mesh_dir, 'multi_element.yaml')
-    dist_tree = file_to_dist_tree(yaml_path, MPI.COMM_WORLD)
+    dist_tree = file_to_dist_tree(yaml_path, MPI.COMM_SELF)
 
     # ---- Setting up flow solution
     zone       = PT.get_all_Zone_t(dist_tree)[0]
