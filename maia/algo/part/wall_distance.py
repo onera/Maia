@@ -396,7 +396,8 @@ def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name
   """Compute wall distances and add it in tree.
 
   For each volumic point, compute the distance to the nearest face belonging to a BC of kind wall.
-  Computation can be done using "cloud" or "propagation" method.
+  BC are considered to be of kind wall if their BCType (or the one of their related family) is one of 
+  ``'BCWall'``, ``'BCWallViscous'``, ``'BCWallViscousHeatFlux'`` or ``'BCWallViscousIsothermal'``.
 
   Note: 
     Propagation method requires ParaDiGMa access and is only available for unstructured cell centered

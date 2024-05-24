@@ -16,6 +16,8 @@ Additional environments are provided in the [Quick start](https://numerics.gitla
 
 ## Other users 
 
+You can use the external documentation link : https://onera.github.io/Maia/index.html.
+
 See the next section to build your own version of Maia.
 
 ## Build and install ##

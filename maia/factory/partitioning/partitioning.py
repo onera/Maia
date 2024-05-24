@@ -57,8 +57,6 @@ def set_default(dist_tree, comm):
 def partition_dist_tree(dist_tree, comm, **kwargs):
   """Perform the partitioning operation: create a partitioned tree from the input distributed tree.
 
-  The input tree can be structured or unstuctured, but hybrid meshes are not yet supported.
-
   Important:
     Geometric information (such as boundary conditions, zone subregion, etc.) are reported
     on the partitioned tree; however, data fields (BCDataSet, FlowSolution, etc.) are not
