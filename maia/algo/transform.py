@@ -1,7 +1,7 @@
 import numpy as np
 
-import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from maia.utils import py_utils, np_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
 
@@ -162,6 +162,35 @@ def scale_mesh(t, s=1.):
 
 
 
+# Belows are helper functions to compute entity theta coordinate, depending of GridLocation
+def _compute_cellcenter_theta(z, comm):
+  theta = _compute_vol_center(z, comm)[1::3]
+  if PT.Zone.Type(z) == 'Structured' and MT.getDistribution(z) is None:
+    theta = theta.reshape(PT.Zone.CellSize(z), order='F')
+  return theta
+
+def _compute_ifacecenter_theta(z, comm):
+  n_face = PT.Zone.FaceSize(z)
+  theta = _compute_face_center(z,comm)[1::3][:n_face[0]] 
+  return theta.reshape(PT.Zone.IFaceSize(z), order='F') if MT.getDistribution(z) is None else theta
+
+def _compute_jfacecenter_theta(z, comm):
+  n_face = PT.Zone.FaceSize(z)
+  theta = _compute_face_center(z,comm)[1::3][n_face[0]:n_face[0]+n_face[1]] 
+  return theta.reshape(PT.Zone.JFaceSize(z), order='F') if MT.getDistribution(z) is None else theta
+
+def _compute_kfacecenter_theta(z, comm):
+  n_face = PT.Zone.FaceSize(z)
+  theta = _compute_face_center(z,comm)[1::3][n_face[0]+n_face[1]:] 
+  return theta.reshape(PT.Zone.KFaceSize(z), order='F') if MT.getDistribution(z) is None else theta
+
+COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
+                 'FaceCenter'  : lambda z,comm : _compute_face_center(z,comm)[1::3], #Only U -> no reshape needed
+                 'IFaceCenter' : _compute_ifacecenter_theta,
+                 'JFaceCenter' : _compute_jfacecenter_theta,
+                 'KFaceCenter' : _compute_kfacecenter_theta,
+                 'Vertex'      : lambda z,c : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
+
 def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.
 
@@ -195,26 +224,19 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm,
     if apply_to_fields:
       predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
 
-    if PT.Zone.Type(zone) == 'Structured':
-      n_face = PT.Zone.FaceSize(zone)
-      n_fi, n_fj = n_face[0], n_face[1] 
-    compute_theta = {'CellCenter'  : lambda z : _compute_vol_center(z,comm)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
-                     'FaceCenter'  : lambda z : _compute_face_center(z,comm)[1::3], #Only U -> no reshape needed
-                     'IFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][         :n_fi]     .reshape(PT.Zone.IFaceSize(z), order='F'),
-                     'JFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi     :n_fi+n_fj].reshape(PT.Zone.JFaceSize(z), order='F'),
-                     'KFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi+n_fj:]         .reshape(PT.Zone.KFaceSize(z), order='F'),
-                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
-    loc_to_theta  = {key: None for key in compute_theta.keys()}
+    loc_to_theta  = {key: None for key in COMPUTE_THETA.keys()}
 
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
-        if PT.get_label(container) != "GridCoordinates_t":
-          loc_container = PT.Subset.GridLocation(container)
-          if loc_to_theta[loc_container] is None:
-            loc_to_theta[loc_container] = compute_theta[loc_container](zone)
-          theta = loc_to_theta[loc_container]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
+        if PT.get_label(container) != "GridCoordinates_t" and len(vectors_basenames) > 0:
+          assert PT.get_child_from_name(container, 'PointList') is None, "Partial containers are not supported"
+          assert PT.get_child_from_name(container, 'PointRange') is None, "Partial containers are not supported"
+          loc_container = PT.Subset.GridLocation(container)
+          if loc_to_theta[loc_container] is None:
+            loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
+          theta = loc_to_theta[loc_container]
         for basename in vectors_basenames:
 
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
@@ -260,26 +282,19 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm,
       predicates = []
     predicates += ['GridCoordinates_t'] # Always treat coordinates (last because needed for centers)
 
-    if PT.Zone.Type(zone) == 'Structured':
-      n_face = PT.Zone.FaceSize(zone)
-      n_fi, n_fj = n_face[0], n_face[1] 
-    compute_theta = {'CellCenter'  : lambda z : _compute_vol_center(z,comm)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
-                     'FaceCenter'  : lambda z : _compute_face_center(z,comm)[1::3], #Only U -> no reshape needed
-                     'IFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][0         :n_fi]     .reshape(PT.Zone.IFaceSize(z), order='F'),
-                     'JFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi      :n_fi+n_fj].reshape(PT.Zone.JFaceSize(z), order='F'),
-                     'KFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi+n_fj:]          .reshape(PT.Zone.KFaceSize(z), order='F'),
-                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
-    loc_to_theta  = {key: None for key in compute_theta.keys()}
+    loc_to_theta  = {key: None for key in COMPUTE_THETA.keys()}
   
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
-        if PT.get_label(container) != "GridCoordinates_t":
-          loc_container = PT.Subset.GridLocation(container)
-          if loc_to_theta[loc_container] is None:
-            loc_to_theta[loc_container] = compute_theta[loc_container](zone)
-          theta = loc_to_theta[loc_container]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
+        if PT.get_label(container) != "GridCoordinates_t" and len(cylindric_vectors_basenames) > 0:
+          assert PT.get_child_from_name(container, 'PointList') is None, "Partial containers are not supported"
+          assert PT.get_child_from_name(container, 'PointRange') is None, "Partial containers are not supported"
+          loc_container = PT.Subset.GridLocation(container)
+          if loc_to_theta[loc_container] is None:
+            loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
+          theta = loc_to_theta[loc_container]
         for basename in cylindric_vectors_basenames:
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
           if basename == "Coordinate":

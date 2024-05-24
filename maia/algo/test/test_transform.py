@@ -158,13 +158,18 @@ def test_scale_mesh(comm):
 
   assert "Scaling mesh does not affect fields, and some are present in tree." in log_collector.logs
 
-@pytest.mark.parametrize('revolution_axis', [(0, 1, 1), [1, 2, 3], (0, 0, 1), [0, 1, 0]])
+@pytest.mark.parametrize('revolution_axis', [(0, 1, 0), [1, 2, 3]])
 @pytest.mark.parametrize('zonetype', ['S', 'Poly'])       
+@pytest.mark.parametrize('partitioned', [False, True])
+@pytest_parallel.mark.parallel(2)
 class Test_change_basis_simple:
-  def test_auxiliary_coords(self, zonetype, revolution_axis, comm):
+  def test_auxiliary_coords(self, zonetype, partitioned, revolution_axis, comm):
 
       dist_tree = maia.factory.generate_dist_block(4, zonetype, comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+      if partitioned:
+        part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+      else:
+        part_tree = dist_tree
 
       for zone in PT.get_all_Zone_t(part_tree):
         # Recover the intial cartesian coordinates
@@ -185,20 +190,39 @@ class Test_change_basis_simple:
       transform.auxiliary_coords_system(part_tree, None)
       assert PT.is_same_tree(part_tree_cart_ref, part_tree, abs_tol=1e-10)
 
-  def test_cyl_cart(self, zonetype, revolution_axis, comm):
+  def test_cyl_cart(self, zonetype, partitioned, revolution_axis, comm):
 
     dist_tree = maia.factory.generate_dist_block(3, zonetype, comm)
-    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+    if partitioned:
+      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+    else:
+      part_tree = dist_tree
 
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
+      n_cell = PT.Zone.CellSize(zone) if partitioned else np.diff(MT.get_distribution(zone, 'Cell')[1])[0]
+      n_cell = n_cell.tolist() if isinstance(n_cell, np.ndarray) else [n_cell]
+      n_vtx = PT.Zone.VertexSize(zone) if partitioned else np.diff(MT.get_distribution(zone, 'Vertex')[1])[0]
+      n_vtx = n_vtx.tolist() if isinstance(n_vtx, np.ndarray) else [n_vtx]
 
       # Create fields in zone
       PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.set_label(dd, 'DiscreteData_t')
+      zsr_list = [
+        PT.new_ZoneSubRegion('SubRegionCC', loc='CellCenter', fields={f'Field{d}' : np.random.rand(*n_cell) for d in ['X', 'Y', 'Z']}, parent=zone),
+        PT.new_ZoneSubRegion('SubRegionVtx', loc='Vertex', fields={f'Field{d}' : np.random.rand(*n_vtx) for d in ['X', 'Y', 'Z']}, parent=zone)
+      ]
+      if PT.Zone.Type(zone) == 'Unstructured':
+        n_face = PT.Zone.n_face(zone) if partitioned else np.diff(MT.getDistribution(PT.Zone.NGonNode(zone), 'Element')[1])[0]
+        zsr_list.append(PT.new_ZoneSubRegion('SubRegionFace', loc='FaceCenter', fields={f'Field{d}' : np.random.rand(n_face) for d in ['X', 'Y', 'Z']}, parent=zone))
+      elif partitioned: # TODO : distributed S
+        zsr_list.append(PT.new_ZoneSubRegion('SubRegionIFace', loc='IFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.IFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone))
+        zsr_list.append(PT.new_ZoneSubRegion('SubRegionJFace', loc='JFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.JFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone))
+        zsr_list.append(PT.new_ZoneSubRegion('SubRegionKFace', loc='KFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.KFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone))
 
+    zsr_bck_list = [PT.deep_copy(zsr) for zsr in zsr_list]
 
     if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
       cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis
@@ -220,6 +244,10 @@ class Test_change_basis_simple:
         assert np.allclose(coords[0], val_x)
         assert np.allclose(coords[1], val_y)
         assert np.allclose(coords[2], val_z)
+      
+      for zsr_bck in zsr_bck_list:
+        zsr = PT.get_child_from_name(zone, PT.get_name(zsr_bck))
+        assert PT.is_same_tree(zsr, zsr_bck, abs_tol=1e-12)
 
 @pytest.mark.parametrize('revolution_axis', [(1, 1, 0), [2, 2, 0]])
 @pytest_parallel.mark.parallel([1, 2]) 
@@ -267,17 +295,26 @@ class Test_cart_to_cyl:
         assert np.allclose(z_ref, val_z)
 
   def test_U(self, revolution_axis, comm):
+    # NB : test with 1 rank is done on distributed mesh
 
     dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+    if comm.Get_size() > 1:
+      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+    else:
+      part_tree = dist_tree
 
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
+      n_vtx = PT.Zone.n_vtx(zone)
       
       # Create fields in zone 
-      PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-      PT.new_ZoneSubRegion('ZoneSubRegion', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      fields = {f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])} # Coords -> use coordinates formulae
+      fields.update({'Scalar' : np.ones(n_vtx)}) # Scalar field    -> no transformation
+      fields.update({'VectorX' : -0.5*np.ones(n_vtx), 'VectorY' : 0.5*np.ones(n_vtx), 'VectorZ' : 0*np.ones(n_vtx)}) # Vectorial field -> use fields formulae
+      # Somehow these values leads to (1,0,0) in (eta, zeta, xi) basis
+      PT.new_FlowSolution('FlowSolution', fields=fields, parent=zone)
+      PT.new_ZoneSubRegion('ZoneSubRegion', fields=fields, parent=zone)
     
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
     transform.cartesian_to_cylindrical(part_tree, revolution_axis)
@@ -315,93 +352,18 @@ class Test_cart_to_cyl:
         assert np.allclose(radius_ref, val_r)
         assert np.allclose(theta_ref, val_theta)
         assert np.allclose(z_ref, val_z)
+
+        if container_name != 'GridCoordinates':
+          scalar = PT.get_child_from_name(container, 'Scalar')[1]
+          assert np.allclose(scalar, np.ones(PT.Zone.n_vtx(zone)))
+          vectorr = PT.get_child_from_name(container, 'VectorR')[1]
+          vectort = PT.get_child_from_name(container, 'VectorTheta')[1]
+          vectorz = PT.get_child_from_name(container, 'VectorZ')[1]
+          assert np.allclose(vectorr, np.cos(theta_ref))
+          assert np.allclose(vectort, -1*np.sin(theta_ref))
+          assert np.allclose(vectorz, np.zeros(PT.Zone.n_vtx(zone)))
       
   def test_wrong_axis(self, revolution_axis, comm):
     dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
     with pytest.raises(AssertionError):
       transform.cartesian_to_cylindrical(dist_tree, (0, 0, 0))
-
-@pytest.mark.parametrize('revolution_axis', [(1, 1, 0), [2, 2, 0]])
-@pytest_parallel.mark.parallel([1, 2])
-class Test_cyl_to_cart:
-  def test_S(self, revolution_axis, comm):
-  
-      dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-    
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover the intial cartesian coordinates
-        n_face = PT.Zone.FaceSize(zone) 
-        iface_center_coords = [maia.algo.part.compute_face_center(zone)[i::3][:n_face[0]].reshape(PT.Zone.IFaceSize(zone), order='F') for i in [0,1,2]]
-        grid_co_n = [PT.get_node_from_predicates(zone, f'GridCoordinates_t/Coordinate{d}') for d in ['X', 'Y', 'Z']]
-        [PT.set_value(node, iface_center_coords[i]) for i, node in enumerate(grid_co_n)]
-        coords = PT.Zone.coordinates(zone)
-        # Create fields in zone
-        PT.new_FlowSolution('FlowSolution#IFaceCenter', loc='IFaceCenter', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-        PT.new_FlowSolution('FlowSolution#JFaceCenter', loc='JFaceCenter', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-        PT.new_FlowSolution('FlowSolution#KFaceCenter', loc='KFaceCenter', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-
-      if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
-        cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis
-        cyl2cart = transform.cylindrical_to_cartesian_from_unit_revolution_axis
-      else: 
-        cart2cyl = transform.cartesian_to_cylindrical
-        cyl2cart = transform.cylindrical_to_cartesian
-  
-      # Transform cartesian coordinates and fields into cylindric around a unit revolution axis
-      cart2cyl(part_tree, revolution_axis, True)
-      # Transform cylindric coordinates and fields into cartesian around a unit revolution axis
-      cyl2cart(part_tree, revolution_axis, True)
-      
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover coordinates and fields in the new basis
-        containers_name = ['FlowSolution#IFaceCenter', 'FlowSolution#JFaceCenter', 'FlowSolution#KFaceCenter']
-        for container_name in containers_name:
-          container = PT.get_child_from_name(zone, container_name)
-          val_x, val_y, val_z = [PT.get_node_from_name(container, f'*{d}')[1] for d in ['X', 'Y', 'Z']]
-          assert np.allclose(val_x, coords[0])
-          assert np.allclose(val_y, coords[1])
-          assert np.allclose(val_z, coords[2])
-  
-  def test_U(self, revolution_axis, comm):
-  
-      dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-    
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover the intial cartesian coordinates
-        face_center_coords = [maia.algo.part.compute_face_center(zone)[i::3] for i in [0,1,2]]
-        grid_co_n = [PT.get_node_from_predicates(zone, f'GridCoordinates_t/Coordinate{d}') for d in ['X', 'Y', 'Z']]
-        [PT.set_value(node, face_center_coords[i]) for i, node in enumerate(grid_co_n)]
-        coords = PT.Zone.coordinates(zone)
-  
-        # Create fields in zone
-        PT.new_FlowSolution('FlowSolution', loc='FaceCenter', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-  
-  
-      if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
-        cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis
-        cyl2cart = transform.cylindrical_to_cartesian_from_unit_revolution_axis
-      else: 
-        cart2cyl = transform.cartesian_to_cylindrical
-        cyl2cart = transform.cylindrical_to_cartesian
-  
-      # Transform cartesian coordinates and fields into cylindric around a unit revolution axis
-      cart2cyl(part_tree, revolution_axis, True)
-      # Transform cylindric coordinates and fields into cartesian around a unit revolution axis
-      cyl2cart(part_tree, revolution_axis, True)
-      
-      for zone in PT.get_all_Zone_t(part_tree):
-        # Recover coordinates and fields in the new basis
-        for container_name in ['FlowSolution']:
-          container = PT.get_child_from_name(zone, container_name)
-          val_x, val_y, val_z = [PT.get_node_from_name(container, f'*{d}')[1] for d in ['X', 'Y', 'Z']]
-          assert np.allclose(val_x, coords[0])
-          assert np.allclose(val_y, coords[1])
-          assert np.allclose(val_z, coords[2])
-
-  def test_wrong_axis(self, revolution_axis, comm):
-    dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-    with pytest.raises(AssertionError):
-      transform.cylindrical_to_cartesian(dist_tree, (0, 0, 0))
-
