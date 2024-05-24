@@ -7,6 +7,8 @@ from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
 
+from .geometry import _compute_vol_center, _compute_face_center
+
 def _to_xyz(r, theta, z):
   return r*np.cos(theta), r*np.sin(theta), z
 def _to_xyz_vectors(vr, vtheta, vz, theta):
@@ -160,7 +162,7 @@ def scale_mesh(t, s=1.):
 
 
 
-def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply_to_fields):
+def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.
 
   Transformation is defined by
@@ -193,23 +195,24 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply
     if apply_to_fields:
       predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
 
-    loc_to_theta  = {'CellCenter' : None, 'FaceCenter' : None, 'IFaceCenter' : None, 'JFaceCenter' : None, 'KFaceCenter' : None, 'Vertex' : None}
     if PT.Zone.Type(zone) == 'Structured':
       n_face = PT.Zone.FaceSize(zone)
-    compute_theta = {'CellCenter'  : lambda z : maia.algo.part.compute_cell_center(z)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
-                     'FaceCenter'  : lambda z : maia.algo.part.compute_face_center(z)[1::3],
-                     'IFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][:n_face[0]].reshape(PT.Zone.IFaceSize(z), order='F'),
-                     'JFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[0]:n_face[1]+n_face[0]].reshape(PT.Zone.JFaceSize(z), order='F'),
-                     'KFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[1]+n_face[0]:].reshape(PT.Zone.KFaceSize(z), order='F'),
-                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1],}
+      n_fi, n_fj = n_face[0], n_face[1] 
+    compute_theta = {'CellCenter'  : lambda z : _compute_vol_center(z,comm)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
+                     'FaceCenter'  : lambda z : _compute_face_center(z,comm)[1::3], #Only U -> no reshape needed
+                     'IFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][         :n_fi]     .reshape(PT.Zone.IFaceSize(z), order='F'),
+                     'JFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi     :n_fi+n_fj].reshape(PT.Zone.JFaceSize(z), order='F'),
+                     'KFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi+n_fj:]         .reshape(PT.Zone.KFaceSize(z), order='F'),
+                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
+    loc_to_theta  = {key: None for key in compute_theta.keys()}
 
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
         if PT.get_label(container) != "GridCoordinates_t":
-          grid_loc_container = PT.Subset.GridLocation(container)
-          if loc_to_theta[grid_loc_container] is None:
-            loc_to_theta[grid_loc_container] = compute_theta[grid_loc_container](zone)
-          theta = loc_to_theta[grid_loc_container]
+          loc_container = PT.Subset.GridLocation(container)
+          if loc_to_theta[loc_container] is None:
+            loc_to_theta[loc_container] = compute_theta[loc_container](zone)
+          theta = loc_to_theta[loc_container]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
         for basename in vectors_basenames:
@@ -223,7 +226,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
      
-def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply_to_fields):
+def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
   """Compute the cartesian coordinates from a unit revolution axis.
 
   Transformation is defined by
@@ -251,28 +254,30 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply
     transform_matrix_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
     coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
 
-    predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      predicates += ['ZoneBC_t/BC_t/BCDataSet_t/BCData_t', 'ZoneSubRegion_t', 'DiscreteData_t', 'FlowSolution_t']
-      predicates = predicates[::-1]
+      predicates = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
+    else:
+      predicates = []
+    predicates += ['GridCoordinates_t'] # Always treat coordinates (last because needed for centers)
 
-    loc_to_theta  = {'CellCenter' : None, 'FaceCenter' : None, 'IFaceCenter' : None, 'JFaceCenter' : None, 'KFaceCenter' : None, 'Vertex' : None}
     if PT.Zone.Type(zone) == 'Structured':
       n_face = PT.Zone.FaceSize(zone)
-    compute_theta = {'CellCenter'  : lambda z : maia.algo.part.compute_cell_center(z)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
-                     'FaceCenter'  : lambda z : maia.algo.part.compute_face_center(z)[1::3],
-                     'IFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][:n_face[0]].reshape(PT.Zone.IFaceSize(z), order='F'),
-                     'JFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[0]:n_face[1]+n_face[0]].reshape(PT.Zone.JFaceSize(z), order='F'),
-                     'KFaceCenter' : lambda z : maia.algo.part.compute_face_center(z)[1::3][n_face[1]+n_face[0]:].reshape(PT.Zone.KFaceSize(z), order='F'),
-                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1],}
+      n_fi, n_fj = n_face[0], n_face[1] 
+    compute_theta = {'CellCenter'  : lambda z : _compute_vol_center(z,comm)[1::3].reshape(PT.Zone.CellSize(z), order='F'),
+                     'FaceCenter'  : lambda z : _compute_face_center(z,comm)[1::3], #Only U -> no reshape needed
+                     'IFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][0         :n_fi]     .reshape(PT.Zone.IFaceSize(z), order='F'),
+                     'JFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi      :n_fi+n_fj].reshape(PT.Zone.JFaceSize(z), order='F'),
+                     'KFaceCenter' : lambda z : _compute_face_center(z,comm)[1::3][n_fi+n_fj:]          .reshape(PT.Zone.KFaceSize(z), order='F'),
+                     'Vertex'      : lambda z : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
+    loc_to_theta  = {key: None for key in compute_theta.keys()}
   
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
         if PT.get_label(container) != "GridCoordinates_t":
-          grid_loc_container = PT.Subset.GridLocation(container)
-          if loc_to_theta[grid_loc_container] is None:
-            loc_to_theta[grid_loc_container] = compute_theta[grid_loc_container](zone)
-          theta = loc_to_theta[grid_loc_container]
+          loc_container = PT.Subset.GridLocation(container)
+          if loc_to_theta[loc_container] is None:
+            loc_to_theta[loc_container] = compute_theta[loc_container](zone)
+          theta = loc_to_theta[loc_container]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
         for basename in cylindric_vectors_basenames:
@@ -349,7 +354,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
             PT.update_node(node, f'{basename}{s}', value=new_val)
     
 
-def cartesian_to_cylindrical(t, axis, apply_to_fields=True):
+def cartesian_to_cylindrical(t, axis, comm=None, apply_to_fields=True):
   """Convert the input tree into a cylindrical coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
@@ -360,6 +365,7 @@ def cartesian_to_cylindrical(t, axis, apply_to_fields=True):
   Args:
     t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
+    comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
       Defaults to ``True``.
@@ -379,9 +385,9 @@ def cartesian_to_cylindrical(t, axis, apply_to_fields=True):
     axis = np.dot(transform_matrix, axis)
  
   revolution_axis_unit = axis / np.linalg.norm(axis)
-  cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis_unit, apply_to_fields)
+  cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis_unit, comm, apply_to_fields)
 
-def cylindrical_to_cartesian(t, axis, apply_to_fields=True):
+def cylindrical_to_cartesian(t, axis, comm=None, apply_to_fields=True):
   """Convert the input tree into a cartesian coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindrical coordinates.
@@ -393,6 +399,7 @@ def cylindrical_to_cartesian(t, axis, apply_to_fields=True):
   Args:
     t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
+    comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
       Defaults to ``True``.
@@ -414,7 +421,7 @@ def cylindrical_to_cartesian(t, axis, apply_to_fields=True):
     axis = np.dot(transform_matrix, axis)
 
   revolution_axis_unit = axis / np.linalg.norm(axis)
-  cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit, apply_to_fields)
+  cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit, comm, apply_to_fields)
 
   if need_change_basis:
     auxiliary_coords_system(t, None, apply_to_fields)

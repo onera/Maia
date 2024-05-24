@@ -208,9 +208,9 @@ class Test_change_basis_simple:
       cyl2cart = transform.cylindrical_to_cartesian
 
     # Transform cartesian coordinates and fields into cylindric around a unit revolution axis
-    cart2cyl(part_tree, revolution_axis, True)
+    cart2cyl(part_tree, revolution_axis, comm, True)
     # Transform cylindric coordinates and fields into cartesian around a unit revolution axis
-    cyl2cart(part_tree, revolution_axis, True)
+    cyl2cart(part_tree, revolution_axis, comm, True)
     
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
