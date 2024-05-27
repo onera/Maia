@@ -93,8 +93,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     # Create NGON
     ngon_er  = np.array([1, n_face], dtype=dface_vtx.dtype)
     ngon_pe  = _create_pe_global(dface_cell, n_face)
-    ngon_eso = dface_vtx_idx + distrib_face_vtx[i_rank]
-    ngon_eso = np_utils.safe_int_cast(ngon_eso, ngon_er.dtype)
+    ngon_eso = np_utils.safe_int_cast(dface_vtx_idx, ngon_er.dtype)
+    ngon_eso += distrib_face_vtx[i_rank]
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=dface_vtx, pe=ngon_pe, parent=zone)
     MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
@@ -103,8 +103,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
 
     # Create NFACE
     nface_er  = np.array([1, n_cell], dtype=dcell_face.dtype) + n_face
-    nface_eso = dcell_face_idx + distrib_cell_face[i_rank]
-    nface_eso = np_utils.safe_int_cast(nface_eso, nface_er.dtype)
+    nface_eso = np_utils.safe_int_cast(dcell_face_idx, nface_er.dtype)
+    nface_eso += distrib_cell_face[i_rank]
 
     nfac_n = PT.new_NFaceElements(erange=nface_er, eso=nface_eso, ec=dcell_face, parent=zone)
     MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_cell, comm),
@@ -134,8 +134,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     # Create NGON (combine face_edge + edge_vtx)
     ngon_er = np.array([1, n_face], dtype=dface_edge.dtype) + n_edge
     ngon_ec = PDM.compute_dfacevtx_from_face_and_edge(comm, distrib_face, distrib_edge, dface_edge_idx, dface_edge, dedge_vtx)
-    ngon_eso = dface_edge_idx + distrib_face_vtx[i_rank]
-    ngon_eso = np_utils.safe_int_cast(ngon_eso, ngon_er.dtype)
+    ngon_eso = np_utils.safe_int_cast(dface_edge_idx, ngon_er.dtype)
+    ngon_eso += distrib_face_vtx[i_rank]
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, parent=zone)
     MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
