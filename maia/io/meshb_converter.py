@@ -196,7 +196,8 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
     for elmts in PT.Zone.get_ordered_elements_per_dim(zone):
         for elmt in elmts:
-            elmt_t    = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elmt[0])
+            name      = PT.Element.CGNSName(elmt)
+            elmt_t    = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(name)
 
             vtx_elmt[elmt_t]   = np_utils.safe_int_cast(PT.get_node_from_name(elmt, "ElementConnectivity")[1], pdm_gnum_dtype)
             n_elmt[elmt_t]     = vtx_elmt[elmt_t].size // PDM.get_n_vtx_from_element(elmt_t)
