@@ -4,7 +4,7 @@ import numpy as np
 
 import maia.pytree          as PT
 import maia.pytree.maia     as MT
-from maia.utils             import np_utils
+from maia.utils             import np_utils, par_utils
 
 import maia
 from maia.factory.dcube_generator import dcube_generate
@@ -210,19 +210,30 @@ class Test_change_basis_simple:
       PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.set_label(dd, 'DiscreteData_t')
-      zsr_list = [
-        PT.new_ZoneSubRegion('SubRegionCC', loc='CellCenter', fields={f'Field{d}' : np.random.rand(*n_cell) for d in ['X', 'Y', 'Z']}, parent=zone),
-        PT.new_ZoneSubRegion('SubRegionVtx', loc='Vertex', fields={f'Field{d}' : np.random.rand(*n_vtx) for d in ['X', 'Y', 'Z']}, parent=zone)
-      ]
+      PT.new_ZoneSubRegion('SubRegionCC', loc='CellCenter', fields={f'Field{d}' : np.random.rand(*n_cell) for d in ['X', 'Y', 'Z']}, parent=zone),
+      PT.new_ZoneSubRegion('SubRegionVtx', loc='Vertex', fields={f'Field{d}' : np.random.rand(*n_vtx) for d in ['X', 'Y', 'Z']}, parent=zone)
       if PT.Zone.Type(zone) == 'Unstructured':
         n_face = PT.Zone.n_face(zone) if partitioned else np.diff(MT.getDistribution(PT.Zone.NGonNode(zone), 'Element')[1])[0]
-        zsr_list.append(PT.new_ZoneSubRegion('SubRegionFace', loc='FaceCenter', fields={f'Field{d}' : np.random.rand(n_face) for d in ['X', 'Y', 'Z']}, parent=zone))
-      elif partitioned: # TODO : distributed S
-        zsr_list.append(PT.new_ZoneSubRegion('SubRegionIFace', loc='IFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.IFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone))
-        zsr_list.append(PT.new_ZoneSubRegion('SubRegionJFace', loc='JFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.JFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone))
-        zsr_list.append(PT.new_ZoneSubRegion('SubRegionKFace', loc='KFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.KFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone))
-
-    zsr_bck_list = [PT.deep_copy(zsr) for zsr in zsr_list]
+        PT.new_ZoneSubRegion('SubRegionFace', loc='FaceCenter', fields={f'Field{d}' : np.random.rand(n_face) for d in ['X', 'Y', 'Z']}, parent=zone)
+        bc = PT.get_node_from_name(zone, 'Xmax')
+        if bc is not None:
+          pl = PT.get_child_from_name(bc, 'PointList')[1] 
+          bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
+          bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
+          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
+            PT.new_DataArray(name, np.random.rand(pl.size), parent=bcda)
+      else: # Structured:
+        bc = PT.get_node_from_name(zone, 'Xmax')
+        if bc is not None:
+          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.getDistribution(bc, 'Index')[1])[0]
+          bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
+          bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
+          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
+            PT.new_DataArray(name, np.random.rand(bc_size), parent=bcda)
+        if partitioned:
+          PT.new_ZoneSubRegion('SubRegionIFace', loc='IFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.IFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone)
+          PT.new_ZoneSubRegion('SubRegionJFace', loc='JFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.JFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone)
+          PT.new_ZoneSubRegion('SubRegionKFace', loc='KFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.KFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone)
 
     if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
       cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis
@@ -232,6 +243,7 @@ class Test_change_basis_simple:
       cyl2cart = transform.cylindrical_to_cartesian
 
     # Transform cartesian coordinates and fields into cylindric around a unit revolution axis
+    tree_bck = PT.deep_copy(part_tree)
     cart2cyl(part_tree, revolution_axis, comm, True)
     # Transform cylindric coordinates and fields into cartesian around a unit revolution axis
     cyl2cart(part_tree, revolution_axis, comm, True)
@@ -245,9 +257,7 @@ class Test_change_basis_simple:
         assert np.allclose(coords[1], val_y)
         assert np.allclose(coords[2], val_z)
       
-      for zsr_bck in zsr_bck_list:
-        zsr = PT.get_child_from_name(zone, PT.get_name(zsr_bck))
-        assert PT.is_same_tree(zsr, zsr_bck, abs_tol=1e-12)
+    assert PT.is_same_tree(part_tree, tree_bck, abs_tol=1e-12)
 
 @pytest.mark.parametrize('revolution_axis', [(1, 1, 0), [2, 2, 0]])
 @pytest_parallel.mark.parallel([1, 2]) 

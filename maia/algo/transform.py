@@ -2,7 +2,9 @@ import numpy as np
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
-from maia.utils import py_utils, np_utils
+from maia.utils           import py_utils, np_utils, par_utils, pr_utils
+from maia.utils.numbering import range_to_slab          as HFR2S
+from maia.transfer import protocols as EP
 from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
@@ -191,6 +193,69 @@ COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
                  'KFaceCenter' : _compute_kfacecenter_theta,
                  'Vertex'      : lambda z,c : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
 
+def _get_subset_container(nodes):
+  last = nodes[-1]
+  if PT.get_label(last) == 'BCData_t':
+    parent_ds, parent_bc = nodes[-2], nodes[-3] 
+    parent_ds_children =[PT.get_name(n) for n in PT.get_children(parent_ds)] 
+    if 'PointList' in parent_ds_children or 'PointRange' in parent_ds_children: #BCDS with own subset 
+      return parent_ds
+    else: #BCDS with inherited subset  
+      return parent_bc
+  else: # Other cases: return node directly (TODO : ZSR with BC extend)  
+    return last
+
+
+def shrink_to_subset(array, zone, subset, comm):
+  pl = PT.get_child_from_name(subset, 'PointList')
+  pr = PT.get_child_from_name(subset, 'PointRange')
+  loc = PT.Subset.GridLocation(subset)
+  if pl is None and pr is None:
+    return array
+  if PT.get_label(subset) in ["FlowSolution_t", "DiscreteData_t"]:
+    raise NotImplementedError(f"Partial containers are not supported for {PT.get_label(subset)}")
+  is_partitioned = MT.getDistribution(zone) is None
+  if PT.Zone.Type(zone) == 'Unstructured':
+    assert pr is None, "PointRange are not managed for unstructured meshes"
+    if loc == 'Vertex':
+      shift = 1
+    else:
+      _to_index = {'CellCenter' : 2 ,'EdgeCenter' : 1} if PT.Zone.CellDimension(zone) == 2 else {'CellCenter' : 3 , 'FaceCenter' :2, 'EdgeCenter' : 1}
+      range_per_dim = PT.Zone.get_elt_range_per_dim(zone)
+      if PT.Zone.CellDimension(zone) == 3 and PT.Zone.has_ngon_elements(zone) and not PT.Zone.has_nface_elements(zone):
+        range_per_dim[3][0] = range_per_dim[2][1] + 1 # Implicit nface 
+        range_per_dim[3][1] = range_per_dim[2][1] + PT.Zone.n_cell(zone)
+      shift = range_per_dim[_to_index[loc]][0] 
+    if is_partitioned:
+      return array[pl[1][0]-shift] 
+    else:
+      distri = par_utils.dn_to_distribution(array.size, comm)
+      return EP.block_to_part(array, distri, [pl[1][0]-shift+1], comm)[0]
+  else: # Structured zones
+    assert pl is None, "PointList are not managed for unstructured meshes"
+    
+    bc_size = np.abs(pr[1][:,1] - pr[1][:,0]) + 1
+    if is_partitioned:
+      bc_range = np.array([0, bc_size.prod(), bc_size.prod()])
+    else:
+      bc_range = MT.getDistribution(subset, 'Index')[1]
+
+    bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
+
+    sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
+    for sub_pr in sub_pr_list:
+      sub_pr[:,0] += pr[1][:,0]
+      sub_pr[:,1] += pr[1][:,0] - 1
+    idx = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, 
+                                                      PT.Zone.VertexSize(zone), 
+                                                      PT.Subset.GridLocation(subset))[0]
+
+    if is_partitioned:
+      return array.reshape(-1, order='F')[idx-1]
+    else:
+      distri = par_utils.dn_to_distribution(array.size, comm)
+      return EP.block_to_part(array, distri, [idx], comm)[0]
+      
 def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.
 
@@ -227,16 +292,17 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm,
     loc_to_theta  = {key: None for key in COMPUTE_THETA.keys()}
 
     for predicate in predicates:
-      for container in PT.get_children_from_predicates(zone, predicate):
+      for container_stack in PT.get_children_from_predicates(zone, predicate, ancestors=True):
+        container = container_stack[-1]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
         if PT.get_label(container) != "GridCoordinates_t" and len(vectors_basenames) > 0:
-          assert PT.get_child_from_name(container, 'PointList') is None, "Partial containers are not supported"
-          assert PT.get_child_from_name(container, 'PointRange') is None, "Partial containers are not supported"
-          loc_container = PT.Subset.GridLocation(container)
+          subset_container = _get_subset_container(container_stack) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
+          loc_container = PT.Subset.GridLocation(subset_container)
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]
+          theta = shrink_to_subset(theta, zone, subset_container, comm)
         for basename in vectors_basenames:
 
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
@@ -285,16 +351,17 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm,
     loc_to_theta  = {key: None for key in COMPUTE_THETA.keys()}
   
     for predicate in predicates:
-      for container in PT.get_children_from_predicates(zone, predicate):
+      for container_stack in PT.get_children_from_predicates(zone, predicate, ancestors=True):
+        container = container_stack[-1]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
         if PT.get_label(container) != "GridCoordinates_t" and len(cylindric_vectors_basenames) > 0:
-          assert PT.get_child_from_name(container, 'PointList') is None, "Partial containers are not supported"
-          assert PT.get_child_from_name(container, 'PointRange') is None, "Partial containers are not supported"
-          loc_container = PT.Subset.GridLocation(container)
+          subset_container = _get_subset_container(container_stack)
+          loc_container = PT.Subset.GridLocation(subset_container)
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]
+          theta = shrink_to_subset(theta, zone, subset_container, comm)
         for basename in cylindric_vectors_basenames:
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
           if basename == "Coordinate":

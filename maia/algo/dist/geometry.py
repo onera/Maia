@@ -160,9 +160,9 @@ def compute_face_center(zone, comm):
   else:
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      _face_vtx_idx = np.empty(face_vtx_idx.size, np.int32)
-      np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
+      _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
+      face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
+      np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
     else:
       raise NotImplementedError("U/elt zones are not managed")
@@ -175,9 +175,9 @@ def compute_face_center(zone, comm):
   local_coords = [part_data[key][0] for key in part_data.keys()]
 
   if isinstance(coords, PT.CartesianCoordinates):
-    return _mean_coords_from_connectivity(_face_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity(face_vtx_idx, *local_coords)
   elif isinstance(coords, PT.CylindricalCoordinates):
-    return _mean_coords_from_connectivity_cyl(_face_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity_cyl(face_vtx_idx, *local_coords)
 
 def compute_cell_center(zone, comm):
   # TODO Implementation for U/elts
