@@ -14,7 +14,7 @@ default:
   tags: #All jobs uses jamacar-slurm executor by default (dsi test)
     - slurm
   before_script:
-    - module purge
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - source $SOURCE_CMD
 
 stages:
@@ -131,7 +131,7 @@ job:portability_cfd6:
   rules:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   before_script: 
-    - module purge
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
   script:
     - cd $CUSTOM_CI_DIR
@@ -198,7 +198,7 @@ deploy_spiro_socle5:
   before_script:
     - |
       cat > build_spiro5.sh << EOF
-      module purge
+      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
       module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
 
@@ -226,7 +226,7 @@ deploy_spiro_socle6:
   before_script:
     - |
       cat > build_spiro6.sh << EOF
-      module purge
+      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
       module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
 
@@ -253,7 +253,7 @@ deploy_spiro_sonics:
   before_script:
     - |
       cat > build_spiro.sh << EOF
-      module purge
+      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
       source /scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
       export https_proxy=http://proxy.onera:80
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
@@ -278,7 +278,7 @@ deploy_sator_socle5:
   before_script:
     - |
       cat > build_sator5.sh << EOF
-      module purge
+      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
       module load socle-cfd/5.0-intel2120-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
@@ -304,7 +304,7 @@ deploy_sator_socle6:
   before_script:
     - |
       cat > build_sator6.sh << EOF
-      module purge
+      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
       module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
@@ -352,7 +352,7 @@ deploy_juno_socle6:
   before_script:
     - |
       cat > build_juno6.sh << EOF
-      module purge
+      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
       module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
       export https_proxy=http://proxy.onera:80
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
