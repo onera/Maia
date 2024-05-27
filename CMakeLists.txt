@@ -83,6 +83,13 @@ endif()
 include(${PROJECT_UTILS_CMAKE_DIR}/find_or_fetch.cmake)
 find_or_fetch_pybind11()
 
+
+## By default, do not enable tests in dependencies if tests are not enabled in Maia
+if (NOT ${PROJECT_NAME}_ENABLE_TESTS)
+  option(std_e_ENABLE_TESTS "" OFF)
+  option(cpp_cgns_ENABLE_TESTS "" OFF)
+endif()
+
 ### ParaDiGM ###
 if (NOT ${PROJECT_NAME}_BUILD_EMBEDDED_PDM)
   project_find_package(pdm CONFIG REQUIRED)
