@@ -137,7 +137,6 @@ def test_meshb_to_cgns(comm):
                'field_names' : { 'FlowSolution' : ['Zeros', 'Range'] },
               }
 
-  comm.barrier()
   dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, comm)
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
