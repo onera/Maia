@@ -171,52 +171,45 @@ def _compute_cellcenter_theta(z, comm):
     theta = theta.reshape(PT.Zone.CellSize(z), order='F')
   return theta
 
-def _compute_ifacecenter_theta(z, comm):
-  n_face = PT.Zone.FaceSize(z)
-  theta = _compute_face_center(z,comm)[1::3][:n_face[0]] 
-  return theta.reshape(PT.Zone.IFaceSize(z), order='F') if MT.getDistribution(z) is None else theta
-
-def _compute_jfacecenter_theta(z, comm):
-  n_face = PT.Zone.FaceSize(z)
-  theta = _compute_face_center(z,comm)[1::3][n_face[0]:n_face[0]+n_face[1]] 
-  return theta.reshape(PT.Zone.JFaceSize(z), order='F') if MT.getDistribution(z) is None else theta
-
-def _compute_kfacecenter_theta(z, comm):
-  n_face = PT.Zone.FaceSize(z)
-  theta = _compute_face_center(z,comm)[1::3][n_face[0]+n_face[1]:] 
-  return theta.reshape(PT.Zone.KFaceSize(z), order='F') if MT.getDistribution(z) is None else theta
-
 COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
-                 'FaceCenter'  : lambda z,comm : _compute_face_center(z,comm)[1::3], #Only U -> no reshape needed
-                 'IFaceCenter' : _compute_ifacecenter_theta,
-                 'JFaceCenter' : _compute_jfacecenter_theta,
-                 'KFaceCenter' : _compute_kfacecenter_theta,
+                 'FaceCenter'  : lambda z,comm : _compute_face_center(z,comm)[1::3], #Only partial subsets -> no reshape needed
                  'Vertex'      : lambda z,c : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
 
 def _get_subset_container(nodes):
+  """
+  Return the parent node containing the PointList or PointRange information.
+  Container stack should start at Zone level
+  """
+  zone = nodes[0]
   last = nodes[-1]
-  if PT.get_label(last) == 'BCData_t':
+  if PT.get_label(last) == 'ZoneSubRegion_t':
+    return PT.get_node_from_path(zone, PT.Subset.ZSRExtent(last, zone))
+  elif PT.get_label(last) == 'BCData_t':
     parent_ds, parent_bc = nodes[-2], nodes[-3] 
     parent_ds_children =[PT.get_name(n) for n in PT.get_children(parent_ds)] 
     if 'PointList' in parent_ds_children or 'PointRange' in parent_ds_children: #BCDS with own subset 
       return parent_ds
     else: #BCDS with inherited subset  
       return parent_bc
-  else: # Other cases: return node directly (TODO : ZSR with BC extend)  
+  else: # Other cases: return node directly
     return last
 
 
 def shrink_to_subset(array, zone, subset, comm):
+  """
+  Extract a subpart of a full array (eg defined on all Vertex) on a specific 
+  patch (U/PointList or S/PointRange). Array / subset can be distributed or partitioned.
+  """
   pl = PT.get_child_from_name(subset, 'PointList')
   pr = PT.get_child_from_name(subset, 'PointRange')
-  loc = PT.Subset.GridLocation(subset)
-  if pl is None and pr is None:
+  if pl is None and pr is None: # Subset is not partial
     return array
-  if PT.get_label(subset) in ["FlowSolution_t", "DiscreteData_t"]:
-    raise NotImplementedError(f"Partial containers are not supported for {PT.get_label(subset)}")
+  loc = PT.Subset.GridLocation(subset)
   is_partitioned = MT.getDistribution(zone) is None
+  subset_distri = None if is_partitioned else MT.getDistribution(subset, 'Index')[1]
   if PT.Zone.Type(zone) == 'Unstructured':
-    assert pr is None, "PointRange are not managed for unstructured meshes"
+    if pl is None:
+      pl = np_utils.single_dim_pr_to_pl(pr[1], subset_distri)
     if loc == 'Vertex':
       shift = 1
     else:
@@ -233,12 +226,13 @@ def shrink_to_subset(array, zone, subset, comm):
       return EP.block_to_part(array, distri, [pl[1][0]-shift+1], comm)[0]
   else: # Structured zones
     assert pl is None, "PointList are not managed for unstructured meshes"
+    if PT.get_label(subset) in ["FlowSolution_t", "DiscreteData_t"]:
+      raise NotImplementedError(f"Partial containers are not supported for structured {PT.get_label(subset)}")
     
+    # We use compute_pointList_from_pointRanges to expand indices corresponding 
+    # to the input PointRange. In partitioned case, create a fake "full" distribution
     bc_size = np.abs(pr[1][:,1] - pr[1][:,0]) + 1
-    if is_partitioned:
-      bc_range = np.array([0, bc_size.prod(), bc_size.prod()])
-    else:
-      bc_range = MT.getDistribution(subset, 'Index')[1]
+    bc_range = subset_distri if not is_partitioned else np.array([0, bc_size.prod(), bc_size.prod()])
 
     bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
 
@@ -251,6 +245,7 @@ def shrink_to_subset(array, zone, subset, comm):
                                                       PT.Subset.GridLocation(subset))[0]
 
     if is_partitioned:
+      # If loc == CellCenter or Vertex, array is shaped -> flatten it
       return array.reshape(-1, order='F')[idx-1]
     else:
       distri = par_utils.dn_to_distribution(array.size, comm)
@@ -297,8 +292,9 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm,
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
         if PT.get_label(container) != "GridCoordinates_t" and len(vectors_basenames) > 0:
-          subset_container = _get_subset_container(container_stack) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
+          subset_container = _get_subset_container([zone] + list(container_stack)) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
           loc_container = PT.Subset.GridLocation(subset_container)
+          loc_container = 'FaceCenter' if loc_container.endswith("FaceCenter") else loc_container #Remove I,J,K prefix
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]
@@ -356,8 +352,9 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm,
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
         if PT.get_label(container) != "GridCoordinates_t" and len(cylindric_vectors_basenames) > 0:
-          subset_container = _get_subset_container(container_stack)
+          subset_container = _get_subset_container([zone] + list(container_stack)) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
           loc_container = PT.Subset.GridLocation(subset_container)
+          loc_container = 'FaceCenter' if loc_container.endswith("FaceCenter") else loc_container #Remove I,J,K prefix
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]

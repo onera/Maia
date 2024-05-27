@@ -230,10 +230,21 @@ class Test_change_basis_simple:
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
           for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
             PT.new_DataArray(name, np.random.rand(bc_size), parent=bcda)
-        if partitioned:
-          PT.new_ZoneSubRegion('SubRegionIFace', loc='IFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.IFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone)
-          PT.new_ZoneSubRegion('SubRegionJFace', loc='JFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.JFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone)
-          PT.new_ZoneSubRegion('SubRegionKFace', loc='KFaceCenter', fields={f'Field{d}' : np.random.rand(*PT.Zone.KFaceSize(zone)) for d in ['X', 'Y', 'Z']}, parent=zone)
+
+        bc = PT.get_node_from_name(zone, 'Ymin') # Transform to JFaceCenter
+        if bc is not None:
+          PT.update_child(bc, 'GridLocation', value='JFaceCenter')
+          if partitioned:
+            pr_face = [[1,1],[1,1],[1,2]]
+          else:
+            pr_face = [[1,2],[1,1],[1,2]]
+            MT.new_distribution({'Index' : par_utils.uniform_distribution(4, comm)}, bc)
+          PT.update_child(bc, 'PointRange', value=pr_face)
+          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.getDistribution(bc, 'Index')[1])[0]
+          bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
+          bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
+          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
+            PT.new_DataArray(name, np.random.rand(bc_size), parent=bcda)
 
     if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
       cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis

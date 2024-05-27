@@ -156,16 +156,18 @@ def compute_face_center(zone, comm):
   """
   # TODO Implementation for U/elts
   if PT.Zone.Type(zone) == "Structured":
-    face_vtx_idx, face_vtx = _cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone))
+    from maia.algo.dist.s_to_u import zonedims_to_ngon
+    ngon_node = zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
   else:
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
-      _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
-      np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
-      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
     else:
       raise NotImplementedError("U/elt zones are not managed")
+
+  _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
+  face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
+  np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
+  face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
 
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
