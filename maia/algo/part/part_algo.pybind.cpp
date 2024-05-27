@@ -125,12 +125,29 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("np_face_vtx_idx").noconvert(),
         py::arg("np_parent_elemnts").noconvert());
 
+  m.def("compute_center_cell_u_cyl", &compute_center_cell_u_cyl,
+        py::arg("n_cell").noconvert(),
+        py::arg("np_r").noconvert(),
+        py::arg("np_theta").noconvert(),
+        py::arg("np_cz").noconvert(),
+        py::arg("np_face_vtx").noconvert(),
+        py::arg("np_face_vtx_idx").noconvert(),
+        py::arg("np_parent_elemnts").noconvert());
+
   m.def("compute_center_cell_s", &compute_center_cell_s,
         py::arg("nx").noconvert(),
         py::arg("ny").noconvert(),
         py::arg("nz").noconvert(),
-        py::arg("np_cx").noconvert(),
-        py::arg("np_cy").noconvert(),
+        py::arg("np_cr").noconvert(),
+        py::arg("np_ctheta").noconvert(),
+        py::arg("np_cz").noconvert());
+
+  m.def("compute_center_cell_s_cyl", &compute_center_cell_s_cyl,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cr").noconvert(),
+        py::arg("np_ctheta").noconvert(),
         py::arg("np_cz").noconvert());
 
   m.def("compute_center_face_s", &compute_center_face_s,
@@ -139,6 +156,14 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("nz").noconvert(),
         py::arg("np_cx").noconvert(),
         py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert());
+  
+  m.def("compute_center_face_s_cyl", &compute_center_face_s_cyl,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cr").noconvert(),
+        py::arg("np_ctheta").noconvert(),
         py::arg("np_cz").noconvert());
 
   m.def("compute_face_normal_u", &compute_face_normal_u,

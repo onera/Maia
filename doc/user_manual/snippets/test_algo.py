@@ -609,7 +609,7 @@ def test_cartesian_to_cylindrical():
   from   maia.utils.test_utils import mesh_dir
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
-  maia.algo.cartesian_to_cylindrical(dist_tree, axis=(1,0,0))
+  maia.algo.cartesian_to_cylindrical(dist_tree, (1,0,0), MPI.COMM_WORLD)
 
   assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateR') is not None
   #cartesian_to_cylindrical@end
@@ -622,7 +622,7 @@ def test_cylindrical_to_cartesian():
   from   maia.utils.test_utils import mesh_dir
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
-  maia.algo.cartesian_to_cylindrical(dist_tree, axis=(1,0,0))
+  maia.algo.cartesian_to_cylindrical(dist_tree, (1,0,0), MPI.COMM_WORLD)
 
   # Create a vector field on cylindrical mesh
   for zone in PT.get_nodes_from_label(dist_tree, 'Zone_t'):
@@ -630,7 +630,7 @@ def test_cylindrical_to_cartesian():
     fields= {'VelocityR': cr**2, 'VelocityTheta': ctheta, 'VelocityZ': 0*cz}
     PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
 
-  maia.algo.cylindrical_to_cartesian(dist_tree, (1,0,0), True)
+  maia.algo.cylindrical_to_cartesian(dist_tree, (1,0,0), MPI.COMM_WORLD)
 
   assert PT.get_node_from_name(dist_tree, 'VelocityX') is not None
   #cylindrical_to_cartesian@end

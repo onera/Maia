@@ -1,15 +1,24 @@
 import numpy as np
 
-import maia.pytree as PT
-from maia.utils import py_utils, np_utils
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+from maia.utils           import py_utils, np_utils, par_utils, pr_utils
+from maia.utils.numbering import range_to_slab          as HFR2S
+from maia.transfer import protocols as EP
 from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
 
+from .geometry import _compute_vol_center, _compute_face_center
+
 def _to_xyz(r, theta, z):
   return r*np.cos(theta), r*np.sin(theta), z
+def _to_xyz_vectors(vr, vtheta, vz, theta):
+  return vr*np.cos(theta)-vtheta*np.sin(theta), vtheta*np.cos(theta)+vr*np.sin(theta), vz
 def _to_rthetaz(x, y, z):
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
+def _to_rthetaz_vectors(vx, vy, vz, theta):
+  return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
 def transform_affine_zone(zone,
                           vtx_mask,
@@ -155,7 +164,94 @@ def scale_mesh(t, s=1.):
 
 
 
-def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply_to_fields):
+# Belows are helper functions to compute entity theta coordinate, depending of GridLocation
+def _compute_cellcenter_theta(z, comm):
+  theta = _compute_vol_center(z, comm)[1::3]
+  if PT.Zone.Type(z) == 'Structured' and MT.getDistribution(z) is None:
+    theta = theta.reshape(PT.Zone.CellSize(z), order='F')
+  return theta
+
+COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
+                 'FaceCenter'  : lambda z,comm : _compute_face_center(z,comm)[1::3], #Only partial subsets -> no reshape needed
+                 'Vertex'      : lambda z,c : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
+
+def _get_subset_container(nodes):
+  """
+  Return the parent node containing the PointList or PointRange information.
+  Container stack should start at Zone level
+  """
+  zone = nodes[0]
+  last = nodes[-1]
+  if PT.get_label(last) == 'ZoneSubRegion_t':
+    return PT.get_node_from_path(zone, PT.Subset.ZSRExtent(last, zone))
+  elif PT.get_label(last) == 'BCData_t':
+    parent_ds, parent_bc = nodes[-2], nodes[-3] 
+    parent_ds_children =[PT.get_name(n) for n in PT.get_children(parent_ds)] 
+    if 'PointList' in parent_ds_children or 'PointRange' in parent_ds_children: #BCDS with own subset 
+      return parent_ds
+    else: #BCDS with inherited subset  
+      return parent_bc
+  else: # Other cases: return node directly
+    return last
+
+
+def shrink_to_subset(array, zone, subset, comm):
+  """
+  Extract a subpart of a full array (eg defined on all Vertex) on a specific 
+  patch (U/PointList or S/PointRange). Array / subset can be distributed or partitioned.
+  """
+  pl = PT.get_child_from_name(subset, 'PointList')
+  pr = PT.get_child_from_name(subset, 'PointRange')
+  if pl is None and pr is None: # Subset is not partial
+    return array
+  loc = PT.Subset.GridLocation(subset)
+  is_partitioned = MT.getDistribution(zone) is None
+  subset_distri = None if is_partitioned else MT.getDistribution(subset, 'Index')[1]
+  if PT.Zone.Type(zone) == 'Unstructured':
+    if pl is None:
+      pl = np_utils.single_dim_pr_to_pl(pr[1], subset_distri)
+    if loc == 'Vertex':
+      shift = 1
+    else:
+      _to_index = {'CellCenter' : 2 ,'EdgeCenter' : 1} if PT.Zone.CellDimension(zone) == 2 else {'CellCenter' : 3 , 'FaceCenter' :2, 'EdgeCenter' : 1}
+      range_per_dim = PT.Zone.get_elt_range_per_dim(zone)
+      if PT.Zone.CellDimension(zone) == 3 and PT.Zone.has_ngon_elements(zone) and not PT.Zone.has_nface_elements(zone):
+        range_per_dim[3][0] = range_per_dim[2][1] + 1 # Implicit nface 
+        range_per_dim[3][1] = range_per_dim[2][1] + PT.Zone.n_cell(zone)
+      shift = range_per_dim[_to_index[loc]][0] 
+    if is_partitioned:
+      return array[pl[1][0]-shift] 
+    else:
+      distri = par_utils.dn_to_distribution(array.size, comm)
+      return EP.block_to_part(array, distri, [pl[1][0]-shift+1], comm)[0]
+  else: # Structured zones
+    assert pl is None, "PointList are not managed for unstructured meshes"
+    if PT.get_label(subset) in ["FlowSolution_t", "DiscreteData_t"]:
+      raise NotImplementedError(f"Partial containers are not supported for structured {PT.get_label(subset)}")
+    
+    # We use compute_pointList_from_pointRanges to expand indices corresponding 
+    # to the input PointRange. In partitioned case, create a fake "full" distribution
+    bc_size = np.abs(pr[1][:,1] - pr[1][:,0]) + 1
+    bc_range = subset_distri if not is_partitioned else np.array([0, bc_size.prod(), bc_size.prod()])
+
+    bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
+
+    sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
+    for sub_pr in sub_pr_list:
+      sub_pr[:,0] += pr[1][:,0]
+      sub_pr[:,1] += pr[1][:,0] - 1
+    idx = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, 
+                                                      PT.Zone.VertexSize(zone), 
+                                                      PT.Subset.GridLocation(subset))[0]
+
+    if is_partitioned:
+      # If loc == CellCenter or Vertex, array is shaped -> flatten it
+      return array.reshape(-1, order='F')[idx-1]
+    else:
+      distri = par_utils.dn_to_distribution(array.size, comm)
+      return EP.block_to_part(array, distri, [idx], comm)[0]
+      
+def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.
 
   Transformation is defined by
@@ -188,20 +284,33 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, apply
     if apply_to_fields:
       predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
 
+    loc_to_theta  = {key: None for key in COMPUTE_THETA.keys()}
+
     for predicate in predicates:
-      for container in PT.get_children_from_predicates(zone, predicate):
+      for container_stack in PT.get_children_from_predicates(zone, predicate, ancestors=True):
+        container = container_stack[-1]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
+        if PT.get_label(container) != "GridCoordinates_t" and len(vectors_basenames) > 0:
+          subset_container = _get_subset_container([zone] + list(container_stack)) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
+          loc_container = PT.Subset.GridLocation(subset_container)
+          loc_container = 'FaceCenter' if loc_container.endswith("FaceCenter") else loc_container #Remove I,J,K prefix
+          if loc_to_theta[loc_container] is None:
+            loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
+          theta = loc_to_theta[loc_container]
+          theta = shrink_to_subset(theta, zone, subset_container, comm)
         for basename in vectors_basenames:
-          
+
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
           ordered_fields = [fields_n[i] for i in idx_order]
-
-          cyl_values = _to_rthetaz(*[PT.get_value(n) for n in ordered_fields])
+          if basename == "Coordinate":
+            cyl_values = _to_rthetaz(*[PT.get_value(n) for n in ordered_fields])
+          else:
+            cyl_values = _to_rthetaz_vectors(*[PT.get_value(n) for n in ordered_fields], theta)
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
      
-def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply_to_fields):
+def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
   """Compute the cartesian coordinates from a unit revolution axis.
 
   Transformation is defined by
@@ -229,18 +338,33 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, apply
     transform_matrix_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
     coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
 
-    predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
+      predicates = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
+    else:
+      predicates = []
+    predicates += ['GridCoordinates_t'] # Always treat coordinates (last because needed for centers)
 
+    loc_to_theta  = {key: None for key in COMPUTE_THETA.keys()}
+  
     for predicate in predicates:
-      for container in PT.get_children_from_predicates(zone, predicate):
+      for container_stack in PT.get_children_from_predicates(zone, predicate, ancestors=True):
+        container = container_stack[-1]
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
         cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
+        if PT.get_label(container) != "GridCoordinates_t" and len(cylindric_vectors_basenames) > 0:
+          subset_container = _get_subset_container([zone] + list(container_stack)) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
+          loc_container = PT.Subset.GridLocation(subset_container)
+          loc_container = 'FaceCenter' if loc_container.endswith("FaceCenter") else loc_container #Remove I,J,K prefix
+          if loc_to_theta[loc_container] is None:
+            loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
+          theta = loc_to_theta[loc_container]
+          theta = shrink_to_subset(theta, zone, subset_container, comm)
         for basename in cylindric_vectors_basenames:
-
           fields_n = [PT.get_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
-          cart_values = _to_xyz(*[PT.get_value(n) for n in fields_n])
+          if basename == "Coordinate":
+            cart_values = _to_xyz(*[PT.get_value(n) for n in fields_n])
+          else:
+            cart_values = _to_xyz_vectors(*[PT.get_value(n) for n in fields_n], theta)
 
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
@@ -309,7 +433,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
             PT.update_node(node, f'{basename}{s}', value=new_val)
     
 
-def cartesian_to_cylindrical(t, axis, apply_to_fields=True):
+def cartesian_to_cylindrical(t, axis, comm=None, apply_to_fields=True):
   """Convert the input tree into a cylindrical coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
@@ -320,6 +444,7 @@ def cartesian_to_cylindrical(t, axis, apply_to_fields=True):
   Args:
     t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
+    comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
       Defaults to ``True``.
@@ -339,9 +464,9 @@ def cartesian_to_cylindrical(t, axis, apply_to_fields=True):
     axis = np.dot(transform_matrix, axis)
  
   revolution_axis_unit = axis / np.linalg.norm(axis)
-  cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis_unit, apply_to_fields)
+  cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis_unit, comm, apply_to_fields)
 
-def cylindrical_to_cartesian(t, axis, apply_to_fields=True):
+def cylindrical_to_cartesian(t, axis, comm=None, apply_to_fields=True):
   """Convert the input tree into a cartesian coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindrical coordinates.
@@ -353,6 +478,7 @@ def cylindrical_to_cartesian(t, axis, apply_to_fields=True):
   Args:
     t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
+    comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
       Defaults to ``True``.
@@ -374,7 +500,7 @@ def cylindrical_to_cartesian(t, axis, apply_to_fields=True):
     axis = np.dot(transform_matrix, axis)
 
   revolution_axis_unit = axis / np.linalg.norm(axis)
-  cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit, apply_to_fields)
+  cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis_unit, comm, apply_to_fields)
 
   if need_change_basis:
     auxiliary_coords_system(t, None, apply_to_fields)
