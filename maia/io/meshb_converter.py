@@ -200,8 +200,8 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
             elmt_t    = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(name)
 
             vtx_elmt[elmt_t]   = np_utils.safe_int_cast(PT.get_node_from_name(elmt, "ElementConnectivity")[1], pdm_gnum_dtype)
-            n_elmt[elmt_t]     = vtx_elmt[elmt_t].size // PDM.get_n_vtx_from_element(elmt_t)
-            range_elmt[elmt_t] = PT.get_node_from_name(elmt, "ElementRange")[1]
+            n_elmt[elmt_t]     = PT.Element.Size(elmt)
+            range_elmt[elmt_t] = PT.Element.Range(elmt)
 
     n_elmt[PDM._PDM_MESH_NODAL_POINT] = PT.Zone.n_vtx(zone)
 
