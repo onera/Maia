@@ -108,6 +108,9 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   if vtx_groups  is not None:
     groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
 
+  # > Add FlowSolution for vtx tag
+  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
+
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
   distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, "Vertex"))
@@ -127,8 +130,23 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         PT.new_DataArray(fld_name, data, parent=fs)
         i_fld += 1
 
-  # > Add FlowSolution for vtx tag
-  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
+  # > Add Metric
+  metric_names = tree_info['metric_names']
+  n_itp_metric = sum([len(met_names) for met_names in metric_names.values()])
+
+  if n_itp_metric != 0:
+      all_metric = np.empty(n_vtx*n_itp_metric, dtype=np.double)
+      PDM.read_solb(bytes(out_files['sol']), n_vtx, n_itp_metric, all_metric)
+
+      i_fld = 0
+      for container_name, met_names in metric_names.items():
+          fs = PT.new_FlowSolution(container_name, loc='Vertex', parent=dist_zone)
+
+          for met_name in met_names:
+              # Deinterlace + select distributed section since everything has been read ...
+              data = all_metric[i_fld::n_itp_metric][distrib_vtx[0]:distrib_vtx[1]]
+              PT.new_DataArray(met_name, data, parent=fs)
+              i_fld += 1
 
   return dist_tree
 
@@ -213,7 +231,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
             pdm_elmt_tag[elmt_pdm_t] = -np.ones(PT.Element.Size(elmt_n), dtype=np.int32)
           else:
             pdm_elmt_tag[elmt_pdm_t] = np.zeros(PT.Element.Size(elmt_n), dtype=np.int32)
-    
+
     pdm_n_elmt  [PDM._PDM_MESH_NODAL_POINT] = PT.Zone.n_vtx(zone)
     pdm_elmt_tag[PDM._PDM_MESH_NODAL_POINT] = np.zeros(PT.Zone.n_vtx(zone), dtype=np.int32)
 

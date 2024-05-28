@@ -69,6 +69,28 @@ def test_cgns_to_meshb(tmp_path):
         constraints=None
     )
 
+    # ---- Check CGNS tree conservation
+    tree_info = {
+        "bc_names": {
+            "EdgeCenter": [],
+            "FaceCenter": ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6', 'bc7', 'bc8'],
+            "CellCenter": []
+        },
+        "field_names":  {'FlowSolution': ['Zeros', 'Range']},
+        "metric_names": {'Metric': ['Ones']}
+    }
+
+    meshb_dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, MPI.COMM_SELF)
+
+
+    # report = PT.compare.diff_tree(dist_tree, meshb_dist_tree)
+    # print('## DEBUG -> is same ? : ', PT.is_same_tree(dist_tree, meshb_dist_tree))
+    # print('## DEBUG -> errors :\n\t', report.errors)
+    # print('## DEBUG -> warnings :\n\t', report.warnings)
+
+    PT.print_tree(dist_tree)
+    PT.print_tree(meshb_dist_tree)
+
     # ---- Check mesh
     with open(files['mesh']) as f:
         lines = f.readlines()
