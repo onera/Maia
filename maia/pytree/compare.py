@@ -182,7 +182,7 @@ class CloseArray:
     node_x,node_ref = nodes_1[-1], nodes_2[-1]
     x   = PT.get_value(node_x, raw=True)
     ref = PT.get_value(node_ref, raw=True)
-    close = np.isclose(x, ref, self.atol, self.rtol)
+    close = np.isclose(x, ref, self.rtol, self.atol)
     return _report_diff(x, ref, close)
 
 
