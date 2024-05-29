@@ -81,15 +81,9 @@ def test_cgns_to_meshb(tmp_path):
     }
 
     meshb_dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, MPI.COMM_SELF)
+    diff_tree       = PT.compare.diff_tree(dist_tree, meshb_dist_tree, comp=PT.compare.CloseArray(rtol=0, atol=1e-12))
 
-
-    # report = PT.compare.diff_tree(dist_tree, meshb_dist_tree)
-    # print('## DEBUG -> is same ? : ', PT.is_same_tree(dist_tree, meshb_dist_tree))
-    # print('## DEBUG -> errors :\n\t', report.errors)
-    # print('## DEBUG -> warnings :\n\t', report.warnings)
-
-    PT.print_tree(dist_tree)
-    PT.print_tree(meshb_dist_tree)
+    assert diff_tree.status == True
 
     # ---- Check mesh
     with open(files['mesh']) as f:
