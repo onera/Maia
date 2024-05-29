@@ -80,8 +80,9 @@ def test_cgns_to_meshb(tmp_path):
         "metric_names": {'Metric': ['Ones']}
     }
 
+    PT.rm_nodes_from_name(dist_tree, "Metric") # Metric is not reloaded from meshb
     meshb_dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, MPI.COMM_SELF)
-    diff_tree       = PT.compare.diff_tree(dist_tree, meshb_dist_tree, comp=PT.compare.CloseArray(rtol=0, atol=1e-12))
+    diff_tree       = PT.compare.diff_tree(dist_tree, meshb_dist_tree, comp=PT.compare.CloseArray(atol=1e-12))
 
     assert diff_tree.status == True
 

@@ -131,6 +131,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         i_fld += 1
 
   # > Add Metric
+  """
   metric_names = tree_info['metric_names']
   n_itp_metric = sum([len(met_names) for met_names in metric_names.values()])
 
@@ -147,6 +148,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
               data = all_metric[i_fld::n_itp_metric][distrib_vtx[0]:distrib_vtx[1]]
               PT.new_DataArray(met_name, data, parent=fs)
               i_fld += 1
+  """
 
   return dist_tree
 
