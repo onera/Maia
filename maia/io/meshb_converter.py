@@ -168,7 +168,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
   # meshb -> dmesh_nodal -> cgns
   file_name = bytes(out_files["mesh"], 'utf-8') if isinstance(out_files["mesh"], str)\
          else bytes(out_files["mesh"])
-  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, 1, 1)
+  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, 0, 1)
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files)
 
   end = time.time()

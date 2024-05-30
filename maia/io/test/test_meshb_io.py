@@ -69,23 +69,6 @@ def test_cgns_to_meshb(tmp_path):
         constraints=None
     )
 
-    # ---- Check CGNS tree conservation
-    tree_info = {
-        "bc_names": {
-            "EdgeCenter": [],
-            "FaceCenter": ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6', 'bc7', 'bc8'],
-            "CellCenter": []
-        },
-        "field_names":  {'FlowSolution': ['Zeros', 'Range']},
-        "metric_names": {'Metric': ['Ones']}
-    }
-
-    PT.rm_nodes_from_name(dist_tree, "Metric") # Metric is not reloaded from meshb
-    meshb_dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, MPI.COMM_SELF)
-    diff_tree       = PT.compare.diff_tree(dist_tree, meshb_dist_tree, comp=PT.compare.CloseArray(atol=1e-12))
-
-    assert diff_tree.status == True
-
     # ---- Check mesh
     with open(files['mesh']) as f:
         lines = f.readlines()
@@ -128,41 +111,65 @@ def test_cgns_to_meshb(tmp_path):
 
 
 @pytest_parallel.mark.parallel(2)
-def test_meshb_to_cgns(comm):
+@pytest.mark.parametrize('multi_elt', [False, True])
+def test_meshb_to_cgns(multi_elt, comm):
   # Prepare test : write files in serial
   tmp_dir = TU.create_collective_tmp_dir(comm)
   files = {'mesh': tmp_dir / 'mesh.mesh',
            'fld' : tmp_dir / 'field.sol'}
 
+  if multi_elt:
+    yaml_path = os.path.join(TU.mesh_dir, 'multi_element.yaml')
+    dist_tree = file_to_dist_tree(yaml_path, comm)
+    bc_face_groups = ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6', 'bc7', 'bc8']
+  else:
+    dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', comm)
+    bc_face_groups = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
+
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  dn_vtx = vtx_distri[1] - vtx_distri[0]
+  fields = {"Zeros": np.zeros(dn_vtx), "Range": np.arange(dn_vtx, dtype=float)}
+  PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
+
+  # For comparaison
+  dist_tree_bck = PT.deep_copy(dist_tree)
+
+  # For meshb converter
+  maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm)
   if comm.Get_rank() == 0:
-    dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', MPI.COMM_SELF)
-    zone = PT.get_all_Zone_t(dist_tree)[0]
-
-    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-    n_vtx = vtx_distri[1] - vtx_distri[0]
-    fields = {"Zeros": np.zeros(n_vtx), "Range": np.arange(n_vtx, dtype=float)}
-    PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
-
     meshb_converter.cgns_to_meshb(dist_tree, files, [], ['FlowSolution'], constraints=None)
 
   tree_info = {
                'bc_names': {
                    'EdgeCenter' : [],
-                   'FaceCenter' : ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6'],
+                   'FaceCenter' : bc_face_groups,
                    'CellCenter' : [],
                    },
                'field_names' : { 'FlowSolution' : ['Zeros', 'Range'] },
               }
 
-  dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, comm)
+  meshb_dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, comm)
+  PT.rm_nodes_from_name(dist_tree_bck, "maia_topo") # Added by meshb -> cgns
+  PT.rm_nodes_from_name(meshb_dist_tree, "maia_topo") # Added by meshb -> cgns
 
-  zone = PT.get_all_Zone_t(dist_tree)[0]
-  assert PT.Zone.n_vtx(zone) == 1331 and PT.Zone.n_cell(zone) == 5000
+  # Compare on same distribution
+  maia.algo.dist.redistribute_tree(dist_tree_bck, 'uniform', comm)
+  maia.algo.dist.redistribute_tree(meshb_dist_tree, 'uniform', comm)
 
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  sol = PT.get_node_from_path(zone, 'FlowSolution/Range')[1]
-  assert (sol == np.arange(vtx_distri[0], vtx_distri[1])).all()
+  # Somehow those two arrays are not in same order, but have same values
+  if multi_elt:
+    for bc_name in ['bc2', 'bc4']:
+      bc_bck = PT.get_node_from_path(dist_tree_bck, f"Base/zone/ZoneBC/{bc_name}/PointList")
+      bc_cur = PT.get_node_from_path(meshb_dist_tree, f"Base/zone/ZoneBC/{bc_name}/PointList")
+      bc_bck = bc_bck[1][0] if bc_bck else np.empty([])
+      bc_cur = bc_cur[1][0] if bc_cur else np.empty([])
+      bc_bck_glob = np.concatenate(comm.allgather(bc_bck))
+      bc_cur_glob = np.concatenate(comm.allgather(bc_cur))
+      assert (np.sort(bc_bck_glob) == np.sort(bc_cur_glob)).all()
+      PT.rm_node_from_path(dist_tree_bck, f"Base/zone/ZoneBC/{bc_name}")
+      PT.rm_node_from_path(meshb_dist_tree, f"Base/zone/ZoneBC/{bc_name}")
 
-  # TODO BCs are poorly distributed
-  bc = PT.get_node_from_name(zone, 'bc3')
-  assert PT.maia.getDistribution(bc, 'Index')[1][2] == 200
+
+  assert PT.is_same_tree(dist_tree_bck, meshb_dist_tree, abs_tol=1E-12)
+  TU.rm_collective_dir(tmp_dir, comm)
