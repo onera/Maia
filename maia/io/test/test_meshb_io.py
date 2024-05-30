@@ -73,40 +73,41 @@ def test_cgns_to_meshb(tmp_path):
     with open(files['mesh']) as f:
         lines = f.readlines()
 
-    assert int(lines[lines.index('Vertices\n')+1])       == 9474
-    assert int(lines[lines.index('Triangles\n')+1])      == 3024
-    assert int(lines[lines.index('Quadrilaterals\n')+1]) == 630
-    assert int(lines[lines.index('Tetrahedra\n')+1])     == 21450
-    assert int(lines[lines.index('Prisms\n')+1])         == 9320
+    assert int(lines[lines.index('Vertices\n')+1])       == 77
+    assert int(lines[lines.index('Edges\n')+1])          == 56
+    assert int(lines[lines.index('Triangles\n')+1])      == 88
+    assert int(lines[lines.index('Quadrilaterals\n')+1]) == 16
+    assert int(lines[lines.index('Tetrahedra\n')+1])     == 144
+    assert int(lines[lines.index('Prisms\n')+1])         == 24
     assert lines[-1]                                     == 'End\n'
 
     # ---- Check BCs for triangles
     st_triangles             = lines.index('Triangles\n')
-    tri_bc_tag               = [int(l.split()[-1]) for l in lines[st_triangles+2:st_triangles+2+3024]]
+    tri_bc_tag               = [int(l.split()[-1]) for l in lines[st_triangles+2:st_triangles+2+88]]
     tri_u_tag, tri_bc_counts = np.unique(tri_bc_tag, return_counts=True)
 
-    assert (tri_u_tag == [1, 2, 3, 4, 5, 6, 7, 8]).all()
-    assert (sum(tri_bc_counts) == 3024)
+    assert (tri_u_tag == [1, 2, 3, 4, 5, 6]).all()
+    assert (sum(tri_bc_counts) == 88)
 
     # ---- Check BCs for quadrilaterals
     st_quads                   = lines.index('Quadrilaterals\n')
-    quad_bc_tag                = [int(l.split()[-1]) for l in lines[st_quads+2:st_quads+2+630]]
+    quad_bc_tag                = [int(l.split()[-1]) for l in lines[st_quads+2:st_quads+2+16]]
     quad_u_tag, quad_bc_counts = np.unique(quad_bc_tag, return_counts=True)
 
-    assert(quad_u_tag == [2, 3, 4, 8]).all()
-    assert(sum(quad_bc_counts) == 630)
+    assert(quad_u_tag == [1, 2, 5, 6]).all()
+    assert(sum(quad_bc_counts) == 16)
 
     # ---- Check sol & metric
     with open(files['sol']) as f:
         lines = f.readlines()
 
-    assert int(lines[lines.index('SolAtVertices\n')+1]) == 9474
+    assert int(lines[lines.index('SolAtVertices\n')+1]) == 77
     assert     lines[lines.index('SolAtVertices\n')+2]  == '1 1 \n'
 
     with open(files['fld']) as f:
         lines = f.readlines()
 
-    assert int(lines[lines.index('SolAtVertices\n')+1]) == 9474
+    assert int(lines[lines.index('SolAtVertices\n')+1]) == 77
     assert     lines[lines.index('SolAtVertices\n')+2]  == '2 1 1 \n'
 
 
@@ -121,10 +122,14 @@ def test_meshb_to_cgns(multi_elt, comm):
   if multi_elt:
     yaml_path = os.path.join(TU.mesh_dir, 'multi_element.yaml')
     dist_tree = file_to_dist_tree(yaml_path, comm)
-    bc_face_groups = ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6', 'bc7', 'bc8']
+    bc_edge_groups = ['bce'+str(idx+1) for idx in range(28)]
+    bc_face_groups = ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6']
+    bc_cell_groups = ['bcv1', 'bcv2']
   else:
     dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', comm)
+    bc_edge_groups = []
     bc_face_groups = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
+    bc_cell_groups = []
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
@@ -142,9 +147,9 @@ def test_meshb_to_cgns(multi_elt, comm):
 
   tree_info = {
                'bc_names': {
-                   'EdgeCenter' : [],
+                   'EdgeCenter' : bc_edge_groups,
                    'FaceCenter' : bc_face_groups,
-                   'CellCenter' : [],
+                   'CellCenter' : bc_cell_groups,
                    },
                'field_names' : { 'FlowSolution' : ['Zeros', 'Range'] },
               }
@@ -157,9 +162,9 @@ def test_meshb_to_cgns(multi_elt, comm):
   maia.algo.dist.redistribute_tree(dist_tree_bck, 'uniform', comm)
   maia.algo.dist.redistribute_tree(meshb_dist_tree, 'uniform', comm)
 
-  # Somehow those two arrays are not in same order, but have same values
+  # Somehow those arrays are not in same order, but have same values
   if multi_elt:
-    for bc_name in ['bc2', 'bc4']:
+    for bc_name in ['bc2', 'bc5']:
       bc_bck = PT.get_node_from_path(dist_tree_bck, f"Base/zone/ZoneBC/{bc_name}/PointList")
       bc_cur = PT.get_node_from_path(meshb_dist_tree, f"Base/zone/ZoneBC/{bc_name}/PointList")
       bc_bck = bc_bck[1][0] if bc_bck else np.empty([])
