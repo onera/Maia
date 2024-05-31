@@ -9,8 +9,8 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Developpement version
----------------------
+v1.4 (May 2024)
+---------------
 
 💡 New Features
 ^^^^^^^^^^^^^^^
@@ -41,6 +41,8 @@ Developpement version
 🚧 API change
 ^^^^^^^^^^^^^
 - default value for ``apply_to_fields`` is now ``True`` in exposed functions
+- convert_s_to_u: now return ``None`` as announced
+- Change exposed functions in ``maia.pytree`` (refer to related documentation)
 
 v1.3 (January 2024)
 -------------------
