@@ -31,5 +31,3 @@ def cgns_elt_name_to_pdm_element_type(name:str)->int:
 
 def pdm_elt_name_to_cgns_element_type(pdm_id:str)->int:
     return pdm_to_cgns[pdm_id]
-
-

@@ -1,5 +1,6 @@
 import pytest
 import pytest_parallel
+import os
 import numpy as np
 import mpi4py.MPI as MPI
 
@@ -8,13 +9,14 @@ import maia.pytree as PT
 
 import maia.utils.test_utils as TU
 
-from maia.io import meshb_converter
+from maia.io import meshb_converter, \
+                    file_to_dist_tree
 
 def test_get_tree_info():
 
   dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', MPI.COMM_SELF)
   zone = PT.get_all_Zone_t(dist_tree)[0]
-    
+
   vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
   n_vtx = vtx_distri[1] - vtx_distri[0]
   fields = {"Zeros": np.zeros(n_vtx), "Range": np.arange(n_vtx, dtype=float)}
@@ -23,7 +25,7 @@ def test_get_tree_info():
   # Families are required
   for ibc, bc in enumerate(PT.get_nodes_from_label(zone, 'BC_t')):
     PT.new_child(bc, 'FamilyName', 'FamilyName_t', f'fam{ibc+1}')
-    
+
   tree_info = meshb_converter.get_tree_info(dist_tree, ['FlowSolution'])
 
   assert len(tree_info) == 2
@@ -34,89 +36,145 @@ def test_get_tree_info():
           'CellCenter': [],
           }
 
+
 def test_cgns_to_meshb(tmp_path):
+    # ---- Loading yaml/cgns mesh file
+    yaml_path = os.path.join(TU.mesh_dir, 'multi_element.yaml')
+    dist_tree = file_to_dist_tree(yaml_path, MPI.COMM_SELF)
 
-  # CGNS to mesh b is serial
-  dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', MPI.COMM_SELF)
-  zone = PT.get_all_Zone_t(dist_tree)[0]
+    # ---- Setting up flow solution
+    zone       = PT.get_all_Zone_t(dist_tree)[0]
+    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+    n_vtx      = vtx_distri[1] - vtx_distri[0]
 
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  n_vtx = vtx_distri[1] - vtx_distri[0]
-  fields = {"Zeros": np.zeros(n_vtx), "Range": np.arange(n_vtx, dtype=float)}
-  PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
-  PT.new_FlowSolution('Metric', loc='Vertex', fields={"Ones": np.ones(n_vtx)}, parent=zone)
+    fields     = {
+        'Zeros': np.zeros(n_vtx),
+        'Range': np.arange(n_vtx, dtype=float)
+    }
 
-  files = {'mesh': tmp_path / 'mesh.mesh',
-           'sol' : tmp_path / 'metric.sol',
-           'fld' : tmp_path / 'field.sol'}
+    PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
+    PT.new_FlowSolution('Metric', loc='Vertex', fields={'Ones': np.ones(n_vtx)}, parent=zone)
 
-  meshb_converter.cgns_to_meshb(dist_tree, files, [PT.get_node_from_name(zone, 'Ones')], ['FlowSolution'], constraints=None)
+    # ---- Write mesh & sol to mesh format
+    files = {
+        'mesh': tmp_path / 'multi_element.mesh',
+        'sol' : tmp_path / 'metric.sol',
+        'fld' : tmp_path / 'field.sol'
+    }
 
-  # Check .mesh
-  with open(files['mesh']) as f:
-    lines = f.readlines()
+    meshb_converter.cgns_to_meshb(
+        dist_tree, files,
+        [PT.get_node_from_name(zone, 'Ones')],
+        ['FlowSolution'],
+        constraints=None
+    )
 
-  assert int(lines[lines.index('Vertices\n')+1]) == 1331
-  assert int(lines[lines.index('Edges\n')+1]) == 0
-  assert int(lines[lines.index('Triangles\n')+1]) == 1200
-  assert int(lines[lines.index('Tetrahedra\n')+1]) == 5000
-  assert lines[-1] == "End\n"
+    # ---- Check mesh
+    with open(files['mesh']) as f:
+        lines = f.readlines()
 
-  st_triangles = lines.index('Triangles\n')
-  bc_tag = [int(l.split()[-1]) for l in lines[st_triangles+2:st_triangles+2+1200]]
-  u_tag, counts = np.unique(bc_tag, return_counts=True)
-  assert (u_tag == [1,2,3,4,5,6]).all()
-  assert (counts == 200).all()
+    assert int(lines[lines.index('Vertices\n')+1])       == 77
+    assert int(lines[lines.index('Edges\n')+1])          == 56
+    assert int(lines[lines.index('Triangles\n')+1])      == 88
+    assert int(lines[lines.index('Quadrilaterals\n')+1]) == 16
+    assert int(lines[lines.index('Tetrahedra\n')+1])     == 144
+    assert int(lines[lines.index('Prisms\n')+1])         == 24
+    assert lines[-1]                                     == 'End\n'
 
-  # Check .sol
-  with open(files['fld']) as f:
-    lines = f.readlines()
-  assert int(lines[lines.index('SolAtVertices\n')+1]) == 1331
-  assert     lines[lines.index('SolAtVertices\n')+2]  == "2 1 1 \n"
+    # ---- Check BCs for triangles
+    st_triangles             = lines.index('Triangles\n')
+    tri_bc_tag               = [int(l.split()[-1]) for l in lines[st_triangles+2:st_triangles+2+88]]
+    tri_u_tag, tri_bc_counts = np.unique(tri_bc_tag, return_counts=True)
 
-  with open(files['sol']) as f:
-    lines = f.readlines()
-  assert int(lines[lines.index('SolAtVertices\n')+1]) == 1331
-  assert     lines[lines.index('SolAtVertices\n')+2]  == "1 1 \n"
+    assert (tri_u_tag == [1, 2, 3, 4, 5, 6]).all()
+    assert (sum(tri_bc_counts) == 88)
+
+    # ---- Check BCs for quadrilaterals
+    st_quads                   = lines.index('Quadrilaterals\n')
+    quad_bc_tag                = [int(l.split()[-1]) for l in lines[st_quads+2:st_quads+2+16]]
+    quad_u_tag, quad_bc_counts = np.unique(quad_bc_tag, return_counts=True)
+
+    assert(quad_u_tag == [1, 2, 5, 6]).all()
+    assert(sum(quad_bc_counts) == 16)
+
+    # ---- Check sol & metric
+    with open(files['sol']) as f:
+        lines = f.readlines()
+
+    assert int(lines[lines.index('SolAtVertices\n')+1]) == 77
+    assert     lines[lines.index('SolAtVertices\n')+2]  == '1 1 \n'
+
+    with open(files['fld']) as f:
+        lines = f.readlines()
+
+    assert int(lines[lines.index('SolAtVertices\n')+1]) == 77
+    assert     lines[lines.index('SolAtVertices\n')+2]  == '2 1 1 \n'
 
 
 @pytest_parallel.mark.parallel(2)
-def test_meshb_to_cgns(comm):
+@pytest.mark.parametrize('multi_elt', [False, True])
+def test_meshb_to_cgns(multi_elt, comm):
   # Prepare test : write files in serial
   tmp_dir = TU.create_collective_tmp_dir(comm)
   files = {'mesh': tmp_dir / 'mesh.mesh',
            'fld' : tmp_dir / 'field.sol'}
 
+  if multi_elt:
+    yaml_path = os.path.join(TU.mesh_dir, 'multi_element.yaml')
+    dist_tree = file_to_dist_tree(yaml_path, comm)
+    bc_edge_groups = ['bce'+str(idx+1) for idx in range(28)]
+    bc_face_groups = ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6']
+    bc_cell_groups = ['bcv1', 'bcv2']
+  else:
+    dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', comm)
+    bc_edge_groups = []
+    bc_face_groups = ['Zmin', 'Zmax', 'Xmin', 'Xmax', 'Ymin', 'Ymax']
+    bc_cell_groups = []
+
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  dn_vtx = vtx_distri[1] - vtx_distri[0]
+  fields = {"Zeros": np.zeros(dn_vtx), "Range": np.arange(dn_vtx, dtype=float)}
+  PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
+
+  # For comparaison
+  dist_tree_bck = PT.deep_copy(dist_tree)
+
+  # For meshb converter
+  maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm)
   if comm.Get_rank() == 0:
-    dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', MPI.COMM_SELF)
-    zone = PT.get_all_Zone_t(dist_tree)[0]
-    
-    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-    n_vtx = vtx_distri[1] - vtx_distri[0]
-    fields = {"Zeros": np.zeros(n_vtx), "Range": np.arange(n_vtx, dtype=float)}
-    PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
-    
     meshb_converter.cgns_to_meshb(dist_tree, files, [], ['FlowSolution'], constraints=None)
 
   tree_info = {
-               'bc_names': { 
-                   'EdgeCenter' : [],
-                   'FaceCenter' : ['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bc6'],
-                   'CellCenter' : [],
+               'bc_names': {
+                   'EdgeCenter' : bc_edge_groups,
+                   'FaceCenter' : bc_face_groups,
+                   'CellCenter' : bc_cell_groups,
                    },
                'field_names' : { 'FlowSolution' : ['Zeros', 'Range'] },
               }
 
-  comm.barrier()
-  dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, comm)
+  meshb_dist_tree = meshb_converter.meshb_to_cgns(files, tree_info, comm)
+  PT.rm_nodes_from_name(dist_tree_bck, "maia_topo") # Added by meshb -> cgns
+  PT.rm_nodes_from_name(meshb_dist_tree, "maia_topo") # Added by meshb -> cgns
 
-  zone = PT.get_all_Zone_t(dist_tree)[0]
-  assert PT.Zone.n_vtx(zone) == 1331 and PT.Zone.n_cell(zone) == 5000
+  # Compare on same distribution
+  maia.algo.dist.redistribute_tree(dist_tree_bck, 'uniform', comm)
+  maia.algo.dist.redistribute_tree(meshb_dist_tree, 'uniform', comm)
 
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-  sol = PT.get_node_from_path(zone, 'FlowSolution/Range')[1]
-  assert (sol == np.arange(vtx_distri[0], vtx_distri[1])).all()
+  # Somehow those arrays are not in same order, but have same values
+  if multi_elt:
+    for bc_name in ['bc2', 'bc5']:
+      bc_bck = PT.get_node_from_path(dist_tree_bck, f"Base/zone/ZoneBC/{bc_name}/PointList")
+      bc_cur = PT.get_node_from_path(meshb_dist_tree, f"Base/zone/ZoneBC/{bc_name}/PointList")
+      bc_bck = bc_bck[1][0] if bc_bck else np.empty([])
+      bc_cur = bc_cur[1][0] if bc_cur else np.empty([])
+      bc_bck_glob = np.concatenate(comm.allgather(bc_bck))
+      bc_cur_glob = np.concatenate(comm.allgather(bc_cur))
+      assert (np.sort(bc_bck_glob) == np.sort(bc_cur_glob)).all()
+      PT.rm_node_from_path(dist_tree_bck, f"Base/zone/ZoneBC/{bc_name}")
+      PT.rm_node_from_path(meshb_dist_tree, f"Base/zone/ZoneBC/{bc_name}")
 
-  # TODO BCs are poorly distributed
-  bc = PT.get_node_from_name(zone, 'bc3')
-  assert PT.maia.getDistribution(bc, 'Index')[1][2] == 200
+
+  assert PT.is_same_tree(dist_tree_bck, meshb_dist_tree, abs_tol=1E-12)
+  TU.rm_collective_dir(tmp_dir, comm)

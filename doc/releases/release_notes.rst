@@ -20,6 +20,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - adapt_mesh_with_feflo: manage axisymmetric meshes when ``perio=True``
+- adapt_mesh_with_feflo: manage general U/elt meshes in meshb converter
 - compute_wall_distance: use volumic face global numbering in ClosestEltGnum result
 - closest_points: allow meshes of any cell dimension
 - Manage ArbitraryGridMotion_t nodes in IO, split and data transfer

@@ -19,7 +19,7 @@ def get_tree_info(dist_tree, container_names):
   """
   Get tree informations such as bc_names and interpolated containers.
   """
-  
+
   zones = PT.get_all_Zone_t(dist_tree)
   assert len(zones) == 1
   zone_n = zones[0]
@@ -75,6 +75,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
     n_bc_init = len(bc_names[location]) if location in bc_names else 0
     n_new_bc  = n_elt_group - n_bc_init
+
     assert n_new_bc in [0,1], f"Unknow tags in meshb file ({location})"
 
     for i_group in range(n_elt_group):
@@ -107,6 +108,9 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   if vtx_groups  is not None:
     groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
 
+  # > Add FlowSolution for vtx tag
+  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
+
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
   distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, "Vertex"))
@@ -122,12 +126,29 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
       fs = PT.new_FlowSolution(container_name, loc='Vertex', parent=dist_zone)
       for fld_name in fld_names:
         # Deinterlace + select distributed section since everything has been read ...
-        data = all_fields[i_fld::n_itp_flds][distrib_vtx[0]:distrib_vtx[1]] 
-        PT.new_DataArray(fld_name, data, parent=fs) 
+        data = all_fields[i_fld::n_itp_flds][distrib_vtx[0]:distrib_vtx[1]]
+        PT.new_DataArray(fld_name, data, parent=fs)
         i_fld += 1
-  
-  # > Add FlowSolution for vtx tag
-  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
+
+  # > Add Metric
+  """
+  metric_names = tree_info['metric_names']
+  n_itp_metric = sum([len(met_names) for met_names in metric_names.values()])
+
+  if n_itp_metric != 0:
+      all_metric = np.empty(n_vtx*n_itp_metric, dtype=np.double)
+      PDM.read_solb(bytes(out_files['sol']), n_vtx, n_itp_metric, all_metric)
+
+      i_fld = 0
+      for container_name, met_names in metric_names.items():
+          fs = PT.new_FlowSolution(container_name, loc='Vertex', parent=dist_zone)
+
+          for met_name in met_names:
+              # Deinterlace + select distributed section since everything has been read ...
+              data = all_metric[i_fld::n_itp_metric][distrib_vtx[0]:distrib_vtx[1]]
+              PT.new_DataArray(met_name, data, parent=fs)
+              i_fld += 1
+  """
 
   return dist_tree
 
@@ -143,13 +164,13 @@ def meshb_to_cgns(out_files, tree_info, comm):
   '''
   mlog.info(f"Distributed read of meshb file...")
   start = time.time()
-  
+
   # meshb -> dmesh_nodal -> cgns
   file_name = bytes(out_files["mesh"], 'utf-8') if isinstance(out_files["mesh"], str)\
          else bytes(out_files["mesh"])
-  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, 1, 1)
+  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, 0, 1)
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files)
-  
+
   end = time.time()
   dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)
@@ -183,80 +204,96 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
   for zone in PT.get_all_Zone_t(dist_tree):
 
+    is_3d = False
+    is_2d = False
+
     # > Coordinates
     cx, cy, cz = PT.Zone.coordinates(zone)
 
-    # > Gathering elements by dimension
-    elmt_by_dim = list()
+    #  > Gathering elements by type
+    pdm_n_elmt     = np.zeros(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES, dtype=np.int32)
+    pdm_elmt_vtx   = [None] * PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES
+    pdm_elmt_tag   = [None] * PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES
+    pdm_elmt_range = [None] * PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES
+
     for elmts in PT.Zone.get_ordered_elements_per_dim(zone):
-      elmt_ec = [np_utils.safe_int_cast(PT.get_node_from_name(elmt, "ElementConnectivity")[1], np.int32) for elmt in elmts]
+      for elmt_n in elmts:
+        elmt_name  = PT.Element.CGNSName(elmt_n)
+        elmt_pdm_t = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elmt_name)
 
-      if(len(elmt_ec) > 1):
-        elmt_by_dim.append(np.concatenate(elmt_ec))
-      elif len(elmt_ec) == 1:
-        elmt_by_dim.append(elmt_ec[0])
-      else:
-        elmt_by_dim.append(np.empty(0,dtype=np.int32))
+        pdm_n_elmt    [elmt_pdm_t] = PT.Element.Size(elmt_n)
+        pdm_elmt_vtx  [elmt_pdm_t] = np_utils.safe_int_cast(PT.get_node_from_name(elmt_n, "ElementConnectivity")[1], pdm_gnum_dtype)
+        pdm_elmt_range[elmt_pdm_t] = PT.Element.Range(elmt_n)
 
-    n_tetra = elmt_by_dim[3].size // 4
-    n_tri   = elmt_by_dim[2].size // 3
-    n_edge  = elmt_by_dim[1].size // 2
-    n_vtx   = PT.Zone.n_vtx(zone)
+        if PT.Element.Size(elmt_n)!=0:
+          is_3d = PT.Element.Dimension(elmt_n)==3
+          is_2d = PT.Element.Dimension(elmt_n)==2
+
+          if elmt_name in ["BAR_2", "TRI_3", "QUAD_4"]:
+            pdm_elmt_tag[elmt_pdm_t] = -np.ones(PT.Element.Size(elmt_n), dtype=np.int32)
+          else:
+            pdm_elmt_tag[elmt_pdm_t] = np.zeros(PT.Element.Size(elmt_n), dtype=np.int32)
+
+    pdm_n_elmt  [PDM._PDM_MESH_NODAL_POINT] = PT.Zone.n_vtx(zone)
+    pdm_elmt_tag[PDM._PDM_MESH_NODAL_POINT] = np.zeros(PT.Zone.n_vtx(zone), dtype=np.int32)
 
     constraint_tags = {'CellCenter':[],
                        'FaceCenter':[],
                        'EdgeCenter':[]}
 
     # > PointList BC to BC tag
-    def bc_pl_to_bc_tag(list_of_bc, bc_tag, offset):
+    def bc_pl_to_bc_tag(list_of_bc, elts_tag, elts_range):
       for n_tag, bc_n in enumerate(list_of_bc):
         pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
-        bc_tag[pl-offset-1] = n_tag + 1
+
+        for pdm_elt_t, elt_range in enumerate(elts_range):
+          if elt_range is not None and pdm_elt_t!=PDM._PDM_MESH_NODAL_POINT: # Beware of vtx range overlapping with element range
+            pl_in_elmt = pl[np.logical_and( np.greater_equal(pl, elt_range[0]),
+                                            np.less_equal   (pl, elt_range[1]))] - elt_range[0]
+            elts_tag[pdm_elt_t][pl_in_elmt] = n_tag + 1
+
         bc_name = PT.get_name(bc_n)
         bc_loc  = PT.Subset.GridLocation(bc_n)
         if constraints is not None and\
            PT.get_name(bc_n) not in constraints:
           constraint_tags[bc_loc].append(str(n_tag + 1))
 
-    def bc_pl_to_bc_tag_vtx(list_of_bc, bc_tag, offset):
+    def bc_pl_to_bc_tag_vtx(list_of_bc, vtx_tag):
       for n_tag, bc_n in enumerate(list_of_bc):
         pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
-        bc_tag[pl-offset-1] = pl
+        vtx_tag[pl-1] = pl
 
+    # > Tags initialization
     zone_bc = PT.get_child_from_label(zone, 'ZoneBC_t')
 
-    tetra_tag =  np.zeros(n_tetra , dtype=np.int32)
-    tri_tag   = -np.ones (n_tri , dtype=np.int32)
-    edge_tag  = -np.ones (n_edge, dtype=np.int32)
-    vtx_tag   =  np.zeros(n_vtx , dtype=np.int32)
     if zone_bc is not None:
       # > Cell BC_t
       is_cell_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "CellCenter"
       cell_bcs   = PT.get_children_from_predicate(zone_bc, is_cell_bc)
-      n_cell_tag = bc_pl_to_bc_tag(cell_bcs, tetra_tag, 0)
+      n_cell_tag = bc_pl_to_bc_tag(cell_bcs, pdm_elmt_tag, pdm_elmt_range)
 
       # > Face BC_t
       is_face_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "FaceCenter"
       face_bcs   = PT.get_children_from_predicate(zone_bc, is_face_bc)
-      n_face_tag = bc_pl_to_bc_tag(face_bcs, tri_tag, n_tetra)
+      n_face_tag = bc_pl_to_bc_tag(face_bcs, pdm_elmt_tag, pdm_elmt_range)
 
       # > Edge BC_t
       is_edge_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "EdgeCenter"
       edge_bcs   = PT.get_children_from_predicate(zone_bc, is_edge_bc)
-      n_edge_tag = bc_pl_to_bc_tag(edge_bcs, edge_tag, n_tetra+n_tri)
+      n_edge_tag = bc_pl_to_bc_tag(edge_bcs, pdm_elmt_tag, pdm_elmt_range)
 
-      # > Edge BC_t
+      # > Vertices BC_t
       is_vtx_bc  = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "Vertex"
       vtx_bcs   = PT.get_children_from_predicate(zone_bc, is_vtx_bc)
-      n_vtx_tag = bc_pl_to_bc_tag_vtx(vtx_bcs, vtx_tag, 0)
+      n_vtx_tag = bc_pl_to_bc_tag_vtx(vtx_bcs, pdm_elmt_tag[PDM._PDM_MESH_NODAL_POINT])
 
-    is_3d = n_tetra!=0
-    is_2d = n_tri  !=0
-    if is_3d: 
-      if (n_tri > 0 and (tri_tag < 0).any()) or (n_edge > 0 and (edge_tag < 0).any()):
-        raise ValueError("Some Face or Edge elements do not belong to any BC")
+
+    if is_3d:
+      for pdm_elt_t in [PDM._PDM_MESH_NODAL_BAR2, PDM._PDM_MESH_NODAL_TRIA3, PDM._PDM_MESH_NODAL_QUAD4]:
+        if (pdm_n_elmt[pdm_elt_t] > 0 and (pdm_elmt_tag[pdm_elt_t] < 0).any()):
+          raise ValueError("Some Face or Edge elements do not belong to any BC")
     elif is_2d:
-      if (n_edge > 0 and (edge_tag < 0).any()):
+      if (pdm_n_elmt[PDM._PDM_MESH_NODAL_BAR2] > 0 and (pdm_elmt_tag[PDM._PDM_MESH_NODAL_BAR2] < 0).any()):
         raise ValueError("Some Face or Edge elements do not belong to any BC")
     else:
       raise ValueError("No tetrahedron or triangle Elements_t node could be found")
@@ -264,20 +301,16 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
     # > Write meshb
     xyz       = np_utils.interweave_arrays([cx,cy,cz])
-    # tetra_tag = np.zeros(n_tetra, dtype=np.int32)
     file_name = bytes(files["mesh"], 'utf-8') if isinstance(files["mesh"], str)\
            else bytes(files["mesh"])
     PDM.write_meshb(file_name,
-                    n_vtx, n_tetra, n_tri, n_edge,
-                    xyz,              vtx_tag,
-                    elmt_by_dim[3], tetra_tag,
-                    elmt_by_dim[2],   tri_tag,
-                    elmt_by_dim[1],  edge_tag)
+                    pdm_n_elmt, pdm_elmt_tag,
+                    pdm_elmt_vtx, xyz)
 
     n_metric_fld = len(metric_nodes)
     if n_metric_fld==1:
       metric_fld = PT.get_value(metric_nodes[0])
-      PDM.write_solb(bytes(files["sol"]), n_vtx, 1, metric_fld)
+      PDM.write_solb(bytes(files["sol"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], 1, metric_fld)
     elif n_metric_fld==6:
       mxx = PT.get_value(metric_nodes[0])
       mxy = PT.get_value(metric_nodes[1])
@@ -286,7 +319,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
       myz = PT.get_value(metric_nodes[4])
       mzz = PT.get_value(metric_nodes[5])
       met = np_utils.interweave_arrays([mxx,mxy,myy,mxz,myz,mzz])
-      PDM.write_matsym_solb(bytes(files["sol"]), n_vtx, met)
+      PDM.write_matsym_solb(bytes(files["sol"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], met)
 
 
     # > Fields to interpolate
@@ -296,12 +329,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
       fields_list += [PT.get_value(n) for n in PT.get_children_from_label(container, 'DataArray_t')]
     if len(fields_list)>0:
       fields_array = np_utils.interweave_arrays(fields_list)
-      PDM.write_solb(bytes(files["fld"]), n_vtx, len(fields_list), fields_array)
+      PDM.write_solb(bytes(files["fld"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], len(fields_list), fields_array)
 
 
   end = time.time()
   mlog.info(f"Write of meshb file completed ({end-start:.2f} s)")
 
   return constraint_tags
-
-
