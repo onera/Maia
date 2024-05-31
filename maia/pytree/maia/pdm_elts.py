@@ -27,9 +27,7 @@ def element_pdm_type(n:int)->int:
   return cgns_to_pdm[elements_properties[n][0]]
 
 def cgns_elt_name_to_pdm_element_type(name:str)->int:
-    return cgns_to_pdm[name]
+    return cgns_to_pdm[name.split('.')[0]]
 
 def pdm_elt_name_to_cgns_element_type(pdm_id:str)->int:
     return pdm_to_cgns[pdm_id]
-
-
