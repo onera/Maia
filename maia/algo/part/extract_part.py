@@ -19,14 +19,18 @@ def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
 
   if zone_type=='Structured':
     unwanted_type = 'IndexArray_t'
+    unwanted_name = 'PointList'
     required_name = 'PointRange'
   else:
     unwanted_type = 'IndexRange_t'
+    unwanted_name = 'PointRange'
     required_name = 'PointList'
   there_is_dataset = False
   assert PT.get_child_from_predicates(bc_n, f'BCDataSet_t/{unwanted_type}') is None,\
-                 'BCDataSet_t with PointList aren\'t managed'
-  ds_arrays = PT.get_children_from_predicates(bc_n, 'BCDataSet_t/BCData_t/DataArray_t')
+                 f'BCDataSet_t with {unwanted_name} aren\'t managed'
+
+  is_valid_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, required_name) is None
+  ds_arrays = PT.get_children_from_predicates(bc_n, [is_valid_bcds, 'BCData_t', 'DataArray_t'])
   for ds_array in ds_arrays:
     PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_value(ds_array), parent=zsr_bc_n)
   if len(ds_arrays) != 0:
@@ -244,7 +248,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
 
   Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`:
   ``zsr_name`` becomes ``bc_name`` and optional ``transfer_dataset`` argument allows to 
-  transfer BCDataSet from BC to the extracted mesh (default to ``True``).
+  transfer BCDataSet (without PointList or PointRange) from BC to the extracted mesh (default to ``True``).
 
   Example:
     .. literalinclude:: snippets/test_algo.py

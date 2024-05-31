@@ -29,6 +29,7 @@ Developpement version
 🐞 Fixes
 ^^^^^^^^
 - extract_part: ensure dtype correctness of transfered arrays
+- extract_part_from_bc_name: prevent crash if BCDataSet has a PointList or PointRange
 - extract_part_from_family: prevent a crash if a BC name is identical to the requested family
 - recover_dist_tree: prevent a crash if some Elements_t nodes does not exist in every zones
 - recover_dist_tree: use gnum_dtype as output kind of created zones
