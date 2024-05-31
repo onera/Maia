@@ -437,6 +437,8 @@ def cartesian_to_cylindrical(t, axis, comm=None, apply_to_fields=True):
   """Convert the input tree into a cylindrical coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
+  The revolution axis to be used for the cylindrical coordinate system must be specified thought the ``axis`` argument,
+  and will always be denoted ``Z`` in the cylindrical system.
 
   Input tree is modified inplace; suffixes ``R``, ``Theta`` and ``Z`` are used for coordinates
   and vectorial fields (note that cyl. Z axis and cart. Z axis may differs).
@@ -470,10 +472,11 @@ def cylindrical_to_cartesian(t, axis, comm=None, apply_to_fields=True):
   """Convert the input tree into a cartesian coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindrical coordinates.
-  Suffixes ``R``, ``Theta`` and ``Z`` must be used for coordinates
-  and vectorial fields (note that cyl. Z axis and cart. Z axis may differs).
+  The expression of the revolution axis (*ie* the ``Z`` axis) of the cylindrical coordinate system in the cartesian basis must be
+  specified thought the ``axis`` argument.
 
-  Input tree is modified inplace. 
+  Input tree is modified inplace; suffixes ``R``, ``Theta`` and ``Z`` must be used for coordinates
+  and vectorial fields (note that cyl. Z axis and cart. Z axis may differs).
 
   Args:
     t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
