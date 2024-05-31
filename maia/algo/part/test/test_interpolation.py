@@ -11,7 +11,7 @@ import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.factory      import dcube_generator as DCG
 
-from maia.algo.part import interpolate as ITP
+from maia.algo.part import interpolation as ITP
 
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
@@ -302,7 +302,7 @@ class Test_interpolation_api():
       PT.add_child(src_base, self.src_zone_1)
       expected_vtx_sol = [self.expected_vtx_sol[k] for k in []]
 
-    ITP.interpolate_from_part_trees(src_tree, tgt_tree, comm, \
+    ITP.interpolate(src_tree, tgt_tree, comm, \
         ['MySolution'], 'Vertex', strategy='Closest')
 
     for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
@@ -339,7 +339,7 @@ def test_interpolation_mdom(strategy, comm):
   src_tree = maia.factory.partition_dist_tree(dtree_src, comm)
   tgt_tree = maia.factory.partition_dist_tree(dtree_tgt, comm, zone_to_parts=z_to_p)
 
-  interpolator = ITP.create_interpolator_from_part_trees(src_tree, tgt_tree, comm, \
+  interpolator = ITP.create_interpolator(src_tree, tgt_tree, comm, \
       'CellCenter', 'CellCenter', strategy=strategy)
 
   # Add sol to exchange
@@ -373,10 +373,10 @@ def test_interpolation_vertex_src(comm, out_loc):
 
   PT.new_FlowSolution('FS', loc='Vertex', fields={'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
 
-  maia.algo.part.interpolate_from_part_trees(psrc_tree, ptgt_tree, comm, ['FS'], out_loc)
+  maia.algo.part.interpolate(psrc_tree, ptgt_tree, comm, ['FS'], out_loc)
 
   tgt_fs = PT.get_node_from_name(ptgt_tree, 'FS')
   assert tgt_fs is not None and PT.Subset.GridLocation(tgt_fs) == out_loc
 
   with pytest.raises(NotImplementedError):
-    maia.algo.part.interpolate_from_part_trees(psrc_tree, ptgt_tree, comm, ['FS'], out_loc, strategy='Location')
+    maia.algo.part.interpolate(psrc_tree, ptgt_tree, comm, ['FS'], out_loc, strategy='Location')

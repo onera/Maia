@@ -523,14 +523,6 @@ def new_IndexRange(name:str='PointRange', value:ArrayLike=None, parent:CGNSTree=
   _check_parent_label(node, parent, allowed_parents)
   return node
 
-def new_PointList(name:str='PointList', value:ArrayLike=None, parent:CGNSTree=None):
-  warnings.warn("This function is deprecated in favor of PT.new_IndexArray", DeprecationWarning, stacklevel=2)
-  return new_IndexArray(name, value, parent)
-
-def new_PointRange(name:str='PointRange', value:ArrayLike=None, parent:CGNSTree=None):
-  warnings.warn("This function is deprecated in favor of PT.new_IndexRange", DeprecationWarning, stacklevel=2)
-  return new_IndexRange(name, value, parent)
-
 def new_GridLocation(loc:str, parent:CGNSTree=None):
   """ Create a GridLocation_t node
 

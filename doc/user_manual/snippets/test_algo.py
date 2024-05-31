@@ -327,8 +327,8 @@ def test_find_closest_points():
     assert PT.Subset.GridLocation(loc_container) == 'Vertex'
   #find_closest_points@end
 
-def test_interpolate_from_part_trees():
-  #interpolate_from_part_trees@start
+def test_interpolate():
+  #interpolate@start
   import mpi4py
   import numpy
   import maia
@@ -344,11 +344,11 @@ def test_interpolate_from_part_trees():
   src_sol = maia.pytree.new_FlowSolution('FlowSolution', loc='CellCenter', parent=zone)
   PT.new_DataArray("Field", numpy.random.rand(PT.Zone.n_cell(zone)), parent=src_sol)
 
-  maia.algo.part.interpolate_from_part_trees(part_tree_src, part_tree_tgt, comm,\
+  maia.algo.part.interpolate(part_tree_src, part_tree_tgt, comm,\
       ['FlowSolution'], 'Vertex')
   tgt_sol = PT.get_node_from_name(part_tree_tgt, 'FlowSolution')
   assert tgt_sol is not None and PT.Subset.GridLocation(tgt_sol) == 'Vertex'
-  #interpolate_from_part_trees@end
+  #interpolate@end
 
 def test_centers_to_nodes():
   #centers_to_nodes@start

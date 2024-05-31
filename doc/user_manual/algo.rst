@@ -86,7 +86,7 @@ Mesh extractions
 Interpolations
 ^^^^^^^^^^^^^^
 
-.. autofunction:: maia.algo.part.interpolate_from_part_trees
+.. autofunction:: maia.algo.part.interpolate
 .. autofunction:: maia.algo.part.centers_to_nodes
 .. autofunction:: maia.algo.part.nodes_to_centers
 
