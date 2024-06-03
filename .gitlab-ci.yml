@@ -307,7 +307,7 @@ deploy_juno_socle6:
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/tmp_user/juno/sonics/usr/maia/dev/dsi-cfd6 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
-                -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd6.log
       EOF
   script:

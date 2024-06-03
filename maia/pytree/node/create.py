@@ -141,7 +141,7 @@ def shallow_copy(t:CGNSTree) -> CGNSTree:
 def deep_copy(t:CGNSTree) -> CGNSTree:
   """ Create a deep copy of the input tree.
 
-  Values of the nodes are copied, an both tree
+  Values of the nodes are copied, and both trees
   consequently do not share any reference.
    
   Args:
