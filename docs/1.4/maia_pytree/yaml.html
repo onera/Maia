@@ -1,0 +1,448 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Yaml parsing &mdash; Maia  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/css/read_the_docs_custom.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/graphviz.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Release notes" href="../releases/release_notes.html" />
+    <link rel="prev" title="Tree operations" href="operations.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Maia
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                v1.4
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="pytree_module.html">The pytree module</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="basic.html">Basic node editing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="inspect.html">Node inspection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="presets.html">Node creation presets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="search.html">Node searching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations.html">Tree operations</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Yaml parsing</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#format-description">Format description</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#yaml-cgns-converter">YAML-CGNS converter</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../releases/release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="pytree_module.html">The pytree module</a> &raquo;</li>
+        
+      <li>Yaml parsing</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="../_sources/maia_pytree/yaml.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="yaml-parsing">
+<span id="pt-yaml-parsing"></span><h1>Yaml parsing<a class="headerlink" href="#yaml-parsing" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> does not come with any tool to read or write CGNS databases
+from ADF or HDF files.
+This choice has been made in order to maintain a light and portable library,
+assuming that users will rely on an external software (such as
+<a class="reference external" href="https://numerics.gitlab-pages.onera.net/mesh/maia">maia</a>) to
+perfom IO operations.</p>
+<p>Nevertheless, for development and debug purpose, we provide a converter mapping
+CGNS trees to YAML files.
+This is especially useful to prepare sample trees for unit testing in convenient
+and visual way.</p>
+<div class="section" id="format-description">
+<h2>Format description<a class="headerlink" href="#format-description" title="Permalink to this headline">¶</a></h2>
+<p>To illustrate how the yaml format is used to store CGNSTrees, let’s consider this
+example file:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="l l-Scalar l-Scalar-Plain">Base Base_t [2,2]</span><span class="p p-Indicator">:</span>
+<span class="linenos"> 2</span>  <span class="l l-Scalar l-Scalar-Plain">Zone Zone_t [[9,4,0]]</span><span class="p p-Indicator">:</span>
+<span class="linenos"> 3</span>    <span class="l l-Scalar l-Scalar-Plain">ZoneType ZoneType_t &quot;Unstructured&quot;</span><span class="p p-Indicator">:</span>
+<span class="linenos"> 4</span>    <span class="nt">GridCoordinates GridCoordinates_t</span><span class="p">:</span>
+<span class="linenos"> 5</span>      <span class="l l-Scalar l-Scalar-Plain">CoordinateX DataArray_t R8 [0, 0.5, 1,  0,   0.5, 1.,  0, 0.5, 1]</span><span class="p p-Indicator">:</span>
+<span class="linenos"> 6</span>      <span class="l l-Scalar l-Scalar-Plain">CoordinateY DataArray_t R8 [0, 0,   0,  0.5, 0.5, 0.5, 1, 1,   1]</span><span class="p p-Indicator">:</span>
+<span class="linenos"> 7</span>    <span class="l l-Scalar l-Scalar-Plain">QUAD Elements_t [7, 0]</span><span class="p p-Indicator">:</span> <span class="c1"># This is a comment</span>
+<span class="linenos"> 8</span>      <span class="l l-Scalar l-Scalar-Plain">ElementRange IndexRange_t [1, 4]</span><span class="p p-Indicator">:</span>
+<span class="linenos"> 9</span>      <span class="nt">ElementConnectivity DataArray_t</span><span class="p">:</span>
+<span class="linenos">10</span>        <span class="nt">I4 </span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="nv">4</span><span class="p p-Indicator">,</span>  <span class="nv">2</span><span class="p p-Indicator">,</span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="nv">6</span><span class="p p-Indicator">,</span><span class="nv">5</span><span class="p p-Indicator">,</span>
+<span class="linenos">11</span>              <span class="nv">4</span><span class="p p-Indicator">,</span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="nv">8</span><span class="p p-Indicator">,</span><span class="nv">7</span><span class="p p-Indicator">,</span>  <span class="nv">5</span><span class="p p-Indicator">,</span><span class="nv">6</span><span class="p p-Indicator">,</span><span class="nv">9</span><span class="p p-Indicator">,</span><span class="nv">8</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>The following rules must be observed to have a valid description of a CGNSTree:</p>
+<p><strong>Comments</strong>: short line comment can be used thanks to the <code class="docutils literal notranslate"><span class="pre">#</span></code> character <em>(line 7)</em>.</p>
+<p><strong>Hierarchic structure</strong>: indentation is used to indicate that a node is the child of another node <em>(line 3)</em>.</p>
+<p><strong>Node definition</strong>: a node is defined by the pattern <code class="docutils literal notranslate"><span class="pre">{name}</span> <span class="pre">{label}</span> <span class="pre">{value_kind}</span> <span class="pre">{value}:</span></code>.
+Note the importance of the <code class="docutils literal notranslate"><span class="pre">:</span></code>, which acts as a end-of-line marker.
+The value, as well as its kind value_kind, are optional <em>(line 2, line 4)</em>.</p>
+<p><strong>Values</strong>: if a <code class="docutils literal notranslate"><span class="pre">value</span></code> is provided, it can be a string or a sequence of numbers <em>(line 3, line 1)</em>.
+Nested sequences can be used to describe dimensional arrays <em>(line 2)</em>. <code class="docutils literal notranslate"><span class="pre">value</span></code> can be ommited
+if the node has no value <em>(line 4)</em>.</p>
+<p><strong>Values kind</strong> : if <code class="docutils literal notranslate"><span class="pre">value_kind</span></code> is not provided, values are converted using
+<a class="reference internal" href="basic.html#maia.pytree.set_value" title="maia.pytree.set_value"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_value()</span></code></a> rules <em>(line 2)</em>.
+Otherwise, <code class="docutils literal notranslate"><span class="pre">value_kind</span></code> should be one of the CGNS value identifiers (eg. <code class="docutils literal notranslate"><span class="pre">I4</span></code>, <code class="docutils literal notranslate"><span class="pre">R8</span></code>, etc.) and will
+be used to enforce the requested kind <em>(line 5)</em>. <code class="docutils literal notranslate"><span class="pre">value_kind</span></code> can not exist if <code class="docutils literal notranslate"><span class="pre">value</span></code> is not provided.</p>
+<p><strong>Long node definition</strong>: alternatively, nodes can be defined by the pattern shown on lines 9-11: this
+is especially useful when values are long arrays. When this pattern is used, <code class="docutils literal notranslate"><span class="pre">value_kind</span></code> is mandatory.
+Note the additional indentation for the value definition and the lack of <code class="docutils literal notranslate"><span class="pre">:</span></code> at the end of the value sequence
+(this is because end of value is now detected throught the indentation level).</p>
+</div>
+<div class="section" id="yaml-cgns-converter">
+<h2>YAML-CGNS converter<a class="headerlink" href="#yaml-cgns-converter" title="Permalink to this headline">¶</a></h2>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>The functions documented here are exposed in the <code class="docutils literal notranslate"><span class="pre">maia.pytree.yaml</span></code> module.</p>
+</div>
+<p class="rubric">From YAML to CGNS</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.yaml.parse_yaml_cgns.to_node">
+<span class="sig-name descname"><span class="pre">to_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">yaml_stream</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.yaml.parse_yaml_cgns.to_node" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a yaml stream into a python CGNSTree.</p>
+<p>Tree is parsed recursively, but must start from a single
+root node.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>yaml_stream</strong> (<em>str</em><em> or </em><em>filename</em>) – Yaml description of the node</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – python representation of the node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="go">BC BC_t:</span>
+<span class="go">  GridLocation GridLocation_t &quot;FaceCenter&quot;:</span>
+<span class="go">  PointList IndexArray_t [[1,2,3]]:</span>
+<span class="go">&#39;&#39;&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="go">BC BC_t</span>
+<span class="go">├───GridLocation GridLocation_t &quot;FaceCenter&quot;</span>
+<span class="go">└───PointList IndexArray_t I4 [[1 2 3]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.yaml.parse_yaml_cgns.to_nodes">
+<span class="sig-name descname"><span class="pre">to_nodes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">yaml_stream</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.yaml.parse_yaml_cgns.to_nodes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a yaml stream into a list of python CGNSTree.</p>
+<p>This function is similar to <a class="reference internal" href="#maia.pytree.yaml.parse_yaml_cgns.to_node" title="maia.pytree.yaml.parse_yaml_cgns.to_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">to_node()</span></code></a>, but allows
+to declare several root nodes at the yaml top level, which
+are parsed independently.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>yaml_stream</strong> (<em>str</em><em> or </em><em>filename</em>) – Yaml description of the nodes</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>list of CGNSTree</em> – python representation of each root node</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">nodes</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_nodes</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="go">BC1 BC_t:</span>
+<span class="go">  GridLocation GridLocation_t &quot;FaceCenter&quot;:</span>
+<span class="go">  PointList IndexArray_t [[1,2,3]]:</span>
+<span class="go">BC2 BC_t:</span>
+<span class="go">  GridLocation GridLocation_t &quot;Vertex&quot;:</span>
+<span class="go">  PointList IndexArray_t [[1,2,3]]:</span>
+<span class="go">&#39;&#39;&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span>
+<span class="go">2</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.yaml.parse_yaml_cgns.to_cgns_tree">
+<span class="sig-name descname"><span class="pre">to_cgns_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">yaml_stream</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.yaml.parse_yaml_cgns.to_cgns_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a yaml stream into a top level python CGNSTree.</p>
+<p>This function is similar to <a class="reference internal" href="#maia.pytree.yaml.parse_yaml_cgns.to_node" title="maia.pytree.yaml.parse_yaml_cgns.to_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">to_node()</span></code></a> or <a class="reference internal" href="#maia.pytree.yaml.parse_yaml_cgns.to_nodes" title="maia.pytree.yaml.parse_yaml_cgns.to_nodes"><code class="xref py py-func docutils literal notranslate"><span class="pre">to_nodes()</span></code></a>,
+but it also automatically create the top level (<code class="docutils literal notranslate"><span class="pre">CGNSTree_t</span></code>,
+<code class="docutils literal notranslate"><span class="pre">CGNSBase_t</span></code> and <code class="docutils literal notranslate"><span class="pre">CGNSLibraryVersion_t</span></code>) nodes if necessary.</p>
+<p>This function should not be called on nodes lower than <code class="docutils literal notranslate"><span class="pre">Zone_t</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>yaml_stream</strong> (<em>str</em><em> or </em><em>filename</em>) – Yaml description of the tree</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – python representation of the tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_cgns_tree</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="go">Zone Zone_t:</span>
+<span class="go">  ZoneType ZoneType_t &quot;Structured&quot;:</span>
+<span class="go">&#39;&#39;&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">CGNSTree CGNSTree_t</span>
+<span class="go">├───Base CGNSBase_t I4 [3 3]</span>
+<span class="go">│   └───Zone Zone_t</span>
+<span class="go">│       └───ZoneType ZoneType_t &quot;Structured&quot;</span>
+<span class="go">└───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<p class="rubric">From CGNS to YAML</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.yaml.parse_cgns_yaml.to_yaml">
+<span class="sig-name descname"><span class="pre">to_yaml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_line_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">120</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.yaml.parse_cgns_yaml.to_yaml" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert a python CGNSTree to a yaml string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> (<em>CGNSTree</em>) – input python CGNSTree</p></li>
+<li><p><strong>max_line_size</strong> (<em>int</em>) – Maximum line lenght using when rendering arrays. Defaults to 120.</p></li>
+<li><p><strong>write_root</strong> (<em>bool</em>) – if <code class="docutils literal notranslate"><span class="pre">False</span></code>, top_level node is ignored</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>list of str</em> – yaml representation of the tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">node</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;ROW&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lines</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_yaml</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+<span class="gp">... </span>   <span class="nb">print</span><span class="p">(</span><span class="n">l</span><span class="p">)</span>
+<span class="go">Zone Zone_t I4 [[9, 4, 0]]:</span>
+<span class="go">  ZoneType ZoneType_t &#39;Unstructured&#39;:</span>
+<span class="go">  FamilyName FamilyName_t &#39;ROW&#39;:</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="../releases/release_notes.html" class="btn btn-neutral float-right" title="Release notes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="operations.html" class="btn btn-neutral float-left" title="Tree operations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, ONERA The French Aerospace Lab.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.4
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ 
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
