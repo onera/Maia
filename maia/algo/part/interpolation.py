@@ -23,24 +23,32 @@ class Interpolator:
     self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
     self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
 
-    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, input_loc, comm)
+    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, "CellCenter", comm)
     all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
 
     _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
     all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
 
-    _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
-    _src_to_tgt     = [data['target'] for data in src_to_tgt]
+    self.src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
+    _src_to_tgt = [data['target'] for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
                               all_src_lngn,
                               all_tgt_lngn,
-                              _src_to_tgt_idx,
+                              self.src_to_tgt_idx,
                               _src_to_tgt)
 
     self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
     self.output_loc = output_loc
     self.input_loc = input_loc
+
+    # > Keep interpolation weight and connectivity if Vertex interpolation
+    if self.input_loc=="Vertex":
+      self.src_weight_idx = [data['vtx_weight_idx'] for data in src_to_tgt]
+      self.src_weight     = [data['vtx_weight'    ] for data in src_to_tgt]
+
+      self.cell_vtx_idx = [data['cell_vtx_idx'] for data in src_to_tgt]
+      self.cell_vtx     = [data['cell_vtx'    ] for data in src_to_tgt]
 
     # Send distances to targets partitions (if available)
     try:
@@ -104,9 +112,28 @@ class Interpolator:
 
     #Exchange
     for field_name, src_sol in src_field_dic.items():
+      if self.input_loc=="Vertex":
+        src_sol_data = list()
+        for i_part in range(len(self.src_parts)):
+          n_tgt_in_src = np.diff(self.src_to_tgt_idx[i_part])
+          active_src = np.arange(self.cell_vtx_idx[i_part].size-1, dtype=np.int32)
+          active_src = np.repeat(active_src, n_tgt_in_src)
+          
+          active_src_vtx_ids = np_utils.multi_arange(self.cell_vtx_idx[i_part][active_src], self.cell_vtx_idx[i_part][active_src+1])
+          active_src_vtx = self.cell_vtx[i_part][active_src_vtx_ids]
+          active_src_vtx_fld = src_sol[i_part][active_src_vtx-1]
+          active_src_vtx_fld_weighted = active_src_vtx_fld*self.src_weight[i_part]
+          active_src_vtx_fld_weighted = np.add.reduceat(active_src_vtx_fld_weighted, self.src_weight_idx[i_part][:-1])
+          src_sol_data.append(active_src_vtx_fld_weighted)
+        p2p_stride = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2
+
+      elif self.input_loc=="CellCenter":
+        src_sol_data = src_sol
+        p2p_stride = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1
+      
       request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1,
-                               src_sol)
+                               p2p_stride,
+                               src_sol_data)
       strides, lnp_part_data = self.PTP.wait(request)
 
       for i_part, tgt_part in enumerate(self.tgt_parts):
@@ -139,14 +166,13 @@ def create_src_to_tgt(src_parts_per_dom,
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
-    if src_loc != 'CellCenter':
-      raise NotImplementedError("For vertex-located fields, only 'Closest' strategy is implemented")
-    location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
+    location_out, location_out_inv, location_cell_vtx = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
         tgt_loc, comm, True, loc_tolerance)
 
     # output is nested by domain so we need to flatten it
     all_unlocated = [data['unlocated_ids'] for domain in location_out for data in domain]
     all_located_inv = py_utils.to_flat_list(location_out_inv)
+    all_located_cell_vtx = py_utils.to_flat_list(location_cell_vtx)
     n_unlocated = sum([t.size for t in all_unlocated])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
     if comm.Get_rank() == 0:
@@ -182,8 +208,16 @@ def create_src_to_tgt(src_parts_per_dom,
 
   # Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
-    src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
-                   'target'     : data['points_gnum_shifted']} for data in all_located_inv]
+    if src_loc=="CellCenter":
+      src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
+                     'target'     : data['points_gnum_shifted']} for data in all_located_inv]
+    elif src_loc=="Vertex":
+      src_to_tgt = [{'target_idx'     : data['elt_pts_inside_idx'],
+                     'target'         : data['points_gnum_shifted'],
+                     'vtx_weight_idx' : data['points_weights_idx'],
+                     'vtx_weight'     : data['points_weights'],
+                     'cell_vtx_idx'   : cell_vtx['cell_vtx_idx'],
+                     'cell_vtx'       : cell_vtx['cell_vtx_shifted']} for data, cell_vtx in zip(all_located_inv, all_located_cell_vtx)]
   elif strategy == 'Closest':
     src_to_tgt = [{'target_idx' : data['tgt_in_src_idx'],
                    'target'     : data['tgt_in_src'],

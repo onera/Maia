@@ -73,8 +73,9 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
 
   #This is result from the source perspective (api : ((i_part, i_pt_cloud))
   if reverse:
-    all_located_inv = [mesh_loc.points_in_elt_get(0, i_src_part) for i_src_part in range(n_part_src)]
-    return all_target_data, all_located_inv
+    all_located_inv      = [mesh_loc.points_in_elt_get(0, i_src_part) for i_src_part in range(n_part_src)]
+    all_located_cell_vtx = [mesh_loc.cell_vertex_get(i_src_part)      for i_src_part in range(n_part_src)]
+    return all_target_data, all_located_inv, all_located_cell_vtx
   else:
     return all_target_data
 
@@ -130,11 +131,16 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
       src_result['points_gnum_shifted'] = src_result.pop('points_gnum') #Rename key
       src_result['points_gnum'], src_result['domain'] = np_utils.shifted_to_local(
           src_result['points_gnum_shifted'], tgt_offset)
-
+    for src_result in result[2]:
+      src_result['cell_vtx_shifted'] = src_result.pop('cell_vtx') #Rename key
+      src_result['cell_vtx'], src_result['domain'] = np_utils.shifted_to_local(
+          src_result['cell_vtx_shifted'], tgt_offset)
+  
   # Reshape output to list of lists (as input domains)
   if reverse:
     return py_utils.to_nested_list(result[0], n_part_per_dom_tgt),\
-           py_utils.to_nested_list(result[1], n_part_per_dom_src)
+           py_utils.to_nested_list(result[1], n_part_per_dom_src),\
+           py_utils.to_nested_list(result[2], n_part_per_dom_src)
   else:
     return py_utils.to_nested_list(result, n_part_per_dom_tgt)
 
