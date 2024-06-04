@@ -15,8 +15,9 @@ from maia.algo.dist           import remove_element        as RME
 from maia.algo.dist.merge_ids import merge_distributed_ids
 from maia.transfer            import protocols             as EP
 from maia.utils               import par_utils, np_utils
+from maia.utils.parallel      import algo as par_algo
 
-import Pypdm.Pypdm as PDM
+from maia.algo.part import closest_points as CLO
 
 
 
@@ -233,30 +234,24 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   
   # Define distribution 
   #> for nodes kept in degenerated faces
-  full_distri_nodes_kept = par_utils.gather_and_shift(len(pl_degen_nodes_kept), comm)
-  partial_distri_nodes_kept = full_distri_nodes_kept[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+  distri_nodes_kept = par_utils.dn_to_distribution(pl_degen_nodes_kept.size, comm)
   #> for all unique nodes in degenerated faces
   nodes_from_degen_faces = distribute_unique_vtx_ids_from_face_ids(pl_degen_faces, ngon_n, comm)
-  full_distri_all_nodes_degen_faces = par_utils.gather_and_shift(len(nodes_from_degen_faces), comm)
-  partial_distri_all_nodes_degen_faces = full_distri_all_nodes_degen_faces[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
+  distri_all_nodes_degen_faces = par_utils.dn_to_distribution(nodes_from_degen_faces.size, comm)
   
   # Find closest kept node for each nodes of degenerated faces
   #> mimic fake partition to use _closest_points on distributed nodes clouds
-  src_lngn = np.arange(partial_distri_nodes_kept[0], partial_distri_nodes_kept[1], dtype=pdm_gnum_dtype) + 1
-  tgt_lngn = np.arange(partial_distri_all_nodes_degen_faces[0], partial_distri_all_nodes_degen_faces[1], dtype=pdm_gnum_dtype) + 1
-  cx, cy, cz = PT.Zone.coordinates(zone_n)
+  tgt_lngn = np.arange(distri_all_nodes_degen_faces[0], distri_all_nodes_degen_faces[1], dtype=pdm_gnum_dtype) + 1
+  coords = PT.Zone.coordinates(zone_n)._asdict()
   distri_vtx = PT.get_value(MT.getDistribution(zone_n, 'Vertex'))
-  part_data_coords = EP.block_to_part({'cx':cx, 'cy': cy, 'cz': cz}, distri_vtx, [pl_degen_nodes_kept, nodes_from_degen_faces], comm)
-  src_coords = np_utils.interweave_arrays([part_data_coords[c][0] for c in ['cx', 'cy', 'cz']])
-  tgt_coords = np_utils.interweave_arrays([part_data_coords[c][1] for c in ['cx', 'cy', 'cz']])
-  closest_src_gnum = maia.algo.part.closest_points._closest_points([(src_coords, src_lngn)], [(tgt_coords, tgt_lngn)], comm)[0]['closest_src_gnum']
+  part_data_coords = EP.block_to_part(coords, distri_vtx, [pl_degen_nodes_kept, nodes_from_degen_faces], comm)
+  src_coords = np_utils.interweave_arrays([part_data_coords[k][0] for k in coords.keys()])
+  tgt_coords = np_utils.interweave_arrays([part_data_coords[k][1] for k in coords.keys()])
+
   
   # Find old to new global numbering for nodes of degenerated faces
   #> compute old to new global numbering for each nodes of degenerated faces
-  ptp = PDM.PartToPart(comm, [tgt_lngn], [src_lngn], [np.arange(len(closest_src_gnum)+1,dtype=np.int32)], [closest_src_gnum])
-  request1 = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P, PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2, [pl_degen_nodes_kept])
-  _, part_data = ptp.reverse_wait(request1)
-  old_to_new_degen_faces_nodes = part_data[0]
+  old_to_new_degen_faces_nodes = CLO._closest_points([(src_coords, pl_degen_nodes_kept)], [(tgt_coords, tgt_lngn)], comm)[0]['closest_src_gnum']
   
   # Work only on a copy of the considered zone !
   shallow_zone_n  = copy.deepcopy(PT.get_child_from_name(base_n, zone_name))
