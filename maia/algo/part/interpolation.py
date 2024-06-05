@@ -22,11 +22,20 @@ class Interpolator:
   def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, input_loc, output_loc, comm):
     self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
     self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
+    
+    self.output_loc = output_loc
+    self.input_loc = input_loc
 
-    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, "CellCenter", comm)
+    self.loc_strategy = len(src_to_tgt)>0 and 'vtx_weight_idx' in src_to_tgt[0].keys()
+    if input_loc=="Vertex" and self.loc_strategy:
+      input_lngn = "CellCenter"
+    else:
+      input_lngn = self.input_loc
+
+    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, input_lngn, comm)
     all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
 
-    _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
+    _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, self.output_loc, comm)
     all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
 
     self.src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
@@ -39,11 +48,9 @@ class Interpolator:
 
     self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
-    self.output_loc = output_loc
-    self.input_loc = input_loc
 
     # > Keep interpolation weight and connectivity if Vertex interpolation
-    if self.input_loc=="Vertex":
+    if self.input_loc=="Vertex" and self.loc_strategy:
       self.src_weight_idx = [data['vtx_weight_idx'] for data in src_to_tgt]
       self.src_weight     = [data['vtx_weight'    ] for data in src_to_tgt]
 
@@ -112,7 +119,7 @@ class Interpolator:
 
     #Exchange
     for field_name, src_sol in src_field_dic.items():
-      if self.input_loc=="Vertex":
+      if self.input_loc=="Vertex" and self.loc_strategy:
         src_sol_data = list()
         for i_part in range(len(self.src_parts)):
           n_tgt_in_src = np.diff(self.src_to_tgt_idx[i_part])
@@ -127,7 +134,7 @@ class Interpolator:
           src_sol_data.append(active_src_vtx_fld_weighted)
         p2p_stride = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2
 
-      elif self.input_loc=="CellCenter":
+      else:
         src_sol_data = src_sol
         p2p_stride = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1
       
@@ -163,6 +170,10 @@ def create_src_to_tgt(src_parts_per_dom,
   """
 
   assert strategy in ['LocationAndClosest', 'Location', 'Closest']
+  if src_loc=="Vertex" and strategy=="LocationAndClosest":
+    # Problem in jagged merge because location at Cell but closest at Vertex
+    raise NotImplementedError("Source location at Vertex with LocationAndClosest method isn't available yet")
+
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
