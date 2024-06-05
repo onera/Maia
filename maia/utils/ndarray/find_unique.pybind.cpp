@@ -212,3 +212,56 @@ is_unique_cst_stride_sort(int               n_elt,
   delete[] conflict_idx;
   return np_elt_mask;
 }
+
+template<typename T>
+std::tuple<py::array_t<int32_t>, py::array_t<T>>
+make_unique_by_stride(py::array_t<int32_t>& np_stride,
+                      py::array_t<T>&     np_array) {
+
+  int n_elt     = np_stride.size() - 1;
+  auto stride   = np_stride.unchecked<1>();
+  auto array    = np_array.template unchecked<1>();
+  
+  auto np_stride_out = py::array_t<int32_t>(n_elt+1); // To be returned
+  auto stride_out    = np_stride_out.mutable_unchecked<1>();
+
+
+  // Final array will be smaller
+  T* array_out_tmp = new T[np_array.size()];
+
+  stride_out(0) = 0;
+  for (int i=0; i < n_elt; ++i) {
+    int write_offset = 0;
+    for (int j=stride(i); j < stride(i+1); ++j) {
+      // Compare with k already written elts
+      bool already_written = false;
+      int k=0;
+      while(k < write_offset && !already_written) {
+        already_written = (array_out_tmp[stride_out(i) + k] == array(j));
+        k++;
+      }
+      if (!already_written) {
+        array_out_tmp[stride_out(i) + write_offset++] = array(j);
+      }
+    }
+    stride_out(i+1) = stride_out(i) + write_offset;
+  }
+
+  auto np_array_out = py::array_t<T>(stride_out(n_elt)); // To be returned
+  memcpy(np_array_out.mutable_data(), array_out_tmp, stride_out(n_elt)*sizeof(T));
+
+  delete[] array_out_tmp;
+  return std::make_tuple(np_stride_out, np_array_out);
+}
+
+std::tuple<py::array_t<int32_t>, py::array_t<int32_t>>
+make_unique_by_stride_int32(py::array_t<int32_t>& np_stride,
+                            py::array_t<int32_t>& np_array){
+  return make_unique_by_stride(np_stride, np_array);
+}
+
+std::tuple<py::array_t<int32_t>, py::array_t<int64_t>>
+make_unique_by_stride_int64(py::array_t<int32_t>& np_stride,
+                            py::array_t<int64_t>& np_array) {
+  return make_unique_by_stride(np_stride, np_array);
+}

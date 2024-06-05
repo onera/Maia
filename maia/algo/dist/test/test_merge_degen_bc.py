@@ -84,6 +84,12 @@ yaml_ref = f'''
           GridLocation GridLocation_t 'FaceCenter':
           FamilyName FamilyName_t 'FARFIELD':
           PointList IndexArray_t I{int_type} [[52, 55, 58, 60, 104, 107, 110, 112, 156, 159, 162, 164, 208, 211, 214, 216]]:
+        BCMix BC_t 'Null':
+          GridLocation GridLocation_t 'FaceCenter':
+          PointList IndexArray_t I{int_type} [[11, 23, 34, 46, 64, 76, 86, 98, 116, 128, 138, 150, 168, 178, 189, 201]]:
+          BCDataSet BCDataSet_t:
+            DirichletData BCData_t:
+              DA DataArray_t I8 [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]:
       ZSR_Data2 ZoneSubRegion_t:
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I{int_type} [[52]]:
@@ -227,15 +233,18 @@ def test_merge_degen_faces(ZSR,JN,comm):
   #----------------------------
   # Add families
   zone_n = PT.get_node_from_label(dist_tree, 'Zone_t')
+  zonebc_n = PT.get_child_from_label(zone_n, 'ZoneBC_t')
   ymin_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymin')
-  pl_ymin = PT.get_value(PT.get_node_from_name(ymin_n, 'PointList'))[0]
+  xmin_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Xmin')
+  pl_ymin = PT.get_value(PT.get_node_from_name(ymin_n, 'PointList'))
+  pl_xmin = PT.get_value(PT.get_node_from_name(xmin_n, 'PointList'))
   ymax_n = PT.get_node_from_predicates(zone_n, 'ZoneBC_t/Ymax')
-  pl_ymax = PT.get_value(PT.get_node_from_name(ymax_n, 'PointList'))[0]
+  pl_ymax = PT.get_value(PT.get_node_from_name(ymax_n, 'PointList'))
   if comm.rank == 0:
-    pl1 = np.array([[pl_ymin[0]]], order='F', dtype=pdm_gnum_dtype)
+    pl1 = np.array([[pl_ymin[0][0]]], order='F', dtype=pdm_gnum_dtype)
     data1 = np.array([1.])
     distri1 = np.array([0,1,1], dtype=pdm_gnum_dtype)
-    pl2 = np.array([[pl_ymin[0], pl_ymax[0]]], order='F', dtype=pdm_gnum_dtype)
+    pl2 = np.array([[pl_ymin[0][0], pl_ymax[0][0]]], order='F', dtype=pdm_gnum_dtype)
     data2 = np.array([1.,2])
     distri2 = np.array([0,2,2], dtype=pdm_gnum_dtype)
   else:
@@ -245,10 +254,22 @@ def test_merge_degen_faces(ZSR,JN,comm):
     pl2 = np.array([[]], order='F', dtype=pdm_gnum_dtype)
     data2 = np.array([])
     distri2 = np.array([2,2,2], dtype=pdm_gnum_dtype)
+  # Some ZSR
   zsr_data1 = PT.new_ZoneSubRegion(name='ZSR_Data1', loc='FaceCenter', point_list=pl1, fields = {'Data1': data1}, parent=zone_n)
   MT.new_distribution({'Index': distri1}, parent=zsr_data1)
   zsr_data2 = PT.new_ZoneSubRegion(name='ZSR_Data2', loc='FaceCenter', point_list=pl2, fields = {'Data2': data2}, parent=zone_n)
   MT.new_distribution({'Index': distri2}, parent=zsr_data2)
+  # A fake BC mixing faces to remove (ymin) and face to keep (xmin), with bcds 
+  plmix = np.concatenate([pl_ymin,pl_xmin], axis=1)
+  distri1 = MT.getDistribution(ymin_n, 'Index')[1]
+  distri2 = MT.getDistribution(xmin_n, 'Index')[1]
+  bcmix = PT.new_BC('BCMix', point_list=plmix, loc='FaceCenter', parent=zonebc_n)
+  MT.newDistribution({'Index' : distri1+distri2}, bcmix)
+  ds = PT.new_child(bcmix, "BCDataSet", "BCDataSet_t")
+  da = PT.new_child(ds, 'DirichletData', 'BCData_t')
+  da1 = np.arange(distri1[0], distri1[1])+1
+  da2 = np.arange(distri2[0], distri2[1])+1+distri1[2]
+  PT.new_DataArray('DA', np.concatenate([da1, da2]), parent=da)
   
   #----------------------------
   # Prepare test case with ZSR
@@ -324,5 +345,5 @@ def test_merge_degen_faces(ZSR,JN,comm):
   
   #----------------------------
   # Assertion test
-  assert maia.pytree.is_same_tree(dist_tree, ref_dist_tree)
+  assert maia.pytree.is_same_tree(dist_tree, ref_dist_tree, abs_tol=1E-12)
   

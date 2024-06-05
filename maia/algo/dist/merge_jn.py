@@ -179,7 +179,8 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   #Trick to add a PL to each subregion to be able to use same algo
   for zsr in zsr_list:
     if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
-      PT.add_child(zsr, PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone) + '/PointList'))
+      pl_node = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone) + '/PointList')
+      PT.add_child(zsr, PT.deep_copy(pl_node))
 
   #Get new index for every PL at once
   all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0] for fs in all_nodes]
@@ -203,6 +204,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   for zsr in zsr_list:
     if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
       PT.rm_children_from_name(zsr, 'PointList')
+      PT.rm_children_from_name(zsr, ':CGNS#Distribution')
 
 
 # TODO move to sids module, doc, unit test

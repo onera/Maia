@@ -240,6 +240,15 @@ def test_is_unique_strided():
   mask = np_utils.is_unique_strided(elt_ec, size_elt, method='sort')
   assert np.array_equal(mask, result)
 
+def test_make_unique_by_stride():
+  idx, arr = np_utils.make_unique_by_stride(np.array([0], np.int32), np.empty(0, np.int32))
+  assert np.array_equal(idx, [0]) and arr.size == 0
+  idx, arr = np_utils.make_unique_by_stride(np.array([0, 3, 5, 8, 8, 11], np.int32), 
+                                            np.array([4,3,2, 2,2, 8,7,8, 5,3,8]))
+  assert np.array_equal(idx, [0,3,4,6,6,9])
+  assert np.array_equal(arr, [4,3,2, 2, 8,7, 5,3,8])
+  
+
 def check_transform(expected_x, expected_y, expected_z, computed_matrix, computed_x, computed_y, computed_z, atol):
   # Check matrix
   expected_matrix = np.array([expected_x, expected_y, expected_z], order='F')
