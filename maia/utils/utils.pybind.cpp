@@ -24,4 +24,10 @@ void register_utils_module(py::module_& parent) {
         "Find elements that are duplicated (hash table and solve conflict)");
   m.def("is_unique_cst_stride_sort", &is_unique_cst_stride_sort, 
         "Find elements that are duplicated (hash table and solve conflict with sort algorithm)");
+  m.def("make_unique_by_stride", &make_unique_by_stride_int32, 
+        py::arg("stride").noconvert(),
+        py::arg("array").noconvert());
+  m.def("make_unique_by_stride", &make_unique_by_stride_int64, 
+        py::arg("stride").noconvert(),
+        py::arg("array").noconvert());
 }

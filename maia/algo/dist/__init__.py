@@ -18,6 +18,8 @@ from .merge                      import merge_all_zones_from_families,\
                                         merge_zones,\
                                         merge_zones_from_family
 
+from .merge_degen_bc             import remove_degen_faces_from_family
+
 from .mesh_adaptation            import adapt_mesh_with_feflo
 
 from .mixed_to_std_elements      import convert_mixed_to_elements

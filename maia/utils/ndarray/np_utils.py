@@ -189,6 +189,14 @@ def is_unique_strided(array, stride, method='hash'):
   else:
     raise ValueError(f"Method must be one of ['hash', 'sort']")
 
+def make_unique_by_stride(array_idx, array):
+  """
+  Take a strided input array, and create a new one without repetitions
+  within each interval.
+  NB : the subintervals are not sorted ; input order is preserved
+  """
+  return cutils.make_unique_by_stride(array_idx, array)
+
 def any_in_range(array, start, end, strict=False):
   """
   Return True if any element of array is in interval
