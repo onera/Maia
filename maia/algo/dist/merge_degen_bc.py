@@ -15,6 +15,7 @@ from .vertex_list   import face_ids_to_vtx_ids
 from maia.algo.part import closest_points as CLO
 from maia.algo.dist import merge_jn       as MJN
 
+import Pypdm.Pypdm as PDM
 
 def distribute_unique_vtx_ids_from_face_ids(pl_faces, ngon_n, comm):
   """
@@ -149,7 +150,7 @@ def _remove_subset_fictive_faces(zone, comm):
 
 
 # ------------------------------------------------------------------------------------------
-def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_degen_vtx, pl_degen_nodes_kept, comm):
+def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_degen_vtx, comm):
   """
   In a zone, this function delete all degenerated faces store in a ZoneSubRegion
   and update all nodes of the zone accept PointListDonor
@@ -158,23 +159,21 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   zone_n = PT.get_node_from_path(dist_tree, zone_path)
   ngon_n = PT.Zone.NGonNode(zone_n)
   
-  # Define distribution for all unique nodes in degenerated faces
-  # TODO : on rapelle la meme fct, c'est dommage
-  distri_all_nodes_degen_faces = par_utils.dn_to_distribution(pl_degen_vtx.size, comm)
-  
-  # Find closest kept node for each nodes of degenerated faces
-  #> mimic fake partition to use _closest_points on distributed nodes clouds
-  tgt_lngn = np.arange(distri_all_nodes_degen_faces[0], distri_all_nodes_degen_faces[1], dtype=pdm_gnum_dtype) + 1
   coords = PT.Zone.coordinates(zone_n)._asdict()
   distri_vtx = PT.get_value(MT.getDistribution(zone_n, 'Vertex'))
-  part_data_coords = EP.block_to_part(coords, distri_vtx, [pl_degen_nodes_kept, pl_degen_vtx], comm)
-  src_coords = np_utils.interweave_arrays([part_data_coords[k][0] for k in coords.keys()])
-  tgt_coords = np_utils.interweave_arrays([part_data_coords[k][1] for k in coords.keys()])
+  part_data_coords = EP.block_to_part(coords, distri_vtx, [pl_degen_vtx], comm)
+  tgt_coords = np_utils.interweave_arrays([part_data_coords[k][0] for k in coords.keys()])
 
-  
-  # Find old to new global numbering for nodes of degenerated faces
-  #> compute old to new global numbering for each nodes of degenerated faces
-  old_to_new_degen_faces_nodes = CLO._closest_points([(src_coords, pl_degen_nodes_kept)], [(tgt_coords, tgt_lngn)], comm)[0]['closest_src_gnum']
+  # Find vertices have same coords (using gnum, they will have same id in output)
+  pdm_gnum = PDM.GlobalNumbering(3, 1, True, 1E-10, comm)
+  pdm_gnum.set_from_coords(0, tgt_coords, np.ones(pl_degen_vtx.size))
+  pdm_gnum.compute()
+  merged_id = pdm_gnum.get(0)
+  # In each group, choose any and map others to it
+  distri   = par_utils.uniform_distribution(comm.allreduce(merged_id.max(initial=0), MPI.MAX), comm)
+  distri_f = par_utils.partial_to_full_distribution(distri, comm)
+  selected_vtx_id = EP.part_to_block([pl_degen_vtx], distri_f, [merged_id], comm, EP.reduce_max)
+  old_to_new_degen_faces_nodes = EP.block_to_part(selected_vtx_id, distri_f, [merged_id], comm)[0]
   
   # Identify nodes to remove (nodes of degen face not beloging to old_to_new)
   remove_mask = par_algo.gnum_isin(pl_degen_vtx, np.unique(old_to_new_degen_faces_nodes), comm, invert=True)
@@ -228,7 +227,7 @@ def delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   MJN._update_pl_pld_in_jn(dist_tree, zone_path)
 
 # ------------------------------------------------------------------------------------------
-def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm):
+def remove_degen_faces_from_family(dist_tree, degen_family, comm):
   """
   Delete all faces of family named fam_to_removed and keep only nodes that are shared with
   family named fam_for_intersection
@@ -238,36 +237,20 @@ def delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersectio
     zone_n = PT.get_node_from_path(dist_tree, zone_path)
     
     pl_degen_faces_list = []
-    pl_intersect_degen_faces_list = []
-    intersect_subset_names   = []
     for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):
-      if PT.predicate.belongs_to_family(bc_n, fam_to_remove):
+      if PT.predicate.belongs_to_family(bc_n, degen_family):
         pl_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(bc_n)))
-      elif PT.predicate.belongs_to_family(bc_n, fam_for_intersection):
-        pl_intersect_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(bc_n)))
-        intersect_subset_names.append(PT.get_name(bc_n))
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
       zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
       zsr_extent_n = PT.get_node_from_path(zone_n, zsr_extent_path)
-      if PT.predicate.belongs_to_family(zsr_n, fam_to_remove):
+      if PT.predicate.belongs_to_family(zsr_n, degen_family):
         pl_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(zsr_extent_n)))
-      elif PT.predicate.belongs_to_family(zsr_n, fam_for_intersection):
-        pl_intersect_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(zsr_extent_n)))
-        intersect_subset_names.append(PT.get_name(zsr_n))
     if len(pl_degen_faces_list) == 0:
       continue
-    if len(intersect_subset_names) == 0:
-      raise RuntimeError("Error : 'intersect_degen_bc' is not defined !")
     
     _, pl_degen_faces = np_utils.concatenate_point_list(pl_degen_faces_list, pdm_gnum_dtype)
-    _, pl_intersect_degen_faces = np_utils.concatenate_point_list(pl_intersect_degen_faces_list, pdm_gnum_dtype)
 
     # List with unique nodes
-    ngon_n = PT.Zone.NGonNode(zone_n)
-    nodes_degen_faces           = distribute_unique_vtx_ids_from_face_ids(pl_degen_faces,           ngon_n, comm)
-    nodes_intersect_degen_faces = distribute_unique_vtx_ids_from_face_ids(pl_intersect_degen_faces, ngon_n, comm)
+    nodes_degen_faces = distribute_unique_vtx_ids_from_face_ids(pl_degen_faces, PT.Zone.NGonNode(zone_n), comm)
     
-    nodes_degen_faces_in = par_algo.gnum_isin(nodes_degen_faces, nodes_intersect_degen_faces, comm)
-    degen_nodes_kept = nodes_degen_faces[nodes_degen_faces_in]
-    
-    delete_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, nodes_degen_faces, degen_nodes_kept, comm)
+    remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, nodes_degen_faces, comm)

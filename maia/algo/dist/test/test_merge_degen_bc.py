@@ -319,8 +319,7 @@ def test_merge_degen_faces(ZSR,JN,comm):
   #-------------
   # Test
   fam_to_remove        = 'AXIS'
-  fam_for_intersection = 'PER2'
-  MDB.delete_degen_faces_from_family(dist_tree, fam_to_remove, fam_for_intersection, comm)
+  MDB.remove_degen_faces_from_family(dist_tree, fam_to_remove, comm)
   
   #----------------------------
   # To be sure to have the same distribution with reference
