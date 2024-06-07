@@ -9,6 +9,14 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Developpement version
+---------------------
+
+💡 New Features
+^^^^^^^^^^^^^^^
+- Algo module: add ``remove_degen_faces_from_family``
+
+
 v1.4 (May 2024)
 ---------------
 

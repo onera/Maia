@@ -229,8 +229,27 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
 # ------------------------------------------------------------------------------------------
 def remove_degen_faces_from_family(dist_tree, degen_family, comm):
   """
-  Delete all faces of family named fam_to_removed and keep only nodes that are shared with
-  family named fam_for_intersection
+  Remove the specified degenerated faces in the input tree.
+
+  Degenerated faces are faces whose vertices have distinct ids, but are in fact geometrically
+  reduced to a line or to a single point.
+  This function removes these faces and update the mesh to renumber the other entities.
+  Input tree is modified inplace.
+
+  Important:
+    - Faces refered by ``degen_family`` **must** be degenerated faces, and will be removed anyway.
+    - Only U-NGon meshes are managed in this function.
+
+  Args:
+    dist_tree  (CGNSTree): Input distributed tree, with U-NGon connectivies
+    degen_family (str): Name of the family refering to the degenerated faces
+    comm       (`MPIComm`) : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #remove_degen_faces_from_family@start
+        :end-before: #remove_degen_faces_from_family@end
+        :dedent: 2
   """
   
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):

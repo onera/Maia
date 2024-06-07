@@ -48,6 +48,19 @@ def test_generate_jns_vertex_list():
   assert len(maia.pytree.get_nodes_from_name(dist_tree, 'match*#Vtx')) == 2
   #generate_jns_vertex_list@end
 
+def test_remove_degen_faces():
+  #remove_degen_faces_from_family@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import sample_mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(sample_mesh_dir/'degen_faces.yaml', MPI.COMM_WORLD)
+  dist_zone = maia.pytree.get_node_from_label(dist_tree, 'Zone_t') #Only one zone
+
+  assert maia.pytree.Zone.n_face(dist_zone) == 240
+  maia.algo.dist.remove_degen_faces_from_family(dist_tree, 'DEGEN_AXIS', MPI.COMM_WORLD)
+  assert maia.pytree.Zone.n_face(dist_zone) == 240 - 16 # 16 faces in degenerated family
+  #remove_degen_faces_from_family@end
+
 def test_duplicate_from_rotation_jns_to_360():
   #duplicate_from_rotation_to_360@start
   from mpi4py import MPI
