@@ -298,8 +298,8 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
-    tgt_tree (CGNSTree): Target tree, partitionned. Structured or U-NGon connectivities are managed.
+    src_tree (CGNSTree): Source tree, partitionned. Only 3D U-NGon connectivities are managed.
+    tgt_tree (CGNSTree): Target tree, partitionned. Structured or unstructured connectivities are managed.
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
     location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.
