@@ -199,18 +199,18 @@ def test_interpolator_reductions():
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,1,2,3])}]
   data = np.array([1,2,3], np.int32)
   out = ITP.Interpolator._reduce_single_val(fake_interpolator, 0, data)
-  assert out is data
+  assert np.array_equal(out, data)
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,4,6])}]
-  fake_interpolator.tgt_dist = [np.array([1,1,0,1,3,1])]
+  fake_interpolator.tgt_weight = [1./np.array([1,1,0,1,3,1])]
   data = np.array([1,2, 10,11, 20,30], np.float64)
-  out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
+  out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
   assert (out == np.array([1.5, 10., 27.5])).all()
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,5,6])}]
-  fake_interpolator.tgt_dist = [np.array([1,1, 0,1,3, 1])]
+  fake_interpolator.tgt_weight = [1./np.array([1,1, 0,1,3, 1])]
   data = np.array([1,2, 10,11,20, 30], np.float64)
-  out = ITP.Interpolator._reduce_mean_dist(fake_interpolator, 0, data)
+  out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
   assert (out == np.array([1.5, 10., 30.0])).all()
 
 @pytest_parallel.mark.parallel(2)
@@ -325,7 +325,7 @@ def test_interpolation_mdom(strategy, comm):
   dtree_tgt = PT.new_CGNSTree()
   dbase_tgt = PT.new_CGNSBase(parent=dtree_tgt)
   zoneA = PT.get_node_from_label(DCG.dcube_generate(3, 1., [0.,0.,-0.6], comm), 'Zone_t')
-  zoneB = PT.get_node_from_label(DCG.dcube_generate(3, 1., [1.,0.,1.1], comm), 'Zone_t')
+  zoneB = PT.get_node_from_label(DCG.dcube_generate(3, 1., [1.1,0.1,1.1], comm), 'Zone_t')
   PT.set_name(zoneA, 'TGTA')
   PT.set_name(zoneB, 'TGTB')
   PT.set_children(dbase_tgt, [zoneA, zoneB])
@@ -360,23 +360,59 @@ def test_interpolation_mdom(strategy, comm):
   # maia.io.dist_tree_to_file(dtree_tgt, 'dtgt_with_sol.cgns', comm)
 
 @pytest_parallel.mark.parallel(2)
-@pytest.mark.parametrize("out_loc", ['Vertex', 'CellCenter'])
-def test_interpolation_vertex_src(comm, out_loc):
-  src_tree = maia.factory.generate_dist_block(11, 'S', comm)
-  tgt_tree = maia.factory.generate_dist_block(5, 'S', comm)
-
+@pytest.mark.parametrize("elt_type", ['Poly', 'HEXA_8'])
+@pytest.mark.parametrize("n_tgt"   , [3, 7])
+@pytest.mark.parametrize("tgt_loc" , ['Vertex', 'CellCenter'])
+@pytest.mark.parametrize("strategy", ['Location', 'LocationAndClosest'])
+def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
+  src_tree = maia.factory.generate_dist_block(    5, elt_type, comm)
+  tgt_tree = maia.factory.generate_dist_block(n_tgt, elt_type, comm, origin=np.array([0, 0, 0.25]))
   psrc_tree = maia.factory.partition_dist_tree(src_tree, comm)
   ptgt_tree = maia.factory.partition_dist_tree(tgt_tree, comm)
 
   for zone in PT.iter_all_Zone_t(psrc_tree):
     cx,cy,cz = PT.Zone.coordinates(zone)
+    gnum     = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
+    PT.new_FlowSolution('FS', loc="Vertex", fields={'gnum':gnum, 'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
+  # maia.io.write_tree(psrc_tree, f'in_{comm.rank}.cgns')
 
-  PT.new_FlowSolution('FS', loc='Vertex', fields={'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
+  interpolator = maia.algo.part.create_interpolator_from_part_trees(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
+                                                                    strategy=strategy,
+                                                                    n_closest_pt=1)
+  interpolator.exchange_fields('FS', ITP.Interpolator._reduce_weighted_mean)
+  # maia.io.write_tree(ptgt_tree, f"out_{comm.rank}.cgns")
 
-  maia.algo.part.interpolate(psrc_tree, ptgt_tree, comm, ['FS'], out_loc)
+  # > Check result
+  PT.print_tree(ptgt_tree, f'tree_{comm.rank}.txt')
+  zone = PT.get_node_from_label(ptgt_tree, "Zone_t")
+  if tgt_loc=='Vertex':
+    expected_cx = PT.get_node_from_name(ptgt_tree, 'CoordinateX')[1]
+    expected_cy = PT.get_node_from_name(ptgt_tree, 'CoordinateY')[1]
+    expected_cz = PT.get_node_from_name(ptgt_tree, 'CoordinateZ')[1]
+  elif tgt_loc=='CellCenter':
+    cell_center = maia.algo.part.compute_cell_center(zone)
+    expected_cx = cell_center[0::3]
+    expected_cy = cell_center[1::3]
+    expected_cz = cell_center[2::3]
+  is_in_src_pl = np.where(expected_cz<=1.)[0]
+  no_in_src_pl = np.where(expected_cz> 1.)[0]
+  if strategy=="Location":
+    expected_cx[no_in_src_pl]=np.nan
+    expected_cy[no_in_src_pl]=np.nan
+    expected_cz[no_in_src_pl]=np.nan
 
-  tgt_fs = PT.get_node_from_name(ptgt_tree, 'FS')
-  assert tgt_fs is not None and PT.Subset.GridLocation(tgt_fs) == out_loc
+  tgt_fs = PT.get_node_from_label(ptgt_tree, 'FlowSolution_t')
+  tgt_cx = PT.get_child_from_name(tgt_fs, 'cx')[1]
+  tgt_cy = PT.get_child_from_name(tgt_fs, 'cy')[1]
+  tgt_cz = PT.get_child_from_name(tgt_fs, 'cz')[1]
+  if strategy=="Location":
+    assert np.allclose(expected_cx, tgt_cx, atol=1e-15, equal_nan=True)
+    assert np.allclose(expected_cy, tgt_cy, atol=1e-15, equal_nan=True)
+    assert np.allclose(expected_cz, tgt_cz, atol=1e-15, equal_nan=True)
+  else:
+    assert np.allclose(expected_cx[is_in_src_pl], tgt_cx[is_in_src_pl], atol=1e-15, equal_nan=True)
+    assert np.allclose(expected_cy[is_in_src_pl], tgt_cy[is_in_src_pl], atol=1e-15, equal_nan=True)
+    assert np.allclose(expected_cz[is_in_src_pl], tgt_cz[is_in_src_pl], atol=1e-15, equal_nan=True)
 
-  with pytest.raises(NotImplementedError):
-    maia.algo.part.interpolate(psrc_tree, ptgt_tree, comm, ['FS'], out_loc, strategy='Location')
+    assert np.allclose(expected_cx[no_in_src_pl], tgt_cx[no_in_src_pl], atol=1e-1, equal_nan=True)
+    assert np.allclose(expected_cy[no_in_src_pl], tgt_cy[no_in_src_pl], atol=1e-1, equal_nan=True)

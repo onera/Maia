@@ -19,10 +19,22 @@ def test_get_part_data(comm):
   dtree = DCG.dcube_generate(3, 1., [0.,0.,0.], comm)
   tree = partition_dist_tree(dtree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
-  data = LOC._get_part_data(zone)
+  data = LOC._get_part_data_ngon(zone)
   assert len(data) == 8
-  assert (data[2] == MT.getGlobalNumbering(zone, 'Cell')[1]).all()
+  assert (data[2] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
+  assert (data[7] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
   assert data[6].size == 3*PT.Zone.n_vtx(zone) #Coords
+
+@pytest_parallel.mark.parallel(1)
+def test_get_part_data(comm):
+  dtree = maia.factory.generate_dist_block(3, "HEXA_8", comm)
+  tree = partition_dist_tree(dtree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  data = LOC._get_part_data_elts(zone)
+  assert len(data) == 5
+  assert (data[2] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
+  assert (data[4] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
+  assert data[3].size == 3*PT.Zone.n_vtx(zone) #Coords
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("reverse", [False, True])
@@ -35,10 +47,10 @@ def test_mesh_location(reverse, comm):
     zone_to_parts = {'Base/zone' : [.25, .25]}
     tgt_clouds = [(np.array([.6,.9,0, .6,.9,.8, 1.2, 0.1, 0.1]), np.array([1,3,5], pdm_gnum_dtype))]
   tree = partition_dist_tree(dtree, comm, zone_to_parts=zone_to_parts)
-  src_parts = [LOC._get_part_data(zone) for zone in PT.get_all_Zone_t(tree)]
+  src_parts = [LOC._get_part_data_ngon(zone) for zone in PT.get_all_Zone_t(tree)]
 
   if reverse:
-    tgt_data, src_data =  LOC._mesh_location(src_parts, [], comm, reverse)
+    tgt_data, src_data, _ =  LOC._mesh_location(src_parts, [], comm, reverse)
     assert all([data['elt_pts_inside_idx'].sum() == 0 for data in src_data])
     assert all([data['elt_pts_inside_idx'].size-1 == PT.Zone.n_cell(part) for data,part in zip(src_data, PT.get_all_Zone_t(tree))])
     assert all([data['points_gnum'].size == 0 for data in src_data])
@@ -47,7 +59,7 @@ def test_mesh_location(reverse, comm):
   assert tgt_data == []
 
   if reverse:
-    tgt_data, src_data = LOC._mesh_location(src_parts, tgt_clouds, comm, reverse)
+    tgt_data, src_data, _ = LOC._mesh_location(src_parts, tgt_clouds, comm, reverse)
   else:
     tgt_data = LOC._mesh_location(src_parts, tgt_clouds, comm, reverse)
 
@@ -81,7 +93,7 @@ def test_mesh_location_mdom(comm):
                        PT.get_nodes_from_name_and_label(tree_tgt, 'Small*', 'Zone_t')]
   src_parts_per_dom = [PT.get_all_Zone_t(tree_src)]
 
-  result, result_inv = LOC._localize_points(
+  result, result_inv, _ = LOC._localize_points(
       src_parts_per_dom, tgt_parts_per_dom, 'CellCenter', comm, reverse=True)
   # We should get all the cells of Large + 4*4*6 cells of Small
   _result_inv = result_inv[0][0]
