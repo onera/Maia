@@ -308,23 +308,21 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
 def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   """Interpolate fields between two partitionned trees.
 
-  For now, interpolation is limited to lowest order: target points take the value of the
-  closest point (or their englobing cell, depending of choosed options) in the source mesh.
   Interpolation strategy can be controled thought the options kwargs:
 
   - ``strategy`` (default = 'Closest') -- control interpolation method
 
-    - 'Closest' : Target points take the value of the closest source cell center.
-    - 'Location' : Target points take the value of the cell in which they are located.
+    - 'Closest' : Target points use the inverse distance weighting on the ``n_closest_pt`` source point values.
+    - 'Location' : For ``CellCenter`` fields, target points take the value of the cell in which they are located.
+      For ``Vertex`` fields, target points use finite element weights of source cell vertices to compute interpolation.
       Unlocated points have take a ``NaN`` value.
     - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
       for the unlocated points.
 
-  - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
+  - ``n_closest_pt`` (default = 1) -- If strategy is 'Closest' or 'LocationAndClosest', 
+    specify the number of closest points used for interpolation.
 
-  Important:
-    If ``strategy`` is not 'Closest', source tree must have an unstructured-NGON
-    connectivity and CellCenter located fields.
+  - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
 
   See also:
     :func:`create_interpolator` takes the same parameters (excepted ``containers_name``,
@@ -332,7 +330,7 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only 3D U-NGon connectivities are managed.
+    src_tree (CGNSTree): Source tree, partitionned. Only 3D U-Elements or U-NGon connectivities are managed.
     tgt_tree (CGNSTree): Target tree, partitionned. Structured or unstructured connectivities are managed.
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
