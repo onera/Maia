@@ -59,8 +59,7 @@ class Interpolator:
     A basic reduce function who take the first received value for each target
     """
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
-    assert (np.diff(come_from_idx) == 1).all()
-    return data
+    return data[come_from_idx[:-1]]
 
   def _reduce_weighted_mean(self, i_part, data):
     """
