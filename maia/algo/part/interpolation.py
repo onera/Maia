@@ -132,10 +132,10 @@ def _cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vt
   Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
   onto vtx->tgt information.
   '''
-
-  # > Generate cell_vtx_idx + cell_vtx of cell which have tgt
+  # > Generate cell_vtx_idx + cell_vtx of cell which have tgt (duplicated if multiple tgt)
+  cell_id     = np.arange(0, cell_vtx_idx.size-1, dtype=np.int32)
   cell_n_tgt  = np.diff(cell_tgt_idx) # number of tgt in cell
-  active_cell = np.where(cell_n_tgt!=0)[0] # id of cell having some tgt
+  active_cell = np.repeat(cell_id, cell_n_tgt) # id of cell having some tgt (duplicated if multiple tgt)
   active_cell_vtx_ids = np_utils.multi_arange(cell_vtx_idx[active_cell], cell_vtx_idx[active_cell+1]) # id of vtx in cell_vtx connectivity
   
   cell_n_vtx = np.diff(cell_vtx_idx) # number of vtx in cell
