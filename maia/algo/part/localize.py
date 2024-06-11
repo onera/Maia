@@ -42,7 +42,7 @@ def _get_part_data_elts(part_zone):
   return [cell_vtx_idx, cell_vtx, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
     
 
-def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6, all_tgt=False, is_ngon=True):
+def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6, is_ngon=True):
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists :
@@ -152,7 +152,6 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   result = _mesh_location(src_parts, tgt_clouds, comm,
                           reverse=reverse,
                           loc_tolerance=loc_tolerance,
-                          all_tgt=all_tgt,
                           is_ngon=connectivity_t=='NGon')
 
   # Shift back source data
@@ -172,10 +171,6 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
       src_result['points_gnum_shifted'] = src_result.pop('points_gnum') #Rename key
       src_result['points_gnum'], src_result['domain'] = np_utils.shifted_to_local(
           src_result['points_gnum_shifted'], tgt_offset)
-    for src_result in result[2]:
-      src_result['cell_vtx_shifted'] = src_result.pop('cell_vtx') #Rename key
-      src_result['cell_vtx'], src_result['domain'] = np_utils.shifted_to_local(
-          src_result['cell_vtx_shifted'], tgt_offset)
   
   # Reshape output to list of lists (as input domains)
   if reverse:
