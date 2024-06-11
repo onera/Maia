@@ -138,12 +138,12 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
   return tree
 
 
-def save_part_tree(part_tree, filename, comm, single_file=False, legacy=False):
+def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legacy=False):
   """Gather the partitioned zones managed by all the processes and write it in a unique
   hdf container.
 
   If ``single_file`` is True, one file named *filename* storing all the partitioned
-  zones is written.  Otherwise, hdf links are used to produce a main file *filename*
+  zones is written. Otherwise, hdf links are used to produce a main file *filename*
   linking to additional subfiles.
   
   Args:
@@ -151,6 +151,8 @@ def save_part_tree(part_tree, filename, comm, single_file=False, legacy=False):
     filename (str) : Path of the output file
     comm     (MPIComm) : MPI communicator
     single_file (bool) : Produce a unique file if True; use CGNS links otherwise.
+    links (list): List of links to create (see SIDS-to-Python guide). Each rank must provide
+      only the links related to one of its partitions.
 
   Example:
       .. literalinclude:: snippets/test_io.py
@@ -181,24 +183,29 @@ def save_part_tree(part_tree, filename, comm, single_file=False, legacy=False):
         else:
           from h5py import h5f
           from .hdf._hdf_cgns import open_from_path, _write_node_partial
+          from ._hdf_io_h5py  import _write_links
           fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
           for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
-            zone = PT.get_node_from_path(part_tree, zone_path)
+            _links = [link for link in links if link[3].startswith(zone_path)]
+            zone = PT.shallow_copy(PT.get_node_from_path(part_tree, zone_path))
+            for link in _links: # Remove nodes to be linked
+              PT.rm_node_from_path(zone, PT.utils.path_tail(link[3], 2))
             gid = open_from_path(fid, zone_path.split('/')[0])
             _write_node_partial(gid, zone, lambda X,Y,s: True, ([],[]))
             gid.close()
           fid.close()
+          _write_links(filename, links)
       comm.barrier()
 
   else:
-    links      = []
+    zone_links      = []
     for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
-      links += [['', subfilename, zone_path, zone_path]]
+      zone_links += [['', subfilename, zone_path, zone_path]]
 
-    write_tree(part_tree, subfilename, legacy=legacy) #Use direct API to manage name
+    write_tree(part_tree, subfilename, links, legacy=legacy) #Use direct API to manage name
 
-    _links = comm.gather(links, root=0)
+    _zone_links = comm.gather(zone_links, root=0)
     if rank == 0:
-      links  = [l for proc_links in _links for l in proc_links] #Flatten gather result
-      write_tree(top_tree, filename, links=links, legacy=legacy)
+      zone_links  = [l for proc_links in _zone_links for l in proc_links] #Flatten gather result
+      write_tree(top_tree, filename, links=zone_links, legacy=legacy)
 

@@ -16,6 +16,14 @@ Developpement version
 ^^^^^^^^^^^^^^^
 - Algo module: add ``remove_degen_faces_from_family``
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- ``part_tree_to_file``: manage user provided links
+
+🚧 API change
+^^^^^^^^^^^^^
+- ``part_tree_to_file``: add ``links`` parameter
+
 
 v1.4 (May 2024)
 ---------------

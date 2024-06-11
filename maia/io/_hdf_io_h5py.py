@@ -95,13 +95,7 @@ def read_links(filename):
     raise ValueError(f"{filename} is not a valid HDF5 file")
   return load_tree_links(filename)
 
-def write_full(filename, dist_tree, links=[]):
-  _dist_tree = PT.shallow_copy(dist_tree)
-  for link in links: # Links override data, so delete data
-    PT.rm_node_from_path(_dist_tree, link[3])
-  write_tree_partial(_dist_tree, filename, lambda X,Y,s: True)
-
-  # Add links if any
+def _write_links(filename, links):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
   for link in links:
     target_dir, target_file, target_node, local_node = link
@@ -110,4 +104,13 @@ def write_full(filename, dist_tree, links=[]):
     gid = open_from_path(fid, parent_node_path)
     write_link(gid, local_node_name, target_file, target_node)
   fid.close()
+
+def write_full(filename, dist_tree, links=[]):
+  _dist_tree = PT.shallow_copy(dist_tree)
+  for link in links: # Links override data, so delete data
+    PT.rm_node_from_path(_dist_tree, link[3])
+  write_tree_partial(_dist_tree, filename, lambda X,Y,s: True)
+
+  # Add links if any
+  _write_links(filename, links)
 

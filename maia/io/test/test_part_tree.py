@@ -21,19 +21,24 @@ class LogCapture:
 
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])
-def test_write_part_tree(mpi_tmpdir, single_file, comm):
+@pytest.mark.parametrize('user_links', [True, False])
+def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
+
+  links = []
+  if user_links:
+    links = [] if comm.Get_rank() == 1 else [('.', 'this/hdf/file.hdf', 'this/other_node', f'Base/zone.P{comm.rank}.N0/GridCoordinates/CoordinateZ')]
 
   expected_n_files = 1 + comm.Get_size() * int(not single_file)
 
   filename = Path(mpi_tmpdir) / 'out.hdf'
-  PIO.save_part_tree(tree, str(filename), comm, single_file)
+  PIO.save_part_tree(tree, str(filename), comm, single_file, links)
   comm.barrier()
   assert filename.exists()
   assert len(list(Path(mpi_tmpdir).glob('*'))) == expected_n_files
 
-  if comm.Get_rank() == 0:
+  if comm.Get_rank() == 0 and not user_links:
     tree = maia.io.read_tree(str(filename))
     for rank in range(comm.Get_size()):
       assert PT.get_node_from_path(tree, f'Base/zone.P{rank}.N0') is not None
@@ -48,6 +53,19 @@ def test_write_part_tree(mpi_tmpdir, single_file, comm):
         # Index DataArray_t {dtype} [2,3,4,5,6,7]:
     # """)
     # assert PT.is_same_tree(PT.get_node_from_path(tree, 'Base/zone.P1.N0/ZoneBC/Xmax'), ref)
+  elif comm.Get_rank() == 0 and user_links:
+    if single_file:
+      links = maia.io.read_links(str(filename))
+      assert links[0] == ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/zone.P0.N0/GridCoordinates/CoordinateZ']
+      assert links[1] == ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/zone.P2.N0/GridCoordinates/CoordinateZ']
+      assert links[2] == ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/zone.P3.N0/GridCoordinates/CoordinateZ']
+    else:
+      for i in range(4):
+        links = maia.io.read_links(str(filename)[:-4] + f'_sub_{i}.hdf')
+        if i == 1:
+          assert links == []
+        else:
+          assert links == [['.', 'this/hdf/file.hdf', 'this/other_node', f'Base/zone.P{i}.N0/GridCoordinates/CoordinateZ']]
 
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])
