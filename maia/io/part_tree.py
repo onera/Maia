@@ -152,7 +152,7 @@ def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legac
     comm     (MPIComm) : MPI communicator
     single_file (bool) : Produce a unique file if True; use CGNS links otherwise.
     links (list): List of links to create (see SIDS-to-Python guide). Each rank must provide
-      only the links related to one of its partitions.
+      only the links related to one of its partitions. Not compatible with ``legacy=True``.
 
   Example:
       .. literalinclude:: snippets/test_io.py
@@ -165,8 +165,10 @@ def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legac
   base_name, extension = os.path.splitext(filename)
   subfilename = base_name + f'_sub_{rank}' + extension
 
+  # Get meta data nodes, this allows custom nodes located at tree top level (see #108)
+  glob_nodes = PT.get_children_from_predicate(part_tree, lambda n : PT.get_label(n) != 'CGNSBase_t')
+  top_tree = PT.new_node('CGNSTree', 'CGNSTree_t', children=glob_nodes)
   # Recover base data and families
-  top_tree = PT.new_CGNSTree()
   discover_nodes_from_matching(top_tree, [part_tree], 'CGNSBase_t', comm, get_value='all', child_list=['Family_t', 'ReferenceState_t'])
 
   if single_file:

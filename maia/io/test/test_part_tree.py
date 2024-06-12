@@ -26,6 +26,8 @@ def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
 
+  PT.new_UserDefinedData('TopLevelCustomNode', parent=tree)
+
   links = []
   if user_links:
     links = [] if comm.Get_rank() == 1 else [('.', 'this/hdf/file.hdf', 'this/other_node', f'Base/zone.P{comm.rank}.N0/GridCoordinates/CoordinateZ')]
@@ -43,6 +45,7 @@ def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
     for rank in range(comm.Get_size()):
       assert PT.get_node_from_path(tree, f'Base/zone.P{rank}.N0') is not None
     assert PT.get_value(PT.get_node_from_path(tree, 'Base/zone.P1.N0/ZoneType')) == 'Unstructured'
+    assert PT.get_label(PT.get_node_from_path(tree, 'TopLevelCustomNode')) == 'UserDefinedData_t'
 
     # Parallelism dependant ...
     # ref = PT.yaml.to_node(f"""
