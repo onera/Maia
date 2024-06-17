@@ -105,6 +105,11 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
       feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(constraint_tags['FaceCenter'])]#[str(tag) for tag in constraint_tags['FaceCenter']]
     if len(constraint_tags['EdgeCenter'])!=0:
       feflo_command  = feflo_command + ['-adap-line-ids'] + [','.join(constraint_tags['EdgeCenter'])]#[str(tag) for tag in constraint_tags['EdgeCenter']]
+    if len(constraint_tags['FaceCenter'])==0 and \
+       len(constraint_tags['EdgeCenter'])==0 and \
+       constraints is not None:
+       # Can happen if all BCs given, or with wrong BC names. If all BCs, maybe use `-no-surf` feflo option instead
+       print("WARNING: constraints argument given but has no effect.")
     feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
 
     mlog.info(f"Start mesh adaptation using Feflo...")
