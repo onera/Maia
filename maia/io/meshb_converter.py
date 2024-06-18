@@ -342,7 +342,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
       myy = PT.get_value(metric_nodes[3])
       myz = PT.get_value(metric_nodes[4])
       mzz = PT.get_value(metric_nodes[5])
-      met = np_utils.interweave_arrays([mxx,mxy,myy,mxz,myz,mzz])
+      met = np_utils.interweave_arrays([mxx,mxy,mxz,myy,myz,mzz])
       PDM.write_matsym_solb(bytes(files["sol"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], met)
 
 
