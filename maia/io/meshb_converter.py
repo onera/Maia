@@ -263,12 +263,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
     pdm_elmt_idx = [0 for i_elmt in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES)]
     for elmt_pdm_t in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES):
       pdm_elmt_idx[elmt_pdm_t] = np_utils.sizes_to_indices(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
-      pdm_n_elmt  [elmt_pdm_t] = np.add.reduce(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+      pdm_n_elmt  [elmt_pdm_t] = pdm_elmt_idx[elmt_pdm_t][-1]
       pdm_elmt_vtx[elmt_pdm_t] = np_utils.concatenate_np_arrays(pdm_elmt_vtx[elmt_pdm_t], dtype=pdm_gnum_dtype)[1]
 
-      if  elmt_pdm_t==PDM._PDM_MESH_NODAL_BAR2  or\
-          elmt_pdm_t==PDM._PDM_MESH_NODAL_TRIA3 or\
-          elmt_pdm_t==PDM._PDM_MESH_NODAL_QUAD4:
+      if elmt_pdm_t in [PDM._PDM_MESH_NODAL_BAR2, PDM._PDM_MESH_NODAL_TRIA3, PDM._PDM_MESH_NODAL_QUAD4]:
         pdm_elmt_tag[elmt_pdm_t] = -np.ones (pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
       else:
         pdm_elmt_tag[elmt_pdm_t] =  np.zeros(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
@@ -326,7 +324,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
     file_name = bytes(files["mesh"], 'utf-8') if isinstance(files["mesh"], str)\
            else bytes(files["mesh"])
 
-    pdm_n_elmt = np.array(pdm_n_elmt, dtype=pdm_gnum_dtype)
+    pdm_n_elmt = np.array(pdm_n_elmt, dtype=np.int32)
     PDM.write_meshb(file_name,
                     pdm_n_elmt, pdm_elmt_tag,
                     pdm_elmt_vtx, xyz)

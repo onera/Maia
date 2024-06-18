@@ -171,22 +171,10 @@ def test_meshb_to_cgns(multi_elt, comm):
       elt_n = PT.get_node_from_name_and_label(zone_n, elt_name, 'Elements_t')
       assert PT.maia.getDistribution(elt_n, 'Element')[1][2]==n_elt
 
-    if False: # visu of result
-        bc_nodes = list()
-        is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
-        for bc_n in PT.get_nodes_from_predicate(meshb_dist_tree, is_edge_bc):
-            bc_nodes.append(bc_n)
-            gl_n = PT.get_child_from_label(bc_n, 'GridLocation_t')
-            PT.set_value(gl_n, 'FaceCenter')
-        for bc_n in PT.get_nodes_from_label(meshb_dist_tree, 'BC_t'):
-            PT.set_value(bc_n, 'BCWall')
-            PT.new_FamilyName('BCS', parent=bc_n)
-        base_n = PT.get_node_from_label(meshb_dist_tree, 'CGNSBase_t')
-        PT.new_Family('BCS', parent=base_n)
-        maia.io.dist_tree_to_file(meshb_dist_tree, 'visu.cgns', comm)  
 
   else:
       assert PT.is_same_tree(dist_tree_bck, meshb_dist_tree, abs_tol=1E-12)
-      TU.rm_collective_dir(tmp_dir, comm)
+  
+  TU.rm_collective_dir(tmp_dir, comm)
 
 
