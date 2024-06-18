@@ -178,13 +178,12 @@ def create_src_to_tgt(src_parts_per_dom,
       all_n_vtx.append([PT.Zone.n_vtx(zone) for zone in src_part_zones])
     all_n_vtx = py_utils.to_flat_list(all_n_vtx)
 
-    location_out, location_out_inv, location_cell_vtx = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
+    location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
         tgt_loc, comm, True, loc_tolerance)
 
     # output is nested by domain so we need to flatten it
     all_unlocated = [data['unlocated_ids'] for domain in location_out for data in domain]
     all_located_inv = py_utils.to_flat_list(location_out_inv)
-    all_located_cell_vtx = py_utils.to_flat_list(location_cell_vtx)
     n_unlocated = sum([t.size for t in all_unlocated])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
     if comm.Get_rank() == 0:
@@ -225,16 +224,14 @@ def create_src_to_tgt(src_parts_per_dom,
                      'target'     : data['points_gnum_shifted']} for data in all_located_inv]
     elif src_loc=="Vertex":
       src_to_tgt = list()
-      for data, cell_vtx, n_vtx in zip(all_located_inv, all_located_cell_vtx, all_n_vtx):
-        
-        cell_tgt_idx    = data['elt_pts_inside_idx']
-        cell_tgt        = data['points_gnum_shifted']
-        cell_vtx_weight = data['points_weights']
+      for data, n_vtx in zip(all_located_inv, all_n_vtx):
 
-        cell_vtx_idx = cell_vtx['cell_vtx_idx']
-        cell_vtx     = cell_vtx['cell_vtx']
-        
-        vtx_to_tgt_idx, vtx_to_tgt, vtx_to_weight = _cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vtx_weight, n_vtx)
+        vtx_to_tgt_idx, vtx_to_tgt, vtx_to_weight = _cell_tgt_to_vtx_tgt(data['cell_vtx_idx'],
+                                                                         data['cell_vtx'], 
+                                                                         data['elt_pts_inside_idx'],  #cell_tgt_idx 
+                                                                         data['points_gnum_shifted'], #cell_tgt
+                                                                         data['points_weights'],      #cell_vtx_weight
+                                                                         n_vtx)
         src_to_tgt.append({'target_idx'   : vtx_to_tgt_idx,
                            'target'       : vtx_to_tgt,
                            'target_weight': vtx_to_weight})
@@ -256,15 +253,14 @@ def create_src_to_tgt(src_parts_per_dom,
         src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src, 'target_weight':tgt_weight})
 
     elif src_loc=="Vertex":
-      for res_loc, cell_vtx, n_vtx, res_clo in zip(all_located_inv, all_located_cell_vtx, all_n_vtx, all_closest_inv):
-        cell_tgt_idx    = res_loc['elt_pts_inside_idx']
-        cell_tgt        = res_loc['points_gnum_shifted']
-        cell_vtx_weight = res_loc['points_weights']
-
-        cell_vtx_idx = cell_vtx['cell_vtx_idx']
-        cell_vtx     = cell_vtx['cell_vtx']
+      for res_loc, n_vtx, res_clo in zip(all_located_inv, all_n_vtx, all_closest_inv):
         
-        loc_vtx_to_tgt_idx, loc_vtx_to_tgt, loc_vtx_to_weight = _cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vtx_weight, n_vtx)
+        loc_vtx_to_tgt_idx, loc_vtx_to_tgt, loc_vtx_to_weight = _cell_tgt_to_vtx_tgt(res_loc['cell_vtx_idx'], 
+                                                                                     res_loc['cell_vtx'],
+                                                                                     res_loc['elt_pts_inside_idx'],  #cell_tgt_idx
+                                                                                     res_loc['points_gnum_shifted'], #cell_tgt
+                                                                                     res_loc['points_weights'],      #cell_vtx_weight
+                                                                                     n_vtx)
         
         clo_src_weight = 1./res_clo['tgt_in_src_dist2']
 

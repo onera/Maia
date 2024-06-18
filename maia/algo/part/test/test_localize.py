@@ -47,7 +47,7 @@ def test_mesh_location(reverse, comm):
   src_parts = [LOC._get_part_data_ngon(zone) for zone in PT.get_all_Zone_t(tree)]
 
   if reverse:
-    tgt_data, src_data, _ =  LOC._mesh_location(src_parts, [], comm, reverse)
+    tgt_data, src_data =  LOC._mesh_location(src_parts, [], comm, reverse)
     assert all([data['elt_pts_inside_idx'].sum() == 0 for data in src_data])
     assert all([data['elt_pts_inside_idx'].size-1 == PT.Zone.n_cell(part) for data,part in zip(src_data, PT.get_all_Zone_t(tree))])
     assert all([data['points_gnum'].size == 0 for data in src_data])
@@ -56,7 +56,7 @@ def test_mesh_location(reverse, comm):
   assert tgt_data == []
 
   if reverse:
-    tgt_data, src_data, _ = LOC._mesh_location(src_parts, tgt_clouds, comm, reverse)
+    tgt_data, src_data = LOC._mesh_location(src_parts, tgt_clouds, comm, reverse)
   else:
     tgt_data = LOC._mesh_location(src_parts, tgt_clouds, comm, reverse)
 
@@ -90,7 +90,7 @@ def test_mesh_location_mdom(comm):
                        PT.get_nodes_from_name_and_label(tree_tgt, 'Small*', 'Zone_t')]
   src_parts_per_dom = [PT.get_all_Zone_t(tree_src)]
 
-  result, result_inv, _ = LOC._localize_points(
+  result, result_inv = LOC._localize_points(
       src_parts_per_dom, tgt_parts_per_dom, 'CellCenter', comm, reverse=True)
   # We should get all the cells of Large + 4*4*6 cells of Small
   _result_inv = result_inv[0][0]
