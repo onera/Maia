@@ -183,6 +183,27 @@ def meshb_to_cgns(out_files, tree_info, comm):
 
 
 
+# > PointList BC to BC tag
+def _bc_pl_to_bc_tag(list_of_bc, elts_tag, elts_ranges, elts_idx, constraint_bcs, constraint_tags):
+  for n_tag, bc_n in enumerate(list_of_bc):
+    pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
+
+    for pdm_elt_t, (elt_idx, elt_ranges) in enumerate(zip(elts_idx, elts_ranges)):
+      for i_elt, elt_range in enumerate(elt_ranges): # Some element type can a multiple node, so multiple elt_range
+        if elt_range is not None and pdm_elt_t!=PDM._PDM_MESH_NODAL_POINT: # Beware of vtx range overlapping with element range
+          pl_in_elmt = pl[np.logical_and( np.greater_equal(pl, elt_range[0]),
+                                          np.less_equal   (pl, elt_range[1]))] - elt_range[0] + elt_idx[i_elt]
+          elts_tag[pdm_elt_t][pl_in_elmt] = n_tag + 1
+
+    bc_name = PT.get_name(bc_n)
+    if constraint_bcs is not None and\
+      PT.get_name(bc_n) not in constraint_bcs:
+      constraint_tags.append(str(n_tag + 1))
+
+def _bc_pl_to_bc_tag_vtx(list_of_bc, vtx_tag):
+  for n_tag, bc_n in enumerate(list_of_bc):
+    pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
+    vtx_tag[pl-1] = pl
 
 
 def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
@@ -210,29 +231,49 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
     # > Coordinates
     cx, cy, cz = PT.Zone.coordinates(zone)
 
-    #  > Gathering elements by type
-    pdm_n_elmt     = np.zeros(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES, dtype=np.int32)
-    pdm_elmt_vtx   = [None] * PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES
-    pdm_elmt_tag   = [None] * PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES
-    pdm_elmt_range = [None] * PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES
+    # > Gathering elements by type
+    #   For each element type, get info from element nodes of this type:
+    #      - get number of element
+    #      - connectivity
+    #      - element range
+    pdm_n_elmt     = [[]   for i_elmt in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES)]
+    pdm_elmt_vtx   = [[]   for i_elmt in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES)]
+    pdm_elmt_tag   = [None for i_elmt in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES)]
+    pdm_elmt_range = [[]   for i_elmt in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES)]
 
     for elmts in PT.Zone.get_ordered_elements_per_dim(zone):
       for elmt_n in elmts:
         elmt_name  = PT.Element.CGNSName(elmt_n)
         elmt_pdm_t = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elmt_name)
 
-        pdm_n_elmt    [elmt_pdm_t] = PT.Element.Size(elmt_n)
-        pdm_elmt_vtx  [elmt_pdm_t] = np_utils.safe_int_cast(PT.get_node_from_name(elmt_n, "ElementConnectivity")[1], pdm_gnum_dtype)
-        pdm_elmt_range[elmt_pdm_t] = PT.Element.Range(elmt_n)
+        pdm_n_elmt    [elmt_pdm_t].append(PT.Element.Size(elmt_n))
+        pdm_elmt_vtx  [elmt_pdm_t].append(np_utils.safe_int_cast(PT.get_node_from_name(elmt_n, "ElementConnectivity")[1], pdm_gnum_dtype))
+        pdm_elmt_range[elmt_pdm_t].append(PT.Element.Range(elmt_n))
 
         if PT.Element.Size(elmt_n)!=0:
-          is_3d = PT.Element.Dimension(elmt_n)==3
+          is_3d = PT.Element.Dimension(elmt_n)==3 # Works cause elements are ordered by dim  
           is_2d = PT.Element.Dimension(elmt_n)==2
 
-          if elmt_name in ["BAR_2", "TRI_3", "QUAD_4"]:
-            pdm_elmt_tag[elmt_pdm_t] = -np.ones(PT.Element.Size(elmt_n), dtype=np.int32)
-          else:
-            pdm_elmt_tag[elmt_pdm_t] = np.zeros(PT.Element.Size(elmt_n), dtype=np.int32)
+    # > Reduce information and init tag
+    #   For each element type, reduce info from element nodes of this type:
+    #      - total number of elements
+    #      - element number in node idx
+    #      - concatenate node connectivities
+    #      - initialize tag
+    pdm_elmt_idx = [0 for i_elmt in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES)]
+    for elmt_pdm_t in range(PDM._PDM_MESH_NODAL_N_ELEMENT_TYPES):
+      pdm_elmt_idx[elmt_pdm_t] = np_utils.sizes_to_indices(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+      pdm_n_elmt  [elmt_pdm_t] = np.add.reduce(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+      pdm_elmt_vtx[elmt_pdm_t] = np_utils.concatenate_np_arrays(pdm_elmt_vtx[elmt_pdm_t], dtype=pdm_gnum_dtype)[1]
+
+      if  elmt_pdm_t==PDM._PDM_MESH_NODAL_BAR2  or\
+          elmt_pdm_t==PDM._PDM_MESH_NODAL_TRIA3 or\
+          elmt_pdm_t==PDM._PDM_MESH_NODAL_QUAD4:
+        pdm_elmt_tag[elmt_pdm_t] = -np.ones (pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+      else:
+        pdm_elmt_tag[elmt_pdm_t] =  np.zeros(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+
+
 
     pdm_n_elmt  [PDM._PDM_MESH_NODAL_POINT] = PT.Zone.n_vtx(zone)
     pdm_elmt_tag[PDM._PDM_MESH_NODAL_POINT] = np.zeros(PT.Zone.n_vtx(zone), dtype=np.int32)
@@ -241,28 +282,6 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
                        'FaceCenter':[],
                        'EdgeCenter':[]}
 
-    # > PointList BC to BC tag
-    def bc_pl_to_bc_tag(list_of_bc, elts_tag, elts_range):
-      for n_tag, bc_n in enumerate(list_of_bc):
-        pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
-
-        for pdm_elt_t, elt_range in enumerate(elts_range):
-          if elt_range is not None and pdm_elt_t!=PDM._PDM_MESH_NODAL_POINT: # Beware of vtx range overlapping with element range
-            pl_in_elmt = pl[np.logical_and( np.greater_equal(pl, elt_range[0]),
-                                            np.less_equal   (pl, elt_range[1]))] - elt_range[0]
-            elts_tag[pdm_elt_t][pl_in_elmt] = n_tag + 1
-
-        bc_name = PT.get_name(bc_n)
-        bc_loc  = PT.Subset.GridLocation(bc_n)
-        if constraints is not None and\
-           PT.get_name(bc_n) not in constraints:
-          constraint_tags[bc_loc].append(str(n_tag + 1))
-
-    def bc_pl_to_bc_tag_vtx(list_of_bc, vtx_tag):
-      for n_tag, bc_n in enumerate(list_of_bc):
-        pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
-        vtx_tag[pl-1] = pl
-
     # > Tags initialization
     zone_bc = PT.get_child_from_label(zone, 'ZoneBC_t')
 
@@ -270,22 +289,25 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
       # > Cell BC_t
       is_cell_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "CellCenter"
       cell_bcs   = PT.get_children_from_predicate(zone_bc, is_cell_bc)
-      n_cell_tag = bc_pl_to_bc_tag(cell_bcs, pdm_elmt_tag, pdm_elmt_range)
+      n_cell_tag = _bc_pl_to_bc_tag(cell_bcs, pdm_elmt_tag, pdm_elmt_range, pdm_elmt_idx,
+                                      constraints, constraint_tags["CellCenter"])
 
       # > Face BC_t
       is_face_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "FaceCenter"
       face_bcs   = PT.get_children_from_predicate(zone_bc, is_face_bc)
-      n_face_tag = bc_pl_to_bc_tag(face_bcs, pdm_elmt_tag, pdm_elmt_range)
+      n_face_tag = _bc_pl_to_bc_tag(face_bcs, pdm_elmt_tag, pdm_elmt_range, pdm_elmt_idx,
+                                      constraints, constraint_tags["FaceCenter"])
 
       # > Edge BC_t
       is_edge_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "EdgeCenter"
       edge_bcs   = PT.get_children_from_predicate(zone_bc, is_edge_bc)
-      n_edge_tag = bc_pl_to_bc_tag(edge_bcs, pdm_elmt_tag, pdm_elmt_range)
+      n_edge_tag = _bc_pl_to_bc_tag(edge_bcs, pdm_elmt_tag, pdm_elmt_range, pdm_elmt_idx,
+                                      constraints, constraint_tags["EdgeCenter"])
 
       # > Vertices BC_t
       is_vtx_bc  = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "Vertex"
       vtx_bcs   = PT.get_children_from_predicate(zone_bc, is_vtx_bc)
-      n_vtx_tag = bc_pl_to_bc_tag_vtx(vtx_bcs, pdm_elmt_tag[PDM._PDM_MESH_NODAL_POINT])
+      n_vtx_tag = _bc_pl_to_bc_tag_vtx(vtx_bcs, pdm_elmt_tag[PDM._PDM_MESH_NODAL_POINT])
 
 
     if is_3d:
@@ -303,6 +325,8 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
     xyz       = np_utils.interweave_arrays([cx,cy,cz])
     file_name = bytes(files["mesh"], 'utf-8') if isinstance(files["mesh"], str)\
            else bytes(files["mesh"])
+
+    pdm_n_elmt = np.array(pdm_n_elmt, dtype=pdm_gnum_dtype)
     PDM.write_meshb(file_name,
                     pdm_n_elmt, pdm_elmt_tag,
                     pdm_elmt_vtx, xyz)
