@@ -42,7 +42,7 @@ def _get_part_data_elts(part_zone):
   return [cell_vtx_idx, cell_vtx, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
     
 
-def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6, is_ngon=True):
+def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists :
@@ -56,21 +56,16 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   n_part_tgt = len(tgt_clouds)
   # > Create and setup global data
   mesh_loc = PDM.MeshLocation(n_point_cloud=1, comm=comm)
-  mesh_loc.mesh_n_part_set(n_part_src)  # For now only one domain is supported
-  mesh_loc.n_part_cloud_set(0, n_part_tgt)   # For now only one domain is supported
+  mesh_loc.mesh_n_part_set(n_part_src)
+  mesh_loc.n_part_cloud_set(0, n_part_tgt)
 
   # > Register source
   for i_part, part_data in enumerate(src_parts):
-    if is_ngon:
-      cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
-        vtx_coords, vtx_ln_to_gn = part_data
-      mesh_loc.part_set(i_part, cell_face_idx, cell_face, cell_ln_to_gn,
-                                face_vtx_idx, face_vtx, face_ln_to_gn,
-                                vtx_coords, vtx_ln_to_gn)
-    else:
-      cell_vtx_idx, cell_vtx, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn = part_data
-      mesh_loc.nodal_part_set(i_part, cell_vtx_idx, cell_vtx, cell_ln_to_gn,
-                              vtx_coords, vtx_ln_to_gn)
+    if len(part_data) == 8: #NGON
+      mesh_loc.part_set(i_part, *part_data)
+    elif len(part_data) == 5: #Element
+      mesh_loc.nodal_part_set(i_part, *part_data)
+
   # > Setup target
   for i_part, (coords, lngn) in enumerate(tgt_clouds):
     mesh_loc.cloud_set(0, i_part, coords, lngn)
@@ -90,7 +85,7 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
     data['located_ids']   = all_located_id[i_part] - 1
     data['unlocated_ids'] = all_unlocated_id[i_part] - 1
 
-  #This is result from the source perspective (api : ((i_part, i_pt_cloud))
+  #This is result from the source perspective (api : ((i_pt_cloud, i_part))
   if reverse:
     all_located_inv      = [mesh_loc.points_in_elt_get(0, i_src_part) for i_src_part in range(n_part_src)]
     all_located_cell_vtx = [mesh_loc.cell_vertex_get(i_src_part)      for i_src_part in range(n_part_src)]
@@ -113,7 +108,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   n_part_tgt = sum(n_part_per_dom_tgt)
 
   # > Register source
-  connectivity_t = "None"
+  connectivity_t = None
   src_parts = []
   for i_domain, src_part_zones in enumerate(src_parts_per_dom):
     # TODO : use cell_vtx_connectivity_ngon to transform ngon into nodal ?
@@ -149,10 +144,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   tgt_offset, tgt_clouds = get_shifted_point_clouds(tgt_parts_per_dom, location, comm)
   tgt_clouds = py_utils.to_flat_list(tgt_clouds)
 
-  result = _mesh_location(src_parts, tgt_clouds, comm,
-                          reverse=reverse,
-                          loc_tolerance=loc_tolerance,
-                          is_ngon=connectivity_t=='NGon')
+  result = _mesh_location(src_parts, tgt_clouds, comm, reverse, loc_tolerance)
 
   # Shift back source data
   for i_domain, src_parts_domain in enumerate(py_utils.to_nested_list(src_parts, n_part_per_dom_src)):
