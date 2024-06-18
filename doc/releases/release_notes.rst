@@ -53,6 +53,7 @@ v1.4 (May 2024)
 - convert_elements_to_ngon: update FaceCenter / CellCenter PointList arrays
 - partitioning: fix creation of cells global numbering for multisection element meshes
 - merge_zones: fix type mismatch occurring on I4 meshes with I8 production
+- **[v1.4.1]** mesh adaptation: fix tensorial metric and trees with multiple Elements_t of same type
 
 🚧 API change
 ^^^^^^^^^^^^^

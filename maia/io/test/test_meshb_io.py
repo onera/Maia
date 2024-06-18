@@ -162,19 +162,19 @@ def test_meshb_to_cgns(multi_elt, comm):
   maia.algo.dist.redistribute_tree(dist_tree_bck, 'uniform', comm)
   maia.algo.dist.redistribute_tree(meshb_dist_tree, 'uniform', comm)
 
-  # Somehow those arrays are not in same order, but have same values
   if multi_elt:
-    for bc_name in ['bc2', 'bc5']:
-      bc_bck = PT.get_node_from_path(dist_tree_bck, f"Base/zone/ZoneBC/{bc_name}/PointList")
-      bc_cur = PT.get_node_from_path(meshb_dist_tree, f"Base/zone/ZoneBC/{bc_name}/PointList")
-      bc_bck = bc_bck[1][0] if bc_bck else np.empty([])
-      bc_cur = bc_cur[1][0] if bc_cur else np.empty([])
-      bc_bck_glob = np.concatenate(comm.allgather(bc_bck))
-      bc_cur_glob = np.concatenate(comm.allgather(bc_cur))
-      assert (np.sort(bc_bck_glob) == np.sort(bc_cur_glob)).all()
-      PT.rm_node_from_path(dist_tree_bck, f"Base/zone/ZoneBC/{bc_name}")
-      PT.rm_node_from_path(meshb_dist_tree, f"Base/zone/ZoneBC/{bc_name}")
+    zone_n = PT.get_node_from_label(meshb_dist_tree, 'Zone_t')
+    assert PT.Zone.n_vtx (zone_n)==77
+    assert PT.Zone.n_cell(zone_n)==168
+    n_elts = {'TETRA_4.0':144,'PENTA_6.1':24,'TRI_3.0':88,'QUAD_4.1':16,'BAR_2.0':56}
+    for elt_name, n_elt in n_elts.items():
+      elt_n = PT.get_node_from_name_and_label(zone_n, elt_name, 'Elements_t')
+      assert PT.maia.getDistribution(elt_n, 'Element')[1][2]==n_elt
 
 
-  assert PT.is_same_tree(dist_tree_bck, meshb_dist_tree, abs_tol=1E-12)
+  else:
+      assert PT.is_same_tree(dist_tree_bck, meshb_dist_tree, abs_tol=1E-12)
+  
   TU.rm_collective_dir(tmp_dir, comm)
+
+
