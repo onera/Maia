@@ -202,13 +202,13 @@ def test_interpolator_reductions():
   assert np.array_equal(out, data)
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,4,6])}]
-  fake_interpolator.tgt_weight = [1./np.array([1,1,0,1,3,1])]
+  fake_interpolator.tgt_weight = [1./np.array([1,1,1E-20,1,3,1])]
   data = np.array([1,2, 10,11, 20,30], np.float64)
   out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
   assert (out == np.array([1.5, 10., 27.5])).all()
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,5,6])}]
-  fake_interpolator.tgt_weight = [1./np.array([1,1, 0,1,3, 1])]
+  fake_interpolator.tgt_weight = [1./np.array([1,1, 1E-20,1,3, 1])]
   data = np.array([1,2, 10,11,20, 30], np.float64)
   out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
   assert (out == np.array([1.5, 10., 30.0])).all()
@@ -325,7 +325,7 @@ def test_interpolation_mdom(strategy, comm):
   dtree_tgt = PT.new_CGNSTree()
   dbase_tgt = PT.new_CGNSBase(parent=dtree_tgt)
   zoneA = PT.get_node_from_label(DCG.dcube_generate(3, 1., [0.,0.,-0.6], comm), 'Zone_t')
-  zoneB = PT.get_node_from_label(DCG.dcube_generate(3, 1., [1.1,0.1,1.1], comm), 'Zone_t')
+  zoneB = PT.get_node_from_label(DCG.dcube_generate(3, 1., [1.,0.,1.1], comm), 'Zone_t')
   PT.set_name(zoneA, 'TGTA')
   PT.set_name(zoneB, 'TGTB')
   PT.set_children(dbase_tgt, [zoneA, zoneB])
@@ -374,16 +374,13 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
     cx,cy,cz = PT.Zone.coordinates(zone)
     gnum     = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
     PT.new_FlowSolution('FS', loc="Vertex", fields={'gnum':gnum, 'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
-  # maia.io.write_tree(psrc_tree, f'in_{comm.rank}.cgns')
 
-  interpolator = maia.algo.part.create_interpolator_from_part_trees(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
-                                                                    strategy=strategy,
-                                                                    n_closest_pt=1)
+  interpolator = maia.algo.part.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
+                                                    strategy=strategy,
+                                                    n_closest_pt=1)
   interpolator.exchange_fields('FS', ITP.Interpolator._reduce_weighted_mean)
-  # maia.io.write_tree(ptgt_tree, f"out_{comm.rank}.cgns")
 
   # > Check result
-  PT.print_tree(ptgt_tree, f'tree_{comm.rank}.txt')
   zone = PT.get_node_from_label(ptgt_tree, "Zone_t")
   if tgt_loc=='Vertex':
     expected_cx = PT.get_node_from_name(ptgt_tree, 'CoordinateX')[1]
