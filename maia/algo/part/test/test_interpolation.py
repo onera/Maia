@@ -15,6 +15,26 @@ from maia.algo.part import interpolation as ITP
 
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
+
+def test_cell_tgt_to_vtx_tgt():
+  n_vtx = 12
+  cell_vtx_idx = np.array([0,    4,     7,      11,     14,     17], dtype=np.int32)
+  cell_vtx     = np.array([5,7,1,6, 3,9,5, 3,5,2,1, 10,4,8, 10,2,3], dtype=np.int32)
+  cell_tgt_idx = np.array([0,    0,     2,       3,      3,      6], dtype=np.int32)
+  cell_tgt     = np.array([          11,9,     101,         6, 2,1], dtype=pdm_gnum_dtype)
+  cell_vtx_wgt = np.array([3,9,5, 3,9,5, 3,5,2,1, 10,2,3, 10,2,3, 10,2,3], dtype=np.float64)*0.1
+  
+  # expctd_vtx_to_tgt result order known after print because argsort in function is unpredictable
+  expctd_vtx_to_tgt_idx = np.array([0,1,         5,             11, 11,   14, 14, 14, 14, 16,     19, 19, 19], dtype=np.int32)
+  expctd_vtx_to_tgt     = np.array([101, 2,6,1,101, 2,6,11,101,9,1, 9,11,101,           9,11,  6,2,1], dtype=pdm_gnum_dtype)
+  expctd_vtx_to_tgt_wgt = np.array([1, 2,2,2,2, 3,3,3,3,3,3, 5,5,5, 9,9, 10,10,10], dtype=np.float64)*0.1
+
+  vtx_to_tgt_idx, vtx_to_tgt, vtx_to_tgt_wgt = ITP._cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vtx_wgt, n_vtx)
+  
+  assert np.array_equal(vtx_to_tgt_idx, expctd_vtx_to_tgt_idx)
+  assert np.array_equal(vtx_to_tgt    , expctd_vtx_to_tgt    )
+  assert np.array_equal(vtx_to_tgt_wgt, expctd_vtx_to_tgt_wgt)
+
 src_part_0 = f"""
 ZoneU Zone_t [[18,4,0]]:
   ZoneType ZoneType_t "Unstructured":

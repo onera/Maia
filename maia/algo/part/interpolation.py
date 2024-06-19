@@ -149,9 +149,9 @@ def _cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vt
 
   vtx_to_tgt_idx = np_utils.sizes_to_indices(vtx_to_tgt_n) 
   vtx_to_tgt     = cell_tgt_extended[sort_idx] # vtx->tgt
-  vtx_to_weight  = cell_vtx_weight[sort_idx]
+  vtx_to_tgt_wgt = cell_vtx_weight[sort_idx]
 
-  return vtx_to_tgt_idx, vtx_to_tgt, vtx_to_weight
+  return vtx_to_tgt_idx, vtx_to_tgt, vtx_to_tgt_wgt
 
 
 def create_src_to_tgt(src_parts_per_dom,
