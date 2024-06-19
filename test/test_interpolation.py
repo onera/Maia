@@ -33,15 +33,17 @@ def refine_mesh(tree, factor=1):
 
 @pytest_parallel.mark.parallel([1])
 @pytest.mark.parametrize("strategy", ["Closest", "Location"])
-def test_interpolation_non_overlaping_cubes(comm, strategy, write_output):
+@pytest.mark.parametrize("src_elt", ["Poly", "HEXA_8"])
+@pytest.mark.parametrize("tgt_elt", ["Poly", "HEXA_8"])
+def test_interpolation_non_overlaping_cubes(comm, strategy, src_elt, tgt_elt, write_output):
   n_vtx_src       = 11
   origin_src      = [0., 0., 0.]
   n_vtx_tgt       = 11
   origin_tgt      = [0.84, 0.51, 0.02] #Chose wisely to avoid ties in mesh location
 
   # Generate meshes
-  dist_tree_src    = MF.generate_dist_block(n_vtx_src, "Poly", comm, origin_src)
-  dist_tree_target = MF.generate_dist_block(n_vtx_tgt, "Poly", comm, origin_tgt)
+  dist_tree_src    = MF.generate_dist_block(n_vtx_src, src_elt, comm, origin_src)
+  dist_tree_target = MF.generate_dist_block(n_vtx_tgt, tgt_elt, comm, origin_tgt)
 
   # Remove some useless nodes
   PT.rm_nodes_from_label(dist_tree_src, 'ZoneBC_t')

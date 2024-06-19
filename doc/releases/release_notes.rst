@@ -19,6 +19,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - ``part_tree_to_file``: manage user provided links
+- ``interpolate``: managed Vertex located fields for all values of ``strategy`` parameter
 
 🚧 API change
 ^^^^^^^^^^^^^

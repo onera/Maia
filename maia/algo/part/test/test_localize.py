@@ -15,14 +15,23 @@ from maia.utils     import test_utils as TU
 from maia.algo.part import localize as LOC
 
 @pytest_parallel.mark.parallel(1)
-def test_get_part_data(comm):
-  dtree = DCG.dcube_generate(3, 1., [0.,0.,0.], comm)
+@pytest.mark.parametrize('elt_kind', ['Poly', 'HEXA_8'])
+def test_get_part_data(elt_kind, comm):
+  dtree = maia.factory.generate_dist_block(3, elt_kind, comm)
   tree = partition_dist_tree(dtree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
-  data = LOC._get_part_data(zone)
-  assert len(data) == 8
-  assert (data[2] == MT.getGlobalNumbering(zone, 'Cell')[1]).all()
-  assert data[6].size == 3*PT.Zone.n_vtx(zone) #Coords
+  if elt_kind == 'Poly':
+    data = LOC._get_part_data_ngon(zone)
+    assert len(data) == 8
+    assert (data[2] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
+    assert (data[7] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
+    assert data[6].size == 3*PT.Zone.n_vtx(zone) #Coords
+  elif elt_kind == 'HEXA_8':
+    data = LOC._get_part_data_elts(zone)
+    assert len(data) == 5
+    assert (data[2] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
+    assert (data[4] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
+    assert data[3].size == 3*PT.Zone.n_vtx(zone) #Coords
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("reverse", [False, True])
@@ -35,7 +44,7 @@ def test_mesh_location(reverse, comm):
     zone_to_parts = {'Base/zone' : [.25, .25]}
     tgt_clouds = [(np.array([.6,.9,0, .6,.9,.8, 1.2, 0.1, 0.1]), np.array([1,3,5], pdm_gnum_dtype))]
   tree = partition_dist_tree(dtree, comm, zone_to_parts=zone_to_parts)
-  src_parts = [LOC._get_part_data(zone) for zone in PT.get_all_Zone_t(tree)]
+  src_parts = [LOC._get_part_data_ngon(zone) for zone in PT.get_all_Zone_t(tree)]
 
   if reverse:
     tgt_data, src_data =  LOC._mesh_location(src_parts, [], comm, reverse)

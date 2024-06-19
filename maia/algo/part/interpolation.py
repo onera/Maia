@@ -22,33 +22,34 @@ class Interpolator:
   def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, input_loc, output_loc, comm):
     self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
     self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
+    
+    self.output_loc = output_loc
+    self.input_loc = input_loc
 
-    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, input_loc, comm)
+    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, self.input_loc, comm)
     all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
 
-    _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, output_loc, comm)
+    _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, self.output_loc, comm)
     all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
 
-    _src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
-    _src_to_tgt     = [data['target'] for data in src_to_tgt]
+    self.src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
+    _src_to_tgt = [data['target'] for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
                               all_src_lngn,
                               all_tgt_lngn,
-                              _src_to_tgt_idx,
+                              self.src_to_tgt_idx,
                               _src_to_tgt)
 
     self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
-    self.output_loc = output_loc
-    self.input_loc = input_loc
 
-    # Send distances to targets partitions (if available)
+    # Send weight to targets partitions (if available)
     try:
-      _dist = [data['dist2'] for data in src_to_tgt]
+      _weight = [data['target_weight'] for data in src_to_tgt]
       request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
-                               _dist)
-      _, self.tgt_dist = self.PTP.wait(request)
+                               _weight)
+      _, self.tgt_weight = self.PTP.wait(request)
     except KeyError:
       pass
 
@@ -58,23 +59,22 @@ class Interpolator:
     A basic reduce function who take the first received value for each target
     """
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
-    assert (np.diff(come_from_idx) == 1).all()
-    return data
+    return data[come_from_idx[:-1]]
 
-  def _reduce_mean_dist(self, i_part, data):
+  def _reduce_weighted_mean(self, i_part, data):
     """
-    Compute a weighted mean of the received values. Weights are the inverse of the squared distance from each source.
-    Usable only if distance are available in src_to_tgt dict (eg if closestpoint method was used).
+    Compute a weighted mean of the received values.
+    Usable only if weight are available in src_to_tgt dict
+    (eg not Location method used on a CellCenter source).
     """
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
-    dist_threshold = np.maximum(self.tgt_dist[i_part], 1E-20)
-    reduced_data   = np.add.reduceat(data/dist_threshold, come_from_idx[:-1])
-    reduced_factor = np.add.reduceat(1/dist_threshold, come_from_idx[:-1])
+    reduced_data   = np.add.reduceat(data*self.tgt_weight[i_part], come_from_idx[:-1])
+    reduced_factor = np.add.reduceat(     self.tgt_weight[i_part], come_from_idx[:-1])
     assert reduced_data.size == come_from_idx.size - 1
     return reduced_data / reduced_factor
 
 
-  def exchange_fields(self, container_name, reduce_func=_reduce_single_val):
+  def exchange_fields(self, container_name, reduce_func=_reduce_weighted_mean):
     """
     For all fields found under container_name node,
     - Perform a part to part exchange
@@ -113,13 +113,45 @@ class Interpolator:
         fs = PT.get_node_from_path(tgt_part, container_name)
         data_size = PT.Zone.n_cell(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.n_vtx(tgt_part)
         data = np.nan * np.ones(data_size)
-        reduced_data = reduce_func(self, i_part, lnp_part_data[i_part])
+        come_from_idx = self.sending_gnums[i_part]['come_from_idx']
+        if (np.diff(come_from_idx) == 1).all():
+          reduced_data = lnp_part_data[i_part]
+        else:
+          reduced_data = reduce_func(self, i_part, lnp_part_data[i_part])
         data[self.referenced_nums[i_part]-1] = reduced_data #Use referenced ids to erase default value
         if PT.Zone.Type(tgt_part) == 'Unstructured':
           PT.update_child(fs, field_name, 'DataArray_t', data)
         else:
           shape = PT.Zone.CellSize(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
           PT.update_child(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
+
+
+def _cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vtx_weight, n_vtx):
+  """
+  Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
+  onto vtx->tgt information.
+  """
+  # > Generate cell_vtx_idx + cell_vtx of cell which have tgt (duplicated if multiple tgt)
+  cell_id     = np.arange(0, cell_vtx_idx.size-1, dtype=np.int32)
+  cell_n_tgt  = np.diff(cell_tgt_idx) # number of tgt in cell
+  active_cell = np.repeat(cell_id, cell_n_tgt) # id of cell having some tgt (duplicated if multiple tgt)
+  active_cell_vtx_ids = np_utils.multi_arange(cell_vtx_idx[active_cell], cell_vtx_idx[active_cell+1]) # id of vtx in cell_vtx connectivity
+  
+  cell_n_vtx = np.diff(cell_vtx_idx) # number of vtx in cell
+  active_cell_n_vtx = cell_n_vtx[active_cell]
+  active_cell_vtx_idx = np_utils.sizes_to_indices(active_cell_n_vtx) # cell_vtx_idx of cells with tgt
+  active_cell_vtx     = cell_vtx[active_cell_vtx_ids] # cell_vtx of cells with tgt
+
+  cell_tgt_extended = np.repeat(cell_tgt, np.diff(active_cell_vtx_idx)) # cell_vtx->tgt
+  sort_idx = np.argsort(active_cell_vtx)
+  vtx_to_tgt_n = np.zeros(n_vtx, dtype=np.int32)
+  np.add.at(vtx_to_tgt_n, active_cell_vtx-1, 1)
+
+  vtx_to_tgt_idx = np_utils.sizes_to_indices(vtx_to_tgt_n) 
+  vtx_to_tgt     = cell_tgt_extended[sort_idx] # vtx->tgt
+  vtx_to_tgt_wgt = cell_vtx_weight[sort_idx]
+
+  return vtx_to_tgt_idx, vtx_to_tgt, vtx_to_tgt_wgt
 
 
 def create_src_to_tgt(src_parts_per_dom,
@@ -137,10 +169,11 @@ def create_src_to_tgt(src_parts_per_dom,
 
   assert strategy in ['LocationAndClosest', 'Location', 'Closest']
 
+
   #Phase 1 -- localisation
   if strategy != 'Closest':
-    if src_loc != 'CellCenter':
-      raise NotImplementedError("For vertex-located fields, only 'Closest' strategy is implemented")
+    all_n_vtx = [PT.Zone.n_vtx(zone) for src_parts in src_parts_per_dom for zone in src_parts]
+
     location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
         tgt_loc, comm, True, loc_tolerance)
 
@@ -172,7 +205,7 @@ def create_src_to_tgt(src_parts_per_dom,
       all_sub_lngn = PCU.create_sub_numbering(all_extracted_lngn, comm) #This one is collective
       tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(sub_clouds, all_sub_lngn)]
 
-    n_clo = n_closest_pt if strategy == 'Closest' else 1
+    n_clo = n_closest_pt
     all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, n_clo, reverse=True)
 
     #If we worked on sub gnum, we must go back to original numbering
@@ -180,21 +213,54 @@ def create_src_to_tgt(src_parts_per_dom,
       gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
       PDM.transform_to_parent_gnum(gnum_to_transform, all_sub_lngn, all_extracted_lngn, comm)
 
+  dist2weight = lambda D : 1. / np.maximum(D, 1E-20)
   # Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
-    src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
-                   'target'     : data['points_gnum_shifted']} for data in all_located_inv]
+    if src_loc=="CellCenter":
+      src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
+                     'target'     : data['points_gnum_shifted']} for data in all_located_inv]
+    elif src_loc=="Vertex":
+      src_to_tgt = list()
+      for data, n_vtx in zip(all_located_inv, all_n_vtx):
+
+        vtx_to_tgt_idx, vtx_to_tgt, vtx_to_weight = _cell_tgt_to_vtx_tgt(data['cell_vtx_idx'],
+                                                                         data['cell_vtx'], 
+                                                                         data['elt_pts_inside_idx'],  #cell_tgt_idx 
+                                                                         data['points_gnum_shifted'], #cell_tgt
+                                                                         data['points_weights'],      #cell_vtx_weight
+                                                                         n_vtx)
+        src_to_tgt.append({'target_idx'   : vtx_to_tgt_idx,
+                           'target'       : vtx_to_tgt,
+                           'target_weight': vtx_to_weight})
   elif strategy == 'Closest':
-    src_to_tgt = [{'target_idx' : data['tgt_in_src_idx'],
-                   'target'     : data['tgt_in_src'],
-                   'dist2'      : data['tgt_in_src_dist2']} for data in all_closest_inv]
+    src_to_tgt = [{'target_idx'   :    data['tgt_in_src_idx'],
+                   'target'       :    data['tgt_in_src'],
+                   'target_weight': dist2weight(data['tgt_in_src_dist2'])} for data in all_closest_inv]
   else:
     src_to_tgt = []
-    for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
-      tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(res_loc['elt_pts_inside_idx'], res_loc['points_gnum_shifted'], \
-                                                         res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
-      src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src})
-  
+
+    for res_loc, n_vtx, res_clo in zip(all_located_inv, all_n_vtx, all_closest_inv):
+      clo_src_weight = dist2weight(res_clo['tgt_in_src_dist2'])
+
+      if src_loc=="CellCenter":
+        loc_src_weight = np.ones(res_loc['points_gnum_shifted'].size, dtype=np.float64)
+        loc_src_to_tgt_idx = res_loc['elt_pts_inside_idx']
+        loc_src_to_tgt     = res_loc['points_gnum_shifted']
+      elif src_loc=="Vertex": # Move results of mesh location from cell to vtx
+        loc_src_to_tgt_idx, loc_src_to_tgt, loc_src_weight = _cell_tgt_to_vtx_tgt(res_loc['cell_vtx_idx'], 
+                                                                                  res_loc['cell_vtx'],
+                                                                                  res_loc['elt_pts_inside_idx'],  #cell_tgt_idx
+                                                                                  res_loc['points_gnum_shifted'], #cell_tgt
+                                                                                  res_loc['points_weights'],      #cell_vtx_weight
+                                                                                  n_vtx)
+        
+      tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(loc_src_to_tgt_idx, loc_src_to_tgt, \
+                                                          res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
+      tgt_in_src_idx, tgt_weight = np_utils.jagged_merge(loc_src_to_tgt_idx, loc_src_weight, \
+                                                          res_clo['tgt_in_src_idx'], clo_src_weight)
+
+      src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src, 'target_weight':tgt_weight})
+
   return src_to_tgt
 
 
@@ -229,23 +295,26 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
 def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   """Interpolate fields between two partitionned trees.
 
-  For now, interpolation is limited to lowest order: target points take the value of the
-  closest point (or their englobing cell, depending of choosed options) in the source mesh.
+  This function can transfer CellCenter or Vertex located fields, but not both
+  at the same time.
+  Target tree is modified inplace: the requested FlowSolution_t containers are transfered
+  from the source tree.
+
   Interpolation strategy can be controled thought the options kwargs:
 
   - ``strategy`` (default = 'Closest') -- control interpolation method
 
-    - 'Closest' : Target points take the value of the closest source cell center.
-    - 'Location' : Target points take the value of the cell in which they are located.
-      Unlocated points have take a ``NaN`` value.
+    - 'Closest' : Target points use the inverse distance weighting on the ``n_closest_pt`` source point values.
+    - 'Location' : For ``CellCenter`` fields, target points take the value of the cell in which they are located.
+      For ``Vertex`` fields, target points use finite element weights of source cell vertices to compute interpolation.
+      In both cases, unlocated points take the value ``NaN``.
     - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
       for the unlocated points.
 
-  - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
+  - ``n_closest_pt`` (default = 1) -- If strategy is 'Closest' or 'LocationAndClosest', 
+    specify the number of closest points used for interpolation.
 
-  Important:
-    If ``strategy`` is not 'Closest', source tree must have an unstructured-NGON
-    connectivity and CellCenter located fields.
+  - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
 
   See also:
     :func:`create_interpolator` takes the same parameters (excepted ``containers_name``,
@@ -253,8 +322,8 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
-    tgt_tree (CGNSTree): Target tree, partitionned. Structured or U-NGon connectivities are managed.
+    src_tree (CGNSTree): Source tree, partitionned. Only 3D unstructured connectivities are managed.
+    tgt_tree (CGNSTree): Target tree, partitionned. Structured or unstructured connectivities are managed.
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
     location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.

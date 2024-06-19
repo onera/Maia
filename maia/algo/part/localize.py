@@ -10,9 +10,10 @@ from maia.utils                  import py_utils, np_utils, par_utils
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
-from .point_cloud_utils import get_shifted_point_clouds
+from .point_cloud_utils  import get_shifted_point_clouds
+from .connectivity_utils import cell_vtx_connectivity_elts
 
-def _get_part_data(part_zone):
+def _get_part_data_ngon(part_zone):
   cx, cy, cz = PT.Zone.coordinates(part_zone)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
@@ -29,12 +30,25 @@ def _get_part_data(part_zone):
   return [cell_face_idx, cell_face, cell_ln_to_gn, \
       face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
 
+
+def _get_part_data_elts(part_zone):
+  cx, cy, cz = PT.Zone.coordinates(part_zone)
+  vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
+
+  cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(part_zone, 3)
+
+  vtx_ln_to_gn, _, _, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
+
+  return [cell_vtx_idx, cell_vtx, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
+    
+
 def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists :
   Parts are tuple (cell_face_idx, cell_face, cell_lngn,
-   face_vtx_idx, face_vtx, face_lngn, vtx_coords, vtx_lngn)
+   face_vtx_idx, face_vtx, face_lngn, vtx_coords, vtx_lngn) if ngon else
+   (cell_vtx_idx, cell_vtx, cell_lngn, vtx_coords, vtx_lngn)
   Cloud are tuple (coords, lngn)
   """
 
@@ -42,16 +56,16 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   n_part_tgt = len(tgt_clouds)
   # > Create and setup global data
   mesh_loc = PDM.MeshLocation(n_point_cloud=1, comm=comm)
-  mesh_loc.mesh_n_part_set(n_part_src)  # For now only one domain is supported
-  mesh_loc.n_part_cloud_set(0, n_part_tgt)   # For now only one domain is supported
+  mesh_loc.mesh_n_part_set(n_part_src)
+  mesh_loc.n_part_cloud_set(0, n_part_tgt)
 
   # > Register source
   for i_part, part_data in enumerate(src_parts):
-    cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
-      vtx_coords, vtx_ln_to_gn = part_data
-    mesh_loc.part_set(i_part, cell_face_idx, cell_face, cell_ln_to_gn,
-                              face_vtx_idx, face_vtx, face_ln_to_gn,
-                              vtx_coords, vtx_ln_to_gn)
+    if len(part_data) == 8: #NGON
+      mesh_loc.part_set(i_part, *part_data)
+    elif len(part_data) == 5: #Element
+      mesh_loc.nodal_part_set(i_part, *part_data)
+
   # > Setup target
   for i_part, (coords, lngn) in enumerate(tgt_clouds):
     mesh_loc.cloud_set(0, i_part, coords, lngn)
@@ -71,9 +85,10 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
     data['located_ids']   = all_located_id[i_part] - 1
     data['unlocated_ids'] = all_unlocated_id[i_part] - 1
 
-  #This is result from the source perspective (api : ((i_part, i_pt_cloud))
+  #This is result from the source perspective (api : ((i_pt_cloud, i_part))
   if reverse:
-    all_located_inv = [mesh_loc.points_in_elt_get(0, i_src_part) for i_src_part in range(n_part_src)]
+    all_located_inv = [{**mesh_loc.points_in_elt_get(0, i_src_part), **mesh_loc.cell_vertex_get(i_src_part)} \
+                       for i_src_part in range(n_part_src)]
     return all_target_data, all_located_inv
   else:
     return all_target_data
@@ -82,7 +97,8 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
     reverse=False, loc_tolerance=1E-6):
   """
   """
-  locs = ['Cell', 'Face', 'Vtx']
+  locs = {'NGon'   :{'Cell':2, 'Face':5, 'Vtx':7},
+          'Element':{'Cell':2, 'Vtx':4}}
   n_dom_src = len(src_parts_per_dom)
   n_dom_tgt = len(tgt_parts_per_dom)
 
@@ -92,20 +108,38 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   n_part_tgt = sum(n_part_per_dom_tgt)
 
   # > Register source
+  connectivity_t = None
   src_parts = []
-  src_offsets = {loc : np.zeros(n_dom_src+1, dtype=pdm_gnum_dtype) for loc in locs}
   for i_domain, src_part_zones in enumerate(src_parts_per_dom):
-    src_parts_domain = [_get_part_data(src_part) for src_part in src_part_zones]
+    # TODO : use cell_vtx_connectivity_ngon to transform ngon into nodal ?
+
+    src_parts_domain = list()
+    for src_part in src_part_zones:
+      if PT.Zone.has_ngon_elements(src_part):
+        if connectivity_t=='Element':
+          raise NotImplementedError("Source mesh must have NGon or Element connectivity but not both.")
+        connectivity_t = 'NGon'
+        src_parts_domain.append(_get_part_data_ngon(src_part))
+      else:
+        if connectivity_t=='NGon':
+          raise NotImplementedError("Source mesh must have NGon or Element connectivity but not both.")
+        connectivity_t = 'Element'
+        src_parts_domain.append(_get_part_data_elts(src_part))
+    src_parts.append(src_parts_domain)
+
+  locs = locs[connectivity_t]
+  src_offsets = {loc : np.zeros(n_dom_src+1, dtype=pdm_gnum_dtype) for loc in locs}
+  for i_domain, src_parts_domain in enumerate(src_parts):
     # Compute global offsets for this domain
-    for array_idx, loc in zip([2,5,7], locs):
+    for loc, array_idx in locs.items():
       dom_max = par_utils.arrays_max([src_part[array_idx] for src_part in src_parts_domain], comm)
       src_offsets[loc][i_domain+1] = src_offsets[loc][i_domain] + dom_max
     # Shift source arrays (inplace)
     for src_part in src_parts_domain:
-      src_part[2] += src_offsets['Cell'][i_domain] #cell_ln_to_gn
-      src_part[5] += src_offsets['Face'][i_domain] #face_ln_to_gn
-      src_part[7] += src_offsets['Vtx' ][i_domain] #vtx_ln_to_gn
-    src_parts.extend(src_parts_domain)
+      for loc, array_idx in locs.items():
+        src_part[array_idx] += src_offsets[loc][i_domain]
+  
+  src_parts = py_utils.to_flat_list(src_parts)
 
   tgt_offset, tgt_clouds = get_shifted_point_clouds(tgt_parts_per_dom, location, comm)
   tgt_clouds = py_utils.to_flat_list(tgt_clouds)
@@ -115,9 +149,8 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   # Shift back source data
   for i_domain, src_parts_domain in enumerate(py_utils.to_nested_list(src_parts, n_part_per_dom_src)):
     for src_part in src_parts_domain:
-      src_part[2] -= src_offsets['Cell'][i_domain] #cell_ln_to_gn
-      src_part[5] -= src_offsets['Face'][i_domain] #face_ln_to_gn
-      src_part[7] -= src_offsets['Vtx' ][i_domain] #vtx_ln_to_gn
+      for loc, array_idx in locs.items():
+        src_part[array_idx] -= src_offsets[loc][i_domain]
 
   # Shift results and get domain ids
   direct_result = result[0] if reverse else result
@@ -130,7 +163,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
       src_result['points_gnum_shifted'] = src_result.pop('points_gnum') #Rename key
       src_result['points_gnum'], src_result['domain'] = np_utils.shifted_to_local(
           src_result['points_gnum_shifted'], tgt_offset)
-
+  
   # Reshape output to list of lists (as input domains)
   if reverse:
     return py_utils.to_nested_list(result[0], n_part_per_dom_tgt),\
