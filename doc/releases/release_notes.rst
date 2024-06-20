@@ -55,6 +55,7 @@ v1.4 (May 2024)
 - partitioning: fix creation of cells global numbering for multisection element meshes
 - merge_zones: fix type mismatch occurring on I4 meshes with I8 production
 - **[v1.4.1]** mesh adaptation: fix tensorial metric and trees with multiple Elements_t of same type
+- **[v1.4.1]** merge_zones: prevent a crash when zones have non 1to1 GridConnectivity nodes
 
 🚧 API change
 ^^^^^^^^^^^^^

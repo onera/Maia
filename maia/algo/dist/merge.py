@@ -164,12 +164,13 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
   jn_to_pl = {}
   for jn_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
     gc = PT.get_node_from_path(tree, jn_path)
-    jn_to_pl[jn_path] = \
-        (PT.get_child_from_name(gc, 'PointList')[1], PT.get_child_from_name(gc, 'PointListDonor')[1], MT.getDistribution(gc))
+    if PT.GridConnectivity.is1to1(gc):
+      jn_to_pl[jn_path] = \
+          (PT.get_child_from_name(gc, 'PointList')[1], PT.get_child_from_name(gc, 'PointListDonor')[1], MT.getDistribution(gc))
 
   # Update opposite names when going to opp zone (intrazone have been caried before)
   for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
-    if PT.get_value(gc) not in zone_paths:
+    if PT.GridConnectivity.is1to1(gc) and PT.get_value(gc) not in zone_paths:
       opp_path = MJT.get_jn_donor_path(tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
       opp_gc = PT.get_node_from_path(tree, opp_path)
       opp_gc_donor_name = PT.get_child_from_name(opp_gc, 'GridConnectivityDonorName') #TODO factorize
@@ -184,14 +185,15 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
       if PT.get_value(gc) in zone_paths: #Can be: jn from non concerned zone to merged zones or periodic from merged zones
         PT.set_value(gc, merged_zone_path)
         jn_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
-        jn_path_opp= MJT.get_jn_donor_path(tree, jn_path)
-        # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
-        # merged zone
-        if not is_merged_zone or jn_path_opp < jn_path:
-          PT.update_child(gc, 'PointList'     , 'IndexArray_t', jn_to_pl[jn_path_opp][1])
-          PT.update_child(gc, 'PointListDonor', 'IndexArray_t', jn_to_pl[jn_path_opp][0])
-          PT.rm_children_from_name(gc, ":CGNS#Distribution")
-          PT.add_child(gc, jn_to_pl[jn_path_opp][2])
+        if PT.GridConnectivity.is1to1(gc):
+          jn_path_opp= MJT.get_jn_donor_path(tree, jn_path)
+          # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
+          # merged zone
+          if not is_merged_zone or jn_path_opp < jn_path:
+            PT.update_child(gc, 'PointList'     , 'IndexArray_t', jn_to_pl[jn_path_opp][1])
+            PT.update_child(gc, 'PointListDonor', 'IndexArray_t', jn_to_pl[jn_path_opp][0])
+            PT.rm_children_from_name(gc, ":CGNS#Distribution")
+            PT.add_child(gc, jn_to_pl[jn_path_opp][2])
 
   if concatenate_jns:
     GN.concatenate_jns(tree, comm)
@@ -266,6 +268,19 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   gc_query = ['ZoneGridConnectivity_t', \
                 lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
                 and sids.Subset.GridLocation(n) == 'FaceCenter']
+
+  # Move non 1to1 GC_t to ZoneBC since they have no PointListDonor
+  is_not_1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and not PT.GridConnectivity.is1to1(n)
+  for zone_path in zone_paths:
+    zone = PT.get_node_from_path(tree, zone_path)
+    for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
+      non_abutting = PT.get_children_from_predicate(zgc, is_not_1to1)
+      if len(non_abutting) > 0:
+        fake_zbc = PT.new_child(zone, f'maia_{PT.get_name(zgc)}', 'ZoneBC_t')
+        for gc in non_abutting:
+          PT.set_label(gc, 'BC_t')
+          PT.rm_child(zgc, gc)
+          PT.add_child(fake_zbc, gc)
 
   # JNs to external zones must be excluded from vertex list computing
   tree_vl = PT.shallow_copy(tree)
@@ -383,6 +398,18 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   MT.newDistribution({'Vertex' : par_utils.full_to_partial_distribution(merged_distri_vtx, comm),
                       'Cell'   : par_utils.full_to_partial_distribution(merged_distri_cell, comm)},
                      merged_zone)
+
+  # Move back non 1to1 GC_t to ZoneGridConnectivity
+  for zbc in PT.get_children_from_label(merged_zone, 'ZoneBC_t'):
+    zbc_name = PT.get_name(zbc)
+    if zbc_name.startswith('maia_'): # This is a fake ZBC
+      zgc = PT.update_child(merged_zone, zbc_name[5:], 'ZoneGridConnectivity_t')
+      for child in PT.get_children(zbc):
+        PT.set_label(child, 'GridConnectivity_t')
+        PT.add_child(zgc, child)
+      PT.rm_child(merged_zone, zbc)
+
+
   return merged_zone
 
 def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):

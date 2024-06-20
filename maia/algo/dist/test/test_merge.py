@@ -148,6 +148,17 @@ def test_merge_zones_I(comm, merge_only_two):
   for izone, zone in zip(range(2), [zones[0], zones[-1]]):
     PT.rm_nodes_from_name(zone, jn_cur[izone])
 
+    
+  # Mimic a non 1to1 jn
+  zbc = PT.get_child_from_label(zones[1], 'ZoneBC_t')
+  zgc = PT.get_child_from_label(zones[1], 'ZoneGridConnectivity_t')
+  jn = PT.get_child_from_name(zbc, 'Zmin')
+  PT.set_label(jn, 'GridConnectivity_t')
+  PT.new_child(jn, 'GridConnectivityType', 'GridConnectivityType_t', 'Abutting')
+  PT.set_value(jn, PT.get_name(zones[1]))
+  PT.rm_child(zbc, jn)
+  PT.add_child(zgc, jn)
+
   #Setup some data (Only one rank so next lines are OK)
   zsr_full = PT.new_ZoneSubRegion('SubRegion', bc_name='Ymin', loc='FaceCenter', parent=zones[1])
   old_id = PT.get_node_from_path(zones[1], 'ZoneBC/Ymin/PointList')[1][0].copy()
@@ -159,7 +170,7 @@ def test_merge_zones_I(comm, merge_only_two):
     merge.merge_zones(tree, ['Base/zone1', 'Base/zone2'], comm, output_path='MergedBase/MergedZone')
     assert len(PT.get_all_CGNSBase_t(tree)) == len(PT.get_all_CGNSBase_t(tree)) == 2
     merged_zone = PT.get_node_from_path(tree, 'MergedBase/MergedZone')
-    assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2
+    assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2 + 1 #1 non abbuting
     assert len(PT.get_nodes_from_label(merged_zone, 'Periodic_t')) == 1
   else:
     n_merged = 3
@@ -167,10 +178,10 @@ def test_merge_zones_I(comm, merge_only_two):
     assert len(PT.get_all_Zone_t(tree)) == 1
     merged_zone = PT.get_all_Zone_t(tree)[0]
 
-    assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2
+    assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2 + 1 #1 non abbuting
     for gc in PT.iter_nodes_from_label(merged_zone, 'GridConnectivity_t'):
-      assert PT.get_value(gc) not in ['zone1', 'zone2', 'zone3']
-      assert PT.get_node_from_label(gc, 'Periodic_t') is not None
+      assert PT.get_value(gc) == 'Base/mergedZone0'
+      assert (PT.get_node_from_label(gc, 'Periodic_t') is not None) == (PT.get_name(gc) != 'Zmin')
 
   assert len(PT.get_nodes_from_label(merged_zone, 'BC_t')) == 4
   assert PT.Zone.n_cell(merged_zone) == n_merged*((n_vtx-1)**3)
