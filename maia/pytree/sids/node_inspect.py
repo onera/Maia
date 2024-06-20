@@ -621,9 +621,9 @@ class Zone:
     Returns:
       int : Flag indicating how elements are sorted:
       
-      - 1 if elements of lower dimension have lower ElementRange
-      - \- 1 if elements of lower dimension have higher ElementRange
-      - 0 if elements are not sorted
+      * 1 if elements of lower dimension have lower ElementRange
+      * -1 if elements of lower dimension have higher ElementRange
+      * 0 if elements are not sorted
 
     If all the elements belonging to the zone have the same dimension, this function returns 1.
 
