@@ -98,7 +98,7 @@ def bar_pe_to_nface2d(zone, comm):
     edge_face = maia.algo.indexing.get_ngon_pe_local(bar_n).reshape(-1,order='C')
     edge_face_idx = np.arange(bar_distrib[0], bar_distrib[1]+1, dtype=np.int32)*2
     PT.new_DataArray('ElementStartOffset', value=edge_face_idx, parent=bar_n)
-    MT.newDistribution({'ElementConnectivity': [0, edge_face_idx[-1], edge_face_idx[-1]]},
+    MT.newDistribution({'ElementConnectivity': bar_distrib*2},
                         parent = bar_n)
     
     face_distrib = MT.getDistribution(zone, 'Cell')[1]
@@ -108,11 +108,18 @@ def bar_pe_to_nface2d(zone, comm):
                                                           full_bar_distrib,
                                                           full_face_distrib,
                                                           edge_face)
-    
-    nface_er = np.array([1, len(face_edge_idx)-1], dtype=pdm_dtype)+PT.get_child_from_name(bar_n, 'ElementRange')[1][1]
-    nface_n = PT.new_NFaceElements(erange=nface_er, ec=face_edge,eso=face_edge_idx,parent=zone)
-    MT.newDistribution({'Element': [0, len(face_edge_idx)-1, len(face_edge_idx)-1],
-                        'ElementConnectivity': [0, face_edge_idx[-1], face_edge_idx[-1]]},
+    faces_per_proc = comm.allgather(len(face_edge_idx)-1)
+    nb_faces_tot = np.sum(faces_per_proc, dtype=pdm_dtype)
+    nb_faces_prev = np.sum(faces_per_proc[0:comm.rank], dtype=pdm_dtype)
+    nb_faces_cur = np.sum(faces_per_proc[0:comm.rank+1], dtype=pdm_dtype)
+    size_face_edge_per_proc = comm.allgather(face_edge_idx[-1])
+    size_face_edge_tot = np.sum(size_face_edge_per_proc, dtype=pdm_dtype)
+    size_face_edge_prev = np.sum(size_face_edge_per_proc[0:comm.rank], dtype=pdm_dtype)
+    size_face_edge_cur = np.sum(size_face_edge_per_proc[0:comm.rank+1], dtype=pdm_dtype)
+    nface_er = np.array([1, nb_faces_tot], dtype=pdm_dtype)+PT.get_child_from_name(bar_n, 'ElementRange')[1][1]
+    nface_n = PT.new_NFaceElements(erange=nface_er, ec=face_edge,eso=face_edge_idx+size_face_edge_prev,parent=zone)
+    MT.newDistribution({'Element': [nb_faces_prev, nb_faces_cur, nb_faces_tot],
+                        'ElementConnectivity': [size_face_edge_prev, size_face_edge_cur, size_face_edge_tot]},
                         parent = nface_n)
 
 
