@@ -39,6 +39,7 @@ def compute_face_vtx_from_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_
     dist_data = {'connectivity' : edge_vtx}
     dist_stride = np.ones(edge_distrib[1]-edge_distrib[0], dtype=np.int32) * 2
     part_stride, part_data = EP.block_to_part_strided(dist_stride, dist_data, edge_distrib, [face_edge], comm)
+	#TO DO: change part_data to be int32 compliant
     
     local_face_edge = (np.arange(len(face_edge), dtype=np.int32)+1)*np.sign(face_edge)
     
@@ -94,7 +95,6 @@ def bar_pe_to_nface2d(zone, comm):
     
     bar_distrib = MT.getDistribution(bar_n, 'Element')[1]
     
-    # edge_face = PT.get_child_from_name(bar_n, 'ParentElements')[1]
     edge_face = maia.algo.indexing.get_ngon_pe_local(bar_n).reshape(-1,order='C')
     edge_face_idx = np.arange(bar_distrib[0], bar_distrib[1]+1, dtype=np.int32)*2
     PT.new_DataArray('ElementStartOffset', value=edge_face_idx, parent=bar_n)
@@ -123,14 +123,14 @@ def bar_pe_to_nface2d(zone, comm):
                         parent = nface_n)
 
 
-def poly_old_to_new_2d(dist_tree, comm):
+def convert_cass_to_std_2d_u(dist_tree, comm):
     for zone in PT.get_all_Zone_t(dist_tree):
         convert_ngon2d_to_bar(zone)
         convert_nface2d_to_ngon(zone, comm)
         update_gridlocation_subset(zone, 'FaceCenter', 'EdgeCenter')
 
 
-def poly_new_to_old_2d(dist_tree, comm):
+def convert_std_to_cass_2d_u(dist_tree, comm):
     for zone in PT.get_all_Zone_t(dist_tree):
         bar_pe_to_nface2d(zone, comm)
         update_gridlocation_subset(zone, 'EdgeCenter', 'FaceCenter')
