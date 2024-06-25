@@ -27,6 +27,7 @@ def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
   tree  = maia.factory.partition_dist_tree(dtree, comm)
 
   PT.new_UserDefinedData('TopLevelCustomNode', parent=tree)
+  PT.new_BaseIterativeData(time_values=[0., 5., 10], parent=PT.get_child_from_label(tree, 'CGNSBase_t'))
 
   links = []
   if user_links:
@@ -45,7 +46,6 @@ def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
     for rank in range(comm.Get_size()):
       assert PT.get_node_from_path(tree, f'Base/zone.P{rank}.N0') is not None
     assert PT.get_value(PT.get_node_from_path(tree, 'Base/zone.P1.N0/ZoneType')) == 'Unstructured'
-    assert PT.get_label(PT.get_node_from_path(tree, 'TopLevelCustomNode')) == 'UserDefinedData_t'
 
     # Parallelism dependant ...
     # ref = PT.yaml.to_node(f"""
@@ -69,6 +69,9 @@ def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
           assert links == []
         else:
           assert links == [['.', 'this/hdf/file.hdf', 'this/other_node', f'Base/zone.P{i}.N0/GridCoordinates/CoordinateZ']]
+  if comm.Get_rank() == 0:
+    assert PT.get_label(PT.get_node_from_path(tree, 'TopLevelCustomNode')) == 'UserDefinedData_t'
+    assert (PT.get_value(PT.get_node_from_path(tree, 'Base/BaseIterativeData/TimeValues')) == [0., 5, 10]).all()
 
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])

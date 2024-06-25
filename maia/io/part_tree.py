@@ -169,7 +169,8 @@ def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legac
   glob_nodes = PT.get_children_from_predicate(part_tree, lambda n : PT.get_label(n) != 'CGNSBase_t')
   top_tree = PT.new_node('CGNSTree', 'CGNSTree_t', children=glob_nodes)
   # Recover base data and families
-  discover_nodes_from_matching(top_tree, [part_tree], 'CGNSBase_t', comm, get_value='all', child_list=['Family_t', 'ReferenceState_t'])
+  is_not_zone = lambda n : PT.get_label(n) != 'Zone_t'
+  discover_nodes_from_matching(top_tree, [part_tree], 'CGNSBase_t', comm, get_value='all', child_list=[is_not_zone])
 
   if single_file:
     # Sequential write seems to be faster than collective io -- see 01d84da7 for other methods

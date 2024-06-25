@@ -18,7 +18,7 @@ Developpement version
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
-- ``part_tree_to_file``: manage user provided links
+- ``part_tree_to_file``: manage user provided links, and write CGNSBase_t misc. children
 - ``interpolate``: managed Vertex located fields for all values of ``strategy`` parameter
 
 🚧 API change
