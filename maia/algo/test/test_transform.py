@@ -1,10 +1,11 @@
 import pytest
 import pytest_parallel
+import os
 import numpy as np
 
 import maia.pytree          as PT
 import maia.pytree.maia     as MT
-from maia.utils             import np_utils, par_utils
+from maia.utils             import np_utils, par_utils, test_utils
 
 import maia
 from maia.factory.dcube_generator import dcube_generate
@@ -12,6 +13,30 @@ from maia.factory.dcube_generator import dcube_generate
 from maia.algo import transform
 
 from maia.utils import logging as mlog
+
+def check_perio(tree, jn_name, tol=1e-8):
+  # Check if applying the transformation gives the opposite face center
+  # Works only in sequential context, for FaceCenter GCs, single zone meshes
+  z = PT.get_all_Zone_t(tree)[0]
+  r1 = PT.get_node_from_name(tree, jn_name)
+  pl1 = PT.get_child_from_name(r1, 'PointList')[1][0]
+  pl2 = PT.get_child_from_name(r1, 'PointListDonor')[1][0]
+  center_face = maia.algo.part.compute_face_center(z)
+  center_face_x = center_face[0::3]
+  center_face_y = center_face[1::3]
+  center_face_z = center_face[2::3]
+  center_pl1_x = center_face_x[pl1-1]
+  center_pl1_y = center_face_y[pl1-1]
+  center_pl1_z = center_face_z[pl1-1]
+  center_pl2_x = center_face_x[pl2-1]
+  center_pl2_y = center_face_y[pl2-1]
+  center_pl2_z = center_face_z[pl2-1]
+  gc_center, gc_angle, gc_trans = PT.GridConnectivity.periodic_values(r1)
+  transfo = np_utils.transform_cart_vectors(center_pl1_x, center_pl1_y, center_pl1_z,
+                                            gc_trans, gc_center, gc_angle)
+  diff = np.sqrt((transfo[0] - center_pl2_x)**2 + (transfo[1] - center_pl2_y)**2 + (transfo[2] - center_pl2_z)**2)
+  assert (diff < tol).all()
+
 
 class log_capture:
   def __init__(self):
@@ -83,6 +108,68 @@ def test_transform_affine(comm):
   check_vect_field(dist_zone_ini, dist_zone, "Coordinate")
   check_vect_field(dist_zone_ini, dist_zone, "field")
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
+
+@pytest_parallel.mark.parallel(1)
+class Test_transform_affine_gc:
+
+  @pytest.mark.parametrize('rotation', [(np.pi/2, 0, 0), (0,np.pi/2,0), (np.pi/2, np.pi/2,0)])
+  def test_basic(self, rotation, comm):
+    # This mesh has a simple Translation JN
+    fname = os.path.join(test_utils.mesh_dir, 'cube_bcdataset_and_periodic.yaml')
+
+    tree = maia.io.file_to_dist_tree(fname, comm)
+    maia.algo.transform_affine(tree, rotation_angle=rotation, translation=[1,2,3]) #Translation should have no effect
+    zmin_jn = PT.get_node_from_name(tree, 'Zmin_match')
+    zmax_jn = PT.get_node_from_name(tree, 'Zmax_match')
+    centermin, anglemin, transmin = PT.GridConnectivity.periodic_values(zmin_jn)
+    centermax, anglemax, transmax = PT.GridConnectivity.periodic_values(zmax_jn)
+    if rotation == (np.pi/2, 0, 0):
+      expt_trans_min = [0,-1,0]
+      expt_trans_max = [0,1,0]
+    elif rotation == (0, np.pi/2, 0) or rotation == (np.pi/2, np.pi/2, 0):
+      expt_trans_min = [1, 0,0]
+      expt_trans_max = [-1,0,0]
+    assert np.allclose(transmin, expt_trans_min) and np.allclose(anglemin, [0,0,0])
+    assert np.allclose(transmax, expt_trans_max) and np.allclose(anglemax, [0,0,0])
+  
+
+  def test_full_transfo(self, comm):
+    # This mesh has one Rotation JN (with RotCenter != 0) and one translation JN; with poor precision
+    fname = os.path.join(test_utils.sample_mesh_dir, 'quarter_crown_square_8.yaml')
+    JNS = ['MatchTranslationA', 'MatchTranslationB', 'MatchRotationA', 'MatchRotationB']
+
+    tree = maia.io.file_to_dist_tree(fname, comm)
+    # Lets apply a crazy transformation
+    maia.algo.transform_affine(tree, rotation_angle=[np.pi/4, -np.pi/3, np.pi/2], rotation_center=[-1,0,1], translation=[4,3,2]) 
+    for name in JNS:
+        check_perio(tree, name, tol=5e-6)
+      
+  def test_2d(self, comm):
+    tree = maia.factory.generate_dist_block([5,5], 'S', comm, origin=[0,0])
+    xmin = PT.get_node_from_name(tree, 'Xmin')
+    xmax = PT.get_node_from_name(tree, 'Xmax')
+    
+    PT.rm_nodes_from_name(tree, 'Xm*')
+    PT.update_node(xmin, label='GridConnectivity1to1_t', value='zone')
+    PT.new_IndexRange('PointRangeDonor', [[5,5],[1,5]], parent=xmin)
+    PT.new_GridConnectivityProperty(periodic={'translation' : [1.,0], 'rotation_center':[0.,0], 'rotation_angle':[0.,0]}, 
+                                    parent=xmin)
+    PT.update_node(xmax, label='GridConnectivity1to1_t', value='zone')
+    PT.new_IndexRange('PointRangeDonor', [[1,1],[1,5]], parent=xmax)
+    PT.new_GridConnectivityProperty(periodic={'translation' : [-1.,0], 'rotation_center':[0.,0], 'rotation_angle':[0.,0]}, 
+                                    parent=xmax)
+
+    zgc = PT.new_ZoneGridConnectivity(parent=PT.get_node_from_label(tree, 'Zone_t'))
+    PT.set_children(zgc, [xmin, xmax])
+
+    maia.algo.transform_affine(tree, rotation_angle=np.pi/4, translation=np.zeros(2), rotation_center=np.zeros(2))
+
+    assert np.allclose(PT.get_node_from_name(xmin, 'RotationAngle')[1], np.zeros(2))
+    assert np.allclose(PT.get_node_from_name(xmin, 'RotationCenter')[1],np.zeros(2))
+    assert np.allclose(PT.get_node_from_name(xmin, 'Translation')[1], [np.sqrt(2)/2, np.sqrt(2)/2])
+    assert np.allclose(PT.get_node_from_name(xmax, 'RotationAngle')[1], np.zeros(2))
+    assert np.allclose(PT.get_node_from_name(xmax, 'RotationCenter')[1],np.zeros(2))
+    assert np.allclose(PT.get_node_from_name(xmax, 'Translation')[1], [-np.sqrt(2)/2, -np.sqrt(2)/2])
 
 @pytest_parallel.mark.parallel(1)
 def test_transform_affine_2d(comm):

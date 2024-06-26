@@ -39,13 +39,39 @@ def transform_affine_zone(zone,
     phy_dim = 2 if coords_n[2] is None else 3
     coords_n = coords_n[:phy_dim]
     coords = [PT.get_value(n)[vtx_mask] for n in coords_n]
-  
-    if phy_dim == 3:
-      tr_coords = np_utils.transform_cart_vectors(*coords, translation, rotation_center, rotation_angle)
-    else:
-      tr_coords = np_utils.transform_cart_vectors_2d(*coords, translation, rotation_center, rotation_angle)
+
+    transform_func = [None, None, np_utils.transform_cart_vectors_2d, np_utils.transform_cart_vectors][phy_dim]
+    tr_coords = transform_func(*coords, translation, rotation_center, rotation_angle)
     for coord_n, tr_coord in zip(coords_n, tr_coords):
       coord_n[1][vtx_mask] = tr_coord
+  
+  # Transform GC/Periodic data
+  # To update Periodic values of GCs, it is simpler to use homogeneous matrices
+  # For a given GC, we have v_opp = M_gc * v_cur
+  # and we apply to the whole mesh M_tr transformation v' = M_tr * v
+  # We search M_gcnew such that v_opp' = M_gcnew * v_cur'
+  # --> This leads to M_gcnew = M_tr * M_gc * (M_tr)^-1
+  transf_mat = np_utils._transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle)
+  transf_mat_inv = np.linalg.inv(transf_mat)
+  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+    if PT.GridConnectivity.isperiodic(gc):
+      gc_center = PT.get_node_from_name(gc, 'RotationCenter')
+      gc_angle  = PT.get_node_from_name(gc, 'RotationAngle')
+      gc_trans  = PT.get_node_from_name(gc, 'Translation')
+      
+      gc_angle_value = gc_angle[1]
+      if phy_dim == 2: # 2D : angle may be in slot 0 or 1
+        gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
+
+      perio_mat  = np_utils._transform_to_homogeneous_matrix(gc_trans[1], gc_center[1], gc_angle_value)
+      perio_mat_new = np.dot(transf_mat, np.dot(perio_mat, transf_mat_inv))
+      gc_trans_new, gc_center_new, gc_angle_new = np_utils._homogeneous_matrix_to_transform(perio_mat_new)
+      if phy_dim == 2:
+        gc_angle_new = np.array([gc_angle_new, 0])
+      PT.set_value(gc_center, gc_center_new)
+      PT.set_value(gc_angle, gc_angle_new)
+      PT.set_value(gc_trans, gc_trans_new)
 
   # Transform fields
   if apply_to_fields:
@@ -69,10 +95,7 @@ def transform_affine_zone(zone,
           vectors = [PT.get_value(n) for n in vectors_n]
         # Assume that vectors are position independant
         # Be careful, if coordinates vector needs to be transform, the translation is not applied !
-        if phy_dim == 3:
-          tr_vectors = np_utils.transform_cart_vectors(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
-        else:
-          tr_vectors = np_utils.transform_cart_vectors_2d(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
+        tr_vectors = transform_func(*vectors, rotation_center=rotation_center, rotation_angle=rotation_angle)
         for vector_n, tr_vector in zip(vectors_n, tr_vectors):
           if is_full_vtx:
             vector_n[1][vtx_mask] = tr_vector
@@ -94,9 +117,19 @@ def transform_affine(t,
   .. math::
      \\tilde v = R \\cdot (v - c) + c + t
 
-  where c, t are the rotation center and translation vectors and R is the rotation matrix.
-  Note that when the physical dimension of the mesh is set to 2, rotation_angle must
-  be a scalar float.
+  where :math:`c, t` are the rotation center and translation vectors and :math:`R` is the rotation matrix.
+  The rotation matrix is computed from ``rotation_angle``, whose kind depends on physical
+  dimension of the mesh:
+
+  - if ``phy_dim == 3``, it must be a vector of 3 floats, storing the
+    `Euler rotation angles <https://en.wikipedia.org/wiki/Euler_angles>`_ 
+    :math:`\\alpha, \\beta \\text{ and } \\gamma`; :math:`R` is then the combination of 
+    
+    - intrinsic elemental rotations :math:`X_\\alpha, Y^{\\prime}_\\beta, Z^{\\prime\\prime}_\\gamma`, 
+      or, equivalently, 
+    - extrinsic elemental rotations :math:`Z_\\gamma, Y_\\beta, X_\\alpha`. 
+
+  - if ``phy_dim == 2``, a scalar float :math:`\\theta` is expected, defining the rotation angle in the XY plane.
 
   Input tree is modified inplace.
 

@@ -278,6 +278,49 @@ def test_transform_matrix(revolution_axis):
 
   assert np.allclose(revolution_axis, reverse_revolution_axis)
 
+def test_transform_to_homogeneous_matrix():
+  from numpy import cos,sin,pi
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[0,0,0]),
+                     np.array([[1.,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]))
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5,6]),
+                     np.array([[1.,0,0,4],[0,1,0,5],[0,0,1,6],[0,0,0,1]]))
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(rotation_angle=[0,0,pi/3]),
+                     np.array([[cos(pi/3),-sin(pi/3),0,0],[sin(pi/3),cos(pi/3),0,0],[0,0,1,0],[0,0,0,1]]))
+  α, β, γ = pi/2, pi/3, pi/4
+  excepted = np.array([[cos(β)*cos(γ),-cos(β)*sin(γ), sin(β), 5],
+                       [cos(α)*sin(γ)+cos(γ)*sin(α)*sin(β), cos(α)*cos(γ)-sin(α)*sin(β)*sin(γ), -cos(β)*sin(α),0],
+                       [sin(α)*sin(γ)-cos(α)*cos(γ)*sin(β), cos(γ)*sin(α)+cos(α)*sin(β)*sin(γ), cos(α)*cos(β),6],
+                       [0,0,0,1]]) 
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[5,0,6], rotation_angle=[α, β, γ]), excepted)
+
+  # 2D
+  excepted2d = np.array([[cos(β),-sin(β), 4],
+                        [sin(β), cos(β), 5],
+                        [0,0,1]]) 
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5], rotation_center=[0,0], rotation_angle=β), excepted2d)
+
+def test_homogeneous_matrix_to_transform():
+  from numpy import cos,sin,pi
+  α, β, γ = pi/2, pi/3, pi/4
+  matrix = np.array([[cos(β)*cos(γ),-cos(β)*sin(γ), sin(β), 5],
+                     [cos(α)*sin(γ)+cos(γ)*sin(α)*sin(β), cos(α)*cos(γ)-sin(α)*sin(β)*sin(γ), -cos(β)*sin(α),0],
+                     [sin(α)*sin(γ)-cos(α)*cos(γ)*sin(β), cos(γ)*sin(α)+cos(α)*sin(β)*sin(γ), cos(α)*cos(β),6],
+                     [0,0,0,1]]) 
+  trans, center, angle = np_utils._homogeneous_matrix_to_transform(matrix)
+  assert np.allclose(trans, [5,0,6])
+  assert np.allclose(center, [0,0,0])
+  assert np.allclose(angle, [α, β, γ])
+
+  #2D
+  matrix = np.array([[cos(β),-sin(β), 4],
+                     [sin(β), cos(β), 5],
+                     [0,0,1]]) 
+  trans, center, angle = np_utils._homogeneous_matrix_to_transform(matrix)
+  assert np.allclose(trans, [4,5])
+  assert np.allclose(center, [0,0])
+  assert abs(angle - β) < 1e-10
+
+
 class Test_apply_cart_to_vectors:
   revolution_axis = (1, 1, 1)
   transform_matrix = np_utils.create_transform_matrix(revolution_axis)

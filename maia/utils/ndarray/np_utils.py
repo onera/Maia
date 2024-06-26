@@ -268,6 +268,51 @@ def create_transform_matrix(revolution_axis=(0, 0, 1)):
      
   return transform_matrix
 
+def _homogeneous_matrix_to_transform(homo_matrix):
+  """ Inverse of _transform_to_homogeneous_matrix : recompute rotation angle and translation from
+  an homogeneous matrix. As for the opposite function, the order used to apply rotation angle corresponds to :
+  - a Z, then Y, then X extrinsic rotation, or equivalently
+  - a X, then Y, then Z intrinsic rotation
+  """
+  dim = homo_matrix.shape[0] - 1
+  Rmat = homo_matrix[0:dim, 0:dim]
+  translation = homo_matrix[0:dim, dim]
+  rotation_center = np.zeros_like(translation)
+  if dim == 3:
+    rotation_angle = np.empty_like(translation)
+    rotation_angle[0] = np.arctan2(-Rmat[1,2], Rmat[2,2])
+    rotation_angle[1] = np.arcsin ( Rmat[0,2])
+    rotation_angle[2] = np.arctan2(-Rmat[0,1], Rmat[0,0])
+  elif dim == 2:
+    rotation_angle = np.arcsin(Rmat[1,0])
+  return translation, rotation_center, rotation_angle
+
+def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
+  """ Combine Transform data coming from CGNS (rotation_angle, rotation_center, translation) into 
+  an homogeneous matrix of size 4x4 (in 3d). This matrix can be applied to a vector (vx, vy, vz, 1).
+  # https://www.f-legrand.fr/scidoc/docmml/graphie/geometrie/affine/affine.html
+  
+  Important : if dim==3, the order used to apply rotation angle corresponds to :
+  - a Z, then Y, then X extrinsic rotation, or equivalently
+  - a X, then Y, then Z intrinsic rotation
+  # https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
+  """
+  dim = len(translation)
+  homo_matrix = np.zeros((dim+1,dim+1))
+  if dim == 3:
+    alpha, beta, gamma  = rotation_angle
+    rotation_matx = np.array([[1, 0, 0], [0, np.cos(alpha), -np.sin(alpha)], [0, np.sin(alpha), np.cos(alpha)]])
+    rotation_maty = np.array([[np.cos(beta), 0, np.sin(beta)], [0, 1, 0], [-np.sin(beta), 0, np.cos(beta)]])
+    rotation_matz = np.array([[np.cos(gamma), -np.sin(gamma), 0], [np.sin(gamma), np.cos(gamma), 0], [0, 0, 1]])
+    rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
+  elif dim == 2: # Rotation angle is scalar
+    theta = rotation_angle
+    rotation_mat  = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+  homo_matrix[0:dim, 0:dim] = rotation_mat
+  homo_matrix[0:dim,   dim] = rotation_center - np.dot(rotation_mat, rotation_center) + translation
+  homo_matrix[dim,dim] = 1
+  
+  return homo_matrix
 def transform_cart_matrix(vectors, translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
   """
   Apply the defined cartesian transformation on concatenated components of vectors described by :
@@ -276,33 +321,10 @@ def transform_cart_matrix(vectors, translation=np.zeros(3), rotation_center=np.z
   [vz1 vz2 ... vzN]
   and return the modified components of the vectors in the same format
   """
-  rotation_center = np.array(rotation_center).reshape((3,1))
-  alpha, beta, gamma  = rotation_angle
-  rotation_matx = np.array([[1, 0, 0], [0, np.cos(alpha), -np.sin(alpha)], [0, np.sin(alpha), np.cos(alpha)]])
-  rotation_maty = np.array([[np.cos(beta), 0, np.sin(beta)], [0, 1, 0], [-np.sin(beta), 0, np.cos(beta)]])
-  rotation_matz = np.array([[np.cos(gamma), -np.sin(gamma), 0], [np.sin(gamma), np.cos(gamma), 0], [0, 0, 1]])
-  rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
-  rotated_vectors = ((np.dot(rotation_mat, vectors-rotation_center)+rotation_center).T + translation).T
-  return rotated_vectors.astype(vectors.dtype,copy=False)
-
-def transform_cart_vectors(vx, vy, vz, translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
-  """
-  Apply the defined cartesian transformation on separated components of vectors and return a tuple with each of the modified components of the vectors
-  """
-  assert vx.shape == vy.shape == vz.shape
-  if vx.ndim == 1:
-    vectors = np.array([vx,vy,vz], order='F')
-  else: #Manage structured blocks
-    vectors = np.array([vx.flatten('F'), vy.flatten('F'), vz.flatten('F')], order='F')
-  
-  modified_components = transform_cart_matrix(vectors, translation, rotation_center, rotation_angle)
-
-  if vx.ndim == 1:
-    return (modified_components[0], modified_components[1], modified_components[2])
-  else:
-    return (modified_components[0].reshape(vx.shape, order='F'),
-            modified_components[1].reshape(vy.shape, order='F'),
-            modified_components[2].reshape(vz.shape, order='F'))
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle)
+  homo_vector = np.ones((4, vectors.shape[1]))
+  homo_vector[0:3,:] = vectors
+  return np.dot(homo_matrix, homo_vector)[0:3,:]
 
 def transform_cart_matrix_2d(vectors, translation=np.zeros(2), rotation_center=np.zeros(2), rotation_angle=0.):
   """
@@ -311,21 +333,41 @@ def transform_cart_matrix_2d(vectors, translation=np.zeros(2), rotation_center=n
   [vy1 vy2 ... vyN]
   and return the modified components of the vectors in the same format
   """
-  theta = rotation_angle
-  rotation_mat = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
-  _rotation_center = np.array(rotation_center).reshape((-1,1))
-  _translation = np.array(translation).reshape((-1,1))
-  rotated_vectors = (np.dot(rotation_mat, vectors-_rotation_center)+_rotation_center) + _translation
-  return rotated_vectors.astype(vectors.dtype,copy=False)
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle)
+  homo_vector = np.ones((3, vectors.shape[1]))
+  homo_vector[0:2,:] = vectors
+  return np.dot(homo_matrix, homo_vector)[0:2,:]
+
+def transform_cart_vectors(vx, vy, vz, translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
+  """
+  Apply the defined cartesian transformation on separated components of vectors and return a tuple with each of the modified components of the vectors
+  """
+  assert vx.shape == vy.shape == vz.shape
+  if vx.ndim == 1:
+    vectors = np.array([vx,vy,vz,np.ones(vx.size)], order='F')
+  else: #Manage structured blocks
+    vectors = np.array([vx.flatten('F'), vy.flatten('F'), vz.flatten('F'), np.ones(vx.size)], order='F')
+  
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle)
+  modified_components = np.dot(homo_matrix, vectors)[0:3,:]
+
+  if vx.ndim == 1:
+    return (modified_components[0], modified_components[1], modified_components[2])
+  else:
+    return (modified_components[0].reshape(vx.shape, order='F'),
+            modified_components[1].reshape(vy.shape, order='F'),
+            modified_components[2].reshape(vz.shape, order='F'))
+
 
 
 def transform_cart_vectors_2d(vx, vy, translation=np.zeros(2), rotation_center=np.zeros(2), rotation_angle=0.):
   assert vx.shape == vy.shape
   if vx.ndim == 1:
-    vectors = np.array([vx,vy], order='F')
+    vectors = np.array([vx,vy,np.ones(vx.size)], order='F')
   else: #Manage structured blocks
-    vectors = np.array([vx.flatten('F'), vy.flatten('F')], order='F')
-  modified_components = transform_cart_matrix_2d(vectors, translation, rotation_center, rotation_angle)
+    vectors = np.array([vx.flatten('F'), vy.flatten('F'), np.ones(vx.size)], order='F')
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle)
+  modified_components = np.dot(homo_matrix, vectors)[0:2,:]
   if vx.ndim == 1:
     return (modified_components[0], modified_components[1])
   else:
