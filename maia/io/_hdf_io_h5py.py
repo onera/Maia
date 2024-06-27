@@ -1,6 +1,5 @@
 from mpi4py import MPI
 from h5py   import h5p, h5f, h5fd
-from math   import prod
 import h5py
 
 import maia.pytree as PT
@@ -12,6 +11,12 @@ from .hdf._hdf_cgns import open_from_path,\
 from .fix_tree      import fix_point_ranges, corr_index_range_names,\
                            ensure_symmetric_gc1to1, rm_legacy_nodes,\
                            add_missing_pr_in_bcdataset, check_datasize
+
+def _prod(seq):
+  out = 1
+  for elt in seq:
+    out *= elt
+  return out
 
 def load_data(names, labels, data_shape):
   """ Function used to determine if the data is heavy or not """
@@ -28,7 +33,7 @@ def load_data(names, labels, data_shape):
     if names[-2] in [':CGNS#GlobalNumbering']:
       return False
     if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
-      return prod(data_shape) == 1 # BCData_t arrays can have scalar (load) of vectorial (dont load) size
+      return _prod(data_shape) == 1 # BCData_t arrays can have scalar (load) of vectorial (dont load) size
   return True
 
 def load_size_tree(filename, comm):
