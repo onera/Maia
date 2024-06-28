@@ -131,7 +131,7 @@ def set_name(node:CGNSTree, name:str):
   """
   if check.is_valid_name(name, check_len=False):
     if not check.is_valid_name(name, check_len=True):
-      warnings.warn("Setting a CGNS node name with a string longer than 32 char", RuntimeWarning, stacklevel=2)
+      warnings.warn(f"Setting a CGNS node name to {name}, which is longer than 32 char", RuntimeWarning, stacklevel=2)
     node[0] = name
   else:
     raise ValueError("Unvalid name for node")
@@ -335,7 +335,7 @@ def set_label(node:CGNSTree, label:str):
   """
   if check.is_valid_label(label, only_sids=False):
     if not check.is_valid_label(label, only_sids=True):
-      warnings.warn("Setting a CGNS node label with a non sids label", RuntimeWarning, stacklevel=2)
+      warnings.warn(f"Setting a CGNS node label to {label}, which is not a SIDS label", RuntimeWarning, stacklevel=2)
     node[3] = label
   else:
     raise ValueError("Unvalid label for node")
