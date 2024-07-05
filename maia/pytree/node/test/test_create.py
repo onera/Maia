@@ -18,7 +18,7 @@ def test_new_node():
     create.new_node('ANodeNameDefinitivelyTooLongForTheCGNSStandard', 'Transform_t', [1,2,3], parent=node)
 
 def test_update_node():
-  node = ['Node', None, [], 'UserDefined_t']
+  node = ['Node', None, [], 'UserDefinedData_t']
   create.update_node(node, 'NewName', value=[6.])
   assert NA.get_name(node) ==  'NewName'
   assert NA.get_value(node) == np.array([6.])

@@ -112,11 +112,11 @@ def add_cgns_registry_information(tree, comm):
     global_ids = cgr.global_ids(itype)
     for i in range(len(paths)):
       node    = PT.get_node_from_path(tree, paths[i])
-      cgns_registry_n = PT.get_node_from_name_and_label(node, ":CGNS#Registry", 'UserDefined_t')
+      cgns_registry_n = PT.get_node_from_name_and_label(node, ":CGNS#Registry", 'UserDefinedData_t')
       # Looks strange
       if cgns_registry_n:
-        PT.rm_nodes_from_name_and_label(node, ":CGNS#Registry", "UserDefined_t")
+        PT.rm_nodes_from_name_and_label(node, ":CGNS#Registry", "UserDefinedData_t")
       else:
-        PT.new_node(name=":CGNS#Registry", value=global_ids[i], label='UserDefined_t', parent=node)
+        PT.new_node(name=":CGNS#Registry", value=global_ids[i], label='UserDefinedData_t', parent=node)
 
   return cgr

@@ -145,6 +145,8 @@ def get_jn_donor_path(dist_tree, jn_path):
   opp_gc_name   = PT.get_value(gc_donor_name)
 
   opp_zone      = PT.get_node_from_path(dist_tree, opp_zone_path)
+  if opp_zone is None:
+    raise RuntimeError(f"GridConnectivity {jn_name} connects to zone {opp_zone_path}, who does not exist")
   opp_zgc       = PT.get_child_from_label(opp_zone, "ZoneGridConnectivity_t")
   return f"{opp_zone_path}/{PT.get_name(opp_zgc)}/{opp_gc_name}"
 

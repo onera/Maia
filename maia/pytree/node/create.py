@@ -8,7 +8,7 @@ UNSET = Ellipsis
 
 begin_api_export()
 
-def new_node(name:str='Node', label:str='UserDefined_t', value:Any=None, children:List[CGNSTree]=[], parent:CGNSTree=None) -> CGNSTree:
+def new_node(name:str='Node', label:str='UserDefinedData_t', value:Any=None, children:List[CGNSTree]=[], parent:CGNSTree=None) -> CGNSTree:
   """ Create a new CGNS node
 
   If ``parent`` is not None, this node is appended as a child to the parent node.
@@ -29,7 +29,7 @@ def new_node(name:str='Node', label:str='UserDefined_t', value:Any=None, childre
     Zone Zone_t 
     └───ZoneType ZoneType_t "Unstructured"
   """
-  node = ['Node', None, [], 'UserDefined_t']
+  node = ['Node', None, [], 'UserDefinedData_t']
   # Use update method to enable checks through the set_ functions
   update_node(node, name, label, value, children)
   if parent is not None:
@@ -64,11 +64,11 @@ def update_node(node:CGNSTree, name:str=UNSET, label:str=UNSET, value:Any=UNSET,
   if children is not UNSET:
     NA.set_children(node, children)
 
-# def create_child(parent, name, label='UserDefined_t', value=None, children=[]):
+# def create_child(parent, name, label='UserDefinedData_t', value=None, children=[]):
   # walk.rm_children_from_name(parent, name)
   # return new_node(name, label, value, children, parent)
 
-def new_child(parent:CGNSTree, name:str, label:str='UserDefined_t', value:Any=None, children:List[CGNSTree]=[]) -> CGNSTree:
+def new_child(parent:CGNSTree, name:str, label:str='UserDefinedData_t', value:Any=None, children:List[CGNSTree]=[]) -> CGNSTree:
   """ Create a new CGNS node as a child of an other node
 
   This is an alternative form of :func:`new_node`, with mandatory ``parent`` argument.
