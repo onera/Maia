@@ -574,6 +574,34 @@ def new_BaseIterativeData(name:str='BaseIterativeData', *, time_values:ArrayLike
   _check_parent_label(node, parent, ['CGNSBase_t'])
   return node
 
+def new_Axisymmetry(*, reference_point:ArrayLike=None, axis_vector:ArrayLike=None, parent:CGNSTree=None):
+  """ Create a Axisymmetry_t node
+
+  Link to corresponding SIDS section:
+  `Axisymmetry_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Axisymmetry>`_
+
+  Args:
+    reference_point (ArrayLike) : if provided, create a AxisymmetryReferencePoint child array
+    axis_vector (ArrayLike) : if provided, create an AxisymmetryAxisVector child array
+    parent (CGNSTree): Node to which created node should be attached
+  Example:
+    >>> node = PT.new_Axisymmetry(reference_point=[0.0, 0.0], axis_vector=[0.0, 1.0])
+    >>> PT.print_tree(node)
+    Axisymmetry Axisymmetry_t
+    └───AxisymmetryReferencePoint DataArray_t R4 [0.  0. ]
+    └───AxisymmetryAxisVector DataArray_t R4 [0.  1. ]
+
+  """
+  node = new_node('Axisymmetry', 'Axisymmetry_t', parent=parent)
+  if reference_point is not None:
+    assert len(reference_point) == 2
+    new_DataArray("AxisymmetryReferencePoint", reference_point, dtype="R4", parent=node)
+  if axis_vector is not None:
+    assert len(axis_vector) == 2
+    new_DataArray("AxisymmetryAxisVector", axis_vector, dtype="R4", parent=node)
+  _check_parent_label(node, parent, ['CGNSBase_t'])
+  return node
+
 def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGNSTree=None):
   """ Create a DataArray_t node
 
@@ -599,8 +627,8 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGN
   """
 
   allowed_parent = "\
-    ArbitraryGridMotion_t BCData_t BaseIterativeData_t ChemicalKineticsModel_t ConvergenceHistory_t DiscreteData_t Elements_t \
-    EMConductivityModel_t EMElectricFieldModel_t EMMagneticFieldModel_t FlowSolution_t GasModel_t GridCoordinates_t \
+    ArbitraryGridMotion_t Axisymmetry_t BCData_t BaseIterativeData_t ChemicalKineticsModel_t ConvergenceHistory_t DiscreteData_t \
+    Elements_t EMConductivityModel_t EMElectricFieldModel_t EMMagneticFieldModel_t FlowSolution_t GasModel_t GridCoordinates_t \
     Periodic_t ReferenceState_t RigidGridMotion_t ThermalConductivityModel_t ThermalRelaxationModel_t TurbulenceClosure_t \
     TurbulenceModel_t UserDefinedData_t ViscosityModel_t ZoneIterativeData_t ZoneSubRegion_t".split()
 
@@ -829,7 +857,7 @@ def new_GasModel(value='Ideal',
   """
   assert value in ['Null', 'UserDefined', 'Ideal', 'VanderWaals', 'CaloricallyPerfect', 'ThermallyPerfect', 'ConstantDensity', 'RedlichKwong']
   return new_node('GasModel', label='GasModel_t', value=value, parent=parent)
-  
+
 def new_ReferenceState(name:str = 'ReferenceState',
                       *,
                       fields:Dict[str, ArrayLike] = {},
@@ -846,7 +874,7 @@ def new_ReferenceState(name:str = 'ReferenceState',
   Example:
     >>> node = PT.new_ReferenceState("RefState", fields={"Density" : 1.})
     >>> PT.print_tree(node)
-    RefState ReferenceState_t 
+    RefState ReferenceState_t
     └───Density DataArray_t R4 [1.]
   """
   ref_state = new_node(name, 'ReferenceState_t', None, [], parent)
