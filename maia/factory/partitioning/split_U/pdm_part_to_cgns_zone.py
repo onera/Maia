@@ -25,6 +25,8 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
   """
   Create by splitting
   """
+  if grid_loc is None:
+    grid_loc = 'FaceCenter' if PT.Zone.has_ngon_elements(d_zone) else 'Vertex'
   if grid_loc not in ['FaceCenter', 'Vertex']:
     raise NotImplementedError("Unvalid specified entity")
   #Element have been created before, so we can check the kind here

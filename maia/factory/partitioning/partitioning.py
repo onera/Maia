@@ -30,7 +30,7 @@ def set_default(dist_tree, comm):
   default = {'graph_part_tool'         : None,
              'zone_to_parts'           : None,
              'reordering'              : default_renum,
-             'part_interface_loc'      : 'Vertex',
+             'part_interface_loc'      : None,
              'output_connectivity'     : 'Element',
              'preserve_orientation'    : False,
              'save_all_connectivities' : False,
@@ -45,12 +45,6 @@ def set_default(dist_tree, comm):
   else:
     default['graph_part_tool'] = 'hilbert'
   default['reordering']['graph_part_tool'] = default['graph_part_tool']
-
-  # part_interface_loc : Vertex si Elements, FaceCenter si NGons
-  for zone in PT.get_all_Zone_t(dist_tree):
-    if 22 in [PT.Element.Type(elt) for elt in PT.iter_children_from_label(zone, 'Elements_t')]:
-      default['part_interface_loc'] = 'FaceCenter'
-      break
 
   return default
 
@@ -103,7 +97,7 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
   # > Check some values
   assert options['graph_part_tool'] in partU.maia_to_pdm_split_tool
   # TODO we should rename this part_tool because not all methods involve a graph
-  assert options['part_interface_loc'] in ['Vertex', 'FaceCenter']
+  assert options['part_interface_loc'] in [None, 'Vertex', 'FaceCenter']
   assert options['output_connectivity'] in ['Element', 'NGon']
 
   # > Setup balanced weight if no provided
