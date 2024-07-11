@@ -115,9 +115,9 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
         keep_alive.append(dmesh)
         multi_part.dmesh_set(i_zone, dmesh)
       else:
-        dmesh_nodal    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_poly2d(zone, comm)
-        keep_alive.append(dmesh_nodal)
-        multi_part.dmesh_nodal_set(i_zone, dmesh_nodal)
+        dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_2d(zone, comm)
+        keep_alive.append(dmesh)
+        multi_part.dmesh_set(i_zone, dmesh)
     else:
       dmesh_nodal = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
       keep_alive.append(dmesh_nodal)
