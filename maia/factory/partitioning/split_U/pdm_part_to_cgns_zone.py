@@ -172,7 +172,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
 
       ngon_er = np.array([1, n_face], np.int32) + n_edge
       ngon_eso = face_edge_idx
-      ngon_ec  = PDM.compute_face_vtx_from_face_and_edge(face_edge_idx, face_edge, edge_vtx)
+      ngon_ec  = data['np_face_vtx']
 
       nedge_n = PT.new_Elements(nedge_name, 'BAR_2', erange=edge_er, econn=edge_vtx, parent=p_zone)
       ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone, erange=ngon_er, eso=ngon_eso, ec=ngon_ec)
