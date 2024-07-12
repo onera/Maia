@@ -142,12 +142,7 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   distrib_face = PT.get_value(MT.getDistribution(dist_zone, 'Cell')) #In 2d, cell == face
 
   # Try to hook Edge nodes
-  edge_elts_nodes = [e for e in PT.get_children_from_label(dist_zone, 'Elements_t') if \
-   PT.Element.CGNSName(e) == 'BAR_2']
-  # For now we assume we have all edge, with ParentElements
-  assert len(edge_elts_nodes) == 1, "Exactly one EdgeElements_t node must be defined"
-
-  edge_node  = edge_elts_nodes[0]
+  edge_node  = MT.Zone.EdgeNode(dist_zone)
   edge_first = PT.Element.Range(edge_node)[0] == 1
   has_pe = PT.get_child_from_name(edge_node, 'ParentElements') is not None
 

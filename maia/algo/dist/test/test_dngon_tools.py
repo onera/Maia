@@ -4,6 +4,7 @@ import numpy as np
 
 import maia.pytree as PT
 
+import maia
 from maia.factory    import dcube_generator  as DCG
 from maia.factory    import full_to_dist     as F2D
 from maia.algo.dist  import ngon_tools as NGT
@@ -54,3 +55,17 @@ def test_nface_to_pe(comm):
     assert nface_cur is None
   else:
     assert PT.is_same_tree(nface_bck, nface_cur)
+
+@pytest_parallel.mark.parallel(2)
+def test_ngon_to_pe(comm):
+  tree = DCG.generate_dist_block(4, "QUAD_4", comm)
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+  pe_bck = PT.get_node_from_path(zone, 'EdgeElements/ParentElements')[1]
+  
+  PT.rm_nodes_from_name(zone, 'ParentElements')
+  NGT.ngon_to_edge_pe(zone, comm)
+  pe = PT.get_node_from_path(zone, 'EdgeElements/ParentElements')[1]
+
+  assert np.array_equal(pe_bck, pe)

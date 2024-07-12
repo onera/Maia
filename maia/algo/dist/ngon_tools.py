@@ -103,26 +103,23 @@ def nface_to_pe(zone, comm, remove_NFace=False):
     PT.rm_child(zone, nface_node)
 
 
-def _EdgeNode(zone):
-  edge_elts_nodes = [e for e in PT.get_children_from_label(zone, 'Elements_t') if \
-   PT.Element.CGNSName(e) == 'BAR_2']
-  assert len(edge_elts_nodes) == 1, "Exactly one EdgeElements_t node must be defined"
-  return edge_elts_nodes[0]
-
-def _roll_by_stride(array_idx, array):
-  """
-  numpy.roll within each interval
-  [34, 65, 33, 1,     39, 54, 2, 53, 3] --> [65, 33, 1, 34,     54, 2, 53, 3, 39]
-  """
-  values = array[array_idx[:-1]].copy()
-  extended = np.insert(array, array_idx[1:], values)
-  rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
-  return np.delete(extended, rm_idx)
-
 def ngon_to_edge_pe(zone, comm, remove_NGon=False):
+  """Create a ParentElements node in the EdgeElements node from a NGon node.
+
+  Note that EdgeElement is supposed to exists and define all (including internal)
+  edges. This function retrieve the link between these edges and the NGon node.
+
+  Input tree is modified inplace.
+
+  Args:
+    zone         (CGNSTree): Distributed zone
+    comm         (MPIComm) : MPI communicator
+    remove_NGon (bool, optional): If True, remove the NGon node.
+      Defaults to False.
+  """
   
   # EDGE Data
-  edge_node  = _EdgeNode(zone)
+  edge_node  = MT.Zone.EdgeNode(zone)
   dedge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
   key_from_edge = dedge_vtx[0::2] + dedge_vtx[1::2]
 
@@ -134,7 +131,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   face_vtx_idx = face_vtx_idx - face_vtx_idx[0]
 
   first_vtx  = face_vtx
-  second_vtx = _roll_by_stride(face_vtx_idx, face_vtx)
+  second_vtx = np_utils.roll_by_stride(face_vtx_idx, face_vtx)
   key_from_face = first_vtx + second_vtx
   start_gnum = distri_face[0] + PT.Element.Range(ngon_node)[0]
   end_gnum   = distri_face[1] + PT.Element.Range(ngon_node)[0]

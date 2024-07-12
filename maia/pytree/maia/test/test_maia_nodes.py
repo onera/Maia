@@ -57,3 +57,14 @@ def test_getGlobalNumbering():
   assert (PT.get_value(mNode.getGlobalNumbering(zone, 'Cell')) == [4,21,1,2,8,12]).all()
   assert  PT.get_value(mNode.getGlobalNumbering(zone, 'Vertex')) == None
 
+def test_get_edge_node():
+  zone = PT.new_Zone('zone')
+  with pytest.raises(AssertionError):
+    mNode.Zone.EdgeNode(zone)
+
+  elt = PT.new_Elements('BAR', 'BAR_2', parent=zone)
+  assert PT.is_same_node(elt, mNode.Zone.EdgeNode(zone))
+
+  elt = PT.new_Elements('SECONDBAR', 'BAR_2', parent=zone)
+  with pytest.raises(AssertionError):
+    mNode.Zone.EdgeNode(zone)

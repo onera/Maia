@@ -197,6 +197,17 @@ def make_unique_by_stride(array_idx, array):
   """
   return cutils.make_unique_by_stride(array_idx, array)
 
+def roll_by_stride(array_idx, array):
+  """
+  numpy.roll within each interval
+  [34, 65, 33, 1,     39, 54, 2, 53, 3] --> [65, 33, 1, 34,     54, 2, 53, 3, 39]
+  """
+  values = array[array_idx[:-1]].copy()
+  extended = np.insert(array, array_idx[1:], values)
+  rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
+  return np.delete(extended, rm_idx)
+
+
 def any_in_range(array, start, end, strict=False):
   """
   Return True if any element of array is in interval
