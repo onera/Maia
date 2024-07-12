@@ -152,10 +152,10 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   has_pe = PT.get_child_from_name(edge_node, 'ParentElements') is not None
 
   dedge_vtx = as_pdm_gnum(PT.get_child_from_name(edge_node, 'ElementConnectivity')[1])
-  if has_pe:
-    edge_pe = as_pdm_gnum(PT.get_child_from_name(edge_node, 'ParentElements')[1])
-  else:
-    raise RuntimeError("PE of edges is mandatory to split NGON 2d zones")
+  if not has_pe:
+    from maia.algo.dist import ngon_tools
+    ngon_tools.ngon_to_edge_pe(dist_zone, comm)
+  edge_pe = as_pdm_gnum(PT.get_child_from_name(edge_node, 'ParentElements')[1])
 
   distrib_edge = MT.getDistribution(edge_node, 'Element')[1]
 
@@ -168,11 +168,10 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
 
 
-  if has_pe: #Use PE to set face_cell
-    dedge_face = np.empty(2*dn_edge, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
-    layouts.pe_cgns_to_pdm_face_cell(edge_pe, dedge_face)
-    if edge_first:
-      np_utils.shift_nonzeros(dedge_face, -distrib_edge[2])
+  dedge_face = np.empty(2*dn_edge, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
+  layouts.pe_cgns_to_pdm_face_cell(edge_pe, dedge_face)
+  if edge_first:
+    np_utils.shift_nonzeros(dedge_face, -distrib_edge[2])
 
   #Create DMesh
   dmesh = DistributedMesh(comm, 0, dn_face, dn_edge, dn_vtx)

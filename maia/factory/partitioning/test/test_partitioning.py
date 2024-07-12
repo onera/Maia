@@ -41,7 +41,7 @@ class Test_split_ngon_2d:
       assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[4,11]]).all()
       assert bc_ymin is None
 
-  @pytest.mark.parametrize("no_pe", [False])
+  @pytest.mark.parametrize("no_pe", [False, True])
   def test_input_pe(self, no_pe, comm):
     dist_tree = self.get_distree(comm)
     if no_pe:
