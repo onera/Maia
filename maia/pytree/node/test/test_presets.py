@@ -60,7 +60,7 @@ def test_new_Zone():
     ZoneType ZoneType_t "Unstructured":
   """)
   assert is_same_tree(expected, zone)
-  
+
   with pytest.raises(AssertionError):
     presets.new_Zone('SomeZone', type='Toto')
 
@@ -219,6 +219,15 @@ def test_new_DataArray():
   assert N.get_value(data).dtype == np.int32
   data = presets.new_DataArray('Array', np.array([1,2,3]), dtype="R8")
   assert N.get_value(data).dtype == np.float64
+
+def test_new_Axisymmetry():
+  axi = presets.new_Axisymmetry(reference_point=np.array([0., 0.]), axis_vector=np.array([0., 1.]))
+  expected = parse_yaml_cgns.to_node("""
+  Axisymmetry Axisymmetry_t:
+    AxisymmetryReferencePoint DataArray_t R4 [0., 0.]:
+    AxisymmetryAxisVector DataArray_t R4 [0., 1.]:
+  """)
+  assert is_same_tree(expected, axi)
 
 def test_new_GridCoordinates():
   gco = presets.new_GridCoordinates('MyGridCoords', fields={'CX' : [1,2,3], 'CY' : np.array([1.,2,3])})

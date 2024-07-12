@@ -22,7 +22,7 @@ Generalities
 .. rubric:: Containers fields
 
 When creating a *Container* node (ie. a node storing some fields,
-such as a FlowSolution_t), a list of DataArray to create can be 
+such as a FlowSolution_t), a list of DataArray to create can be
 provided through the ``fields`` parameter, which must be a dictionnary
 mapping array names to array values: for example,
 
@@ -34,7 +34,7 @@ will created the requested fields:
 
 >>> fs = PT.new_FlowSolution('FS', fields=fields)
 >>> PT.print_tree(fs)
-FS FlowSolution_t 
+FS FlowSolution_t
 ├───Density DataArray_t R8 [1.   1.   1.05]
 └───Temperature DataArray_t R4 [293. 293. 296.]
 
@@ -59,7 +59,7 @@ is not SIDS compliant. Admissible parent labels are ['ZoneBC_t'].
 .. important:: All the functions listed in this page return a single value,
   which is the created CGNSTree. For more readability, we omit the return section
   in the API description.
-  
+
 Overview
 --------
 
@@ -71,6 +71,7 @@ Overview
   ~maia.pytree.node.presets.new_CGNSTree
   ~maia.pytree.node.presets.new_CGNSBase
   ~maia.pytree.node.presets.new_BaseIterativeData
+  ~maia.pytree.node.presets.new_Axisymmetry
   ~maia.pytree.node.presets.new_Zone
 
 *Functions creating Family related nodes*
@@ -125,7 +126,7 @@ Overview
   ~maia.pytree.node.presets.new_FlowEquationSet
   ~maia.pytree.node.presets.new_GasModel
   ~maia.pytree.node.presets.new_ReferenceState
-  
+
 
 API reference
 -------------
