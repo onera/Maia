@@ -26,6 +26,18 @@ def PDM_dcellface_to_dfacecell(comm, face_distri, cell_distri, cell_face_idx, ce
   _face_cell = PDM.dcellface_to_dfacecell(comm, _face_distri, _cell_distri, _cell_face_idx, _cell_face)
   return np_utils.safe_int_cast(_face_cell, cell_face.dtype)
 
+def PDM_dconnectivity_combine(comm, face_distri, edge_distri, face_edge_idx, face_edge, edge_vtx):
+  _face_distri   = np_utils.safe_int_cast(face_distri, PDM.npy_pdm_gnum_dtype)
+  _edge_distri   = np_utils.safe_int_cast(edge_distri, PDM.npy_pdm_gnum_dtype)
+  _face_edge_idx = np_utils.safe_int_cast(face_edge_idx, np.int32)
+  _face_edge     = np_utils.safe_int_cast(face_edge, PDM.npy_pdm_gnum_dtype)
+  _edge_vtx_idx  = 2*np.arange(edge_vtx.shape[0]+1, dtype=np.int32)
+  _edge_vtx      = np_utils.safe_int_cast(edge_vtx, PDM.npy_pdm_gnum_dtype)
+  _face_vtx_idx, _face_vtx = PDM.dconnectivity_combine(comm, _face_distri, _edge_distri, _face_edge_idx, _face_edge, _edge_vtx_idx, _edge_vtx, 0)
+  face_vtx_idx = np_utils.safe_int_cast(_face_vtx_idx, face_edge.dtype)
+  face_vtx     = np_utils.safe_int_cast(_face_vtx, face_edge.dtype)
+  return face_vtx_idx, face_vtx
+
 
 def pe_to_nface(zone, comm, remove_PE=False):
   """Create a NFace node from a NGon node with ParentElements.
@@ -56,7 +68,7 @@ def pe_to_nface(zone, comm, remove_PE=False):
 
   nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=cell_face, parent=zone)
   MT.newDistribution({"Element" : nface_distri, "ElementConnectivity" : nface_ec_distri}, nface)
-  
+
   if remove_PE:
     PT.rm_children_from_name(ngon_node, "ParentElements")
 
@@ -81,7 +93,7 @@ def nface_to_pe(zone, comm, remove_NFace=False):
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
   cell_face_idx = PT.get_child_from_name(nface_node, "ElementStartOffset")[1]
   cell_face     = PT.get_child_from_name(nface_node, "ElementConnectivity")[1]
-  
+
   # If NFace are before NGon, then face ids must be shifted
   if PT.Element.Range(ngon_node)[0] == 1:
     _cell_face = cell_face
@@ -117,7 +129,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
     remove_NGon (bool, optional): If True, remove the NGon node.
       Defaults to False.
   """
-  
+
   # EDGE Data
   edge_node  = MT.Zone.EdgeNode(zone)
   dedge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
@@ -150,8 +162,8 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   # Adapt to full block, since some gnum does not appear
   fstride = np.zeros(ptb_distri[comm.rank+1] - ptb_distri[comm.rank], np.int32)
   fstride[ptb.getBlockGnumCopy() - ptb_distri[comm.rank] - 1] = stride
-  
-  # Second : get data from block, for each edge 
+
+  # Second : get data from block, for each edge
   recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, [key_from_edge], comm)
   recv_stride = recv_stride[0]
   first_vtx  = recv_data['FirstVtx'][0]
@@ -161,7 +173,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   # Third: post treat (solving conflits) for fill edge_face
   dn_edge = dedge_vtx.size // 2
   edge_face = np.zeros((dn_edge, 2), order='F', dtype=dedge_vtx.dtype)
-  
+
   # Id of edge, with repetitions eg. if stride == [1,1,2,1], iedge == [0,1,2,2,3]
   iedge_extended = np.repeat(np.arange(0, dn_edge), recv_stride)
 
@@ -177,3 +189,39 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   PT.new_DataArray('ParentElements', edge_face, parent=edge_node)
   if remove_NGon:
     PT.rm_child(zone, ngon_node)
+
+def edge_pe_to_ngon(zone, comm, remove_PE=False):
+  """Create a NGon node from a Edge node with ParentElements.
+
+  Edge range is supposed to start at 1.
+  Input tree is modified inplace.
+
+  Args:
+    zone       (CGNSTree): Distributed zone
+    comm       (MPIComm) : MPI communicator
+    remove_PE  (bool, optional): If True, remove the ParentElements node.
+      Defaults to False.
+  """
+
+  edge_node = MT.Zone.EdgeNode(zone)
+  edge_distri = MT.getDistribution(edge_node, 'Element')[1]
+  edge_distri = par_utils.partial_to_full_distribution(edge_distri, comm)
+  ngon_distri = MT.getDistribution(zone, 'Cell')[1] # ngon = face = cell in tree
+  face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
+  assert PT.Element.Range(edge_node)[0] == 1
+  local_pe = indexing.get_edge_pe_local(edge_node).reshape(-1, order='C')
+  edge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
+
+  face_edge_idx, face_edge = PDM_dfacecell_to_dcellface(comm, edge_distri, face_distri, local_pe)
+  face_vtx_idx, face_vtx = PDM_dconnectivity_combine(comm, face_distri, edge_distri, face_edge_idx, face_edge, edge_vtx)
+  face_vtx_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Element.Range(edge_node)[1] #n_cell = n_face
+  ngon_ec_distr_f = par_utils.gather_and_shift(face_vtx_idx[-1], comm)
+  ngon_ec_distri  = par_utils.full_to_partial_distribution(ngon_ec_distr_f, comm)
+  ngon_ec_distri  = np_utils.safe_int_cast(ngon_ec_distri, ngon_distri.dtype)
+  eso = face_vtx_idx + ngon_ec_distri[0]
+
+  ngon = PT.new_NGonElements(erange=face_vtx_range, eso=eso, ec=face_vtx, parent=zone)
+  MT.newDistribution({"Element" : ngon_distri, "ElementConnectivity" : ngon_ec_distri}, ngon)
+
+  if remove_PE:
+    PT.rm_children_from_name(edge_node, "ParentElements")

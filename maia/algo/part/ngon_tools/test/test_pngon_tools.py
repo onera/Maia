@@ -5,7 +5,8 @@ import numpy as np
 
 import maia.pytree as PT
 
-from maia.factory    import dcube_generator  as DCG
+from maia.factory    import dcube_generator   as DCG
+from maia.factory    import dsphere_generator as DSG
 from maia.algo.part  import ngon_tools as NGT
 
 def as_partitioned(zone):
@@ -54,3 +55,26 @@ def test_nface_to_pe(rmNFace, comm):
     assert nface_cur is None
   else:
     assert PT.is_same_tree(nface_bck, nface_cur)
+
+@pytest_parallel.mark.parallel([1])
+def test_pe_to_ngon(comm):
+  tree = DSG.generate_dist_sphere(5, 'NGON_n', comm)
+
+  zone = PT.get_all_Zone_t(tree)[0]
+  as_partitioned(zone)
+
+  ngon_bck = PT.get_node_from_path(zone, 'NGonElements')
+  ngon_er_bck  = PT.Element.Range(ngon_bck)
+  ngon_eso_bck = PT.get_node_from_path(ngon_bck, 'ElementStartOffset')[1]
+  ngon_ec_bck  = PT.get_node_from_path(ngon_bck, 'ElementConnectivity')[1]
+
+  PT.rm_nodes_from_name(zone, 'NGonElements')
+  NGT.edge_pe_to_ngon(zone)
+  ngon = PT.get_node_from_path(zone, 'NGonElements')
+  ngon_er  = PT.Element.Range(ngon)
+  ngon_eso = PT.get_node_from_path(ngon, 'ElementStartOffset')[1]
+  ngon_ec  = PT.get_node_from_path(ngon, 'ElementConnectivity')[1]
+
+  assert np.array_equal(ngon_er_bck, ngon_er)
+  assert np.array_equal(ngon_eso_bck, ngon_eso)
+  assert np.array_equal(ngon_ec_bck, ngon_ec)

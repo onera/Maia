@@ -4,9 +4,9 @@ import numpy as np
 
 import maia.pytree as PT
 
-import maia
-from maia.factory    import dcube_generator  as DCG
-from maia.factory    import full_to_dist     as F2D
+from maia.factory    import dcube_generator   as DCG
+from maia.factory    import dsphere_generator as DSG
+from maia.factory    import full_to_dist      as F2D
 from maia.algo.dist  import ngon_tools as NGT
 
 @pytest_parallel.mark.parallel([1,3])
@@ -47,7 +47,7 @@ def test_nface_to_pe(comm):
   # 2. Tested function
   rmNface = (comm.size != 3)
   NGT.nface_to_pe(zone, comm, rmNface)
-  
+
   # 3. Check results
   assert (PT.get_node_from_path(zone, 'NGonElements/ParentElements')[1] == pe_bck).all()
   nface_cur = PT.get_node_from_name(zone, 'NFaceElements')
@@ -63,9 +63,30 @@ def test_ngon_to_pe(comm):
 
   zone = PT.get_node_from_label(tree, 'Zone_t')
   pe_bck = PT.get_node_from_path(zone, 'EdgeElements/ParentElements')[1]
-  
+
   PT.rm_nodes_from_name(zone, 'ParentElements')
   NGT.ngon_to_edge_pe(zone, comm)
   pe = PT.get_node_from_path(zone, 'EdgeElements/ParentElements')[1]
 
   assert np.array_equal(pe_bck, pe)
+
+@pytest_parallel.mark.parallel(2)
+def test_pe_to_ngon(comm):
+  tree = DSG.generate_dist_sphere(5, 'NGON_n', comm)
+
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+  ngon_bck = PT.get_node_from_path(zone, 'NGonElements')
+  ngon_er_bck  = PT.Element.Range(ngon_bck)
+  ngon_eso_bck = PT.get_node_from_path(ngon_bck, 'ElementStartOffset')[1]
+  ngon_ec_bck  = PT.get_node_from_path(ngon_bck, 'ElementConnectivity')[1]
+
+  PT.rm_nodes_from_name(zone, 'NGonElements')
+  NGT.edge_pe_to_ngon(zone, comm)
+  ngon = PT.get_node_from_path(zone, 'NGonElements')
+  ngon_er  = PT.Element.Range(ngon)
+  ngon_eso = PT.get_node_from_path(ngon, 'ElementStartOffset')[1]
+  ngon_ec  = PT.get_node_from_path(ngon, 'ElementConnectivity')[1]
+
+  assert np.array_equal(ngon_er_bck, ngon_er)
+  assert np.array_equal(ngon_eso_bck, ngon_eso)
+  assert np.array_equal(ngon_ec_bck, ngon_ec)
