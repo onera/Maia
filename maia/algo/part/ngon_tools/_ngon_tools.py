@@ -10,7 +10,7 @@ from maia.utils import np_utils
 
 import cmaia.part_algo as cpart_algo
 
-def PDM_compute_face_vtx_from_face_and_edge(face_edge_idx, face_edge, edge_vtx):
+def PDM_face_vtx_from_face_and_edge(face_edge_idx, face_edge, edge_vtx):
   _face_edge_idx = np_utils.safe_int_cast(face_edge_idx, np.int32)
   _face_edge     = np_utils.safe_int_cast(face_edge, np.int32)
   _edge_vtx      = np_utils.safe_int_cast(edge_vtx, np.int32)
@@ -105,7 +105,7 @@ def edge_pe_to_ngon(zone, remove_PE=False):
   edge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
 
   ngon_eso, face_edge = cpart_algo.local_pe_to_local_cellface(local_pe)
-  ngon_ec = PDM_compute_face_vtx_from_face_and_edge(ngon_eso, face_edge, edge_vtx)
+  ngon_ec = PDM_face_vtx_from_face_and_edge(ngon_eso, face_edge, edge_vtx)
   _erange = np.array([min_face, max_face], dtype=np.int32)
   ngon = PT.new_NGonElements(erange=_erange, eso=ngon_eso, ec=ngon_ec, parent=zone)
   face_gnum = MT.getGlobalNumbering(zone, 'Cell') # cell = face
