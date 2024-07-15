@@ -4,6 +4,7 @@ import numpy as np
 
 import maia.pytree as PT
 
+import maia
 from maia.factory    import dcube_generator   as DCG
 from maia.factory    import dsphere_generator as DSG
 from maia.factory    import full_to_dist      as F2D
