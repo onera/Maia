@@ -248,9 +248,9 @@ def test_make_unique_by_stride():
   assert np.array_equal(idx, [0,3,4,6,6,9])
   assert np.array_equal(arr, [4,3,2, 2, 8,7, 5,3,8])
 
-def test_roll_by_stride():
-  assert np_utils.roll_by_stride(np.array([0]), np.empty(0)).size == 0
-  rolled = np_utils.roll_by_stride(np.array([0, 4, 4, 9, 10]), np.array([34, 65, 33, 1,   39, 54, 2, 53, 3, 8]))
+def test_roll_once_by_stride():
+  assert np_utils.roll_once_by_stride(np.array([0]), np.empty(0)).size == 0
+  rolled = np_utils.roll_once_by_stride(np.array([0, 4, 4, 9, 10]), np.array([34, 65, 33, 1,   39, 54, 2, 53, 3, 8]))
   assert np.array_equal(rolled, [65, 33, 1, 34,   54, 2, 53, 3, 39,  8])
   
 

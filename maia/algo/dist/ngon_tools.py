@@ -131,7 +131,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   face_vtx_idx = face_vtx_idx - face_vtx_idx[0]
 
   first_vtx  = face_vtx
-  second_vtx = np_utils.roll_by_stride(face_vtx_idx, face_vtx)
+  second_vtx = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
   key_from_face = first_vtx + second_vtx
   start_gnum = distri_face[0] + PT.Element.Range(ngon_node)[0]
   end_gnum   = distri_face[1] + PT.Element.Range(ngon_node)[0]
@@ -142,10 +142,10 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   ptb = EP.PartToBlock(None, [key_from_face], comm, keep_multiple=True)
   stride_one = np.ones(key_from_face.size, np.int32)
 
-  stride, data2 = ptb.exchange_field([first_vtx], [stride_one])
-  stride, data3 = ptb.exchange_field([second_vtx], [stride_one])
   stride, data1 = ptb.exchange_field([face_gnum], [stride_one])
-  dist_data = {'FaceGnum' : data1, 'FirstEdge' : data2, 'SecondEdge' : data3}
+  stride, data2 = ptb.exchange_field([first_vtx], [stride_one])
+  # We don't need to exchange second vertex because we know key and vtx1 (vtx1 + vtx2 == key)
+  dist_data = {'FaceGnum' : data1, 'FirstVtx' : data2}
   ptb_distri = ptb.getDistributionCopy()
   # Adapt to full block, since some gnum does not appear
   fstride = np.zeros(ptb_distri[comm.rank+1] - ptb_distri[comm.rank], np.int32)
@@ -154,24 +154,25 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   # Second : get data from block, for each edge 
   recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, [key_from_edge], comm)
   recv_stride = recv_stride[0]
-  first_vtx  = recv_data['FirstEdge'][0]
-  second_vtx = recv_data['SecondEdge'][0]
+  first_vtx  = recv_data['FirstVtx'][0]
   face_gnum  = recv_data['FaceGnum'][0]
+
 
   # Third: post treat (solving conflits) for fill edge_face
   dn_edge = dedge_vtx.size // 2
   edge_face = np.zeros((dn_edge, 2), order='F', dtype=dedge_vtx.dtype)
-  read_idx = 0
-  for iedge in range(dn_edge):
-    for _ in range(recv_stride[iedge]):
-      if dedge_vtx[2*iedge] == first_vtx[read_idx] and dedge_vtx[2*iedge+1] == second_vtx[read_idx]:
-        edge_face[iedge,0] = face_gnum[read_idx]
-      elif dedge_vtx[2*iedge] == second_vtx[read_idx] and dedge_vtx[2*iedge+1] == first_vtx[read_idx]:
-        edge_face[iedge,1] = face_gnum[read_idx]
-      else:
-        pass # Fake positive
-      read_idx += 1
-  assert read_idx == recv_stride.sum()
+  
+  # Id of edge, with repetitions eg. if stride == [1,1,2,1], iedge == [0,1,2,2,3]
+  iedge_extended = np.repeat(np.arange(0, dn_edge), recv_stride)
+
+  # Test if vertex of each edges is equal to recv face_first_vtx, because we can same
+  # key for several edges pairs
+  first_vtx_match  = dedge_vtx[2*iedge_extended  ] == first_vtx
+  second_vtx_match = dedge_vtx[2*iedge_extended+1] == first_vtx
+  # Fill edge_face with matching face_gnum
+  edge_face[iedge_extended[first_vtx_match],  0] = face_gnum[first_vtx_match]
+  edge_face[iedge_extended[second_vtx_match], 1] = face_gnum[second_vtx_match]
+
 
   PT.new_DataArray('ParentElements', edge_face, parent=edge_node)
   if remove_NGon:

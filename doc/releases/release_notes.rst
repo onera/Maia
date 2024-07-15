@@ -24,6 +24,7 @@ Developpement version
 🐞 Fixes
 ^^^^^^^^
 - ``transform_affine``: update periodic values of GridConnectivity_t nodes
+- partitioning : fix internal edges creation and BCs on 2D/NGon meshes
 
 🚧 API change
 ^^^^^^^^^^^^^

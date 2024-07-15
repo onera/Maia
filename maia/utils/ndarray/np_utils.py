@@ -197,9 +197,9 @@ def make_unique_by_stride(array_idx, array):
   """
   return cutils.make_unique_by_stride(array_idx, array)
 
-def roll_by_stride(array_idx, array):
+def roll_once_by_stride(array_idx, array):
   """
-  numpy.roll within each interval
+  numpy.roll (with shift := -1) within each interval
   [34, 65, 33, 1,     39, 54, 2, 53, 3] --> [65, 33, 1, 34,     54, 2, 53, 3, 39]
   """
   values = array[array_idx[:-1]].copy()
