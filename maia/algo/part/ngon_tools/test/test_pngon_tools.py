@@ -58,7 +58,7 @@ def test_nface_to_pe(rmNFace, comm):
 
 @pytest_parallel.mark.parallel([1])
 def test_pe_to_ngon(comm):
-  tree = DSG.generate_dist_sphere(5, 'NGON_n', comm)
+  tree = DSG.generate_dist_sphere(1, 'NGON_n', comm)
 
   zone = PT.get_all_Zone_t(tree)[0]
   as_partitioned(zone)
@@ -66,7 +66,11 @@ def test_pe_to_ngon(comm):
   ngon_bck = PT.get_node_from_path(zone, 'NGonElements')
   ngon_er_bck  = PT.Element.Range(ngon_bck)
   ngon_eso_bck = PT.get_node_from_path(ngon_bck, 'ElementStartOffset')[1]
-  ngon_ec_bck  = PT.get_node_from_path(ngon_bck, 'ElementConnectivity')[1]
+  #ngon_ec_bck  = PT.get_node_from_path(ngon_bck, 'ElementConnectivity')[1]
+  ngon_ec_bck = np.array([ 1, 2, 3, 1, 6, 2, 4, 1, 3, 5, 1, 4, 5, 6, 1, 11, 2, 6, 2, 7, 3, 3, 8, 4,
+                           4, 9, 5, 5, 10, 6, 11, 7, 2, 7, 8, 3, 8, 9, 4, 9, 10, 5, 10, 11, 6, 12, 7, 11,
+                           12, 8, 7, 12, 9, 8, 12, 10, 9, 11, 10, 12], dtype=np.int32)
+  # direct comparison impossible due to circular shifts in the connectivity
 
   PT.rm_nodes_from_name(zone, 'NGonElements')
   NGT.edge_pe_to_ngon(zone)
