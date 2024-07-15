@@ -15,34 +15,6 @@ from maia.algo.dist.adaptation_utils import convert_vtx_gcs_as_face_bcs,\
                                             rm_feflo_added_elt
 
 
-# TMP directory
-tmp_repo   = Path('TMP_adapt_repo')
-
-# INPUT files
-in_file_meshb = tmp_repo / 'mesh.mesh'
-in_file_solb  = tmp_repo / 'metric.sol'
-in_file_fldb  = tmp_repo / 'field.sol'
-in_files = {'mesh': in_file_meshb,
-            'sol' : in_file_solb ,
-            'fld' : in_file_fldb }
-
-mesh_back_file = tmp_repo / 'mesh_back.mesh'
-
-# OUTPUT files
-out_file_meshb = tmp_repo / 'mesh.o.mesh'
-out_file_solb  = tmp_repo / 'mesh.o.sol'
-out_file_fldb  = tmp_repo / 'field.itp.sol'
-out_files = {'mesh': out_file_meshb,
-             'sol' : out_file_solb ,
-             'fld' : out_file_fldb }
-
-# Feflo files arguments
-feflo_args    = { 'isotrop'  : f"-iso               ".split(),
-                  'from_fld' : f"-sol {in_file_solb}".split(),
-                  'from_hess': f"-met {in_file_solb}".split()
-}
-
-
 def unpack_metric(dist_tree, metric_paths):
   """
   Unpacks the `metric` argument from `mesh_adapt` function.
@@ -80,8 +52,31 @@ def unpack_metric(dist_tree, metric_paths):
   return metric_nodes
 
 
-def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts):
+def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts, tmp_dir):
+  
+
+  # > Create tmp directory
+  tmp_repo   = Path(tmp_dir)
+
+  # Input/output files
+  in_file_solb  = tmp_repo / 'metric.sol'
+  in_file_fldb  = tmp_repo / 'field.sol'
+  in_files = {'mesh': tmp_repo / 'mesh.mesh',
+              'sol' : in_file_solb,
+              'fld' : in_file_fldb}
+
+  out_files = {'mesh': tmp_repo / 'mesh.o.mesh',
+               'sol' : tmp_repo / 'mesh.o.sol' ,
+               'fld' : tmp_repo / 'field.itp.sol' }
+
   tmp_repo.mkdir(exist_ok=True)
+
+
+  # > Feflo files arguments
+  feflo_args    = { 'isotrop'  : f"-iso               ".split(),
+                    'from_fld' : f"-sol {in_file_solb}".split(),
+                    'from_hess': f"-met {in_file_solb}".split()}
+
 
   # > Get metric nodes
   metric_nodes = unpack_metric(dist_tree, metric)
@@ -146,7 +141,7 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
 
   return adapted_dist_tree
 
-def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts):
+def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts, tmp_dir):
   '''
   Assume that : 
     - Only one Element node for each dimension
@@ -209,7 +204,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
   mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   maia.algo.dist.redistribute_tree(tree, 'gather.0', comm)
-  tree = _adapt_mesh_with_feflo(tree, metric, comm, container_names, bcs_to_constrain, feflo_opts)
+  tree = _adapt_mesh_with_feflo(tree, metric, comm, container_names, bcs_to_constrain, feflo_opts, tmp_dir)
 
 
   mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
@@ -225,7 +220,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
   mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
   gc_constraints = [PTu.path_tail(gc_path) for pair in perio_jns_pairs for gc_path in pair]
   maia.algo.dist.redistribute_tree(tree, 'gather.0', comm)
-  tree = _adapt_mesh_with_feflo(tree, metric, comm, container_names, gc_constraints, feflo_opts)
+  tree = _adapt_mesh_with_feflo(tree, metric, comm, container_names, gc_constraints, feflo_opts, tmp_dir)
 
 
   # > Retrieve periodicities + cleaning file
@@ -261,7 +256,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
 
 
-def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constraints=None, periodic=False, feflo_opts=""):
+def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constraints=None, periodic=False, feflo_opts="", tmp_dir="./TMP_adapt_dir"):
   """Run a mesh adaptation step using *Feflo.a* software.
 
   Important:
@@ -312,7 +307,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     container_names(list of str) : Name of some Vertex located FlowSolution to project on the adapted mesh
     constraints    (list of str) : BC names of entities that must not be adapted (default to None)
     periodic       (boolean)     : perform periodic mesh adaptation
-    feflo_opts (str)             : Additional arguments passed to Feflo
+    feflo_opts     (str)         : Additional arguments passed to Feflo
+    tmp_dir        (str)         : Absolute or relative path to directory where are written meshb files (default to `./TMP_adapt_dir`)
   Returns:
     CGNSTree: Adapted mesh (distributed)
 
@@ -328,12 +324,12 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
   """
 
   if periodic:
-    adapted_dist_tree = _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts)
+    adapted_dist_tree = _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts, tmp_dir)
   else:
     # > Gathering dist_tree on proc 0
     maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
 
-    adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts)
+    adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts, tmp_dir)
     PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
 
     # > Recover original dist_tree

@@ -60,7 +60,8 @@ def test_unpack_metric():
 
 @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
 @pytest_parallel.mark.parallel(2)
-def test_adapt_with_feflo(comm):
+@pytest.mark.parametrize('custom_dir', [False, True])
+def test_adapt_with_feflo(comm, custom_dir):
 
   dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', comm)
   base = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
@@ -78,11 +79,13 @@ def test_adapt_with_feflo(comm):
   PT.new_FlowSolution("FlowSolution", loc="Vertex", fields=fields, parent=zone)
 
   # > Adapt mesh according to scalar metric
+  options = {"tmp_dir":"tmp_dir"} if custom_dir else {}
   adpt_dist_tree = MA.adapt_mesh_with_feflo(dist_tree,
                                             "FlowSolution/metric",
                                             comm,
                                             container_names=["FlowSolution"],
-                                            feflo_opts="-c 100 -cmax 100 -p 4")
+                                            feflo_opts="-c 100 -cmax 100 -p 4",
+                                            **options)
 
   # Parsing of meshb is already tested elsewhere, here we check that feflo did not failed 
   # and that metadata (eg. names, families) are well recovered
