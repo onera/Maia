@@ -256,7 +256,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
 
 
-def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constraints=None, periodic=False, feflo_opts="", **options):
+def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], periodic=False, feflo_opts="", **options):
   """Run a mesh adaptation step using *Feflo.a* software.
 
   Important:
@@ -305,16 +305,18 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
     metric         (str or list) : Path(s) to metric fields (see above)
     comm           (MPIComm)     : MPI communicator
     container_names(list of str) : Name of some Vertex located FlowSolution to project on the adapted mesh
-    constraints    (list of str) : BC names of entities that must not be adapted (default to None)
     periodic       (boolean)     : perform periodic mesh adaptation
     feflo_opts     (str)         : Additional arguments passed to Feflo
+    **options                    : Additional options (see below)
   Returns:
     CGNSTree: Adapted mesh (distributed)
 
 
-  Temporary files location can be controled thought the options kwargs:
+  The function allows the additional optional parameters:
 
-  - ``tmp_dir`` (str, default to ``./TMP_adapt_dir``) -- Absolute or relative path to directory where are written meshb files 
+  - ``tmp_dir`` (str, default to ``./TMP_adapt_dir``) -- Absolute or relative path to the directory
+    where meshb files are written
+  - ``constraints``    (list of str, default to None) : BC names of entities that must not be adapted
 
   Warning:
     Although this function interface is parallel, keep in mind that Feflo.a is a sequential tool.
@@ -327,7 +329,8 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         :dedent: 2
   """
 
-  tmp_dir = options['tmp_dir'] if 'tmp_dir' in options else './TMP_adapt_dir'
+  tmp_dir = options.get('tmp_dir', './TMP_adapt_dir')
+  constraints = options.get('constraints', None)
 
   if periodic:
     adapted_dist_tree = _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts, tmp_dir)
