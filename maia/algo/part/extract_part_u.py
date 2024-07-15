@@ -102,7 +102,7 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
     if extract_zone is not None and len(partial_gnum)!=0:
       PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
 
-  if part1_data[0].size==0:
+  if part1_data[0].size==0 and extract_zone is not None:
     PT.rm_child(extract_zone, FS_ep)
 
 

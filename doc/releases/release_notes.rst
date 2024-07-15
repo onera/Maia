@@ -24,6 +24,7 @@ Developpement version
 🐞 Fixes
 ^^^^^^^^
 - ``transform_affine``: update periodic values of GridConnectivity_t nodes
+- ``extract_part``: prevent a crash when a rank get no cells on extracted U zone
 
 🚧 API change
 ^^^^^^^^^^^^^
