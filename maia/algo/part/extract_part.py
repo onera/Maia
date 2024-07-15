@@ -14,6 +14,15 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
+def get_stats(extract_tree, dim, comm):
+    elts_kind = ['vtx', 'edges', 'faces', 'cells'][dim]
+    if dim == 0:
+      n_cell = sum([PT.Zone.n_vtx(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
+    else:
+      n_cell = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
+    n_cell_all = comm.allreduce(n_cell, MPI.SUM)
+    return elts_kind, n_cell, n_cell_all
+
 
 def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
 
@@ -132,6 +141,22 @@ class Extractor:
     return self.extract_tree
 
 
+def _extract_part_from_zsr(part_tree, zsr_name, comm,
+                           transfer_dataset=True,
+                           containers_name=[], **options):
+  extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
+
+  l_containers_name = [name for name in containers_name]
+  if transfer_dataset and zsr_name not in l_containers_name:
+    l_containers_name += [zsr_name]
+  if l_containers_name:
+    extractor.exchange_fields(l_containers_name)
+
+  extract_tree = extractor.get_extract_part_tree()
+
+  return extract_tree, extractor.dim
+
+
 def extract_part_from_zsr(part_tree, zsr_name, comm,
                           transfer_dataset=True,
                           containers_name=[], **options):
@@ -178,30 +203,17 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
       :end-before:  #extract_from_zsr@end
       :dedent: 2
   """
-
   start = time.time()
-  extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
-
-  l_containers_name = [name for name in containers_name]
-  if transfer_dataset and zsr_name not in l_containers_name:
-    l_containers_name += [zsr_name]
-  if l_containers_name:
-    extractor.exchange_fields(l_containers_name)
+  extract_tree, dim = _extract_part_from_zsr(part_tree, zsr_name, comm,
+                                             transfer_dataset=transfer_dataset,
+                                             containers_name=containers_name, **options)
   end = time.time()
 
-  extract_tree = extractor.get_extract_part_tree()
-
-  # Print some light stats
-  elts_kind = ['vtx', 'edges', 'faces', 'cells'][extractor.dim]
-  if extractor.dim == 0:
-    n_cell = sum([PT.Zone.n_vtx(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
-  else:
-    n_cell = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
-  n_cell_all = comm.allreduce(n_cell, MPI.SUM)
+  # > Print some light stats
+  elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
   mlog.info(f"Extraction from ZoneSubRegion \"{zsr_name}\" completed ({end-start:.2f} s) -- "
             f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
             f"(Σ={mlog.size_to_str(n_cell_all)})")
-
 
   return extract_tree
 
@@ -256,6 +268,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
       :end-before:  #extract_from_bc_name@end
       :dedent: 2
   """
+  start = time.time()
 
   # Local copy of the part_tree to add ZSR 
   l_containers_name = [name for name in containers_name]
@@ -276,11 +289,19 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
     l_containers_name.append(bc_name) # not to change the initial containers_name list
 
 
-  return extract_part_from_zsr(local_part_tree, bc_name, comm,
-                               transfer_dataset=False,
-                               containers_name=l_containers_name,
-                             **options)
+  extract_tree, dim = _extract_part_from_zsr(local_part_tree, bc_name, comm,
+                                             transfer_dataset=False,
+                                             containers_name=l_containers_name,
+                                           **options)
+  end = time.time()
 
+  # > Print some light stats
+  elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
+  mlog.info(f"Extraction from BC \"{bc_name}\" completed ({end-start:.2f} s) -- "
+            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
+            f"(Σ={mlog.size_to_str(n_cell_all)})")
+
+  return extract_tree
 
 
 def extract_part_from_family(part_tree, family_name, comm,
@@ -304,6 +325,7 @@ def extract_part_from_family(part_tree, family_name, comm,
       :end-before:  #extract_from_family@end
       :dedent: 2
   """
+  start = time.time()
 
   if PT.get_value(PT.get_node_from_name(part_tree, 'ZoneType'))=='Structured':
     raise RuntimeError(f'extract_part_from_family function is not implemented for Structured meshes.')
@@ -384,7 +406,17 @@ def extract_part_from_family(part_tree, family_name, comm,
       if node_name not in l_containers_name:
         l_containers_name.append(node_name) # not to change the initial containers_name list
 
-  return extract_part_from_zsr(local_part_tree, f"__{family_name}", comm, 
-                               transfer_dataset=False,
-                               containers_name=l_containers_name,
-                             **options)
+  extract_tree, dim = _extract_part_from_zsr(local_part_tree, f"__{family_name}", comm, 
+                                             transfer_dataset=False,
+                                             containers_name=l_containers_name,
+                                           **options)
+  end = time.time()
+
+
+  # > Print some light stats
+  elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
+  mlog.info(f"Extraction from Family \"{family_name}\" completed ({end-start:.2f} s) -- "
+            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
+            f"(Σ={mlog.size_to_str(n_cell_all)})")
+
+  return extract_tree

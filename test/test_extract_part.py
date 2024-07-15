@@ -209,7 +209,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
                                             )
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm)
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr.yaml')
