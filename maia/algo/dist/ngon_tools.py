@@ -5,8 +5,9 @@ import Pypdm.Pypdm as PDM
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.algo import indexing
-from maia.utils import par_utils, np_utils
+from maia.algo     import indexing
+from maia.transfer import protocols as EP
+from maia.utils    import par_utils, np_utils
 
 def PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, face_cell):
   _face_distri = np_utils.safe_int_cast(face_distri, PDM.npy_pdm_gnum_dtype)
@@ -101,3 +102,78 @@ def nface_to_pe(zone, comm, remove_NFace=False):
   if remove_NFace:
     PT.rm_child(zone, nface_node)
 
+
+def ngon_to_edge_pe(zone, comm, remove_NGon=False):
+  """Create a ParentElements node in the EdgeElements node from a NGon node.
+
+  Note that EdgeElement is supposed to exists and define all (including internal)
+  edges. This function retrieve the link between these edges and the NGon node.
+
+  Input tree is modified inplace.
+
+  Args:
+    zone         (CGNSTree): Distributed zone
+    comm         (MPIComm) : MPI communicator
+    remove_NGon (bool, optional): If True, remove the NGon node.
+      Defaults to False.
+  """
+  
+  # EDGE Data
+  edge_node  = MT.Zone.EdgeNode(zone)
+  dedge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
+  key_from_edge = dedge_vtx[0::2] + dedge_vtx[1::2]
+
+  # NGON Data
+  ngon_node = PT.Zone.NGonNode(zone)
+  distri_face = MT.getDistribution(ngon_node, 'Element')[1]
+  face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+  face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
+  face_vtx_idx = face_vtx_idx - face_vtx_idx[0]
+
+  first_vtx  = face_vtx
+  second_vtx = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
+  key_from_face = first_vtx + second_vtx
+  start_gnum = distri_face[0] + PT.Element.Range(ngon_node)[0]
+  end_gnum   = distri_face[1] + PT.Element.Range(ngon_node)[0]
+  face_gnum = np.repeat(np.arange(start_gnum, end_gnum, dtype=face_vtx.dtype), np.diff(face_vtx_idx))
+
+  # Now do the search in // using key
+  # First : gather data from face into a block vision
+  ptb = EP.PartToBlock(None, [key_from_face], comm, keep_multiple=True)
+  stride_one = np.ones(key_from_face.size, np.int32)
+
+  stride, data1 = ptb.exchange_field([face_gnum], [stride_one])
+  stride, data2 = ptb.exchange_field([first_vtx], [stride_one])
+  # We don't need to exchange second vertex because we know key and vtx1 (vtx1 + vtx2 == key)
+  dist_data = {'FaceGnum' : data1, 'FirstVtx' : data2}
+  ptb_distri = ptb.getDistributionCopy()
+  # Adapt to full block, since some gnum does not appear
+  fstride = np.zeros(ptb_distri[comm.rank+1] - ptb_distri[comm.rank], np.int32)
+  fstride[ptb.getBlockGnumCopy() - ptb_distri[comm.rank] - 1] = stride
+  
+  # Second : get data from block, for each edge 
+  recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, [key_from_edge], comm)
+  recv_stride = recv_stride[0]
+  first_vtx  = recv_data['FirstVtx'][0]
+  face_gnum  = recv_data['FaceGnum'][0]
+
+
+  # Third: post treat (solving conflits) for fill edge_face
+  dn_edge = dedge_vtx.size // 2
+  edge_face = np.zeros((dn_edge, 2), order='F', dtype=dedge_vtx.dtype)
+  
+  # Id of edge, with repetitions eg. if stride == [1,1,2,1], iedge == [0,1,2,2,3]
+  iedge_extended = np.repeat(np.arange(0, dn_edge), recv_stride)
+
+  # Test if vertex of each edges is equal to recv face_first_vtx, because we can same
+  # key for several edges pairs
+  first_vtx_match  = dedge_vtx[2*iedge_extended  ] == first_vtx
+  second_vtx_match = dedge_vtx[2*iedge_extended+1] == first_vtx
+  # Fill edge_face with matching face_gnum
+  edge_face[iedge_extended[first_vtx_match],  0] = face_gnum[first_vtx_match]
+  edge_face[iedge_extended[second_vtx_match], 1] = face_gnum[second_vtx_match]
+
+
+  PT.new_DataArray('ParentElements', edge_face, parent=edge_node)
+  if remove_NGon:
+    PT.rm_child(zone, ngon_node)

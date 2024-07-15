@@ -60,4 +60,13 @@ get_global_numbering                  = getGlobalNumbering
 new_distribution                      = newDistribution
 new_global_numbering                  = newGlobalNumbering
 
+class Zone:
+
+  @staticmethod
+  def EdgeNode(zone_node:CGNSTree) -> CGNSTree:
+    is_edge = lambda n : N.get_label(n) == 'Elements_t' and N.get_value(n)[0] == 3
+    edge_elts_nodes = W.get_children_from_predicate(zone_node, is_edge)
+    assert len(edge_elts_nodes) == 1, "Exactly one EdgeElements_t node must be defined"
+    return edge_elts_nodes[0]
+
 end_api_export()

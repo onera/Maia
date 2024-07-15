@@ -10,7 +10,8 @@ from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMesh, DistributedMeshNodal
 from Pypdm.Pypdm import _PDM_CONNECTIVITY_TYPE_FACE_VTX, _PDM_BOUND_TYPE_FACE, \
-                        _PDM_CONNECTIVITY_TYPE_FACE_CELL, _PDM_CONNECTIVITY_TYPE_CELL_FACE
+                        _PDM_CONNECTIVITY_TYPE_FACE_CELL, _PDM_CONNECTIVITY_TYPE_CELL_FACE, \
+                        _PDM_CONNECTIVITY_TYPE_EDGE_VTX, _PDM_CONNECTIVITY_TYPE_EDGE_FACE
 
 def _split_point_list_by_dim(pl_list, range_by_dim, comm):
   """
@@ -133,7 +134,62 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
 
   return dmesh
 
+def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
+  """
+  Create a pdm_dmesh structure from a 2d distributed zone
+  """
+  distrib_vtx  = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_face = PT.get_value(MT.getDistribution(dist_zone, 'Cell')) #In 2d, cell == face
+
+  # Try to hook Edge nodes
+  edge_node  = MT.Zone.EdgeNode(dist_zone)
+  edge_first = PT.Element.Range(edge_node)[0] == 1
+  has_pe = PT.get_child_from_name(edge_node, 'ParentElements') is not None
+
+  dedge_vtx = as_pdm_gnum(PT.get_child_from_name(edge_node, 'ElementConnectivity')[1])
+  if not has_pe:
+    from maia.algo.dist import ngon_tools
+    ngon_tools.ngon_to_edge_pe(dist_zone, comm)
+  edge_pe = as_pdm_gnum(PT.get_child_from_name(edge_node, 'ParentElements')[1])
+
+  distrib_edge = MT.getDistribution(edge_node, 'Element')[1]
+
+  dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
+  dn_face = distrib_face[1] - distrib_face[0]
+  dn_edge = distrib_edge[1] - distrib_edge[0]
+
+
+  cx, cy, cz = PT.Zone.coordinates(dist_zone)
+  dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
+
+
+  dedge_face = np.empty(2*dn_edge, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
+  layouts.pe_cgns_to_pdm_face_cell(edge_pe, dedge_face)
+  if edge_first:
+    np_utils.shift_nonzeros(dedge_face, -distrib_edge[2])
+
+  #Create DMesh
+  dmesh = DistributedMesh(comm, 0, dn_face, dn_edge, dn_vtx)
+
+  dmesh.dmesh_vtx_coord_set(dvtx_coord)
+  dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_EDGE_VTX,  None, dedge_vtx)
+  dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_EDGE_FACE, None, dedge_face)
+
+  # keep dvtx_coord object alive for ParaDiGM
+  multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
+  PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
+  PT.new_DataArray('dedge_vtx', dedge_vtx, parent=multi_part_node)
+  PT.new_DataArray('dedge_face', dedge_face, parent=multi_part_node)
+
+  return dmesh
+
+
 def cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm):
+  """
+  This function was used to split 2D meshes having only a
+  face_vtx (NGON) connectivity (without edge => without bc)
+  It is unused now, but we save it in case of need
+  """
   distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
   distrib_face = PT.get_value(MT.getDistribution(dist_zone, 'Cell')) #In 2d, cell == face
   n_vtx   = distrib_vtx[2]

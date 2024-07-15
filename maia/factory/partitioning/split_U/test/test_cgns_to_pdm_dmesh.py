@@ -138,6 +138,14 @@ def test_cgns_dist_zone_to_pdm_dmesh_poly2d(comm):
   assert dims['n_vtx_abs'] == 25
   assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
   
+@pytest_parallel.mark.parallel(2)
+def test_cgns_dist_zone_to_pdm_dmesh_2d(comm):
+  dist_tree = maia.factory.generate_dist_block(5, "QUAD_4", comm)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  dmesh = CTP.cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm)
+  assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
 
 @pytest_parallel.mark.parallel(3)
 def test_cgns_dist_zone_to_pdm_dmesh_nodal(comm):
