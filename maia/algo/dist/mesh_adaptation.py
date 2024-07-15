@@ -327,7 +327,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], constrain
         :dedent: 2
   """
 
-  tmp_dir = options['tmp_dir'] if 'tmp_dir' in options else './TMP_adapt_repo'
+  tmp_dir = options['tmp_dir'] if 'tmp_dir' in options else './TMP_adapt_dir'
 
   if periodic:
     adapted_dist_tree = _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts, tmp_dir)
