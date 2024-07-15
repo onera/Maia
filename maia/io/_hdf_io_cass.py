@@ -5,7 +5,7 @@ import Converter.PyTree   as C
 import maia.pytree        as PT
 
 from .fix_tree import fix_point_ranges, ensure_symmetric_gc1to1, fix_zone_datatype,\
-                      rm_legacy_nodes, add_missing_pr_in_bcdataset
+                      rm_legacy_nodes, add_missing_pr_in_bcdataset, fix_structured_pr_shape
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
@@ -102,6 +102,7 @@ def load_size_tree(filename, comm):
     fix_zone_datatype(size_tree, size_data)
     add_sizes_to_tree(size_tree, size_data)
     fix_point_ranges(size_tree)
+    fix_structured_pr_shape(size_tree)
     pred_1to1 = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t'
     if PT.get_node_from_predicates(size_tree, pred_1to1) is not None:
       ensure_symmetric_gc1to1(size_tree)

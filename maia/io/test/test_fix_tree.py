@@ -73,6 +73,47 @@ Base0 CGNSBase_t [3,3]:
   assert (PT.get_child_from_name(gcB, 'PointRange')[1]      == [[ 7, 1], [9,9], [5,1]]).all()
   assert (PT.get_child_from_name(gcB, 'PointRangeDonor')[1] == [[17,17], [3,9], [1,5]]).all()
 
+def test_fix_structured_point_range_shapes():
+  yt = """
+Base0 CGNSBase_t [2,2]:
+  ZoneA Zone_t:
+    ZoneType ZoneType_t "Structured":
+    ZoneBC ZoneBC_t:
+      BCA1 BC_t:
+        PointRange IndexRange_t [[17,17],[3,9],[1,1]]:
+      BCA2 BC_t:
+        PointRange IndexRange_t [[1,1],[3,9]]:
+Base1 CGNSBase_t [1,2]:
+  ZoneB Zone_t:
+    ZoneType ZoneType_t "Structured":
+    ZoneBC ZoneBC_t:
+      BCB BC_t:
+        PointRange IndexRange_t [[1,3],[1,1],[1,1]]:
+  ZoneC Zone_t:
+    ZoneType ZoneType_t "Unstructured":
+    ZoneBC ZoneBC_t:
+      BCC BC_t:
+        PointRange IndexRange_t [[1,17]]:
+Base2 CGNSBase_t [3,3]:
+  ZoneD Zone_t:
+    ZoneType ZoneType_t "Structured":
+    ZoneBC ZoneBC_t:
+      BCD BC_t:
+        PointRange IndexRange_t [[1,3],[1,1],[1,1]]:
+"""
+  size_tree = PT.yaml.to_cgns_tree(yt)
+  fix_tree.fix_structured_pr_shape(size_tree)
+  bcA1 = PT.get_node_from_name(size_tree, 'BCA1')
+  bcA2 = PT.get_node_from_name(size_tree, 'BCA2')
+  bcB  = PT.get_node_from_name(size_tree, 'BCB' )
+  bcC  = PT.get_node_from_name(size_tree, 'BCC' )
+  bcD  = PT.get_node_from_name(size_tree, 'BCD' )
+  assert (PT.get_child_from_name(bcA1, 'PointRange')[1] == [[17,17], [3,9]       ]).all()
+  assert (PT.get_child_from_name(bcA2, 'PointRange')[1] == [[ 1, 1], [3,9]       ]).all()
+  assert (PT.get_child_from_name(bcB,  'PointRange')[1] == [[ 1, 3]              ]).all()
+  assert (PT.get_child_from_name(bcC,  'PointRange')[1] == [[ 1,17]              ]).all()
+  assert (PT.get_child_from_name(bcD,  'PointRange')[1] == [[ 1, 3], [1,1], [1,1]]).all()
+
 def test_ensure_symmetric_gc1to1():
   yt = """
 Base0 CGNSBase_t [3,3]:

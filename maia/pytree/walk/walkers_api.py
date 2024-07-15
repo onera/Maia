@@ -622,6 +622,7 @@ def iter_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> Iter
                            'CGNSBase_t/Zone_t/ZoneSubRegion_t',
                            'CGNSBase_t/Zone_t/DiscreteData_t',
                            'CGNSBase_t/Zone_t/FlowSolution_t',
+                           'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t',
                            'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t']
 
   root_label = PT.get_label(root)

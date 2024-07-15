@@ -69,6 +69,26 @@ def fix_point_ranges(size_tree):
   if permuted:
     logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
 
+def fix_structured_pr_shape(size_tree):
+  """
+  In structured 1D (resp. 2D) cases, PointRange must be (1,2) (resp. (2,2)) shaped. If it is not, we correct it !
+  """
+  is_struct_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
+  for base in PT.get_all_CGNSBase_t(size_tree):
+    cell_dim = PT.get_value(base)[0]
+    if cell_dim == 3:
+      continue
+    resized = False
+    for zone in PT.get_children_from_predicate(base, is_struct_zone):
+      for subset in PT.iter_all_subsets(zone):
+        for pr_n in PT.get_children_from_label(subset, 'IndexRange_t'):
+          pr = PT.get_value(pr_n)
+          if pr.shape[0] > cell_dim:
+            resized = True
+            PT.set_value(pr_n, pr[0:cell_dim])
+    if resized:
+      logging.warning(f"Structured PointRange have been resized on base {PT.get_name(base)} to match cell dimension ({cell_dim})")
+
 def ensure_symmetric_gc1to1(tree):
   """
   Force structured GC1to1 to have symmetric PointRange/PointRangeDonor
