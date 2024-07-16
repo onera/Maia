@@ -88,6 +88,9 @@ def cell_vtx_connectivity(zone, dim=3):
     return cell_vtx_connectivity_S(zone, dim)
   else:
     if PT.Zone.has_ngon_elements(zone):
-      return cell_vtx_connectivity_ngon(zone, dim)
+      if dim == 1:
+        return cell_vtx_connectivity_elts(zone, dim)
+      else:
+        return cell_vtx_connectivity_ngon(zone, dim)
     else: # zone has standard elements
       return cell_vtx_connectivity_elts(zone, dim)

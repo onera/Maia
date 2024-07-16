@@ -126,3 +126,10 @@ def test_unique_idx():
   assert py_utils.unique_idx(['tutu', 'titi', 'tutu', 'tata']) == [2,1,2,0]
   assert py_utils.unique_idx([('a', 12), ('a', 4), ('b', 1), ('a', 4)]) == [1,0,2,0]
 
+
+def test_overlap_size():
+  assert py_utils.overlap_size(0,10,  10, 30) == 0
+  assert py_utils.overlap_size(0,10,  15, 30) == 0
+  assert py_utils.overlap_size(3,10,  5, 30) == 5
+  assert py_utils.overlap_size(1,10,  2, 8) == 6
+  assert py_utils.overlap_size(4,14,  4, 14) == 10

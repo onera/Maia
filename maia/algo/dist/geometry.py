@@ -49,10 +49,61 @@ def _cell_vtx_connectivity_S(zone_S, dim):
 
   return cell_vtx_idx, cell_vtx
 
+def _entity_vtx_connectivity_elt_local(zone, comm, dim):
+  """
+  A bit like _cell_vtx_connectivity_elt, but allow to specify the dimension
+  and do not remix the entities (they came in same order than
+  ElementRange of sections, on each rank)
+  """
+  # Basicly juste contactenate section and compute idx, block to part will do the job after 
+  all_cell_vtx   = []
+  all_cell_vtx_n = []
+  for elt in PT.Zone.get_ordered_elements_per_dim(zone)[dim]:
+    distri = MT.get_distribution(elt, 'Element')[1]
+    ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
+    all_cell_vtx.append(ec)
+    all_cell_vtx_n.append(PT.Element.NVtx(elt) * np.ones(distri[1] - distri[0], np.int32))
+
+  cell_vtx_n = np.concatenate(all_cell_vtx_n, dtype=np.int32)
+  cell_vtx = np.concatenate(all_cell_vtx)
+  cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n)
+  return cell_vtx_idx, cell_vtx
+
+def _cell_vtx_connectivity_elt(zone, comm):
+  """
+  Return cell_vtx connectivity for an input Elt Zone. 
+  cell_vtx means highest available connectivity (cell for 3D, face for 2D, ...)
+  """
+  dim = PT.Zone.CellDimension(zone)
+  distri_cell = MT.getDistribution(zone, 'Cell')[1]
+  start = 0
+  all_cell_vtx_n = []
+  all_cell_vtx = []
+  for elt in PT.Zone.get_ordered_elements_per_dim(zone)[dim]:
+    distri = MT.get_distribution(elt, 'Element')[1]
+    ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
+    end = start + PT.Element.Size(elt)
+    distri_out = distri.copy()
+    # Here we restrict the total cell distribution to ElementRange (ignoring low order elts), 
+    # then we shift it to make it start a 0
+    distri_out[0] = max(min(distri_cell[0], end), start) - start
+    distri_out[1] = max(min(distri_cell[1], end), start) - start
+    btb = EP.BlockToBlock(distri, distri_out, comm)
+    all_cell_vtx.append(btb.exchange(ec, PT.Element.NVtx(elt)))
+    all_cell_vtx_n.append(PT.Element.NVtx(elt) * np.ones(distri_out[1] - distri_out[0], np.int32))
+    start = end
+  assert end == distri_cell[-1]
+  cell_vtx_n = np.concatenate(all_cell_vtx_n, dtype=np.int32)
+  cell_vtx = np.concatenate(all_cell_vtx)
+  cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n)
+
+  return cell_vtx_idx, cell_vtx
+
 def _cell_vtx_connectivity(zone, comm):
   """
   Return cell_vtx connectivity for an input NGON Zone
   """
+  assert PT.Zone.Type(zone) == "Unstructured" and PT.Zone.CellDimension(zone) == 3
   if PT.Zone.has_ngon_elements(zone):
     ngon_node = PT.Zone.NGonNode(zone)
     face_vtx      = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
@@ -86,8 +137,8 @@ def _cell_vtx_connectivity(zone, comm):
                                                       _face_vtx_idx,
                                                       as_pdm_gnum(face_vtx),
                                                       False)
-  else:
-    raise NotImplementedError("Only NGON zones are managed")
+  else: #Unstructured 3D zones, by elements
+    return _cell_vtx_connectivity_elt(zone, comm)
 
   return cell_vtx_idx, cell_vtx
 
@@ -140,6 +191,31 @@ def compute_face_normal(zone, comm):
       return cpart_algo.compute_face_normal_u(_face_vtx_idx, *coords)
   raise NotImplementedError("Only NGON zones are managed")
 
+def compute_edge_center(zone, comm):
+  if PT.Zone.Type(zone) == "Unstructured":
+    if PT.Zone.CellDimension(zone) == 1:
+      edge_vtx_idx, edge_vtx = _cell_vtx_connectivity_elt(zone, comm)
+    else:
+      edge_vtx_idx, edge_vtx = _entity_vtx_connectivity_elt_local(zone, comm, 1)
+  else:
+    raise NotImplementedError("Only U zones are managed")
+
+  coords = PT.Zone.coordinates(zone)
+
+  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
+  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+
+  part_data = EP.block_to_part(dist_coords, vtx_distri, [edge_vtx], comm)
+  local_coords = [part_data[key][0] for key in part_data.keys()]
+
+  while len(local_coords) < 3 : #We are in phydim < 3 case, add Y and/or Z array
+    local_coords.append(np.zeros_like(local_coords[0]))
+
+  if isinstance(coords, PT.CartesianCoordinates):
+    return _mean_coords_from_connectivity(edge_vtx_idx, *local_coords)
+  elif isinstance(coords, PT.CylindricalCoordinates):
+    return _mean_coords_from_connectivity_cyl(edge_vtx_idx, *local_coords)
+
 def compute_face_center(zone, comm):
   """Compute the face center of a distributed zone.
 
@@ -154,15 +230,29 @@ def compute_face_center(zone, comm):
     face_normal (array): Flat (interlaced) numpy array of face centers
 
   """
+  zone_dim = PT.Zone.CellDimension(zone)
+  assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
+
   # TODO Implementation for U/elts
   if PT.Zone.Type(zone) == "Structured":
+    vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
+    vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
     from maia.algo.dist.s_to_u import zonedims_to_ngon
-    ngon_node = zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
+    ngon_node = zonedims_to_ngon(vtx_size, comm)
   else:
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
     else:
-      raise NotImplementedError("U/elt zones are not managed")
+      if PT.Zone.CellDimension(zone) == 2:
+        face_vtx_idx, face_vtx = _cell_vtx_connectivity_elt(zone, comm)
+        _face_vtx_idx = face_vtx_idx + face_vtx_idx[0]
+        # Lets create a fake ngon for now, we see interface later
+        ngon_node = PT.new_NGonElements(eso=_face_vtx_idx, ec=face_vtx)
+      else:
+        face_vtx_idx, face_vtx = _entity_vtx_connectivity_elt_local(zone, comm, 2)
+        # Lets create a fake ngon for now, we see interface later
+        _face_vtx_idx = face_vtx_idx + face_vtx_idx[0]
+        ngon_node = PT.new_NGonElements(eso=_face_vtx_idx, ec=face_vtx)
 
   _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
   face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
@@ -170,11 +260,14 @@ def compute_face_center(zone, comm):
   face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
 
   coords = PT.Zone.coordinates(zone)
-  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
+  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
   part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
   local_coords = [part_data[key][0] for key in part_data.keys()]
+
+  if len(local_coords) == 2 : #We are in phydim==2, Add Z array
+    local_coords.append(np.zeros_like(local_coords[0]))
 
   if isinstance(coords, PT.CartesianCoordinates):
     return _mean_coords_from_connectivity(face_vtx_idx, *local_coords)
@@ -182,7 +275,7 @@ def compute_face_center(zone, comm):
     return _mean_coords_from_connectivity_cyl(face_vtx_idx, *local_coords)
 
 def compute_cell_center(zone, comm):
-  # TODO Implementation for U/elts
+  assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
   if PT.Zone.Type(zone) == "Structured":
     cell_vtx_idx, cell_vtx = _cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone))
