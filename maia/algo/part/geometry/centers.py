@@ -1,8 +1,13 @@
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
 from   maia.algo.part import connectivity_utils as CU
 from   maia.utils     import np_utils
+from   maia.utils     import logging as mlog
+
+from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container, feed_container
 
 import cmaia.part_algo as cpart_algo
 
@@ -169,3 +174,96 @@ def compute_edge_center(zone):
       return _mean_coords_from_connectivity_cyl(edge_vtx_idx, edge_vtx, *_coords)
   else:
     raise NotImplementedError("Only U-elts zones are managed")
+
+
+def _compute_zone_centers(zone, dim):
+  """Dispatch centers computing according to zone dimension and 
+  requested dimension.
+  Return a raw interlaced array or None"""
+  zone_dim = PT.Zone.CellDimension(zone)
+  if dim == 'Cell':
+    dim = zone_dim
+  if dim == 3 and zone_dim >= 3:
+    return compute_cell_center(zone)
+  elif dim == 2 and zone_dim >= 2:
+    return compute_face_center(zone)
+  elif dim == 1 and zone_dim >= 1:
+    return compute_edge_center(zone)
+
+def compute_zone_centers(zone, dim, out_fs_name='', method='mean'):
+  """ Implementation of maia.algo.compute_centers for a given partitioned zone.
+  See the above function for full documentation """
+  
+  cell_dim = PT.Zone.CellDimension(zone)
+  rq_dim = cell_dim if dim == 'Cell' else dim
+  interlaced_centers = _compute_zone_centers(zone, rq_dim)
+  if interlaced_centers is None:
+    msg = f"Zone '{PT.get_name(zone)}' skipped in compute_centers because "\
+          f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"
+    mlog.warning(msg)
+  elif interlaced_centers.size > 0:
+    # Underlying function always return a concatenated array of size 3*n_entity
+    # We must filter it if phy_dim is lower
+    coords = PT.Zone.coordinates(zone)
+    center_names = [s.replace('Coordinate', 'Center') for s in coords._fields]
+    phy_dim  = len([c for c in coords if c is not None]) # 1, 2 or 3
+    centerx = interlaced_centers[0::3]
+    centery = interlaced_centers[1::3] if phy_dim >= 2 else None
+    centerz = interlaced_centers[2::3] if phy_dim >= 3 else None
+    centers = [centerx, centery, centerz]
+
+    output_loc = DIM_TO_LOC[cell_dim][rq_dim]
+    if PT.Zone.Type(zone) == 'Structured':
+      # Reshape is needed for S / part zones
+      if output_loc == 'FaceCenter':
+        # Zone is 3D, and we computed FaceCenter --> We have to split it into I/J/KFaceCenter
+        facesize = PT.Zone.FaceSize(zone)
+        dirfacesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize, PT.Zone.KFaceSize]
+        start = 0
+        for i,dir in enumerate(['I', 'J', 'K']):
+          end = start + facesize[i]
+          newsize = dirfacesizefunc[i](zone)
+          dircenterx = centerx[start:end].reshape(newsize, order='F')
+          dircentery = centery[start:end].reshape(newsize, order='F')
+          dircenterz = centerz[start:end].reshape(newsize, order='F')
+          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}')
+          feed_container(container, [dircenterx, dircentery, dircenterz], center_names)
+          start = end
+
+      if output_loc == 'CellCenter':
+        for dir in range(len(centers)):
+          if centers[dir] is not None:
+            centers[dir] = centers[dir].reshape(PT.Zone.CellSize(zone), order='F')
+
+        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
+        feed_container(container, centers, center_names)
+
+    else: # Unstructured
+      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
+      feed_container(container, centers, center_names)
+      if output_loc in ['EdgeCenter', 'FaceCenter']: # PointList is supposed to be mandatory. Maybe we could make it optional in maia ?
+        if PT.Zone.has_ngon_elements(zone):
+          if output_loc == 'FaceCenter':
+            ng = PT.Zone.NGonNode(zone)
+          elif output_loc == 'EdgeCenter':
+            assert PT.Zone.CellDimension(zone) == 2
+            ng = MT.Zone.EdgeNode(zone)
+          er = PT.Element.Range(ng)
+          pl = np.arange(er[0], er[1]+1, dtype=np.int32).reshape((1,-1), order='F')
+          gnum =  PT.maia.getGlobalNumbering(ng, 'Element')[1]
+        else: # Must collect faces or edge in same order than the one used to compute face centers
+          subdim = 2 if output_loc == 'FaceCenter' else 1
+          ordered_faces = PT.Zone.get_ordered_elements_per_dim(zone)[subdim]
+          sizes =  [PT.Element.Size(e) for e in ordered_faces]
+          pl = np.empty((1, sum(sizes)), order='F', dtype=np.int32)
+          start = 0
+          for i,e in enumerate(ordered_faces):
+            er = PT.Element.Range(e)
+            pl[0,start:start+sizes[i]] = np.arange(er[0], er[1]+1, dtype=np.int32)
+            start += sizes[i]
+          # For gnum, we computed on all face or edge so Element/GlobalNumbering/Sections should be fine
+          _, gnum = np_utils.concatenate_np_arrays([PT.maia.getGlobalNumbering(e, 'Sections')[1] for e in ordered_faces])
+
+        PT.new_IndexArray('PointList', pl, container)
+        PT.maia.newGlobalNumbering({'Index' : gnum}, container)
+

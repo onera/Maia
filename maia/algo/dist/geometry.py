@@ -4,9 +4,13 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.algo     import indexing
-from maia.utils    import np_utils, par_utils, s_numbering, as_pdm_gnum
+from maia.utils    import py_utils, np_utils, par_utils, s_numbering, as_pdm_gnum
 from maia.transfer import protocols as EP
 from .ngon_tools   import PDM_dfacecell_to_dcellface
+
+from maia.utils import logging as mlog
+
+from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container, feed_container
 
 import cmaia.part_algo as cpart_algo
 
@@ -288,3 +292,100 @@ def compute_cell_center(zone, comm):
     return _mean_coords_from_connectivity(cell_vtx_idx, *local_coords)
   elif isinstance(coords, PT.CylindricalCoordinates):
     return _mean_coords_from_connectivity_cyl(cell_vtx_idx, *local_coords)
+
+
+def _compute_zone_centers(zone, dim, comm):
+  """Dispatch centers computing according to zone dimension and 
+  requested dimension
+  Return a raw interlaced array or None"""
+  zone_dim = PT.Zone.CellDimension(zone)
+  if dim == 'Cell':
+    dim = zone_dim
+  if dim == 3 and zone_dim >= 3:
+    return compute_cell_center(zone, comm)
+  elif dim == 2 and zone_dim >= 2:
+    return compute_face_center(zone, comm)
+  elif dim == 1 and zone_dim >= 1:
+    return compute_edge_center(zone, comm)
+
+def compute_zone_centers(zone, dim, comm, out_fs_name='', method='mean'):
+  """ Implementation of maia.algo.compute_centers for a given distributed zone.
+  See the above function for full documentation """
+
+  cell_dim = PT.Zone.CellDimension(zone)
+  rq_dim = cell_dim if dim == 'Cell' else dim
+  interlaced_centers = _compute_zone_centers(zone, rq_dim, comm)
+  if interlaced_centers is None:
+    msg = f"Zone '{PT.get_name(zone)}' skipped in compute_centers because "\
+          f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"
+    mlog.warning(msg)
+  else:
+    # Underlying function always return a concatenated array of size 3*n_entity
+    # We must filter it if phy_dim is lower
+    coords = PT.Zone.coordinates(zone)
+    center_names = [s.replace('Coordinate', 'Center') for s in coords._fields]
+    phy_dim  = len([c for c in coords if c is not None]) # 1, 2 or 3
+    centerx = interlaced_centers[0::3]
+    centery = interlaced_centers[1::3] if phy_dim >= 2 else None
+    centerz = interlaced_centers[2::3] if phy_dim >= 3 else None
+
+    output_loc = DIM_TO_LOC[cell_dim][rq_dim]
+    if PT.Zone.Type(zone) == 'Structured':
+      if output_loc == 'FaceCenter':
+        # Zone is 3D, and we computed FaceCenter --> We have to split it into I/J/KFaceCenter
+        facesize = PT.Zone.FaceSize(zone)
+        dirfacesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize, PT.Zone.KFaceSize]
+
+        #Distribué -> répartition I,J,K  car distribution des faces calculées sur n_face_tot
+        face_distri = par_utils.dn_to_distribution(centerx.size, comm)
+        nfi, nfj, nfk = facesize
+        dfacesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0      , nfi),
+                      py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
+                      py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
+        start = 0
+        for i,dir in enumerate(['I', 'J', 'K']):
+          end = start + dfacesize[i]
+          dircenterx = centerx[start:end]
+          dircentery = centery[start:end]
+          dircenterz = centerz[start:end]
+          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}')
+          feed_container(container, [dircenterx, dircentery, dircenterz], center_names)
+          MT.newDistribution({'Index' : par_utils.dn_to_distribution(dircenterx.size, comm)}, container)
+          pr = np.ones((3,2), order='F', dtype=zone[1].dtype)
+          pr[:,1] = dirfacesizefunc[i](zone)
+          PT.new_IndexRange(value=pr, parent=container)
+          start = end
+
+      if output_loc == 'CellCenter':
+        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
+        feed_container(container, [centerx, centery, centerz], center_names)
+
+    else: # Unstructured
+      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
+      feed_container(container, [centerx, centery, centerz], center_names)
+      if output_loc in ['EdgeCenter', 'FaceCenter']: # PointList is supposed to be mandatory. Maybe we could make it optional in maia ?
+        if PT.Zone.has_ngon_elements(zone):
+          if output_loc == 'FaceCenter':
+            ng = PT.Zone.NGonNode(zone)
+          elif output_loc == 'EdgeCenter':
+            assert PT.Zone.CellDimension(zone) == 2
+            ng = MT.Zone.EdgeNode(zone)
+          er = PT.Element.Range(ng)
+          distri = MT.getDistribution(ng, 'Element')[1]
+          pl = np.arange(distri[0]+er[0], distri[1]+er[0], dtype=er.dtype).reshape((1,-1), order='F')
+        else: # Must collect faces or edge in same order than the one used to compute face centers
+          subdim = 2 if output_loc == 'FaceCenter' else 1
+          ordered_faces = PT.Zone.get_ordered_elements_per_dim(zone)[subdim]
+          distribs = [MT.getDistribution(e, 'Element')[1] for e in ordered_faces]
+          sizes =  [distri_elt[1] - distri_elt[0] for distri_elt in distribs]
+          pl = np.empty((1, sum(sizes)), dtype=zone[1].dtype, order='F')
+          start = 0
+          for i,e in enumerate(ordered_faces):
+            distri_elt = distribs[i]
+            er = PT.Element.Range(e)
+            pl[0,start:start+sizes[i]] = np.arange(distri_elt[0]+er[0], distri_elt[1]+er[0], dtype=er.dtype)
+            start += sizes[i]
+          distri = sum(distribs) # Compute global distrib
+
+        PT.new_IndexArray('PointList', pl, container)
+        PT.maia.newDistribution({'Index' : distri}, container)
