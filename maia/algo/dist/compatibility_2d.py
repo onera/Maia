@@ -60,7 +60,7 @@ def compute_face_vtx_from_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_
     uniq, idx, inv = np.unique(global_edge_vtx, return_index=True, return_inverse=True)
     local_edge_vtx = np_utils.safe_int_cast(inv+1, np.int32)
     
-    local_face_edge = (np.arange(len(face_edge), dtype=np.int32)+1)*np.sign(face_edge)
+    local_face_edge = (np.arange(len(face_edge), dtype=np.int32)+1)*np.sign(face_edge, dtype=np.int32)
     
     local_face_vtx = PDM.compute_face_vtx_from_face_and_edge(face_edge_idx,
                                                              local_face_edge,
