@@ -160,6 +160,8 @@ def compute_edge_center(zone):
     _coords.append(c if c is not None else np.zeros_like(coords[0]))
 
   if PT.Zone.Type(zone) == "Unstructured":
+    if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
+      raise NotImplementedError("Only U-elts zones are managed")
     edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
     if isinstance(coords, PT.CartesianCoordinates):
       return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, *_coords)
