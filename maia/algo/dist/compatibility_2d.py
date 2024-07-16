@@ -34,22 +34,29 @@ def convert_ngon2d_to_bar(zone):
 
 def compute_face_vtx_from_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_vtx, face_distrib, edge_distrib, comm):
     face_edge_idx = np_utils.safe_int_cast(face_edge_idx - face_edge_idx[0], np.int32)
-    edge_vtx_idx = np.arange(len(edge_vtx)//2+1, dtype=np.int32)*2 + edge_distrib[0]*2
     
     dist_data = {'connectivity' : edge_vtx}
     dist_stride = np.ones(edge_distrib[1]-edge_distrib[0], dtype=np.int32) * 2
     part_stride, part_data = EP.block_to_part_strided(dist_stride, dist_data, edge_distrib, [face_edge], comm)
-	#TO DO: change part_data to be int32 compliant
+    global_edge_vtx = part_data["connectivity"][0]
+    
+    # Convert in local numbering to be allowed to use part algo in dist context
+    uniq, idx, inv = np.unique(global_edge_vtx, return_index=True, return_inverse=True)
+    local_edge_vtx = np_utils.safe_int_cast(inv+1, np.int32)
     
     local_face_edge = (np.arange(len(face_edge), dtype=np.int32)+1)*np.sign(face_edge)
     
-    return PDM.compute_face_vtx_from_face_and_edge(face_edge_idx,
-                                                   local_face_edge,
-                                                   part_data["connectivity"][0])
+    local_face_vtx = PDM.compute_face_vtx_from_face_and_edge(face_edge_idx,
+                                                             local_face_edge,
+                                                             local_edge_vtx)
+    
+    # Return in the global numbering
+    global_face_vtx = global_edge_vtx[idx][local_face_vtx-1]
+    
+    return(global_face_vtx)
 
 
 def convert_nface2d_to_ngon(zone, comm):
-    # TO DO : gerer l'orientation des faces pour que toutes les normales soient dans la meme direction
     # > Get Bar node information
     is_bar = lambda n: (PT.get_label(n) == 'Elements_t') and (PT.get_value(n)[0] == 3)
     bar_n = PT.get_node_from_predicate(zone, is_bar)
@@ -76,13 +83,12 @@ def convert_nface2d_to_ngon(zone, comm):
     PT.set_value(nface_n, [22, 0])
 
 
-# TODO : a mettre dans node_inspect.py ?
+# TODO : a mutualiser ?
 def update_gridlocation_subset(zone, gl_in, gl_out):
     is_face_center = lambda n: (PT.get_label(n) in ['BC_t', 'GridConnectivity', 'GridConnectivity_1to1', 'ZoneSubRegion']) \
                                    and (PT.Subset.GridLocation(n) == gl_in)
     for subset_face in PT.get_nodes_from_predicate(zone, is_face_center):
-        gl_n = PT.get_child_from_name(subset_face, 'GridLocation')
-        PT.set_value(gl_n, gl_out)
+        PT.update_child(subset_face, 'GridLocation', 'GridLocation_t', gl_out)
 
 
 def bar_pe_to_nface2d(zone, comm):
