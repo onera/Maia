@@ -13,6 +13,10 @@ from maia.utils                import np_utils, par_utils
 
 
 def convert_ngon2d_to_bar(zone):
+    """
+    Function to convert, in 2D, NGon node that wrongly describe edge_vtx 
+    connectivity to BAR node
+    """
     # > Get NGon node
     ngon_n = PT.Zone.NGonNode(zone)
     # > Test if only edges in ngon_n
@@ -25,14 +29,26 @@ def convert_ngon2d_to_bar(zone):
     # > Del ESO
     PT.rm_node_from_path(ngon_n, 'ElementStartOffset')
     PT.rm_node_from_path(ngon_n, ':CGNS#Distribution/ElementConnectivity')
-    # > Change name
+    # > Change name end value (22 => 3)
     #TO DO : choix du nom : BAR_2 ou EdgeElements
     PT.set_name(ngon_n, 'EdgeElements')
-    # > Change value: 22 => 3
     PT.set_value(ngon_n, [3, 0])
 
 
+# TODO : a mutualiser ?
 def compute_face_vtx_from_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_vtx, face_distrib, edge_distrib, comm):
+    """
+    Compute face_vtx connectivity from face_edge and edge_vtx connectivities in
+    a distributed context
+
+    Args:
+      face_edge_idx (array)  : Face to edge connectivity index
+      face_edge     (array)  : Face to edge connectivity
+      edge_vtx      (array)  : Edge to vertex connectivity
+      face_distrib  (array)  : Face distribution
+      edge_distrib  (array)  : Edge distribution
+      comm          (MPIComm): MPI communicator
+    """
     face_edge_idx = np_utils.safe_int_cast(face_edge_idx - face_edge_idx[0], np.int32)
     
     dist_data = {'connectivity' : edge_vtx}
@@ -57,6 +73,10 @@ def compute_face_vtx_from_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_
 
 
 def convert_nface2d_to_ngon(zone, comm):
+    """
+    Convert, in 2D, NFace node that wrongly describe face_edge 
+    connectivity to NGOn node describing face_vtx connectivity
+    """
     # > Get Bar node information
     is_bar = lambda n: (PT.get_label(n) == 'Elements_t') and (PT.get_value(n)[0] == 3)
     bar_n = PT.get_node_from_predicate(zone, is_bar)
@@ -85,13 +105,20 @@ def convert_nface2d_to_ngon(zone, comm):
 
 # TODO : a mutualiser ?
 def update_gridlocation_subset(zone, gl_in, gl_out):
-    is_face_center = lambda n: (PT.get_label(n) in ['BC_t', 'GridConnectivity', 'GridConnectivity_1to1', 'ZoneSubRegion']) \
-                                   and (PT.Subset.GridLocation(n) == gl_in)
-    for subset_face in PT.get_nodes_from_predicate(zone, is_face_center):
+    """
+    Change all GriLocation_t nodes value in a zone
+    """
+    is_gl_in_subset = lambda n: (PT.get_label(n) in ['BC_t', 'GridConnectivity', 'GridConnectivity_1to1', 'ZoneSubRegion']) \
+                                 and (PT.Subset.GridLocation(n) == gl_in)
+    for subset_face in PT.get_nodes_from_predicate(zone, is_gl_in_subset):
         PT.update_child(subset_face, 'GridLocation', 'GridLocation_t', gl_out)
 
 
 def bar_pe_to_nface2d(zone, comm):
+    """
+    Convert, in 2D, BAR node with ParentElements node to a NFace node
+    that wrongly describe face_edge connectivity
+    """
     PT.rm_node_from_path(zone,'NGonElements')
     # > Get Bar node information
     is_bar = lambda n: (PT.get_label(n) == 'Elements_t') and (PT.get_value(n)[0] == 3)
@@ -130,6 +157,13 @@ def bar_pe_to_nface2d(zone, comm):
 
 
 def convert_cass_to_std_2d_u(dist_tree, comm):
+    """
+    Convert tree with Cassiopee standard to be CGNS 4 compliant
+
+    Args:
+      dist_tree (CGNSTree): Distributed tree
+      comm      (MPIComm) : MPI communicator
+    """
     for zone in PT.get_all_Zone_t(dist_tree):
         convert_ngon2d_to_bar(zone)
         convert_nface2d_to_ngon(zone, comm)
@@ -137,6 +171,13 @@ def convert_cass_to_std_2d_u(dist_tree, comm):
 
 
 def convert_std_to_cass_2d_u(dist_tree, comm):
+    """
+    Convert CGNS 4 compliant tree at Cassiopee standard
+
+    Args:
+      dist_tree (CGNSTree): Distributed tree
+      comm      (MPIComm) : MPI communicator
+    """
     for zone in PT.get_all_Zone_t(dist_tree):
         bar_pe_to_nface2d(zone, comm)
         update_gridlocation_subset(zone, 'EdgeCenter', 'FaceCenter')
