@@ -299,7 +299,7 @@ def _compute_zone_centers(zone, dim, comm):
   requested dimension
   Return a raw interlaced array or None"""
   zone_dim = PT.Zone.CellDimension(zone)
-  if dim == 'Cell':
+  if dim == 'CellCenter':
     dim = zone_dim
   if dim == 3 and zone_dim >= 3:
     return compute_cell_center(zone, comm)

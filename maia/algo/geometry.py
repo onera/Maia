@@ -5,42 +5,16 @@ from maia.algo.apply_function_to_nodes import zones_iterator
 from .dist import geometry as dist_geometry
 from .part import geometry as part_geometry
 
-def _compute_vol_center(zone, comm=None):
-  if MT.getDistribution(zone) is not None:
-    assert comm is not None
-    return dist_geometry.compute_cell_center(zone, comm)
-  else:
-    return part_geometry.compute_cell_center(zone)
 
-def _compute_face_center(zone, comm=None):
-  if MT.getDistribution(zone) is not None:
-    assert comm is not None
-    return dist_geometry.compute_face_center(zone, comm)
-  else:
-    return part_geometry.compute_face_center(zone)
-
-def _compute_edge_center(zone, comm=None):
-  if MT.getDistribution(zone) is not None:
-    assert comm is not None
-    return dist_geometry.compute_edge_center(zone, comm)
-  else:
-    return part_geometry.compute_edge_center(zone)
-
-def _compute_centers(zone, dim, comm=None):
+def _compute_zone_centers(zone, dim, comm=None):
   """Dispatch centers computing according to zone dimension and 
   requested dimension """
-  zone_dim = PT.Zone.CellDimension(zone)
-  if dim == 'Cell':
-    dim = zone_dim
-  if dim == 3 and zone_dim >= 3:
-    return _compute_vol_center(zone, comm)
-  elif dim == 2 and zone_dim >= 2:
-    return _compute_face_center(zone, comm)
-  elif dim == 1 and zone_dim >= 1:
-    return _compute_edge_center(zone, comm)
+  if MT.getDistribution(zone) is not None:
+    assert comm is not None
+    return dist_geometry._compute_zone_centers(zone, dim, comm)
+  else:
+    return part_geometry._compute_zone_centers(zone, dim)
   
-
-
 
 def compute_centers(t, dim, comm=None):
   """Compute the centers of the specified mesh entity.
