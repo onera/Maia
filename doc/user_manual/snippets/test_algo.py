@@ -142,6 +142,17 @@ def test_compute_cell_center():
     cell_center = maia.algo.part.compute_cell_center(zone)
   #compute_cell_center@end
 
+def test_compute_centers():
+  #compute_centers@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
+
+  maia.algo.compute_centers(dist_tree, 3, MPI.COMM_WORLD)
+  assert maia.pytree.get_node_from_name(dist_tree, 'Geometry_3d') is not None
+  #compute_centers@end
+
 def test_compute_face_center():
   #compute_face_center@start
   from mpi4py import MPI

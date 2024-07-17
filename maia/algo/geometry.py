@@ -42,43 +42,53 @@ def _compute_centers(zone, dim, comm=None):
 
 
 
-def compute_centers(t, dim, comm=None, out_fs_name='', method='mean'):
-  """Compute the cell centers of a partitioned zone.
+def compute_centers(t, dim, comm=None):
+  """Compute the centers of the specified mesh entity.
 
-  Input zone must have cartesian or cylindrical coordinates recorded under a unique
-  GridCoordinates node.
-  Centers are computed using a basic average over the vertices of the cells.
+  The mesh entity on which centers are computed must be specified using
+  ``dim`` parameter: values of 3, 2, and 1 correspond respectively to cells,
+  faces and edges. 
+  For convenience, the keyword ``CellCenter`` can be used to indicate, on
+  each zone, the higher avalaible dimension. The following table summarizes
+  the possibilities; note that some combinations do not make sense (zones in this
+  situtation are skipped).
+
+  +---------+-------+-------+-------+----------------+
+  |         | dim=1 | dim=2 | dim=3 | dim=CellCenter |
+  +=========+=======+=======+=======+================+
+  | 3D mesh | Edges | Faces | Cells | Cells          |
+  +---------+-------+-------+-------+----------------+
+  | 2D mesh | Edges | Faces |       | Faces          |
+  +---------+-------+-------+-------+----------------+
+  | 1D mesh | Edges |       |       | Edges          |
+  +---------+-------+-------+-------+----------------+
+
+  Warning:
+    For structured meshes, ``dim = 1`` is not yet implemented.
+
+  Centers are computed using a basic average over the vertices of the entity.
+  Cartesian and cylindrical coordinates are supported.
+
+  Input tree is modified inplace : results are stored in a
+  ``DiscreteData_t`` container named ``Geometry_{3|2|1}d``. Note that for
+  unstructured zones described by standard elements, centers are computed
+  only for elements explicitly defined in sections.
 
   Args:
-    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
-    dim  (int): XXXXX
+    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
+    dim  (int or 'CellCenter'): Entity on which centers are computed (see above)
     comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #compute_cell_center@start
-        :end-before: #compute_cell_center@end
+        :start-after: #compute_centers@start
+        :end-before: #compute_centers@end
         :dedent: 2
-  """
-
-  """       VolCenter     FaceCenter    EdgeCenter   | CellCenter
-  dim 3        X              X             X        |     Volu
-  dim 2                       X             X        |     Face
-  dim 1                                     X        |     Edge
-  
-  Maillages (celldim / phydim): 3D(3), 2D(3), 2D(2), 1D(3), 1D(2), 1D(1) --> 6 choix
-  Connectivity : Ungon / Uelt / S   ---> 3 choix
-  Parallel : Dist / part --> 2 choix 
-  Cartésien / Cylindrique --> 2 choix
-  Total : 6*3*2*2 = 72 possibilité
-
-
   """
 
   for zone in zones_iterator(t):
     
     if MT.getDistribution(zone) is not None:
-      # call distributed
-      dist_geometry.compute_zone_centers(zone, dim, comm, out_fs_name, method)
+      dist_geometry.compute_zone_centers(zone, dim, comm)
     else:
-      part_geometry.compute_zone_centers(zone, dim, out_fs_name, method)
+      part_geometry.compute_zone_centers(zone, dim)

@@ -190,12 +190,12 @@ def _compute_zone_centers(zone, dim):
   elif dim == 1 and zone_dim >= 1:
     return compute_edge_center(zone)
 
-def compute_zone_centers(zone, dim, out_fs_name='', method='mean'):
+def compute_zone_centers(zone, dim):
   """ Implementation of maia.algo.compute_centers for a given partitioned zone.
   See the above function for full documentation """
   
   cell_dim = PT.Zone.CellDimension(zone)
-  rq_dim = cell_dim if dim == 'Cell' else dim
+  rq_dim = cell_dim if dim == 'CellCenter' else dim
   interlaced_centers = _compute_zone_centers(zone, rq_dim)
   if interlaced_centers is None:
     msg = f"Zone '{PT.get_name(zone)}' skipped in compute_centers because "\
