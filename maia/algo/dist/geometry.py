@@ -10,7 +10,7 @@ from .ngon_tools   import PDM_dfacecell_to_dcellface
 
 from maia.utils import logging as mlog
 
-from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container, feed_container
+from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container
 
 import cmaia.part_algo as cpart_algo
 
@@ -325,9 +325,8 @@ def compute_zone_centers(zone, dim, comm):
     coords = PT.Zone.coordinates(zone)
     center_names = [s.replace('Coordinate', 'Center') for s in coords._fields]
     phy_dim  = len([c for c in coords if c is not None]) # 1, 2 or 3
-    centerx = interlaced_centers[0::3]
-    centery = interlaced_centers[1::3] if phy_dim >= 2 else None
-    centerz = interlaced_centers[2::3] if phy_dim >= 3 else None
+    centers = {name : interlaced_centers[i::3] \
+               for i,name in enumerate(center_names) if i < phy_dim}
 
     output_loc = DIM_TO_LOC[cell_dim][rq_dim]
     if PT.Zone.Type(zone) == 'Structured':
@@ -337,7 +336,7 @@ def compute_zone_centers(zone, dim, comm):
         dirfacesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize, PT.Zone.KFaceSize]
 
         #Distribué -> répartition I,J,K  car distribution des faces calculées sur n_face_tot
-        face_distri = par_utils.dn_to_distribution(centerx.size, comm)
+        face_distri = par_utils.dn_to_distribution(next(iter(centers.values())).size, comm)
         nfi, nfj, nfk = facesize
         dfacesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0      , nfi),
                       py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
@@ -345,24 +344,19 @@ def compute_zone_centers(zone, dim, comm):
         start = 0
         for i,dir in enumerate(['I', 'J', 'K']):
           end = start + dfacesize[i]
-          dircenterx = centerx[start:end]
-          dircentery = centery[start:end]
-          dircenterz = centerz[start:end]
-          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}')
-          feed_container(container, [dircenterx, dircentery, dircenterz], center_names)
-          MT.newDistribution({'Index' : par_utils.dn_to_distribution(dircenterx.size, comm)}, container)
+          dircenter = {key: val[start:end] for key,val in centers.items()}
+          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
+          MT.newDistribution({'Index' : par_utils.dn_to_distribution(dfacesize[i], comm)}, container)
           pr = np.ones((3,2), order='F', dtype=zone[1].dtype)
           pr[:,1] = dirfacesizefunc[i](zone)
           PT.new_IndexRange(value=pr, parent=container)
           start = end
 
       if output_loc == 'CellCenter':
-        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
-        feed_container(container, [centerx, centery, centerz], center_names)
+        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
 
     else: # Unstructured
-      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
-      feed_container(container, [centerx, centery, centerz], center_names)
+      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
       if output_loc in ['EdgeCenter', 'FaceCenter']: # PointList is supposed to be mandatory. Maybe we could make it optional in maia ?
         if PT.Zone.has_ngon_elements(zone):
           if output_loc == 'FaceCenter':

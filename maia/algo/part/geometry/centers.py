@@ -7,7 +7,7 @@ from   maia.algo.part import connectivity_utils as CU
 from   maia.utils     import np_utils
 from   maia.utils     import logging as mlog
 
-from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container, feed_container
+from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container
 
 import cmaia.part_algo as cpart_algo
 
@@ -207,10 +207,8 @@ def compute_zone_centers(zone, dim):
     coords = PT.Zone.coordinates(zone)
     center_names = [s.replace('Coordinate', 'Center') for s in coords._fields]
     phy_dim  = len([c for c in coords if c is not None]) # 1, 2 or 3
-    centerx = interlaced_centers[0::3]
-    centery = interlaced_centers[1::3] if phy_dim >= 2 else None
-    centerz = interlaced_centers[2::3] if phy_dim >= 3 else None
-    centers = [centerx, centery, centerz]
+    centers = {name : interlaced_centers[i::3] \
+               for i,name in enumerate(center_names) if i < phy_dim}
 
     output_loc = DIM_TO_LOC[cell_dim][rq_dim]
     if PT.Zone.Type(zone) == 'Structured':
@@ -223,24 +221,19 @@ def compute_zone_centers(zone, dim):
         for i,dir in enumerate(['I', 'J', 'K']):
           end = start + facesize[i]
           newsize = dirfacesizefunc[i](zone)
-          dircenterx = centerx[start:end].reshape(newsize, order='F')
-          dircentery = centery[start:end].reshape(newsize, order='F')
-          dircenterz = centerz[start:end].reshape(newsize, order='F')
-          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}')
-          feed_container(container, [dircenterx, dircentery, dircenterz], center_names)
+          dircenter = {key: val[start:end].reshape(newsize, order='F') \
+                       for key, val in centers.items()}
+          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
           start = end
 
       if output_loc == 'CellCenter':
-        for dir in range(len(centers)):
-          if centers[dir] is not None:
-            centers[dir] = centers[dir].reshape(PT.Zone.CellSize(zone), order='F')
+        centers = {key: val.reshape(PT.Zone.CellSize(zone), order='F') \
+                   for key, val in centers.items()}
 
-        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
-        feed_container(container, centers, center_names)
+        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
 
     else: # Unstructured
-      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc)
-      feed_container(container, centers, center_names)
+      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
       if output_loc in ['EdgeCenter', 'FaceCenter']: # PointList is supposed to be mandatory. Maybe we could make it optional in maia ?
         if PT.Zone.has_ngon_elements(zone):
           if output_loc == 'FaceCenter':
