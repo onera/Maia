@@ -435,13 +435,11 @@ def test_pe_to_ngon():
   #edge_pe_to_ngon@start
   from mpi4py import MPI
   import maia
-  import maia.pytree as PT
   tree = maia.factory.generate_dist_sphere(5, 'NGON_n', MPI.COMM_WORLD)
 
-  for zone in maia.pytree.get_all_Zone_t(tree):
-    PT.rm_nodes_from_name(zone, 'NGonElements')
-    maia.algo.edge_pe_to_ngon(zone, MPI.COMM_WORLD)
-    assert maia.pytree.get_child_from_name(zone, 'NGonElements') is not None
+  maia.pytree.rm_nodes_from_name(tree, 'NGonElements')
+  maia.algo.edge_pe_to_ngon(tree, MPI.COMM_WORLD)
+  assert maia.pytree.get_node_from_name(tree, 'NGonElements') is not None
   #edge_pe_to_ngon@end
 
 def test_poly_new_to_old():

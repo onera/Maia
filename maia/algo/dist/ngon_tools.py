@@ -55,7 +55,7 @@ def pe_to_nface(zone, comm, remove_PE=False):
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
   assert PT.Element.Range(ngon_node)[0] == 1
-  local_pe = indexing.get_ngon_pe_local(ngon_node).reshape(-1, order='C')
+  local_pe = indexing.get_pe_local(ngon_node).reshape(-1, order='C')
 
   cell_face_idx, cell_face = PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, local_pe)
   cell_face_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Zone.n_face(zone)
@@ -207,7 +207,7 @@ def edge_pe_to_ngon(zone, comm, remove_PE=False):
   ngon_distri = MT.getDistribution(zone, 'Cell')[1] # ngon = face = cell in tree
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   assert PT.Element.Range(edge_node)[0] == 1
-  local_pe = indexing.get_edge_pe_local(edge_node).reshape(-1, order='C')
+  local_pe = indexing.get_pe_local(edge_node).reshape(-1, order='C')
   edge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
 
   face_edge_idx, face_edge = PDM_dfacecell_to_dcellface(comm, edge_distri, face_distri, local_pe)

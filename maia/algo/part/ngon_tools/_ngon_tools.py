@@ -11,11 +11,12 @@ from maia.utils import np_utils
 import cmaia.part_algo as cpart_algo
 
 def PDM_face_vtx_from_face_and_edge(face_edge_idx, face_edge, edge_vtx):
+  # Cast are not necessary since partitionned meshes are supposed to be int32
   _face_edge_idx = np_utils.safe_int_cast(face_edge_idx, np.int32)
   _face_edge     = np_utils.safe_int_cast(face_edge, np.int32)
   _edge_vtx      = np_utils.safe_int_cast(edge_vtx, np.int32)
   _face_vtx      = PDM.compute_face_vtx_from_face_and_edge(_face_edge_idx, _face_edge, _edge_vtx)
-  return np_utils.safe_int_cast(_face_vtx, dtype=np.int32)
+  return np_utils.safe_int_cast(_face_vtx, dtype=face_edge.dtype)
 
 
 def pe_to_nface(zone, remove_PE=False):
@@ -34,7 +35,7 @@ def pe_to_nface(zone, remove_PE=False):
   max_cell = np.max(pe)
   min_cell = np.min(pe[np.nonzero(pe)])
 
-  local_pe = indexing.get_ngon_pe_local(ngon_node)
+  local_pe = indexing.get_pe_local(ngon_node)
 
   nface_eso, nface_ec = cpart_algo.local_pe_to_local_cellface(local_pe) #Compute NFace connectivity
 
@@ -101,7 +102,7 @@ def edge_pe_to_ngon(zone, remove_PE=False):
   pe = PT.get_child_from_name(edge_node, 'ParentElements')[1]
   max_face = np.max(pe)
   min_face = np.min(pe[np.nonzero(pe)])
-  local_pe = indexing.get_edge_pe_local(edge_node)
+  local_pe = indexing.get_pe_local(edge_node)
   edge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
 
   ngon_eso, face_edge = cpart_algo.local_pe_to_local_cellface(local_pe)
