@@ -50,7 +50,7 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
         leaf = nodes[-1]
         childs = list()
         for query in child_list:
-          # Convert to a list of size 1 to use get_children_from_predicates, who works on a predicate-like list 
+          # Convert to a list of size 1 to use get_children_from_predicates, who works on a predicate-like list
           childs.extend(PT.get_children_from_predicates(leaf, [query]))
         collected_part_nodes[leaf_path] = (labels, values, childs)
 
@@ -164,19 +164,30 @@ def _recover_elements(dist_zone, part_zones, comm):
   elt_kinds = [PT.Element.CGNSName(elt) for elt in PT.get_children(fake_zone)]
   has_ngon  = 'NGON_n'  in elt_kinds
   has_nface = 'NFACE_n' in elt_kinds
+  has_edge  = 'BAR_2'   in elt_kinds
 
-  # Deal NGon/NFace
+  # Deal Edge/NGon & NGon/NFace
   if has_ngon:
-    assert all([kind in ['NGON_n', 'NFACE_n'] for kind in elt_kinds])
-    ngon_name = elt_names[elt_kinds.index('NGON_n')]
-    IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
-    if has_nface:
-      nface_name = elt_names[elt_kinds.index('NFACE_n')]
-      IPTB.part_nface_to_dist_nface(dist_zone, part_zones, nface_name, ngon_name, comm)
-      # > Shift nface element_range and create all cell distri
-      n_face_tot  = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1][1]
-      nface_range = PT.get_node_from_path(dist_zone, f'{nface_name}/ElementRange')[1]
-      nface_range += n_face_tot
+    assert all([kind in ['NGON_n', 'NFACE_n', 'BAR_2'] for kind in elt_kinds])
+    if has_edge:
+      edge_name = elt_names[elt_kinds.index('BAR_2')]
+      IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, edge_name, comm)
+      ngon_name = elt_names[elt_kinds.index('NGON_n')]
+      IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
+      # > Shift ngon element_range and create all cell distri
+      n_edge_tot  = PT.get_node_from_path(dist_zone, f'{edge_name}/ElementRange')[1][1]
+      ngon_range = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1]
+      ngon_range += n_edge_tot
+    else:
+      ngon_name = elt_names[elt_kinds.index('NGON_n')]
+      IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
+      if has_nface:
+        nface_name = elt_names[elt_kinds.index('NFACE_n')]
+        IPTB.part_nface_to_dist_nface(dist_zone, part_zones, nface_name, ngon_name, comm)
+        # > Shift nface element_range and create all cell distri
+        n_face_tot  = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1][1]
+        nface_range = PT.get_node_from_path(dist_zone, f'{nface_name}/ElementRange')[1]
+        nface_range += n_face_tot
 
   # Deal standard elements
   else:
@@ -194,7 +205,7 @@ def _recover_elements(dist_zone, part_zones, comm):
     n_increase = comm.allreduce(elt_order.count(1),  MPI.SUM)
     n_decrease = comm.allreduce(elt_order.count(-1), MPI.SUM)
     assert n_increase * n_decrease == 0
-    
+
     if n_increase > 0:
       for elt in elt_nodes:
         dim_shift = sum(n_elt_per_dim[:PT.Element.Dimension(elt)])
@@ -220,7 +231,7 @@ def _recover_BC(dist_zone, part_zones, comm):
       IPTB.part_pr_to_dist_pr(dist_zone, part_zones, bc_path, comm)
 
 def _recover_GC(dist_zone, part_zones, comm):
-  is_gc       = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+  is_gc       = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   is_gc_intra = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
 
   gc_predicate = ['ZoneGridConnectivity_t', is_gc_intra]
@@ -276,7 +287,7 @@ def _recover_base_iterative_data(dist_tree, part_tree, comm):
 
 def recover_dist_tree(part_tree, comm):
   """ Regenerate a distributed tree from a partitioned tree.
-  
+
   The partitioned tree should have been created using Maia, or
   must at least contains GlobalNumbering nodes as defined by Maia
   (see :ref:`part_tree`).
@@ -313,7 +324,7 @@ def recover_dist_tree(part_tree, comm):
 
     part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
 
-    discover_nodes_from_matching(dist_zone, part_zones, "ZoneIterativeData_t/*", 
+    discover_nodes_from_matching(dist_zone, part_zones, "ZoneIterativeData_t/*",
                                  comm, get_value="all")
 
     # Create zone distributions
@@ -340,7 +351,7 @@ def recover_dist_tree(part_tree, comm):
       coords_name = PT.Zone.coordinates(part_zones[0])._fields
       transform_n = PT.get_node_from_predicates(part_zones[0], 'GridCoordinates_t/CoordinateTransform')
       owner = comm.Get_rank()
-  
+
     root = comm.allreduce(owner, MPI.MAX) # Find a rank knowing partitioned data for this zone
     coords_name, transform_n = comm.bcast((coords_name, transform_n), root)
 

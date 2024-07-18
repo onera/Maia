@@ -11,6 +11,7 @@ import maia
 from maia.utils         import test_utils as TU
 from maia.factory import generate_dist_block
 from maia import npy_pdm_gnum_dtype as pdm_dtype
+from maia.factory import dsphere_generator as DSG
 
 from maia.factory import dist_from_part as DFP
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
@@ -241,9 +242,9 @@ def test_get_joins_dist_tree(comm):
           GridLocation GridLocation_t "Vertex":
           PointList IndexArray_t [[8,3,5]]:
           :CGNS#GlobalNumbering UserDefinedData_t:
-            Index DataArray_t [3,1,2]: 
+            Index DataArray_t [3,1,2]:
       :CGNS#GlobalNumbering UserDefinedData_t:
-        Vertex DataArray_t [10,20,30,40,50,60,70,80,90,100]: 
+        Vertex DataArray_t [10,20,30,40,50,60,70,80,90,100]:
   """
   expected_dt =  f"""
   BaseI CGNSBase_t:
@@ -256,7 +257,7 @@ def test_get_joins_dist_tree(comm):
           GridLocation GridLocation_t "Vertex":
           PointList IndexArray_t [[30,50,80]]:
           :CGNS#Distribution UserDefinedData_t:
-            Index DataArray_t {dtype} [0,3,3]: 
+            Index DataArray_t {dtype} [0,3,3]:
   """
   part_tree = PT.yaml.to_cgns_tree(pt)
   expected_base = PT.yaml.to_node(expected_dt)
@@ -438,7 +439,7 @@ def test_recover_dist_tree_elt(void_part, comm):
 
   for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
     PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
-  
+
   assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Input tree is pdm dtype
 
 @pytest_parallel.mark.parallel(3)
@@ -457,3 +458,11 @@ def test_recover_dist_tree_s(comm):
 
   assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
 
+@pytest_parallel.mark.parallel(3)
+def test_recover_dist_tree_edge(comm):
+  dist_tree_bck = DSG.generate_dist_sphere(5, 'NGON_n', comm)
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree_bck, comm)
+
+  dist_tree = maia.factory.recover_dist_tree(part_tree, comm)
+  assert maia.pytree.is_same_tree(dist_tree, dist_tree_bck)
