@@ -72,7 +72,7 @@ def _cell_vtx_connectivity(zone, comm):
 
     else:
       assert PT.Element.Range(ngon_node)[0] == 1
-      local_pe = indexing.get_ngon_pe_local(ngon_node).reshape(-1, order='C')
+      local_pe = indexing.get_pe_local(ngon_node).reshape(-1, order='C')
       cell_distri   = MT.get_distribution(zone, 'Cell')[1]
       _cell_distri  = par_utils.partial_to_full_distribution(cell_distri, comm)
       _cell_face_idx, cell_face = PDM_dfacecell_to_dcellface(comm, _face_distri, _cell_distri, local_pe)

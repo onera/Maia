@@ -111,7 +111,7 @@ def test_merge_zones_from_family():
 
   # FamilyName are not included in the mesh
   for zone in PT.get_all_Zone_t(dist_tree):
-    PT.new_child(zone, 'FamilyName', 'FamilyName_t', 'Naca0012')  
+    PT.new_child(zone, 'FamilyName', 'FamilyName_t', 'Naca0012')
 
   maia.algo.dist.merge_zones_from_family(dist_tree, 'Naca0012', MPI.COMM_WORLD)
 
@@ -259,7 +259,7 @@ def test_extract_from_bc_name():
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  
+
   maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   extracted_bc = maia.algo.part.extract_part_from_bc_name(part_tree, \
@@ -276,7 +276,7 @@ def test_extract_from_family():
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-  
+
   maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   extracted_bc = maia.algo.part.extract_part_from_family(part_tree, \
@@ -431,6 +431,17 @@ def test_nface_to_pe():
   assert maia.pytree.get_node_from_name(tree, 'ParentElements') is not None
   #nface_to_pe@end
 
+def test_pe_to_ngon():
+  #edge_pe_to_ngon@start
+  from mpi4py import MPI
+  import maia
+  tree = maia.factory.generate_dist_sphere(5, 'NGON_n', MPI.COMM_WORLD)
+
+  maia.pytree.rm_nodes_from_name(tree, 'NGonElements')
+  maia.algo.edge_pe_to_ngon(tree, MPI.COMM_WORLD)
+  assert maia.pytree.get_node_from_name(tree, 'NGonElements') is not None
+  #edge_pe_to_ngon@end
+
 def test_poly_new_to_old():
   #poly_new_to_old@start
   import maia
@@ -555,9 +566,9 @@ def test_recover1to1():
   PT.rm_nodes_from_name(dist_tree, 'GridConnectivityProperty')
 
   # Create FamilyName on interface nodes
-  PT.new_node('FamilyName', 'FamilyName_t', 'Side1', 
+  PT.new_node('FamilyName', 'FamilyName_t', 'Side1',
           parent=PT.get_node_from_name(dist_tree, 'matchA'))
-  PT.new_node('FamilyName', 'FamilyName_t', 'Side2', 
+  PT.new_node('FamilyName', 'FamilyName_t', 'Side2',
           parent=PT.get_node_from_name(dist_tree, 'matchB'))
 
   maia.algo.dist.connect_1to1_families(dist_tree, ('Side1', 'Side2'), MPI.COMM_WORLD,
@@ -626,7 +637,7 @@ def test_cartesian_to_cylindrical():
 
   assert maia.pytree.get_node_from_name(dist_tree, 'CoordinateR') is not None
   #cartesian_to_cylindrical@end
-  
+
 def test_cylindrical_to_cartesian():
   #cylindrical_to_cartesian@start
   import mpi4py.MPI as MPI

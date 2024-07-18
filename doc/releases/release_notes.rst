@@ -15,6 +15,7 @@ Developpement version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``remove_degen_faces_from_family``
+- Algo module: add ``edge_pe_to_ngon`` to convert 2D polyhedric connectivities
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^

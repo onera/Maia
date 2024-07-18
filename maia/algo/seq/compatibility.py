@@ -51,7 +51,7 @@ def enforce_ngon_pe_local(t):
     except RuntimeError: #If no NGon, go to next zone
       continue
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')
-    pe[1] = maia.algo.indexing.get_ngon_pe_local(ngon_node)
+    pe[1] = maia.algo.indexing.get_pe_local(ngon_node)
 
 def poly_new_to_old(tree, full_onera_compatibility=True):
   """
@@ -91,7 +91,7 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
         if pe_node:
           # pe = PT.get_value(pe_node)
           # pe += (-nface_range[0]+1)*(pe>0)
-          pe_node[1] = maia.algo.indexing.get_ngon_pe_local(ngon)
+          pe_node[1] = maia.algo.indexing.get_pe_local(ngon)
 
         if has_nface:
           # 2. do not use a signed NFace connectivity
