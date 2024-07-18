@@ -7,6 +7,8 @@ import maia.pytree as PT
 
 from maia.algo.dist import mesh_adaptation as MA
 
+from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
+
 import numpy as np
 
 feflo_exists = shutil.which('feflo.a') is not None
@@ -60,18 +62,34 @@ def test_unpack_metric():
 
 @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
 @pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize('multi_elt' , [False, True])
 @pytest.mark.parametrize('custom_dir', [False, True])
-def test_adapt_with_feflo(comm, custom_dir):
+def test_adapt_with_feflo(comm, multi_elt, custom_dir):
+  import os
+  import maia.utils.test_utils as TU
 
-  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', comm)
+  if multi_elt:
+    yaml_path = os.path.join(TU.mesh_dir, 'multi_element.yaml')
+    dist_tree = maia.io.file_to_dist_tree(yaml_path, comm)
+  else:
+    dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', comm)
+  
   base = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
   zone = PT.get_node_from_label(dist_tree, 'Zone_t')
   PT.set_name(zone, 'MyZone')
-  bc = PT.get_node_from_name(zone, 'Xmin')
-  PT.set_value(bc, 'FamilySpecified')
-  PT.new_child(bc, 'FamilyName', 'FamilyName_t', 'SomeFamily')
 
-  PT.new_child(base, 'SomeFamily', 'Family_t')
+  # > To check meshb_reader after feflo since it doesn't preserve volumic BCs when multiple 3d elements
+  if not multi_elt:
+    zone_bc = PT.get_node_from_label(zone, 'ZoneBC_t')
+    cell_distrib = PT.maia.getDistribution(zone, "Cell")[1]
+    cell_pl = np.arange(cell_distrib[0], cell_distrib[1], dtype=pdm_gnum_dtype).reshape((1,-1), order='F')+1
+    cell_bc = PT.new_BC("vol_bc", type="BCWall", loc="CellCenter", point_list=cell_pl, parent=zone_bc)
+    PT.maia.newDistribution({"Index":cell_distrib}, parent=cell_bc)
+
+    bc = PT.get_node_from_name(zone, 'Xmin')
+    PT.set_value(bc, 'FamilySpecified')
+    PT.new_child(bc, 'FamilyName', 'FamilyName_t', 'SomeFamily')
+    PT.new_child(base, 'SomeFamily', 'Family_t')
 
   # > Create a metric field
   cx, cy, cz = PT.Zone.coordinates(zone)
@@ -92,10 +110,20 @@ def test_adapt_with_feflo(comm, custom_dir):
   adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
   assert PT.get_name(adpt_zone) == 'MyZone'
   assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(zone)
-  adpt_bc = PT.get_node_from_name(adpt_zone, 'Xmin')
-  assert PT.get_value(adpt_bc) == 'FamilySpecified'
-  assert PT.get_value(PT.get_child_from_name(adpt_bc, 'FamilyName')) == 'SomeFamily'
-  assert PT.get_node_from_name_and_label(adpt_dist_tree, 'SomeFamily', 'Family_t') is not None
+
+  is_cell_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "CellCenter"
+  if multi_elt:
+    assert len(PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc))==0
+  else:
+    adpt_bc = PT.get_node_from_name(adpt_zone, 'Xmin')
+    assert PT.get_value(adpt_bc) == 'FamilySpecified'
+    assert PT.get_value(PT.get_child_from_name(adpt_bc, 'FamilyName')) == 'SomeFamily'
+    assert PT.get_node_from_name_and_label(adpt_dist_tree, 'SomeFamily', 'Family_t') is not None
+
+    cell_bc_nodes = PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc)
+    assert len(PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc))==1
+    assert PT.get_name(cell_bc_nodes[0])=='vol_bc'
+
 
 @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
 @pytest_parallel.mark.parallel(2)
@@ -139,7 +167,7 @@ def test_periodic_adapt_with_feflo(comm):
 
 @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
 @pytest_parallel.mark.parallel(4)
-def test_periodic_adapt_with_feflo(comm):
+def test_periodic_adapt_with_feflo_axisym(comm):
 
   # > Read axisym mesh
   from   maia.utils.test_utils import mesh_dir

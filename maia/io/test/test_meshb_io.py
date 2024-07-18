@@ -170,7 +170,8 @@ def test_meshb_to_cgns(multi_elt, comm):
     for elt_name, n_elt in n_elts.items():
       elt_n = PT.get_node_from_name_and_label(zone_n, elt_name, 'Elements_t')
       assert PT.maia.getDistribution(elt_n, 'Element')[1][2]==n_elt
-
+    assert PT.get_node_from_name_and_label(meshb_dist_tree, 'bcv1', 'BC_t') is not None
+    assert PT.get_node_from_name_and_label(meshb_dist_tree, 'bcv2', 'BC_t') is not None
 
   else:
       assert PT.is_same_tree(dist_tree_bck, meshb_dist_tree, abs_tol=1E-12)

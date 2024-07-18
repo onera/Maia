@@ -59,11 +59,12 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
   tmp_repo   = Path(tmp_dir)
 
   # Input/output files
-  in_file_solb  = tmp_repo / 'metric.sol'
-  in_file_fldb  = tmp_repo / 'field.sol'
-  in_files = {'mesh': tmp_repo / 'mesh.mesh',
-              'sol' : in_file_solb,
-              'fld' : in_file_fldb}
+  in_file_mshb  = 'mesh.mesh'
+  in_file_solb  = 'metric.sol'
+  in_file_fldb  = 'field.sol'
+  in_files = {'mesh': tmp_repo / in_file_mshb,
+              'sol' : tmp_repo / in_file_solb,
+              'fld' : tmp_repo / in_file_fldb}
 
   out_files = {'mesh': tmp_repo / 'mesh.o.mesh',
                'sol' : tmp_repo / 'mesh.o.sol' ,
@@ -95,7 +96,7 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
 
     # Adapt with feflo
     feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(container_names)!=0 else []
-    feflo_command  = ['feflo.a', '-in', str(in_files['mesh'])] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()        
+    feflo_command  = ['feflo.a', '-in', in_file_mshb] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()        
     if len(constraint_tags['FaceCenter'])!=0:
       feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(constraint_tags['FaceCenter'])]#[str(tag) for tag in constraint_tags['FaceCenter']]
     if len(constraint_tags['EdgeCenter'])!=0:
@@ -110,13 +111,20 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
     mlog.info(f"Start mesh adaptation using Feflo...")
     start = time.time()
     
-    subprocess.run(feflo_command, shell=True)
+    subprocess.run(feflo_command, shell=True, cwd=Path(tmp_dir))
 
     end = time.time()
     mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s)")
 
 
   # > Get adapted dist_tree
+  # > For mesh with various 3d element type, feflo doesn't write groups...
+  multi_elmt = PT.get_child_from_predicate(input_zone, lambda n : PT.get_label(n) == 'Elements_t' and\
+                                                                  PT.Element.Dimension(n) == 3 and\
+                                                                  PT.Element.CGNSName(n) != 'TETRA_4') is not None
+  if multi_elmt:
+    tree_info["bc_names"]["CellCenter"] = list()
+    mlog.warning("feflo.a do not seems to manage cell BCs in multi-element meshes, they will be missing in resulting CGNS.")
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
   # > Set names and copy base data
