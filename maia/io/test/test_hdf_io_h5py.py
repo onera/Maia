@@ -100,7 +100,7 @@ def test_write_partial(comm, tmp_path):
   tree = PT.yaml.to_cgns_tree(yt)
   with TU.collective_tmp_dir(comm) as tmpdir:
     filename = str(Path(tmpdir) / 'out.hdf')
-    IOH.write_partial(filename, tree, hdf_filter, comm)
+    IOH.write_partial(filename, tree, hdf_filter, [], comm)
     comm.barrier()
 
     if comm.rank == 0:

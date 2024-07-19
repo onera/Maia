@@ -13,6 +13,8 @@ from .fix_tree      import fix_point_ranges, corr_index_range_names,\
                            add_missing_pr_in_bcdataset, check_datasize, \
                            fix_structured_pr_shape
 
+from maia.utils import logging as mlog
+
 def _prod(seq):
   out = 1
   for elt in seq:
@@ -69,7 +71,7 @@ def load_partial(filename, dist_tree, hdf_filter):
       gid = open_from_path(fid, path)
       node[1] = load_data_partial(gid, filter)
 
-def write_partial(filename, dist_tree, hdf_filter, comm):
+def write_partial(filename, dist_tree, hdf_filter, links, comm):
 
   if comm.Get_rank() == 0:
     def write_data(N,L,s):
@@ -77,6 +79,8 @@ def write_partial(filename, dist_tree, hdf_filter, comm):
         return '/'.join(N) not in hdf_filter
       return True
     write_tree_partial(dist_tree, filename, write_data)
+    if links:
+      _write_links(filename, links)
   comm.barrier()
 
   fapl = h5p.create(h5p.FILE_ACCESS)
@@ -108,8 +112,12 @@ def _write_links(filename, links):
     target_dir, target_file, target_node, local_node = link
     parent_node_path = PT.utils.path_head(local_node)
     local_node_name  = PT.utils.path_tail(local_node)
-    gid = open_from_path(fid, parent_node_path)
-    write_link(gid, local_node_name, target_file, target_node)
+    try:
+      gid = open_from_path(fid, parent_node_path)
+    except KeyError:
+      mlog.error(f"Can not write link for node {link[3]}: path does not exists in file")
+    else:
+      write_link(gid, local_node_name, target_file, target_node)
   fid.close()
 
 def write_full(filename, dist_tree, links=[]):

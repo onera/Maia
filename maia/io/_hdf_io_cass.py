@@ -153,9 +153,9 @@ def load_grid_connectivity_property(filename, tree):
     PT.add_child(gc_node, gc_prop)
 
 
-def write_partial(filename, dist_tree, hdf_filter, comm):
+def write_partial(filename, dist_tree, hdf_filter, links, comm):
   hdf_filter = {f'/{key}' : data for key, data in hdf_filter.items()}
-  C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter, ParallelHDF=True)
+  C.convertPyTree2FilePartial(dist_tree, filename, comm, hdf_filter, ParallelHDF=True, links=links)
 
 def read_full(filename):
   return C.convertFile2PyTree(filename)

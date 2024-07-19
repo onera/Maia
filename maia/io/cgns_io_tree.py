@@ -27,12 +27,12 @@ def load_partial(filename, dist_tree, hdf_filter, comm, legacy):
     from ._hdf_io_h5py import load_partial
     load_partial(filename, dist_tree, hdf_filter)
 
-def write_partial(filename, dist_tree, hdf_filter, comm, legacy):
+def write_partial(filename, dist_tree, hdf_filter, comm, links, legacy):
   if legacy:
     from ._hdf_io_cass import write_partial
   else:
     from ._hdf_io_h5py import write_partial
-  write_partial(filename, dist_tree, hdf_filter, comm)
+  write_partial(filename, dist_tree, hdf_filter, links, comm)
 
 def write_tree(tree, filename, links=[], legacy=False):
   """Sequential write to a CGNS file.
@@ -131,7 +131,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   if n_shifted > 0 and comm.Get_rank() == 0:
     mlog.warning(f"Some NFace/ElementConnectivity have been updated to be CGNS compliant")
 
-def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
+def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links, legacy):
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
@@ -145,7 +145,7 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
   saving_dist_tree = PT.shallow_copy(dist_tree)
   clean_distribution_info(saving_dist_tree)
 
-  write_partial(filename, saving_dist_tree, hdf_filter_with_dim, comm, legacy)
+  write_partial(filename, saving_dist_tree, hdf_filter_with_dim, comm, links, legacy)
 
 def fill_size_tree(tree, filename, comm, legacy=False):
   filename = str(filename)
@@ -191,14 +191,22 @@ def file_to_dist_tree(filename, comm, legacy=False):
             f" (Σ={mlog.bsize_to_str(all_dt_size)})")
   return dist_tree
 
-def dist_tree_to_file(dist_tree, filename, comm, legacy=False):
+def dist_tree_to_file(dist_tree, filename, comm, links=[], legacy=False):
   """Distributed write to a CGNS file.
+
+  If links are used, the link description list must be identiqual on all ranks.
 
   Args:
     dist_tree (CGNSTree) : Distributed tree to write
     filename (str) : Path of the file
+    links   (list) : List of links to create (see SIDS-to-Python guide)
     comm     (MPIComm) : MPI communicator
   """
+  if links:
+    dist_tree = PT.shallow_copy(dist_tree)
+    for link in links: # Links override data, so delete data
+      PT.rm_node_from_path(dist_tree, link[3])
+
   dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)
   mlog.info(f"Distributed write of a {mlog.bsize_to_str(dt_size)} dist_tree"
@@ -206,19 +214,21 @@ def dist_tree_to_file(dist_tree, filename, comm, legacy=False):
   start = time.time()
   filename = str(filename)
   hdf_filter = create_tree_hdf_filter(dist_tree)
-  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy)
+  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links, legacy)
   end = time.time()
   mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
-def write_trees(tree, filename, comm, legacy=False):
+def write_trees(tree, filename, comm, links=[], legacy=False):
   """Sequential write to CGNS files.
 
   Write separate trees for each process. Rank id will be automatically
-  inserted in the filename.
+  inserted in the filename. If links are used, each rank must provide its own
+  link description list.
 
   Args:
     tree (CGNSTree) : Tree to write
     filename (str) : Path of the file
+    links   (list) : List of links to create (see SIDS-to-Python guide)
     comm     (MPIComm) : MPI communicator
 
   Example:
@@ -232,4 +242,4 @@ def write_trees(tree, filename, comm, legacy=False):
   base_name, extension = os.path.splitext(filename)
   base_name += f"_{comm.Get_rank()}"
   _filename = base_name + extension
-  write_tree(tree, _filename, links=[], legacy=legacy)
+  write_tree(tree, _filename, links, legacy=legacy)

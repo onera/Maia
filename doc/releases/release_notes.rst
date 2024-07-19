@@ -19,21 +19,22 @@ Developpement version
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
-- ``part_tree_to_file``: manage user provided links, and write CGNSBase_t misc. children
-- ``interpolate``: managed Vertex located fields for all values of ``strategy`` parameter
+- dist_tree_to_file, part_tree_to_file, write_trees: write user provided links
+- part_tree_to_file: write CGNSBase_t misc. children
+- interpolate: managed Vertex located fields for all values of ``strategy`` parameter
 - adapt_mesh_with_feflo: allow users to change temporary directory for meshb files
 - recover_dist_tree: manage poly 2D (NGON+BAR) meshes
 
 🐞 Fixes
 ^^^^^^^^
-- ``transform_affine``: update periodic values of GridConnectivity_t nodes
-- ``extract_part``: prevent a crash when a rank get no cells on extracted U zone
+- transform_affine: update periodic values of GridConnectivity_t nodes
+- extract_part: prevent a crash when a rank get no cells on extracted U zone
 - partitioning : fix internal edges creation and BCs on 2D/NGon meshes
 - partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes
 
 🚧 API change
 ^^^^^^^^^^^^^
-- ``part_tree_to_file``: add ``links`` parameter
+- dist_tree_to_file, part_tree_to_file & write_trees: add ``links`` parameter
 
 
 v1.4 (May 2024)

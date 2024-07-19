@@ -32,8 +32,9 @@ Base CGNSBase_t I4 [3, 3]:
   TU.rm_collective_dir(tmp_dir, comm)
 
 
+@pytest.mark.parametrize("user_links", [False, True])
 @pytest_parallel.mark.parallel(2)
-def test_dist_tree_to_file_2procs(comm):
+def test_dist_tree_to_file_2procs(user_links, comm):
   if comm.Get_rank()==0:
     yt = """
 Base CGNSBase_t I4 [3, 3]:
@@ -59,13 +60,23 @@ Base CGNSBase_t I4 [3, 3]:
 
   dist_tree = PT.yaml.to_cgns_tree(yt)
 
+  if user_links:
+    links = [['.', 'this/hdf/file.hdf', 'this/node', 'Base/Zone/GridCoordinates/CoordinateX'],
+             ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/Zone/ZoneBC_t/BCA']] #This one should be ignored
+  else:
+    links = []
+
   tmp_dir = TU.create_collective_tmp_dir(comm)
   out_file = os.path.join(tmp_dir, 'yt.cgns')
-  maia.io.dist_tree_to_file(dist_tree, out_file, comm)
+  maia.io.dist_tree_to_file(dist_tree, out_file, comm, links)
 
   if comm.Get_rank()==0:
-    t = maia.io.cgns_io_tree.read_tree(out_file)
-    assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
+    if user_links:
+      file_links = maia.io.read_links(out_file)
+      assert file_links == [links[0]]
+    else:
+      t = maia.io.cgns_io_tree.read_tree(out_file)
+      assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
   TU.rm_collective_dir(tmp_dir, comm)
 
 @pytest_parallel.mark.parallel(2)
