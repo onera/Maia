@@ -27,6 +27,36 @@ extract_from_indices(py::array_t<T>& np_array,
   }
   return np_extract_array;
 }
+
+
+void take_strided(py::array_t<int64_t> displs, 
+                  py::buffer           read_buff,
+                  py::array_t<int64_t> ind, 
+                  py::buffer           write_buff)
+
+{
+  size_t s_data = read_buff.request().itemsize;
+  char* _read_buff  = static_cast<char *> ( read_buff.request().ptr);
+  char* _write_buff = static_cast<char *> (write_buff.request().ptr);
+
+  auto _displs = displs.unchecked<1>();
+  auto _ind    = ind.unchecked<1>();
+
+  size_t w_start = 0;
+  for (int i=0; i < ind.size(); ++i) {
+    auto __ind = _ind[i];
+    auto __cnt = _displs[__ind+1] - _displs[__ind];
+    if (__cnt > 0) { //Avoid undefined behaviour if read_buff is null
+      std::memcpy(_write_buff + w_start,
+                  _read_buff + s_data*_displs[__ind], 
+                  __cnt*s_data); 
+      w_start += s_data*__cnt;
+    }
+  }
+}
+
+
+
 template<typename g_num>
 void pe_cgns_to_pdm_face_cell(py::array_t<g_num, py::array::f_style>& pe,
                               py::array_t<g_num                    >& face_cell){
@@ -329,4 +359,9 @@ void register_layouts_module(py::module_& parent) {
         py::arg("array1").noconvert(),
         py::arg("idx2"  ).noconvert(),
         py::arg("array2").noconvert());
+  m.def("take_strided", &take_strided,
+        py::arg("displs").noconvert(),
+        py::arg("values").noconvert(),
+        py::arg("indices").noconvert(),
+        py::arg("out").noconvert());
 }

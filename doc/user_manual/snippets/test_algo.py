@@ -442,7 +442,7 @@ def test_nface_to_pe():
   assert maia.pytree.get_node_from_name(tree, 'ParentElements') is not None
   #nface_to_pe@end
 
-def test_pe_to_ngon():
+def test_edge_pe_to_ngon():
   #edge_pe_to_ngon@start
   from mpi4py import MPI
   import maia
@@ -452,6 +452,17 @@ def test_pe_to_ngon():
   maia.algo.edge_pe_to_ngon(tree, MPI.COMM_WORLD)
   assert maia.pytree.get_node_from_name(tree, 'NGonElements') is not None
   #edge_pe_to_ngon@end
+
+def test_ngon_to_edge_pe():
+  #ngon_to_edge_pe@start
+  from mpi4py import MPI
+  import maia
+  tree = maia.factory.generate_dist_sphere(5, 'NGON_n', MPI.COMM_WORLD)
+
+  maia.pytree.rm_nodes_from_name(tree, 'ParentElements')
+  maia.algo.ngon_to_edge_pe(tree, MPI.COMM_WORLD)
+  assert maia.pytree.get_node_from_name(tree, 'ParentElements') is not None
+  #ngon_to_edge_pe@end
 
 def test_poly_new_to_old():
   #poly_new_to_old@start

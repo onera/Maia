@@ -175,6 +175,29 @@ def others_mask(array, ids):
   mask[ids] = False
   return mask
 
+def unique_sorted(sorted_array, return_counts=False):
+  """ A faster implementation of np.unique() if input array
+  is sorted
+  """
+  is_new = np.empty(sorted_array.size, bool)
+  if sorted_array.size > 0:
+    is_new[0] = True
+    is_new[1:] = sorted_array[1:] != sorted_array[:-1]
+
+  unique_array = sorted_array[is_new]
+
+  if not return_counts:
+    return unique_array
+  
+  counts_idx = np.empty(unique_array.size+1, int)
+  counts_idx[:-1] = np.arange(is_new.size)[is_new]
+  counts_idx[-1] = sorted_array.size
+
+  counts = np.diff(counts_idx)
+
+  return unique_array, counts
+
+
 def is_unique_strided(array, stride, method='hash'):
   """
   For a cst strided array (eg. a connectivity), return a bool array indicating
@@ -207,6 +230,20 @@ def roll_once_by_stride(array_idx, array):
   rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
   return np.delete(extended, rm_idx)
 
+def take_strided(array_idx, array, indices):
+  """
+  An equivalent to numpy.take (a[ind]), but with strided values in array
+  Indices is the list of idx to extract; for each indices, the whole "grap" of strided
+  values will be extracted
+  a_idx    = [0, 3, 4, 6]
+  a_val    = [10,11,12, 100, 1000, 1001] (3 values, then 1 value, then 2 values)
+  take_strided(a_idx, a_val, [2,0]) = [1000, 1001,  10,11,12]
+  """
+  out_size = (array_idx[indices+1] - array_idx[indices]).sum()
+  out = np.empty(out_size, array.dtype)
+  layouts.take_strided(array_idx, array, indices, out)
+
+  return out
 
 def any_in_range(array, start, end, strict=False):
   """
