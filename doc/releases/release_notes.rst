@@ -28,6 +28,7 @@ Developpement version
 - ``transform_affine``: update periodic values of GridConnectivity_t nodes
 - ``extract_part``: prevent a crash when a rank get no cells on extracted U zone
 - partitioning : fix internal edges creation and BCs on 2D/NGon meshes
+- partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes
 
 🚧 API change
 ^^^^^^^^^^^^^

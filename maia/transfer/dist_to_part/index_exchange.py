@@ -61,7 +61,7 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
             PT.update_child(p_node, 'GridLocation', 'GridLocation_t', value=PT.Subset.GridLocation(node))
             pl_raw = p_groups['npZSRGroup'][beg_pl:end_pl]
             if PT.Zone.Type(p_zone) == 'Structured':
-              pl_value = s_numbering.index_to_ijk_from_loc(pl_raw, loc, PT.Zone.VertexSize(dist_zone))
+              pl_value = s_numbering.index_to_ijk_from_loc(pl_raw, loc, PT.Zone.VertexSize(p_zone))
             else:
               pl_value = pl_raw.reshape((1,-1), order='F')
             PT.update_child(p_node, 'PointList', 'IndexArray_t', pl_value)
