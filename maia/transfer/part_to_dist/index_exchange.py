@@ -30,7 +30,7 @@ def create_part_pl_gnum_unique(part_zones, node_path, comm):
   # Exchange
   shifted_part = par_utils.gather_and_shift(len(part_zones), comm, dtype=np.int32)
   size_per_part = np.empty(shifted_part[-1], dtype=np.int32)
-  comm.Allgatherv(n_elems, [size_per_part, np.diff(shifted_part)])
+  comm.Allgatherv(n_elems, [size_per_part, np.diff(shifted_part)]) 
 
   #Shift and deduce global numbering
   for i_zone, p_zone in enumerate(part_zones):
@@ -72,7 +72,7 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   blk_offset = par_utils.gather_and_shift(blk_n_elem, comm, dtype=np.int32)
   group_gnum = np.arange(blk_n_elem, dtype=pdm_gnum_dtype)+blk_offset[i_rank]+1
 
-  # Now send this back to partitions. Caution, We have to use a variable stride
+  # Now send this back to partitions. Caution, We have to use a variable stride 
   # (1 if gnum is know; 0 elsewhere). With variable stride exchange2 seems simpler
   blk_stride = np.zeros(blk_distri[i_rank+1] - blk_distri[i_rank], dtype=np.int32)
   blk_stride[blk_gnum - blk_distri[i_rank] - 1] = 1
@@ -146,7 +146,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     name_predicate = lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == leaf
   else:
     name_predicate = lambda n: PT.get_name(n) == leaf
-
+   
   if allow_mult:
     ln_to_gn_list = []
     for part_zone in part_zones:
@@ -225,7 +225,7 @@ def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size)
 def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False):
   """
   Create a distributed point range for the node specified by its node_path
-  from the partitioned point range. We assume that node_path exists in dist_tree.
+  from the partitioned point range. We assume that node_path exists in dist_tree. 
   If allow_mult is True, leaf node of node_path is expanded search all partitioned leaf*. This can
   be usefull eg to merge splitted joins (match.0, match.1, ...)
   """
@@ -248,7 +248,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
 
     ancestor_node = PT.get_node_from_path(part_zone, ancestor_n)
     part_nodes = PT.get_children_from_predicate(ancestor_node, name_predicate) if ancestor_node is not None else []
-
+    
     for part_node in part_nodes:
       pr = PT.get_node_from_name(part_node, 'PointRange')[1].copy()
       loc = PT.Subset.GridLocation(part_node)
@@ -358,18 +358,13 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   p_strid_pe = list()
 
   has_pe = True
-  is_true_ngon = True
 
   # Collect partitioned data
   for ipart, part_zone in enumerate(part_zones):
     elem_n = PT.get_child_from_name(part_zone, elem_name)
     ER     = PT.get_child_from_name(elem_n, 'ElementRange')[1]
     EC     = PT.get_child_from_name(elem_n, 'ElementConnectivity')[1]
-    if PT.get_value(elem_n)[0] == 3:
-      is_true_ngon = False
-      ECIdx = 2*np.arange(EC.shape[0]//2+1, dtype=np.int32)
-    else:
-      ECIdx  = PT.get_child_from_name(elem_n, 'ElementStartOffset')[1]
+    ECIdx  = PT.get_child_from_name(elem_n, 'ElementStartOffset')[1]
     pe_n   = PT.get_child_from_name(elem_n, 'ParentElements')
 
     # Deal ElementConnectivity
@@ -455,10 +450,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
   # > Add in disttree
   elt_range = np.array([1, n_faceTot], pdm_gnum_dtype)
-  if is_true_ngon:
-    elt_node = PT.new_NGonElements(elem_name, erange=elt_range, eso=d_elt_eso, ec=dist_ec, parent=dist_zone)
-  else:
-    elt_node = PT.new_Elements(elem_name, 'BAR_2', erange=elt_range, econn=dist_ec, parent=dist_zone)
+  elt_node = PT.new_NGonElements(elem_name, erange=elt_range, eso=d_elt_eso, ec=dist_ec, parent=dist_zone)
   if has_pe:
     # Shift dist PE because we put NGon first
     np_utils.shift_nonzeros(dist_pe, n_faceTot)
@@ -467,8 +459,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   DistriFaceVtx = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
   distri_ud = MT.newDistribution(parent=elt_node)
   PT.new_DataArray('Element',           PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
-  if is_true_ngon:
-    PT.new_DataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
 def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   """

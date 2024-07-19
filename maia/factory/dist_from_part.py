@@ -166,19 +166,41 @@ def _recover_elements(dist_zone, part_zones, comm):
   has_nface = 'NFACE_n' in elt_kinds
   has_edge  = 'BAR_2'   in elt_kinds
 
+  is_poly = has_ngon
+  if not is_poly and has_edge: # Maybe 2D Poly with Bar + ParentElements
+    is_bar = lambda n : PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
+    has_bar_pe = lambda z: PT.get_children_from_predicates(z, [is_bar, 'ParentElements']) is not None
+    is_poly = par_utils.all_true(part_zones, has_bar_pe, comm)
+
   # Deal Edge/NGon & NGon/NFace
-  if has_ngon:
+  if is_poly:
     assert all([kind in ['NGON_n', 'NFACE_n', 'BAR_2'] for kind in elt_kinds])
-    if has_edge:
+    if has_edge: #2D with Edge + NGON or Edge only
+      assert all([PT.Zone.CellDimension(zone) == 2 for zone in part_zones])
       edge_name = elt_names[elt_kinds.index('BAR_2')]
+      edge_elts = [PT.get_child_from_name(part_zone, edge_name) for part_zone in part_zones]
+      # For EdgeElements, we call part_ngon_to_dist_ngon which manages ParentElements node
+      # We need to create ElementStartOffset array to do that
+      for edge_elt in edge_elts:
+        PT.new_DataArray('ElementStartOffset', 2*np.arange(PT.Element.Size(edge_elt)+1, dtype=np.int32), parent=edge_elt)
       IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, edge_name, comm)
-      ngon_name = elt_names[elt_kinds.index('NGON_n')]
-      IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
-      # > Shift ngon element_range and create all cell distri
-      n_edge_tot  = PT.get_node_from_path(dist_zone, f'{edge_name}/ElementRange')[1][1]
-      ngon_range = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1]
-      ngon_range += n_edge_tot
-    else:
+      for edge_elt in edge_elts:
+        PT.rm_children_from_name(edge_elt, 'ElementStartOffset') # Cleanup
+      dist_edge_elt = PT.get_child_from_name(dist_zone, edge_name)
+      dist_edge_elt[1][0] = 3
+      PT.rm_node_from_path(dist_edge_elt, 'ElementStartOffset')
+      PT.rm_node_from_path(dist_edge_elt, ':CGNS#Distribution/ElementConnectivity')
+
+      if has_ngon:
+        # Now treat true 2D NGON node
+        ngon_name = elt_names[elt_kinds.index('NGON_n')]
+        IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
+        # > Shift ngon element_range and create all cell distri
+        n_edge_tot  = PT.get_node_from_path(dist_zone, f'{edge_name}/ElementRange')[1][1]
+        ngon_range = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1]
+        ngon_range += n_edge_tot
+    else: #3D with NGON + NFACE or NGON only
+      assert all([PT.Zone.CellDimension(zone) == 3 for zone in part_zones])
       ngon_name = elt_names[elt_kinds.index('NGON_n')]
       IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
       if has_nface:

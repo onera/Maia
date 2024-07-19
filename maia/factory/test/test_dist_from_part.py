@@ -459,10 +459,20 @@ def test_recover_dist_tree_s(comm):
   assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
 
 @pytest_parallel.mark.parallel(3)
-def test_recover_dist_tree_edge(comm):
+@pytest.mark.parametrize("edges_only", [False, True])
+def test_recover_dist_tree_edge(edges_only, comm):
   dist_tree_bck = DSG.generate_dist_sphere(5, 'NGON_n', comm)
 
-  part_tree = maia.factory.partition_dist_tree(dist_tree_bck, comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree_bck, comm, preserve_orientation=True)
+
+  if edges_only:
+    PT.rm_nodes_from_name(dist_tree_bck, 'NGonElements')
+    PT.rm_nodes_from_name(part_tree,     'NGonElements')
 
   dist_tree = maia.factory.recover_dist_tree(part_tree, comm)
-  assert maia.pytree.is_same_tree(dist_tree, dist_tree_bck)
+
+  # Distribution differs, reequilibrate before comparison
+  maia.algo.dist.redistribute_tree(dist_tree,     'gather.0', comm)
+  maia.algo.dist.redistribute_tree(dist_tree_bck, 'gather.0', comm)
+
+  assert PT.is_same_tree(dist_tree, dist_tree_bck)
