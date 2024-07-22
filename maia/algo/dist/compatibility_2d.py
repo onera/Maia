@@ -87,30 +87,38 @@ def _bar_pe_to_nface2d(zone, comm):
                      parent = nface_n)
 
 
-def convert_cass_to_std_2d_u(dist_tree, comm):
+
+def poly2d_convert_3dlike_to_std(dist_tree, comm):
   """
-  Convert tree with Cassiopee standard to be CGNS 4 compliant
+  Convert a "as for 3D" 2D polyedric tree (NFACE = face_edge, NGON = edge_vtx)
+  to the cgns compliant vision (NGON = face_vtx, BAR = edge_vtx).
+
+  3like vision is supposed have correct edge orientations.
 
   Args:
     dist_tree (CGNSTree): Distributed tree
     comm      (MPIComm) : MPI communicator
   """
-  for zone in PT.get_all_Zone_t(dist_tree):
+  is_2D_base = lambda n: PT.get_label(n) == 'CGNSBase_t' and PT.get_value(n)[0] == 2
+  for zone in PT.get_children_from_predicates(dist_tree, [is_2D_base, 'Zone_t']):
     _convert_ngon2d_to_bar(zone)
     _convert_nface2d_to_ngon(zone, comm)
     for subset in PT.iter_all_subsets(zone, 'FaceCenter'):
       PT.update_child(subset, 'GridLocation', 'GridLocation_t', 'EdgeCenter')
 
 
-def convert_std_to_cass_2d_u(dist_tree, comm):
+def poly2d_convert_std_to_3dlike(dist_tree, comm):
   """
-  Convert CGNS 4 compliant tree at Cassiopee standard
+  Convert a CGNS compliant 2D polyedric tree (NGON = face_vtx, BAR = edge_vtx)
+  to the "as for 3D" vision (NFACE = face_edge, NGON = edge_vtx) used by legacy tools
+  and some solvers
 
   Args:
     dist_tree (CGNSTree): Distributed tree
     comm      (MPIComm) : MPI communicator
   """
-  for zone in PT.get_all_Zone_t(dist_tree):
+  is_2D_base = lambda n: PT.get_label(n) == 'CGNSBase_t' and PT.get_value(n)[0] == 2
+  for zone in PT.get_children_from_predicates(dist_tree, [is_2D_base, 'Zone_t']):
     _bar_pe_to_nface2d(zone, comm)
     for subset in PT.iter_all_subsets(zone, 'EdgeCenter'):
       PT.update_child(subset, 'GridLocation', 'GridLocation_t', 'FaceCenter')
