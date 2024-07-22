@@ -1,16 +1,14 @@
 import numpy as np
 
-import Pypdm.Pypdm as PDM
-
 import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia                      import npy_pdm_gnum_dtype         as pdm_dtype
 from maia.algo.dist.ngon_tools import PDM_dfacecell_to_dcellface
-from maia.transfer             import protocols                  as EP
-from maia.utils                import np_utils, par_utils
+from maia.utils                import par_utils
 
+from .connectivity_utils import combine_face_edge_and_edge_vtx
 
 def convert_ngon2d_to_bar(zone):
     """
@@ -34,44 +32,6 @@ def convert_ngon2d_to_bar(zone):
     PT.set_name(ngon_n, 'EdgeElements')
     PT.set_value(ngon_n, [3, 0])
 
-
-# TODO : a mutualiser ?
-def compute_face_vtx_from_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_vtx, face_distrib, edge_distrib, comm):
-    """
-    Compute face_vtx connectivity from face_edge and edge_vtx connectivities in
-    a distributed context
-
-    Args:
-      face_edge_idx (array)  : Face to edge connectivity index
-      face_edge     (array)  : Face to edge connectivity
-      edge_vtx      (array)  : Edge to vertex connectivity
-      face_distrib  (array)  : Face distribution
-      edge_distrib  (array)  : Edge distribution
-      comm          (MPIComm): MPI communicator
-    """
-    face_edge_idx = np_utils.safe_int_cast(face_edge_idx - face_edge_idx[0], np.int32)
-    
-    dist_data = {'connectivity' : edge_vtx}
-    dist_stride = np.ones(edge_distrib[1]-edge_distrib[0], dtype=np.int32) * 2
-    part_stride, part_data = EP.block_to_part_strided(dist_stride, dist_data, edge_distrib, [face_edge], comm)
-    global_edge_vtx = part_data["connectivity"][0]
-    
-    # Convert in local numbering to be allowed to use part algo in dist context
-    uniq, idx, inv = np.unique(global_edge_vtx, return_index=True, return_inverse=True)
-    local_edge_vtx = np_utils.safe_int_cast(inv+1, np.int32)
-    
-    local_face_edge = (np.arange(len(face_edge), dtype=np.int32)+1)*np.sign(face_edge, dtype=np.int32)
-    
-    local_face_vtx = PDM.compute_face_vtx_from_face_and_edge(face_edge_idx,
-                                                             local_face_edge,
-                                                             local_edge_vtx)
-    
-    # Return in the global numbering
-    global_face_vtx = global_edge_vtx[idx][local_face_vtx-1]
-    
-    return(global_face_vtx)
-
-
 def convert_nface2d_to_ngon(zone, comm):
     """
     Convert, in 2D, NFace node that wrongly describe face_edge 
@@ -93,8 +53,7 @@ def convert_nface2d_to_ngon(zone, comm):
     face_bar_n = PT.get_child_from_name(nface_n, 'ElementConnectivity')
     face_bar_idx = PT.get_child_from_name(nface_n, 'ElementStartOffset')[1]
     bar_vtx = PT.get_child_from_name(bar_n, 'ElementConnectivity')[1]
-    face_vtx = compute_face_vtx_from_face_edge_and_edge_vtx(face_bar_idx, face_bar_n[1], bar_vtx,
-                                                            nface_distrib, bar_distrib, comm)
+    face_vtx = combine_face_edge_and_edge_vtx(face_bar_idx, face_bar_n[1], bar_distrib, bar_vtx, comm)
     PT.set_value(face_bar_n, face_vtx)
     
     # > Change name and value (23 => 22)
@@ -128,7 +87,7 @@ def bar_pe_to_nface2d(zone, comm):
     
     bar_distrib = MT.getDistribution(bar_n, 'Element')[1]
     
-    edge_face = maia.algo.indexing.get_ngon_pe_local(bar_n).reshape(-1,order='C')
+    edge_face = maia.algo.indexing.get_pe_local(bar_n).reshape(-1,order='C')
     edge_face_idx = np.arange(bar_distrib[0], bar_distrib[1]+1, dtype=np.int32)*2
     PT.new_DataArray('ElementStartOffset', value=edge_face_idx, parent=bar_n)
     MT.newDistribution({'ElementConnectivity': bar_distrib*2},
