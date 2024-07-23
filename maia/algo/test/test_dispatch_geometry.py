@@ -108,8 +108,42 @@ def test_compute_centers(parallel, comm):
       cc_sol = PT.get_child_from_name(zone, f'Geometry_{cell_dim}d')
       assert PT.Subset.GridLocation(cc_sol) == 'CellCenter'
       # Test existance of splitted containers for S3D zone
-      if PT.Zone.Type(zone) == 'Structured' and cell_dim == 3:
-        assert PT.get_child_from_name(zone, f'Geometry_2d') is None
-        assert PT.get_child_from_name(zone, f'Geometry_2d_I') is not None
-        assert PT.get_child_from_name(zone, f'Geometry_2d_J') is not None
-        assert PT.get_child_from_name(zone, f'Geometry_2d_K') is not None
+      if PT.Zone.Type(zone) == 'Structured':
+        if cell_dim == 3:
+          assert PT.get_child_from_name(zone, f'Geometry_2d') is None
+          assert PT.get_child_from_name(zone, f'Geometry_2d_I') is not None
+          assert PT.get_child_from_name(zone, f'Geometry_2d_J') is not None
+          assert PT.get_child_from_name(zone, f'Geometry_2d_K') is not None
+        for sol in PT.get_children_from_name(zone, f'Geometry_*'):
+          assert MT.getGlobalNumbering(sol) is None
+          dim = int(PT.get_name(sol)[9])
+          if cell_dim == dim:
+            arrays = [PT.get_child_from_name(sol, f'Center{dir}')[1] for dir in 'XYZ'[:phy_dim]]
+            computed = np.zeros(3*arrays[0].size, arrays[0].dtype)
+            for i,array in enumerate(arrays):
+              computed[i::3] = array.reshape(-1, order='F')
+            expected = geometry._compute_zone_centers(zone, dim, comm)
+            assert np.allclose(computed, expected)
+
+
+      # Compare with elementary func, who does not add data in tree (correctness of results
+      # should be done at lower level)
+      elif PT.Zone.Type(zone) == 'Unstructured':
+        for sol in PT.get_children_from_name(zone, f'Geometry_*'):
+          dim = int(PT.get_name(sol)[-2])
+          arrays = [PT.get_child_from_name(sol, f'Center{dir}')[1] for dir in 'XYZ'[:phy_dim]]
+          computed = np.zeros(3*arrays[0].size, arrays[0].dtype)
+          for i,array in enumerate(arrays):
+            computed[i::3] = array
+          expected = geometry._compute_zone_centers(zone, dim, comm)
+          assert np.allclose(computed, expected)
+
+          if PT.Subset.GridLocation(sol) in ['FaceCenter', 'EdgeCenter']:
+            pl = PT.get_child_from_name(sol, 'PointList')[1][0]
+            elt_d_range = PT.Zone.get_elt_range_per_dim(zone)[dim]
+            if parallel == 'part':
+              assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1))
+            else:
+              distri = MT.getDistribution(sol, 'Index')[1]
+              # Works but probably because only one section per dim, otherwise PL may mix elements
+              assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1)[distri[0]:distri[1]])
