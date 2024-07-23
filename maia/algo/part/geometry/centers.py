@@ -7,7 +7,7 @@ from   maia.algo.part import connectivity_utils as CU
 from   maia.utils     import np_utils
 from   maia.utils     import logging as mlog
 
-from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container
+from maia.algo.geometry_utils import DIM_TO_LOC, update_container
 
 import cmaia.part_algo as cpart_algo
 
@@ -192,13 +192,13 @@ def _compute_zone_centers(zone, dim):
 
 def compute_zone_centers(zone, dim):
   """ Implementation of maia.algo.compute_centers for a given partitioned zone.
-  See the above function for full documentation """
+  See the calling function for full documentation """
   
   cell_dim = PT.Zone.CellDimension(zone)
   rq_dim = cell_dim if dim == 'CellCenter' else dim
   interlaced_centers = _compute_zone_centers(zone, rq_dim)
   if interlaced_centers is None:
-    msg = f"Zone '{PT.get_name(zone)}' skipped in compute_centers because "\
+    msg = f"Zone '{PT.get_name(zone)}' skipped during centers computing because "\
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"
     mlog.warning(msg)
   elif interlaced_centers.size > 0:
@@ -223,17 +223,17 @@ def compute_zone_centers(zone, dim):
           newsize = dirfacesizefunc[i](zone)
           dircenter = {key: val[start:end].reshape(newsize, order='F') \
                        for key, val in centers.items()}
-          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
+          container = update_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
           start = end
 
       if output_loc == 'CellCenter':
         centers = {key: val.reshape(PT.Zone.CellSize(zone), order='F') \
                    for key, val in centers.items()}
 
-        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
+        container = update_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
 
     else: # Unstructured
-      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
+      container = update_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
       if output_loc in ['EdgeCenter', 'FaceCenter']: # PointList is supposed to be mandatory. Maybe we could make it optional in maia ?
         if PT.Zone.has_ngon_elements(zone):
           if output_loc == 'FaceCenter':

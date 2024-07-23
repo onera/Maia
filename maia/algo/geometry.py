@@ -20,12 +20,12 @@ def compute_centers(t, dim, comm=None):
   """Compute the centers of the specified mesh entity.
 
   The mesh entity on which centers are computed must be specified using
-  ``dim`` parameter: values of 3, 2, and 1 correspond respectively to cells,
-  faces and edges. 
+  ``dim`` parameter: values of 1, 2, and 3 correspond respectively to edges,
+  faces and cells. 
   For convenience, the keyword ``CellCenter`` can be used to indicate, on
-  each zone, the higher avalaible dimension. The following table summarizes
-  the possibilities; note that some combinations do not make sense (zones in this
-  situtation are skipped).
+  each zone, the higher available dimension. The following table summarizes
+  the possibilities. Note that some combinations do not make sense (zones in this
+  situation are skipped).
 
   +---------+-------+-------+-------+----------------+
   |         | dim=1 | dim=2 | dim=3 | dim=CellCenter |
@@ -49,9 +49,9 @@ def compute_centers(t, dim, comm=None):
   only for elements explicitly defined in sections.
 
   Args:
-    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
-    dim  (int or 'CellCenter'): Entity on which centers are computed (see above)
-    comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
+    t    (CGNSTree(s))         : Tree (or sequences of) starting at Zone_t level or higher
+    dim  (int or 'CellCenter') : Entity on which centers are computed (see above)
+    comm       (MPIComm)       : MPI communicator, mandatory only for distributed trees
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -63,6 +63,7 @@ def compute_centers(t, dim, comm=None):
   for zone in zones_iterator(t):
     
     if MT.getDistribution(zone) is not None:
+      assert comm is not None
       dist_geometry.compute_zone_centers(zone, dim, comm)
     else:
       part_geometry.compute_zone_centers(zone, dim)

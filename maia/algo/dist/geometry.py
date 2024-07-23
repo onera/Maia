@@ -6,11 +6,13 @@ import maia.pytree.maia as MT
 from maia.algo     import indexing
 from maia.utils    import py_utils, np_utils, par_utils, s_numbering, as_pdm_gnum
 from maia.transfer import protocols as EP
+
 from .ngon_tools   import PDM_dfacecell_to_dcellface
+from .s_to_u       import zonedims_to_ngon
 
 from maia.utils import logging as mlog
 
-from maia.algo.geometry_utils import DIM_TO_LOC, get_or_create_container
+from maia.algo.geometry_utils import DIM_TO_LOC, update_container
 
 import cmaia.part_algo as cpart_algo
 
@@ -60,9 +62,9 @@ def _entity_vtx_connectivity_elt(zone, comm, dim, distri_global):
   If distrib_global is True, this cell_vtx connectivity is redistributed to match
   the global distribution of all elements of the requested dim
   Otherwise, we just concatenate the data of each section
-  Exemple : if distri TETRA = [0,5,10] and distri PRISM = [0,5,10],
-  with local mode each rank get 5 tetra centers and 5 prism centers
-  with global mode rank 0 get all tetra centers and rank 1 get all prism centers
+  Exemple : if distri TETRA = [0,5,9], distri PRISM = [0,3,7] and global distri CELL = [0,8,16]
+  with local mode rank 0 get 5 tetra and 3 prism, rank 1 get 4 tetra and 4 prism
+  with global mode rank 0 get 8 tetra and rank 1 get 1 tetra and 7 prism
   """
   all_cell_vtx_n = []
   all_cell_vtx = []
@@ -193,6 +195,12 @@ def compute_face_normal(zone, comm):
   raise NotImplementedError("Only NGON zones are managed")
 
 def compute_edge_center(zone, comm):
+  """Compute the edge centers of a distributed zone.
+
+  Input zone must have cartesian coordinates or cylindrical coordinates recorded under a unique
+  GridCoordinates node.
+  Centers are computed using a basic average over the vertices of the edges.
+  """
   if PT.Zone.Type(zone) == "Unstructured":
     global_distri = PT.Zone.CellDimension == 1
     edge_vtx_idx, edge_vtx = _entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
@@ -236,7 +244,6 @@ def compute_face_center(zone, comm):
   if PT.Zone.Type(zone) == "Structured":
     vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
-    from maia.algo.dist.s_to_u import zonedims_to_ngon
     ngon_node = zonedims_to_ngon(vtx_size, comm)
     _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
     face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
@@ -316,7 +323,7 @@ def compute_zone_centers(zone, dim, comm):
   rq_dim = cell_dim if dim == 'CellCenter' else dim
   interlaced_centers = _compute_zone_centers(zone, rq_dim, comm)
   if interlaced_centers is None:
-    msg = f"Zone '{PT.get_name(zone)}' skipped in compute_centers because "\
+    msg = f"Zone '{PT.get_name(zone)}' skipped during centers computing because "\
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"
     mlog.warning(msg)
   else:
@@ -339,13 +346,13 @@ def compute_zone_centers(zone, dim, comm):
         face_distri = par_utils.dn_to_distribution(next(iter(centers.values())).size, comm)
         nfi, nfj, nfk = facesize
         dfacesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0      , nfi),
-                      py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
-                      py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
+                     py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
+                     py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
         start = 0
         for i,dir in enumerate(['I', 'J', 'K']):
           end = start + dfacesize[i]
           dircenter = {key: val[start:end] for key,val in centers.items()}
-          container = get_or_create_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
+          container = update_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
           MT.newDistribution({'Index' : par_utils.dn_to_distribution(dfacesize[i], comm)}, container)
           pr = np.ones((3,2), order='F', dtype=zone[1].dtype)
           pr[:,1] = dirfacesizefunc[i](zone)
@@ -353,10 +360,10 @@ def compute_zone_centers(zone, dim, comm):
           start = end
 
       if output_loc == 'CellCenter':
-        container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
+        container = update_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
 
     else: # Unstructured
-      container = get_or_create_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
+      container = update_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
       if output_loc in ['EdgeCenter', 'FaceCenter']: # PointList is supposed to be mandatory. Maybe we could make it optional in maia ?
         if PT.Zone.has_ngon_elements(zone):
           if output_loc == 'FaceCenter':
