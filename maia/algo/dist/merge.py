@@ -574,7 +574,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
       ref_node = node #Take any node as reference, to build name/type/value of merged node
 
       pl = PT.get_child_from_name(node, 'PointList')[1][0]
-      part_data = {'PL' : [pl]}
+      part_data = {}
       for nodes in PT.get_children_from_predicates(node, data_query, ancestors=True):
         path =  '/'.join([PT.get_name(node) for node in nodes])
         data_n = nodes[-1]
@@ -586,7 +586,9 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
         else:
           _append_or_create(part_data, path, data)
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
-      dist_data = EP.part_to_block(part_data, distri_ptb, [pl], comm)
+      ptb = EP.PartToBlock(distri_ptb, [pl], comm)
+      dist_data = {key: ptb.exchange_field(pdata)[1] for key, pdata in part_data.items()}
+      dist_data['PL'] = ptb.getBlockGnumCopy()
 
       stride = np.zeros(distri_ptb[1] - distri_ptb[0], np.int32)
       stride[dist_data['PL'] - distri_ptb[0] - 1] = 1
