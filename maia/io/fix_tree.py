@@ -67,7 +67,7 @@ def fix_point_ranges(size_tree):
 
       assert (point_range_d[:,1] == PT.utils.gc_transform_point(gc, point_range[:,1])).all()
   if permuted:
-    logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
+    logging.error(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
 
 def fix_structured_pr_shape(size_tree):
   """
@@ -87,7 +87,7 @@ def fix_structured_pr_shape(size_tree):
             resized = True
             PT.set_value(pr_n, pr[0:cell_dim])
     if resized:
-      logging.warning(f"Structured PointRange have been resized on base {PT.get_name(base)} to match cell dimension ({cell_dim})")
+      logging.error(f"Structured PointRange have been resized on base {PT.get_name(base)} to match cell dimension ({cell_dim})")
 
 def ensure_symmetric_gc1to1(tree):
   """
@@ -154,7 +154,7 @@ def add_missing_pr_in_bcdataset(tree):
       # logging.warning(f"Warning -- PointRange has been added on BCDataSet {zone[0]}/{bc[0]}/{bcds[0]}"
              # " since data shape was no consistent with BC PointRange")
   if pr_added:
-    logging.warning(f"PointRange has been added on some BCDataSet nodes because data size was inconsistent")
+    logging.error(f"PointRange has been added on some BCDataSet nodes because data size was inconsistent")
 
 def _enforce_pdm_dtype(tree):
   """
@@ -243,7 +243,7 @@ def rm_legacy_nodes(tree):
       PT.rm_children_from_predicate(fs, lambda n: PT.get_label(n) == 'DataArray_t' and has_no_size(n))
       arrays_removed = arrays_removed or len(PT.get_children(fs)) < n_child_bck
   if arrays_removed:
-    logging.warning(f"Some empty arrays under FlowSolution_t nodes have been skipped when reading file")
+    logging.error(f"Some empty arrays under FlowSolution_t nodes have been skipped when reading file")
 
 def corr_index_range_names(tree):
   corr = False
@@ -253,4 +253,4 @@ def corr_index_range_names(tree):
         PT.set_name(er_n, 'PointRange')
         corr = True
   if corr:
-    logging.warning(f"Some IndexRange_t nodes under BC_t nodes have been renamed ('ElementRange' becomes 'PointRange').")
+    logging.error(f"Some IndexRange_t nodes under BC_t nodes have been renamed ('ElementRange' -> 'PointRange').")

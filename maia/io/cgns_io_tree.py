@@ -126,10 +126,12 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
 
   n_shifted = ensure_PE_global_indexing(dist_tree)
   if n_shifted > 0 and comm.Get_rank() == 0:
-    mlog.warning(f"Some NGon/ParentElements have been shift to be CGNS compliant")
+    mlog.error(f"ParentElements arrays of NGON_n elements have been recomputed "\
+               f"because they were wrongly defined (local indexing)")
   n_shifted = ensure_signed_nface_connectivity(dist_tree, comm)
   if n_shifted > 0 and comm.Get_rank() == 0:
-    mlog.warning(f"Some NFace/ElementConnectivity have been updated to be CGNS compliant")
+    mlog.error(f"ElementConnectivity arrays of NFACE_n elements have been recomputed "\
+               f"because they were wrongly defined (missing orientations)")
 
 def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links, legacy):
   """
