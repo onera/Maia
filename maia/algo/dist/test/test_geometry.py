@@ -44,6 +44,61 @@ def test_cell_vtx_connectivity_S():
   assert (cell_vtx == [24,25,30,29,39,40,45,44,  31,32,37,36,46,47,52,51]).all()
 
 @pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("distri_global", [True, False])
+def test_entity_vtx_connectivity_elt(distri_global, comm):
+  ft = PT.yaml.to_cgns_tree("""
+  Zone Zone_t [[12, 8, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    TRI Elements_t [5, 0]:
+      ElementRange IndexRange_t [1, 3]:
+      ElementConnectivity DataArray_t [1,2,3,  4,5,6,  7,8,9]:
+    PYRA Elements_t [12, 0]:
+      ElementRange IndexRange_t [8, 11]:
+      ElementConnectivity DataArray_t [201,202,203,204,205,  206,207,208,209,210, 211,212,213,214,215, 216,217,218,219,220]:
+    TETRA Elements_t [10, 0]:
+      ElementRange IndexRange_t [4, 7]:
+      ElementConnectivity DataArray_t [101,102,103,104,  105,106,107,108,  109,110,111,112,  113,114,115,116]:
+  """)
+  tree = maia.factory.full_to_dist_tree(ft, comm)
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+
+  if distri_global:
+    expected_cell_vtx_idx = [[0,4,8,12],   # Proc 0
+                             [0,4,9,14],   # Proc 1
+                             [0,5,10]      # Proc 2
+                            ][comm.rank]
+    expected_cell_vtx = [[101,102,103,104,  105,106,107,108,  109,110,111,112],
+                         [113,114,115,116,  201,202,203,204,205,  206,207,208,209,210],
+                         [211,212,213,214,215, 216,217,218,219,220]
+                        ][comm.rank]
+  else:
+    expected_cell_vtx_idx = [[0,4,8,13,18],   # Proc 0
+                             [0,4,9],         # Proc 1
+                             [0,4,9]          # Proc 2
+                            ][comm.rank]
+    expected_cell_vtx = [[101,102,103,104,  105,106,107,108,  201,202,203,204,205,  206,207,208,209,210],
+                         [109,110,111,112,  211,212,213,214,215],
+                         [113,114,115,116,    216,217,218,219,220]
+                        ][comm.rank]
+
+  cell_vtx_idx, cell_vtx = geometry._entity_vtx_connectivity_elt(zone, comm, 3, distri_global)
+
+  assert np.array_equal(cell_vtx_idx, expected_cell_vtx_idx)
+  assert np.array_equal(cell_vtx, expected_cell_vtx)
+
+
+  if not distri_global:
+    expected_cell_vtx_idx = [0,3]
+    expected_cell_vtx = [[1,2,3],
+                         [4,5,6],
+                         [7,8,9]
+                        ][comm.rank]
+    cell_vtx_idx, cell_vtx = geometry._entity_vtx_connectivity_elt(zone, comm, 2, False)
+    assert np.array_equal(cell_vtx_idx, expected_cell_vtx_idx)
+    assert np.array_equal(cell_vtx, expected_cell_vtx)
+
+
+@pytest_parallel.mark.parallel(3)
 def test_compute_face_normal3d(comm):
   tree = maia.factory.generate_dist_block(3, 'Poly', comm)
   zone = PT.get_all_Zone_t(tree)[0]

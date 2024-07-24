@@ -185,3 +185,7 @@ def str_to_bools(size, key):
     return [False]*(size-1) + [True]
   else:
     raise ValueError(f"key must be one of {{'none', 'all', 'ancestors' or 'leaf'}}")
+
+def overlap_size(start1, end1, start2, end2):
+  """ Number of common elements for two given intervals """
+  return max(min(end1, end2) - max(start1, start2), 0)

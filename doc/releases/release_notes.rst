@@ -24,6 +24,7 @@ Developpement version
 - interpolate: managed Vertex located fields for all values of ``strategy`` parameter
 - adapt_mesh_with_feflo: allow users to change temporary directory for meshb files
 - recover_dist_tree: manage poly 2D (NGON+BAR) meshes
+- Introduce ``compute_centers`` which allows more configurations for entities centers computing
 
 🐞 Fixes
 ^^^^^^^^
@@ -31,6 +32,7 @@ Developpement version
 - extract_part: prevent a crash when a rank get no cells on extracted U zone
 - partitioning : fix internal edges creation and BCs on 2D/NGon meshes
 - partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes
+- partitioning: manage ``DiscreteData_t`` nodes with PointList
 
 🚧 API change
 ^^^^^^^^^^^^^

@@ -161,11 +161,15 @@ def test_compute_face_center_3d(comm):
   maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
   assert np.allclose(centers.compute_face_center(zone), expected_cyl)
 
+@pytest.mark.parametrize("phydim", [3,2])
 @pytest_parallel.mark.parallel(1)
-def test_compute_face_center_2d(comm):
+def test_compute_face_center_2d(phydim, comm):
   dslice_tree = maia.factory.generate_dist_block(4, "QUAD_4", comm)
   pslice_tree = maia.factory.partition_dist_tree(dslice_tree, comm)
   zone = PT.get_all_Zone_t(pslice_tree)[0]
+
+  if phydim == 2:
+    PT.rm_nodes_from_name(zone, 'CoordinateZ')
 
   expected = np.array([0.16, 0.16, 0.,   0.50, 0.16, 0.,   0.83, 0.16, 0.,
                        0.16, 0.50, 0.,   0.50, 0.50, 0.,   0.83, 0.50, 0.,
@@ -194,7 +198,7 @@ def test_compute_face_center_2d_S(comm):
     node = PT.get_node_from_name(tree, f'Coordinate{dir}')
     node[1] = node[1].reshape((3,3), order='F')
   zone = PT.get_all_Zone_t(tree)[0]
-  expected = np.array([0.25,0.25,  0.75 ,0.25,  0.25, 0.75,  0.75, 0.75])
+  expected = np.array([0.25,0.25,0,  0.75 ,0.25,0,  0.25, 0.75,0,  0.75, 0.75,0])
   assert np.array_equal(centers.compute_face_center(zone), expected)
 
   # Without CZ, in cyl coords (move by hand, fct does not manage z == 0 ...)
@@ -208,7 +212,7 @@ def test_compute_face_center_2d_S(comm):
   cx[0] = 'CoordinateR'
   cy[0] = 'CoordinateTheta'
   zone = PT.get_all_Zone_t(tree)[0]
-  expected = np.array([0.35355339,0.78539816,  0.79056942,0.32175055,  0.79056942,1.24904577,  1.06066017,0.78539816])
+  expected = np.array([0.35355339,0.78539816,0,  0.79056942,0.32175055,0,  0.79056942,1.24904577,0,  1.06066017,0.785398160,0])
   assert np.allclose(centers.compute_face_center(zone), expected, atol=1e-6)
 
 @pytest.mark.skipif(not maia.pdm_has_ptscotch, reason="Require PTScotch")
@@ -226,13 +230,17 @@ def test_compute_face_center_elmts_3d(comm):
 
 @pytest.mark.parametrize("elt_kind", ["QUAD_4" ,'NFACE_n'])
 @pytest.mark.parametrize("cyl", [False, True])
+@pytest.mark.parametrize("phydim", [3,2])
 @pytest_parallel.mark.parallel(1)
-def test_compute_edge_center_2d(elt_kind, cyl, comm):
+def test_compute_edge_center_2d(elt_kind, cyl, phydim, comm):
   tree = maia.factory.generate_dist_block(3, elt_kind, comm)
   if cyl:
     maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
   zone = PT.get_all_Zone_t(tree)[0]
   PT.rm_nodes_from_name(zone, ":CGNS#Distribution") # Fake part_zone (from test_connectivity_utils)
+
+  if phydim == 2:
+    PT.rm_nodes_from_name(zone, 'CoordinateZ')
 
   if elt_kind=="QUAD_4":
     if cyl:
