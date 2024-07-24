@@ -220,24 +220,6 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
   for base_n in to_remove:
     PT.rm_children_from_name(tree, base_n)
 
-def _add_zone_suffix(zones, query):
-  """Util function prefixing all the nodes founds by a query by the number of the zone"""
-  for izone, zone in enumerate(zones):
-    for node in PT.get_children_from_predicates(zone, query):
-      PT.set_name(node, PT.get_name(node) + f".{izone}")
-      # Also update internal (periodic) joins with new donor name
-      if PT.get_child_from_name(node, '__maia_jn_update__') is not None:
-        opp_domain_id = PT.get_child_from_name(node, '__maia_jn_update__')[1][0]
-        donor_name_node = PT.get_child_from_name(node, "GridConnectivityDonorName")
-        PT.set_value(donor_name_node, f"{PT.get_value(donor_name_node)}.{opp_domain_id}")
-
-def _rm_zone_suffix(zones, query):
-  """Util function removing the number of the zone in all the nodes founds by a query
-  Use it to cleanup after _add_zone_suffix has been applied"""
-  for zone in zones:
-    for node in PT.get_children_from_predicates(zone, query):
-      PT.set_name(node, '.'.join(PT.get_name(node).split('.')[:-1]))
-
 def _merge_zones(tree, comm, subset_merge_strategy='name'):
   """
   Tree must contain *only* the zones to merge. We use a tree instead of a list of zone because it's easier
@@ -311,7 +293,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
       opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, base_name)
       if opp_zone_path in zone_to_id:
         if is_perio(gc):
-          PT.new_node('__maia_jn_update__', 'UserDefinedData_t', value=zone_to_id[opp_zone_path], parent=gc)
+          PT.new_node('__maia_jn_update__', 'Descriptor_t', value=str(zone_to_id[opp_zone_path]), parent=gc)
         else:
           PT.new_node('__maia_merge__', 'Descriptor_t', parent=gc)
           gc_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
@@ -442,6 +424,31 @@ def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
         for sub_node in PT.iter_children_from_label(node, type):
           PT.add_child(m_node, sub_node)
 
+def gather_subsets(zones, query, merge_strategy):
+  """
+  Create a dict. mapping new node path to the list of subset nodes to merge,
+  depending of merge strategy
+  """
+  subset_groups = {}
+  if merge_strategy == 'name':
+    for i,zone in enumerate(zones):
+      for path in PT.predicates_to_paths(zone, query):
+        if path not in subset_groups:
+          subset_groups[path] = len(zones) * [None]
+        subset_groups[path][i] = PT.get_node_from_path(zone, path)
+  else:
+    # None
+    # If working on BCDS, we must update BC name in path as well
+    if len(query) == 3: # ugly
+      unique_name = lambda p,i: PT.utils.update_path_elt(p, 1, lambda s: s + f'.{i}')
+    else:
+      unique_name = lambda p,i: p + f'.{i}'
+    for i,zone in enumerate(zones):
+      for path in PT.predicates_to_paths(zone, query):
+        subset_groups[unique_name(path, i)]    = len(zones) * [None]
+        subset_groups[unique_name(path, i)][i] = PT.get_node_from_path(zone, path)
+    
+  return subset_groups
 def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
   Wrapper to perform a merge of the following subset nodes (when having a PointList) :
@@ -484,41 +491,40 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
 
   i_query = 0
   for query, rules in zip(all_subset_queries, all_data_queries):
-    if merge_strategy != 'name' or query[0] == 'ZoneGridConnectivity_t':
-      _add_zone_suffix(zones, query)
-    if merge_strategy != 'name' and i_query == 2: #For BCDataSet, we should also update BC name
-      _add_zone_suffix(zones, query[:-1])
-    collected_paths = []
-    #Collect
-    for zone in zones:
-      for nodes in PT.get_children_from_predicates(zone, query, ancestors=True):
-        py_utils.append_unique(collected_paths, '/'.join([PT.get_name(node) for node in nodes]))
+
+    _merge_strategy = None if query[0] == 'ZoneGridConnectivity_t' else merge_strategy
+    subset_groups = gather_subsets(zones, query, _merge_strategy)
+
     #Merge and add to output
-    for pl_path in collected_paths:
+    for path,subset_nodes in subset_groups.items():
       #We have to retrieve a zone knowing this node to deduce the kind of parent nodes and gridLocation
-      master_node = None
-      for zone in zones:
-        if PT.get_node_from_path(zone, pl_path) is not None:
-          master_node = zone
-          break
-      assert master_node is not None
-      parent = merged_zone
-      location = sids.Subset.GridLocation(PT.get_node_from_path(master_node, pl_path))
+      master_idx = [n is not None for n in subset_nodes].index(True)
+      master_zone = zones[master_idx]
+      master_nodes = PT.get_child_from_predicates(master_zone, query, ancestors=True)
+      
+      location = sids.Subset.GridLocation(subset_nodes[master_idx])
       mbm = all_mbm[location.split('Center')[0]]
-      merged_pl = _merge_pl_data(mbm, zones, pl_path, location, rules, comm)
+      merged_pl = _merge_pl_data(mbm, zones, subset_nodes, location, rules, comm)
       # Enforce zone dtype for output PL
       for pl in PT.get_children_from_name(merged_pl, 'PointList*'):
         pl[1] = np_utils.safe_int_cast(pl[1], merged_zone[1].dtype)
+
       #Rebuild structure until last node
-      for child_name in pl_path.split('/')[:-1]:
-        master_node = PT.get_child_from_name(master_node, child_name)
-        parent = PT.update_child(parent, child_name, PT.get_label(master_node), PT.get_value(master_node))
+      parent = merged_zone
+      path_split = path.split('/')
+      for i, master_node in enumerate(master_nodes[:-1]):
+        parent = PT.update_child(parent, path_split[i], PT.get_label(master_node), PT.get_value(master_node))
+
+      PT.set_name(merged_pl, PT.utils.path_tail(path))
+
+      # If internal perio jns, update GCDonorName on merged zone
+      if PT.get_child_from_name(merged_pl, '__maia_jn_update__') is not None:
+        opp_domain_id = PT.get_value(PT.get_child_from_name(merged_pl, '__maia_jn_update__'))
+        donor_name_node = PT.get_child_from_name(merged_pl, "GridConnectivityDonorName")
+        PT.set_value(donor_name_node, f"{PT.get_value(donor_name_node)}.{opp_domain_id}")
+        PT.rm_children_from_name(merged_pl, '__maia_jn_update__')
 
       PT.add_child(parent, merged_pl)
-    if merge_strategy != 'name'or query[0] == 'ZoneGridConnectivity_t':
-      _rm_zone_suffix(zones, query)
-    if merge_strategy != 'name' and i_query == 2: #For BCDataSet, we should also update BC name
-      _rm_zone_suffix(zones, query[:-1])
     i_query += 1
 
   # Trick to avoid spectific treatment of ZoneSubRegions (remove PL on original zones)
@@ -546,7 +552,7 @@ def _equilibrate_data(data, comm, distri=None, distri_full=None):
   return ideal_distri, dist_data
 
 
-def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
+def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
   """
   Internal function used by _merge_zones to produce a merged node from the zones to merge
   and the path to a subset node (having a PL)
@@ -562,8 +568,8 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   has_data  = []
   strides   = []
   all_datas = {}
-  for i, zone in enumerate(zones):
-    node = PT.get_node_from_path(zone, subset_path)
+  assert len(zones) == len(subset_nodes)
+  for zone, node in zip(zones, subset_nodes):
     if loc == 'Vertex': 
       distri_ptb = MT.getDistribution(zone, 'Vertex')[1]
     elif loc == 'FaceCenter':
@@ -616,7 +622,7 @@ def _merge_pl_data(mbm, zones, subset_path, loc, data_query, comm):
   # For periodic jns of zones to merge, PointListDonor must be transported and updated.
   # Otherwise, it must just be transported to new zone
   if PT.get_node_from_name(ref_node, '__maia_jn_update__') is not None:
-    opp_dom = PT.get_node_from_name(ref_node, '__maia_jn_update__')[1][0]
+    opp_dom = int(PT.get_value(PT.get_node_from_name(ref_node, '__maia_jn_update__')))
     pld_data = all_datas.pop('PointListDonor_0') #Since we merge U zones we should have only 1D-PL
     block_datas   = [as_pdm_gnum(pld) for pld in pld_data]
     block_domains = [opp_dom*np.ones(pld.size, np.int32) for pld in pld_data]
