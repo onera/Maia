@@ -33,8 +33,7 @@ def pe_to_nface(t, comm=None, removePE=False):
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree(s)): Distributed or Partitioned tree (or sequences of)
-      starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
     comm       (MPIComm) : MPI communicator, mandatory only for distributed zones
     remove_PE  (bool, optional): If True, remove the ParentElements node.
       Defaults to False.
@@ -61,8 +60,7 @@ def nface_to_pe(t, comm=None, removeNFace=False):
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree(s)): Distributed or Partitioned tree (or sequences of)
-      starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
     comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
     removeNFace (bool, optional): If True, remove the NFace node.
       Defaults to False.
@@ -89,8 +87,7 @@ def edge_pe_to_ngon(t, comm=None, removePE=False):
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree(s)): Distributed or Partitioned tree (or sequences of)
-      starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
     comm       (MPIComm) : MPI communicator, mandatory only for distributed zones
     remove_PE  (bool, optional): If True, remove the ParentElements node.
       Defaults to False.

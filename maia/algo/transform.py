@@ -134,7 +134,7 @@ def transform_affine(t,
   Input tree is modified inplace.
 
   Args:
-    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
+    t    (CGNSTree): Tree starting at Zone_t level or higher.
     rotation_center (array): center coordinates of the rotation
     rotation_angler (array): angles of the rotation
     translation (array):  translation vector components
@@ -168,7 +168,7 @@ def scale_mesh(t, s=1.):
   Input tree is modified inplace.
 
   Args:
-    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
+    t    (CGNSTree): Tree starting at Zone_t level or higher
     s (float or array of float): Scaling factor in each physical dimension. Scalars automatically
       extend to uniform array.
 
@@ -417,7 +417,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
     transition matrix stored in the CoordinateTransform node.
 
   Args:
-    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
+    t    (CGNSTree): Tree starting at Zone_t level or higher
     transition_matrix (array or None) : 3x3 array of floats or None (see above)
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
       the following nodes : ``FlowSolution_t``, ``DiscreteData_t``, ``ZoneSubRegion_t``, ``BCDataset_t``.
@@ -477,7 +477,7 @@ def cartesian_to_cylindrical(t, axis, comm=None, apply_to_fields=True):
   and vectorial fields (note that cyl. Z axis and cart. Z axis may differs).
 
   Args:
-    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
+    t    (CGNSTree): Tree starting at Zone_t level or higher
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
     comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under
@@ -512,7 +512,7 @@ def cylindrical_to_cartesian(t, axis, comm=None, apply_to_fields=True):
   and vectorial fields (note that cyl. Z axis and cart. Z axis may differs).
 
   Args:
-    t    (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher
+    t    (CGNSTree): Tree starting at Zone_t level or higher
     axis (array of 3 floats) : Revolution axis, which can by any non zero vector
     comm       (MPIComm) : MPI communicator, mandatory only for distributed trees
     apply_to_fields (bool) : If True, apply the transformation to the vectorial fields found under

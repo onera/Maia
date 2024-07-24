@@ -49,7 +49,7 @@ def compute_centers(t, dim, comm=None):
   only for elements explicitly defined in sections.
 
   Args:
-    t    (CGNSTree(s))         : Tree (or sequences of) starting at Zone_t level or higher
+    t    (CGNSTree)            : Tree starting at Zone_t level or higher
     dim  (int or 'CellCenter') : Entity on which centers are computed (see above)
     comm       (MPIComm)       : MPI communicator, mandatory only for distributed trees
 

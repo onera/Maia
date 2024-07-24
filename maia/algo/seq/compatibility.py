@@ -36,7 +36,7 @@ def enforce_ngon_pe_local(t):
   The tree is modified in place.
 
   Args:
-    t (CGNSTree(s)): Tree (or sequences of) starting at Zone_t level or higher.
+    t (CGNSTree): Tree starting at Zone_t level or higher.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
