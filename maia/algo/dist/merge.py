@@ -455,6 +455,45 @@ def gather_subsets(zones, query, merge_strategy):
       subset_groups[common_path][i] = PT.get_node_from_path(zone, path)
 
   return subset_groups
+
+def pre_merge_families_per_zone(zones, query, comm):
+  """ Pre merge the subset according to their family, for a given zone.
+  This is because merge_pl_data only support one node per zone after
+  """
+  bcds_pl    = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, 'PointList') is not None
+  bcds_no_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, 'PointList') is None
+  for zone in zones:
+    fam_to_merge = {}
+    for node_list in PT.get_children_from_predicates(zone, query, ancestors=True):
+      node = node_list[-1]
+      if PT.get_child_from_label(node, 'FamilyName_t') is not None:
+        fam = PT.get_value(PT.get_child_from_label(node, 'FamilyName_t'))
+        if fam in fam_to_merge:
+          fam_to_merge[fam].append(node)
+        else:
+          fam_to_merge[fam] = [node]
+    
+    for fam, nodes in fam_to_merge.items():
+      if len(nodes) > 1:
+        parent = node_list[-2] if len(node_list) > 1 else zone
+        merged_node = GN.concatenate_subset_nodes(nodes, comm, output_name=f'merged{fam}',
+                                                  additional_data_queries=[[bcds_no_pl, 'BCData_t', 'DataArray_t']],
+                                                  additional_child_queries=['FamilyName_t'])
+
+        # Also merge BCDS with pl if node is a BC
+        if PT.get_label(merged_node) == 'BC_t':
+          ds_names = [PT.get_name(n) for n in PT.get_children_from_predicate(nodes[0], bcds_pl)]
+          for node in nodes: # Check : data should be the same on each node
+            assert [PT.get_name(n) for n in PT.get_children_from_predicate(node, bcds_pl)] == ds_names
+          for ds_name in ds_names:
+            ds_nodes = [PT.get_child_from_name(node, ds_name) for node in nodes]
+            merged_ds = GN.concatenate_subset_nodes(ds_nodes, comm, output_name=ds_name, additional_data_queries=['BCData_t/DataArray_t'])
+            PT.add_child(merged_node, merged_ds)
+
+        PT.add_child(parent, merged_node)
+        for node in nodes:
+          PT.rm_child(parent, node)
+
 def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
   Wrapper to perform a merge of the following subset nodes (when having a PointList) :
@@ -485,6 +524,8 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       ['BCData_t', 'DataArray_t'],
       ['PointListDonor'],
       ]
+  
+  zones = [PT.shallow_copy(z) for z in zones] # We may modify zones structure
 
   # Trick to avoid spectific treatment of ZoneSubRegions (add PL)
   for zone in zones:
@@ -499,6 +540,11 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   for query, rules in zip(all_subset_queries, all_data_queries):
 
     _merge_strategy = None if query[0] == 'ZoneGridConnectivity_t' else merge_strategy
+
+    if _merge_strategy == 'family':
+      # We can merge at most one node per zone, so in family case we may need to concatenate first
+      pre_merge_families_per_zone(zones, query, comm)
+
     subset_groups = gather_subsets(zones, query, _merge_strategy)
 
     #Merge and add to output
@@ -533,12 +579,6 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       PT.add_child(parent, merged_pl)
     i_query += 1
 
-  # Trick to avoid spectific treatment of ZoneSubRegions (remove PL on original zones)
-  for zone in zones:
-    for zsr in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
-      if PT.get_child_from_name(zsr, 'BCRegionName') is not None or \
-         PT.get_child_from_name(zsr, 'GridConnectivityRegionName') is not None:
-        PT.rm_children_from_name(zsr, 'PointList*')
   # Since link may be broken in merged zone, it is safer to remove it
   for zsr in PT.iter_children_from_label(merged_zone, 'ZoneSubRegion_t'):
     PT.rm_children_from_name(zsr, 'BCRegionName')
