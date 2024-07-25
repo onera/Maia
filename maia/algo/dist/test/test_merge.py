@@ -20,6 +20,61 @@ class log_capture:
   def log(self, msg):
     self.logs += msg
 
+def test_gather_subsets():
+  to_names = lambda d: {key : [n[0] if n else None for n in val] for key,val in d.items()}
+  zones = PT.yaml.to_nodes("""
+  Zone1 Zone_t:
+    ZoneBC ZoneBC_t:
+      aval BC_t:
+        DiData BCDataSet_t:
+        NeData BCDataSet_t:
+      amontA BC_t:
+        FamilyName FamilyName_t "AMONT":
+      aube BC_t:
+        FamilyName FamilyName_t "AUBE":
+  Zone2 Zone_t:
+    ZoneBC ZoneBC_t:
+      aval BC_t:
+        DiData BCDataSet_t:
+      amontB BC_t:
+        FamilyName FamilyName_t "AMONT":
+        DiData BCDataSet_t:
+  """)
+  gathered = merge.gather_subsets(zones, 'ZoneBC/BC_t', 'None')
+  assert to_names(gathered) == {'ZoneBC/aval.0'   : ['aval', None],
+                                'ZoneBC/aval.1'   : [None, 'aval'],
+                                'ZoneBC/amontA.0' : ['amontA', None],
+                                'ZoneBC/amontB.1' : [None, 'amontB'],
+                                'ZoneBC/aube.0'   : ['aube', None]}
+
+  gathered = merge.gather_subsets(zones, 'ZoneBC/BC_t', 'name')
+  assert to_names(gathered) == {'ZoneBC/aval'   : ['aval', 'aval'],
+                                'ZoneBC/amontA' : ['amontA', None],
+                                'ZoneBC/amontB' : [None, 'amontB'],
+                                'ZoneBC/aube'   : ['aube', None]}
+
+  gathered = merge.gather_subsets(zones, 'ZoneBC/BC_t', 'family')
+  assert to_names(gathered) == {'ZoneBC/aval'   : ['aval', 'aval'],
+                                'ZoneBC/AMONT'  : ['amontA', 'amontB'],
+                                'ZoneBC/AUBE'   : ['aube', None]}
+
+  # For BCDS, distinction must be done at BC level
+  gathered = merge.gather_subsets(zones, ['ZoneBC_t','BC_t','BCDataSet_t'], 'None')
+  assert to_names(gathered) == {'ZoneBC/aval.0/DiData'   : ['DiData', None],
+                                'ZoneBC/aval.0/NeData'   : ['NeData', None],
+                                'ZoneBC/aval.1/DiData'   : [None, 'DiData'],
+                                'ZoneBC/amontB.1/DiData' : [None, 'DiData']}
+
+  gathered = merge.gather_subsets(zones, ['ZoneBC_t','BC_t','BCDataSet_t'], 'name')
+  assert to_names(gathered) == {'ZoneBC/aval/DiData'   : ['DiData', 'DiData'],
+                                'ZoneBC/aval/NeData'   : ['NeData', None],
+                                'ZoneBC/amontB/DiData' : [None, 'DiData']}
+  gathered = merge.gather_subsets(zones, ['ZoneBC_t','BC_t','BCDataSet_t'], 'family')
+  assert to_names(gathered) == {'ZoneBC/aval/DiData'   : ['DiData', 'DiData'],
+                                'ZoneBC/aval/NeData'   : ['NeData', None],
+                                'ZoneBC/AMONT/DiData' : [None, 'DiData']}
+
+
 @pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("merge_bc_from_name", [True, False])   #       __
 def test_merge_zones_L(comm, merge_bc_from_name):               #      |  |

@@ -430,24 +430,30 @@ def gather_subsets(zones, query, merge_strategy):
   depending of merge strategy
   """
   subset_groups = {}
-  if merge_strategy == 'name':
-    for i,zone in enumerate(zones):
-      for path in PT.predicates_to_paths(zone, query):
-        if path not in subset_groups:
-          subset_groups[path] = len(zones) * [None]
-        subset_groups[path][i] = PT.get_node_from_path(zone, path)
-  else:
-    # None
-    # If working on BCDS, we must update BC name in path as well
-    if len(query) == 3: # ugly
-      unique_name = lambda p,i: PT.utils.update_path_elt(p, 1, lambda s: s + f'.{i}')
-    else:
-      unique_name = lambda p,i: p + f'.{i}'
-    for i,zone in enumerate(zones):
-      for path in PT.predicates_to_paths(zone, query):
-        subset_groups[unique_name(path, i)]    = len(zones) * [None]
-        subset_groups[unique_name(path, i)][i] = PT.get_node_from_path(zone, path)
-    
+
+  is_bcds = len(query) == 3 # Ugly detection
+  for i,zone in enumerate(zones):
+    for path in PT.predicates_to_paths(zone, query):
+
+      if merge_strategy == 'name':
+        common_path = path
+      elif merge_strategy == 'family':
+        nodepath = PT.utils.path_head(path) if is_bcds else path # To get BC node is case of BCDS
+        node = PT.get_node_from_path(zone, nodepath)
+        famnode = PT.get_child_from_label(node, 'FamilyName_t')
+        if famnode is not None:
+          pos = 1 if is_bcds else -1
+          common_path = PT.utils.update_path_elt(path, pos, lambda s : PT.get_value(famnode))
+        else: # Fallback if node has no Family
+          common_path = path
+      else:
+        pos = 1 if is_bcds else -1
+        common_path = PT.utils.update_path_elt(path, pos, lambda s: s + f'.{i}')
+
+      if common_path not in subset_groups:
+        subset_groups[common_path] = len(zones) * [None]
+      subset_groups[common_path][i] = PT.get_node_from_path(zone, path)
+
   return subset_groups
 def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
