@@ -311,6 +311,73 @@ def new_BC(name:str = 'BC',
     new_IndexArray('PointList', point_list, bc)
   return bc
 
+def new_BCDataSet(name:str = 'BCDataSet',
+                  type:str='Null',
+                  *,
+                  point_range:ArrayLike = None,
+                  point_list:ArrayLike = None,
+                  loc:str = None,
+                  parent:CGNSTree = None):
+  """ Create a BCDataSet_t node
+
+  Link to corresponding SIDS section:
+  `BCDataSet_t <https://cgns.github.io/CGNS_docs_current/sids/bc.html#BCDataSet>`_
+
+  Args:
+    name (str): Name of the created dataset node
+    type (str) : Type of the dataset
+    point_range (ArrayLike) : PointRange array defining the dataset
+    point_list (ArrayLike) : PointList array defining the dataset
+    loc (str) : If specified, create a GridLocation taking this value
+    parent (CGNSTree): Node to which created bcdataset should be attached
+  Example:
+    >>> node = PT.new_BCDataSet('BCDS', loc='FaceCenter', point_list=[[1,3,5,7]])
+    >>> PT.print_tree(node)
+    BCDS BCDataSet_t "Null"
+    ├───GridLocation GridLocation_t "FaceCenter"
+    └───PointList IndexArray_t I4 [[1 3 5 7]]
+  """
+  bcds = new_node(name, 'BCDataSet_t', type, parent=parent)
+  _check_parent_label(bcds, parent, ['BC_t'])
+  if loc is not None:
+    new_GridLocation(loc, bcds)
+  if point_range is not None:
+    assert point_list is None
+    new_IndexRange('PointRange', point_range, bcds)
+  if point_list is not None:
+    assert point_range is None
+    new_IndexArray('PointList', point_list, bcds)
+  
+  return bcds
+
+
+def new_BCData(name:str,
+               fields:Dict[str, ArrayLike] = {},
+               parent:CGNSTree = None):
+  """ Create a BCData_t node
+
+  Link to corresponding SIDS section:
+  `BCData_t <https://cgns.github.io/CGNS_docs_current/sids/bc.html#BCData>`_
+
+  Args:
+    name (str): Name of the created BCData node
+    fields (dict) : fields to create under the container (see :ref:`fields setting <pt_presets_commun>`)
+    parent (CGNSTree): Node to which created data should be attached
+  Example:
+    >>> node = PT.new_BCData('DirichletData', fields={'Global' : np.float64(4.4), 'Local' : np.ones(100)})
+    >>> PT.print_tree(node)
+    DirichletData BCData_t
+    ├───Global DataArray_t R8 [4.4]
+    └───Local DataArray_t R8 (100,)
+  """
+  bcdata = new_node(name, 'BCData_t', parent=parent)
+  _check_parent_label(bcdata, parent, ['BCDataSet_t', 'FamilyBCDataSet_t'])
+  for field_name, field_val in fields.items():
+    new_DataArray(field_name, field_val, parent=bcdata)
+  
+  return bcdata
+
+
 def new_ZoneGridConnectivity(name:str='ZoneGridConnectivity', parent:CGNSTree=None):
   """ Create a ZoneGridConnectivity_t node
 

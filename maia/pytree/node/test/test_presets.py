@@ -123,6 +123,26 @@ def test_new_BC():
   with pytest.raises(AssertionError):
     presets.new_BC(point_list=[1,2,3], point_range=[[1,5], [1,5]], loc='Vertex')
 
+def test_new_BCDataSet():
+  bcds = presets.new_BCDataSet('MyBCDS', 'FamilySpecified', point_list=[1,2,3], loc="FaceCenter")
+  expected = parse_yaml_cgns.to_node("""
+  MyBCDS BCDataSet_t "FamilySpecified":
+    PointList IndexArray_t I4 [1,2,3]:
+    GridLocation GridLocation_t "FaceCenter":
+  """)
+  assert is_same_tree(expected, bcds)
+  with pytest.raises(AssertionError):
+    presets.new_BCDataSet('DS', point_list=[1,2,3], point_range=[[1,5], [1,5]], loc='Vertex')
+
+def test_new_BCData():
+  bcda = presets.new_BCData('MyData', {'F1' : 4.2, 'F2': np.ones(6)})
+  expected = parse_yaml_cgns.to_node("""
+  MyData BCData_t:
+    F1 DataArray_t R4 [4.2]:
+    F2 DataArray_t R8 [1,1,1,1,1,1]:
+  """)
+  assert is_same_tree(expected, bcda)
+
 def test_new_GCType():
   gctype = presets.new_GridConnectivityType('Abutting1to1')
   assert N.get_name(gctype) == 'GridConnectivityType'
