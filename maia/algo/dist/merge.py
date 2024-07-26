@@ -100,10 +100,12 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
 
   Subsets of the merged block can be reduced thanks to subset_merge parameter:
   
-  - ``None``   : no reduction occurs : all subset of all original zones remains on merged zone, with a
+  - ``'none'``   : no reduction occurs : all subset of all original zones remains on merged zone, with a
     numbering suffix.
-  - ``'name'`` : Subset having the same name on the original zones (within a same label) produces
-    and unique subset on the output merged zone.
+  - ``'name'`` : Subsets having the same name on the original zones (within a same label) produces
+    a unique subset on the output merged zone.
+  - ``'family'`` : Subsets having the same FamilyName on the original zones (within a same label) produces
+    a unique subset on the output merged zone. Subsets without FamilyName fallback to ``'name'`` strategy.
 
   Only unstructured-NGon trees are supported, and interfaces between the zones
   to merge must have a FaceCenter location.

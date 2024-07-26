@@ -25,6 +25,7 @@ Developpement version
 - adapt_mesh_with_feflo: allow users to change temporary directory for meshb files
 - recover_dist_tree: manage poly 2D (NGON+BAR) meshes
 - Introduce ``compute_centers`` which allows more configurations for entities centers computing
+- merge_zones: add ``family`` option for subset merge parameter
 
 🐞 Fixes
 ^^^^^^^^
