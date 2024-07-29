@@ -428,8 +428,8 @@ def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
 
 def gather_subsets(zones, query, merge_strategy):
   """
-  Create a dict. mapping new node path to the list of subset nodes to merge,
-  depending of merge strategy
+  Create a dict mapping new node path to the list of subset nodes to merge,
+  depending of merge strategy.
   """
   subset_groups = {}
 
@@ -458,43 +458,42 @@ def gather_subsets(zones, query, merge_strategy):
 
   return subset_groups
 
-def pre_merge_families_per_zone(zones, query, comm):
+def pre_merge_families_per_zone(zone, query, comm):
   """ Pre merge the subset according to their family, for a given zone.
-  This is because merge_pl_data only support one node per zone after
+  This is because merge_pl_data only support one node per zone after.
   """
   bcds_pl    = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, 'PointList') is not None
   bcds_no_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, 'PointList') is None
-  for zone in zones:
-    fam_to_merge = {}
-    for node_list in PT.get_children_from_predicates(zone, query, ancestors=True):
-      node = node_list[-1]
-      if PT.get_child_from_label(node, 'FamilyName_t') is not None:
-        fam = PT.get_value(PT.get_child_from_label(node, 'FamilyName_t'))
-        if fam in fam_to_merge:
-          fam_to_merge[fam].append(node)
-        else:
-          fam_to_merge[fam] = [node]
-    
-    for fam, nodes in fam_to_merge.items():
-      if len(nodes) > 1:
-        parent = node_list[-2] if len(node_list) > 1 else zone
-        merged_node = GN.concatenate_subset_nodes(nodes, comm, output_name=f'merged{fam}',
-                                                  additional_data_queries=[[bcds_no_pl, 'BCData_t', 'DataArray_t']],
-                                                  additional_child_queries=['FamilyName_t'])
+  fam_to_merge = {}
+  for node_list in PT.get_children_from_predicates(zone, query, ancestors=True):
+    node = node_list[-1]
+    if PT.get_child_from_label(node, 'FamilyName_t') is not None:
+      fam = PT.get_value(PT.get_child_from_label(node, 'FamilyName_t'))
+      if fam in fam_to_merge:
+        fam_to_merge[fam].append(node)
+      else:
+        fam_to_merge[fam] = [node]
+  
+  for fam, nodes in fam_to_merge.items():
+    if len(nodes) > 1:
+      parent = node_list[-2] if len(node_list) > 1 else zone
+      merged_node = GN.concatenate_subset_nodes(nodes, comm, output_name=f'merged{fam}',
+                                                additional_data_queries=[[bcds_no_pl, 'BCData_t', 'DataArray_t']],
+                                                additional_child_queries=['FamilyName_t'])
 
-        # Also merge BCDS with pl if node is a BC
-        if PT.get_label(merged_node) == 'BC_t':
-          ds_names = [PT.get_name(n) for n in PT.get_children_from_predicate(nodes[0], bcds_pl)]
-          for node in nodes: # Check : data should be the same on each node
-            assert [PT.get_name(n) for n in PT.get_children_from_predicate(node, bcds_pl)] == ds_names
-          for ds_name in ds_names:
-            ds_nodes = [PT.get_child_from_name(node, ds_name) for node in nodes]
-            merged_ds = GN.concatenate_subset_nodes(ds_nodes, comm, output_name=ds_name, additional_data_queries=['BCData_t/DataArray_t'])
-            PT.add_child(merged_node, merged_ds)
+      # Also merge BCDS with pl if node is a BC
+      if PT.get_label(merged_node) == 'BC_t':
+        ds_names = [PT.get_name(n) for n in PT.get_children_from_predicate(nodes[0], bcds_pl)]
+        for node in nodes: # Check : data should be the same on each node
+          assert [PT.get_name(n) for n in PT.get_children_from_predicate(node, bcds_pl)] == ds_names
+        for ds_name in ds_names:
+          ds_nodes = [PT.get_child_from_name(node, ds_name) for node in nodes]
+          merged_ds = GN.concatenate_subset_nodes(ds_nodes, comm, output_name=ds_name, additional_data_queries=['BCData_t/DataArray_t'])
+          PT.add_child(merged_node, merged_ds)
 
-        PT.add_child(parent, merged_node)
-        for node in nodes:
-          PT.rm_child(parent, node)
+      PT.add_child(parent, merged_node)
+      for node in nodes:
+        PT.rm_child(parent, node)
 
 def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
@@ -545,7 +544,8 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
 
     if _merge_strategy == 'family':
       # We can merge at most one node per zone, so in family case we may need to concatenate first
-      pre_merge_families_per_zone(zones, query, comm)
+      for zone in zones:
+        pre_merge_families_per_zone(zone, query, comm)
 
     subset_groups = gather_subsets(zones, query, _merge_strategy)
 
@@ -658,6 +658,10 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
 
   #Fill data for void zones
   for data_path, datas in all_datas.items():
+    if len(datas) != sum(has_data):
+      missing = [PT.get_name(subset) for subset in subset_nodes if \
+                 subset is not None and PT.get_node_from_path(subset, data_path) is None]
+      raise RuntimeError(f"Data {data_path} is defined in some subsets, but missing in {missing}")
     zero_data = np.empty(0, datas[0].dtype)
     data_it = iter(datas)
     updated_data = [next(data_it) if _has_data else zero_data for i,_has_data in enumerate(has_data)]

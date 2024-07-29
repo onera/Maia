@@ -370,6 +370,10 @@ def new_BCData(name:str,
     ├───Global DataArray_t R8 [4.4]
     └───Local DataArray_t R8 (100,)
   """
+  if name not in ['DirichletData', 'NeumannData']:
+    msg = f"Naming a BCData_t node '{name}' is not SIDS compliant." \
+          f" Name should be either DirichletData or NeumannData."
+    warnings.warn(msg, RuntimeWarning, stacklevel=2)
   bcdata = new_node(name, 'BCData_t', parent=parent)
   _check_parent_label(bcdata, parent, ['BCDataSet_t', 'FamilyBCDataSet_t'])
   for field_name, field_val in fields.items():

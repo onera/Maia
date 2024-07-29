@@ -135,9 +135,9 @@ def test_new_BCDataSet():
     presets.new_BCDataSet('DS', point_list=[1,2,3], point_range=[[1,5], [1,5]], loc='Vertex')
 
 def test_new_BCData():
-  bcda = presets.new_BCData('MyData', {'F1' : 4.2, 'F2': np.ones(6)})
+  bcda = presets.new_BCData('NeumannData', {'F1' : 4.2, 'F2': np.ones(6)})
   expected = parse_yaml_cgns.to_node("""
-  MyData BCData_t:
+  NeumannData BCData_t:
     F1 DataArray_t R4 [4.2]:
     F2 DataArray_t R8 [1,1,1,1,1,1]:
   """)
