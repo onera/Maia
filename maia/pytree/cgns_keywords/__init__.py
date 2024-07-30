@@ -1,6 +1,4 @@
 import numpy as np
-from cmaia.pytree.cgns_keywords import *
-from cmaia.pytree import cgns_names as Name
 
 B1, C1, I4, U4, I8, U8, R4, R8, X4, X8 = "B1", "C1", "I4", "U4", "I8", "U8", "R4", "R8", "X4", "X8"
 
@@ -29,3 +27,13 @@ dtypes = (np.int8,
           np.float64,
           np.complex64,
           np.complex128,)
+
+try:
+    from cmaia.pytree.cgns_keywords import *
+except ImportError:
+  from ._cgns_keywords import *
+
+try:
+  from cmaia.pytree import cgns_names as Name
+except ImportError:
+    from . import _cgns_names as Name

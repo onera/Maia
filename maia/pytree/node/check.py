@@ -1,6 +1,5 @@
 import numpy as np
 
-import maia.pytree.node as N
 import maia.pytree.cgns_keywords as CGK
 
 def is_valid_name(name, check_len: bool=True) -> bool:
@@ -44,8 +43,8 @@ def is_valid_label(label, only_sids: bool=True) -> bool:
 
 def is_valid_node(node) -> bool:
   if isinstance(node, (tuple, list)) and len(node)==4:
-    return is_valid_name(N.get_name(node))         and is_valid_value(N.get_value(node, True)) and \
-           is_valid_children(N.get_children(node)) and is_valid_label(N.get_label(node))
+    return is_valid_name(node[0])     and is_valid_value(node[1]) and \
+           is_valid_children(node[2]) and is_valid_label(node[3])
   return False
 
 def is_valid_one_dimensional_string(x):
