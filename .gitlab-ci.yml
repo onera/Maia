@@ -16,6 +16,10 @@ default:
   before_script:
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - source $SOURCE_CMD
+  id_tokens:
+    CI_JOB_JWT:
+      aud: https://gitlab.onera.net
+
 
 stages:
   - init
