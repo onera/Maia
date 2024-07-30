@@ -6,9 +6,11 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory     import full_to_dist as F2D
+from maia.utils       import par_utils
 from maia.utils       import logging as mlog
 from maia.factory.dcube_generator import dcube_generate
 
@@ -19,6 +21,115 @@ class log_capture:
     self.logs = ''
   def log(self, msg):
     self.logs += msg
+
+
+@pytest_parallel.mark.parallel(1)
+def test_pre_merge_families(comm):
+  ftree = PT.yaml.to_cgns_tree("""
+  Zone Zone_t [[16, 9, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZoneBC ZoneBC_t:
+      left BC_t: # No FamilyName
+        PointList IndexArray_t [[1,5,9,13]]:
+      right BC_t: # Only one node
+        FamilyName FamilyName_t "AUBE":
+        PointList IndexArray_t [[4,8,12,16]]:
+      bottom BC_t "BCWall":
+        FamilyName FamilyName_t "AMONT":
+        PointList IndexArray_t [[1,2,3,4]]:
+        BCDataSetFull BCDataSet_t 'Null':
+          DirichletData BCData_t:
+            Data DataArray_t [10., 20., 30., 40.]:
+        BCDataSetPart BCDataSet_t 'Null':
+          PointList IndexArray_t [[1,2]]:
+          DirichletData BCData_t:
+            Data DataArray_t [10., 20.]:
+      top BC_t "BCWall":
+        FamilyName FamilyName_t "AMONT":
+        PointList IndexArray_t [[16,15,14,13]]:
+        BCDataSetFull BCDataSet_t 'Null':
+          DirichletData BCData_t:
+            Data DataArray_t [-10., -20., -30., -40.]:
+        BCDataSetPart BCDataSet_t 'Null':
+          PointList IndexArray_t [[15,16]]:
+          DirichletData BCData_t:
+            Data DataArray_t [-10., -20.]:
+  """)
+  tree = maia.factory.full_to_dist_tree(ftree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  zone_bck = PT.deep_copy(zone)
+  merge.pre_merge_families_per_zone(zone, 'ZoneBC_t/BC_t', comm)
+  assert PT.is_same_tree(PT.get_node_from_name(zone,     'left'),
+                         PT.get_node_from_name(zone_bck, 'left'))
+  assert PT.is_same_tree(PT.get_node_from_name(zone,     'right'),
+                         PT.get_node_from_name(zone_bck, 'right'))
+  
+  merged_expt_f = PT.new_BC('mergedAMONT', 'BCWall', point_list=[[1,2,3,4, 16,15,14,13]], family='AMONT')
+  ds = PT.new_BCDataSet('BCDataSetFull', parent=merged_expt_f)
+  PT.new_BCData('DirichletData', {'Data' : [10.,20,30,40, -10,-20,-30,-40]}, parent=ds)
+  ds = PT.new_BCDataSet('BCDataSetPart', point_list=[[1,2,15,16]], parent=merged_expt_f)
+  PT.new_BCData('DirichletData', {'Data' : [10.,20,-10,-20]}, parent=ds)
+
+  from maia.factory.full_to_dist import distribute_pl_node
+  merged_expt = distribute_pl_node(merged_expt_f, comm)
+  assert PT.is_same_tree(PT.get_node_from_name(zone,     'mergedAMONT'),
+                         merged_expt)
+
+
+def test_gather_subsets():
+  to_names = lambda d: {key : [n[0] if n else None for n in val] for key,val in d.items()}
+  zones = PT.yaml.to_nodes("""
+  Zone1 Zone_t:
+    ZoneBC ZoneBC_t:
+      aval BC_t:
+        DiData BCDataSet_t:
+        NeData BCDataSet_t:
+      amontA BC_t:
+        FamilyName FamilyName_t "AMONT":
+      aube BC_t:
+        FamilyName FamilyName_t "AUBE":
+  Zone2 Zone_t:
+    ZoneBC ZoneBC_t:
+      aval BC_t:
+        DiData BCDataSet_t:
+      amontB BC_t:
+        FamilyName FamilyName_t "AMONT":
+        DiData BCDataSet_t:
+  """)
+  gathered = merge.gather_subsets(zones, 'ZoneBC/BC_t', 'None')
+  assert to_names(gathered) == {'ZoneBC/aval.0'   : ['aval', None],
+                                'ZoneBC/aval.1'   : [None, 'aval'],
+                                'ZoneBC/amontA.0' : ['amontA', None],
+                                'ZoneBC/amontB.1' : [None, 'amontB'],
+                                'ZoneBC/aube.0'   : ['aube', None]}
+
+  gathered = merge.gather_subsets(zones, 'ZoneBC/BC_t', 'name')
+  assert to_names(gathered) == {'ZoneBC/aval'   : ['aval', 'aval'],
+                                'ZoneBC/amontA' : ['amontA', None],
+                                'ZoneBC/amontB' : [None, 'amontB'],
+                                'ZoneBC/aube'   : ['aube', None]}
+
+  gathered = merge.gather_subsets(zones, 'ZoneBC/BC_t', 'family')
+  assert to_names(gathered) == {'ZoneBC/aval'   : ['aval', 'aval'],
+                                'ZoneBC/AMONT'  : ['amontA', 'amontB'],
+                                'ZoneBC/AUBE'   : ['aube', None]}
+
+  # For BCDS, distinction must be done at BC level
+  gathered = merge.gather_subsets(zones, ['ZoneBC_t','BC_t','BCDataSet_t'], 'None', True)
+  assert to_names(gathered) == {'ZoneBC/aval.0/DiData'   : ['DiData', None],
+                                'ZoneBC/aval.0/NeData'   : ['NeData', None],
+                                'ZoneBC/aval.1/DiData'   : [None, 'DiData'],
+                                'ZoneBC/amontB.1/DiData' : [None, 'DiData']}
+
+  gathered = merge.gather_subsets(zones, ['ZoneBC_t','BC_t','BCDataSet_t'], 'name', True)
+  assert to_names(gathered) == {'ZoneBC/aval/DiData'   : ['DiData', 'DiData'],
+                                'ZoneBC/aval/NeData'   : ['NeData', None],
+                                'ZoneBC/amontB/DiData' : [None, 'DiData']}
+  gathered = merge.gather_subsets(zones, ['ZoneBC_t','BC_t','BCDataSet_t'], 'family', True)
+  assert to_names(gathered) == {'ZoneBC/aval/DiData'   : ['DiData', 'DiData'],
+                                'ZoneBC/aval/NeData'   : ['NeData', None],
+                                'ZoneBC/AMONT/DiData' : [None, 'DiData']}
+
 
 @pytest_parallel.mark.parallel([1,3])
 @pytest.mark.parametrize("merge_bc_from_name", [True, False])   #       __
@@ -191,6 +302,127 @@ def test_merge_zones_I(comm, merge_only_two):
   assert PT.get_node_from_path(merged_zone, 'SubRegion/BCRegionName') is None
   assert (PT.get_node_from_path(merged_zone, 'SubRegion/OldId')[1] == old_id).all()
   assert not (PT.get_node_from_path(merged_zone, 'SubRegion/PointList')[1] == old_id).all()
+
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("subset_merge", ["none", "name", "family"])
+def test_merge_subsets(subset_merge, comm):
+  # Setup : create 2 2*2*2 cubes, not even connected
+  n_vtx = 3
+  dcubes = [dcube_generate(n_vtx, 1., [0,0,0], comm), 
+            dcube_generate(n_vtx, 1., [1,0,0], comm)]
+  zones = [PT.get_all_Zone_t(dcube)[0] for dcube in dcubes]
+  tree = PT.new_CGNSTree()
+  base = PT.new_CGNSBase(parent=tree)
+  for izone, zone in enumerate(zones):
+    zone[0] = f'zone{izone+1}'
+    PT.add_child(base, zone)
+
+  for bc in PT.get_nodes_from_label(tree, 'BC_t'):
+    PT.new_FamilyName(PT.get_name(bc).upper(), parent=bc)
+
+  # A full BCDS existing on the two zones
+  for i,zone in enumerate(zones):
+    bc = PT.get_node_from_name(zone, 'Xmin')
+    pl = PT.get_child_from_name(bc, 'PointList')[1]
+    bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
+    bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
+    PT.new_DataArray('iZone', i*np.ones(pl.size), parent=bcda)
+    PT.new_DataArray('iRank', comm.rank*np.ones(pl.size), parent=bcda)
+  # A full BCDS existing only on one zone ---> NOT SUPPORTED with name/family
+  bc = PT.get_node_from_name(zones[1], 'Xmax')
+  pl = PT.get_child_from_name(bc, 'PointList')[1]
+  bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
+  bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
+  PT.new_DataArray('iZone', i*np.ones(pl.size), parent=bcda)
+  PT.new_DataArray('iRank', comm.rank*np.ones(pl.size), parent=bcda)
+  # A partial BCDS existing on the two zones
+  for i,zone in enumerate(zones):
+    bc = PT.get_node_from_name(zone, 'Ymin')
+    pl = PT.get_child_from_name(bc, 'PointList')[1][0][::2]
+    bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
+    PT.new_IndexArray(value=pl.reshape((1,-1), order='F'), parent=bcds)
+    PT.new_GridLocation(PT.Subset.GridLocation(bc), parent=bcds)
+    bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
+    PT.new_DataArray('iZone', i*np.ones(pl.size), parent=bcda)
+    PT.new_DataArray('iRank', comm.rank*np.ones(pl.size), parent=bcda)
+    MT.newDistribution({'Index' : par_utils.dn_to_distribution(pl.size, comm)}, parent=bcds)
+  # A partial BCDS existing only on one zone
+  bc = PT.get_node_from_name(zones[1], 'Ymax')
+  pl = PT.get_child_from_name(bc, 'PointList')[1][0][::2]
+  bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
+  PT.new_IndexArray(value=pl.reshape((1,-1), order='F'), parent=bcds)
+  PT.new_GridLocation(PT.Subset.GridLocation(bc), parent=bcds)
+  bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
+  PT.new_DataArray('iZone', i*np.ones(pl.size), parent=bcda)
+  PT.new_DataArray('iRank', comm.rank*np.ones(pl.size), parent=bcda)
+  MT.newDistribution({'Index' : par_utils.dn_to_distribution(pl.size, comm)}, parent=bcds)
+
+  if subset_merge != "none":
+    for bc in PT.get_nodes_from_name(tree, 'Xmax'):
+      PT.rm_children_from_label(bc, 'BCDataSet_t')
+
+  merge.merge_zones(tree, '*', comm, subset_merge=subset_merge)
+
+  # For easier comparaison, gather data on rank 0
+  ftree = maia.factory.dist_to_full_tree(tree, comm, 0)
+  if comm.rank == 0:
+    if subset_merge != "none":
+      zmin = PT.new_BC('Zmin', "Null", point_list=[[1,2,3,4, 37,38,39,40]], loc='FaceCenter', family='ZMIN')
+      zmax = PT.new_BC('Zmax', "Null", point_list=[[9,10,11,12, 45,46,47,48]], loc='FaceCenter', family='ZMAX')
+      xmin = PT.new_BC('Xmin', "Null", point_list=[[13,14,15,16, 49,50,51,52]], loc='FaceCenter', family='XMIN')
+      ds = PT.new_BCDataSet(type=None, parent=xmin)
+      PT.new_BCData('DirichletData', fields={'iZone': np.array([0.,0,0,0,1,1,1,1]), 'iRank' : np.zeros(8)}, parent=ds)
+      xmax = PT.new_BC('Xmax', "Null", point_list=[[21,22,23,24, 57,58,59,60]], loc='FaceCenter', family='XMAX')
+      ymin = PT.new_BC('Ymin', "Null", point_list=[[25,26,27,28, 61,62,63,64]], loc='FaceCenter', family='YMIN')
+      ds = PT.new_BCDataSet(type=None, loc='FaceCenter', point_list=[[25,27, 61,63]], parent=ymin)
+      PT.new_BCData('DirichletData', fields={'iZone': np.array([0.,0,1,1]), 'iRank' : np.ones(4)}, parent=ds)
+      ymax = PT.new_BC('Ymax', "Null", point_list=[[33,34,35,36, 69,70,71,72]], loc='FaceCenter', family='YMAX')
+      ds = PT.new_BCDataSet(loc='FaceCenter', type=None, point_list=[[69,71]], parent=ymax)
+      PT.new_BCData('DirichletData', fields={'iZone': np.array([1.,1]), 'iRank' : np.ones(2)}, parent=ds)
+      zbc = PT.new_node('ZoneBC', 'ZoneBC_t', children=[xmin,xmax,ymin,ymax,zmin,zmax])
+
+      if subset_merge == 'family':
+        for bc in PT.get_children(zbc):
+          PT.set_name(bc, PT.get_name(bc).upper())
+
+    else:
+      zmin0 = PT.new_BC('Zmin.0', "Null", point_list=[[1,2,3,4]], loc='FaceCenter', family='ZMIN')
+      zmin1 = PT.new_BC('Zmin.1', "Null", point_list=[[37,38,39,40]], loc='FaceCenter', family='ZMIN')
+
+      zmax0 = PT.new_BC('Zmax.0', "Null", point_list=[[9,10,11,12]], loc='FaceCenter', family='ZMAX')
+      zmax1 = PT.new_BC('Zmax.1', "Null", point_list=[[45,46,47,48]], loc='FaceCenter', family='ZMAX')
+
+      xmin0 = PT.new_BC('Xmin.0', "Null", point_list=[[13,14,15,16]], loc='FaceCenter', family='XMIN')
+      ds = PT.new_BCDataSet(type=None, parent=xmin0)
+      PT.new_BCData('DirichletData', {'iZone' : np.zeros(4), 'iRank' : np.zeros(4)}, ds)
+      xmin1 = PT.new_BC('Xmin.1', "Null", point_list=[[49,50,51,52]], loc='FaceCenter', family='XMIN')
+      ds = PT.new_BCDataSet(type=None, parent=xmin1)
+      PT.new_BCData('DirichletData', {'iZone' : np.ones(4), 'iRank' : np.zeros(4)}, ds)
+
+      xmax0 = PT.new_BC('Xmax.0', "Null", point_list=[[21,22,23,24]], loc='FaceCenter', family='XMAX')
+      xmax1 = PT.new_BC('Xmax.1', "Null", point_list=[[57,58,59,60]], loc='FaceCenter', family='XMAX')
+      ds = PT.new_BCDataSet(type=None, parent=xmax1)
+      PT.new_BCData('DirichletData', {'iZone' : np.ones(4), 'iRank' : np.ones(4)}, ds)
+
+      ymin0 = PT.new_BC('Ymin.0', "Null", point_list=[[25,26,27,28]], loc='FaceCenter', family='YMIN')
+      ds = PT.new_BCDataSet(type=None, loc='FaceCenter', point_list=[[25,27]], parent=ymin0)
+      PT.new_BCData('DirichletData', {'iZone' : np.zeros(2), 'iRank' : np.ones(2)}, ds)
+      ymin1 = PT.new_BC('Ymin.1', "Null", point_list=[[61,62,63,64]], loc='FaceCenter', family='YMIN')
+      ds = PT.new_BCDataSet(type=None, loc='FaceCenter', point_list=[[61,63]], parent=ymin1)
+      PT.new_BCData('DirichletData', {'iZone' : np.ones(2), 'iRank' : np.ones(2)}, ds)
+
+      ymax0 = PT.new_BC('Ymax.0', "Null", point_list=[[33,34,35,36]], loc='FaceCenter', family='YMAX')
+      ymax1 = PT.new_BC('Ymax.1', "Null", point_list=[[69,70,71,72]], loc='FaceCenter', family='YMAX')
+      ds = PT.new_BCDataSet(type=None, loc='FaceCenter', point_list=[[69,71]], parent=ymax1)
+      PT.new_BCData('DirichletData', {'iZone' : np.ones(2), 'iRank' : np.ones(2)}, ds)
+
+ 
+      zbc = PT.new_node('ZoneBC', 'ZoneBC_t', children=[xmin0,xmax0,ymin0,ymax0,zmin0,zmax0,\
+                                                        xmin1,xmax1,ymin1,ymax1,zmin1,zmax1])
+
+    assert PT.is_same_tree(zbc, PT.get_node_from_name(ftree, 'ZoneBC'), type_tol=True)
+
 
 @pytest_parallel.mark.parallel(3)
 def test_equilibrate_data(comm):

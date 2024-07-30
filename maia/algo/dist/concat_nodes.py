@@ -43,9 +43,8 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
       PT.add_child(node, child)
 
   newsize = PT.get_node_from_name(node, 'PointList')[1].shape[1]
-  idx_distri = PT.get_value(MT.getDistribution(master, 'Index'))
-  distri = np_utils.safe_int_cast(par_utils.gather_and_shift(newsize, comm), idx_distri.dtype)
-  MT.newDistribution({'Index' : distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]}, node)
+  distri = par_utils.dn_to_distribution(newsize, comm)
+  MT.newDistribution({'Index' : distri}, node)
   return node
 
 def concatenate_jns(tree, comm):
