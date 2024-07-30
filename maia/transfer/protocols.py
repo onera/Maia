@@ -1,4 +1,5 @@
 import numpy as np
+from mpi4py import MPI
 
 import Pypdm.Pypdm        as PDM
 
@@ -6,6 +7,14 @@ import maia
 from maia.utils import par_utils, np_utils
 
 from . import _protocols
+
+def _check_dict_keys(data_dict, comm):
+  if comm.Get_size() == 0:
+    return
+  master_keys = comm.bcast(list(data_dict.keys()), 0)
+  is_same = list(data_dict.keys()) == master_keys
+  if not comm.allreduce(is_same, MPI.LAND):
+    raise KeyError("Exchanged data keys must be identical on all ranks")
 
 def auto_expand_distri(distri, comm):
   """ Return a full distribution from a full or partial distribution """
@@ -82,6 +91,7 @@ def block_to_block(data_in, distri_in, distri_out, comm):
   BTB = BlockToBlock(distri_in, distri_out, comm)
 
   if isinstance(data_in, dict):
+    _check_dict_keys(data_in, comm)
     block_data_out = dict()
     for name, field in data_in.items():
       block_data_out[name] = BTB.exchange_field(field)
@@ -98,6 +108,7 @@ def block_to_part(dist_data, distri, ln_to_gn_list, comm):
   BTP = BlockToPart(distri, ln_to_gn_list, comm)
 
   if isinstance(dist_data, dict):
+    _check_dict_keys(dist_data, comm)
     part_data = dict()
     for name, d_field in dist_data.items():
       part_data[name] = BTP.exchange_field(d_field)[1]
@@ -114,6 +125,7 @@ def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm):
   BTP = BlockToPart(distri, ln_to_gn_list, comm)
 
   if isinstance(dist_data, dict):
+    _check_dict_keys(dist_data, comm)
     part_data = dict()
     for name, d_field in dist_data.items():
       part_stride, _part_data = BTP.exchange_field(d_field, dist_stride)
@@ -142,6 +154,7 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
       return dist_data
 
   if isinstance(part_data, dict):
+    _check_dict_keys(part_data, comm)
     dist_data = {name: _exchange_one(p_field) for name, p_field in part_data.items()}
   else:
     dist_data = _exchange_one(part_data)  
@@ -163,6 +176,7 @@ def part_to_part_strided(send_stride, send_data, gnum1, gnum2, comm):
   PTP = PartToPart(gnum1, gnum2, comm)
 
   if isinstance(send_data, dict):
+    _check_dict_keys(send_data, comm)
     recv_stride = None
     recv_data = dict()
     for name, field in send_data.items():

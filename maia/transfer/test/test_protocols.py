@@ -4,6 +4,23 @@ import numpy as np
 
 import maia.transfer.protocols as EP
 
+@pytest_parallel.mark.parallel(3)
+def test_check_dict_keys(comm):
+  dist_data = {'data1' : comm.rank, 'data2' : 42}
+  EP._check_dict_keys(dist_data, comm)
+  
+  if comm.rank == 1:
+    dist_data = {'data2' : 42, 'data1' : comm.rank} # Same key, but inverted order
+  with pytest.raises(KeyError):
+    EP._check_dict_keys(dist_data, comm)
+
+  dist_data = {'data2' : 42, 'data1' : comm.rank}
+  if comm.rank == 2:
+    dist_data['data3'] = 'Will fail, because number of keys differs'
+  with pytest.raises(KeyError):
+    EP._check_dict_keys(dist_data, comm)
+
+
 class Test_auto_expand_distri:
   
   @pytest_parallel.mark.parallel(3)
