@@ -84,3 +84,10 @@ def test_recover_UDData(missing_part_node, comm):
     assert PT.is_same_node(dist_ud, part_ud) # Nodes are matched in same order, so this comparison is OK
   assert PT.get_label(PT.get_child_from_name(dist_base, 'MyFamily')) == 'Family_t'
   assert PT.get_child_from_name(dist_base, 'MyOtherFamily') is None
+
+  uds = [PT.new_Descriptor('Descr1', 'Value1', parent=part_tree), PT.new_Descriptor('Descr2', 'Value2', parent=part_tree)]
+  pred = [lambda n : PT.get_label(n) == 'Descriptor_t'] if missing_part_node else 'Descr*'
+  #                                                     ^ just a way to test two different predicates
+  PTB.part_tree_to_dist_tree_copy(dist_tree, part_tree, pred, comm)
+  for dist_ud, part_ud in zip(PT.get_children_from_label(dist_tree, 'Descriptor_t'), uds):
+    assert PT.is_same_node(dist_ud, part_ud)

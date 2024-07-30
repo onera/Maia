@@ -87,6 +87,12 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
         :end-before: #part_tree_to_dist_tree_copy@end
         :dedent: 2
   """
+  assert isinstance(predicates, (list, str))
+  single_pred = '/' not in predicates if isinstance(predicates, str) else len(predicates) == 1
+  if single_pred:
+    discover_nodes_from_matching(dist_tree, [part_tree], predicates, comm, child_list=['*'], get_value='leaf')
+    return
+
   # Capture start of predicate, because last node may not exist on dist tree
   _ud_predicate = PT.utils.path_head(predicates) if isinstance(predicates, str) else predicates[:-1]
   for path in PT.predicates_to_paths(dist_tree, _ud_predicate):

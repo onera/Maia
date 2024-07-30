@@ -121,6 +121,10 @@ def dist_tree_to_part_tree_copy(dist_tree, part_tree, predicates, comm):
     
     # Now copy dist_node to partitioned tree
     dist_node = PT.get_node_from_path(dist_tree, path)
-    for part_node in PT.get_children_from_names(part_tree, names[:-1]):
-      PT.rm_children_from_name(part_node, names[-1])
-      PT.add_child(part_node, PT.deep_copy(dist_node))
+    if len(names) > 1:
+      for part_node in PT.get_children_from_names(part_tree, names[:-1]):
+        PT.rm_children_from_name(part_node, names[-1])
+        PT.add_child(part_node, PT.deep_copy(dist_node))
+    else:
+      PT.rm_children_from_name(part_tree, names[-1])
+      PT.add_child(part_tree, PT.deep_copy(dist_node))

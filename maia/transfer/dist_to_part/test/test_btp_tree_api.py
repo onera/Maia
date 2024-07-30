@@ -35,3 +35,8 @@ def test_recover_UDData(missing_part_node, comm):
   
   for dist_ud, part_ud in zip(PT.get_nodes_from_name(dist_tree, '.Solver#*'), PT.get_nodes_from_name(part_tree, '.Solver#*')):
     assert PT.is_same_node(dist_ud, part_ud) # Nodes are matched in same order, so this comparison is OK
+
+
+  ud = PT.new_UserDefinedData('TopLevelNode', [1,2,3], parent=dist_tree)
+  transfer.dist_tree_to_part_tree_copy(dist_tree, part_tree, 'TopLevelNode', comm)
+  assert PT.is_same_tree(ud, PT.get_child_from_name(part_tree, 'TopLevelNode'))
