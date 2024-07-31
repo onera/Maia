@@ -24,8 +24,8 @@ auto add_fsdm_distribution(tree& b, MPI_Comm comm) -> void {
   }
   tree& z = zs[0];
 
-  I4 n_vtx = VertexSize_U<I4>(z);
-  I4 n_vtx_owned = n_vtx = get_node_value_by_matching<I4>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];;
+  I8 n_vtx = VertexSize_U<I8>(z);
+  I8 n_vtx_owned = n_vtx = get_node_value_by_matching<I8>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];;
   auto vtx_distri = distribution_from_dsizes(n_vtx_owned, comm);
   auto partial_vtx_distri = full_to_partial_distribution(vtx_distri,comm);
   std::vector<I4> vtx_distri_mem(begin(partial_vtx_distri),end(partial_vtx_distri));
@@ -69,7 +69,7 @@ elt_distributions(const Tree_range& sorted_elt_sections, MPI_Comm comm) {
   std::vector<distribution_vector<I4>> dists(n_elt);
   for (int i=0; i<n_elt; ++i) {
     const tree& elt = sorted_elt_sections[i];
-    auto partial_dist = ElementDistribution<I4>(elt);
+    auto partial_dist = ElementDistribution<PDM_g_num_t>(elt);
     auto dist = distribution_from_partial(partial_dist,comm);
     dists[i] = distribution_vector<I4>(dist.n_interval()); // TODO make resize accessible
     std::copy(begin(dist),end(dist),begin(dists[i]));
@@ -88,14 +88,25 @@ distribute_bc_ids_to_match_face_dist(tree& b, MPI_Comm comm) -> void {
 
     for (tree& bc : cgns::get_nodes_by_matching(z,"ZoneBC/BC_t")) {
       auto pl = cgns::PointList<I4>(bc);
-      auto fields = std::vector<std::vector<double>>{}; // TODO extract these fields (if they exist)
-      auto [new_pl,_] = redistribute_to_match_face_dist(elt_dists,elt_intervals,pl,fields,comm);
 
-      rm_child_by_name(bc,"PointList");
+      auto field_nodes = cgns::get_nodes_by_matching(bc,"BCDataSet_t/BCData_t/DataArray_t");
+      int n_fields = field_nodes.size();
+      std::vector<std_e::span<R8>> fields(n_fields);
+      for (int i=0; i<n_fields; ++i) {
+        fields[i] = cgns::view_as_span<R8>(value(field_nodes[i]));
+      }
 
-      cgns::emplace_child(bc,new_PointList("PointList",std::move(new_pl)));
+      auto [new_dist,new_pl,new_fields] = redistribute_to_match_face_dist(elt_dists,elt_intervals,pl,fields,comm);
+
+      std::vector<I8> dims = {1,(I8)new_pl.size()}; // required by SIDS (9.3: BC_t)
+      node_value new_pl_value(std::move(new_pl),std::move(dims));
+      value(cgns::get_node_by_name(bc,"PointList")) = std::move(new_pl_value);
+      value(cgns::get_node_by_name(bc,":CGNS#Distribution")) = std::move(new_dist);
+
+      for (int i=0; i<n_fields; ++i) {
+        value(field_nodes[i]) = std::move(new_fields[i]);
+      }
     }
-    // TODO update BC distribution
   }
 }
 
@@ -128,7 +139,7 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
     std::vector<int> d_elt_szs(n_3d_section);
     for (int i=0; i<n_3d_section; ++i) {
       tree& section_node = elt_3d_sections[i];
-      auto section_connec_partial_distri = ElementDistribution<I4>(section_node);
+      auto section_connec_partial_distri = ElementDistribution<PDM_g_num_t>(section_node);
       d_elt_szs[i] = section_connec_partial_distri[1]-section_connec_partial_distri[0];
       distribs[i] = distribution_from_partial(section_connec_partial_distri,comm);
     }
@@ -163,7 +174,7 @@ distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm
     }
 
     tree& z_dist_node = cgns::get_child_by_name(z,":CGNS#Distribution");
-    std::vector<I4> cell_partial_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
+    std::vector<I8> cell_partial_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
     emplace_child(z_dist_node,new_DataArray("Cell",std::move(cell_partial_dist)));
   }
 }
@@ -200,7 +211,7 @@ distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) ->
       std::vector<int> d_elt_szs(n_3d_section);
       for (int i=0; i<n_3d_section; ++i) {
         tree& section_node = elt_3d_sections[i];
-        auto section_connec_partial_distri = ElementDistribution<I4>(section_node);
+        auto section_connec_partial_distri = ElementDistribution<PDM_g_num_t>(section_node);
         d_elt_szs[i] = section_connec_partial_distri[1]-section_connec_partial_distri[0];
         distribs[i] = distribution_from_partial(section_connec_partial_distri,comm);
       }
@@ -235,7 +246,7 @@ distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) ->
       }
 
       tree& z_dist_node = cgns::get_child_by_name(z,":CGNS#Distribution");
-      std::vector<I4> cell_partial_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
+      std::vector<I8> cell_partial_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
       emplace_child(z_dist_node,new_DataArray("Cell",std::move(cell_partial_dist)));
     }
 
@@ -245,7 +256,7 @@ distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) ->
       std::vector<int> d_elt_szs(n_2d_section);
       for (int i=0; i<n_2d_section; ++i) {
         tree& section_node = elt_2d_sections[i];
-        auto section_connec_partial_distri = ElementDistribution<I4>(section_node);
+        auto section_connec_partial_distri = ElementDistribution<PDM_g_num_t>(section_node);
         d_elt_szs[i] = section_connec_partial_distri[1]-section_connec_partial_distri[0];
         distribs[i] = distribution_from_partial(section_connec_partial_distri,comm);
       }
@@ -282,7 +293,7 @@ distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) ->
 
           value(sol_node) = cgns::node_value(std::move(new_sol));
         }
-        std::vector<I4> part_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
+        std::vector<I8> part_dist = {merged_distri[i_rank],merged_distri[i_rank+1],merged_distri.back()};
         emplace_child(bnd_sol_node,new_Distribution("Index",std::move(part_dist)));
       }
     }

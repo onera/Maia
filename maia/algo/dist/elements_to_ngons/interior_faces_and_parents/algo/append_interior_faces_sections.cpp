@@ -5,6 +5,7 @@
 #include "std_e/parallel/mpi/collective/scan.hpp"
 #include "std_e/parallel/mpi/collective/reduce.hpp"
 #include "maia/pytree/maia/element_sections.hpp"
+#include "pdm.h"
 
 
 using namespace cgns;
@@ -41,11 +42,11 @@ create_interior_faces_section(in_faces_with_parents<I>&& fps, I section_first_id
   emplace_child(elt_section_node,std::move(parent_position_elt_node));
 
   // distribution
-  std::vector<I> elt_dist(3);
+  std::vector<PDM_g_num_t> elt_dist(3);
   elt_dist[0] = n_face_acc;
   elt_dist[1] = n_face_acc + n_face;
   elt_dist[2] = n_face_tot;
-  auto dist_node = new_Distribution("Element",std::move(elt_dist));
+  auto dist_node = new_ElementDistribution(std::move(elt_dist));
   emplace_child(elt_section_node,std::move(dist_node));
 
   return std::make_pair(n_face_tot,std::move(elt_section_node));

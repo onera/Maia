@@ -3,6 +3,7 @@
 
 #include "maia/algo/dist/elements_to_ngons/connectivity/element_faces.hpp"
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/struct/faces_and_parents_by_section.hpp"
+#include "pdm.h"
 
 
 using namespace cgns;
@@ -18,7 +19,7 @@ number_of_faces(const tree_range& elt_sections) -> std::array<I,cgns::n_face_typ
 
   for (const tree& e : elt_sections) {
     auto elt_type = element_type(e);
-    I n_elt = distribution_local_size(ElementDistribution<I>(e));
+    PDM_g_num_t n_elt = distribution_local_size(ElementDistribution<PDM_g_num_t>(e));
     for (int i=0; i<cgns::n_face_type; ++i) {
       auto face_type = cgns::all_face_types[i];
       n_faces_by_type[i] += n_elt * cgns::number_of_faces(elt_type,face_type);
@@ -40,7 +41,7 @@ gen_faces(
   auto connec_range = std_e::view_as_block_range<n_vtx>(elt_connec);
 
   I elt_start = ElementRange<I>(elt_node)[0];
-  I index_dist_start = ElementDistribution<I>(elt_node)[0];
+  I index_dist_start = ElementDistribution<PDM_g_num_t>(elt_node)[0];
   I elt_id = elt_start + index_dist_start;
 
   for (const auto& elt : connec_range) {

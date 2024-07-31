@@ -44,7 +44,7 @@ MPI_TEST_CASE("distribute_bc_ids_to_match_face_dist",2) {
 
 
   SUBCASE("final") {
-    auto [pl_new,values_new] = maia::redistribute_to_match_face_dist(
+    auto [partial_dist,pl_new,values_new] = maia::redistribute_to_match_face_dist(
       vector{tri_dist,quad_dist},
       element_intervals,
       point_list,

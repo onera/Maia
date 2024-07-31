@@ -19,7 +19,7 @@ file_to_dist_tree(const std::string& file_name, MPI_Comm comm) -> cgns::tree {
   auto m = py::module_::import("maia.io.cgns_io_tree");
 
   auto mpi4py_comm = comm_to_mpi4py_comm(comm);
-  py::object py_tree = m .attr("file_to_dist_tree")(file_name,mpi4py_comm);
+  py::object py_tree = m .attr("file_to_dist_tree")(file_name,mpi4py_comm,/*legacy=*/false,/*enforce_pdm_dtype=*/false);
   return cgns::to_cpp_tree_copy(py_tree);
 }
 

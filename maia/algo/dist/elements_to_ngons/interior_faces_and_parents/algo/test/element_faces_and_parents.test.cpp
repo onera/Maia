@@ -3,32 +3,39 @@
 
 #include "maia/algo/dist/elements_to_ngons/interior_faces_and_parents/algo/element_faces_and_parents.hpp"
 #include "maia/utils/yaml/parse_yaml_cgns.hpp"
+#include "pdm.h"
 
 using namespace cgns;
 using namespace maia;
 using std::vector;
 
 TEST_CASE("generate_element_faces_and_parents") {
+  std::string int_str = "";
+  if constexpr (std::is_same_v<PDM_g_num_t, std::int32_t>) {
+    int_str = "I4";
+  } else {
+    int_str = "I8";
+  }
   std::string yaml_tree =
     "Quads Elements_t I4 [7,0]:\n"
     "  ElementRange IndexRange_t I4 [400,400]:\n"
     "  ElementConnectivity DataArray_t:\n"
     "    I4 : [ 40, 41, 42, 43 ]\n"
     "  :CGNS#Distribution UserDefinedData_t:\n"
-    "    Element DataArray_t I4 [0, 1, 1]:\n"
+    "    Element DataArray_t "+int_str+" [0, 1, 1]:\n"
     "Tris Elements_t I4 [5,0]:\n"
     "  ElementRange IndexRange_t I4 [300,301]:\n"
     "  ElementConnectivity DataArray_t:\n"
     "    I4 : [ 30, 31, 32,\n"
     "           37, 38, 39 ]\n"
     "  :CGNS#Distribution UserDefinedData_t:\n"
-    "    Element DataArray_t I4 [0, 2, 2]:\n"
+    "    Element DataArray_t "+int_str+" [0, 2, 2]:\n"
     "Hexas Elements_t I4 [17,0]:\n"
     "  ElementRange IndexRange_t I4 [800,810]:\n"
     "  ElementConnectivity DataArray_t:\n"
     "    I4 : [ 80, 81, 82, 83, 84, 85, 86, 87 ]\n"
     "  :CGNS#Distribution UserDefinedData_t:\n"
-    "    Element DataArray_t I4 [2, 3, 10]:\n";
+    "    Element DataArray_t "+int_str+" [2, 3, 10]:\n";
   vector<tree> elt_sections = maia::to_nodes(yaml_tree);
   cgns::tree_range elt_sections_rng(begin(elt_sections),end(elt_sections));
 

@@ -13,7 +13,7 @@ namespace cgns {
 auto gcs_only_for_ghosts(tree& b) -> void {
   auto zs = get_children_by_label(b,"Zone_t");
   for (tree& z : zs) {
-    auto n_vtx_owned = get_node_value_by_matching<I4>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];
+    auto n_vtx_owned = get_node_value_by_matching<I8>(z,":CGNS#LocalNumbering/VertexSizeOwned")[0];
 
     auto gcs = get_nodes_by_matching(z,"ZoneGridConnectivity_t/GridConnectivity_t");
     for (tree& gc : gcs) {

@@ -160,7 +160,7 @@ def fill_size_tree(tree, filename, comm, legacy=False):
   PT.rm_nodes_from_name(tree, '*#Size')
 
 
-def file_to_dist_tree(filename, comm, legacy=False):
+def file_to_dist_tree(filename, comm, legacy=False, enforce_pdm_dtype=True):
   """Distributed load of a CGNS file.
 
   Args:
@@ -176,7 +176,8 @@ def file_to_dist_tree(filename, comm, legacy=False):
     if comm.Get_rank() == 0:
       with open(filename, 'r') as f:
         tree = PT.yaml.to_cgns_tree(f)
-        _enforce_pdm_dtype(tree)  
+        if enforce_pdm_dtype:
+          _enforce_pdm_dtype(tree)  
     else:
       tree = None
     dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
