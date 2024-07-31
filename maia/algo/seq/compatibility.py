@@ -1,4 +1,3 @@
-from cmaia import tree_algo as ctree_algo
 from maia.algo.apply_function_to_nodes import zones_iterator
 
 import numpy as np
