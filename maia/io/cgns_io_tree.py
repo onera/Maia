@@ -8,7 +8,7 @@ import maia.utils.logging as mlog
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
-from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity, _enforce_pdm_dtype
+from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity
 
 from maia.factory     import full_to_dist
 
@@ -160,7 +160,7 @@ def fill_size_tree(tree, filename, comm, legacy=False):
   PT.rm_nodes_from_name(tree, '*#Size')
 
 
-def file_to_dist_tree(filename, comm, legacy=False, enforce_pdm_dtype=True):
+def file_to_dist_tree(filename, comm, legacy=False):
   """Distributed load of a CGNS file.
 
   Args:
@@ -176,8 +176,6 @@ def file_to_dist_tree(filename, comm, legacy=False, enforce_pdm_dtype=True):
     if comm.Get_rank() == 0:
       with open(filename, 'r') as f:
         tree = PT.yaml.to_cgns_tree(f)
-        if enforce_pdm_dtype:
-          _enforce_pdm_dtype(tree)  
     else:
       tree = None
     dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
