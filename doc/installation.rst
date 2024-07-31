@@ -8,7 +8,7 @@ Dependencies
 
 **Maia** depends on:
 
-* :code:`Python` >= 3.7
+* :code:`Python` >= 3.8
 * :code:`MPI`
 
 * :code:`mpi4py` (python package)

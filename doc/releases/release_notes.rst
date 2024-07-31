@@ -70,6 +70,7 @@ v1.4 (May 2024)
 - merge_zones: fix type mismatch occurring on I4 meshes with I8 production
 - **[v1.4.1]** mesh adaptation: fix tensorial metric and trees with multiple Elements_t of same type
 - **[v1.4.1]** merge_zones: prevent a crash when zones have non 1to1 GridConnectivity nodes
+- **[v1.4.2]** file_to_dist_tree: restore Python 3.7 compatibility
 
 🚧 API change
 ^^^^^^^^^^^^^
