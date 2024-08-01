@@ -21,7 +21,8 @@ def check_perio(tree, jn_name, tol=1e-8):
   r1 = PT.get_node_from_name(tree, jn_name)
   pl1 = PT.get_child_from_name(r1, 'PointList')[1][0]
   pl2 = PT.get_child_from_name(r1, 'PointListDonor')[1][0]
-  center_face = maia.algo.part.compute_face_center(z)
+  from maia.algo.part.geometry import _compute_zone_centers
+  center_face = _compute_zone_centers(z, 2)
   center_face_x = center_face[0::3]
   center_face_y = center_face[1::3]
   center_face_z = center_face[2::3]

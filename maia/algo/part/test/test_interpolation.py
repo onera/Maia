@@ -407,7 +407,7 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
     expected_cy = PT.get_node_from_name(ptgt_tree, 'CoordinateY')[1]
     expected_cz = PT.get_node_from_name(ptgt_tree, 'CoordinateZ')[1]
   elif tgt_loc=='CellCenter':
-    cell_center = maia.algo.part.compute_cell_center(zone)
+    cell_center = maia.algo.part.geometry._compute_zone_centers(zone, 3)
     expected_cx = cell_center[0::3]
     expected_cy = cell_center[1::3]
     expected_cz = cell_center[2::3]

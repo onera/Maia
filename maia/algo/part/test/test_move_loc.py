@@ -76,7 +76,7 @@ def test_nodes_to_centers_S(comm) :
     cy = PT.get_node_from_name(zone, 'CoordinateY')[1]
     cz = PT.get_node_from_name(zone, 'CoordinateZ')[1]
     PT.new_FlowSolution('FlowSolution', loc='Vertex', fields={'cX': cx, 'cY': cy, 'cZ': cz}, parent=zone)
-    expected = maia.algo.part.compute_cell_center(zone)
+    expected = maia.algo.part.geometry._compute_zone_centers(zone,3)
 
     ML.nodes_to_centers(part_tree, comm, ["FlowSolution"])
     sol_cell = PT.get_node_from_name(part_tree, 'FlowSolution#Cell')
@@ -91,7 +91,7 @@ def test_centers_to_node_S(comm) :
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
     
     zone = PT.get_all_Zone_t(part_tree)[0] 
-    cell_center = maia.algo.part.compute_cell_center(zone)
+    cell_center = maia.algo.part.geometry._compute_zone_centers(zone, 3)
     ccx = cell_center[0::3].reshape(PT.Zone.CellSize(zone), order='F')
     ccy = cell_center[1::3].reshape(PT.Zone.CellSize(zone), order='F')
     ccz = cell_center[2::3].reshape(PT.Zone.CellSize(zone), order='F')

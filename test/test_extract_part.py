@@ -124,7 +124,7 @@ def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
     cy = PT.get_child_from_name(gc, 'CoordinateY')[1]
     cz = PT.get_child_from_name(gc, 'CoordinateZ')[1]
     
-    cell_center = maia.algo.part.geometry.compute_cell_center(zone)
+    cell_center = maia.algo.part.geometry._compute_zone_centers(zone, 3)
     ccx = cell_center[0::3]
     ccy = cell_center[1::3]
     ccz = cell_center[2::3]
@@ -487,7 +487,7 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
     PT.new_node('FamilyName', label='FamilyName_t', value='ZSRs', parent=zsr_n)
 
     # Create second zsr in tree
-    cell_center = maia.algo.part.geometry.compute_cell_center(zone)
+    cell_center = maia.algo.part.geometry._compute_zone_centers(zone, 3)
     ccx = cell_center[0::3]
     ccy = cell_center[1::3]
     ccz = cell_center[2::3]
@@ -649,7 +649,7 @@ def test_extractor_cell_from_zsr_S(zsr_loc, comm, write_output):
       PT.set_name(zsr_n , "ZSR_x")
 
     # Create second zsr in tree
-    cell_center = maia.algo.part.geometry.compute_cell_center(zone)
+    cell_center = maia.algo.part.geometry._compute_zone_centers(zone, 3)
     ccx = cell_center[0::3]
     ccy = cell_center[1::3]
     ccz = cell_center[2::3]
