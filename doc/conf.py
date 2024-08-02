@@ -30,6 +30,7 @@ author = 'ONERA'
 extensions = ["sphinx.ext.graphviz",
               "sphinx.ext.autodoc", 
               "sphinx.ext.autosummary",
+              "sphinx_tabs.tabs",
               "sphinx.ext.napoleon"]
 
 add_module_names = False #Shorten function names

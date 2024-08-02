@@ -10,54 +10,72 @@ Environnements
 
 Maia is now distributed in elsA releases (since v5.2.01) !
 
-If you want to try the latest features, we provide ready-to-go environments including Maia and its dependencies on the following clusters:
+If you need more flexibility or if you want to try the latest features, maia releases are also deployed on Onera clusters.
+This is done through *modulefiles*, named following these conventions:
 
-**Spiro-EL8**
+- 3 figures modules (eg ``maia/1.4.0``) load the specified version;
+- 2 figures modules (eg ``maia/1.4``) load the latest available patchrelease (for example ``1.4.2``);
+- ``maia/dev`` loads the latest build (which may be unstable, use it carefully);
+- a suffix is used to indicate the compatible software socle, depending on the machine.
 
-This is the recommended environment for standalone usage of Maia. It works with intel mpi library (2021)
-and python version 3.9.
+.. tabs::
 
-.. code-block:: sh
+  .. tab:: Spiro-EL8
 
-  source /scratchm/sonics/dist/source.sh --env maia
-  module load maia/dev-default
+    On spiro, in addition to the DSI provided environments (socle-cfd/\*), we also support the IntelMPI/GCC software
+    chain used by Sonics. When loading maia, the later is suffixed by ``"default"`` keyword.
 
-If you want to use Maia within the standard Spiro environment, the next installation is compatible with
-the socle socle-cfd/6.0-intel2220-impi:
+    .. code-block:: sh
 
-.. code-block:: sh
+      module use --append /scratchm/sonics/usr/modules/
+      module load maia/dev-dsi-cfd6
 
-  module use --append /scratchm/sonics/usr/modules/
-  module load maia/dev-dsi-cfd6
+    Note that for the "default" version, dependancies have to be loaded manually, using this additional source command:
 
-Note that this is the environment used by elsA for its production spiro-el8_mpi.
+    .. code-block:: sh
 
-**Sator**
+      source /scratchm/sonics/dist/source.sh --env maia
+      module load maia/dev-default
 
-Similarly, Maia installation are available in both the self maintained and standard socle
-on Sator cluster. Sator's version is compiled with support of large integers.
+  .. tab:: Juno
 
-.. code-block:: sh
+    Maia is available on Juno since v1.2. There is only one flavor on Juno, which is socle-cfd/6.0-intel2220-impi.
 
-  # Versions based on self compiled tools
-  source /tmp_user/sator/sonics/dist/source.sh --env maia
-  module load maia/dev-default
+    .. code-block:: sh
 
-  # Versions based on socle-cfd compilers and tools
-  module use --append /tmp_user/sator/sonics/usr/modules/
-  module load maia/dev-dsi-cfd6
+      module use --append /tmp_user/juno/sonics/usr/modules/
+      module load maia/dev-dsi-cfd6
 
-**Juno**
+  .. tab:: Sator
 
-Maia is available on Juno since v1.3. This installation relies on socle-cfd/6.0-intel2220-impi.
+    Since Sator is the production cluster, Maia is compiled with support of large (I8) integers.
+    If needed, I4 versions (as distributed on other machines) are also available and are suffixed
+    by ``_idx32``.
+    
+    The supported environments are the same than for Spiro-EL8:
 
-.. code-block:: sh
+    .. code-block:: sh
 
-  module use --append /tmp_user/juno/sonics/usr/modules/
-  module load maia/dev-dsi-cfd6
+      # Versions based on socle-cfd compilers and tools
+      module use --append /tmp_user/sator/sonics/usr/modules/
+      module load maia/dev-dsi-cfd6
 
+      # Versions based on self compiled tools
+      source /tmp_user/sator/sonics/dist/source.sh --env maia
+      module load maia/dev-default
+
+  .. tab:: LD
+
+    This installation is compatible with Rocky Linux 8 workstations, and uses the same software chain than elsA
+    on these workstations (OpenMPI/GCC).
+
+    .. code-block:: sh
+
+      module use --append /stck/sonics/LD8/modules/
+      module load maia/dev-dsi-ompi405
 
 If you prefer to build your own version of Maia, see :ref:`installation` section.
+
 
 Supported meshes
 ----------------
