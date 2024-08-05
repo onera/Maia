@@ -144,8 +144,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   second_vtx = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
   key_from_face = first_vtx + second_vtx
   start_gnum = distri_face[0] + PT.Element.Range(ngon_node)[0]
-  end_gnum   = distri_face[1] + PT.Element.Range(ngon_node)[0]
-  face_gnum = np.repeat(np.arange(start_gnum, end_gnum, dtype=face_vtx.dtype), np.diff(face_vtx_idx))
+  face_gnum = np_utils.repeated_arange(np.diff(face_vtx_idx), start_gnum, dtype=face_vtx.dtype)
 
   # Now do the search in // using key
   # First : gather data from face into a block vision
@@ -173,7 +172,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   edge_face = np.zeros((dn_edge, 2), order='F', dtype=dedge_vtx.dtype)
 
   # Id of edge, with repetitions eg. if stride == [1,1,2,1], iedge == [0,1,2,2,3]
-  iedge_extended = np.repeat(np.arange(0, dn_edge), recv_stride)
+  iedge_extended = np_utils.repeated_arange(recv_stride)
 
   # Test if vertex of each edges is equal to recv face_first_vtx, because we can same
   # key for several edges pairs

@@ -1,3 +1,4 @@
+import numbers
 import numpy as np
 
 import cmaia.utils as cutils
@@ -142,6 +143,13 @@ def arange_with_jumps(multi_interval,jumps):
   jumps = np.asarray(jumps)
   return multi_arange(multi_interval[ :-1][~jumps],
                       multi_interval[1:  ][~jumps])
+
+def repeated_arange(counts, start=0, stop=None, step=1, dtype=None):
+  if stop is None:
+    stop = start+counts.size
+  else:
+    assert isinstance(counts, numbers.Integral) or stop-start == step*counts.size
+  return np.repeat(np.arange(start, stop, step, dtype), counts)
 
 def jagged_extract(idx_array, array, ids):
   extracted_array = array[multi_arange(idx_array[ids], idx_array[ids+1])]

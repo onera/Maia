@@ -101,6 +101,19 @@ def test_arange_with_jumps():
                                      [False     ,True, False   , True, False]) == \
                                      [0,1,2,3,4      , 10,11,12      , 18,19]).all()
 
+def test_repeated_arange():
+  # arange = np.array([0,  1,  2    ,  3,  4  ,  5])
+  counts   = np.array([1,  1,  3    ,  1,  2  ,  1])
+  expected = np.array([0,  1,  2,2,2,  3,  4,4,  5])
+  assert (np_utils.repeated_arange(counts) == expected).all()
+
+  assert (np_utils.repeated_arange(counts, 3) == expected+3).all()
+
+  # arange with step 2 = np.array([0,  2,  4    ,  6,  8  ,  10])
+  counts               = np.array([1,  1,  3    ,  1,  2  ,  1 ])
+  expected             = np.array([0,  2,  4,4,4,  6,  8,8,  10])
+  assert (np_utils.repeated_arange(counts, 0, 12, step=2) == expected).all()
+
 def test_jagged_extract():
   idx_array = np.array([0,2,6,10,10])
   array = np.array([0,1, 2,3,4,5, 6,7,8,9  ])
