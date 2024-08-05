@@ -1,18 +1,8 @@
 import maia.pytree.cgns_keywords as CGK
 
-# print(f"dir(CGK) = {dir(CGK)}")
-# print(f"CGK.Label) = {CGK.Label}")
-# print(f"CGK.Label.Zone_t) = {CGK.Label.Zone_t}")
-# print(f"CGK.Name) = {CGK.Name}")
-# print(f"CGK.Name.GridCoordinates) = {CGK.Name.GridCoordinates}")
-# print(f"type(CGK.Name.GridCoordinates) = {type(CGK.Name.GridCoordinates)}")
-# print(f"CGK.GasModel) = {CGK.GasModel}")
-# print(f"type(CGK.GasModel) = {type(CGK.GasModel)}")
 
 def test_cgns_label():
-  # print(f"dir(CGK.Label) = {dir(CGK.Label)}")
-  # for label in CGK.Label.__members__:
-  #   print(f"label = {label}")
+
   assert(isinstance(CGK.Label.CGNSTree_t, CGK.Label))
 
   assert(CGK.Label.CGNSTree_t.name  == "CGNSTree_t")
@@ -40,3 +30,7 @@ def test_cgns_value():
 def test_cgns_name():
   assert(CGK.Name.GridCoordinates == "GridCoordinates")
   assert(CGK.Name.GasModel        == "GasModel")
+
+def test_import_py_modules():
+    from maia.pytree.cgns_keywords import _cgns_names
+    from maia.pytree.cgns_keywords import _cgns_keywords
