@@ -7,15 +7,10 @@ workflow:
 
 variables:
   GIT_STRATEGY: none # don't do anything by default
-  SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=1 --time=00:15:00" #Slurm default parameters
-  SOURCE_CMD: "/scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi"
 #Common to all stages
 default:
-  tags: #All jobs uses jamacar-slurm executor by default (dsi test)
-    - slurm
-  before_script:
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - source $SOURCE_CMD
+  tags:
+    - juno-shell
   id_tokens:
     CI_JOB_JWT:
       aud: https://gitlab.onera.net
@@ -29,7 +24,6 @@ stages:
 
 job:init:
   stage: init
-  before_script: 
   script: # explicitly load modules one by one, so that if one fails, it will be easy to identify
     - INIT_ORIGINAL_FOLDER=$(pwd)
     - cd ~/.jacamar-ci/builds
@@ -52,13 +46,13 @@ job:init:
 
 job:build:
   stage: build
-  variables:
-    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --nodes=1-1 --time=00:15:00"
   script:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2 gcc/10.2.0
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
-    - make -j
+    - make -j 24
 
 # This build documentation after main build, only if branch is dev or for MR events
 job:doc:
@@ -68,7 +62,10 @@ job:doc:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   script:
     - cd $CUSTOM_CI_DIR/build
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2 gcc/10.2.0
     - source source.sh
+    - export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
     - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
     - make maia_sphinx
 
@@ -76,19 +73,28 @@ job:doc:
 #todo : display reports on browser eg with gitlab pages
 job:ctest:
   stage: test
-  variables:
-    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=8 --nodes=1-1 --exclusive --time=00:15:00"
+  before_script:
+    - |
+      cat > $CUSTOM_CI_DIR/build/.coveragerc << EOF
+      [coverage:run]
+      parallel = true
+      source = maia
+      EOF
   script:
     - INIT_ORIGINAL_FOLDER=$(pwd)
     - rm -rf $INIT_ORIGINAL_FOLDER/reports # Cleanup old builds reports if existing
     - cd $CUSTOM_CI_DIR/build
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - export PATH=$FEFLOPATH:$PATH
-    - ctest -R maia
+    - source source.sh
+    - mpirun -np 4 test/maia_doctest_unit_tests
+    - mpirun -np 4 coverage run -m pytest ../maia
+    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
 
-    - cd $CUSTOM_CI_DIR/build/test
-    - coverage combine --rcfile=.coveragerc_unit_tests
-    - coverage report --rcfile=.coveragerc_unit_tests
-    - coverage xml --rcfile=.coveragerc_unit_tests -o coverage_unit_tests.xml
+    - coverage combine
+    - coverage report
+    - coverage xml -o coverage_unit_tests.xml
     - sed 's@'"$CI_PROJECT_DIR"'/@@' -i coverage_unit_tests.xml
     # GitLab needs artifacts to be in the folder of the job so move it
     - mv ./coverage_unit_tests.xml $INIT_ORIGINAL_FOLDER && mv ./reports  $INIT_ORIGINAL_FOLDER
@@ -111,40 +117,39 @@ job:doc_snippets:
   stage: test
   script:
     - cd $CUSTOM_CI_DIR/build
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh; unset PYTEST_PLUGINS
-    - python3 -m pytest ../doc
+    - mpirun -np 1 python3 -m pytest ../doc
 
 job:portability_gnum:
   stage: test
-  variables:
-    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --nodes=1-1 --time=00:15:00"
   rules:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   script:
     - cd $CUSTOM_CI_DIR
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2 gcc/10.2.0
     - mkdir -p build_int64 && cd build_int64
     - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
-    - make -j
+    - make -j 24
     - source source.sh
     - mpirun -np 4 python3 -m pytest ../maia/
 
 job:portability_cfd6:
   stage: test
-  variables:
-    SCHEDULER_PARAMETERS: "--qos=co_short_std --ntasks=16 --exclusive --nodes=1-1 --time=00:15:00"
   rules:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
-  before_script: 
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
   script:
     - cd $CUSTOM_CI_DIR
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
     - mkdir -p build_cfd6 && cd build_cfd6
     - cmake ../ -DCMAKE_BUILD_TYPE=Debug 
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 
                 -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
-    - make -j
+    - make -j 24
     - source $ELSASPIRO/.env_elsA
     - source source.sh
     - mpirun -np 4 python3 -m pytest ../maia/
@@ -155,16 +160,10 @@ pages:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  before_script: 
-    - ''
   script:
     - rm -rf public
     - mkdir public
-    - cp -r /scratchm/sonics/usr/maia/v1.0/doc/html public/1.0
-    - cp -r /scratchm/sonics/usr/maia/v1.1/doc/html public/1.1
-    - cp -r /scratchm/sonics/usr/maia/v1.2/doc/html public/1.2
-    - cp -r /scratchm/sonics/usr/maia/v1.3/doc/html public/1.3
-    - cp -r /scratchm/sonics/usr/maia/v1.4/doc/html public/1.4
+    - cp -r /tmp_user/juno/sonics/usr/maia/doc/html/* public/
     - cp -r $CUSTOM_CI_DIR/build/doc/sphinx/html public/dev
     - |
       cat > public/index.html << EOF
@@ -181,8 +180,6 @@ init_deploy:
   stage: deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   variables:
     GIT_STRATEGY: clone
   before_script: 
@@ -191,7 +188,7 @@ init_deploy:
   script:
     - rsync -a . sonics@spiro02:/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a . sonics@sator:/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
-    - rsync -a . sonics@juno:/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
+    - rsync -a . sonics@juno1:/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a --delete . sonics@spiro02:/stck/sonics/tmp/maia-ci-dev #This one is for LD8
 
 
@@ -200,8 +197,6 @@ deploy_spiro_socle6:
   needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   before_script:
     - |
       cat > build_spiro6.sh << EOF
@@ -227,8 +222,6 @@ deploy_spiro_sonics:
   needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   before_script:
     - |
       cat > build_spiro.sh << EOF
@@ -252,8 +245,6 @@ deploy_sator_socle6:
   needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   before_script:
     - |
       cat > build_sator6.sh << EOF
@@ -277,8 +268,6 @@ deploy_sator_sonics:
   needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   before_script:
     - |
       cat > build_sator.sh << EOF
@@ -300,8 +289,6 @@ deploy_juno_socle6:
   needs: ["init_deploy"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   before_script:
     - |
       cat > build_juno6.sh << EOF
@@ -317,18 +304,16 @@ deploy_juno_socle6:
   script:
     - export JOB_BUILD_DIR=/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
     - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_juno6.sh sonics@juno:${JOB_BUILD_DIR}
-    - ssh sonics@juno "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_juno6.sh"
+    - rsync build_juno6.sh sonics@juno1:${JOB_BUILD_DIR}
+    - ssh sonics@juno1 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_juno6.sh"
 
 post_deploy:
   stage: deploy
   needs: ["deploy_spiro_socle6", "deploy_spiro_sonics", "deploy_sator_socle6", "deploy_sator_sonics", "deploy_juno_socle6"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  tags:
-    - shell
   before_script: 
   script:
     - ssh sonics@spiro02 "rm -rf /scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
     - ssh sonics@sator   "rm -rf /tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
-    - ssh sonics@juno    "rm -rf /tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
+    - ssh sonics@juno1   "rm -rf /tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
