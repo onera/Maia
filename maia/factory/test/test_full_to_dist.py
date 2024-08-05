@@ -46,13 +46,16 @@ def test_distribute_data_node(comm):
   rank = comm.Get_rank()
   fs = PT.new_FlowSolution(loc='CellCenter')
   data1 = PT.new_DataArray('Data1', [2,4,6,8,10,12,14], parent=fs)
+  descr = PT.new_Descriptor('OrdChecker', "To check that order is respected", parent=fs)
   data2 = PT.new_DataArray('Data2', [-1,-2,-3,-4,-5,-6,-7], parent=fs)
 
   dist_fs = full_to_dist.distribute_data_node(fs, comm)
   distri_f = [0,3,5,7]
 
   assert (PT.get_node_from_name(dist_fs, 'Data1')[1] == data1[1][distri_f[rank] : distri_f[rank+1]]).all()
+  assert PT.get_value(PT.get_node_from_name(dist_fs, 'OrdChecker')) == PT.get_value(descr)
   assert (PT.get_node_from_name(dist_fs, 'Data2')[1] == data2[1][distri_f[rank] : distri_f[rank+1]]).all()
+  assert [PT.get_name(n) for n in dist_fs[2]] == ['GridLocation', 'Data1', 'OrdChecker', 'Data2']
 
 @pytest_parallel.mark.parallel(2)
 def test_distribute_element(comm):

@@ -52,17 +52,17 @@ def distribute_data_node(node, comm):
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
   """
-  is_data_array = lambda n: PT.get_label(n) == 'DataArray_t'
   assert PT.get_node_from_name(node, 'PointList') is None
   dist_node = PT.new_node(PT.get_name(node), PT.get_label(node), PT.get_value(node))
 
-  for array in PT.iter_children_from_predicate(node, is_data_array):
-    distri = par_utils.uniform_distribution(array[1].size, comm)
-    PT.new_DataArray(PT.get_name(array),
-                     (array[1].reshape(-1, order='F')[distri[0] : distri[1]]).copy(),
-                     parent=dist_node) 
-  for child in PT.iter_children_from_predicate(node, lambda n: not is_data_array(n)):
-    PT.add_child(dist_node, PT.deep_copy(child))
+  for child in PT.get_children(node):
+    if PT.get_label(child) == 'DataArray_t':
+      distri = par_utils.uniform_distribution(child[1].size, comm)
+      PT.new_DataArray(PT.get_name(child),
+                      (child[1].reshape(-1, order='F')[distri[0] : distri[1]]).copy(),
+                      parent=dist_node) 
+    else:
+      PT.add_child(dist_node, PT.deep_copy(child))
 
   return dist_node
 
