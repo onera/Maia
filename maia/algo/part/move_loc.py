@@ -3,6 +3,7 @@ import numpy as np
 import maia
 import maia.pytree as PT
 
+from maia.utils import np_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from . import multidom_gnum
@@ -45,7 +46,7 @@ class CenterToNode:
           # each cell the vertex touches. Eg [0, 1, 1, 2,2,2,2] if vtx 0,
           # 1 and 2 belongs to 1, 2 and 4 cells. It it used to
           # compute vtx -> cell center distance for each connected cell
-          vtx_idx_rep = np.repeat(np.arange(n_vtx), np.diff(vtx_cell_idx))
+          vtx_idx_rep = np_utils.repeated_arange(np.diff(vtx_cell_idx))
 
           diff_x = cx[vtx_idx_rep] - cell_center[0::3][vtx_cell-1]
           diff_y = cy[vtx_idx_rep] - cell_center[1::3][vtx_cell-1]

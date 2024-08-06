@@ -1,3 +1,4 @@
+import numbers
 import numpy as np
 
 import cmaia.utils as cutils
@@ -143,6 +144,13 @@ def arange_with_jumps(multi_interval,jumps):
   return multi_arange(multi_interval[ :-1][~jumps],
                       multi_interval[1:  ][~jumps])
 
+def repeated_arange(counts, start=0, stop=None, step=1, dtype=None):
+  if stop is None:
+    stop = start+counts.size
+  else:
+    assert isinstance(counts, numbers.Integral) or stop-start == step*counts.size
+  return np.repeat(np.arange(start, stop, step, dtype), counts)
+
 def jagged_extract(idx_array, array, ids):
   extracted_array = array[multi_arange(idx_array[ids], idx_array[ids+1])]
   sizes = np.diff(idx_array)
@@ -174,6 +182,29 @@ def others_mask(array, ids):
   mask = np.ones(array.size, dtype=bool)
   mask[ids] = False
   return mask
+
+def unique_sorted(sorted_array, return_counts=False):
+  """ A faster implementation of np.unique() if input array
+  is sorted
+  """
+  is_new = np.empty(sorted_array.size, bool)
+  if sorted_array.size > 0:
+    is_new[0] = True
+    is_new[1:] = sorted_array[1:] != sorted_array[:-1]
+
+  unique_array = sorted_array[is_new]
+
+  if not return_counts:
+    return unique_array
+  
+  counts_idx = np.empty(unique_array.size+1, int)
+  counts_idx[:-1] = np.arange(is_new.size)[is_new]
+  counts_idx[-1] = sorted_array.size
+
+  counts = np.diff(counts_idx)
+
+  return unique_array, counts
+
 
 def is_unique_strided(array, stride, method='hash'):
   """
@@ -207,6 +238,27 @@ def roll_once_by_stride(array_idx, array):
   rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
   return np.delete(extended, rm_idx)
 
+def take_strided(array_idx, array, indices):
+  """
+  An equivalent to numpy.take (a[ind]), but with strided values in array
+  Indices is the list of idx to extract; for each indices, the whole "grap" of strided
+  values will be extracted
+  Example:
+  Given inputs:
+    a_idx    = [0, 3, 4, 6]  (gather 3 values, then 1 value, then 2 values)
+    a_val    = [10,11,12, 100, 1000, 1001] (input array)
+    indices  = [2,0] (indices of groups that we want to take)
+  We gather a_val according to a_idx: [[10,11,12], [100], [1000, 1001]]
+  Then we return the groups at indices [2,0]
+  So in the end, we have:
+    take_strided(a_idx, a_val, indices) = [1000, 1001,  10,11,12]
+
+  """
+  out_size = (array_idx[indices+1] - array_idx[indices]).sum()
+  out = np.empty(out_size, array.dtype)
+  layouts.take_strided(array_idx, array, indices, out)
+
+  return out
 
 def any_in_range(array, start, end, strict=False):
   """

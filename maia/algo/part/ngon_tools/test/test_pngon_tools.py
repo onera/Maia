@@ -82,3 +82,23 @@ def test_pe_to_ngon(comm):
   assert np.array_equal(ngon_er_bck, ngon_er)
   assert np.array_equal(ngon_eso_bck, ngon_eso)
   assert np.array_equal(ngon_ec_bck, ngon_ec)
+
+@pytest_parallel.mark.parallel(1)
+@pytest.mark.parametrize("rmNGon",[True, False])
+def test_ngon_to_edge_pe(rmNGon, comm):
+  tree = DSG.generate_dist_sphere(4, 'NGON_n', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  as_partitioned(zone)
+
+  pe_bck = PT.get_node_from_path(zone, 'EdgeElements/ParentElements')[1]
+  ngon_bck = PT.deep_copy(PT.get_child_from_name(zone, 'NGonElements'))
+  PT.rm_nodes_from_name(zone, 'ParentElements')
+
+  NGT.ngon_to_edge_pe(zone, rmNGon)
+
+  assert (PT.get_node_from_path(zone, 'EdgeElements/ParentElements')[1] == pe_bck).all()
+  ngon_cur = PT.get_child_from_name(zone, 'NGonElements')
+  if rmNGon:
+    assert ngon_cur is None
+  else:
+    assert PT.is_same_tree(ngon_bck, ngon_cur)

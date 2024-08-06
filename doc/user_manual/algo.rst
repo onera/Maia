@@ -107,6 +107,7 @@ The following algorithms applies on maia distributed or partitioned trees
 .. autofunction:: maia.algo.pe_to_nface
 .. autofunction:: maia.algo.nface_to_pe
 .. autofunction:: maia.algo.edge_pe_to_ngon
+.. autofunction:: maia.algo.ngon_to_edge_pe
 
 
 Sequential algorithms

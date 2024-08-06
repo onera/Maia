@@ -7,7 +7,7 @@ import pathlib
 import maia
 from maia.factory import generate_dist_block
 from maia.factory import partition_dist_tree
-from maia.utils import par_utils, s_numbering, test_utils
+from maia.utils import par_utils, s_numbering, test_utils, np_utils
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
@@ -222,7 +222,7 @@ def test_split_lines(method, comm):
   dist_zone[1][0,1] = n_vtx - 1
 
   if comm.Get_rank() == 0:
-    bar_ec = np.repeat(np.arange(n_vtx, dtype=dist_zone[1].dtype), 2)[1:-1] + 1
+    bar_ec = np_utils.repeated_arange(2, 0, n_vtx, dtype=dist_zone[1].dtype)[1:-1] + 1
     dn_bar = n_vtx-1
   else:
     bar_ec = np.empty(0, dtype=dist_zone[1].dtype)

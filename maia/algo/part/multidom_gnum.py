@@ -109,7 +109,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
 
   # 2. Give to each group of connected vertices a gnum (in 1 ... Nb of groups of connected vtx)
   rank_offset = par_utils.gather_and_shift(graph_idx.size-1, comm)[comm.Get_rank()]
-  vtx_group_id = np.repeat(np.arange(1, graph_idx.size), np.diff(graph_idx)) + rank_offset
+  vtx_group_id = np_utils.repeated_arange(np.diff(graph_idx), 1+rank_offset)
 
   # 3. Send this data to the partitionned GCs using a PartToPart.
 

@@ -101,6 +101,19 @@ def test_arange_with_jumps():
                                      [False     ,True, False   , True, False]) == \
                                      [0,1,2,3,4      , 10,11,12      , 18,19]).all()
 
+def test_repeated_arange():
+  # arange = np.array([0,  1,  2    ,  3,  4  ,  5])
+  counts   = np.array([1,  1,  3    ,  1,  2  ,  1])
+  expected = np.array([0,  1,  2,2,2,  3,  4,4,  5])
+  assert (np_utils.repeated_arange(counts) == expected).all()
+
+  assert (np_utils.repeated_arange(counts, 3) == expected+3).all()
+
+  # arange with step 2 = np.array([0,  2,  4    ,  6,  8  ,  10])
+  counts               = np.array([1,  1,  3    ,  1,  2  ,  1 ])
+  expected             = np.array([0,  2,  4,4,4,  6,  8,8,  10])
+  assert (np_utils.repeated_arange(counts, 0, 12, step=2) == expected).all()
+
 def test_jagged_extract():
   idx_array = np.array([0,2,6,10,10])
   array = np.array([0,1, 2,3,4,5, 6,7,8,9  ])
@@ -252,6 +265,44 @@ def test_roll_once_by_stride():
   assert np_utils.roll_once_by_stride(np.array([0]), np.empty(0)).size == 0
   rolled = np_utils.roll_once_by_stride(np.array([0, 4, 4, 9, 10]), np.array([34, 65, 33, 1,   39, 54, 2, 53, 3, 8]))
   assert np.array_equal(rolled, [65, 33, 1, 34,   54, 2, 53, 3, 39,  8])
+
+def test_take_strided():
+  assert np.array_equal(
+    np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,0])),
+    [1000, 1001, 10,11,12]
+  )
+  assert np.array_equal(
+    np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,2,2,0])),
+    [1000, 1001, 1000, 1001, 1000, 1001, 10,11,12]
+  )
+  assert np.array_equal(
+    np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([1,2])),
+    []
+  )
+  assert np.array_equal(
+    np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,4,0])),
+    [1000, 1001, 10,11,12]
+  )
+  out = np_utils.take_strided(np.array([0]), np.empty(0, float), np.empty(0, int))
+  assert out.size == 0 and out.dtype == float
+
+
+def test_unique_sorted():
+  t = np.sort(np.random.randint(1, 50, 100))
+  unique, counts = np_utils.unique_sorted(t, return_counts=True)
+  unique_ref, counts_ref = np.unique(t, return_counts=True)
+  assert np.array_equal(unique, unique_ref)
+  assert np.array_equal(counts, counts_ref)
+  assert np.array_equal(np_utils.unique_sorted(t), unique_ref) # w/o counts
+
+  t = np.array([42.])
+  unique, counts = np_utils.unique_sorted(t, return_counts=True)
+  assert (unique == [42.]).all() and (counts == [1]).all()
+
+  t = np.zeros(0, np.int32)
+  unique, counts = np_utils.unique_sorted(t, return_counts=True)
+  assert (unique.size == 0 and unique.dtype==np.int32) and (counts.size == 0 and counts.dtype==int)
+
   
 
 def check_transform(expected_x, expected_y, expected_z, computed_matrix, computed_x, computed_y, computed_z, atol):

@@ -87,6 +87,79 @@ def nface_to_pe(zone, remove_NFace=False):
   if remove_NFace:
     PT.rm_child(zone, nface_node)
 
+
+def ngon_to_edge_pe(zone, remove_NGon=False):
+  """Create a ParentElements node in the EdgeElements node from a NGon node.
+
+  Note that EdgeElement is supposed to exists and define all (including internal)
+  edges. This function computes the link between these edges and the NGon node.
+
+  Input tree is modified inplace.
+
+  Args:
+    zone         (CGNSTree): Partitioned zone
+    remove_NGon (bool, optional): If True, remove the NGon node.
+      Defaults to False.
+  """
+  # EDGE Data
+  edge_node  = MT.Zone.EdgeNode(zone)
+  edge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
+  key_from_edge = edge_vtx[0::2] + edge_vtx[1::2] # hash vtx-vtx of BAR_2 by taking the sum of both
+
+  # NGON Data
+  ngon_node = PT.Zone.NGonNode(zone)
+  face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+  face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
+
+  first_vtx  = face_vtx
+  second_vtx = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
+  key_from_face = first_vtx + second_vtx # hash by vtx-vtx sum as above
+  start_face_id = PT.Element.Range(ngon_node)[0]
+  edge_parent_id = np_utils.repeated_arange(np.diff(face_vtx_idx), start_face_id, dtype=face_vtx.dtype)
+
+
+  # Now do the search using key
+  # First : unify data from face into a block-like vision ie
+  #  sort related data and transform key in unique + counts
+  sort_idx = np.argsort(key_from_face)
+  key_from_face  = key_from_face[sort_idx]
+  edge_parent_id = edge_parent_id[sort_idx]
+  face_first_vtx = first_vtx[sort_idx]
+
+  key_from_face_unique, key_from_face_counts = np_utils.unique_sorted(key_from_face, return_counts=True)
+  key_from_face_idx = np_utils.sizes_to_indices(key_from_face_counts)
+  
+
+  # Second : get data from block-like vision, for each edge
+
+  # Index of edge key in face key sorted array
+  select_idx = np.searchsorted(key_from_face_unique, key_from_edge)
+
+  counts_for_edge = key_from_face_counts[select_idx] # get the number collisions by edge (count==1 <=> no collision)
+  parent_id_for_edge = np_utils.take_strided(key_from_face_idx, edge_parent_id, select_idx)
+  first_vtx_for_edge = np_utils.take_strided(key_from_face_idx, face_first_vtx, select_idx)
+
+
+  # Third: post treat (solving conflicts) for fill edge_face
+  n_edge = edge_vtx.size // 2
+  edge_face = np.zeros((n_edge, 2), order='F', dtype=edge_vtx.dtype)
+
+  iedge_extended = np_utils.repeated_arange(counts_for_edge)
+
+  # Test if vertex of each edges is equal to recv face_first_vtx, because we can
+  # have the same key for several edges pairs
+  first_vtx_match  = edge_vtx[2*iedge_extended  ] == first_vtx_for_edge
+  second_vtx_match = edge_vtx[2*iedge_extended+1] == first_vtx_for_edge
+  # Fill edge_face with matching edge_parent_id
+  edge_face[iedge_extended[first_vtx_match],  0] = parent_id_for_edge[first_vtx_match]
+  edge_face[iedge_extended[second_vtx_match], 1] = parent_id_for_edge[second_vtx_match]
+
+
+  PT.new_DataArray('ParentElements', edge_face, parent=edge_node)
+  if remove_NGon:
+    PT.rm_child(zone, ngon_node)
+
+
 def edge_pe_to_ngon(zone, remove_PE=False):
   """Create a NGon node from a Edge node with ParentElements.
 

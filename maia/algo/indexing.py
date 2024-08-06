@@ -106,3 +106,33 @@ def edge_pe_to_ngon(t, comm=None, removePE=False):
     else:
       from .part.ngon_tools import edge_pe_to_ngon
       edge_pe_to_ngon(zone, removePE)
+
+def ngon_to_edge_pe(t, comm, remove_NGon=False):
+  """Create a ParentElements node in the EdgeElements node from a NGon node.
+
+  Note that EdgeElement is supposed to exist and define all (including internal)
+  edges. This function retrieves the link between these edges and the NGon node.
+
+  Input tree is modified inplace.
+
+  Args:
+    t           (CGNSTree(s)): Distributed or Partitioned tree (or sequences of)
+      starting at Zone_t level or higher.
+    comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
+    removeNFace (bool, optional): If True, remove the NGon node.
+      Defaults to False.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #ngon_to_edge_pe@start
+        :end-before: #ngon_to_edge_pe@end
+        :dedent: 2
+  """
+  for zone in zones_iterator(t):
+    if PT.maia.getDistribution(zone) is not None:
+      assert comm is not None
+      from .dist.ngon_tools import ngon_to_edge_pe
+      ngon_to_edge_pe(zone, comm, remove_NGon)
+    else:
+      from .part.ngon_tools import ngon_to_edge_pe
+      ngon_to_edge_pe(zone, remove_NGon)
