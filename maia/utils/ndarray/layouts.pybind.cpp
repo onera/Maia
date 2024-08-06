@@ -36,22 +36,19 @@ void take_strided(py::array_t<int64_t> displs,
 
 {
   size_t s_data = read_buff.request().itemsize;
-  char* _read_buff  = static_cast<char *> ( read_buff.request().ptr);
-  char* _write_buff = static_cast<char *> (write_buff.request().ptr);
+  std::byte* _read_buff  = static_cast<std::byte*> ( read_buff.request().ptr);
+  std::byte* _write_buff = static_cast<std::byte*> (write_buff.request().ptr);
 
   auto _displs = displs.unchecked<1>();
   auto _ind    = ind.unchecked<1>();
 
-  size_t w_start = 0;
-  for (int i=0; i < ind.size(); ++i) {
-    auto __ind = _ind[i];
-    auto __cnt = _displs[__ind+1] - _displs[__ind];
-    if (__cnt > 0) { //Avoid undefined behaviour if read_buff is null
-      std::memcpy(_write_buff + w_start,
-                  _read_buff + s_data*_displs[__ind], 
-                  __cnt*s_data); 
-      w_start += s_data*__cnt;
-    }
+  for (size_t i=0; i < ind.size(); ++i) {
+    auto cur_idx = _ind[i];
+    auto cur_cnt = _displs[cur_idx+1] - _displs[cur_idx];
+    std::copy_n(_read_buff + s_data*_displs[cur_idx], 
+                cur_cnt*s_data,
+                _write_buff);
+    _write_buff += s_data*cur_cnt;
   }
 }
 

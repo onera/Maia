@@ -293,7 +293,7 @@ def test_unique_sorted():
   unique_ref, counts_ref = np.unique(t, return_counts=True)
   assert np.array_equal(unique, unique_ref)
   assert np.array_equal(counts, counts_ref)
-  assert np.array_equal(np_utils.unique_sorted(t), unique_ref) # WO counts
+  assert np.array_equal(np_utils.unique_sorted(t), unique_ref) # w/o counts
 
   t = np.array([42.])
   unique, counts = np_utils.unique_sorted(t, return_counts=True)

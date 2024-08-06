@@ -110,8 +110,8 @@ def edge_pe_to_ngon(t, comm=None, removePE=False):
 def ngon_to_edge_pe(t, comm, remove_NGon=False):
   """Create a ParentElements node in the EdgeElements node from a NGon node.
 
-  Note that EdgeElement is supposed to exists and define all (including internal)
-  edges. This function retrieve the link between these edges and the NGon node.
+  Note that EdgeElement is supposed to exist and define all (including internal)
+  edges. This function retrieves the link between these edges and the NGon node.
 
   Input tree is modified inplace.
 

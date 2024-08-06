@@ -243,9 +243,16 @@ def take_strided(array_idx, array, indices):
   An equivalent to numpy.take (a[ind]), but with strided values in array
   Indices is the list of idx to extract; for each indices, the whole "grap" of strided
   values will be extracted
-  a_idx    = [0, 3, 4, 6]
-  a_val    = [10,11,12, 100, 1000, 1001] (3 values, then 1 value, then 2 values)
-  take_strided(a_idx, a_val, [2,0]) = [1000, 1001,  10,11,12]
+  Example:
+  Given inputs:
+    a_idx    = [0, 3, 4, 6]  (gather 3 values, then 1 value, then 2 values)
+    a_val    = [10,11,12, 100, 1000, 1001] (input array)
+    indices  = [2,0] (indices of groups that we want to take)
+  We gather a_val according to a_idx: [[10,11,12], [100], [1000, 1001]]
+  Then we return the groups at indices [2,0]
+  So in the end, we have:
+    take_strided(a_idx, a_val, indices) = [1000, 1001,  10,11,12]
+
   """
   out_size = (array_idx[indices+1] - array_idx[indices]).sum()
   out = np.empty(out_size, array.dtype)
