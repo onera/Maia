@@ -588,6 +588,23 @@ def test_reorder_elt_sections_from_dim():
     assert PT.Zone.elt_ordering_by_dim(zone) == 1 # Now, yes
   #reorder_elt_sections_from_dim@end
 
+def test_concatenate_elt_sections():
+  #concatenate_elt_sections@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+  from maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'H_elt_and_s.yaml', MPI.COMM_WORLD)
+
+  is_quad_elt = lambda n : PT.get_label(n) == 'Elements_t' and \
+                           PT.Element.CGNSName(n) == 'QUAD_4'
+
+  assert len(PT.get_nodes_from_predicate(dist_tree, is_quad_elt)) > 1 # Several QUAD sections
+  maia.algo.dist.concatenate_elt_sections(dist_tree, MPI.COMM_WORLD)
+  assert len(PT.get_nodes_from_predicate(dist_tree, is_quad_elt)) == 1 # Now, only one
+  #concatenate_elt_sections@end
+
 def test_recover1to1():
   #recover1to1@start
   from mpi4py import MPI

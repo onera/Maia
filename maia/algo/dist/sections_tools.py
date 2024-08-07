@@ -1,8 +1,96 @@
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
-from maia.utils import np_utils
+from maia.transfer import protocols as EP
+from maia.utils import np_utils, par_utils
+from maia.algo.apply_function_to_nodes import zones_iterator
+
+def concatenate_elt_sections(dist_tree, comm):
+  """ Gather the Element_t sections of same ElementType into a single one.
+
+  Resulting sections are named after their ElementType. Note that :
+
+  - Sections of same kind must be contiguous to be gathered. This can be achieved
+    using :func:`reorder_elt_sections_from_dim` function.
+  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kind are not supported.
+
+  Input tree is modified inplace.
+
+  Args:
+    dist_tree (CGNSTree) : Distributed tree
+    comm (MPIComm)  : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #concatenate_elt_sections@start
+        :end-before: #concatenate_elt_sections@end
+        :dedent: 2
+  """
+  for zone in zones_iterator(dist_tree):
+
+    to_gather = {}
+    for elt in PT.get_children_from_label(zone, 'Elements_t'):
+      if (kind := PT.Element.CGNSName(elt)) in to_gather:
+        to_gather[kind].append(elt)
+      else:
+        to_gather[kind] = [elt]
+    
+    # Dont forget to sort ! Because order of apparition in tree is not
+    # necessarily increasing
+    to_gather = {kind : sorted(elts, key=lambda e: PT.Element.Range(e)[0]) \
+                 for kind, elts in to_gather.items()}
+
+    # Sections can be concatenated only if they are contiguous
+    for elts in to_gather.values():
+      if len(elts) > 1:
+        for prev, elt in zip(elts[:-1], elts[1:]):
+          if PT.Element.Range(elt)[0] != (PT.Element.Range(prev)[1]+1):
+            msg = "Element sections of same kind are not contiguous, and thus can not be concatenated.\n"\
+                  "Consider reordering the elements, for example with reorder_elt_sections_from_dim function."
+            raise RuntimeError(msg)
+
+    for kind, elts in to_gather.items():
+      if len(elts) > 1:
+        elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0]) # Dont forget to sort!
+        tot_size = sum([PT.Element.Size(e) for e in elts])
+        merged_distri = par_utils.uniform_distribution(tot_size, comm)
+
+        # Initially, each section is distributed, we need to "uninterlace" 
+        # to map global distribution without changing order
+        start = 0
+        ec_to_merge = []
+        for elt in elts:
+          end = start + PT.Element.Size(elt)
+          distri = MT.getDistribution(elt, 'Element')[1]
+          ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
+          distri_out = distri.copy()
+          distri_out[0] = max(min(merged_distri[0], end), start) - start
+          distri_out[1] = max(min(merged_distri[1], end), start) - start
+
+          # NB : if we had block_to_block with preallocated buffer,
+          # we could directly fill global array
+          btb = EP.BlockToBlock(distri, distri_out, comm)
+          ec_to_merge.append(btb.exchange(ec, PT.Element.NVtx(elt)))
+          start = end
+
+        merged_ec = np_utils.concatenate_np_arrays(ec_to_merge)[1]
+        merged_range = np.empty(2, merged_ec.dtype)
+        merged_range[0] = PT.Element.Range(elts[0] )[0]
+        merged_range[1] = PT.Element.Range(elts[-1])[1]
+        merged_elt = PT.new_Elements(f'{kind}', kind, erange=merged_range, econn=merged_ec)
+        MT.newDistribution({'Element' : merged_distri}, merged_elt)
+
+        for elt in elts:
+          PT.rm_child(zone, elt)
+        PT.add_child(zone, merged_elt)
+
+      else:
+        # To be consistent, we just rename using elt kind
+        PT.set_name(elts[0], kind)
+    
+
 
 def reorder_sections(tree, permutation):
   """ Reorder the sections of the input tree by appling the permutation
@@ -63,7 +151,7 @@ def reorder_sections(tree, permutation):
 
       if (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
         # PointRange may cross several sections, so we extend it
-        distri = PT.get_value(distri_n) if (distri_n := PT.maia.getDistribution(subset, 'Index')) is not None else None
+        distri = PT.get_value(distri_n) if (distri_n := MT.getDistribution(subset, 'Index')) is not None else None
         pl = np_utils.single_dim_pr_to_pl(pr[1], distri)
         PT.update_node(pr, 'PointList', 'IndexArray_t', pl)
 

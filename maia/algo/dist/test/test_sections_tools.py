@@ -1,11 +1,46 @@
 import pytest
 import pytest_parallel
+import numpy as np
 
 import maia.pytree as PT
 
 import maia
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+from maia.utils import par_utils
 from maia.algo.dist import sections_tools
+
+@pytest_parallel.mark.parallel(3)
+def test_gather_sections(comm):
+  tree = PT.new_CGNSTree()
+  base = PT.new_CGNSBase(parent=tree)
+  zone = PT.new_Zone(type='Unstructured', size=[[30,10,0]], parent=base)
+  PT.new_Elements('Tri.1', 'TRI_3', erange=[18,20], econn=[22,23,24, 25,26,27, 28,29,30], parent=zone)
+  PT.new_Elements('Tri.0', 'TRI_3', erange=[11,17], econn=[1,2,3, 4,5,6, 7,8,9, 10,11,12, 13,14,15, 16,17,18, 19,20,21], parent=zone)
+  
+  tree = maia.factory.full_to_dist_tree(tree, comm)
+  tree_bck = PT.deep_copy(tree)
+
+  sections_tools.concatenate_elt_sections(tree, comm)
+
+  elts = PT.get_nodes_from_label(tree, 'Elements_t')
+  assert len(elts) == 1
+
+  expected_ec = [[1,2,3, 4,5,6, 7,8,9, 10,11,12],
+                 [13,14,15, 16,17,18, 19,20,21],
+                 [22,23,24, 25,26,27, 28,29,30]][comm.Get_rank()]
+  expected_distri_f = np.array([0, 4, 7, 10], pdm_dtype)
+  expected_distri = par_utils.full_to_partial_distribution(expected_distri_f, comm)
+  expected = PT.new_Elements('TRI_3', 'TRI_3', erange=[11, 20], econn=expected_ec)
+  PT.maia.newDistribution({'Element' : expected_distri}, expected)
+
+  assert PT.is_same_tree(elts[0], expected)
+
+
+  # Test failure with non contiguous elts
+  PT.get_node_from_name(tree_bck, 'ElementRange')[1] += 3
+  with pytest.raises(RuntimeError):
+    sections_tools.concatenate_elt_sections(tree_bck, comm)
 
 def test_reorder_elements():
   # Note:  Ids in this tree makes no sense, this is just to test
