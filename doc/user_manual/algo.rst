@@ -28,6 +28,8 @@ Connectivities conversions
 .. autofunction:: maia.algo.dist.ngons_to_elements
 .. autofunction:: maia.algo.dist.convert_elements_to_mixed
 .. autofunction:: maia.algo.dist.convert_mixed_to_elements
+.. autofunction:: maia.algo.dist.reorder_elt_sections_from_dim
+.. autofunction:: maia.algo.dist.concatenate_elt_sections
 .. autofunction:: maia.algo.dist.rearrange_element_sections
 .. autofunction:: maia.algo.dist.generate_jns_vertex_list
 

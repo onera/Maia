@@ -1,0 +1,232 @@
+import numpy as np
+
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
+from maia.transfer import protocols as EP
+from maia.utils import np_utils, par_utils
+from maia.algo.apply_function_to_nodes import zones_iterator
+
+def concatenate_elt_sections(dist_tree, comm):
+  """ Gather the Element_t sections of same ElementType into a single one.
+
+  Resulting sections are named after their ElementType. Note that :
+
+  - Sections of same kind must be contiguous to be gathered. This can be achieved
+    using :func:`reorder_elt_sections_from_dim` function.
+  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kind are not supported.
+
+  Input tree is modified inplace.
+
+  Args:
+    dist_tree (CGNSTree) : Distributed tree
+    comm (MPIComm)  : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #concatenate_elt_sections@start
+        :end-before: #concatenate_elt_sections@end
+        :dedent: 2
+  """
+  for zone in zones_iterator(dist_tree):
+
+    to_gather = {}
+    for elt in PT.get_children_from_label(zone, 'Elements_t'):
+      if (kind := PT.Element.CGNSName(elt)) in to_gather:
+        to_gather[kind].append(elt)
+      else:
+        to_gather[kind] = [elt]
+    
+    # Dont forget to sort ! Because order of apparition in tree is not
+    # necessarily increasing
+    to_gather = {kind : sorted(elts, key=lambda e: PT.Element.Range(e)[0]) \
+                 for kind, elts in to_gather.items()}
+
+    # Sections can be concatenated only if they are contiguous
+    for elts in to_gather.values():
+      if len(elts) > 1:
+        for prev, elt in zip(elts[:-1], elts[1:]):
+          if PT.Element.Range(elt)[0] != (PT.Element.Range(prev)[1]+1):
+            msg = "Element sections of same kind are not contiguous, and thus can not be concatenated.\n"\
+                  "Consider reordering the elements, for example with reorder_elt_sections_from_dim function."
+            raise RuntimeError(msg)
+
+    for kind, elts in to_gather.items():
+      if len(elts) > 1:
+        elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0]) # Dont forget to sort!
+        tot_size = sum([PT.Element.Size(e) for e in elts])
+        merged_distri = par_utils.uniform_distribution(tot_size, comm)
+
+        # Initially, each section is distributed, we need to "uninterlace" 
+        # to map global distribution without changing order
+        start = 0
+        ec_to_merge = []
+        for elt in elts:
+          end = start + PT.Element.Size(elt)
+          distri = MT.getDistribution(elt, 'Element')[1]
+          ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
+          distri_out = distri.copy()
+          distri_out[0] = max(min(merged_distri[0], end), start) - start
+          distri_out[1] = max(min(merged_distri[1], end), start) - start
+
+          # NB : if we had block_to_block with preallocated buffer,
+          # we could directly fill global array
+          btb = EP.BlockToBlock(distri, distri_out, comm)
+          ec_to_merge.append(btb.exchange(ec, PT.Element.NVtx(elt)))
+          start = end
+
+        merged_ec = np_utils.concatenate_np_arrays(ec_to_merge)[1]
+        merged_range = np.empty(2, merged_ec.dtype)
+        merged_range[0] = PT.Element.Range(elts[0] )[0]
+        merged_range[1] = PT.Element.Range(elts[-1])[1]
+        merged_elt = PT.new_Elements(f'{kind}', kind, erange=merged_range, econn=merged_ec)
+        MT.newDistribution({'Element' : merged_distri}, merged_elt)
+
+        for elt in elts:
+          PT.rm_child(zone, elt)
+        PT.add_child(zone, merged_elt)
+
+      else:
+        # To be consistent, we just rename using elt kind
+        PT.set_name(elts[0], kind)
+    
+
+
+def reorder_sections(tree, permutation):
+  """ Reorder the sections of the input tree by appling the permutation
+  function on each zone, and update all the DataArray/IndexArray refering to it.
+
+  Permutation function will be called on a list of elt nodes, and must return a list of elts nodes
+  
+  Nb : this function does not manage :CGNS#GlobalNumbering arrays and does not search jns on other
+  ranks, which is why partitioned trees are not supported
+  """
+
+  is_zone_u = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
+  for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', is_zone_u], ancestors=True):
+
+    elts_cur_ord = PT.Zone.get_ordered_elements(zone)
+    elts_new_ord = permutation(elts_cur_ord)
+
+    cur_names = [PT.get_name(e) for e in elts_cur_ord]
+    new_names = [PT.get_name(e) for e in elts_new_ord]
+    assert sorted(cur_names) == sorted(new_names) # All elements must appear in new order list
+
+    offset = [None] * len(elts_cur_ord)
+    cur = 1
+
+    # Loop in new elt order to know (by increment) the new ElementRange[0], and retrieve
+    # old position of element to compute offset for this section
+    for elt in elts_new_ord:
+      pos = cur_names.index(PT.get_name(elt))                       # Corresponding position in original elt ordering
+      offset[pos] = cur - PT.Element.Range(elts_cur_ord[pos])[0]    # Cur == new ElementRange[0] for this elt, so offset is new - old
+      cur += PT.Element.Size(elt)
+    assert None not in offset
+    offset = np.array(offset)
+
+
+    cur_idx = np_utils.sizes_to_indices([PT.Element.Size(e) for e in PT.Zone.get_ordered_elements(zone)]) # NB assert elt start at 1
+
+    # Renumber elt data (Range, ParentElements, ElementConnectivity (if needed))
+    for i,elt in enumerate(elts_cur_ord):
+      PT.get_child_from_name(elt, 'ElementRange')[1] += offset[i]
+      
+      # Special case of NFace (connectivity is signed, and does not indicates vertices)
+      if PT.Element.CGNSName(elt) == 'NFACE_n':
+        ec = PT.get_child_from_name(elt, 'ElementConnectivity')
+        sign = np.sign(ec[1])
+        val  = np.abs(ec[1])
+        r = np.searchsorted(cur_idx, val)
+        ec[1][:] = sign*(val + offset[r-1])
+
+      if (pe := PT.get_child_from_name(elt, 'ParentElements')) is not None:
+        r = np.searchsorted(cur_idx, pe[1])
+        pe[1] += offset[r-1] * (pe[1] > 0)
+
+    # Renumber PointLists
+    opp_zone_paths = []
+    for subset in PT.iter_all_subsets(zone):
+      if PT.Subset.GridLocation(subset) == 'Vertex':
+        continue
+
+      if (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
+        # PointRange may cross several sections, so we extend it
+        distri = PT.get_value(distri_n) if (distri_n := MT.getDistribution(subset, 'Index')) is not None else None
+        pl = np_utils.single_dim_pr_to_pl(pr[1], distri)
+        PT.update_node(pr, 'PointList', 'IndexArray_t', pl)
+
+      pl = PT.get_child_from_name(subset, 'PointList')
+      r = np.searchsorted(cur_idx, pl[1])
+      pl[1] += offset[r-1]
+
+      if PT.get_label(subset) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(subset):
+        opp_zone_paths.append(PT.GridConnectivity.ZoneDonorPath(subset, PT.get_name(base)))
+
+    # Update PointListDonor on opposite zones
+    cur_zone_path = f'{PT.get_name(base)}/{PT.get_name(zone)}'
+    for opp_zone_path in set(opp_zone_paths):
+      opp_base_name = PT.utils.path_head(opp_zone_path)
+      opp_zone = PT.get_node_from_path(tree, opp_zone_path)
+      is_gc_to_update = lambda n : PT.get_label(n) == 'GridConnectivity_t' and \
+                                   PT.GridConnectivity.is1to1(n) and \
+                                   PT.Subset.GridLocation(n) != 'Vertex' and \
+                                   PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path
+      for gc in PT.get_children_from_predicates(opp_zone, ['ZoneGridConnectivity_t', is_gc_to_update]):
+        pld = PT.get_child_from_name(gc, 'PointListDonor')
+        r = np.searchsorted(cur_idx, pld[1])
+        pld[1] += offset[r-1]
+      
+      
+def reorder_elt_sections_from_dim(dist_tree, reverse=False):
+  """ Reorder the Elements_t sections of the input tree according to their dimension.
+
+  By default, Elements_t nodes are sorted in increasing dimension order (1D, then 2D, then 3D).
+  Decreasing dimension order (3D, then 2D, then 1D) can be obtained using ``reverse=True``.
+
+  Input tree is modified inplace.
+
+  Args:
+    dist_tree   (CGNSTree): Distributed tree
+    reverse (bool, optional): If True, elements of the higher dimension get the lower ElementRange.
+      Defaults to ``False``.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #reorder_elt_sections_from_dim@start
+        :end-before: #reorder_elt_sections_from_dim@end
+        :dedent: 2
+  """
+
+  # This is to break tie between 2 elements of same dimension
+  base_elts = ['NODE', 'BAR', 'TRI', 'QUAD', 'NGON', 'TETRA', 'PYRA', 'PENTA', 'HEXA', 'NFACE']
+  sign = -1 if reverse else 1 # To have increasing of decreasing dim order
+  def key_func(e):
+    idx = base_elts.index(PT.Element.CGNSName(e).split('_')[0])
+    return (sign * PT.Element.Dimension(e), idx)
+
+  reorder_sections(dist_tree, lambda elts: sorted(elts, key=key_func))
+
+
+# Moved from rearrange_element_sections. To be deprecated ?
+def rearrange_element_sections(dist_tree, comm):
+  """
+  Rearanges Elements_t sections such that for each zone,
+  sections are ordered in ascending dimensions order
+  and there is only one section by ElementType.
+  Sections are renamed based on their ElementType.
+
+  The tree is modified in place.
+  The Elements_t nodes are guaranteed to be ordered by ascending ElementRange.
+
+  Args:
+    dist_tree  (CGNSTree): Tree with an element-based connectivity
+    comm       (`MPIComm`): MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #rearrange_element_sections@start
+        :end-before: #rearrange_element_sections@end
+        :dedent: 2
+  """
+  reorder_elt_sections_from_dim(dist_tree)
+  concatenate_elt_sections(dist_tree, comm)

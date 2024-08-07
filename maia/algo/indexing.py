@@ -116,8 +116,7 @@ def ngon_to_edge_pe(t, comm, remove_NGon=False):
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree(s)): Distributed or Partitioned tree (or sequences of)
-      starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
     comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
     removeNFace (bool, optional): If True, remove the NGon node.
       Defaults to False.

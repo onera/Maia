@@ -26,6 +26,7 @@ Developpement version
 - recover_dist_tree: manage poly 2D (NGON+BAR) meshes
 - Introduce ``compute_centers`` which allows more configurations for entities centers computing
 - merge_zones: add ``family`` option for subset merge parameter
+- rearrange_element_sections: split reordering and concatenation in two functions (flexibility)
 
 🐞 Fixes
 ^^^^^^^^
