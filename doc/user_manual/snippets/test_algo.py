@@ -573,6 +573,21 @@ def test_rearrange_element_sections():
   assert PT.Element.Range(tris)[0] == 1
   #rearrange_element_sections@end
 
+def test_reorder_elt_sections_from_dim():
+  #reorder_elt_sections_from_dim@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_block(11, 'PYRA_5', MPI.COMM_WORLD)
+  for zone in PT.get_all_Zone_t(dist_tree):
+    assert PT.Zone.elt_ordering_by_dim(zone) != 1 # Elts are not increasing by dim
+
+  maia.algo.dist.reorder_elt_sections_from_dim(dist_tree)
+  for zone in PT.get_all_Zone_t(dist_tree):
+    assert PT.Zone.elt_ordering_by_dim(zone) == 1 # Now, yes
+  #reorder_elt_sections_from_dim@end
+
 def test_recover1to1():
   #recover1to1@start
   from mpi4py import MPI
