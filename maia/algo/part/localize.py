@@ -35,11 +35,12 @@ def _get_part_data_elts(part_zone):
   cx, cy, cz = PT.Zone.coordinates(part_zone)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
-  cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(part_zone, 3)
+  dim = PT.Zone.CellDimension(part_zone)
+  cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(part_zone, dim)
 
   vtx_ln_to_gn, _, _, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
-  return [cell_vtx_idx, cell_vtx, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
+  return [dim, cell_vtx_idx, cell_vtx, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
     
 
 def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
@@ -48,7 +49,7 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   as flat lists :
   Parts are tuple (cell_face_idx, cell_face, cell_lngn,
    face_vtx_idx, face_vtx, face_lngn, vtx_coords, vtx_lngn) if ngon else
-   (cell_vtx_idx, cell_vtx, cell_lngn, vtx_coords, vtx_lngn)
+   (dim, cell_vtx_idx, cell_vtx, cell_lngn, vtx_coords, vtx_lngn)
   Cloud are tuple (coords, lngn)
   """
 
@@ -63,8 +64,12 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   for i_part, part_data in enumerate(src_parts):
     if len(part_data) == 8: #NGON
       mesh_loc.part_set(i_part, *part_data)
-    elif len(part_data) == 5: #Element
-      mesh_loc.nodal_part_set(i_part, *part_data)
+    elif len(part_data) == 6: #Element
+      if (dim := part_data[0]) == 3:
+        mesh_loc.nodal_part_set(i_part, *part_data[1:])
+      else:
+        assert dim == 2, "Dimension lower than 2 are not supported"
+        mesh_loc.nodal_part_set_2d(i_part, *part_data[1:])
 
   # > Setup target
   for i_part, (coords, lngn) in enumerate(tgt_clouds):
@@ -98,7 +103,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   """
   """
   locs = {'NGon'   :{'Cell':2, 'Face':5, 'Vtx':7},
-          'Element':{'Cell':2, 'Vtx':4}}
+          'Element':{'Cell':3, 'Vtx':5}}
   n_dom_src = len(src_parts_per_dom)
   n_dom_tgt = len(tgt_parts_per_dom)
 

@@ -28,10 +28,10 @@ def test_get_part_data(elt_kind, comm):
     assert data[6].size == 3*PT.Zone.n_vtx(zone) #Coords
   elif elt_kind == 'HEXA_8':
     data = LOC._get_part_data_elts(zone)
-    assert len(data) == 5
-    assert (data[2] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
-    assert (data[4] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
-    assert data[3].size == 3*PT.Zone.n_vtx(zone) #Coords
+    assert len(data) == 6
+    assert (data[3] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
+    assert (data[5] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
+    assert data[4].size == 3*PT.Zone.n_vtx(zone) #Coords
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("reverse", [False, True])
@@ -128,3 +128,29 @@ def test_localize_points(comm):
     expected_dsrc_id = np.array([51,52,-1,59,60,-1,63,64,-1])
 
   assert (PT.get_node_from_name(dtree_tgt, 'SrcId')[1] == expected_dsrc_id).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_localize_2d(comm):
+  dtree_src = maia.factory.generate_dist_block(5, 'QUAD_4', comm, origin=[0.,0.,0.])
+  dtree_tgt = maia.factory.generate_dist_block(4, 'QUAD_4', comm, origin=[.4,.05,0])
+  
+  tree_src = partition_dist_tree(dtree_src, comm)
+  tree_tgt = partition_dist_tree(dtree_tgt, comm)
+
+  tree_src_back = PT.deep_copy(tree_src)
+  LOC.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
+  assert PT.is_same_tree(tree_src_back, tree_src)
+  tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
+  loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
+  assert loc_node is not None and PT.Subset.GridLocation(loc_node) == 'CellCenter'
+  assert PT.get_value(PT.get_child_from_name(loc_node, 'DomainList')) == "Base/zone"
+
+  # Check result on dist tree to not rely on partitioning
+  maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tree_tgt, comm)
+  if comm.rank == 0:
+    expected_dsrc_id = np.array([3,4,-1,11,12])
+  elif comm.rank == 1:
+    expected_dsrc_id = np.array([-1,15,16,-1])
+
+  assert (PT.get_node_from_name(dtree_tgt, 'SrcId')[1] == expected_dsrc_id).all()
+
