@@ -102,10 +102,12 @@ def _ngon_to_elt_zone(zone, comm):
 
   tri_range  = np.array([1, tri_distri[-1]], dtype=zone[1].dtype)
   quad_range = np.array([1, quad_distri[-1]], dtype=zone[1].dtype) + tri_range[-1]
-  tri_n = PT.new_Elements('TRI_3', 'TRI_3', erange=tri_range, econn=tri_vtx, parent=zone)
-  MT.newDistribution({'Element' : tri_distri}, tri_n)
-  quad_n = PT.new_Elements('QUAD_4', 'QUAD_4', erange=quad_range, econn=quad_vtx, parent=zone)
-  MT.newDistribution({'Element' : quad_distri}, quad_n)
+  if tri_distri[-1] > 0:
+    tri_n = PT.new_Elements('TRI_3', 'TRI_3', erange=tri_range, econn=tri_vtx, parent=zone)
+    MT.newDistribution({'Element' : tri_distri}, tri_n)
+  if quad_distri[-1] > 0:
+    quad_n = PT.new_Elements('QUAD_4', 'QUAD_4', erange=quad_range, econn=quad_vtx, parent=zone)
+    MT.newDistribution({'Element' : quad_distri}, quad_n)
   
   # Renumber PointList indexing Faces
   new_face_id = -1*np.ones(face_n.size, zone[1].dtype)
