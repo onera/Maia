@@ -72,7 +72,7 @@ def ngons_to_elements(t,comm):
     maia.algo.dist.redistribute_tree(t, 'uniform', comm)
 
 
-def ngon_to_elt(zone, comm):
+def _ngon_to_elt_zone(zone, comm):
   import maia.pytree.maia as MT
   from maia.utils import np_utils, par_utils
   from maia.transfer import protocols as EP
@@ -127,7 +127,7 @@ def ngon_to_elt(zone, comm):
     PT.rm_children_from_name(subset, 'PointList')
     PT.rm_children_from_name(subset, 'PointRange')
     PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
-  # TODO : Donor of GCs
+    # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
 
 
   # Now deal cells 
@@ -222,3 +222,13 @@ def ngon_to_elt(zone, comm):
   PT.rm_child(zone, ngon_n)
   PT.rm_child(zone, nface_n)
  
+def ngon_to_elt(dist_tree, comm):
+  
+  from maia.algo.dist import matching_jns_tools as MJT
+
+  MJT.add_joins_donor_name(dist_tree, comm)
+
+  for zone in PT.get_all_Zone_t(dist_tree):
+    _ngon_to_elt_zone(zone, comm)
+
+  MJT.copy_donor_subset(dist_tree)

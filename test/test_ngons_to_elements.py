@@ -46,4 +46,4 @@ def test_ngon_to_elt_new(comm):
 
   from maia.algo.dist.ngons_to_elements import ngon_to_elt
 
-  ngon_to_elt(PT.get_node_from_label(dist_tree, 'Zone_t'), comm)
+  ngon_to_elt(dist_tree, comm)
