@@ -35,6 +35,7 @@ Developpement version
 - partitioning : fix internal edges creation and BCs on 2D/NGon meshes
 - partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes
 - partitioning: manage ``DiscreteData_t`` nodes with PointList
+- convert_elements_to_ngon: preserve CellCenter BC_t nodes during conversion
 
 🚧 API change
 ^^^^^^^^^^^^^
