@@ -14,28 +14,53 @@ from .point_cloud_utils  import get_shifted_point_clouds
 from .connectivity_utils import cell_vtx_connectivity_elts
 
 def _get_part_data_ngon(part_zone):
+  dim = PT.Zone.CellDimension(part_zone)
   cx, cy, cz = PT.Zone.coordinates(part_zone)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
-  ngon  = PT.Zone.NGonNode(part_zone)
-  nface = PT.Zone.NFaceNode(part_zone)
+  vtx_ln_to_gn  = MT.getGlobalNumbering(part_zone, 'Vertex')[1]
+  cell_ln_to_gn = MT.getGlobalNumbering(part_zone, 'Cell')[1]
 
-  cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset")[1]
-  cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
-  face_vtx_idx  = PT.get_child_from_name(ngon,  "ElementStartOffset")[1]
-  face_vtx      = PT.get_child_from_name(ngon,  "ElementConnectivity")[1]
+  if dim == 3:
+    ngon  = PT.Zone.NGonNode(part_zone)
+    nface = PT.Zone.NFaceNode(part_zone)
 
-  vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
+    cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset")[1]
+    cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
+    face_vtx_idx  = PT.get_child_from_name(ngon,  "ElementStartOffset")[1]
+    face_vtx      = PT.get_child_from_name(ngon,  "ElementConnectivity")[1]
 
-  return [cell_face_idx, cell_face, cell_ln_to_gn, \
-      face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
+    face_ln_to_gn = MT.getGlobalNumbering(ngon, 'Element')[1]
+
+    return [cell_face_idx, cell_face, cell_ln_to_gn, \
+        face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
+
+  elif dim == 2:
+    edge  = MT.Zone.EdgeNode(part_zone)
+    ngon  = PT.Zone.NGonNode(part_zone)
+
+    edge_pe  = PT.get_child_from_name(edge, "ParentElements")[1].reshape(-1, order='C') # Numpy will copy
+    edge_vtx = PT.get_child_from_name(edge, "ElementConnectivity")[1]
+
+    # Convert edge_pe to face_edge
+    if PT.Element.Range(ngon)[0] != 1:
+      np_utils.shift_nonzeros(edge_pe, -PT.Element.Range(ngon)[0] + 1)
+    edge_pe[1::2] *= -1 # Put sign on right edges
+    is_internal = edge_pe != 0
+    edge_face_idx = np_utils.sizes_to_indices(1*is_internal[0::2] + 1*is_internal[1::2], np.int32)
+    edge_face = edge_pe[is_internal]
+    face_edge_idx, face_edge = PDM.connectivity_transpose(int(PT.Element.Size(ngon)), edge_face_idx, edge_face)
+
+    return [face_edge_idx, face_edge, cell_ln_to_gn, edge_vtx, vtx_coords, vtx_ln_to_gn]
+                
 
 
 def _get_part_data_elts(part_zone):
   cx, cy, cz = PT.Zone.coordinates(part_zone)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
-  cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(part_zone, 3)
+  dim = PT.Zone.CellDimension(part_zone)
+  cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(part_zone, dim)
 
   vtx_ln_to_gn, _, _, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
@@ -46,9 +71,9 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists :
-  Parts are tuple (cell_face_idx, cell_face, cell_lngn,
-   face_vtx_idx, face_vtx, face_lngn, vtx_coords, vtx_lngn) if ngon else
-   (cell_vtx_idx, cell_vtx, cell_lngn, vtx_coords, vtx_lngn)
+  Parts are tuple dim, elt_kind, part_data 
+   where dim = 2 or 3, elt_kind = 'Poly' or 'Element' and part_data stores the arrays
+   expected by paradigm
   Cloud are tuple (coords, lngn)
   """
 
@@ -61,10 +86,12 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
 
   # > Register source
   for i_part, part_data in enumerate(src_parts):
-    if len(part_data) == 8: #NGON
-      mesh_loc.part_set(i_part, *part_data)
-    elif len(part_data) == 5: #Element
-      mesh_loc.nodal_part_set(i_part, *part_data)
+    dim, kind, _part_data = part_data
+    assert dim >= 2, "Dimension lower than 2 are not supported"
+    set_func = {'Poly' :    [mesh_loc.part_set_2d, mesh_loc.part_set],
+                'Element' : [mesh_loc.nodal_part_set_2d, mesh_loc.nodal_part_set]}[kind][dim-2]
+    set_func(i_part, *_part_data)
+
 
   # > Setup target
   for i_part, (coords, lngn) in enumerate(tgt_clouds):
@@ -97,7 +124,8 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
     reverse=False, loc_tolerance=1E-6):
   """
   """
-  locs = {'NGon'   :{'Cell':2, 'Face':5, 'Vtx':7},
+  locs = {'NGon2D' :{'Cell':2, 'Vtx':5},
+          'NGon3D' :{'Cell':2, 'Face':5, 'Vtx':7},
           'Element':{'Cell':2, 'Vtx':4}}
   n_dom_src = len(src_parts_per_dom)
   n_dom_tgt = len(tgt_parts_per_dom)
@@ -115,16 +143,17 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
 
     src_parts_domain = list()
     for src_part in src_part_zones:
+      dim = PT.Zone.CellDimension(src_part)
       if PT.Zone.has_ngon_elements(src_part):
         if connectivity_t=='Element':
           raise NotImplementedError("Source mesh must have NGon or Element connectivity but not both.")
-        connectivity_t = 'NGon'
-        src_parts_domain.append(_get_part_data_ngon(src_part))
+        connectivity_t = f'NGon{dim}D'
+        src_parts_domain.append((dim, 'Poly', _get_part_data_ngon(src_part)))
       else:
-        if connectivity_t=='NGon':
+        if connectivity_t is not None and 'NGON' in connectivity_t:
           raise NotImplementedError("Source mesh must have NGon or Element connectivity but not both.")
         connectivity_t = 'Element'
-        src_parts_domain.append(_get_part_data_elts(src_part))
+        src_parts_domain.append((dim, 'Element', _get_part_data_elts(src_part)))
     src_parts.append(src_parts_domain)
 
   locs = locs[connectivity_t]
@@ -132,12 +161,12 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   for i_domain, src_parts_domain in enumerate(src_parts):
     # Compute global offsets for this domain
     for loc, array_idx in locs.items():
-      dom_max = par_utils.arrays_max([src_part[array_idx] for src_part in src_parts_domain], comm)
+      dom_max = par_utils.arrays_max([src_part[2][array_idx] for src_part in src_parts_domain], comm)
       src_offsets[loc][i_domain+1] = src_offsets[loc][i_domain] + dom_max
     # Shift source arrays (inplace)
     for src_part in src_parts_domain:
       for loc, array_idx in locs.items():
-        src_part[array_idx] += src_offsets[loc][i_domain]
+        src_part[2][array_idx] += src_offsets[loc][i_domain]
   
   src_parts = py_utils.to_flat_list(src_parts)
 
@@ -150,7 +179,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   for i_domain, src_parts_domain in enumerate(py_utils.to_nested_list(src_parts, n_part_per_dom_src)):
     for src_part in src_parts_domain:
       for loc, array_idx in locs.items():
-        src_part[array_idx] -= src_offsets[loc][i_domain]
+        src_part[2][array_idx] -= src_offsets[loc][i_domain]
 
   # Shift results and get domain ids
   direct_result = result[0] if reverse else result
@@ -179,15 +208,15 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
   The result, i.e. the gnum & domain number of the source cell (or -1 if the point is not localized),
   are stored in a ``DiscreteData_t`` container called "Localization" on the target zones.
 
-  Source tree must be unstructured and have a NGon connectivity.
+  Source tree must be unstructured.
 
   Localization can be parametred thought the options kwargs:
 
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for the method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only U-NGon connectivities are managed.
-    tgt_tree (CGNSTree): Target tree, partitionned. Structured or U-NGon connectivities are managed.
+    src_tree (CGNSTree): Source tree, partitionned. Only unstructured connectivities are managed.
+    tgt_tree (CGNSTree): Target tree, partitionned.
     location ({'CellCenter', 'Vertex'}) : Target points to localize
     comm       (MPIComm): MPI communicator
     **options: Additional options related to location strategy
