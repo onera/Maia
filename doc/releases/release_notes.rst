@@ -41,6 +41,7 @@ Developpement version
 🚧 API change
 ^^^^^^^^^^^^^
 - dist_tree_to_file, part_tree_to_file & write_trees: add ``links`` parameter
+- ``ngons_to_elements`` renamed into ``convert_ngon_to_elements``
 
 
 v1.4 (May 2024)

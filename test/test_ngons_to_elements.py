@@ -16,7 +16,7 @@ def test_ngons_to_elements(comm, write_output):
   # Note: `elements_to_ngons` is supposed to work, because it is tested in another test
   maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
 
-  maia.algo.dist.ngons_to_elements(dist_tree, comm)
+  maia.algo.dist.convert_ngon_to_elements(dist_tree, comm)
 
   # > There is two sections...
   assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2

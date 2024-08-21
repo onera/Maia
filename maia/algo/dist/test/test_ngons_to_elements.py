@@ -8,7 +8,7 @@ import maia.pytree as PT
 
 from maia.utils import test_utils as TU
 
-from maia.algo.dist.ngons_to_elements import _ngon_to_elt_zone, ngons_to_elements
+from maia.algo.dist.ngons_to_elements import _ngon_to_elements_zone
 
 @pytest_parallel.mark.parallel(1)
 def test_basic(comm):
@@ -19,7 +19,7 @@ def test_basic(comm):
   zone = PT.get_node_from_label(tree, 'Zone_t')
   maia.algo.dist.convert_elements_to_ngon(tree, comm) # Note: we are not testing that, its just a way to get an ngon test
 
-  _ngon_to_elt_zone(zone, comm) # apply tested function
+  _ngon_to_elements_zone(zone, comm) # apply tested function
 
   # Checks
   expected_range = [[1,2],    # TRI_3
@@ -45,7 +45,7 @@ def test_all_kinds(comm):
   zone = PT.get_node_from_label(tree, 'Zone_t')
   maia.algo.dist.convert_elements_to_ngon(tree, comm) # Note: we are not testing that, its just a way to get an ngon test
 
-  _ngon_to_elt_zone(zone, comm) # apply tested function
+  _ngon_to_elements_zone(zone, comm) # apply tested function
 
    # Checks
   expected_range = [[1,6],    # TRI_3
@@ -81,7 +81,7 @@ def test_multi_sections(comm):
   PT.new_FlowSolution('FSCC', loc='CellCenter', fields={'IniSection':cell_kind}, parent=zone)
 
   maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
-  maia.algo.dist.ngons_to_elements(dist_tree, comm)
+  maia.algo.dist.convert_ngon_to_elements(dist_tree, comm)
 
   assert len(PT.get_children_from_label(zone, 'Elements_t')) == 4
   assert (PT.Element.Range(PT.get_child_from_name(zone, 'TRI_3'))   == [  1,  88]).all()

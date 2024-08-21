@@ -14,7 +14,7 @@ from maia.algo.dist import matching_jns_tools as MJT
 from cmaia.algo import combine_to_tetra, combine_to_pyra, \
                        combine_to_penta, combine_to_hexa
 
-def _ngon_to_elt_zone(zone, comm):
+def _ngon_to_elements_zone(zone, comm):
 
   # Start by constructing boundary faces
   ngon_n = PT.Zone.NGonNode(zone)
@@ -161,7 +161,7 @@ def _ngon_to_elt_zone(zone, comm):
   PT.rm_child(zone, nface_n)
  
 
-def ngons_to_elements(dist_tree, comm):
+def convert_ngon_to_elements(dist_tree, comm):
   """
   Transform a polyedric (NGon based) connectivity into a standard nodal
   connectivity.
@@ -176,8 +176,8 @@ def ngons_to_elements(dist_tree, comm):
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #ngons_to_elements@start
-        :end-before: #ngons_to_elements@end
+        :start-after: #convert_ngon_to_elements@start
+        :end-before: #convert_ngon_to_elements@end
         :dedent: 2
   """
 
@@ -193,6 +193,9 @@ def ngons_to_elements(dist_tree, comm):
   MJT.add_joins_donor_name(dist_tree, comm)
 
   for zone in PT.get_all_Zone_t(dist_tree):
-    _ngon_to_elt_zone(zone, comm)
+    _ngon_to_elements_zone(zone, comm)
 
   MJT.copy_donor_subset(dist_tree)
+
+def ngons_to_elements(dist_tree, comm):
+  return convert_ngon_to_elements(dist_tree, comm)

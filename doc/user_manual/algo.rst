@@ -25,7 +25,7 @@ Connectivities conversions
 
 .. autofunction:: maia.algo.dist.convert_s_to_u
 .. autofunction:: maia.algo.dist.convert_elements_to_ngon
-.. autofunction:: maia.algo.dist.ngons_to_elements
+.. autofunction:: maia.algo.dist.convert_ngon_to_elements
 .. autofunction:: maia.algo.dist.convert_elements_to_mixed
 .. autofunction:: maia.algo.dist.convert_mixed_to_elements
 .. autofunction:: maia.algo.dist.reorder_elt_sections_from_dim
