@@ -11,8 +11,8 @@ from maia.transfer  import protocols as EP
 from maia.algo.dist import matching_jns_tools as MJT
 
 
-from cmaia.dist_algo import combine_to_tetra, combine_to_pyra, \
-                            combine_to_penta, combine_to_hexa
+from cmaia.algo import combine_to_tetra, combine_to_pyra, \
+                       combine_to_penta, combine_to_hexa
 
 def _ngon_to_elt_zone(zone, comm):
 
@@ -171,7 +171,7 @@ def ngons_to_elements(dist_tree, comm):
   are removed and relevant data (such as PointList) are updated.
 
   Args:
-    dist_tree  (CGNSTree): Tree with connectivity described by NGons
+    dist_tree  (CGNSTree): 3D distributed tree with polyedric connectivity
     comm       (`MPIComm`) : MPI communicator
 
   Example:

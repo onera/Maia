@@ -32,13 +32,3 @@ def test_ngons_to_elements(comm, write_output):
     out_dir = TU.create_pytest_output_dir(comm)
     maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'U_M6Wing_element.cgns'), comm)
 
-@pytest_parallel.mark.parallel(2)
-def test_ngon_to_elt_new(comm):
-  mesh_file = os.path.join(TU.mesh_dir, 'multi_element.yaml')
-  dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
-
-  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
-  maia.algo.dist.ngons_to_elements(dist_tree, comm)
-
-
-

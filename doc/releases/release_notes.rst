@@ -27,6 +27,7 @@ Developpement version
 - Introduce ``compute_centers`` which allows more configurations for entities centers computing
 - merge_zones: add ``family`` option for subset merge parameter
 - rearrange_element_sections: split reordering and concatenation in two functions (flexibility)
+- ngons_to_elements: functionnality is now truly parallel, and more nodes are managed
 
 🐞 Fixes
 ^^^^^^^^

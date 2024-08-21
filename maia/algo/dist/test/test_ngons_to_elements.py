@@ -66,3 +66,37 @@ def test_all_kinds(comm):
     assert PT.Element.CGNSName(elt) == kind
     assert np.array_equal(PT.get_child_from_name(elt, "ElementRange")[1], expected_range[i])
     assert np.array_equal(PT.get_child_from_name(elt, "ElementConnectivity")[1], expected_ec[i]) # Checks
+
+@pytest_parallel.mark.parallel(2)
+def test_multi_sections(comm):
+  mesh_file = os.path.join(TU.mesh_dir, 'multi_element.yaml')
+  dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # Add a CellCenter field manually
+  cell_kind_full = np.concatenate([np.ones(24), 2*np.ones(24), 3*np.ones(120)]) #TETRA, PENTA, TETRA
+  cell_distri = PT.maia.getDistribution(zone, 'Cell')[1]
+  cell_kind = cell_kind_full[cell_distri[0]:cell_distri[1]]
+
+  PT.new_FlowSolution('FSCC', loc='CellCenter', fields={'IniSection':cell_kind}, parent=zone)
+
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+  maia.algo.dist.ngons_to_elements(dist_tree, comm)
+
+  assert len(PT.get_children_from_label(zone, 'Elements_t')) == 4
+  assert (PT.Element.Range(PT.get_child_from_name(zone, 'TRI_3'))   == [  1,  88]).all()
+  assert (PT.Element.Range(PT.get_child_from_name(zone, 'QUAD_4'))  == [ 89, 104]).all()
+  assert (PT.Element.Range(PT.get_child_from_name(zone, 'TETRA_4')) == [105, 248]).all()
+  assert (PT.Element.Range(PT.get_child_from_name(zone, 'PENTA_6')) == [249, 272]).all()
+
+  for bc in PT.get_nodes_from_label(zone, 'BC_t'):
+    pl = PT.get_child_from_name(bc, 'PointList')[1][0]
+    if PT.Subset.GridLocation(bc) == 'FaceCenter':
+      assert 1 <= pl.min() and pl.min() <= 104
+    elif PT.Subset.GridLocation(bc) == 'CellCenter':
+      assert 105 <= pl.min() and pl.min() <= 272
+  
+  cell_kind_full_expt = np.concatenate([np.ones(24), 3*np.ones(120), 2*np.ones(24)]) #TETRA, TETRA, PENTA
+  cell_kind_expt = cell_kind_full_expt[cell_distri[0]:cell_distri[1]]
+
+  assert (PT.get_node_from_name(zone, 'IniSection')[1] == cell_kind_expt).all()
