@@ -194,13 +194,14 @@ def test_compute_measures(parallel, comm):
 
   # Add few 1D elts (BAR) to 3D elts meshes  (Line Y=0.5 on plane Z=0)
   z = PT.get_node_from_name(tree, '3d_elmts')
+  last_range = PT.Element.Range(PT.Zone.get_ordered_elements(z)[-1])[1]
   if comm.rank == 0:
     ec = np.array([56,57, 57,58, 58,59, 59,60, 60,61, 61,62, 62,63, 63,64, 64,65, 65,66], z[1].dtype)
     distri = np.array([0, 10, 10], z[1].dtype)
   else:
     ec= np.empty(0, z[1].dtype)
     distri =  10*np.ones(3, z[1].dtype)
-  bar_n = PT.new_Elements('BAR_2.0', 'BAR_2', erange=[6201, 6210], econn=ec, parent=z)
+  bar_n = PT.new_Elements('BAR_2.0', 'BAR_2', erange=[last_range+1, last_range+10], econn=ec, parent=z)
   MT.newDistribution({'Element' : distri}, bar_n)
 
   if parallel == 'part':

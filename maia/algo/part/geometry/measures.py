@@ -82,12 +82,34 @@ def compute_face_measure(zone):
 
   return measure
 
+def _compute_face_circulation(coords, face_vtx_idx, face_vtx_n, face_vtx):
+  """
+  Compute, for each face, the term xF.nF|F| where xF is the face mean center, nF the unit outward normal
+  and |F| the area of the face. Then this 
+  """
+  _coords = np.stack(coords, axis=1)
+
+  center = np.add.reduceat(_coords[face_vtx-1], face_vtx_idx[:-1]) / face_vtx_n.reshape((-1,1))
+
+  # Compute mean normal flux on each face : ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
+  face_vtx_next = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
+  reps = np_utils.repeated_arange(face_vtx_n) # To access face center
+  face_center_reps = center[reps]
+  crossprod = np.cross(_coords[face_vtx-1] - face_center_reps, _coords[face_vtx_next-1] - face_center_reps)
+  normalflux = 0.5*np.add.reduceat(crossprod, face_vtx_idx[:-1])
+
+  face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
+  return face_contrib
+
 def _compute_elt_volume(elt_node, coords, out):
   assert out.size == PT.Element.Size(elt_node)
   elt_kind = PT.Element.CGNSName(elt_node)
 
   ec = PT.get_child_from_name(elt_node, 'ElementConnectivity')[1]
 
+  # Use direct formula for TETRA since they are always planar. Otherwise, fallback to
+  # circulation formulae for polyedron (maybe more costly, but this is more robust if
+  # there is non planar faces)
   if elt_kind == 'TETRA_4':
     vtxa = ec[0::4] - 1
     vtxb = ec[1::4] - 1
@@ -99,40 +121,32 @@ def _compute_elt_volume(elt_node, coords, out):
     out[:] = np.fabs(a[0]*b[1]*c[2] + b[0]*c[1]*a[2] + c[0]*a[1]*b[2] 
                    - c[0]*b[1]*a[2] - b[0]*a[1]*c[2] - a[0]*c[1]*b[2]) / 6.
 
-  elif elt_kind == 'PYRA_5': # 1/3 * B *h
-    _coords = np.stack(coords, axis=1)
-    vtxa = ec[0::5] - 1
-    vtxb = ec[1::5] - 1
-    vtxc = ec[2::5] - 1
-    vtxd = ec[3::5] - 1
-    vtxe = ec[4::5] - 1
-    normal = np.cross(_coords[vtxc] - _coords[vtxa], _coords[vtxd] - _coords[vtxb])
-    tt = _coords[vtxa] - _coords[vtxe]
-    dist = np.abs(tt[:,0]*normal[:,0] + tt[:,1]*normal[:,1] + tt[:,2]*normal[:,2])
-    out[:] = dist / 6.
+  else:
+    n_elt = PT.Element.Size(elt_node)
+    
+    if elt_kind == 'PYRA_5':
+      base_n   = np.array([4,3,3,3,3], np.int32)
+      base_seq = np.array([1,4,3,2, 1,2,5, 2,3,5, 3,4,5, 4,1,5]) - 1
+    elif elt_kind == 'PENTA_6':
+      base_n   = np.array([4,4,4,3,3], np.int32)
+      base_seq = np.array([1,2,5,4, 2,3,6,5 ,3,1,4,6, 1,3,2, 4,5,6]) - 1
+    elif elt_kind == 'HEXA_8':
+      base_n   = np.array([4,4,4,4,4,4], np.int32)
+      base_seq = np.array([1,4,3,2, 1,2,6,5 ,2,3,7,6, 3,4,8,7, 1,5,8,4, 5,6,7,8]) - 1
 
-  elif elt_kind == 'PENTA_6': # B *h
-    # Need : face_vtx_idx, face_vtx, cell_face_idx, cell_face
-    _coords = np.stack(coords, axis=1)
-    vtxa = ec[0::6] - 1
-    vtxb = ec[1::6] - 1
-    vtxc = ec[2::6] - 1
-    vtxd = ec[3::6] - 1
-    normal = np.cross(_coords[vtxc] - _coords[vtxa], _coords[vtxb] - _coords[vtxa])
-    height = np.linalg.norm(_coords[vtxd] - _coords[vtxa], axis=1)
-    out[:] = 0.5*np.linalg.norm(normal, axis=1)*height
+    face_vtx_n = np.tile(base_n, n_elt)
+    face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n)
 
-  elif elt_kind == 'HEXA_8':
-    vtxa = ec[0::8] - 1
-    vtxb = ec[2::8] - 1
-    vtxc = ec[7::8] - 1
-    vtxd = ec[3::8] - 1
-    a = [coords[i][vtxa] - coords[i][vtxd] for i in range(3)]
-    b = [coords[i][vtxb] - coords[i][vtxd] for i in range(3)]
-    c = [coords[i][vtxc] - coords[i][vtxd] for i in range(3)]
+    # Where to read in element connectivity to reconstitute all faces (with reps)
+    read_idx = np.tile(base_seq, n_elt) + np.repeat(PT.Element.NVtx(elt_node)*np.arange(n_elt), base_seq.size)
+    face_vtx = ec[read_idx]
 
-    out[:] = np.fabs(a[0]*b[1]*c[2] + b[0]*c[1]*a[2] + c[0]*a[1]*b[2] 
-                   - c[0]*b[1]*a[2] - b[0]*a[1]*c[2] - a[0]*c[1]*b[2])
+    # Final assembly : for each cell, sum the quantities computed on each cell. We don't need to recover cell_face
+    # since this is identity by construction
+    face_contrib = _compute_face_circulation(coords, face_vtx_idx, face_vtx_n, face_vtx)
+    cell_face_idx = base_n.size * np.arange(PT.Element.Size(elt_node))
+    np.add.reduceat(face_contrib, cell_face_idx, out=out)
+    out *= (1/3.)
 
     
   
@@ -144,7 +158,6 @@ def compute_cell_measure(zone):
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone):
 
-      _coords = np.stack(coords, axis=1)
       ngon_node = PT.Zone.NGonNode(zone)
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
       face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
@@ -154,19 +167,9 @@ def compute_cell_measure(zone):
       cell_face_idx = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
       cell_face     = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
 
-      center = np.add.reduceat(_coords[face_vtx-1], face_vtx_idx[:-1]) / face_vtx_n.reshape((-1,1))
-
-      # Compute mean normal flux on each face : ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
-      face_vtx_next = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
-      reps = np_utils.repeated_arange(face_vtx_n) # To access face center
-      face_center_reps = center[reps]
-      crossprod = np.cross(_coords[face_vtx-1] - face_center_reps, _coords[face_vtx_next-1] - face_center_reps)
-      normalflux = np.add.reduceat(crossprod, face_vtx_idx[:-1])
-
-      face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
-
-      # Final assembly : for each cell, sum the quantities computed on each cell
-      measure = (1/6.) * np.add.reduceat(np.sign(cell_face) * face_contrib[np.abs(cell_face)-1], cell_face_idx[:-1])
+      face_contrib = _compute_face_circulation(coords, face_vtx_idx, face_vtx_n, face_vtx)
+      # Assembly : for each cell, sum the quantities computed on each face
+      measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib[np.abs(cell_face)-1], cell_face_idx[:-1])
 
     else:
       measure = np.empty(PT.Zone.n_cell(zone))
@@ -179,7 +182,6 @@ def compute_cell_measure(zone):
     measure = cpart_algo.compute_volume_cell_s(*PT.Zone.CellSize(zone), *coords)
 
   return measure
-
 
 
 def _compute_zone_measures(zone, dim):
