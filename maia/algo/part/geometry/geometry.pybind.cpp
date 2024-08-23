@@ -8,6 +8,15 @@
 
 namespace py = pybind11;
 
+
+static inline double cross_norm_of_4(double v1[], double v2[], double v3[], double v4[]) {
+  double px = v1[1]*v2[2] - v1[2]*v2[1] + v2[1]*v3[2] - v2[2]*v3[1] + v3[1]*v4[2] - v3[2]*v4[1] + v4[1]*v1[2] - v4[2]*v1[1];
+  double py = v1[2]*v2[0] - v1[0]*v2[2] + v2[2]*v3[0] - v2[0]*v3[2] + v3[2]*v4[0] - v3[0]*v4[2] + v4[2]*v1[0]-  v4[0]*v1[2];
+  double pz = v1[0]*v2[1] - v1[1]*v2[0] + v2[0]*v3[1] - v2[1]*v3[0] + v3[0]*v4[1] - v3[1]*v4[0] + v4[0]*v1[1] - v4[1]*v1[0];
+  return 0.5 * sqrt(px*px + py*py + pz*pz);
+}
+
+
 // --------------------------------------------------------------------
 py::array_t<double>
 compute_center_cell_u(int n_cell,
@@ -339,7 +348,7 @@ compute_center_face_s_cyl(int nx, int ny, int nz,
         idx++;
       }
     }
-  };
+  }
   for(int k = 0; k < nz-1; ++k) {
     for(int j = 0; j < ny; ++j) {
       for(int i = 0; i < nx-1; ++i) {
@@ -351,7 +360,7 @@ compute_center_face_s_cyl(int nx, int ny, int nz,
         idx++;
       }
     }
-  };
+  }
   for(int k = 0; k < nz; ++k) {
     for(int j = 0; j < ny-1; ++j) {
       for(int i = 0; i < nx-1; ++i) {
@@ -365,6 +374,100 @@ compute_center_face_s_cyl(int nx, int ny, int nz,
     }
   }
   return np_center;
+}
+
+// --------------------------------------------------------------------
+py::array_t<double>
+compute_area_face_s(int nx, int ny, int nz,
+                    py::array_t<double, py::array::f_style>& np_cx,
+                    py::array_t<double, py::array::f_style>& np_cy,
+                    py::array_t<double, py::array::f_style>& np_cz)
+{
+  auto cx = np_cx.mutable_unchecked<3>();
+  auto cy = np_cy.mutable_unchecked<3>();
+  auto cz = np_cz.mutable_unchecked<3>();
+
+  int n_face_tot = (nz - 1)*(nx - 1)*ny + (nz - 1)*(ny - 1)*nx + nz*(ny - 1)*(nx - 1);
+
+  py::array_t<double> np_area(n_face_tot);
+  auto area = np_area.mutable_data();
+
+  int idx = 0;
+  for(int k = 0; k < nz-1; ++k) {
+    for(int j = 0; j < ny-1; ++j) {
+      for(int i = 0; i < nx; ++i) {
+        double cf_x = 0.250 * (cx(i, j, k) + cx(i, j+1, k) + cx(i, j, k+1) + cx(i, j+1, k+1));
+        double cf_y = 0.250 * (cy(i, j, k) + cy(i, j+1, k) + cy(i, j, k+1) + cy(i, j+1, k+1));
+        double cf_z = 0.250 * (cz(i, j, k) + cz(i, j+1, k) + cz(i, j, k+1) + cz(i, j+1, k+1));
+
+        double v1[] = {cx(i,j  ,k  ) - cf_x, cy(i,j  ,k  ) - cf_y, cz(i,j  ,k  ) - cf_z};
+        double v2[] = {cx(i,j  ,k+1) - cf_x, cy(i,j  ,k+1) - cf_y, cz(i,j  ,k+1) - cf_z};
+        double v3[] = {cx(i,j+1,k+1) - cf_x, cy(i,j+1,k+1) - cf_y, cz(i,j+1,k+1) - cf_z};
+        double v4[] = {cx(i,j+1,k  ) - cf_x, cy(i,j+1,k  ) - cf_y, cz(i,j+1,k  ) - cf_z};
+        area[idx++] = cross_norm_of_4(v1,v2,v3,v4);
+      }
+    }
+  }
+  for(int k = 0; k < nz-1; ++k) {
+    for(int j = 0; j < ny; ++j) {
+      for(int i = 0; i < nx-1; ++i) {
+        double cf_x = 0.250 * (cx(i, j, k) + cx(i+1, j, k) + cx(i, j, k+1) + cx(i+1, j, k+1));
+        double cf_y = 0.250 * (cy(i, j, k) + cy(i+1, j, k) + cy(i, j, k+1) + cy(i+1, j, k+1));
+        double cf_z = 0.250 * (cz(i, j, k) + cz(i+1, j, k) + cz(i, j, k+1) + cz(i+1, j, k+1));
+
+        double v1[] = {cx(i,  j,k  ) - cf_x, cy(i  ,j,k  ) - cf_y, cz(i  ,j,k  ) - cf_z};
+        double v2[] = {cx(i+1,j,k  ) - cf_x, cy(i+1,j,k  ) - cf_y, cz(i+1,j,k  ) - cf_z};
+        double v3[] = {cx(i+1,j,k+1) - cf_x, cy(i+1,j,k+1) - cf_y, cz(i+1,j,k+1) - cf_z};
+        double v4[] = {cx(i,  j,k+1) - cf_x, cy(i  ,j,k+1) - cf_y, cz(i  ,j,k+1) - cf_z};
+        area[idx++] = cross_norm_of_4(v1,v2,v3,v4);
+      }
+    }
+  }
+  for(int k = 0; k < nz; ++k) {
+    for(int j = 0; j < ny-1; ++j) {
+      for(int i = 0; i < nx-1; ++i) {
+        double cf_x = 0.250 * (cx(i, j, k) + cx(i+1, j, k) + cx(i, j+1, k) + cx(i+1, j+1, k));
+        double cf_y = 0.250 * (cy(i, j, k) + cy(i+1, j, k) + cy(i, j+1, k) + cy(i+1, j+1, k));
+        double cf_z = 0.250 * (cz(i, j, k) + cz(i+1, j, k) + cz(i, j+1, k) + cz(i+1, j+1, k));
+
+        double v1[] = {cx(i,  j  ,k) - cf_x, cy(i  ,j  ,k) - cf_y, cz(i  ,j  ,k) - cf_z};
+        double v2[] = {cx(i+1,j  ,k) - cf_x, cy(i+1,j  ,k) - cf_y, cz(i+1,j  ,k) - cf_z};
+        double v3[] = {cx(i+1,j+1,k) - cf_x, cy(i+1,j+1,k) - cf_y, cz(i+1,j+1,k) - cf_z};
+        double v4[] = {cx(i,  j+1,k) - cf_x, cy(i  ,j+1,k) - cf_y, cz(i  ,j+1,k) - cf_z};
+        area[idx++] = cross_norm_of_4(v1,v2,v3,v4);
+      }
+    }
+  }
+  return np_area;
+}
+
+// --------------------------------------------------------------------
+py::array_t<double>
+compute_volume_cell_s(int nx, int ny, int nz,
+                      py::array_t<double, py::array::f_style>& np_cx,
+                      py::array_t<double, py::array::f_style>& np_cy,
+                      py::array_t<double, py::array::f_style>& np_cz)
+{
+
+  auto cx = np_cx.mutable_unchecked<3>();
+  auto cy = np_cy.mutable_unchecked<3>();
+  auto cz = np_cz.mutable_unchecked<3>();
+
+  py::array_t<double, py::array::f_style> np_volume(nx*ny*nz);
+  auto volume = np_volume.mutable_data();
+
+  int idx = 0;
+  for(int k = 0; k < nz; ++k) {
+    for(int j = 0; j < ny; ++j) {
+      for(int i = 0; i < nx; ++i) {
+        double a[] = {cx(i+1,j,k)-cx(i,j,k), cy(i+1,j,k)-cy(i,j,k), cz(i+1,j,k)-cz(i,j,k)};
+        double b[] = {cx(i,j+1,k)-cx(i,j,k), cy(i,j+1,k)-cy(i,j,k), cz(i,j+1,k)-cz(i,j,k)};
+        double c[] = {cx(i,j,k+1)-cx(i,j,k), cy(i,j,k+1)-cy(i,j,k), cz(i,j,k+1)-cz(i,j,k)};
+        volume[idx++] = fabs(a[0]*b[1]*c[2] + b[0]*c[1]*a[2] + c[0]*a[1]*b[2] - c[0]*b[1]*a[2] - b[0]*a[1]*c[2] - a[0]*c[1]*b[2]);
+      }
+    }
+  }
+  return np_volume;
 }
 
 // --------------------------------------------------------------------
