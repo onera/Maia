@@ -4,9 +4,10 @@ import numpy as np
 
 import maia.pytree as PT
 
+import maia
+
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
-from maia.factory.dcube_generator import dcube_generate
 
 from maia.algo.part import extract_boundary as EXB
 
@@ -20,6 +21,13 @@ def test_pr_to_face_pl():
   assert (pl == [[173,174,175,176,177,178,179,180,181,182,183,184]]).all()
   pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,3], [1,4], [4,4]], order='F'), 'CellCenter')
   assert (pl == [[173,174,175,176,177,178,179,180,181,182,183,184]]).all()
+
+  #2D 
+  n_vtx = np.array([5,3], np.int32)
+  pl = EXB._pr_to_face_pl(n_vtx, np.array([[5,5], [1,3]], order='F'), 'Vertex')
+  assert (pl == [[5,10]]).all()
+  pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,4], [1,1]], order='F'), 'CellCenter')
+  assert (pl == [[11,12,13,14]]).all()
 
 def test_extract_sub_connectivity():
   face_vtx_idx = np.array([0, 4, 9, 12])
@@ -35,10 +43,19 @@ def test_extract_sub_connectivity():
   assert (sub_face_vtx     == [3,4,6,5,  2,1,5]).all()
   assert (vtx_ids          == [34,35,104,105,114,115]).all()
 
+def test_struct2d_connectivity():
+  zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0]])
+  edge_vtx_idx, edge_vtx = EXB._struct2d_connectivity(zone)
+  assert (edge_vtx_idx == 2*np.arange(22+1)).all()
+  assert (edge_vtx == [6,1,2,7,3,8,4,9,5,10,11,6,7,12,8,13,9,14,10,15, #IEdge
+                       
+                       1,2,2,3,3,4,4,5,6,7,7,8,8,9,9,10,12,11,13,12,14,13,15,14] #JEdge
+          ).all()
+
 @pytest_parallel.mark.parallel(1)
 def test_extract_faces_mesh(comm):
   # Test U
-  tree = dcube_generate(3, 1., [0,0,0], comm)
+  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
   PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
   zoneU = PT.get_all_Zone_t(tree)[0]
 
@@ -72,6 +89,15 @@ def test_extract_faces_mesh(comm):
   assert (face_vtx == [1,2,5,4,2,3,6,5,4,5,8,7,5,6,9,8]).all()
   assert (vtx_ids == [3,6,9,12,15,18,21,24,27]).all()
 
+  # Test S 2D
+  tree = maia.factory.generate_dist_block([5,3,1], 'S', comm)
+  pzone = PT.get_node_from_label(maia.factory.partition_dist_tree(tree, comm), 'Zone_t')
+  cx, cy, cz, face_vtx_idx, face_vtx, vtx_ids = EXB.extract_faces_mesh(pzone, np.array([3,5,14,13]))
+  assert (face_vtx_idx == [0,2,4,6,8]).all()
+  assert (face_vtx == [1,4, 3,5, 2,3, 1,2]).all()
+  assert (vtx_ids == [3,4,5,8,10]).all()
+  assert (cx == [.5, .75, 1., .5, 1.]).all()
+  assert (cy == [0., 0, 0, .5, .5]).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_extract_surf_from_bc(comm):

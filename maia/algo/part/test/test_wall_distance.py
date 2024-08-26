@@ -244,6 +244,25 @@ def test_walldistance_2d(elt_kind, comm):
     expected_wd = np.array([5,7,8, 1,2,4,5,7,8]) / 9.
     expected_gnum = [13,13,13, 23,23,23,23,23,23] if elt_kind == 'Poly' else [8,8,8, 9,9,9,9,9,9]
 
+  assert np.allclose   (PT.get_node_from_name(tree, 'TurbulentDistance')[1], expected_wd)
+  assert np.array_equal(PT.get_node_from_name(tree, 'ClosestEltGnum')[1], expected_gnum)
+
+@pytest_parallel.mark.parallel(2)
+def test_walldistance_2d_S(comm):
+  tree = maia.factory.generate_dist_block([5,4,1], 'S', comm)
+  # Set some BC wall
+  bc = PT.get_node_from_name(tree, 'Xmax')
+  PT.set_value(bc, 'BCWall')
+
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  WD.compute_wall_distance(ptree, comm)
+  maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
+  if comm.Get_rank() == 0:
+    expected_wd = np.array([7,5,3,1,  7,5]) / 8.
+    expected_gnum = [5,5,5,5, 10,10]
+  elif comm.Get_rank() == 1:
+    expected_wd = np.array([3,1,  7,5,3,1]) / 8.
+    expected_gnum = [10,10, 15,15,15,15] 
 
   assert np.allclose   (PT.get_node_from_name(tree, 'TurbulentDistance')[1], expected_wd)
   assert np.array_equal(PT.get_node_from_name(tree, 'ClosestEltGnum')[1], expected_gnum)

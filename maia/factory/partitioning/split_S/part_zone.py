@@ -386,6 +386,24 @@ def compute_face_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
         dist_cell_per_dir, dist_vtx_per_dir).flatten()
   return face_lntogn
 
+def compute_edge_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
+  # Only for 2D zones for now
+  _dist_vtx_per_dir = np.ones(3, dist_zone_cell_size.dtype)
+  _dist_vtx_per_dir[:dist_zone_cell_size.size] = dist_zone_cell_size + 1
+  part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
+  n_edge_i, n_edge_j = (part_cell_per_dir[0]+1)*part_cell_per_dir[1], (part_cell_per_dir[1]+1)*part_cell_per_dir[0]
+  edge_lntogn = np.empty(n_edge_i+n_edge_j, dtype=dtype)
+  i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+1, dtype=dtype)
+  j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+0, dtype=dtype).reshape(-1,1)
+  edge_lntogn[0:n_edge_i] = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, 1, \
+      'IFaceCenter', _dist_vtx_per_dir).flatten()
+  offset = dist_zone_cell_size[1]*_dist_vtx_per_dir[0] # Add nedge_i_dist by hand, it is 0 in func
+  i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+0, dtype=dtype)
+  j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
+  edge_lntogn[n_edge_i:] = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, 1, \
+      'JFaceCenter', _dist_vtx_per_dir).flatten() + offset
+  return edge_lntogn
+
 def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
   """
   Create the vertex, face and cell global numbering for a partitioned zone
@@ -426,11 +444,16 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
   # Faces
   if idx_dim == 3:
     face_lntogn = compute_face_gnum(dist_zone_cell_size, cell_window, dtype=dtype)
-
   else:
     face_lntogn = None
 
-  return vtx_lntogn, face_lntogn, cell_lntogn
+  # Edges
+  if idx_dim == 2:
+    edge_lntogn = compute_edge_gnum(dist_zone_cell_size, cell_window, dtype=dtype)
+  else:
+    edge_lntogn = None
+
+  return vtx_lntogn, edge_lntogn, face_lntogn, cell_lntogn
 
 def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
 
@@ -466,7 +489,7 @@ def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
     pzone_dims = np.hstack([n_cells+1, n_cells, np.zeros((idx_dim,1), dtype=np.int32)])
     part_zone  = PT.new_Zone(pzone_name, size=pzone_dims, type='Structured')
 
-    entities = ['Vertex', 'Face', 'Cell']
+    entities = ['Vertex', 'Edge', 'Face', 'Cell']
     entities_gnum = create_zone_gnums(cell_bounds, PT.Zone.CellSize(d_zone))
     entities_gnum_dict = {key:val for key,val in zip(entities, entities_gnum) if val is not None}
     gn_node = MT.newGlobalNumbering(entities_gnum_dict, parent=part_zone)

@@ -608,7 +608,7 @@ def new_GridLocation(loc:str, parent:CGNSTree=None):
     >>> PT.print_tree(node)
     GridLocation GridLocation_t "FaceCenter"
   """
-  assert loc in ['Null', 'UserDefined', 'Vertex', 'EdgeCenter', 'CellCenter',
+  assert loc in ['Null', 'UserDefined', 'Vertex', 'IEdgeCenter', 'JEdgeCenter', 'EdgeCenter', 'CellCenter',
       'IFaceCenter', 'JFaceCenter', 'KFaceCenter', 'FaceCenter']
   allowed_parents = "ArbitraryGridMotion_t BCDataSet_t BC_t DiscreteData_t FlowSolution_t \
                      GridConnectivity_t OversetHoles_t UserDefinedData_t ZoneSubRegion_t".split()

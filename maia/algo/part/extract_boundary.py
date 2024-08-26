@@ -9,25 +9,75 @@ from .point_cloud_utils import create_sub_numbering
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
+def _struct2d_connectivity(zone):
+  n_vtx_i, n_vtx_j = PT.Zone.VertexSize(zone)
+  n_vtx = n_vtx_i*n_vtx_j
+  nf_i = n_vtx_i * (n_vtx_j-1)
+  nf_j = n_vtx_j * (n_vtx_i-1)
+  edge_vtx_idx = 2*np.arange(nf_i+nf_j+1, dtype=np.int32)
+  edge_vtx = np.empty(edge_vtx_idx[-1], np.int32)
+  _edge_vtx_i, _edge_vtx_j = edge_vtx[:2*nf_i], edge_vtx[2*nf_i:]
+  # Fill IEdge
+  _edge_vtx_i[0::2] = np.arange(1, n_vtx - n_vtx_i + 1)
+  _edge_vtx_i[1::2] = np.arange(1 + n_vtx_i, 1 + n_vtx)
+  # Swap bnd I edges
+  _edge_vtx_i[0::2*n_vtx_i] += n_vtx_i
+  _edge_vtx_i[1::2*n_vtx_i] -= n_vtx_i
+  # Fill JEdge
+  mask = np.ones(2*n_vtx, bool)
+  mask[0::2*n_vtx_i] = False
+  mask[2*n_vtx_i-1::2*n_vtx_i] = False
+  _edge_vtx_j[:] = np_utils.repeated_arange(2, 1, n_vtx+1)[mask]
+  # Swap bnd J edges
+  n_edge_j = n_vtx_i - 1
+  ymax = _edge_vtx_j[-2*n_edge_j:].reshape((-1,2))
+  _edge_vtx_j[-2*n_edge_j:] = np.flip(ymax, axis=1).reshape(-1)
+  #tmp = ymax[::2].copy()
+  #ymax[0::2] = ymax[1::2]
+  #ymax[1::2] = tmp
+  return edge_vtx_idx, edge_vtx
+
+def _struct3d_connectivity(zone):
+  nf_i, nf_j, nf_k = PT.Zone.FaceSize(zone)
+  n_face_tot = nf_i + nf_j + nf_k
+
+  bounds = np.array([0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k], np.int32)
+
+  face_vtx_idx = 4*np.arange(0, n_face_tot+1, dtype=np.int32)
+  face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, PT.Zone.CellSize(zone), dtype=np.int32)
+  return face_vtx_idx, face_vtx
+
 def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   """
   Transform a (partitioned) PointRange pr of any location input_loc into a PointList
-  supported by the faces. n_vtx_zone is the number of vertices of the zone to which the
+  supported by the faces or edges. n_vtx_zone is the number of vertices of the zone to which the
   pr belongs. Output face are numbered using s_numb conventions (i faces, then j faces, then
   k faces in increasing i,j,k for each group)
   """
+  # NB the hack in this function is to call compute_pointList_from_pointRanges with
+  # outputloc == 'FaceCenter' even when we want to produce a 2D / EdgeCenter BC
+  # We can do it if we extend input args *and* if we do the shift manually for JEdge
+  # (since nFacesI evaluates to 0 in func)
 
+  cell_dim = n_vtx_zone.size
   bnd_axis = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=input_loc))
 
   # It is safer to reuse slabs to manage all cases (eg input location or reversed pr)
   bc_size = pr_utils.transform_bnd_pr_size(pr, input_loc, "FaceCenter")
 
-  slab = np.empty((3,2), order='F', dtype=np.int32)
-  slab[:,0] = pr[:,0]
-  slab[:,1] = bc_size + pr[:,0] - 1
+  slab = np.ones((3,2), order='F', dtype=np.int32)
+  slab[0:cell_dim,0] = pr[:,0]
+  slab[0:cell_dim,1] = bc_size + pr[:,0] - 1
   slab[bnd_axis,:] += pr_utils.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
 
-  return pr_utils.compute_pointList_from_pointRanges([slab], n_vtx_zone,  ['I', 'J', 'K'][bnd_axis]+'FaceCenter')
+  _n_vtx_zone = np.ones(3, n_vtx_zone.dtype)
+  _n_vtx_zone[0:cell_dim] = n_vtx_zone
+
+  pl = pr_utils.compute_pointList_from_pointRanges([slab], _n_vtx_zone,  ['I', 'J', 'K'][bnd_axis]+'FaceCenter')
+  if cell_dim == 2 and bnd_axis == 1:
+    pl += n_vtx_zone[0]*(n_vtx_zone[1]-1)
+
+  return pl
 
 def _extract_sub_connectivity(array_idx, array, sub_elts):
   """
@@ -75,14 +125,11 @@ def extract_faces_mesh(zone, face_ids):
       face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_size_list), dtype=np.int32)
   elif PT.Zone.Type(zone) == 'Structured':
     # For S zone, create a NGon connectivity
-    n_vtx_zone = PT.Zone.VertexSize(zone)
-    nf_i, nf_j, nf_k = PT.Zone.FaceSize(zone)
-    n_face_tot = nf_i + nf_j + nf_k
+    if zone_dim == 3:
+      face_vtx_idx, face_vtx = _struct3d_connectivity(zone)
+    elif zone_dim == 2:
+      face_vtx_idx, face_vtx = _struct2d_connectivity(zone)
 
-    bounds = np.array([0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k], np.int32)
-
-    face_vtx_idx = 4*np.arange(0, n_face_tot+1, dtype=np.int32)
-    face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, n_vtx_zone-1, dtype=np.int32)
 
   ex_face_vtx_idx, ex_face_vtx, vtx_ids = _extract_sub_connectivity(face_vtx_idx, face_vtx, face_ids)
   
@@ -93,10 +140,10 @@ def extract_faces_mesh(zone, face_ids):
     ex_cy = cy[vtx_ids-1]
     ex_cz = cz[vtx_ids-1]
   elif PT.Zone.Type(zone) == 'Structured':
-    i_idx, j_idx, k_idx = s_numbering.index_to_ijk(vtx_ids, n_vtx_zone)
-    ex_cx = cx[i_idx-1, j_idx-1, k_idx-1].flatten()
-    ex_cy = cy[i_idx-1, j_idx-1, k_idx-1].flatten()
-    ex_cz = cz[i_idx-1, j_idx-1, k_idx-1].flatten()
+    i_idx, j_idx, k_idx = s_numbering.index_to_ijk(vtx_ids, PT.Zone.VertexSize(zone))
+    ex_cx = cx[i_idx-1, j_idx-1].flatten() if zone_dim == 2 else cx[i_idx-1, j_idx-1, k_idx-1].flatten()
+    ex_cy = cy[i_idx-1, j_idx-1].flatten() if zone_dim == 2 else cy[i_idx-1, j_idx-1, k_idx-1].flatten()
+    ex_cz = cz[i_idx-1, j_idx-1].flatten() if zone_dim == 2 else cz[i_idx-1, j_idx-1, k_idx-1].flatten()
 
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
