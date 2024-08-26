@@ -223,3 +223,27 @@ def test_walldistance_vtx(comm):
   assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
   assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
+@pytest.mark.parametrize('elt_kind', ['Nodal', 'Poly'])
+@pytest_parallel.mark.parallel(2)
+def test_walldistance_2d(elt_kind, comm):
+  tree = maia.factory.generate_dist_block(4, 'TRI_3', comm)
+  # Set some BC wall
+  bc = PT.get_node_from_name(tree, 'Xmin')
+  PT.set_value(bc, 'BCWall')
+
+  if elt_kind == 'Poly':
+    maia.algo.dist.convert_elements_to_ngon(tree, comm)
+
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  WD.compute_wall_distance(ptree, comm)
+  maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
+  if comm.Get_rank() == 0:
+    expected_wd = np.array([1,2,4,5,7,8, 1,2,4]) / 9.
+    expected_gnum = [3,3,3,3,3,3, 13,13,13] if elt_kind == 'Poly' else [7,7,7,7,7,7, 8,8,8]
+  elif comm.Get_rank() == 1:
+    expected_wd = np.array([5,7,8, 1,2,4,5,7,8]) / 9.
+    expected_gnum = [13,13,13, 23,23,23,23,23,23] if elt_kind == 'Poly' else [8,8,8, 9,9,9,9,9,9]
+
+
+  assert np.allclose   (PT.get_node_from_name(tree, 'TurbulentDistance')[1], expected_wd)
+  assert np.array_equal(PT.get_node_from_name(tree, 'ClosestEltGnum')[1], expected_gnum)

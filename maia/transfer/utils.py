@@ -96,6 +96,9 @@ def get_entities_numbering(part_zone):
   edge_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Edge')
   if edge_ln_to_gn_n is not None:
     edge_ln_to_gn = PT.get_value(edge_ln_to_gn_n)
+  elif PT.Zone.has_ngon_elements(part_zone) and PT.Zone.CellDimension(part_zone) == 2:
+    edge = PT.maia.Zone.EdgeNode(part_zone)
+    edge_ln_to_gn = PT.get_value(MT.getGlobalNumbering(edge, 'Element'))
 
   face_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Face')
   if face_ln_to_gn_n is not None:

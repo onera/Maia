@@ -57,12 +57,18 @@ def extract_faces_mesh(zone, face_ids):
   belonging to the sub mesh.
   For S zone, faces to extract must be converted from i,j,k to index before processing
   """
+  zone_dim = PT.Zone.CellDimension(zone)
   # NGon Extraction
   if PT.Zone.Type(zone) == 'Unstructured':
     if PT.Zone.has_ngon_elements(zone):
-      face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(zone)
+      bnd_elts = PT.maia.Zone.EdgeNode(zone) if zone_dim == 2 else PT.Zone.NGonNode(zone)
+      if zone_dim == 2:
+        face_vtx_idx = 2*np.arange(PT.Element.Size(bnd_elts)+1, dtype=np.int32)
+      else:
+        face_vtx_idx = PT.get_child_from_name(bnd_elts, 'ElementStartOffset')[1]
+      face_vtx     = PT.get_child_from_name(bnd_elts, 'ElementConnectivity')[1]
     else: # Zone has std elements
-      sections_2d = PT.Zone.get_ordered_elements_per_dim(zone)[2]
+      sections_2d = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
       elem_size_list = [PT.Element.Size(elt) for elt in sections_2d]
       face_n_vtx_list = [PT.Element.NVtx(elt) for elt in sections_2d]
       _, face_vtx = np_utils.concatenate_np_arrays([PT.get_node_from_name(elt, 'ElementConnectivity')[1] for elt in sections_2d], dtype=np.int32)
@@ -98,7 +104,8 @@ def extract_faces_mesh(zone, face_ids):
 def extract_surf_from_bc(part_zones, bc_predicate, comm):
   """
   From a list of partitioned zones (coming from the same initial domain), get the list
-  of faces belonging to any bc satisfiyng bc_predicate and extract the surfacic mesh.
+  of faces (or edge, depending on zone dimension)
+  belonging to any bc satisfiyng bc_predicate and extract the surfacic mesh.
   In addition, compute a new global numbering (over the procs and the part_zones) of the extracted
   faces and vertex (starting a 1 without gap)
 
@@ -111,9 +118,11 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
   parent_face_lngn_l = []
   parent_vtx_lngn_l  = []
   for zone in part_zones:
+    zone_dim = PT.Zone.CellDimension(zone)
+    wanted_loc = 'EdgeCenter' if zone_dim == 2 else 'FaceCenter'
     is_relevant_bc = lambda n: PT.get_label(n) == 'BC_t' and bc_predicate(n)
     if PT.Zone.Type(zone) == 'Unstructured':
-      bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: is_relevant_bc(n) and PT.Subset.GridLocation(n) == 'FaceCenter'])
+      bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: is_relevant_bc(n) and PT.Subset.GridLocation(n) == wanted_loc])
       bc_face_ids = [PT.get_child_from_name(bc_node, 'PointList')[1][0] for bc_node in bc_nodes]
     else:
       n_vtx_z = PT.Zone.VertexSize(zone)
@@ -122,14 +131,11 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
           for bc_node in bc_nodes]
 
     _, bc_face_ids = np_utils.concatenate_np_arrays(bc_face_ids, np.int32)
-    # If zone is by elements, we must shift the bc_face_ids to make it start a 1
-    if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
-      ordering = PT.Zone.elt_ordering_by_dim(zone)
-      if ordering == 1: #Increasing elements : substract starting point of 2D
-        bc_face_ids -= (PT.Zone.get_elt_range_per_dim(zone)[2][0] - 1)
-      elif ordering == -1: #Decreasing elements : substract number of 3D
-        bc_face_ids -= PT.Zone.get_elt_range_per_dim(zone)[3][1]
-      else:
+    # Shift the bc_face_ids to make it start a 1
+    if PT.Zone.Type(zone) == 'Unstructured':
+      try:
+        bc_face_ids -= (PT.Zone.get_elt_range_per_dim(zone)[PT.Zone.CellDimension(zone)-1][0] - 1)
+      except Exception:
         raise RuntimeError("Unable to extract unordered faces")
 
     cx, cy, cz, bc_face_vtx_idx, bc_face_vtx, bc_vtx_ids = extract_faces_mesh(zone, bc_face_ids)
@@ -142,11 +148,11 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
     vtx_ln_to_gn_zone = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
 
     if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
-      elt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[2]
+      elt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
       face_ln_to_gn_zone = np.concatenate([PT.maia.getGlobalNumbering(elt, "Sections")[1] \
               for elt in elt_2d_nodes]) if len(elt_2d_nodes) else np.empty(0, dtype=pdm_dtype)
     else:
-      _, _, face_ln_to_gn_zone, _ = te_utils.get_entities_numbering(zone) # !! Only S or NGON
+      face_ln_to_gn_zone = te_utils.get_entities_numbering(zone)[zone_dim-1] # Face if dim==3; Edge if dim == 2
 
     parent_face_lngn_l.append(face_ln_to_gn_zone[bc_face_ids-1])
     parent_vtx_lngn_l .append(vtx_ln_to_gn_zone[bc_vtx_ids-1]  )
