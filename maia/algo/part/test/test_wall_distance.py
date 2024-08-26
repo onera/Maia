@@ -247,12 +247,26 @@ def test_walldistance_2d(elt_kind, comm):
   assert np.allclose   (PT.get_node_from_name(tree, 'TurbulentDistance')[1], expected_wd)
   assert np.array_equal(PT.get_node_from_name(tree, 'ClosestEltGnum')[1], expected_gnum)
 
+@pytest.mark.parametrize('is_perio', [False, True])
 @pytest_parallel.mark.parallel(2)
-def test_walldistance_2d_S(comm):
+def test_walldistance_2d_S(is_perio, comm):
   tree = maia.factory.generate_dist_block([5,4,1], 'S', comm)
   # Set some BC wall
   bc = PT.get_node_from_name(tree, 'Xmax')
   PT.set_value(bc, 'BCWall')
+  
+  if is_perio: # Result is same, but we test workflow
+    zone = PT.get_node_from_label(tree, 'Zone_t')
+    zbc = PT.get_child_from_name(zone, 'ZoneBC')
+    gcs = [PT.get_child_from_name(zbc, name) for name in ['Ymin', 'Ymax']]
+    PT.rm_children_from_predicate(zbc, lambda n : n[0] in ['Ymin', 'Ymax'])
+    for i, gc in enumerate(gcs):
+      other = 1 if i == 0 else 0
+      PT.update_node(gc, label='GridConnectivity1to1_t', value='zone')
+      PT.new_IndexRange('PointRangeDonor', PT.get_child_from_name(gcs[other], 'PointRange')[1], parent=gc)
+      PT.new_GridConnectivityProperty({'translation':[0.,1-2*i,0]}, parent=gc)
+      PT.new_child(gc, 'Transform', 'Transform_t', value=[1,2])
+    PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=gcs, parent=zone)
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
   WD.compute_wall_distance(ptree, comm)
