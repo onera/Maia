@@ -85,7 +85,7 @@ def compute_face_measure(zone):
 def _compute_face_circulation(coords, face_vtx_idx, face_vtx_n, face_vtx):
   """
   Compute, for each face, the term xF.nF|F| where xF is the face mean center, nF the unit outward normal
-  and |F| the area of the face. Then this 
+  and |F| the area of the face.
   """
   _coords = np.stack(coords, axis=1)
 

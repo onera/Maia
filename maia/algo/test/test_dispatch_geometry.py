@@ -7,6 +7,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.algo import geometry
+from maia.utils import np_utils
 
 def generate_dist_line(comm):
   tree = PT.yaml.to_cgns_tree("""
@@ -149,8 +150,8 @@ def test_compute_centers(parallel, comm):
               assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1)[distri[0]:distri[1]])
 
 
-@pytest_parallel.mark.parallel(1)
-@pytest.mark.parametrize("parallel", ["part"])
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("parallel", ["part", "dist"])
 def test_compute_measures(parallel, comm):
 
   def rename_append(parent, child_dict):
@@ -214,7 +215,6 @@ def test_compute_measures(parallel, comm):
   # Last base is Base1D_X -> rm Y coord
   PT.rm_nodes_from_name(base, 'CoordinateY')
 
-  ## TODO : compatibility centers + measures
   geometry.compute_measures(tree, 3, comm)
   geometry.compute_measures(tree, 2, comm)
 
@@ -266,6 +266,8 @@ def test_compute_measures(parallel, comm):
             if parallel == 'part':
               assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1))
             else:
-              distri = MT.getDistribution(sol, 'Index')[1]
-              # Works but probably because only one section per dim, otherwise PL may mix elements
-              assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1)[distri[0]:distri[1]])
+              starts, ends = [], []
+              for elt in PT.Zone.get_ordered_elements_per_dim(zone)[dim]:
+                starts.append(MT.getDistribution(elt, 'Element')[1][0] + PT.Element.Range(elt)[0])
+                ends  .append(MT.getDistribution(elt, 'Element')[1][1] + PT.Element.Range(elt)[0])
+              assert np.array_equal(pl, np_utils.multi_arange(starts, ends))
