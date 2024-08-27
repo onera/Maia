@@ -27,7 +27,7 @@ from .mixed_to_std_elements      import convert_mixed_to_elements
 from .ngon_from_std_elements     import convert_elements_to_ngon,\
                                         generate_ngon_from_std_elements
 
-from .ngons_to_elements          import ngons_to_elements
+from .ngons_to_elements          import convert_ngon_to_elements, ngons_to_elements
 
 from .redistribute               import redistribute_tree
 

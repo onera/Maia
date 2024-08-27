@@ -514,18 +514,18 @@ def test_elements_to_ngons():
   maia.algo.dist.convert_elements_to_ngon(dist_tree, MPI.COMM_WORLD, stable_sort=True)
   #elements_to_ngons@end
 
-def test_ngons_to_elements():
-  #ngons_to_elements@start
+def test_convert_ngon_to_elements():
+  #convert_ngon_to_elements@start
   from mpi4py import MPI
   import maia
   import maia.pytree as PT
 
   dist_tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_WORLD)
-  maia.algo.dist.ngons_to_elements(dist_tree, MPI.COMM_WORLD)
+  maia.algo.dist.convert_ngon_to_elements(dist_tree, MPI.COMM_WORLD)
 
   elts = PT.get_nodes_from_label(dist_tree, 'Elements_t')
   assert [PT.Element.CGNSName(e) for e in elts] == ['QUAD_4', 'HEXA_8']
-  #ngons_to_elements@end
+  #convert_ngon_to_elements@end
 
 def test_convert_elements_to_ngon():
   #convert_elements_to_ngon@start

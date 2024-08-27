@@ -28,6 +28,7 @@ Developpement version
 - merge_zones: add ``family`` option for subset merge parameter
 - rearrange_element_sections: split reordering and concatenation in two functions (flexibility)
 - localize_points, compute_wall_distance: allow 2D polygonal or Elements meshes
+- ngons_to_elements: functionnality is now truly parallel, and more nodes are managed
 
 🐞 Fixes
 ^^^^^^^^
@@ -36,10 +37,12 @@ Developpement version
 - partitioning : fix internal edges creation and BCs on 2D/NGon meshes
 - partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes
 - partitioning: manage ``DiscreteData_t`` nodes with PointList
+- convert_elements_to_ngon: preserve CellCenter BC_t nodes during conversion
 
 🚧 API change
 ^^^^^^^^^^^^^
 - dist_tree_to_file, part_tree_to_file & write_trees: add ``links`` parameter
+- ``ngons_to_elements`` renamed into ``convert_ngon_to_elements``
 
 
 v1.4 (May 2024)

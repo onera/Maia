@@ -54,11 +54,11 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   if extract_dim == 2:
     group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_EDGE)
     keep_location = 'EdgeCenter'
-    skip_location = ['FaceCenter', 'CellCenter']
+    skip_location = ['FaceCenter']
   elif extract_dim == 3:
     group_idx, pdm_group = result_dmesh.dmesh_bound_get(PDM._PDM_BOUND_TYPE_FACE)
     keep_location = 'FaceCenter'
-    skip_location = ['EdgeCenter', 'CellCenter']
+    skip_location = ['EdgeCenter']
   converted_bc   = lambda n : PT.get_label(n) == 'BC_t' and PT.Subset.GridLocation(n) == keep_location
   unconverted_bc = lambda n : PT.get_label(n) == 'BC_t' and PT.Subset.GridLocation(n) in skip_location
   if pdm_group is not None:
@@ -74,6 +74,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     PT.rm_nodes_from_predicate(zbc, unconverted_bc)
 
   # Remove std elements
+  first_cell_id = PT.Zone.get_elt_range_per_dim(zone)[extract_dim][0] - 1 # Needed for CellCenter PL shift
   PT.rm_children_from_label(zone, 'Elements_t')
 
   # Create polyedric elements
@@ -146,8 +147,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   # > Shift CellCenter located pointlist
   shift = n_face if extract_dim == 3 else n_edge
   for node in PT.iter_all_subsets(zone, ['CellCenter']):
-    pl = PT.get_child_from_name(node, 'PointList')
-    pl[1] += shift
+    pl = PT.get_child_from_predicate(node, lambda n : PT.get_name(n) in ['PointList', 'PointRange'])
+    pl[1] += shift - first_cell_id # Last one shift back to 0 if mesh was increasing dim. numbered
 
   # > Remove internal holder state
   PT.rm_nodes_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
