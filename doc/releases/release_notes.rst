@@ -27,7 +27,7 @@ Developpement version
 - Introduce ``compute_centers`` which allows more configurations for entities centers computing
 - merge_zones: add ``family`` option for subset merge parameter
 - rearrange_element_sections: split reordering and concatenation in two functions (flexibility)
-- localize_points: allow 2D polygonal or Elements meshes
+- localize_points, compute_wall_distance: allow 2D polygonal or Elements meshes
 
 🐞 Fixes
 ^^^^^^^^

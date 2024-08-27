@@ -328,6 +328,8 @@ class WallDistance:
     if self.method == "propagation":
       if len(parts_per_dom) > 1:
         raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
+      elif len(parts_per_dom[0]) > 0 and PT.Zone.CellDimension(parts_per_dom[0][0]) != 3:
+        raise NotImplementedError("Wall_distance computation with method 'propagation' only supports 3D meshes")
       self._walldist = PDM.DistCellCenterSurf(self.mpi_comm, n_part_surf, n_part_vol=1)
     elif self.method == "cloud":
       n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom]

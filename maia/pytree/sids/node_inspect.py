@@ -968,7 +968,7 @@ class Subset:
   def normal_axis(subset_node:CGNSTree) -> int:
     """ Return the normal direction of a structured subset.
 
-    This function is only relevant for subsets defining a 2d structured region
+    This function is only relevant for subsets defining a 2d or 1d structured region
     (having a PointRange node).
 
     Args:
@@ -983,7 +983,7 @@ class Subset:
       1
     """
     loc = Subset.GridLocation(subset_node)
-    if loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter']:
+    if loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter', 'IEdgeCenter', 'JEdgeCenter']:
       return {'I':0, 'J':1, 'K':2}[loc[0]]
     else:
       pr_node = W.get_child_from_name(subset_node, 'PointRange')

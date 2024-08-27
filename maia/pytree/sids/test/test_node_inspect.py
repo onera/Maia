@@ -386,6 +386,8 @@ def test_subset_normal_index():
   assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'Vertex')) == 1
   assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'CellCenter')) == 1
   assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [1,7]], 'JFaceCenter')) == 1
+  assert SIDS.Subset.normal_axis(new_subset([[17,17], [1,9]], 'IEdgeCenter')) == 0
+  assert SIDS.Subset.normal_axis(new_subset([[17,17], [1,9]], 'Vertex')) == 0
   #Ambiguous
   assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]], 'JFaceCenter')) == 1
   assert SIDS.Subset.normal_axis(new_subset([[1,17], [9,9], [7,7]], 'KFaceCenter')) == 2

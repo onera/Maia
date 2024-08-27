@@ -182,8 +182,11 @@ def test_get_entities_numbering():
 
   ngon = PT.new_Elements(type='NGON_n', parent=zoneU)
   gnum_node = MT.newGlobalNumbering({'Element' : expected_face_lngn}, ngon)
+  edge = PT.new_Elements('EdgeElements', type='BAR_2', parent=zoneU)
+  gnum_node = MT.newGlobalNumbering({'Element' : np.array([1,6,3,2])}, edge)
   vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
   assert (vtx_lngn == expected_vtx_lngn).all()
+  assert (edge_lngn == [1,6,3,2]).all()
   assert (face_lngn == expected_face_lngn).all()
 
   ngon = PT.new_Elements('ElementsTwo', type='NGON_n', parent=zoneU)
