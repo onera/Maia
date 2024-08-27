@@ -4,15 +4,15 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.algo     import indexing
-from maia.utils    import py_utils, np_utils, par_utils, s_numbering, as_pdm_gnum
+from maia.utils    import np_utils, par_utils, s_numbering, as_pdm_gnum
 from maia.transfer import protocols as EP
 
-from .ngon_tools   import PDM_dfacecell_to_dcellface
-from .s_to_u       import zonedims_to_ngon
+from ..ngon_tools   import PDM_dfacecell_to_dcellface
+from ..s_to_u       import zonedims_to_ngon
 
 from maia.utils import logging as mlog
 
-from maia.algo.geometry_utils import DIM_TO_LOC, update_container
+from .utils import place_in_container
 
 import cmaia.part_algo as cpart_algo
 
@@ -335,58 +335,4 @@ def compute_zone_centers(zone, dim, comm):
     centers = {name : interlaced_centers[i::3] \
                for i,name in enumerate(center_names) if i < phy_dim}
 
-    output_loc = DIM_TO_LOC[cell_dim][rq_dim]
-    if PT.Zone.Type(zone) == 'Structured':
-      if output_loc == 'FaceCenter':
-        # Zone is 3D, and we computed FaceCenter --> We have to split it into I/J/KFaceCenter
-        facesize = PT.Zone.FaceSize(zone)
-        dirfacesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize, PT.Zone.KFaceSize]
-
-        #Distribué -> répartition I,J,K  car distribution des faces calculées sur n_face_tot
-        face_distri = par_utils.dn_to_distribution(next(iter(centers.values())).size, comm)
-        nfi, nfj, nfk = facesize
-        dfacesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0      , nfi),
-                     py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
-                     py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
-        start = 0
-        for i,dir in enumerate(['I', 'J', 'K']):
-          end = start + dfacesize[i]
-          dircenter = {key: val[start:end] for key,val in centers.items()}
-          container = update_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
-          MT.newDistribution({'Index' : par_utils.dn_to_distribution(dfacesize[i], comm)}, container)
-          pr = np.ones((3,2), order='F', dtype=zone[1].dtype)
-          pr[:,1] = dirfacesizefunc[i](zone)
-          PT.new_IndexRange(value=pr, parent=container)
-          start = end
-
-      if output_loc == 'CellCenter':
-        container = update_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
-
-    else: # Unstructured
-      container = update_container(zone, f'Geometry_{rq_dim}d', output_loc, centers)
-      if output_loc in ['EdgeCenter', 'FaceCenter']: # PointList is supposed to be mandatory. Maybe we could make it optional in maia ?
-        if PT.Zone.has_ngon_elements(zone):
-          if output_loc == 'FaceCenter':
-            ng = PT.Zone.NGonNode(zone)
-          elif output_loc == 'EdgeCenter':
-            assert PT.Zone.CellDimension(zone) == 2
-            ng = MT.Zone.EdgeNode(zone)
-          er = PT.Element.Range(ng)
-          distri = MT.getDistribution(ng, 'Element')[1]
-          pl = np.arange(distri[0]+er[0], distri[1]+er[0], dtype=er.dtype).reshape((1,-1), order='F')
-        else: # Must collect faces or edge in same order than the one used to compute face centers
-          subdim = 2 if output_loc == 'FaceCenter' else 1
-          ordered_faces = PT.Zone.get_ordered_elements_per_dim(zone)[subdim]
-          distribs = [MT.getDistribution(e, 'Element')[1] for e in ordered_faces]
-          sizes =  [distri_elt[1] - distri_elt[0] for distri_elt in distribs]
-          pl = np.empty((1, sum(sizes)), dtype=zone[1].dtype, order='F')
-          start = 0
-          for i,e in enumerate(ordered_faces):
-            distri_elt = distribs[i]
-            er = PT.Element.Range(e)
-            pl[0,start:start+sizes[i]] = np.arange(distri_elt[0]+er[0], distri_elt[1]+er[0], dtype=er.dtype)
-            start += sizes[i]
-          distri = sum(distribs) # Compute global distrib
-
-        PT.new_IndexArray('PointList', pl, container)
-        PT.maia.newDistribution({'Index' : distri}, container)
+    place_in_container(zone, rq_dim, centers, comm)

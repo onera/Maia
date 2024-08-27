@@ -7,7 +7,7 @@ import maia.pytree.maia   as MT
 
 import maia
 
-from maia.algo.dist import geometry
+from maia.algo.dist.geometry import centers as GEO
 
 def to_expected_cyl(expected_cart):
   x = expected_cart[0::3]
@@ -22,24 +22,24 @@ def to_expected_cyl(expected_cart):
 def test_cell_vtx_connectivity_S():
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0]])
   MT.new_distribution({'Cell': [2,6,8]}, zone)
-  cell_vtx_idx, cell_vtx = geometry._cell_vtx_connectivity_S(zone, 2)
+  cell_vtx_idx, cell_vtx = GEO._cell_vtx_connectivity_S(zone, 2)
   assert (cell_vtx_idx ==[0,4,8,12,16]).all() 
   assert (cell_vtx == [3,4,9,8,  4,5,10,9,  6,7,12,11,  7,8,13,12]).all()
 
   MT.new_distribution({'Cell': [7,7,8]}, zone)
-  cell_vtx_idx, cell_vtx = geometry._cell_vtx_connectivity_S(zone, 2)
+  cell_vtx_idx, cell_vtx = GEO._cell_vtx_connectivity_S(zone, 2)
   assert cell_vtx_idx == np.zeros(1, np.int32)
   assert cell_vtx.size == 0 and cell_vtx.dtype == zone[1].dtype
 
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0],[2,1,0]])
   MT.new_distribution({'Cell': [2,6,8]}, zone)
-  cell_vtx_idx, cell_vtx = geometry._cell_vtx_connectivity_S(zone, 3)
+  cell_vtx_idx, cell_vtx = GEO._cell_vtx_connectivity_S(zone, 3)
   assert (cell_vtx_idx ==[0,8,16,24,32]).all() 
   assert (cell_vtx == [3,4,9,8,18,19,24,23,  4,5,10,9,19,20,25,24,  6,7,12,11,21,22,27,26,  7,8,13,12,22,23,28,27]).all()
 
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0],[4,3,0]])
   MT.new_distribution({'Cell': [15,17,24]}, zone)
-  cell_vtx_idx, cell_vtx = geometry._cell_vtx_connectivity_S(zone, 3)
+  cell_vtx_idx, cell_vtx = GEO._cell_vtx_connectivity_S(zone, 3)
   assert (cell_vtx_idx ==[0,8,16]).all() 
   assert (cell_vtx == [24,25,30,29,39,40,45,44,  31,32,37,36,46,47,52,51]).all()
 
@@ -81,7 +81,7 @@ def test_entity_vtx_connectivity_elt(distri_global, comm):
                          [113,114,115,116,    216,217,218,219,220]
                         ][comm.rank]
 
-  cell_vtx_idx, cell_vtx = geometry._entity_vtx_connectivity_elt(zone, comm, 3, distri_global)
+  cell_vtx_idx, cell_vtx = GEO._entity_vtx_connectivity_elt(zone, comm, 3, distri_global)
 
   assert np.array_equal(cell_vtx_idx, expected_cell_vtx_idx)
   assert np.array_equal(cell_vtx, expected_cell_vtx)
@@ -93,7 +93,7 @@ def test_entity_vtx_connectivity_elt(distri_global, comm):
                          [4,5,6],
                          [7,8,9]
                         ][comm.rank]
-    cell_vtx_idx, cell_vtx = geometry._entity_vtx_connectivity_elt(zone, comm, 2, False)
+    cell_vtx_idx, cell_vtx = GEO._entity_vtx_connectivity_elt(zone, comm, 2, False)
     assert np.array_equal(cell_vtx_idx, expected_cell_vtx_idx)
     assert np.array_equal(cell_vtx, expected_cell_vtx)
 
@@ -103,7 +103,7 @@ def test_compute_face_normal3d(comm):
   tree = maia.factory.generate_dist_block(3, 'Poly', comm)
   zone = PT.get_all_Zone_t(tree)[0]
   
-  face_normal = geometry.compute_face_normal(zone, comm)
+  face_normal = GEO.compute_face_normal(zone, comm)
 
   # All face area are 0.25
   if comm.Get_rank() == 0:
@@ -128,7 +128,7 @@ def test_compute_face_normal2d(comm):
   maia.algo.dist.convert_elements_to_ngon(tree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
   
-  face_normal = geometry.compute_face_normal(zone, comm)
+  face_normal = GEO.compute_face_normal(zone, comm)
 
   assert (face_normal == np.array([0.,0.,0.125,  0.,0.,0.125,   0.,0.,0.125, 0.,0.,0.125])).all()
 
@@ -141,7 +141,7 @@ def test_compute_face_center3d(cylindrical, comm):
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
-  face_center = geometry.compute_face_center(zone, comm)
+  face_center = GEO.compute_face_center(zone, comm)
 
   if comm.Get_rank() == 0:
     expected_face_center = np.array([
@@ -177,7 +177,7 @@ def test_compute_face_center2d(cylindrical, comm):
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
-  face_center = geometry.compute_face_center(zone, comm)
+  face_center = GEO.compute_face_center(zone, comm)
 
   if cylindrical:
     if comm.Get_rank() == 0:
@@ -200,7 +200,7 @@ def test_compute_cell_center(elt_kind, cylindrical, comm):
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
   
-  cell_center = geometry.compute_cell_center(zone, comm)
+  cell_center = GEO.compute_cell_center(zone, comm)
   
   if cylindrical:
       from math import pi
