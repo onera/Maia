@@ -48,17 +48,17 @@ void combine_to_tetra(py::array_t<int>& np_face_vtx_n,
                       py::array_t<T>& np_cell_vtx){
   
   int n_elt = np_face_vtx_n.size() / 4;
-  auto face_vtx  = np_face_vtx .template unchecked<1>();
-  auto cell_face = np_cell_face.template unchecked<1>();
-  auto cell_vtx  = np_cell_vtx .template mutable_unchecked<1>();
+  auto face_vtx  = np_face_vtx .data();
+  auto cell_face = np_cell_face.data();
+  auto cell_vtx  = np_cell_vtx .mutable_data();
 
   for (int i=0; i < n_elt; ++i) {
-    auto first_face  = &face_vtx[12*i];
+    auto first_face  = face_vtx + 12*i;
     auto second_face = first_face + 3;
     if (cell_face[4*i] > 0) // Outward normal
-      std::reverse_copy(first_face, first_face+3, &cell_vtx[4*i]);
+      std::reverse_copy(first_face, first_face+3, cell_vtx+4*i);
     else  // Inward normal
-      std::copy(first_face, first_face+3, &cell_vtx[4*i]);
+      std::copy(first_face, first_face+3, cell_vtx+4*i);
     
     cell_vtx[4*i+3] = find_unshared(first_face, first_face+3, second_face, second_face+3);
   }
@@ -71,24 +71,24 @@ void combine_to_pyra(py::array_t<int>& np_face_vtx_n,
                      py::array_t<T>& np_cell_vtx){
   
   int n_elt = np_face_vtx_n.size() / 5;
-  auto face_vtx_n = np_face_vtx_n.template unchecked<1>();
-  auto face_vtx   = np_face_vtx  .template unchecked<1>();
-  auto cell_face  = np_cell_face .template unchecked<1>();
-  auto cell_vtx   = np_cell_vtx  .template mutable_unchecked<1>();
+  auto face_vtx_n = np_face_vtx_n.data();
+  auto face_vtx   = np_face_vtx  .data();
+  auto cell_face  = np_cell_face .data();
+  auto cell_vtx   = np_cell_vtx  .mutable_data();
 
   for (int i=0; i < n_elt; ++i) {
     int  quad_idx = 0;
-    auto quad_face = &face_vtx[16*i];
+    auto quad_face = face_vtx + 16*i;
     while (face_vtx_n[5*i + quad_idx] != 4) { // Search the quad face
       quad_face += 3;
       quad_idx++;
     }
     int  tri_idx = (quad_idx + 1) % 5;
-    auto tri_face = &face_vtx[16*i + 3*tri_idx + int(tri_idx > quad_idx)]; 
+    auto tri_face = face_vtx + 16*i + 3*tri_idx + int(tri_idx > quad_idx); 
     if (cell_face[5*i + quad_idx] > 0) // Outward normal
-      std::reverse_copy(quad_face, quad_face+4, &cell_vtx[5*i]);
+      std::reverse_copy(quad_face, quad_face+4, cell_vtx+5*i);
     else  // Inward normal
-      std::copy(quad_face, quad_face+4, &cell_vtx[5*i]);
+      std::copy(quad_face, quad_face+4, cell_vtx+5*i);
 
     cell_vtx[5*i+4] = find_unshared(quad_face, quad_face+4, tri_face, tri_face+3);
   }
@@ -102,13 +102,13 @@ void combine_to_penta(py::array_t<int>& np_face_vtx_n,
                       py::array_t<T>& np_cell_vtx){
   
   int n_elt = np_face_vtx_n.size() / 5;
-  auto face_vtx_n = np_face_vtx_n.template unchecked<1>();
-  auto face_vtx   = np_face_vtx  .template unchecked<1>();
-  auto cell_face  = np_cell_face .template unchecked<1>();
-  auto cell_vtx   = np_cell_vtx  .template mutable_unchecked<1>();
+  auto face_vtx_n = np_face_vtx_n.data();
+  auto face_vtx   = np_face_vtx  .data();
+  auto cell_face  = np_cell_face .data();
+  auto cell_vtx   = np_cell_vtx  .mutable_data();
 
   std::vector<std::array<T, 4>> quads(3, {0,0,0,0});
-  const T* cur_face = (n_elt > 0) ? face_vtx.data(0) : NULL;
+  const T* cur_face = face_vtx;
 
   for (int i=0; i < n_elt; ++i) {
     bool tri_found = false;
@@ -118,9 +118,9 @@ void combine_to_penta(py::array_t<int>& np_face_vtx_n,
       if (face_vtx_n[5*i+j] == 3 && !tri_found) {
         tri_found = true;
         if (cell_face[5*i+j] > 0) // Outward normal
-          std::reverse_copy(cur_face, cur_face+3, &cell_vtx[6*i]);
+          std::reverse_copy(cur_face, cur_face+3, cell_vtx+6*i);
         else  // Inward normal
-          std::copy(cur_face, cur_face+3, &cell_vtx[6*i]);
+          std::copy(cur_face, cur_face+3, cell_vtx+6*i);
       }
       else if (face_vtx_n[5*i+j] == 4) {
         std::copy(cur_face, cur_face+4, quads[quad_cnt].begin());
@@ -141,22 +141,22 @@ void combine_to_hexa(py::array_t<int>& np_face_vtx_n,
                      py::array_t<T>& np_cell_vtx){
   
   int n_elt = np_face_vtx_n.size() / 6;
-  auto face_vtx_n = np_face_vtx_n.template unchecked<1>();
-  auto face_vtx   = np_face_vtx  .template unchecked<1>();
-  auto cell_face  = np_cell_face .template unchecked<1>();
-  auto cell_vtx   = np_cell_vtx  .template mutable_unchecked<1>();
+  auto face_vtx_n = np_face_vtx_n.data();
+  auto face_vtx   = np_face_vtx  .data();
+  auto cell_face  = np_cell_face .data();
+  auto cell_vtx   = np_cell_vtx  .mutable_data();
 
   std::vector<std::array<T, 4>> quads(4, {0,0,0,0});
-  const T* first_face = (n_elt > 0) ? face_vtx.data(0) : NULL;
+  const T* first_face = face_vtx;
 
   for (int i=0; i < n_elt; ++i) {
 
     int quad_cnt = 0;
 
     if (cell_face[6*i] > 0) // Outward normal
-      std::reverse_copy(first_face, first_face+4, &cell_vtx[8*i]);
+      std::reverse_copy(first_face, first_face+4, cell_vtx+8*i);
     else  // Inward normal
-      std::copy(first_face, first_face+4, &cell_vtx[8*i]);
+      std::copy(first_face, first_face+4, cell_vtx+8*i);
 
     for (int j=1; j < 6; ++j) {
         

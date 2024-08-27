@@ -68,7 +68,7 @@ def _ngon_to_elements_zone(zone, comm):
     # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
 
 
-  # Now deal cells 
+  # Now take care of the cells 
   nface_n = PT.Zone.NFaceNode(zone)
   cell_face_idx = PT.get_child_from_name(nface_n, 'ElementStartOffset')[1]
   cell_face     = PT.get_child_from_name(nface_n, 'ElementConnectivity')[1]
