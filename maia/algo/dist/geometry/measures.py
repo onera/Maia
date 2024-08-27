@@ -4,13 +4,14 @@ import maia.pytree.maia as MT
 
 import maia
 
-from maia.transfer import protocols as EP
+from maia.algo.dist import connectivity_utils as CU
+from maia.transfer  import protocols as EP
 
 from maia.utils import np_utils
 from maia.utils import logging as mlog
 
-from ..s_to_u       import zonedims_to_ngon, convert_s_to_ngon
-from .utils         import place_in_container
+from ..s_to_u import zonedims_to_ngon, convert_s_to_ngon
+from  .utils  import place_in_container
 
 def compute_edge_measure(zone, comm):
   coords = PT.Zone.coordinates(zone)
@@ -18,8 +19,7 @@ def compute_edge_measure(zone, comm):
 
   if PT.Zone.Type(zone) == "Unstructured":
     global_distri = PT.Zone.CellDimension == 1
-    from maia.algo.dist.geometry.centers import _entity_vtx_connectivity_elt
-    edge_vtx_idx, edge_vtx = _entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
+    edge_vtx_idx, edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
 
     dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
     vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
@@ -42,7 +42,6 @@ def compute_face_measure(zone, comm):
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
   # First, get face_vtx connectivity
-  from maia.algo.dist.geometry.centers import _entity_vtx_connectivity_elt, _mean_coords_from_connectivity
   if PT.Zone.Type(zone) == "Structured":
     vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
@@ -60,7 +59,7 @@ def compute_face_measure(zone, comm):
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
     else:
       global_distri = PT.Zone.CellDimension(zone) == 2
-      face_vtx_idx, face_vtx = _entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
+      face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
 
   # Get local coordinates
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
@@ -77,13 +76,14 @@ def compute_face_measure(zone, comm):
   # Compute area using cross product + triangulation from face meancenter
   _local_coords = np_utils.interweave_arrays(local_coords)
   _local_coords_next = np_utils.interweave_arrays(local_coords_next)
-  face_meancenter = _mean_coords_from_connectivity(face_vtx_idx, *local_coords)
   _local_coords.shape        = (-1,3)
   _local_coords_next.shape   = (-1,3)
-  face_meancenter.shape      = (-1,3)
+
+  face_vtx_n      = np.diff(face_vtx_idx)
+  face_meancenter = np.add.reduceat(_local_coords, face_vtx_idx[:-1]) / face_vtx_n.reshape((-1,1))
 
   # |K| = ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
-  reps = np_utils.repeated_arange(np.diff(face_vtx_idx)) # To access face center
+  reps = np_utils.repeated_arange(face_vtx_n) # To access face center
   face_center_reps = face_meancenter[reps]
   crossprod = np.cross(_local_coords - face_center_reps, _local_coords_next - face_center_reps)
   # Sum per face
