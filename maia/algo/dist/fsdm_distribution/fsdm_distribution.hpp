@@ -92,6 +92,7 @@ redistribute_to_match_face_dist(
 
   std_e::jagged_span<I,2> pl(std_e::make_span(point_list),std_e::make_span(partition_indices));
   std::vector<I> pl_new = std_e::all_to_all_v(pl,comm).retrieve_values();
+  I pl_size = pl_new.size();
 
   int n_value = values.size();
   using value_range = typename Range_of_ranges::value_type;
@@ -102,7 +103,11 @@ redistribute_to_match_face_dist(
     values_new[i] = std_e::all_to_all_v(val,comm).retrieve_values();
   }
 
-  return std::make_pair(pl_new,values_new);
+  std::vector<I> partial_dist(3);
+  partial_dist[0] = std_e::ex_scan(pl_size,MPI_SUM,0,comm);
+  partial_dist[1] = partial_dist[0] + pl_size;
+  partial_dist[2] = std_e::all_reduce(pl_size,MPI_SUM,comm);
+  return std::make_tuple(std::move(partial_dist),std::move(pl_new),std::move(values_new));
 }
 // distribute_bc_ids_to_match_face_dist impl }
 
