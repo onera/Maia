@@ -62,7 +62,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   converted_bc   = lambda n : PT.get_label(n) == 'BC_t' and PT.Subset.GridLocation(n) == keep_location
   unconverted_bc = lambda n : PT.get_label(n) == 'BC_t' and PT.Subset.GridLocation(n) in skip_location
   if pdm_group is not None:
-    group = np.copy(pdm_group)
+    group = np_utils.safe_int_cast(np.copy(pdm_group), zone[1].dtype)
     for i_bc, bc in enumerate(PT.iter_children_from_predicates(zone, ['ZoneBC_t', converted_bc])):
       PT.rm_children_from_name(bc, 'PointRange')
       PT.rm_children_from_name(bc, 'PointList')
@@ -92,22 +92,24 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[-1], comm, distrib_cell.dtype)
 
     # Create NGON
-    ngon_er  = np.array([1, n_face], dtype=dface_vtx.dtype)
-    ngon_pe  = _create_pe_global(dface_cell, n_face)
+    ngon_er  = np.array([1, n_face], dtype=zone[1].dtype)
+    ngon_pe  = _create_pe_global(np_utils.safe_int_cast(dface_cell, ngon_er.dtype), n_face)
+    ngon_ec  = np_utils.safe_int_cast(dface_vtx, ngon_er.dtype)
     ngon_eso = np_utils.safe_int_cast(dface_vtx_idx, ngon_er.dtype)
     ngon_eso += distrib_face_vtx[i_rank]
 
-    ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=dface_vtx, pe=ngon_pe, parent=zone)
+    ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe, parent=zone)
     MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
                         'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_face_vtx, comm)},
                         ngon_n)
 
     # Create NFACE
-    nface_er  = np.array([1, n_cell], dtype=dcell_face.dtype) + n_face
+    nface_er  = np.array([1, n_cell], dtype=zone[1].dtype) + n_face
+    nface_ec  = np_utils.safe_int_cast(dcell_face, nface_er.dtype)
     nface_eso = np_utils.safe_int_cast(dcell_face_idx, nface_er.dtype)
     nface_eso += distrib_cell_face[i_rank]
 
-    nfac_n = PT.new_NFaceElements(erange=nface_er, eso=nface_eso, ec=dcell_face, parent=zone)
+    nfac_n = PT.new_NFaceElements(erange=nface_er, eso=nface_eso, ec=nface_ec, parent=zone)
     MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_cell, comm),
                         'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_cell_face, comm)},
                          nfac_n)
@@ -124,17 +126,19 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
 
     distrib_face_vtx  = par_utils.gather_and_shift(dface_edge_idx[-1], comm, distrib_face.dtype) # Same as distri_face_edge
     
-    edge_er  = np.array([1, n_edge], dtype=dedge_vtx.dtype)
-    edge_pe  = _create_pe_global(dedge_face, n_edge)
+    edge_er = np.array([1, n_edge], dtype=zone[1].dtype)
+    edge_ec = np_utils.safe_int_cast(dedge_vtx, edge_er.dtype)
+    edge_pe = _create_pe_global(np_utils.safe_int_cast(dedge_face, edge_er.dtype), n_edge)
 
-    bar_n = PT.new_Elements('EdgeElements', 'BAR_2', erange=edge_er, econn=dedge_vtx, parent=zone)
+    bar_n = PT.new_Elements('EdgeElements', 'BAR_2', erange=edge_er, econn=edge_ec, parent=zone)
     PT.new_DataArray('ParentElements', edge_pe, parent=bar_n)
     MT.newDistribution({'Element' : par_utils.full_to_partial_distribution(distrib_edge, comm)},
                          bar_n)
 
     # Create NGON (combine face_edge + edge_vtx)
-    ngon_er = np.array([1, n_face], dtype=dface_edge.dtype) + n_edge
+    ngon_er = np.array([1, n_face], dtype=zone[1].dtype) + n_edge
     ngon_ec = PDM.compute_dfacevtx_from_face_and_edge(comm, distrib_face, distrib_edge, dface_edge_idx, dface_edge, dedge_vtx)
+    ngon_ec  = np_utils.safe_int_cast(ngon_ec, ngon_er.dtype)
     ngon_eso = np_utils.safe_int_cast(dface_edge_idx, ngon_er.dtype)
     ngon_eso += distrib_face_vtx[i_rank]
 
