@@ -8,7 +8,7 @@ from   maia.utils     import logging as mlog
 
 from   maia.algo.part import connectivity_utils as CU
 
-from .utils                   import place_in_container
+from .utils import place_in_container
 
 import cmaia.part_algo as cpart_algo
 

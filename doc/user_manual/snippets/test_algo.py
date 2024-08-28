@@ -153,6 +153,17 @@ def test_compute_centers():
   assert maia.pytree.get_node_from_name(dist_tree, 'Geometry_3d') is not None
   #compute_centers@end
 
+def test_compute_measures():
+  #compute_measures@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+
+  maia.algo.compute_measures(dist_tree, 3, MPI.COMM_WORLD)
+  assert maia.pytree.get_node_from_name(dist_tree, 'Geometry_3d') is not None
+  #compute_measures@end
+
 def test_compute_face_center():
   #compute_face_center@start
   from mpi4py import MPI

@@ -80,23 +80,15 @@ def compute_centers(t, dim, comm=None):
 def compute_measures(t, dim, comm=None):
   """Compute the lenght, area or volume of the specified mesh entity.
 
-  The mesh entity on which measures are computed must be specified using
+  As for :func:`compute_centers`, 
+  the mesh entity on which measures are computed must be specified using
   ``dim`` parameter: values of 1, 2, and 3 correspond respectively to edges,
   faces and cells. 
   For convenience, the keyword ``CellCenter`` can be used to indicate, on
-  each zone, the higher available dimension. The following table summarizes
-  the possibilities. Note that some combinations do not make sense (zones in this
+  each zone, the higher available dimension. See :func:`compute_centers` for the
+  summarizing table.
+  Note that some combinations do not make sense (zones in this
   situation are skipped).
-
-  +---------+-------+-------+-------+----------------+
-  |         | dim=1 | dim=2 | dim=3 | dim=CellCenter |
-  +=========+=======+=======+=======+================+
-  | 3D mesh | Edges | Faces | Cells | Cells          |
-  +---------+-------+-------+-------+----------------+
-  | 2D mesh | Edges | Faces |       | Faces          |
-  +---------+-------+-------+-------+----------------+
-  | 1D mesh | Edges |       |       | Edges          |
-  +---------+-------+-------+-------+----------------+
 
   Warning:
     For structured meshes, ``dim = 1`` is not yet implemented.
@@ -105,7 +97,7 @@ def compute_measures(t, dim, comm=None):
 
   Input tree is modified inplace : results are stored in a
   ``DiscreteData_t`` container named ``Geometry_{3|2|1}d``. Note that for
-  unstructured zones described by standard elements, centers are computed
+  unstructured zones described by standard elements, measures are computed
   only for elements explicitly defined in sections.
 
   Args:
@@ -115,8 +107,8 @@ def compute_measures(t, dim, comm=None):
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #compute_centers@start ## TODO
-        :end-before: #compute_centers@end
+        :start-after: #compute_measures@start
+        :end-before: #compute_measures@end
         :dedent: 2
   """
 

@@ -79,7 +79,6 @@ def compute_face_center(zone, comm):
   zone_dim = PT.Zone.CellDimension(zone)
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
-  # TODO Implementation for U/elts
   if PT.Zone.Type(zone) == "Structured":
     vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
