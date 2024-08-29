@@ -13,7 +13,8 @@ LOC_TO_DIM   = {'Vertex':0,
 
 DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
-                 2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter'},
+                 2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter', 
+                     'IFaceCenter': 'CellCenter', 'JFaceCenter': 'CellCenter', 'KFaceCenter': 'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
 def discover_containers(part_zones, container_name, patch_name, patch_type, comm):

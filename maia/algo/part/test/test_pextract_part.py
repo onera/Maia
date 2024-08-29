@@ -48,8 +48,8 @@ def test_extract_part_simple_u(location, comm):
 def test_extract_part_simple_s(bc_loc, comm):
   part_tree = sample_part_tree('Structured', comm, bc_loc)
 
-  location = 'Vertex' if bc_loc=='Vertex' else 'KFaceCenter'
-  pr = PT.get_value(PT.get_child_from_predicates(part_tree, f'CGNSBase_t/Zone_t/ZoneBC_t/Zmax/PointRange'))
+  location = 'Vertex' if bc_loc=='Vertex' else 'JFaceCenter'
+  pr = PT.get_value(PT.get_child_from_predicates(part_tree, f'CGNSBase_t/Zone_t/ZoneBC_t/Ymax/PointRange'))
   ex_zones, etb_zones = EP.extract_part_one_domain_s(PT.get_all_Zone_t(part_tree), \
       [pr], location, comm)
 
@@ -146,9 +146,10 @@ def test_exch_field(cgns_name, partial, comm):
     assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
     if cgns_name=='Structured':
       pr = PT.get_node_from_name(extr_sol, 'PointRange')[1]
-      i_ar = np.arange(min(pr[0]), max(pr[0])+1)
-      j_ar = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
-      k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
+      assert pr.shape == (2,2)
+      i_ar = np.arange(pr[0,0], pr[0,1]+1)
+      j_ar = np.array([[1]]) # This is the extracting direction
+      k_ar = np.arange(pr[1,0], pr[1,1]+1).reshape(-1,1,1)
       pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, 'Vertex', PT.Zone.VertexSize(extr_zone)).flatten()
       lnum = extractor.exch_tool_box['Base/zone'][PT.get_name(extr_zone)]['parent_lnum_vtx']
       lnum = lnum[pl-1]
