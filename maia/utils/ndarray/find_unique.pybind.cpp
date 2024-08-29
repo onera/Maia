@@ -1,4 +1,5 @@
 #include "maia/utils/ndarray/find_unique.pybind.hpp"
+#include "std_e/base/msg_exception.hpp"
 namespace py = pybind11;
 
 py::array_t<bool>
@@ -39,7 +40,6 @@ is_unique_cst_stride_hash(int               n_elt,
   std::sort(order, order+n_elt, [&](int i, int j) {return elt_key[i] < elt_key[j];});
 
   // > Create conflict idx
-  int n_elem_in_conflict = 0;
   int n_conflict = 0;
   int *conflict_idx = new int[n_elt+1];
   conflict_idx[0] = 0;
@@ -125,7 +125,6 @@ is_unique_cst_stride_sort(int               n_elt,
   std::sort(order, order+n_elt, [&](int i, int j) {return elt_key[i] < elt_key[j];});
 
   // > Create conflict idx
-  int n_elem_in_conflict = 0;
   int n_conflict = 0;
   int *conflict_idx = new int[n_elt+1];
   conflict_idx[0] = 0;
@@ -264,4 +263,34 @@ std::tuple<py::array_t<int32_t>, py::array_t<int64_t>>
 make_unique_by_stride_int64(py::array_t<int32_t>& np_stride,
                             py::array_t<int64_t>& np_array) {
   return make_unique_by_stride(np_stride, np_array);
+}
+
+
+template<typename T0, typename T1> void
+_sort_by_stride(const py::array_t<T0> np_stride,
+                      py::array_t<T1> np_array) {
+
+  int n_elt   = np_stride.size() - 1;
+  auto stride = np_stride.data();
+  auto array  = np_array.mutable_data();
+  
+  for (int i=0; i<n_elt; ++i) {
+    int beg_stride = stride[i];
+    int end_stride = stride[i+1];
+
+    std::sort(array+beg_stride, array+end_stride);
+  }
+}
+
+void
+sort_by_stride(const py::array np_stride,
+                     py::array np_array) {
+  std::string idx_type = py::str(np_stride.dtype());
+  std::string elt_type = py::str(np_array .dtype());
+       if (idx_type=="int32" && elt_type=="int32") _sort_by_stride<int32_t,int32_t>(np_stride, np_array);
+  else if (idx_type=="int32" && elt_type=="int64") _sort_by_stride<int32_t,int64_t>(np_stride, np_array);
+  else if (idx_type=="int64" && elt_type=="int32") _sort_by_stride<int64_t,int32_t>(np_stride, np_array);
+  else if (idx_type=="int64" && elt_type=="int64") _sort_by_stride<int64_t,int64_t>(np_stride, np_array);
+  else throw std_e::msg_exception("sort_by_stride: np_stride.dtype and np_array.dtype"
+                                  " can only be `int32` or `int64`, but `np_stride` is `"+idx_type+"` and `np_array` is `"+elt_type+"`");
 }

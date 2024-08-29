@@ -17,3 +17,7 @@ make_unique_by_stride_int32(pybind11::array_t<int32_t>& np_stride,
 std::tuple<pybind11::array_t<int32_t>, pybind11::array_t<int64_t>>
 make_unique_by_stride_int64(pybind11::array_t<int32_t>& np_stride,
                             pybind11::array_t<int64_t>& np_array);
+
+void
+sort_by_stride(const pybind11::array np_stride,
+                     pybind11::array np_array);

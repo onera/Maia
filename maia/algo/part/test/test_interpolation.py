@@ -6,6 +6,7 @@ import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from maia.utils.ndarray import np_utils
 
 import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -23,14 +24,17 @@ def test_cell_tgt_to_vtx_tgt():
   cell_tgt_idx = np.array([0,    0,     2,       3,      3,      6], dtype=np.int32)
   cell_tgt     = np.array([          11,9,     101,         6, 2,1], dtype=pdm_gnum_dtype)
   cell_vtx_wgt = np.array([3,9,5, 3,9,5, 3,5,2,1, 10,2,3, 10,2,3, 10,2,3], dtype=np.float64)*0.1
-  
-  # expctd_vtx_to_tgt result order known after print because argsort in function is unpredictable
+
   expctd_vtx_to_tgt_idx = np.array([0,1,         5,             11, 11,   14, 14, 14, 14, 16,     19, 19, 19], dtype=np.int32)
-  expctd_vtx_to_tgt     = np.array([101, 2,6,1,101, 2,6,11,101,9,1, 9,11,101,           9,11,  6,2,1], dtype=pdm_gnum_dtype)
+  expctd_vtx_to_tgt     = np.array([101, 1,2,6,101, 1,2,6,9,11,101, 9,11,101,           9,11,  1,2,6], dtype=pdm_gnum_dtype)
   expctd_vtx_to_tgt_wgt = np.array([1, 2,2,2,2, 3,3,3,3,3,3, 5,5,5, 9,9, 10,10,10], dtype=np.float64)*0.1
 
   vtx_to_tgt_idx, vtx_to_tgt, vtx_to_tgt_wgt = ITP._cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vtx_wgt, n_vtx)
-  
+
+  # The order of `vtx_to_tgt` does not matter and is not specified by the algorithm,
+  # so whatever we get, we can order it before checking it
+  np_utils.sort_by_stride(vtx_to_tgt_idx,vtx_to_tgt, inplace=True)
+
   assert np.array_equal(vtx_to_tgt_idx, expctd_vtx_to_tgt_idx)
   assert np.array_equal(vtx_to_tgt    , expctd_vtx_to_tgt    )
   assert np.array_equal(vtx_to_tgt_wgt, expctd_vtx_to_tgt_wgt)
