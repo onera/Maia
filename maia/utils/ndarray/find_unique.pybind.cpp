@@ -41,7 +41,7 @@ is_unique_cst_stride_hash(int               n_elt,
   // > Create conflict idx
   int n_elem_in_conflict = 0;
   int n_conflict = 0;
-  int *conflict_idx = new int[n_elt];
+  int *conflict_idx = new int[n_elt+1];
   conflict_idx[0] = 0;
   for (int i_elt=0; i_elt<n_elt-1; i_elt++) {
     if (elt_key[order[i_elt]]!=elt_key[order[i_elt+1]]) {
@@ -127,7 +127,7 @@ is_unique_cst_stride_sort(int               n_elt,
   // > Create conflict idx
   int n_elem_in_conflict = 0;
   int n_conflict = 0;
-  int *conflict_idx = new int[n_elt];
+  int *conflict_idx = new int[n_elt+1];
   conflict_idx[0] = 0;
   for (int i_elt=0; i_elt<n_elt-1; i_elt++) {
     if (elt_key[order[i_elt]]!=elt_key[order[i_elt+1]]) {
