@@ -100,3 +100,31 @@ def test_find_boundary_edges(comm, elmt_t):
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
   edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
   assert len(edge_bcs)==3
+
+
+@pytest_parallel.mark.parallel(1)
+@pytest.mark.parametrize('root_t', ["CGNSTree_t", "Zone_t"])
+def test_extract_edges(comm, root_t):
+  from maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', comm)
+
+  is_edge_bc = lambda n: PT.predicate.is_bc_of_loc(n, 'EdgeCenter')
+  point_list = [PT.Subset.getPatch(n)[1][0] for n in PT.get_nodes_from_predicate(dist_tree, is_edge_bc)[2:6]]
+
+  if root_t=='Zone_t':
+    _dist_tree = PT.get_node_from_label(dist_tree, 'Zone_t')
+    domain_pl = np.concatenate(point_list)
+  else:
+    _dist_tree = dist_tree
+    domain_pl = {'cube/zone': np.concatenate(point_list)}
+
+  edge_dist_tree = RR.extract_edges(_dist_tree, domain_pl, comm)
+
+  if root_t=='Zone_t':
+    _edge_dist_zone = edge_dist_tree
+  else:
+    _edge_dist_zone = PT.get_node_from_label(edge_dist_tree, 'Zone_t')
+
+  assert PT.Zone.n_vtx (_edge_dist_zone)==9
+  assert PT.Zone.n_cell(_edge_dist_zone)==8
+  assert len(PT.get_nodes_from_label(_edge_dist_zone, 'BC_t'))==4
