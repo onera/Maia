@@ -59,7 +59,43 @@ ZoneBC ZoneBC_t:
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
   assert P.belongs_to_family(W.get_node_from_path(node, 'BC1/FamilyName'), 'SecondFamily') == False
 
- 
+def test_is_bc_of_loc():
+  yt = """
+  ZoneBC ZoneBC_t:
+    BC1 BC_t:
+      GridLocation GridLocation_t "Vertex":
+    BC2 BC_t:
+    BC3 BC_t:
+      GridLocation GridLocation_t "EdgeCenter":
+  """
+  node = parse_yaml_cgns.to_node(yt)
+  assert P.is_bc_of_loc(W.get_node_from_name(node, 'BC1'), 'Vertex'    )  == True
+  assert P.is_bc_of_loc(W.get_node_from_name(node, 'BC2'), 'Vertex'    )  == True
+  assert P.is_bc_of_loc(W.get_node_from_name(node, 'BC2'), 'EdgeCenter')  == False
+  assert P.is_bc_of_loc(W.get_node_from_name(node, 'BC3'), 'FaceCenter')  == False
+
+def test_is_elmt_of_type():
+  yt = """
+  Zone Zone_t:
+    NGON   Elements_t I4 [22, 0]:
+    TRI    Elements_t I4 [ 5, 0]:
+    NFACE  Elements_t I4 [23, 0]:
+    NODE   Elements_t I4 [ 2, 0]:
+    TETRA  Elements_t I4 [11, 0]:
+    BAR    Elements_t I4 [ 4, 0]:
+    ZoneBC ZoneBC_t:
+  """
+  node = parse_yaml_cgns.to_node(yt)
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'ZoneBC'),                           )  == False
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'TRI'   ),                           )  == True
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'NODE'  ),                      dim=0)  == True
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'NODE'  ),                      dim=2)  == False
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'NGON'  ), cgns_name='NGON_n'        )  == True
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'TETRA' ), cgns_name='TRI_3'         )  == False
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'NFACE' ), cgns_name='NFACE_n', dim=3)  == True
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'BAR'   ), cgns_name='NGON_n' , dim=1)  == False
+  assert P.is_elmt_of_type(W.get_node_from_name(node, 'BAR'   ), cgns_name='BAR_2'  , dim=2)  == False
+
 def test_auto_predicate():
   nface = ['NFace', np.array([23, 0], np.int32), [], 'Elements_t']
 
