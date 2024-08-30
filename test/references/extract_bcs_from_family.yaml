@@ -67,29 +67,29 @@ Base CGNSBase_t I4 [2, 3]:
               103, 97, 117, 118, 98, 97, 117, 123, 124, 118, 97, 103, 123, 117]
     ZoneBC ZoneBC_t:
       Zmax BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t:
           I4 : [[149, 136, 133, 132, 128, 140, 139, 114, 115, 116, 84, 85, 113, 110, 109, 81, 86, 112, 111, 106, 72, 68,
                 102, 100, 105]]
       Xmin BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t:
           I4 : [[1, 7, 53, 54, 61, 4, 6, 56, 57, 58, 145, 142, 79, 80, 74, 147, 143, 78, 77, 76, 150, 141, 83, 82, 71]]
       Ymin BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t:
           I4 : [[3, 5, 144, 146, 148, 12, 10, 137, 138, 135, 13, 23, 121, 122, 134, 16, 22, 120, 123, 131, 17, 20, 125, 127,
                 130]]
       Ymax BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t:
           I4 : [[62, 59, 73, 75, 70, 63, 65, 66, 67, 69, 41, 45, 96, 95, 101, 43, 44, 97, 98, 99, 38, 47, 92, 93, 104]]
       Zmin BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t:
           I4 : [[2, 11, 14, 15, 19, 8, 9, 28, 27, 26, 52, 51, 29, 32, 33, 55, 50, 30, 31, 36, 60, 64, 40, 42, 37]]
       Xmax BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t:
           I4 : [[18, 25, 34, 35, 39, 21, 24, 49, 48, 46, 124, 118, 87, 90, 91, 126, 119, 88, 89, 94, 129, 117, 108, 107,
                 103]]

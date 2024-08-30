@@ -274,7 +274,8 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
         bc_gn = bc_info['group_entity_ln_to_gn']
         if bc_pl.size != 0:
           bc_name = bc_path.split('/')[-1]
-          bc_n = PT.new_BC(bc_name, point_list=bc_pl.reshape((1,-1), order='F'), loc=dim_name, parent=zonebc_n)
+          bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) else dim_name
+          bc_n = PT.new_BC(bc_name, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
           PT.maia.newGlobalNumbering({'Index':bc_gn}, parent=bc_n)
     bc_type +=1 
 
