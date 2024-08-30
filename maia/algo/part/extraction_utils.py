@@ -229,8 +229,14 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
 
       vtx_size = PT.Zone.VertexSize(extract_zone)
       if vtx_size.size==2:
-        vtx_size = np.concatenate([vtx_size,np.array([1], dtype=vtx_size.dtype)])
-      part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, DIMM_TO_DIMF[mesh_dim][grid_location], vtx_size)
+        # To retreive numbering, use new vertex size with old location
+        # It is important to insert 1 at good position, given by extract_dir
+        mask = np.ones(3, bool)
+        mask[etb['@@maia_extract_direction@@']] = False
+        _vtx_size = np.ones(3, vtx_size.dtype)
+        _vtx_size[mask] = vtx_size
+        vtx_size = _vtx_size
+      part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, grid_location, vtx_size)
       part1_pr.append(np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
                                 [min(part1_ijk[1]),max(part1_ijk[1])],
                                 [min(part1_ijk[2]),max(part1_ijk[2])]]))

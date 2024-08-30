@@ -226,15 +226,56 @@ def test_zsr_api(cgns_name, comm):
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
-def test_bc_name_api(cgns_name, comm):
+@pytest.mark.parametrize("bc_loc" , ['Face', 'Vtx'])
+def test_bc_name_api(cgns_name, bc_loc, comm):
   dist_tree = maia.factory.generate_dist_block(4, cgns_name, comm)
+
+  irank = comm.Get_rank()
+  bc = PT.get_node_from_name(dist_tree, 'Xmin')
+  if cgns_name == 'Structured' and bc_loc == 'Face':
+    # Move BC to FaceCenter
+    PT.update_child(bc, 'GridLocation', value='IFaceCenter')
+    pr = PT.get_child_from_name(bc, 'PointRange')[1]
+    distri = PT.get_node_from_name(bc, 'Index')[1]
+    distri[:] = [3*irank, 3*(irank+1), 9]
+    pr[1:,1] -= 1
+  elif cgns_name == 'Poly' and bc_loc == 'Vtx':
+    # Move BC to Vertex
+    PT.update_child(bc, 'GridLocation', value='Vertex')
+    pl = PT.get_child_from_name(bc, 'PointList')
+    distri = PT.get_node_from_name(bc, 'Index')[1]
+    distri[:] = [5*irank, 16 if irank==2 else 5*(irank+1), 16]
+    _pl = (np.arange(1, 4**3, 4, dtype=pl[1].dtype)[distri[0]:distri[1]]).reshape((1,-1), order='F')
+    PT.set_value(pl, _pl)
+  
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
+  # Add a (full) field to the BC
+  bc = PT.get_node_from_name(part_tree, 'Xmin')
+  if bc is not None:
+    bcds = PT.new_BCDataSet(parent=bc)
+    PT.new_BCData('DirichletData', fields={'range': np.arange(PT.Subset.n_elem(bc))}, parent=bcds)
+  
   extracted_tree = EP.extract_part_from_bc_name(part_tree, 'Xmin', comm)
 
   zone_n = PT.get_all_Zone_t(extracted_tree)
   n_cell_extr = PT.Zone.n_cell(zone_n[0]) if len(zone_n)==1 else 0
-  assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 9
+  if cgns_name == 'Poly' and bc_loc == 'Vtx':
+    # In this case, we are creating a point cloud
+    assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 0
+  else:
+    assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 9
+
+  if len(zone_n) > 0:
+    zsr = PT.get_node_from_label(extracted_tree, 'ZoneSubRegion_t')
+    expt_loc  = "Vertex" if bc_loc == 'Vtx' else 'CellCenter'
+    expt_size = PT.Zone.VertexSize(zone_n[0]) if bc_loc == 'Vtx' else PT.Zone.CellSize(zone_n[0])
+    assert PT.Subset.GridLocation(zsr) == expt_loc
+    patch = PT.Subset.getPatch(zsr)
+    if cgns_name == 'Structured':
+      assert (PT.PointRange.SizePerIndex(patch) == expt_size).all()
+    else:
+      assert PT.PointList.n_elem(patch) == expt_size.prod()
 
 
 @pytest_parallel.mark.parallel(3)
