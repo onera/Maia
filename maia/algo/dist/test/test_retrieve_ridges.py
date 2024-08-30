@@ -83,18 +83,19 @@ def test_share_parent_bc_info(comm):
 
 
 @pytest_parallel.mark.parallel(3)
-def test_find_boundary_edges(comm):
-  dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+@pytest.mark.parametrize('elmt_t', ["Poly", "HEXA_8"])
+def test_find_boundary_edges(comm, elmt_t):
+  dist_tree = maia.factory.generate_dist_block(3, elmt_t, comm)
 
   bcs_identifiers = [["Xmin"], ["Ymin", "Zmax"]]
   new_edge_path = RR.find_boundary_edges(dist_tree, comm,  bcs_identifiers)
   
   maia.io.dist_tree_to_file(dist_tree, 'out.cgns', comm)
 
-  assert new_edge_path==['Base/zone/BAR_2']
+  assert new_edge_path==['Base/zone/topo_edge']
   bar_n = PT.get_node_from_path(dist_tree, new_edge_path[0])
   bar_elmt_range = PT.get_child_from_name(bar_n, 'ElementRange')[1]
-  assert np.array_equal(bar_elmt_range, np.array([44, 60]))
+  expected_elmt_range = np.array([37, 53]) if elmt_t=="Poly" else np.array([33, 49])
 
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
   edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)

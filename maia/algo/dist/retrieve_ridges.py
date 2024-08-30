@@ -128,23 +128,36 @@ def find_boundary_edges(dist_tree, comm, bc_identifiers=list()) -> None:
     dgrp_face_idx, pl = np_utils.concatenate_np_arrays(bc_pls)
 
     # > Get connectivity of surfacic elements and transfer it to pl "partition" for PDM
-    if PT.Zone.has_ngon_elements(zone):
-      ngon_n = PT.Zone.NGonNode(zone)
-      dface_vtx_idx  = np_utils.safe_int_cast(PT.get_child_from_name(ngon_n, 'ElementStartOffset')[1], np.int32)
-      dface_vtx      = PT.get_child_from_name(ngon_n, 'ElementConnectivity')[1]
-      dface_distrib  = PT.maia.get_distribution(ngon_n, 'Element')[1]
-      elt_range      = PT.get_child_from_name(ngon_n, 'ElementRange')[1]
-      elt_range_min  = elt_range[0]
-      dface_vtx_strd = np.diff(dface_vtx_idx)#[:dn_elmt]
-      dn_elmt        = dface_distrib[1]-dface_distrib[0]
-    else:
-      raise NotImplementedError("U-Elements not implemented yet.")
+    delmt_vtx_strd = list()
+    delmt_vtx      = list()
+    delmt_gnum     = list()
+    is_2d_elmt = lambda n: PT.predicate.is_elmt_of_type(n, dim=2)
+    for elmt_n in PT.get_children_from_predicate(zone, is_2d_elmt):
+      elmt_distrib = PT.maia.get_distribution(elmt_n, 'Element')[1]
+      elmt_range   = PT.Element.Range(elmt_n)
+      elmt_vtx     = PT.get_child_from_name(elmt_n, 'ElementConnectivity')[1]
+      elmt_gnum    = np.arange(elmt_distrib[0], elmt_distrib[1], dtype=pdm_dtype) + elmt_range[0]
+      if PT.Element.CGNSName(elmt_n) == "NGON_n":
+        elmt_vtx_idx  = np_utils.safe_int_cast(PT.get_child_from_name(elmt_n, 'ElementStartOffset')[1], np.int32)
+        elmt_vtx_strd = np.diff(elmt_vtx_idx)
+      else:
+        n_elmt        = elmt_distrib[1]-elmt_distrib[0]
+        elmt_n_vtx    = PT.Element.NVtx(elmt_n)
+        elmt_vtx_strd = np.full(n_elmt, elmt_n_vtx, dtype=np.int32)
+      
+      delmt_vtx_strd.append(elmt_vtx_strd)
+      delmt_vtx     .append(elmt_vtx)
+      delmt_gnum    .append(elmt_gnum.astype(dtype=pdm_dtype))
 
-    face_vtx_strd, face_vtx = maia.transfer.protocols.block_to_part_strided(dface_vtx_strd,
-                                                                            dface_vtx,
-                                                                            dface_distrib,
-                                                                            [pl-elt_range_min+1],
-                                                                            comm)
+    # > Create part_to_part to get connectivity in PL frame
+    ptp       = maia.transfer.protocols.PartToPart(delmt_gnum, [pl], comm)
+    ref_lnum2 = ptp.get_referenced_lnum2()
+    p2p_type  = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1
+    req_id    = ptp.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                          p2p_type,
+                          delmt_vtx,
+                          part1_stride=delmt_vtx_strd)
+    face_vtx_strd, face_vtx = ptp.wait(req_id)
 
 
     # > Prepare arguments and call PDM function
@@ -166,28 +179,43 @@ def find_boundary_edges(dist_tree, comm, bc_identifiers=list()) -> None:
     #   If already BAR node -> create new one and no check (but warning)
     #   If ngon  entry -> add BAR after all other elements
     #   If nodal entry -> add BAR before or after previous elements (depending on entry order) -> may need to offset PL and element_range
-    is_bar_elmt  = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2'
+    # > Create element node name
+    is_bar_elmt  = lambda n: PT.predicate.is_elmt_of_type(n, cgns_name="BAR_2")
     bar_nodes    = PT.get_children_from_predicate(zone, is_bar_elmt)
     bar_names    = [PT.get_name(bar_n) for bar_n in bar_nodes]
-    new_bar_name = 'BAR_2'
+    new_bar_name = 'topo_edge'
     i_name = 0
     while new_bar_name in bar_names:
-      new_bar_name = f'BAR_2.{i_name}'
+      new_bar_name = f'topo_edge.{i_name}'
       i_name+=1
 
-    if PT.Zone.has_ngon_elements(zone):
-      elt_range_edges = np.array([elt_range[-1]+PT.Zone.n_cell(zone),
-                                  elt_range[-1]+PT.Zone.n_cell(zone)+distrib_ridge[-1]], dtype=pdm_dtype)
-      elt_n = PT.new_Elements(new_bar_name, 'BAR_2', erange=elt_range_edges, econn=dridge_vtx, parent=zone)
-      dedges_partial_distrib = par_utils.full_to_partial_distribution(distrib_ridge, comm)
-      PT.maia.new_distribution({'Element':dedges_partial_distrib}, parent=elt_n)
+    # > Find where to insert 
+    is_0d_elmt = lambda n: PT.predicate.is_elmt_of_type(n, dim=0)
+    if len(PT.get_children_from_predicate(zone, is_0d_elmt))>0:
+      raise NotImplementedError("Meshes with 0d elements aren't managed.")
+    
+    zone_ordering = PT.Zone.elt_ordering_by_dim(zone)
+    offset_new_bar = 0
+    if not PT.Zone.has_ngon_elements(zone) and zone_ordering==1:
+      apply_offset_to_elts(zone, distrib_ridge[-1], 0)
     else:
-      raise NotImplementedError("U-Elements not implemented yet.")
+      is_elmt = lambda n: PT.predicate.is_elmt_of_type(n)
+      for elmt_n in PT.get_children_from_predicate(zone, is_2d_elmt):
+        elmt_range = PT.Element.Range(elmt_n)
+        offset_new_bar = max(offset_new_bar, elmt_range[1])
+    offset_new_bar+=1
+      
+    elt_range_edges = np.array([offset_new_bar,
+                                offset_new_bar+distrib_ridge[-1]], dtype=pdm_dtype)
+    elt_n = PT.new_Elements(new_bar_name, 'BAR_2', erange=elt_range_edges, econn=dridge_vtx, parent=zone)
+    dedges_partial_distrib = par_utils.full_to_partial_distribution(distrib_ridge, comm)
+    PT.maia.new_distribution({'Element':dedges_partial_distrib}, parent=elt_n)
 
     # > Get path for new bar element node (may wont work if 2 zone has same name under 2 different base)
     is_current_zone  = lambda n: PT.get_label(n)=='Zone_t' and PT.get_name(n)==PT.get_name(zone)
     is_new_edge_elmt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2' and PT.get_name(n)==new_bar_name
     new_edge_path.append(PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_current_zone, is_new_edge_elmt])[0])
+
 
     # > Création des BCs EdgeCenter (une par face parent group) + descriptor qui stocke parent 1 et parent 2
     dgroup_edges = [dgroup_edge[dgroup_edge_idx[i]:dgroup_edge_idx[i+1]] for i in range(len(dgroup_edge_idx)-1)]
@@ -200,7 +228,7 @@ def find_boundary_edges(dist_tree, comm, bc_identifiers=list()) -> None:
       zbc_n = PT.new_ZoneBC(zone)
     for i, bc_edge in enumerate(parents):
       pl = dgroup_edges[i]+elt_range_edges[0]-1
-      bc_egde_n = PT.new_BC(name=f'BCEdge_{i+1}', point_list=pl.reshape((1,-1), order='F'), loc='EdgeCenter', parent=zbc_n)
+      bc_egde_n = PT.new_BC(name=f'topo_ridge_{i+1}', point_list=pl.reshape((1,-1), order='F'), loc='EdgeCenter', parent=zbc_n)
       PT.maia.new_distribution({'Index':par_utils.dn_to_distribution(pl.size, comm)}, parent=bc_egde_n)
       values = []
       for val in [bc_identifiers[k-1] for k in bc_edge]:
