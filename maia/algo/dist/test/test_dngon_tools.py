@@ -20,10 +20,9 @@ def test_pe_to_nface(comm):
   # 2. Creating expected values
   nface_er_exp  = np.array([37,44], dtype)
   nface_eso_exp = np.array([0, 6, 12, 18, 24, 30, 36, 42, 48], dtype)
-  nface_ec_exp  = np.array([1,5,13,17,25,29,    -17,2,6,21,27,31,
-                            -29,3,7,14,18,33,   -31,-18,4,8,22,35,
-                            -5,9,15,19,26,30,   -19,-6,10,23,28,32,
-                            -30,-7,11,16,20,34, -32,-20,-8,12,24,36], dtype)
+  nface_ec_exp = np.array([-29,-17,-5,1,13,25, -31,-6,2,17,21,27,  -18,-7,3,14,29,33,
+                           -8,4,18,22,31,35,   -30,-19,5,9,15,26,  -32,6,10,19,23,28,
+                           -20,7,11,16,30,34,   8,12,20,24,32,36],dtype)
   nface_exp_f = PT.new_NFaceElements('NFaceElements', erange=nface_er_exp, eso=nface_eso_exp, ec=nface_ec_exp)
   nface_exp = F2D.distribute_element_node(nface_exp_f, comm)
 

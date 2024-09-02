@@ -95,15 +95,10 @@ def test_compute_cell_volume(elt_kind, comm):
 
   cell_vol = GEO.compute_cell_measure(zone, comm)
 
-  if elt_kind in ['Poly', 'NFACE_n']:
-    # !! For now, there is a bug in faces orientation of dcube (see PDM MR 77)
-    # Replace this by -1 at next PDM update
-    assert comm.allreduce(cell_vol.sum(), MPI.SUM) == -1
-  else:
-    assert comm.allreduce(cell_vol.sum(), MPI.SUM) == 1
+  assert comm.allreduce(cell_vol.sum(), MPI.SUM) == 1
   if elt_kind in ['S']:
     assert (cell_vol == 0.125).all()
-  elif elt_kind in ['Poly', 'NFACE_n']: # Same
-    assert (cell_vol == -0.125).all()
+  elif elt_kind in ['Poly', 'NFACE_n']:
+    assert (cell_vol == 0.125).all()
   elif elt_kind == 'PENTA_6':
     assert (cell_vol == 0.0625).all()

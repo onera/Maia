@@ -20,11 +20,11 @@ def test_face_ids_to_vtx_ids(comm):
 
   offset, face_vtx   = VL.face_ids_to_vtx_ids(np.array([3,6,2]), ngon, comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
-  assert (face_vtx == [5,8,7,4, 11,14,15,12, 3,6,5,2]).all()
+  assert (face_vtx == [4,7,8,5, 11,14,15,12, 2,5,6,3]).all()
 
   offset, face_vtx_d = VL.face_ids_to_vtx_ids(np.array([1,4,5]), ngon, comm)
   assert (offset == np.arange(0,(3+1)*4,4)).all()
-  assert (face_vtx_d == [2,5,4,1, 6,9,8,5, 10,13,14,11]).all()
+  assert (face_vtx_d == [1,4,5,2, 5,8,9,6, 10,13,14,11]).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_filter_vtx_coordinates(comm):

@@ -87,15 +87,10 @@ def test_compute_cell_volume(elt_kind, comm):
   maia.algo.transform_affine(zone, rotation_angle=[np.pi/4, np.pi/6, 0])
   cell_vol = measures.compute_cell_measure(zone)
 
-  if elt_kind in ['Poly', 'NFACE_n']:
-    # !! For now, there is a bug in faces orientation of dcube (see PDM MR 77)
-    # Replace this by -1 at next PDM update
-    assert abs(comm.allreduce(cell_vol.sum(), MPI.SUM) - -1) < 1E-12
-  else:
-    assert abs(comm.allreduce(cell_vol.sum(), MPI.SUM) -  1) < 1E-12
+  assert abs(comm.allreduce(cell_vol.sum(), MPI.SUM) -  1) < 1E-12
   if elt_kind in ['S']:
     assert np.allclose(cell_vol, 0.125)
-  elif elt_kind in ['Poly', 'NFACE_n']: # Same
-    assert np.allclose(cell_vol, -0.125)
+  elif elt_kind in ['Poly', 'NFACE_n']:
+    assert np.allclose(cell_vol, 0.125)
   elif elt_kind == 'PENTA_6':
     assert np.allclose(cell_vol, 0.0625)

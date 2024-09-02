@@ -16,18 +16,18 @@ def test_compute_face_normal3d(comm):
 
   # All face area are 0.25
   if comm.Get_rank() == 0:
-    expected_face_normal = 0.25 * np.array([0,0, 1, 0,0, 1, 0,0, 1, 0,0, 1,
+    expected_face_normal = 0.25 * np.array([0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
                                             0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-                                            0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1])
+                                            0,0, 1, 0,0, 1, 0,0, 1, 0,0, 1])
   elif comm.Get_rank() == 1:
-    expected_face_normal = 0.25 * np.array([ 1,0,0,  1,0,0,  1,0,0,  1,0,0,
+    expected_face_normal = 0.25 * np.array([-1,0,0, -1,0,0, -1,0,0, -1,0,0,
                                             -1,0,0, -1,0,0, -1,0,0, -1,0,0,
-                                            -1,0,0, -1,0,0, -1,0,0, -1,0,0])
+                                             1,0,0,  1,0,0,  1,0,0,  1,0,0])
 
   if comm.Get_rank() == 2:
-    expected_face_normal = 0.25 * np.array([0, 1,0,  0, 1,0,  0, 1,0,  0, 1,0,
+    expected_face_normal = 0.25 * np.array([0,-1,0,  0,-1,0,  0,-1,0,  0,-1,0,
                                             0,-1,0,  0,-1,0,  0,-1,0,  0,-1,0,
-                                            0,-1,0,  0,-1,0,  0,-1,0,  0,-1,0])
+                                            0, 1,0,  0, 1,0,  0, 1,0,  0, 1,0])
 
   assert (face_normal == expected_face_normal).all()
 

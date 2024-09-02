@@ -24,10 +24,9 @@ def test_pe_to_nface(comm):
 
   nface_er_exp  = np.array([37,44], np.int32)
   nface_eso_exp = np.array([0, 6, 12, 18, 24, 30, 36, 42, 48], np.int32)
-  nface_ec_exp  = np.array([1,5,13,17,25,29,    2,6,21,27,31,-17,
-                            3,7,14,18,33,-29,   4,8,22,35,-18,-31,
-                            9,15,19,26,30,-5,   10,23,28,32,-6,-19,
-                            11,16,20,34,-7,-30, 12,24,36,-8,-20,-32], np.int32)
+  nface_ec_exp  = np.array([1,13,25,-5,-17,-29,  2,17,21,27,-6,-31,  3,14,29,33,-7,-18,
+                            4,18,22,31,35,-8,    5,9,15,26,-19,-30,  6,10,19,23,28,-32,
+                            7,11,16,30,34,-20,   8,12,20,24,32,36], np.int32)
   nface_exp_f = PT.new_NFaceElements('NFaceElements', erange=nface_er_exp, eso=nface_eso_exp, ec=nface_ec_exp)
   nface_exp = nface_exp_f
 

@@ -29,17 +29,16 @@ class Test_split_ngon_2d:
     assert PT.get_child_from_name(edge, 'ParentElements') is not None
     assert PT.get_child_from_name(ngon, 'ParentElements') is None
   def check_bcs(self, part_tree, comm):
+    bc_xmin = PT.get_node_from_name(part_tree, 'Xmin')
     bc_ymin = PT.get_node_from_name(part_tree, 'Ymin')
     bc_ymax = PT.get_node_from_name(part_tree, 'Ymax')
-    bc_xmax = PT.get_node_from_name(part_tree, 'Xmax')
     if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[1,2,4]]).all()
-      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[8]]).all()
+      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[1,2]]).all()
+      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[3,8]]).all()
       assert bc_ymax is None
     elif comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[10,12,13]]).all()
-      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[4,11]]).all()
-      assert bc_ymin is None
+      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[13,15,16]]).all()
+      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[9]]).all()
 
   @pytest.mark.parametrize("no_pe", [False, True])
   def test_input_pe(self, no_pe, comm):
@@ -74,23 +73,22 @@ class Test_split_elt_2d:
     bar  = PT.get_node_from_name(part_tree, 'BAR_2.0')
     quad = PT.get_node_from_name(part_tree, 'QUAD_4.0')
     if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [1,5]).all()
-      assert (PT.get_child_from_name(bar, 'ElementRange')[1] == [6,11]).all()
-    if comm.Get_rank() == 1:
       assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [1,4]).all()
-      assert (PT.get_child_from_name(bar, 'ElementRange')[1] == [5,10]).all()
+      assert (PT.get_child_from_name(bar, 'ElementRange')[1] == [5,8]).all()
+    if comm.Get_rank() == 1:
+      assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [1,5]).all()
+      assert (PT.get_child_from_name(bar, 'ElementRange')[1] == [6,13]).all()
   def check_bcs(self, part_tree, comm):
+    bc_xmin = PT.get_node_from_name(part_tree, 'Xmin')
     bc_ymin = PT.get_node_from_name(part_tree, 'Ymin')
     bc_ymax = PT.get_node_from_name(part_tree, 'Ymax')
-    bc_xmax = PT.get_node_from_name(part_tree, 'Xmax')
     if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[6,7,8]]).all()
-      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[11]]).all()
+      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[5,6]]).all()
+      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[7,8]]).all()
       assert bc_ymax is None
     elif comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[5,6,7]]).all()
-      assert (PT.get_child_from_name(bc_xmax, 'PointList')[1] == [[9,10]]).all()
-      assert bc_ymin is None
+      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[7,8,9]]).all()
+      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[10]]).all()
 
   @pytest.mark.parametrize("output_jn_loc", ["Vertex", "FaceCenter"])
   def test_output_loc(self, output_jn_loc, comm):
