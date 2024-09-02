@@ -105,6 +105,43 @@ def test_find_boundary_edges(comm, elmt_t):
   assert len(edge_bcs)==3
 
 @pytest_parallel.mark.parallel(2)
+def test_extract_elmt_connectivity_from_pl(comm):
+  from maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'multi_element.yaml', comm)
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  if comm.rank==0:
+    pl = np.array([  1, # TETRA_4.0
+                   173, # TRI_3.0
+                  ], dtype=pdm_dtype)
+    expected_strd = np.array([        4,      3], dtype=pdm_dtype)
+    expected_conn = np.array([3,4,46,70, 3,4,46], dtype=pdm_dtype)
+  else :
+    pl = np.array([ 24, # TETRA_4.0
+                    49, # TETRA_4.1
+                   216, # TRI_3.0
+                  ], dtype=pdm_dtype)
+    expected_strd = np.array([          4,           4,      3], dtype=pdm_dtype)
+    expected_conn = np.array([50,23,52,51, 19,20,45,69, 8,25,5], dtype=pdm_dtype)
+
+  def check_result(result):
+    assert np.array_equal(expected_strd, result[0])
+    assert np.array_equal(expected_conn, result[1])
+
+  strd_and_conn = RR.extract_elmt_connectivity_from_pl(dist_zone, pl, comm)
+  check_result(strd_and_conn)
+
+  predicate = lambda n: PT.predicate.is_elmt_of_type(n, dim=3)
+  with pytest.raises(RuntimeError): # Not TRI Elements so fails cause some pl elements not found
+    strd_and_conn = RR.extract_elmt_connectivity_from_pl(dist_zone, pl, comm, 
+                                                         elmt_predicate=predicate)
+
+  predicate = lambda n: PT.predicate.is_elmt_of_type(n, cgns_name='TETRA_4')
+  with pytest.raises(RuntimeError): # Not TRI Elements so fails cause some pl elements not found
+    strd_and_conn = RR.extract_elmt_connectivity_from_pl(dist_zone, pl, comm, 
+                                                         elmt_predicate=predicate)
+
+@pytest_parallel.mark.parallel(2)
 def test_extract_bcs_from_pl(comm):
   if comm.rank==0:
     yt = f"""
