@@ -30,4 +30,7 @@ void register_utils_module(py::module_& parent) {
   m.def("make_unique_by_stride", &make_unique_by_stride_int64, 
         py::arg("stride").noconvert(),
         py::arg("array").noconvert());
+  m.def("sort_by_stride", &sort_by_stride, 
+        py::arg("stride").noconvert(),
+        py::arg("array").noconvert());
 }

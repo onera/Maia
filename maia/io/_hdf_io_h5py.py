@@ -114,7 +114,7 @@ def _write_links(filename, links):
     local_node_name  = PT.utils.path_tail(local_node)
     try:
       gid = open_from_path(fid, parent_node_path)
-    except KeyError:
+    except (KeyError,ValueError):
       mlog.error(f"Can not write link for node {link[3]}: path does not exists in file")
     else:
       write_link(gid, local_node_name, target_file, target_node)

@@ -106,7 +106,7 @@ def shifted_to_local(array, offset):
 def reverse_connectivity(ids, idx, array):
   """
   Reverse an strided array (idx+array) supported by some elements whose id is given by ids
-  Return a strided array(r_idx+r_array) and the ids of (initially childs) elements
+  Return a strided array(r_idx+r_array) and the ids of (initially children) elements
   supporting it
   """
   r_ids, counts = np.unique(array, return_counts=True)
@@ -219,6 +219,20 @@ def is_unique_strided(array, stride, method='hash'):
     return cutils.is_unique_cst_stride_sort(n_elt, stride, array)
   else:
     raise ValueError(f"Method must be one of ['hash', 'sort']")
+
+def sort_by_stride(array_idx, array, inplace=False):
+  """
+  Sort each stride of an array.
+  NB : the values are only sorted within each interval, there is no sorting between intervals.
+  """
+  if inplace:
+    sorted_array = array
+  else:
+    sorted_array = array.copy()
+  cutils.sort_by_stride(array_idx, sorted_array)
+  #for i in range(idx.size-1):
+  #  sorted_array[idx[i]:idx[i+1]].sort()
+  return sorted_array
 
 def make_unique_by_stride(array_idx, array):
   """

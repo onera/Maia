@@ -82,7 +82,9 @@ def test_reverse_connectivity():
 
   assert (r_ids == [4,7,11,13,29,32,44,61]).all()
   assert (r_idx == [0,2,4,6,8,10,15,16,17]).all()
-  assert (r_array == [30,6, 8,29, 51,29, 51,30,  8, 6, 8,6,29,30,51, 29, 6]).all()
+  # The order inside a connectivity does not matter and is not specified by the algorithm,
+  # so whatever we get, we can order it before checking it
+  assert (np_utils.sort_by_stride(r_idx, r_array) == [6,30,  8,29,  29,51,  30,51,  6,8,  6,8,29,30,51,  29,  6]).all()
 
 def test_multi_arange():
   # With only one start/stop, same as np.arange
@@ -252,6 +254,15 @@ def test_is_unique_strided():
 
   mask = np_utils.is_unique_strided(elt_ec, size_elt, method='sort')
   assert np.array_equal(mask, result)
+
+def test_sort_by_stride():
+  idx   = np.array([0    ,  3 ,  4, 5, 5     , 8], np.int32)
+  array = np.array([7,2,3,  11,  3,    10,1,1])
+  assert (np_utils.sort_by_stride(idx, array) == [2,3,7,  11,  3,  1,1,10]).all()
+  assert (array == [7,2,3,  11,  3,  10,1,1]).all() # the original array has not been changed
+
+  np_utils.sort_by_stride(idx, array, inplace=True)
+  assert (array == [2,3,7, 11,  3,    1,1,10]).all()
 
 def test_make_unique_by_stride():
   idx, arr = np_utils.make_unique_by_stride(np.array([0], np.int32), np.empty(0, np.int32))
