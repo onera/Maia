@@ -1,3 +1,5 @@
+import mpi4py.MPI as MPI
+
 import Pypdm.Pypdm as PDM
 
 import numpy as np
@@ -78,7 +80,7 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
 
 
 def find_boundary_edges(dist_tree, comm, bc_identifiers=list()) -> None:
-  """Retrieve edges delimiting given (groups of) surfaces of the input ``dist_tree``.
+  """Retrieve edges delimiting given BC surfaces of the input ``dist_tree``.
 
   Tree is modified in place: Elements nodes containing resulting lineic elements
   will be added to tree.
@@ -253,13 +255,13 @@ def extract_elmt_connectivity_from_pl(zone, pl, comm,
   return elmt_conn_strd[0], elmt_conn[0]
 
 
-def extract_bcs_from_pl(zone, pl, distri_pl, comm,
+
+def extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm,
                         bc_predicate=lambda n: PT.get_label(n)=='BC_t'):
   """
   Return distributed zone_bc node containing bc_predicate BCs from zone tagged.
   """
   # > Get predicate BC PLs
-  zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
   bc_pls = list()
   for bc_n in PT.get_children_from_predicate(zone_bc_n, bc_predicate):
     pl_n = PT.get_child_from_name(bc_n, 'PointList')
@@ -278,21 +280,14 @@ def extract_bcs_from_pl(zone, pl, distri_pl, comm,
   # > Create intersecting BCs
   edge_zone_bc_n = PT.new_ZoneBC()
   for i_bc, bc_n in enumerate(PT.get_children_from_predicate(zone_bc_n, bc_predicate)):
-    if ref_lnum2[i_bc].size!=0:
-      edge_bc_n = PT.deep_copy(bc_n)
-      
-      PT.rm_children_from_label(edge_bc_n, 'BCDataSet_t')
-      PT.rm_children_from_name (edge_bc_n, ':CGNS#Distribution')
-
-      pl_n = PT.get_child_from_name (edge_bc_n, 'PointList')
-      gl_n = PT.get_child_from_label(edge_bc_n, 'GridLocation_t')
-      PT.set_value(pl_n, part2_data[i_bc].reshape((1,-1), order='F'))
-      PT.set_value(gl_n, 'EdgeCenter')
-      
+    size_ref_lnum2_g = comm.allreduce(ref_lnum2[i_bc].size, op=MPI.SUM)
+    if size_ref_lnum2_g!=0:
+      bc_name = PT.get_name(bc_n)
+      edge_bc_n = PT.new_BC(name=bc_name,
+                            point_list=part2_data[i_bc].reshape((1,-1), order='F'),
+                            parent=edge_zone_bc_n)
       bc_distri = par_utils.dn_to_distribution(part2_data[i_bc].size, comm)
       PT.maia.new_distribution({'Index':bc_distri}, parent=edge_bc_n)
-
-      PT.add_child(edge_zone_bc_n, edge_bc_n)
 
   return edge_zone_bc_n
 
@@ -339,8 +334,11 @@ def extract_zone_edges(dist_zone, pl, comm): #-> CGNSTree:
   PT.maia.new_distribution({'Element':distri_bar}, parent=new_bar_n)
 
   # > Get BCs intersecting PL
-  is_edge_bc = lambda n: PT.predicate.is_bc_of_loc(n, "EdgeCenter")
-  edge_zone_bc_n = extract_bcs_from_pl(dist_zone, pl, distri_edge, comm, bc_predicate=is_edge_bc)
+  zone_bc_n      = PT.get_child_from_label(dist_zone, 'ZoneBC_t')
+  is_edge_bc     = lambda n: PT.predicate.is_bc_of_loc(n, "EdgeCenter")
+  edge_zone_bc_n = extract_bcs_from_pl(zone_bc_n, pl, distri_edge, comm, bc_predicate=is_edge_bc)
+  for bc_n in PT.get_children_from_label(edge_zone_bc_n, 'BC_t'):
+    PT.new_GridLocation(loc="CellCenter" , parent=bc_n)
   PT.add_child(edge_zone, edge_zone_bc_n)
 
   return edge_zone

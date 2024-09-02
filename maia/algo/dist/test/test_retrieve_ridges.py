@@ -8,9 +8,12 @@ import maia.pytree as PT
 
 import maia.algo.dist.retrieve_ridges as RR
 
+from   maia.utils            import par_utils
+from   maia.utils            import test_utils as TU
 from   maia.utils.test_utils import mesh_dir
-from maia.utils import test_utils as TU
-from   maia                              import npy_pdm_gnum_dtype as pdm_dtype
+
+from   maia import npy_pdm_gnum_dtype as pdm_dtype
+dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 
 def test_replace_bc_identifiers():
@@ -101,8 +104,88 @@ def test_find_boundary_edges(comm, elmt_t):
   edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
   assert len(edge_bcs)==3
 
+@pytest_parallel.mark.parallel(2)
+def test_extract_bcs_from_pl(comm):
+  if comm.rank==0:
+    yt = f"""
+    ZoneBC ZoneBC_t:
+      BC1 BC_t "BCWall":
+        GridLocation GridLocation_t "EdgeCenter":
+        PointList IndexArray_t {dtype} [[12, 10, 11]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [0, 3, 5]:
+      BC2 BC_t "BCWall":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t {dtype} [[3, 6]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [0, 2, 3]:
+      BC3 BC_t "BCWall":
+        GridLocation GridLocation_t "EdgeCenter":
+        PointList IndexArray_t {dtype} [[7]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [0, 1, 1]:
+      BC4 BC_t "BCWall":
+        PointList IndexArray_t {dtype} [[1, 8, 10]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [0, 3, 6]:
+    """
+  else:
+    yt = f"""
+    ZoneBC ZoneBC_t:
+      BC1 BC_t "BCWall":
+        GridLocation GridLocation_t "EdgeCenter":
+        PointList IndexArray_t {dtype} [[7, 8]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [3, 5, 5]:
+      BC2 BC_t "BCWall":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t {dtype} [[4]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [2, 3, 3]:
+      BC3 BC_t "BCWall":
+        GridLocation GridLocation_t "EdgeCenter":
+        PointList IndexArray_t {dtype} [[]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [1, 1, 1]:
+      BC4 BC_t "BCWall":
+        PointList IndexArray_t {dtype} [[3, 7, 9]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t {dtype} [0, 3, 6]:
+    """
+  def check_result(zone_bc_n, expected_pls):
+    for bc_name, expected_pl in expected_pls.items():
+      bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
+      bc_pl = PT.Subset.getPatch(bc_n)[1][0]
+      bc_distri = PT.maia.getDistribution(bc_n, "Index")[1]
+      expected_distri = par_utils.dn_to_distribution(expected_pl.size, comm)
+      assert np.array_equal(bc_pl    , expected_pl)
+      assert np.array_equal(bc_distri, expected_distri)
 
-@pytest_parallel.mark.parallel(1)
+  tree = PT.yaml.to_cgns_tree(yt)
+  zone_bc_n = PT.get_child_from_label(tree, "ZoneBC_t")
+
+  pl = [np.array([12, 7], dtype=pdm_dtype),
+        np.array([10]  , dtype=pdm_dtype)][comm.rank]
+  distri_pl = par_utils.dn_to_distribution(pl.size, comm)
+
+  expected_pls = {"BC1":[np.array([1, 3], dtype=pdm_dtype),
+                         np.array([2]   , dtype=pdm_dtype)][comm.rank],
+                  "BC3":[np.array([2]   , dtype=pdm_dtype),
+                         np.array([]    , dtype=pdm_dtype)][comm.rank],
+                  "BC4":[np.array([3]   , dtype=pdm_dtype),
+                         np.array([2]   , dtype=pdm_dtype)][comm.rank]}
+  extract_zone_bc_n = RR.extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm)
+  check_result(extract_zone_bc_n, expected_pls)
+
+  expected_pls = {"BC1":[np.array([1, 3], dtype=pdm_dtype),
+                         np.array([2]   , dtype=pdm_dtype)][comm.rank],
+                  "BC3":[np.array([2]   , dtype=pdm_dtype),
+                         np.array([]    , dtype=pdm_dtype)][comm.rank]}
+  extract_zone_bc_n = RR.extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm, 
+    bc_predicate=lambda n:PT.predicate.is_bc_of_loc(n, 'EdgeCenter'))
+  check_result(extract_zone_bc_n, expected_pls)
+
+@pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize('root_t', ["CGNSTree_t", "Zone_t"])
 def test_extract_edges(comm, root_t):
   from maia.utils.test_utils import mesh_dir
