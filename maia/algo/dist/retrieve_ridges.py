@@ -80,30 +80,30 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
 
 
 def find_boundary_edges(dist_tree, comm, bc_identifiers=list()) -> None:
-  """Retrieve edges delimiting given BC surfaces of the input ``dist_tree``.
+  """Retrieve the edges delimiting specified BC surfaces of a volumic mesh.
 
-  Tree is modified in place: Elements nodes containing resulting lineic elements
-  will be added to tree.
+  Tree is modified inplace: Elements_t nodes containing resulting edge elements
+  are added in input tree.
 
-  **Setting groups of surface**
+  **Setting groups of surfaces**
 
-  Used BCs chosen for edge retrieving is available through the ``bc_identifiers`` argument,
-  which must be a list, where each list element define a "group" of BCs. Resulting edges 
-  will be the edges delimiting these "groups". They can be defined with:
+  This function retrieves the edges that delimit groups of BCs, which have
+  to be user-provided through the ``bc_identifiers`` list.
+  Each group can be defined by either:
 
-  - *list* of all BC names belonging to a same "group"
-  - *str* family name
+  - the name of each BCs belonging to the group *(list of str)*;
+  - or a family name gathering the BCs *(str)*.
 
-  Warning:
-    - If ``bc_identifiers`` list is empty, edges delimiting **all** bcs of ``dist_tree`` will be computed.
-    - BCs of a different "groups" must not reference a same surfacic element.
-    - If ``dist_tree`` isn't a Zone_t node, ``bc_identifiers`` argument will be used over all Zone_t nodes present in tree.
+  Note that a given BC surface **must not** appear in more than one group.
+
+  Note: 
+    For convenience, the shortcut ``bc_identifiers=[]`` can be used to indicate that
+    each BC constitutes an independant group.
 
   Args:
-    dist_tree      (CGNSTree): Unstructured tree
+    dist_tree      (CGNSTree): Unstructured distributed tree, starting at Zone_t level or higher.
+    bc_identifiers (list): List of BC groups bounded by searched edges (see above)
     comm           (MPIComm) : MPI communicator
-    bc_identifiers (list, optional):
-        List of BC Families or list of BCs from used to retrieve delimiting edges. Defaults to ``list()``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
