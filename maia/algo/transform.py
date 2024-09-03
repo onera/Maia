@@ -81,8 +81,8 @@ def transform_affine_zone(zone,
     for bc in PT.iter_children_from_predicates(zone, "ZoneBC_t/BC_t"):
       fields_nodes += PT.get_children_from_label(bc, "BCDataSet_t")
     for fields_node in fields_nodes:
-      is_full_vtx = PT.Subset.GridLocation(fields_node) == 'Vertex' and \
-                    PT.get_label(fields_node) in ['FlowSolution_t', 'DiscreteData_t'] and \
+      is_full_vtx = PT.get_label(fields_node) in ['FlowSolution_t', 'DiscreteData_t'] and \
+                    PT.Subset.GridLocation(fields_node) == 'Vertex' and \
                     PT.get_child_from_name(fields_node, 'PointList') is None and \
                     PT.get_child_from_name(fields_node, 'PointRange') is None
       data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]

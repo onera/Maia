@@ -641,13 +641,16 @@ def iter_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> Iter
         if (pl_n is not None) or (pr_n is not None):
           yield root
 
+  get_location = lambda node, ancst: PT.Subset.GridLocation(node) if PT.get_label(node) != 'BCDataSet_t' \
+                                                                  else PT.BCDataSet.GridLocation(node, ancst[-1])
   for path in subset_paths:
-    for subset_n in iter_children_from_predicates(root, path):
-      if filter_loc is None or PT.Subset.GridLocation(subset_n) in filter_loc:
-        pl_n = get_child_from_name(subset_n, 'PointList')
-        pr_n = get_child_from_name(subset_n, 'PointRange')
+    for subset_n in iter_children_from_predicates(root, path, ancestors=True):
+      ancestors, child = subset_n[:-1], subset_n[-1]
+      if filter_loc is None or get_location(child, ancestors) in filter_loc:
+        pl_n = get_child_from_name(child, 'PointList')
+        pr_n = get_child_from_name(child, 'PointRange')
         if (pl_n is not None) or (pr_n is not None):
-          yield subset_n
+          yield child
 
 # ---------------------------------------------------------------------------- #
 

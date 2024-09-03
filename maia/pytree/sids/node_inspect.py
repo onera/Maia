@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import itertools
 
@@ -962,6 +963,10 @@ class Subset:
       'FaceCenter'
     """
     grid_loc_n = W.get_child_from_label(subset_node, 'GridLocation_t')
+    if N.get_label(subset_node) == 'BCDataSet_t' and grid_loc_n is None:
+      msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
+            ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
+      warnings.warn(msg, RuntimeWarning, stacklevel=3)
     return N.get_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
   @staticmethod
@@ -1034,6 +1039,35 @@ class Subset:
       return utils.expects_one(paths)
     except RuntimeError:
       raise ValueError("ZoneSubRegion {0} has no valid extent".format(N.get_name(zsr_node)))
+
+# --------------------------------------------------------------------------
+@for_all_methods(check_is_label("BCDataSet_t"))
+class BCDataSet(Subset):
+
+  @staticmethod
+  def GridLocation(bcds_node:CGNSTree, bc_node:CGNSTree) -> str:
+    """ Return the GridLocation value of a BCDataSet_t node.
+    
+    This differs from
+    :func:`Subset.GridLocation` in the management of default value: BCDataSet_t nodes
+    inherit the value of their parent BC_t node, while other subset nodes have a default
+    value of ``'Vertex'``.
+
+    Args:
+      bcds_node (CGNSTree): Input BCDataSet node
+      bc_node (CGNSTree): Related BC node
+    Returns:
+      str : One of 'Null', 'UserDefined', 'Vertex', 'CellCenter', 'FaceCenter',
+      'IFaceCenter', 'JFaceCenter', 'KFaceCenter', or 'EdgeCenter'
+    Example:
+      >>> bc = PT.new_BC('BC', loc='FaceCenter')
+      >>> bcds = PT.new_BCDataSet(parent=bc)
+      >>> PT.BCDataSet.GridLocation(bcds, bc)
+      'FaceCenter'
+    """
+    grid_loc_n = W.get_child_from_label(bcds_node, 'GridLocation_t')
+    return N.get_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
+
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("IndexRange_t"))

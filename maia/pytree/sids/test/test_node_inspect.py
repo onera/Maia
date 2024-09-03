@@ -181,6 +181,11 @@ def test_GridLocation():
   assert SIDS.Subset.GridLocation(bc_no_loc) == 'Vertex'
   assert SIDS.Subset.GridLocation(bc_loc   ) == 'JFaceCenter'
 
+  bcds_no_loc = N.new_BCDataSet('BCDS1', parent=bc_loc)
+  bcds_loc    = N.new_BCDataSet('BCDS2', loc='Vertex', parent=bc_loc)
+  assert SIDS.BCDataSet.GridLocation(bcds_no_loc, bc_loc) == 'JFaceCenter'
+  assert SIDS.BCDataSet.GridLocation(bcds_loc   , bc_loc) == 'Vertex'
+
 def test_GridConnectivity_Type():
   gc = N.new_node("gc", "GridConnectivity1to1_t")
   assert SIDS.GridConnectivity.Type(gc) == "Abutting1to1"

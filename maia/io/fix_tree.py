@@ -142,7 +142,7 @@ def add_missing_pr_in_bcdataset(tree):
     for bcds in PT.get_children_from_label(bc, 'BCDataSet_t'):
       if PT.get_child_from_name(bcds, 'PointRange') is not None:
         continue
-      bcds_grid_location = PT.Subset.GridLocation(bcds)
+      bcds_grid_location = PT.BCDataSet.GridLocation(bcds, bc)
       if not (bcds_grid_location.endswith('FaceCenter') and bc_grid_location == 'Vertex'):
         continue
       face_dir   = PT.Subset.normal_axis(bc)

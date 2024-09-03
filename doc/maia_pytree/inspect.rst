@@ -89,6 +89,13 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Subset.n_elem
   ~maia.pytree.Subset.normal_axis
 
+**Miscellaneous**
+
+.. autosummary::
+  :nosignatures:
+
+  ~maia.pytree.BCDataSet.GridLocation
+
 
 .. note:: Functions are displayed below as static methods, gathered into classes.
   This is an implementation detail to put functions into namespaces : they should
@@ -109,6 +116,8 @@ Methods detail
 .. autoclass:: maia.pytree.GridConnectivity
   :members:
 .. autoclass:: maia.pytree.Subset
+  :members:
+.. autoclass:: maia.pytree.BCDataSet
   :members:
 
 

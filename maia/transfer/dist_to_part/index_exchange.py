@@ -19,14 +19,16 @@ def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
   """
   point_lists = []
   for query in query_list:
-    for node in PT.iter_children_from_predicates(dist_zone, query):
-      if filter_loc is None or PT.Subset.GridLocation(node) in filter_loc:
+    for nodes in PT.iter_children_from_predicates(dist_zone, query, ancestors=True):
+      parents, node = nodes[:-1], nodes[-1]
+      is_bcds = PT.get_label(node) == 'BCDataSet_t'
+      loc = PT.BCDataSet.GridLocation(node, parents[-1]) if is_bcds else PT.Subset.GridLocation(node)
+      if filter_loc is None or loc in filter_loc:
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
         if pl_n is not None:
           pl_raw = pl_n[1]
           if PT.Zone.Type(dist_zone) == 'Structured':
-            loc = PT.Subset.GridLocation(node)
             idx = s_numbering.ijk_to_index_from_loc(*pl_raw, loc, PT.Zone.VertexSize(dist_zone))
             point_lists.append(idx.reshape((1,-1), order='F'))
           else:
@@ -45,7 +47,8 @@ def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
   for pl_path in pl_pathes:
     for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):
       ancestors, node = nodes[:-1], nodes[-1]
-      loc = PT.Subset.GridLocation(node)
+      is_bcds = PT.get_label(node) == 'BCDataSet_t'
+      loc = PT.BCDataSet.GridLocation(node, ancestors[-1]) if is_bcds else PT.Subset.GridLocation(node)
       if loc in locations:
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
