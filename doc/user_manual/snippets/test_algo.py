@@ -713,20 +713,19 @@ def test_cylindrical_to_cartesian():
   assert PT.get_node_from_name(dist_tree, 'VelocityX') is not None
   #cylindrical_to_cartesian@end
 
-def test_find_boundary_edges():
+def test_find_ridges():
   #retrieve_ridges@start
   import mpi4py.MPI as MPI
   import maia
   import maia.pytree as PT
-  import maia.algo.dist.retrieve_ridges as RR
   from   maia.utils.test_utils import mesh_dir
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
 
-  edge_path = RR.find_boundary_edges(dist_tree, MPI.COMM_WORLD, 
-                                     [['wall'], 'AMONT'])
+  maia.algo.dist.find_ridges(dist_tree, MPI.COMM_WORLD, 
+                             [['wall'], 'AMONT'])
 
-  assert edge_path == ['Base/bump_45/topo_edge']
+  assert PT.get_node_from_path(dist_tree, 'Base/bump_45/topo_edge') is not None
   #retrieve_ridges@end
 
 def test_extract_edges():
@@ -734,17 +733,15 @@ def test_extract_edges():
   import mpi4py.MPI as MPI
   import maia
   import maia.pytree as PT
-  import maia.algo.dist.retrieve_ridges as RR
   from   maia.utils.test_utils import mesh_dir
   import numpy
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', MPI.COMM_WORLD)
 
-  is_edge_bc = lambda n: PT.predicate.is_bc_of_loc(n, 'EdgeCenter')
   point_list = [PT.Subset.getPatch(n)[1][0] \
-    for n in PT.get_nodes_from_predicate(dist_tree, is_edge_bc)]
+    for n in PT.get_nodes_from_predicate(dist_tree, PT.predicate.is_bc_of_loc('EdgeCenter'))]
   domain_pl = {'cube/zone': numpy.concatenate(point_list)}
 
-  edge_dist_tree = RR.extract_edges(dist_tree, domain_pl, MPI.COMM_WORLD)
+  edge_dist_tree = maia.algo.dist.extract_part.extract_edges(dist_tree, domain_pl, MPI.COMM_WORLD)
 
   #extract_edges@end

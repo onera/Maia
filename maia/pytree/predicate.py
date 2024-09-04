@@ -57,20 +57,13 @@ def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
         return True
   return False
 
-def is_bc_of_loc(n, grid_loc):
-  return N.get_label(n)=='BC_t' and S.Subset.GridLocation(n)==grid_loc
+def is_bc_of_loc(grid_loc):
+  predicate = lambda n: N.get_label(n)=='BC_t' and S.Subset.GridLocation(n)==grid_loc
+  return predicate
 
-def is_elmt_of_type(n, cgns_name=None, dim=None):
-  is_valid = False 
-
-  if N.get_label(n)=='Elements_t':
-    is_valid = True
-    if cgns_name!=None:
-      is_valid = is_valid and S.Element.CGNSName(n)==cgns_name
-    if dim!=None:
-      is_valid = is_valid and S.Element.Dimension(n)==dim
-
-  return is_valid
+def is_elmt_of_type(cgns_name):
+  predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==cgns_name
+  return predicate
 
 def auto_predicate(query):
   if isinstance(query, str):
