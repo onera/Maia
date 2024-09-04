@@ -344,3 +344,39 @@ def test_split_multi_elt(comm):
   zone = PT.get_node_from_label(ptree, 'Zone_t')
   cell_gum = PT.maia.getGlobalNumbering(zone, 'Cell')[1]
   assert (cell_gum == [1,2,3,4]).all()
+
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("data_transfer", [['FlowSolution_t'], ["ALL"], ['UserDefinedData_t', 'BCDataSet_t']])
+def test_split_and_transfer(data_transfer, comm):
+  mesh_dir = test_utils.mesh_dir
+  mesh_file = mesh_dir / pathlib.Path('cube_bcdataset_and_periodic.yaml')
+
+  tree = maia.io.file_to_dist_tree(mesh_file, comm)
+  # Add some UD for test
+  PT.new_UserDefinedData('TopLevelUD', 'UserDefinedData_t', parent=tree)
+  for bc in PT.get_nodes_from_label(tree, 'BC_t'):
+    PT.new_UserDefinedData('.ud', 'UserDefinedData_t', parent=bc)
+    PT.new_UserDefinedData('.props', 'UserDefinedData_t', parent=bc)
+
+  ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer=data_transfer)
+
+  if 'FlowSolution_t' in data_transfer or 'ALL' in data_transfer:
+    assert len(PT.get_nodes_from_label(ptree, 'FlowSolution_t')) == 1
+  else:
+    assert len(PT.get_nodes_from_label(ptree, 'FlowSolution_t')) == 0
+
+  if 'BCDataSet_t' in data_transfer or 'ALL' in data_transfer:
+    assert len(PT.get_nodes_from_label(ptree, 'BCDataSet_t')) == len(PT.get_nodes_from_label(ptree, 'BC_t'))
+  else:
+    assert len(PT.get_nodes_from_label(ptree, 'BCDataSet_t')) == 0
+
+  if 'UserDefinedData_t' in data_transfer or 'ALL' in data_transfer:
+    assert PT.get_node_from_path(ptree, 'TopLevelUD') is not None
+    assert len(PT.get_nodes_from_name(ptree, '.ud'))    == len(PT.get_nodes_from_label(ptree, 'BC_t'))
+    assert len(PT.get_nodes_from_name(ptree, '.props')) == len(PT.get_nodes_from_label(ptree, 'BC_t'))
+  else:
+    assert PT.get_node_from_path(ptree, 'TopLevelUD') is None
+    assert len(PT.get_nodes_from_name(ptree, '.ud'))    == 0
+    assert len(PT.get_nodes_from_name(ptree, '.props')) == 0
+  

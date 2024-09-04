@@ -54,17 +54,27 @@ Partitioning can be customized with the following keywords arguments:
 
 .. py:attribute:: preserve_orientation
 
-    If True, the created interface faces are not reversed and keep their original orientation. Consequently,
+    If ``True``, the created interface faces are not reversed and keep their original orientation. Consequently,
     NGonElements can have a zero left parent and a non zero right parent.
     Only relevant for U/NGon partitions.
 
     :Default value: ``False``
 
-.. py:attribute:: dump_pdm_output
+In addition, we provide these convenience options:
 
-    If True, dump the raw arrays created by paradigm in a :cgns:`CGNSNode` at (partitioned) zone level. For debug only.
+.. py:attribute:: data_transfer
 
-    :Default value: ``False``
+    Shorcut to automatically transfer some data after partitioning. A list of admissible values
+    (see below) is expected.
+
+    :Admissible values: 
+      - Any label supported by :ref:`fields transfer<user_man_field_transfer>`, (eg. ``FlowSolution_t``, ``BCDataSet_t``, ...)
+        or ``FIELDS`` to indicate all these labels.
+      - ``UserDefinedData_t``, which will be copied using :ref:`metadata transfer<user_man_metadata_transfer>`. 
+      - ``ALL`` : to transfer both ``FIELDS`` and ``UserDefinedData_t`` nodes.
+
+    :Default value: Empty list ``[]`` (nothing is transfered)
+
 
 .. _user_man_part_repartition:
 
