@@ -428,7 +428,11 @@ def test_recover_dist_tree_elt(void_part, comm):
   part_tree = maia.factory.partition_dist_tree(dist_tree_bck, comm, zone_to_parts=zone_to_parts)
   maia.transfer.dist_tree_to_part_tree_all(dist_tree_bck, part_tree, comm)
 
-  dist_tree = DFP.recover_dist_tree(part_tree, comm)
+  # Create some userDefinedData for test
+  for bc in PT.get_nodes_from_label(part_tree, 'BC_t'):
+    PT.new_UserDefinedData('.solver#BC', parent=bc)
+
+  dist_tree = DFP.recover_dist_tree(part_tree, comm, 'ALL')
 
   dist_zone = PT.get_node_from_name(dist_tree, 'Zone')
   assert (dist_zone[1] == [[11,4,0]]).all()
@@ -437,26 +441,43 @@ def test_recover_dist_tree_elt(void_part, comm):
   assert len(PT.get_nodes_from_label(dist_zone, 'BC_t')) == 6
   assert len(PT.get_nodes_from_label(dist_zone, 'ZoneGridConnectivity_t')) == 0
 
+  # Update dist_tree for comparison
   for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
     PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
+  for bc in PT.get_nodes_from_label(dist_tree_bck, 'BC_t'):
+    PT.new_UserDefinedData('.solver#BC', parent=bc)
 
   assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Input tree is pdm dtype
 
 @pytest_parallel.mark.parallel(3)
-def test_recover_dist_tree_s(comm):
+@pytest.mark.parametrize("with_fields", [False, True])
+def test_recover_dist_tree_s(with_fields, comm):
   mesh_file = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
   dist_tree_bck = maia.io.file_to_dist_tree(mesh_file, comm)
 
   part_tree = maia.factory.partition_dist_tree(dist_tree_bck, comm)
 
-  dist_tree = DFP.recover_dist_tree(part_tree, comm)
+  if with_fields:
+    for bc in PT.get_nodes_from_label(part_tree, 'BC_t'):
+      bcds = PT.new_BCDataSet('BCDataSet', 
+                              loc=PT.Subset.GridLocation(bc),
+                              point_range=PT.get_child_from_name(bc, 'PointRange')[1], 
+                              parent=bc)
+      PT.new_BCData('DirichletData', {'Ones' : np.ones(PT.Subset.n_elem(bc))}, parent=bcds)
+  
+  data_transfer = ['FIELDS'] if with_fields else []
+  dist_tree = DFP.recover_dist_tree(part_tree, comm, data_transfer)
 
   # Force GridLocation to appear on dtree bck for comparison
   for bc in PT.get_nodes_from_label(dist_tree_bck, 'BC_t'):
     if PT.get_child_from_name(bc, 'GridLocation') is None:
       PT.new_GridLocation('Vertex', bc)
 
-  assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
+  if with_fields:
+    assert len(PT.get_nodes_from_name(dist_tree, 'Ones')) == \
+           len(PT.get_nodes_from_label(dist_tree, 'BC_t'))
+  else:
+    assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("edges_only", [False, True])

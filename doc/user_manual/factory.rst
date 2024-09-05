@@ -91,7 +91,7 @@ For a given distributed zone, the sum of all the fractions across all the proces
 be 1.
 
 This dictionary can be created by hand; for convenience, Maia provides three functions in the
-:mod:`maia.factory.partitioning` module to create this dictionary.
+``maia.factory.partitioning`` module to create this dictionary.
 
 .. autofunction:: maia.factory.partitioning.compute_regular_weights
 .. autofunction:: maia.factory.partitioning.compute_balanced_weights
