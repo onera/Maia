@@ -722,8 +722,7 @@ def test_find_ridges():
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
 
-  maia.algo.dist.find_ridges(dist_tree, MPI.COMM_WORLD, 
-                             [['wall'], 'AMONT'])
+  maia.algo.dist.find_ridges(dist_tree, [['wall'], 'AMONT'], MPI.COMM_WORLD)
 
   assert PT.get_node_from_path(dist_tree, 'Base/bump_45/topo_edge') is not None
   #retrieve_ridges@end

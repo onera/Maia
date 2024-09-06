@@ -89,7 +89,7 @@ def test_find_ridges(comm, elmt_t):
   dist_tree = maia.factory.generate_dist_block(3, elmt_t, comm)
 
   bcs_identifiers = [["Xmin"], ["Ymin", "Zmax"]]
-  RR.find_ridges(dist_tree, comm,  bcs_identifiers)
+  RR.find_ridges(dist_tree,  bcs_identifiers, comm)
   
   new_edge_path = 'Base/zone/topo_edge'
   bar_n = PT.get_node_from_path(dist_tree, new_edge_path)
@@ -99,3 +99,20 @@ def test_find_ridges(comm, elmt_t):
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
   edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
   assert len(edge_bcs)==3
+
+
+@pytest_parallel.mark.parallel(2)
+def test_find_ridges_all_bcs(comm):
+  dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+
+  bcs_identifiers = 'ALL_BCS'
+  RR.find_ridges(dist_tree,  bcs_identifiers, comm)
+  
+  new_edge_path = 'Base/zone/topo_edge'
+  bar_n = PT.get_node_from_path(dist_tree, new_edge_path)
+  bar_elmt_range = PT.get_child_from_name(bar_n, 'ElementRange')[1]
+  expected_elmt_range = np.array([37, 37+12])
+
+  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
+  edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
+  assert len(edge_bcs)==12

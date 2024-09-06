@@ -59,8 +59,8 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
       parents.append(np.sort(parent_bcs))
 
   # > Exchange parent groups info to procs where there are missing
-  none_idx = np.array([i+1 for i in range(len(parents)) if parents[i] is     None], dtype=int)
-  full_idx = np.array([i+1 for i in range(len(parents)) if parents[i] is not None], dtype=int)
+  none_idx = np.array([i+1 for i in range(len(parents)) if parents[i] is     None], dtype=pdm_dtype)
+  full_idx = np.array([i+1 for i in range(len(parents)) if parents[i] is not None], dtype=pdm_dtype)
 
   data_stri = np.array(  [len(parents[k-1]) for k in full_idx], np.int32)
   data      = np.concatenate([parents[k-1]  for k in full_idx])
@@ -77,7 +77,7 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
   return parents
 
 
-def find_ridges(dist_tree, comm, bc_identifiers=list()) -> None:
+def find_ridges(dist_tree, bc_identifiers, comm) -> None:
   """Retrieve the edges delimiting specified BC surfaces of a volumic mesh.
 
   Tree is modified inplace: Elements_t nodes containing resulting edge elements
@@ -93,6 +93,10 @@ def find_ridges(dist_tree, comm, bc_identifiers=list()) -> None:
   - or a family name gathering the BCs *(str)*.
 
   Note that a given BC surface **must not** appear in more than one group.
+
+  Note: 
+    For convenience, the shortcut ``bc_identifiers='ALL_BCS'`` can be used to indicate that
+    each BC constitutes an independant group.
 
   Args:
     dist_tree      (CGNSTree): Unstructured distributed tree, starting at Zone_t level or higher.
@@ -113,6 +117,8 @@ def find_ridges(dist_tree, comm, bc_identifiers=list()) -> None:
     zone_dtype = PT.get_value(zone).dtype
 
     # > Transform bc_identifiers onto list of list of BCs
+    if bc_identifiers=='ALL_BCS':
+      bc_identifiers = [[PT.get_name(bc)] for bc in PT.get_nodes_from_label(zone, 'BC_t')]
     replaced_bc_identifiers = replace_bc_identifiers(zone, bc_identifiers)
 
     # > Make unique PL for each group
