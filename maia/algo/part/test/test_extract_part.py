@@ -71,7 +71,7 @@ def test_extract_part_simple_s_from_api(bc_loc, comm):
 
   for bc_name in ['Xmin','Xmax','Ymin','Ymax','Zmin','Zmax']:
     extract_part_tree = EP.extract_part_from_bc_name(part_tree, bc_name, comm, containers_name=['FlowSol#Vtx'])
-    extract_dist_tree = maia.factory.recover_dist_tree(extract_part_tree, comm)
+    extract_dist_tree = maia.factory.recover_dist_tree(extract_part_tree, comm, data_transfer='FIELDS')
     extract_dist_zone = PT.get_all_Zone_t(extract_dist_tree)[0]
     assert PT.Zone.n_vtx( extract_dist_zone)==100
     assert PT.Zone.n_cell(extract_dist_zone)==81

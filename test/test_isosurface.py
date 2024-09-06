@@ -84,7 +84,7 @@ def test_isosurf_U(elt_type,comm, write_output):
                                   graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t'])
   
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'isosurf_{elt_type}.yaml')
@@ -118,7 +118,7 @@ def test_plane_slice_U(elt_type,comm, write_output):
                                   graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,'FlowSolution_t')
   
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'plane_slice_{elt_type}.yaml')
@@ -152,7 +152,7 @@ def test_spherical_slice_U(elt_type,comm, write_output):
                                       graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,'FIELDS')
 
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'spherical_slice_{elt_type}.yaml')
