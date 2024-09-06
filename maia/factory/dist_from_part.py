@@ -290,23 +290,35 @@ def _recover_base_iterative_data(dist_tree, part_tree, comm):
   # > Add BaseIterativeData by hand, because we need to manage the names
   for dist_base in PT.get_all_CGNSBase_t(dist_tree):
     part_base = PT.get_child_from_name(part_tree, PT.get_name(dist_base))
-    p_it_data = PT.get_child_from_label(part_base, 'BaseIterativeData_t')
-    if p_it_data is not None:
+    # part_base may not exist on some ranks; we do something only if BaseIterativeData_t
+    # exists on all rank knowing the base
+    p_it_data_loc = part_base is None or PT.get_child_from_label(part_base, 'BaseIterativeData_t') is not None
+    
+    if comm.allreduce(p_it_data_loc, MPI.LAND):
       # We remove the initial node for BaseIterativeData in the dist_tree in order to
       # ensure having all data from the part_trees when restarting an unsteady case
-      if PT.get_child_from_label(dist_base, 'BaseIterativeData_t') is not None:
-        PT.rm_child(dist_base, PT.get_child_from_label(dist_base, 'BaseIterativeData_t'))
-      d_it_data = PT.deep_copy(p_it_data)
-      p_z_pointers = PT.get_child_from_name(p_it_data, 'ZonePointers')
-      if p_z_pointers is not None:
-        part_zp = comm.allgather(PT.get_value(p_z_pointers))
-        dist_zp = []
-        for i in range(len(part_zp[0])):
-          znames = [part_zp[ip][i] for ip in range(comm.Get_size())]
-          znames = [MT.conv.get_part_prefix(elt) for item in znames for elt in item if elt != ''] # Remove suffix + flatten
-          dist_zp.append( sorted(set(znames)) )
-        PT.update_child(d_it_data, 'ZonePointers', 'DataArray_t', value=dist_zp)
-        PT.update_child(d_it_data, 'NumberOfZones', 'DataArray_t', value=[len(k) for k in dist_zp])
+      PT.rm_children_from_label(dist_base, 'BaseIterativeData_t')
+      # If base does not exists, we dont have data -> work on ranks having data
+      subcomm = comm.Split(part_base is None)
+      if part_base is not None:
+        p_it_data = PT.get_child_from_label(part_base, 'BaseIterativeData_t')
+        p_z_pointers = PT.get_child_from_name(p_it_data, 'ZonePointers')
+        d_it_data = PT.deep_copy(p_it_data)
+        if p_z_pointers is not None:
+          part_zp = subcomm.allgather(PT.get_value(p_z_pointers))
+          dist_zp = []
+          for i in range(len(part_zp[0])):
+            znames = [part_zp[ip][i] for ip in range(subcomm.Get_size())]
+            znames = [MT.conv.get_part_prefix(elt) for item in znames for elt in item if elt != ''] # Remove suffix + flatten
+            dist_zp.append( sorted(set(znames)) )
+          PT.update_child(d_it_data, 'ZonePointers', 'DataArray_t', value=dist_zp)
+          PT.update_child(d_it_data, 'NumberOfZones', 'DataArray_t', value=[len(k) for k in dist_zp])
+      else:
+        d_it_data = None
+
+      if not subcomm.Get_size() == comm.Get_size(): #Some ranks have not data, we need to broadcast
+        root = comm.allreduce(comm.rank if part_base is not None else -1, MPI.MAX) # A rank knowing part base
+        d_it_data = comm.bcast(d_it_data, root=root)
       PT.add_child(dist_base, d_it_data)
 
 def recover_dist_tree(part_tree, comm):

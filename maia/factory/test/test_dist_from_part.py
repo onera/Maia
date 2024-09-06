@@ -304,7 +304,8 @@ def test_recover_dist_block_size(idx_dim, comm):
   assert np.array_equal(dist_size, expected)
 
 @pytest_parallel.mark.parallel(2)
-def test_recover_base_iterative_data(comm):
+@pytest.mark.parametrize('missing_base', [False, True])
+def test_recover_base_iterative_data(missing_base, comm):
   if comm.Get_rank() == 0:
     part_tree = PT.yaml.to_cgns_tree("""
     StaticBase CGNSBase_t:
@@ -361,6 +362,9 @@ def test_recover_base_iterative_data(comm):
       ZonePointers DataArray_t [["ZoneA"], ["ZoneA", "ZoneB"]]:
       NumberOfZones DataArray_t [1,2]:
   """)
+  if comm.Get_rank() == 1 and missing_base:
+    PT.rm_children_from_name(part_tree, 'Base')
+
   DFP._recover_base_iterative_data(dist_tree, part_tree, comm)
   assert PT.is_same_tree(dist_tree, expected_tree)
 
