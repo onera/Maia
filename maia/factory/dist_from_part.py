@@ -44,7 +44,9 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
         if isinstance(get_value, str):
           get_value = py_utils.str_to_bools(len(nodes), get_value)
         if isinstance(get_value, (tuple, list)):
-          values = [PT.get_value(node) if value else None for node, value in zip(nodes, get_value)]
+          # If values are not needed, use PT.UNSET and not None, otherwise PT.update_child may erase
+          # existing value
+          values = [PT.get_value(node) if value else PT.UNSET for node, value in zip(nodes, get_value)]
 
         # Children
         leaf = nodes[-1]
