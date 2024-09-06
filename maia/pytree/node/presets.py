@@ -769,6 +769,33 @@ def new_FlowSolution(name:str = 'FlowSolution',
     new_DataArray(field_name, field_val, parent=sol)
   return sol
 
+def new_DiscreteData(name:str = 'DiscreteData',
+                     *,
+                     loc:str = None,
+                     fields:Dict[str, ArrayLike] = {},
+                     parent:CGNSTree = None):
+  """ Create a DiscreteData_t node
+
+  Link to corresponding SIDS section:
+  `DiscreteData_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#DiscreteData>`_
+
+  Args:
+    name (str): Name of the created discrete data node
+    loc (str) : If specified, create a GridLocation taking this value
+    fields (dict) : fields to create under the container (see :ref:`fields setting <pt_presets_commun>`)
+    parent (CGNSTree): Node to which created discrete data should be attached
+  Example:
+    >>> node = PT.new_DiscreteData('DD', loc='Vertex',
+    ...                            fields={'VtxWeight' : np.ones(100)})
+    >>> PT.print_tree(node)
+    DD DiscreteData_t
+    ├───GridLocation GridLocation_t "Vertex"
+    └───VtxWeight DataArray_t R8 (100,)
+  """
+  dd = new_FlowSolution(name, loc=loc, fields=fields, parent=parent)
+  NA.set_label(dd, 'DiscreteData_t')
+  return dd
+
 def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
                       *,
                       loc:str = None,

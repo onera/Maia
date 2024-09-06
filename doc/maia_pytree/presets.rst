@@ -97,6 +97,7 @@ Overview
   ~maia.pytree.node.presets.new_ZoneGridConnectivity
 
   ~maia.pytree.node.presets.new_FlowSolution
+  ~maia.pytree.node.presets.new_DiscreteData
   ~maia.pytree.node.presets.new_ZoneSubRegion
 
   ~maia.pytree.node.presets.new_BC

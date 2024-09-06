@@ -258,11 +258,12 @@ def test_new_GridCoordinates():
   """)
   assert is_same_tree(expected, gco)
 
-def test_new_FlowSolution():
-  sol = presets.new_FlowSolution('MySol', loc='CellCenter', \
-      fields={'data1' : [1,2,3], 'data2' : [1.,2,3]})
-  expected = parse_yaml_cgns.to_node("""
-  MySol FlowSolution_t:
+@pytest.mark.parametrize('label', ['FlowSolution_t', 'DiscreteData_t'])
+def test_new_FlowSolution(label):
+  new_container = {'FlowSolution_t' : presets.new_FlowSolution, 'DiscreteData_t' : presets.new_DiscreteData}[label]
+  sol = new_container('MySol', loc='CellCenter', fields={'data1' : [1,2,3], 'data2' : [1.,2,3]})
+  expected = parse_yaml_cgns.to_node(f"""
+  MySol {label}:
     GridLocation GridLocation_t "CellCenter":
     data1 DataArray_t I4 [1,2,3]:
     data2 DataArray_t R4 [1,2,3]:
