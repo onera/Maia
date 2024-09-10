@@ -121,11 +121,11 @@ def generate_related_zsr(dist_zone, part_zone):
     if bc_descriptor is not None:
       bc_name = PT.get_value(bc_descriptor)
       bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
-      if bc_n is not None:
+      if bc_n is not None and PT.Subset.n_elem(bc_n) > 0: # BC can exists, but be empty (if it holds BCDS of different location)
         PT.new_ZoneSubRegion(PT.get_name(d_zsr), bc_name=bc_name, parent=part_zone)
     elif gc_descriptor is not None:
       gc_name = PT.get_value(gc_descriptor)
-      is_related_gc = lambda n: is_inter_gc(n) and MT.conv.get_split_prefix(PT.get_name(n)) == gc_name
+      is_related_gc = lambda n: is_inter_gc(n) and MT.conv.get_split_prefix(PT.get_name(n)) == gc_name and PT.Subset.n_elem(n) > 0
       gcs_n = PT.get_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', is_related_gc])
       for gc_n in gcs_n:
         pgc_name = PT.get_name(gc_n)

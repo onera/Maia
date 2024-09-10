@@ -169,18 +169,25 @@ Zone Zone_t:
     BCRegionName Descriptor_t "BC":
   ZSR_GC ZoneSubRegion_t:
     GridConnectivityRegionName Descriptor_t "GC":
+  ZSR_BC_no_part ZoneSubRegion_t:
+    BCRegionName Descriptor_t "FakeBC":
+  ZSR_BC_no_part2 ZoneSubRegion_t:
+    BCRegionName Descriptor_t "VoidBC":
 """
   pt = """
 Zone.P2.N3 Zone_t:
   ZBC ZoneBC_t:
     BC BC_t:
-      PointList IndexArray_t:
+      PointList IndexArray_t [[1,2]]:
+      GridLocation GridLocation_t "FaceCenter":
+    VoidBC BC_t:
+      PointList IndexArray_t [[]]:
       GridLocation GridLocation_t "FaceCenter":
   ZGC ZoneGridConnectivity_t:
     GC.0 GridConnectivity_t:
-      PointList IndexArray_t:
+      PointList IndexArray_t [[3,4]]:
     GC.1 GridConnectivity_t:
-      PointList IndexArray_t:
+      PointList IndexArray_t [[5,6]]:
     JN.P2.N3.LT.P1.N0 GridConnectivity_t: # Simulate an intra JN
 """
 
@@ -190,6 +197,8 @@ Zone.P2.N3 Zone_t:
   assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'ZSR_BC'), PT.get_node_from_name(part_zone, 'ZSR_BC'))
   assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.0/Descriptor_t'))=='GC.0'
   assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.1/Descriptor_t'))=='GC.1'
+  assert PT.get_child_from_name(part_zone, 'ZSR_BC_no_part') is None  # BC does not exists on part zone
+  assert PT.get_child_from_name(part_zone, 'ZSR_BC_no_part2') is None # BC is void on part zone
 
 def test_split_original_joins():
   pt = """
