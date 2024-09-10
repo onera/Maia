@@ -119,57 +119,6 @@ def facekIndex_to_ijk(idx, n_cell, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def PE_idx_from_i_face_idx(idx, n_cell, n_vtx):
-  """
-  Compute the index of left and right parents of a i-normal face directly from
-  its index. Returns a (#idx, 2) shaped array PE storing for each face
-  PE[i_face_id,:] = [left_parent_id, right_parent_id]
-  """
-  return cnumbering.facepe_from_i_face(np.asarray(idx), np.array(n_cell, idx.dtype))
-
-def facevtx_from_i_face_idx(idx, n_cell, n_vtx):
-  """
-  Compute the index of the 4 nodes belonging to a i-normal face directly from
-  its index. Returns a flattened array nodes of size 4*#idx storing for each face
-  nodes[4*i_face_id:4*(i_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
-  face normal goes from leftcell to rightcell.
-  """
-  return cnumbering.facevtx_from_i_face(np.asarray(idx), np.array(n_cell, idx.dtype))
-
-def PE_idx_from_j_face_idx(idx, n_cell, n_vtx):
-  """
-  Compute the index of left and right parents of a j-normal face directly from
-  its index. Returns a (#idx, 2) shaped array PE storing for each face
-  PE[j_face_id,:] = [left_parent_id, right_parent_id]
-  """
-  return cnumbering.facepe_from_j_face(np.asarray(idx), np.array(n_cell, idx.dtype))
-
-def facevtx_from_j_face_idx(idx, n_cell, n_vtx):
-  """
-  Compute the index of the 4 nodes belonging to a j-normal face directly from
-  its index. Returns a flattened array nodes of size 4*#idx storing for each face
-  nodes[4*j_face_id:4*(j_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
-  face normal goes from leftcell to rightcell.
-  """
-  return cnumbering.facevtx_from_j_face(np.asarray(idx), np.array(n_cell, idx.dtype))
-
-def PE_idx_from_k_face_idx(idx, n_cell, n_vtx):
-  """
-  Compute the index of left and right parents of a k-normal face directly from
-  its index. Returns a (#idx, 2) shaped array PE storing for each face
-  PE[k_face_id,:] = [left_parent_id, right_parent_id]
-  """
-  return cnumbering.facepe_from_k_face(np.asarray(idx), np.array(n_cell, idx.dtype))
-
-def facevtx_from_k_face_idx(idx, n_cell, n_vtx):
-  """
-  Compute the index of the 4 nodes belonging to a k-normal face directly from
-  its index. Returns a flattened array nodes of size 4*#idx storing for each face
-  nodes[4*k_face_id:4*(k_face_id+1)] = [n1,n2,n3,n4]. Nodes are ordered such that
-  face normal goes from leftcell to rightcell.
-  """
-  return cnumbering.facevtx_from_k_face(np.asarray(idx), np.array(n_cell, idx.dtype))
-
 def ngon_dconnectivity_from_gnum(bounds, n_cell, dtype):
   """
   Generate a distributed ngon connectivity between the indicated face gnum ids for
