@@ -44,15 +44,15 @@ def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
   """
   Return True if the node n has a FamilyName_t child whose value is target_family.
   If allow_additional is True, also return True if node n has a AdditionalFamilyName_t child
-  whose value is target_family
+  whose value is target_family. Wildcard are accepted in target_family.
   """
   from maia.pytree import get_node_from_predicate, iter_nodes_from_predicate
   family_name_n = get_node_from_predicate(n, 'FamilyName_t', depth=[1,1])
-  if family_name_n and N.get_value(family_name_n) == target_family:
+  if family_name_n and fnmatch.fnmatch(N.get_value(family_name_n), target_family):
     return True
   if allow_additional:
     for additional_family_n in iter_nodes_from_predicate(n, 'AdditionalFamilyName_t', depth=[1,1]):
-      if N.get_value(additional_family_n) == target_family:
+      if fnmatch.fnmatch(N.get_value(additional_family_n), target_family):
         return True
   return False
 

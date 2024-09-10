@@ -54,6 +54,7 @@ ZoneBC ZoneBC_t:
 """
   node = parse_yaml_cgns.to_node(yt)
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC1'), 'SecondFamily')  == True
+  assert P.belongs_to_family(W.get_node_from_name(node, 'BC1'), '*Fam*')  == True
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC3'), 'FirstFamily') == False
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily') == False
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
