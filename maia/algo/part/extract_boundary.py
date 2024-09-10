@@ -140,7 +140,10 @@ def extract_faces_mesh(zone, face_ids):
     ex_cy = cy[vtx_ids-1]
     ex_cz = cz[vtx_ids-1]
   elif PT.Zone.Type(zone) == 'Structured':
-    i_idx, j_idx, k_idx = s_numbering.index_to_ijk(vtx_ids, PT.Zone.VertexSize(zone))
+    if zone_dim == 2:
+      i_idx, j_idx = s_numbering.index_to_ij(vtx_ids, PT.Zone.VertexSize(zone))
+    else:
+      i_idx, j_idx, k_idx = s_numbering.index_to_ijk(vtx_ids, PT.Zone.VertexSize(zone))
     ex_cx = cx[i_idx-1, j_idx-1].flatten() if zone_dim == 2 else cx[i_idx-1, j_idx-1, k_idx-1].flatten()
     ex_cy = cy[i_idx-1, j_idx-1].flatten() if zone_dim == 2 else cy[i_idx-1, j_idx-1, k_idx-1].flatten()
     ex_cz = cz[i_idx-1, j_idx-1].flatten() if zone_dim == 2 else cz[i_idx-1, j_idx-1, k_idx-1].flatten()
