@@ -14,6 +14,15 @@ def test_index_to_ijk():
   idx = np.random.randint(1, 3*5*7+1, size=20)
   assert (s_numb.ijk_to_index(*s_numb.index_to_ijk(idx, [7,5,3]), [7,5,3]) == idx).all()
 
+def test_ij_to_index():
+  assert s_numb.ij_to_index(1,1,[3,7]) ==  1
+  assert s_numb.ij_to_index(2,5,[3,7]) == 14
+  assert s_numb.ij_to_index(3,7,[3,7]) == 21
+def test_index_to_ij():
+  assert s_numb.index_to_ij( 1,[3,7]) == (1,1)
+  assert s_numb.index_to_ij(14,[3,7]) == (2,5)
+  assert s_numb.index_to_ij(21,[3,7]) == (3,7)
+
 def test_ijk_to_faceiIndex():
   assert s_numb.ijk_to_faceiIndex(1,1,1,[7,5,3],[8,6,4]) ==   1
   assert s_numb.ijk_to_faceiIndex(3,2,1,[7,5,3],[8,6,4]) ==  11
@@ -23,7 +32,7 @@ def test_ijk_to_faceiIndex():
 def test_faceindex_to_idx():
   n_vtx = [7,5,3]
   n_cell = [6,4,2]
-  idx = np.random.randint(1, 3*5*7+1, size=20)
+  idx = np.random.randint(1, 7*4*2+5*6*2+3*6*4+1, size=50)
   assert (s_numb.ijk_to_faceiIndex(*s_numb.faceiIndex_to_ijk(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
   assert (s_numb.ijk_to_facejIndex(*s_numb.facejIndex_to_ijk(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
   assert (s_numb.ijk_to_facekIndex(*s_numb.facekIndex_to_ijk(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
@@ -40,7 +49,21 @@ def test_ijk_to_facekIndex():
   assert s_numb.ijk_to_facekIndex(7,5,3,[7,5,3],[8,6,4]) == 351
   assert s_numb.ijk_to_facekIndex(7,5,4,[7,5,3],[8,6,4]) == 7+4*7+3*7*5+120+126
 
+def test_ij_to_edgeiIndex():
+  assert s_numb.ij_to_edgeiIndex(1,1,[3,7],[4,8]) ==   1
+  assert s_numb.ij_to_edgeiIndex(2,6,[3,7],[4,8]) ==  22
+  assert s_numb.ij_to_edgeiIndex(4,7,[3,7],[4,8]) == 7*4
 
+def test_ij_to_edgejIndex():
+  assert s_numb.ij_to_edgejIndex(1,1,[3,7],[4,8]) ==  29
+  assert s_numb.ij_to_edgejIndex(3,4,[3,7],[4,8]) ==  40
+  assert s_numb.ij_to_edgejIndex(3,8,[3,7],[4,8]) == 7*4 + 8*3
 
+def test_faceindex_to_idx_2d():
+  n_vtx = [4,8]
+  n_cell = [3,7]
+  idx = np.random.randint(1, 3*8+4*7+1, size=20)
+  assert (s_numb.ij_to_edgeiIndex(*s_numb.edgeiIndex_to_ij(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
+  assert (s_numb.ij_to_edgejIndex(*s_numb.edgejIndex_to_ij(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
 
 
