@@ -157,11 +157,12 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
               bcds_lntogn = i_ar
             else:
               j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
-              if idx_dim == 3:
+              if idx_dim == 2:
+                assert False
+                bcds_lntogn = s_numbering.ij_to_index(i_ar, j_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
+              elif idx_dim == 3:
                 k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
-              else:
-                k_ar  = np.ones(1, dtype=pdm_dtype).reshape(-1,1,1)
-              bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
+                bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
             MT.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
           else: #GC are put with bc and treated afterward
@@ -387,21 +388,19 @@ def compute_face_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
   return face_lntogn
 
 def compute_edge_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
-  # Only for 2D zones for now
-  _dist_vtx_per_dir = np.ones(3, dist_zone_cell_size.dtype)
-  _dist_vtx_per_dir[:dist_zone_cell_size.size] = dist_zone_cell_size + 1
+  assert dist_zone_cell_size.size == 2 # Only for 2D zones for now
+  _dist_vtx_per_dir = dist_zone_cell_size + 1
   part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
   n_edge_i, n_edge_j = (part_cell_per_dir[0]+1)*part_cell_per_dir[1], (part_cell_per_dir[1]+1)*part_cell_per_dir[0]
   edge_lntogn = np.empty(n_edge_i+n_edge_j, dtype=dtype)
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+1, dtype=dtype)
   j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+0, dtype=dtype).reshape(-1,1)
-  edge_lntogn[0:n_edge_i] = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, 1, \
-      'IFaceCenter', _dist_vtx_per_dir).flatten()
-  offset = dist_zone_cell_size[1]*_dist_vtx_per_dir[0] # Add nedge_i_dist by hand, it is 0 in func
+  edge_lntogn[0:n_edge_i] = s_numbering.ij_to_index_from_loc(i_ar, j_ar, \
+      'IEdgeCenter', _dist_vtx_per_dir).flatten()
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+0, dtype=dtype)
   j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
-  edge_lntogn[n_edge_i:] = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, 1, \
-      'JFaceCenter', _dist_vtx_per_dir).flatten() + offset
+  edge_lntogn[n_edge_i:] = s_numbering.ij_to_index_from_loc(i_ar, j_ar, \
+      'JEdgeCenter', _dist_vtx_per_dir).flatten()
   return edge_lntogn
 
 def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
@@ -423,11 +422,11 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
     vtx_lntogn = i_ar
   else:
     j_ar  = np.arange(cell_window[1,0], cell_window[1,1]+1, dtype=dtype).reshape(-1,1)
-    if idx_dim == 3:
+    if idx_dim == 2:
+      vtx_lntogn = s_numbering.ij_to_index(i_ar, j_ar, dist_vtx_per_dir).flatten()
+    elif idx_dim == 3:
       k_ar  = np.arange(cell_window[2,0], cell_window[2,1]+1, dtype=dtype).reshape(-1,1,1)
-    else:
-      k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
-    vtx_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_vtx_per_dir).flatten()
+      vtx_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_vtx_per_dir).flatten()
 
   # Cell
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1], dtype=dtype)
@@ -435,11 +434,11 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
     cell_lntogn = i_ar
   else:
     j_ar  = np.arange(cell_window[1,0], cell_window[1,1], dtype=dtype).reshape(-1,1)
-    if idx_dim == 3:
+    if idx_dim == 2:
+      cell_lntogn = s_numbering.ij_to_index(i_ar, j_ar, dist_cell_per_dir).flatten()
+    elif idx_dim == 3:
       k_ar  = np.arange(cell_window[2,0], cell_window[2,1], dtype=dtype).reshape(-1,1,1)
-    else:
-      k_ar  = np.ones(1, dtype=dtype).reshape(-1,1,1)
-    cell_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_cell_per_dir).flatten()
+      cell_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, dist_cell_per_dir).flatten()
 
   # Faces
   if idx_dim == 3:
