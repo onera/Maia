@@ -167,6 +167,9 @@ Base0 CGNSBase_t [3,3]:
       BCC BC_t:
         PointRange IndexRange_t [[1,1],[1,3],[1,2]]:
         BCDS BCDataSet_t:
+      BCD BC_t:
+        PointList IndexArray_t [[1,1,1,1],[1,1,1,1],[1,2,3,4]]: #PL should be ignored
+        BCDS BCDataSet_t:
   ZoneB Zone_t:
     ZoneType ZoneType_t "Unstructured":
     ZBC ZoneBC_t:

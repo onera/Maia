@@ -133,20 +133,19 @@ def add_missing_pr_in_bcdataset(tree):
   pr_added = False
   bc_t_path = 'CGNSBase_t/Zone_t/ZoneBC_t/BC_t'
   for base, zone, zbc, bc in PT.iter_children_from_predicates(tree, bc_t_path, ancestors=True):
+    bc_point_range   = PT.get_child_from_name(bc, 'PointRange')
     if PT.get_value(PT.get_child_from_label(zone, 'ZoneType_t')) == 'Unstructured':
-      continue
-    if PT.get_child_from_label(bc, 'BCDataSet_t') is None:
-      continue
-    bc_grid_location = PT.Subset.GridLocation(bc)
-    bc_point_range   = PT.get_value(PT.get_child_from_name(bc, 'PointRange'))
+      continue # Correction is done only for S zones
+    if bc_point_range is None:
+      continue # Correction is done only for BCs having a PointRange
     for bcds in PT.get_children_from_label(bc, 'BCDataSet_t'):
-      if PT.get_child_from_name(bcds, 'PointRange') is not None:
-        continue
+      if PT.get_child_from_predicate(bcds, lambda n : PT.get_name(n) in ['PointRange', 'PointList']) is not None:
+        continue # BCDS has its own PointList/PointRange : nothing to do
       bcds_grid_location = PT.BCDataSet.GridLocation(bcds, bc)
-      if not (bcds_grid_location.endswith('FaceCenter') and bc_grid_location == 'Vertex'):
+      if not (bcds_grid_location.endswith('FaceCenter') and PT.Subset.GridLocation(bc) == 'Vertex'):
         continue
       face_dir   = PT.Subset.normal_axis(bc)
-      bcds_point_range             = bc_point_range.copy(order='F')
+      bcds_point_range             = bc_point_range[1].copy(order='F')
       bcds_point_range[:,1]       -= 1
       bcds_point_range[face_dir,1] = bcds_point_range[face_dir,0]
       new_pr = PT.new_IndexRange(value=bcds_point_range, parent=bcds)

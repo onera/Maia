@@ -39,6 +39,7 @@ Developpement version
 - partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes
 - partitioning: manage ``DiscreteData_t`` nodes with PointList
 - convert_elements_to_ngon: preserve CellCenter BC_t nodes during conversion
+- file_to_dist_tree: fix read of structured BCs having both PointList and BCDataSet children
 
 🚧 API change
 ^^^^^^^^^^^^^
