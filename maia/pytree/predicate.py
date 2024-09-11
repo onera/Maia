@@ -6,6 +6,7 @@ from maia.pytree.typing import *
 
 import maia.pytree.cgns_keywords as CGK
 from   maia.pytree      import node as N
+from   maia.pytree      import sids as S
 from   maia.pytree.node import check
 
 __NAME__     = 0
@@ -55,6 +56,14 @@ def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
       if fnmatch.fnmatch(N.get_value(additional_family_n), target_family):
         return True
   return False
+
+def is_bc_of_loc(grid_loc):
+  predicate = lambda n: N.get_label(n)=='BC_t' and S.Subset.GridLocation(n)==grid_loc
+  return predicate
+
+def is_elmt_of_type(cgns_name):
+  predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==cgns_name
+  return predicate
 
 def auto_predicate(query):
   if isinstance(query, str):

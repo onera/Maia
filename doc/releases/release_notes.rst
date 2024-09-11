@@ -16,6 +16,7 @@ Developpement version
 ^^^^^^^^^^^^^^^
 - Algo module: add ``remove_degen_faces_from_family``
 - Algo module: add ``edge_pe_to_ngon``/``ngon_to_edge_pe`` to convert 2D polyhedric connectivities
+- Algo module: add ``find_ridges`` functionnality to retrieve topological ridges between surfaces
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^

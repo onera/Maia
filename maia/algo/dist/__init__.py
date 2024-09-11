@@ -31,6 +31,8 @@ from .ngons_to_elements          import convert_ngon_to_elements, ngons_to_eleme
 
 from .redistribute               import redistribute_tree
 
+from .retrieve_ridges            import find_ridges
+
 from .s_to_u                     import convert_s_to_u, convert_s_to_ngon
 
 from .sections_tools             import concatenate_elt_sections,\

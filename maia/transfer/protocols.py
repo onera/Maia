@@ -181,14 +181,14 @@ def part_to_part_strided(send_stride, send_data, gnum1, gnum2, comm):
     recv_data = dict()
     for name, field in send_data.items():
       request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P, # Point to point communication strategy
-                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2, # data follows gnum1 layout
+                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1, # data follows gnum1 layout
                           field,
                           send_stride)
       recv_stride, recv_field = PTP.wait(request)
       recv_data[name] = recv_field
   else:
     request = PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                        PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
+                        PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1,
                         send_data,
                         send_stride)
     recv_stride, recv_data = PTP.wait(request)

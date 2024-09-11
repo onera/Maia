@@ -60,7 +60,36 @@ ZoneBC ZoneBC_t:
   assert P.belongs_to_family(W.get_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
   assert P.belongs_to_family(W.get_node_from_path(node, 'BC1/FamilyName'), 'SecondFamily') == False
 
- 
+def test_is_bc_of_loc():
+  yt = """
+  ZoneBC ZoneBC_t:
+    BC1 BC_t:
+      GridLocation GridLocation_t "Vertex":
+    BC2 BC_t:
+    BC3 BC_t:
+      GridLocation GridLocation_t "EdgeCenter":
+  """
+  node = parse_yaml_cgns.to_node(yt)
+  assert [n[0] for n in W.get_nodes_from_predicate(node, P.is_bc_of_loc('Vertex'))]==['BC1','BC2']
+  assert W.get_node_from_predicate(node, P.is_bc_of_loc('EdgeCenter'))[0] == 'BC3'
+  assert W.get_node_from_predicate(node, P.is_bc_of_loc('FaceCenter')) is None
+
+def test_is_elmt_of_type():
+  yt = """
+  Zone Zone_t:
+    NGON   Elements_t I4 [22, 0]:
+    TRI1   Elements_t I4 [ 5, 0]:
+    NODE   Elements_t I4 [ 2, 0]:
+    TRI2   Elements_t I4 [ 5, 0]:
+    BAR    Elements_t I4 [ 4, 0]:
+    ZoneBC ZoneBC_t:
+  """
+  node = parse_yaml_cgns.to_node(yt)
+  assert W.get_node_from_predicate (node, P.is_elmt_of_type('TETRA_4')) is None
+  assert W.get_node_from_predicate (node, P.is_elmt_of_type('ZoneBC' )) is None
+  assert [n[0] for n in W.get_nodes_from_predicate(node, P.is_elmt_of_type('TRI_3'))]==['TRI1','TRI2']
+  assert W.get_node_from_predicate(node, P.is_elmt_of_type('NODE'))[0]=='NODE'
+
 def test_auto_predicate():
   nface = ['NFace', np.array([23, 0], np.int32), [], 'Elements_t']
 

@@ -32,6 +32,7 @@ Connectivities conversions
 .. autofunction:: maia.algo.dist.concatenate_elt_sections
 .. autofunction:: maia.algo.dist.rearrange_element_sections
 .. autofunction:: maia.algo.dist.generate_jns_vertex_list
+.. autofunction:: maia.algo.dist.find_ridges
 
 
 Geometry transformations
