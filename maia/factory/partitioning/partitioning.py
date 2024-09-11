@@ -20,7 +20,7 @@ from .post_split import post_partitioning as post_split
 from .load_balancing import balancing_quality
 
 from maia.pytree.graph.algo import step
-class UDCollector:
+class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
   def __init__(self):
       self.ud_paths = list()
@@ -153,7 +153,7 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
       labels = [label for label in dist_to_part.LABELS if label in data_transfer]
     # UserDefinedData
     if 'UserDefinedData_t' in data_transfer or 'ALL' in data_transfer:
-      PT.graph.cgns.depth_first_search(dist_tree, v := UDCollector(), depth='all')
+      PT.graph.cgns.depth_first_search(dist_tree, v := UDDCollector(), depth='all')
       ud_paths = v.ud_paths
     else:
       ud_paths = []

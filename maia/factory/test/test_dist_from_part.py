@@ -457,13 +457,14 @@ def test_recover_dist_tree_s(with_fields, comm):
 
   part_tree = maia.factory.partition_dist_tree(dist_tree_bck, comm)
 
-  if with_fields:
-    for bc in PT.get_nodes_from_label(part_tree, 'BC_t'):
-      bcds = PT.new_BCDataSet('BCDataSet', 
-                              loc=PT.Subset.GridLocation(bc),
-                              point_range=PT.get_child_from_name(bc, 'PointRange')[1], 
-                              parent=bc)
-      PT.new_BCData('DirichletData', {'Ones' : np.ones(PT.Subset.n_elem(bc))}, parent=bcds)
+  for zone in PT.get_all_Zone_t(part_tree):
+    PT.new_FlowSolution('FlowSolution', parent=zone)
+  for bc in PT.get_nodes_from_label(part_tree, 'BC_t'):
+    bcds = PT.new_BCDataSet('BCDataSet', 
+                            loc=PT.Subset.GridLocation(bc),
+                            point_range=PT.get_child_from_name(bc, 'PointRange')[1], 
+                            parent=bc)
+    PT.new_BCData('DirichletData', {'Ones' : np.ones(PT.Subset.n_elem(bc))}, parent=bcds)
   
   data_transfer = ['FIELDS'] if with_fields else []
   dist_tree = DFP.recover_dist_tree(part_tree, comm, data_transfer)
@@ -473,11 +474,18 @@ def test_recover_dist_tree_s(with_fields, comm):
     if PT.get_child_from_name(bc, 'GridLocation') is None:
       PT.new_GridLocation('Vertex', bc)
 
+  # BCDS should always exists, because its has a PL; but fields should be here only if with_fields
+  assert PT.get_node_from_label(dist_tree, 'BCDataSet_t') is not None
   if with_fields:
     assert len(PT.get_nodes_from_name(dist_tree, 'Ones')) == \
            len(PT.get_nodes_from_label(dist_tree, 'BC_t'))
+    assert PT.get_node_from_label(dist_tree, 'FlowSolution_t') is not None
   else:
-    assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
+    assert PT.get_node_from_label(dist_tree, 'FlowSolution_t') is None
+
+
+  PT.rm_nodes_from_predicate(dist_tree, lambda n : PT.get_label(n) in ['BCDataSet_t', 'FlowSolution_t'])
+  assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("edges_only", [False, True])
