@@ -1,5 +1,3 @@
-import mpi4py.MPI as MPI
-
 import Pypdm.Pypdm as PDM
 
 import numpy as np
@@ -8,6 +6,7 @@ import maia
 import maia.pytree as PT
 from   maia                              import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.algo.part.point_cloud_utils  import create_sub_numbering
+from   maia.transfer                     import protocols as EP
 from   maia.utils                        import np_utils, par_utils
 
 
@@ -50,53 +49,41 @@ def extract_elmt_connectivity_from_pl(zone, elmt_nodes, pl, comm):
 
   return elmt_conn_idx, elmt_conn[0]
 
-
 def extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm,
                         bc_predicate=lambda n: PT.get_label(n)=='BC_t'):
-  """
-  Return distributed zone_bc node containing bc_predicate BCs from zone tagged.
-  """
-  # > Get predicate BC PLs
-  bc_pls = list()
-  for bc_n in PT.get_children_from_predicate(zone_bc_n, bc_predicate):
-    pl_n = PT.get_child_from_name(bc_n, 'PointList')
-    bc_pls.append(PT.get_value(pl_n)[0])
 
-  # > Create part_to_part to identify intersecting BCs
-  bc_ptp           = maia.transfer.protocols.PartToPart([pl], bc_pls, comm)
-  ref_lnum2        = bc_ptp.get_referenced_lnum2()
-  extract_new_gnum = np.arange(distri_pl[0], distri_pl[1], dtype=pdm_dtype)+1
-  p2p_type         = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1
-  req_id           = bc_ptp.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                                  p2p_type,
-                                  [extract_new_gnum])
-  _, part2_data = bc_ptp.wait(req_id)
+  bc_pls = [PT.get_child_from_name(bc_n, 'PointList')[1][0] \
+            for bc_n in PT.iter_children_from_predicate(zone_bc_n, bc_predicate)]
+  
+  extract_new_gnum = np.arange(distri_pl[0], distri_pl[1], dtype=pl.dtype) + 1
+  intersections = EP.part_to_part([extract_new_gnum], [pl], bc_pls, comm)
 
-  # > Create intersecting BCs
   edge_zone_bc_n = PT.new_ZoneBC()
-  for i_bc, bc_n in enumerate(PT.get_children_from_predicate(zone_bc_n, bc_predicate)):
-    size_ref_lnum2_g = comm.allreduce(ref_lnum2[i_bc].size, op=MPI.SUM)
-    if size_ref_lnum2_g!=0:
+  for bc_n, intersection in zip(PT.get_children_from_predicate(zone_bc_n, bc_predicate), intersections):
+    bc_distri = par_utils.dn_to_distribution(intersection.size, comm)
+    if bc_distri[-1] > 0:
       bc_name = PT.get_name(bc_n)
       edge_bc_n = PT.new_BC(name=bc_name,
-                            point_list=part2_data[i_bc].reshape((1,-1), order='F'),
+                            point_list=intersection.reshape((1,-1), order='F'),
                             parent=edge_zone_bc_n)
-      bc_distri = par_utils.dn_to_distribution(part2_data[i_bc].size, comm)
+      PT.new_GridLocation(loc="CellCenter" , parent=edge_bc_n)
       PT.maia.new_distribution({'Index':bc_distri}, parent=edge_bc_n)
 
   return edge_zone_bc_n
 
 
-def extract_zone_edges(dist_zone, pl, comm): #-> CGNSTree:
+def extract_zone_edges(dist_zone, pl, comm):
   """
   Return distributed zone containing edges tagged in pl and associated BCs.
+  We assume that a same id does not appear twice in pl (?)
   """
   # > Extract edge_vtx from tagged edge in PL
   elmt_1d_nodes = PT.Zone.get_ordered_elements_per_dim(dist_zone)[1]
   _, edge_vtx = extract_elmt_connectivity_from_pl(dist_zone, elmt_1d_nodes, pl, comm)
-  distri_edge = par_utils.dn_to_distribution(pl.size, comm)
-  extract_edge_vtx = create_sub_numbering([edge_vtx], comm)
+  extract_edge_vtx = create_sub_numbering([edge_vtx], comm)[0]
   
+  distri_bar = par_utils.dn_to_distribution(extract_edge_vtx.size // 2, comm)
+
   # > Compute vtx pl from extracted edge_vtx
   vtx_distri = PT.maia.get_distribution(dist_zone, 'Vertex')[1]
   vtx_mask   = np.zeros(vtx_distri[1] - vtx_distri[0], bool)
@@ -104,41 +91,37 @@ def extract_zone_edges(dist_zone, pl, comm): #-> CGNSTree:
   ptb = maia.transfer.protocols.PartToBlock(vtx_distri, [edge_vtx], comm)
   gnum = ptb.getBlockGnumCopy()
   vtx_mask[gnum-vtx_distri[0]-1] = True
-  cx, cy, cz = PT.Zone.coordinates(dist_zone)
-  extract_cx = cx[vtx_mask] ; extract_cy = cy[vtx_mask] ; extract_cz = cz[vtx_mask]
-  distri_vtx = par_utils.dn_to_distribution(extract_cx.size, comm)
+  coords =  PT.Zone.coordinates(dist_zone)._asdict()
+  extract_coords = {key: coord[vtx_mask] for key,coord in coords.items()}
+  distri_vtx = par_utils.dn_to_distribution(vtx_mask.sum(), comm)
+
 
   # > Create edge zone node
-  zone_name = PT.get_name(dist_zone)
-  edge_zone = PT.new_Zone(zone_name, type="Unstructured",
-                          size=[np.array([distri_vtx[-1], distri_edge[-1] , 0], dtype=pdm_dtype)])
-  PT.maia.new_distribution({'Vertex':distri_vtx, 'Cell':distri_edge} , parent=edge_zone)
+  edge_zone_size = np.array([[distri_vtx[-1], distri_bar[-1] , 0]], order='F', dtype=dist_zone[1].dtype)
+  edge_zone = PT.new_Zone(PT.get_name(dist_zone), type="Unstructured", size=edge_zone_size)
   
-  PT.new_GridCoordinates('GridCoordinates', fields={'CoordinateX':extract_cx, 'CoordinateY':extract_cy, 'CoordinateZ':extract_cz}, parent=edge_zone)
+  PT.new_GridCoordinates('GridCoordinates', fields=extract_coords, parent=edge_zone)
 
-  bar_name = "BAR_2"
-  n_bar = edge_vtx.size/2
-  distri_bar = par_utils.dn_to_distribution(n_bar, comm)
-
-  extract_elmt_range = np.array([1, distri_bar[-1]], dtype=pdm_dtype)
-  new_bar_n = PT.new_Elements(bar_name, 'BAR_2',
+  extract_elmt_range = np.array([1, distri_bar[-1]], dtype=edge_zone_size.dtype)
+  new_bar_n = PT.new_Elements('BAR_2', 'BAR_2',
                               erange=extract_elmt_range,
                               econn=extract_edge_vtx,
                               parent=edge_zone)
   PT.maia.new_distribution({'Element':distri_bar}, parent=new_bar_n)
 
   # > Get BCs intersecting PL
-  zone_bc_n      = PT.get_child_from_label(dist_zone, 'ZoneBC_t')
-  edge_zone_bc_n = extract_bcs_from_pl(zone_bc_n, pl, distri_edge, comm,
-                    bc_predicate=PT.predicate.is_bc_of_loc('EdgeCenter'))
-  for bc_n in PT.get_children_from_label(edge_zone_bc_n, 'BC_t'):
-    PT.new_GridLocation(loc="CellCenter" , parent=bc_n)
-  PT.add_child(edge_zone, edge_zone_bc_n)
+  zone_bc_n  = PT.get_child_from_label(dist_zone, 'ZoneBC_t')
+  if zone_bc_n is not None:
+    edge_zone_bc_n = extract_bcs_from_pl(zone_bc_n, pl, distri_bar, comm,
+                      bc_predicate=PT.predicate.is_bc_of_loc('EdgeCenter'))
+    PT.add_child(edge_zone, edge_zone_bc_n)
+
+  PT.maia.new_distribution({'Vertex': distri_vtx, 'Cell': distri_bar} , parent=edge_zone)
 
   return edge_zone
 
 
-def extract_edges(dist_tree, domain_pls, comm): #-> CGNSTree:
+def extract_edges(dist_tree, domain_pls, comm):
   """
   Extract edges defined by the provided PointList from a distributed tree.
 
@@ -173,7 +156,6 @@ def extract_edges(dist_tree, domain_pls, comm): #-> CGNSTree:
                                   name=base_name,
                                   label='CGNSBase_t',
                                   value=np.array([1,3], dtype=np.int32))  
-      zone_path = PT.utils.path_head(domain_path, 3)
       zone_n = PT.get_node_from_path(dist_tree, domain_path)
       edge_zone = extract_zone_edges(zone_n, domain_pl, comm)
       PT.add_child(edge_base, edge_zone)

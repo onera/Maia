@@ -55,21 +55,21 @@ def test_extract_bcs_from_pl(comm):
     ZoneBC ZoneBC_t:
       BC1 BC_t "BCWall":
         GridLocation GridLocation_t "EdgeCenter":
-        PointList IndexArray_t {dtype} [[12, 10, 11]]:
+        PointList IndexArray_t [[12, 10, 11]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [0, 3, 5]:
       BC2 BC_t "BCWall":
         GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t {dtype} [[3, 6]]:
+        PointList IndexArray_t [[3, 6]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [0, 2, 3]:
       BC3 BC_t "BCWall":
         GridLocation GridLocation_t "EdgeCenter":
-        PointList IndexArray_t {dtype} [[7]]:
+        PointList IndexArray_t [[7]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [0, 1, 1]:
       BC4 BC_t "BCWall":
-        PointList IndexArray_t {dtype} [[1, 8, 10]]:
+        PointList IndexArray_t [[1, 8, 10]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [0, 3, 6]:
     """
@@ -78,21 +78,21 @@ def test_extract_bcs_from_pl(comm):
     ZoneBC ZoneBC_t:
       BC1 BC_t "BCWall":
         GridLocation GridLocation_t "EdgeCenter":
-        PointList IndexArray_t {dtype} [[7, 8]]:
+        PointList IndexArray_t [[7, 8]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [3, 5, 5]:
       BC2 BC_t "BCWall":
         GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t {dtype} [[4]]:
+        PointList IndexArray_t [[4]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [2, 3, 3]:
       BC3 BC_t "BCWall":
         GridLocation GridLocation_t "EdgeCenter":
-        PointList IndexArray_t {dtype} [[]]:
+        PointList IndexArray_t [[]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [1, 1, 1]:
       BC4 BC_t "BCWall":
-        PointList IndexArray_t {dtype} [[3, 7, 9]]:
+        PointList IndexArray_t [[3, 7, 9]]:
         :CGNS#Distribution UserDefinedData_t:
           Index DataArray_t {dtype} [0, 3, 6]:
     """
@@ -104,27 +104,28 @@ def test_extract_bcs_from_pl(comm):
       expected_distri = par_utils.dn_to_distribution(expected_pl.size, comm)
       assert np.array_equal(bc_pl    , expected_pl)
       assert np.array_equal(bc_distri, expected_distri)
+      assert bc_pl.dtype == expected_pl.dtype and bc_distri.dtype == pdm_dtype
 
   tree = PT.yaml.to_cgns_tree(yt)
   zone_bc_n = PT.get_child_from_label(tree, "ZoneBC_t")
 
-  pl = [np.array([12, 7], dtype=pdm_dtype),
-        np.array([10]  , dtype=pdm_dtype)][comm.rank]
+  pl = [np.array([12, 7], np.int32),
+        np.array([10]  ,  np.int32)][comm.rank]
   distri_pl = par_utils.dn_to_distribution(pl.size, comm)
 
-  expected_pls = {"BC1":[np.array([1, 3], dtype=pdm_dtype),
-                         np.array([2]   , dtype=pdm_dtype)][comm.rank],
-                  "BC3":[np.array([2]   , dtype=pdm_dtype),
-                         np.array([]    , dtype=pdm_dtype)][comm.rank],
-                  "BC4":[np.array([3]   , dtype=pdm_dtype),
-                         np.array([2]   , dtype=pdm_dtype)][comm.rank]}
+  expected_pls = {"BC1":[np.array([1, 3], dtype=np.int32),
+                         np.array([2]   , dtype=np.int32)][comm.rank],
+                  "BC3":[np.array([2]   , dtype=np.int32),
+                         np.array([]    , dtype=np.int32)][comm.rank],
+                  "BC4":[np.array([3]   , dtype=np.int32),
+                         np.array([2]   , dtype=np.int32)][comm.rank]}
   extract_zone_bc_n = EP.extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm)
   check_result(extract_zone_bc_n, expected_pls)
 
-  expected_pls = {"BC1":[np.array([1, 3], dtype=pdm_dtype),
-                         np.array([2]   , dtype=pdm_dtype)][comm.rank],
-                  "BC3":[np.array([2]   , dtype=pdm_dtype),
-                         np.array([]    , dtype=pdm_dtype)][comm.rank]}
+  expected_pls = {"BC1":[np.array([1, 3], dtype=np.int32),
+                         np.array([2]   , dtype=np.int32)][comm.rank],
+                  "BC3":[np.array([2]   , dtype=np.int32),
+                         np.array([]    , dtype=np.int32)][comm.rank]}
   extract_zone_bc_n = EP.extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm, 
     bc_predicate=lambda n: PT.predicate.is_bc_of_loc('EdgeCenter'))
   check_result(extract_zone_bc_n, expected_pls)
@@ -134,7 +135,7 @@ def test_extract_bcs_from_pl(comm):
 def test_extract_edges(comm, root_t):
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', comm)
 
-  point_list = [PT.Subset.getPatch(n)[1][0]\
+  point_list = [PT.Subset.getPatch(n)[1][0] \
     for n in PT.get_nodes_from_predicate(dist_tree, PT.predicate.is_bc_of_loc('EdgeCenter'))[2:6]]
 
   if root_t=='Zone_t':
@@ -154,9 +155,3 @@ def test_extract_edges(comm, root_t):
   assert PT.Zone.n_vtx (_edge_dist_zone)==9
   assert PT.Zone.n_cell(_edge_dist_zone)==8
   assert len(PT.get_nodes_from_label(_edge_dist_zone, 'BC_t'))==4
-
-
-if __name__=='__main__':
-  import mpi4py.MPI as MPI
-  comm = MPI.COMM_SELF
-  test_extract_elmt_connectivity_from_pl(comm)
