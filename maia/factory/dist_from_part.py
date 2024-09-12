@@ -9,8 +9,27 @@ from maia.algo.dist             import matching_jns_tools as MJT
 from maia.transfer              import utils              as tr_utils
 from maia.transfer.part_to_dist import data_exchange      as PTB
 from maia.transfer.part_to_dist import index_exchange     as IPTB
+from maia.transfer.part_to_dist import tree_api           as part_to_dist
 from maia.utils                 import py_utils, par_utils
 from maia                       import npy_pdm_gnum_dtype as pdm_dtype
+
+from maia.pytree.graph.algo import step
+class UDDCollector:
+  """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
+  def __init__(self):
+      self.ud_paths = list()
+  def pre(self, nodes):
+    last = nodes[-1]
+    if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) not in [':CGNS#GlobalNumbering', ':CGNS#LocalNumbering']:
+      path = "/".join([PT.get_name(n) for n in nodes])
+      # Remove maia naming conventions, since paths should be given on disttree
+      for i, node in enumerate(nodes):
+        if PT.get_label(node) == 'Zone_t':
+          path = PT.utils.update_path_elt(path,i, lambda s: MT.conv.get_part_prefix(s))
+        elif PT.get_label(node) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
+          path = PT.utils.update_path_elt(path,i, lambda s: MT.conv.get_split_prefix(s))
+      self.ud_paths.append(PT.utils.path_tail(path, 1))
+      return step.over # Stop exploring this level after search
 
 def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
                                  child_list=[], get_value="ancestors",
@@ -44,7 +63,9 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
         if isinstance(get_value, str):
           get_value = py_utils.str_to_bools(len(nodes), get_value)
         if isinstance(get_value, (tuple, list)):
-          values = [PT.get_value(node) if value else None for node, value in zip(nodes, get_value)]
+          # If values are not needed, use PT.UNSET and not None, otherwise PT.update_child may erase
+          # existing value
+          values = [PT.get_value(node) if value else PT.UNSET for node, value in zip(nodes, get_value)]
 
         # Children
         leaf = nodes[-1]
@@ -321,19 +342,25 @@ def _recover_base_iterative_data(dist_tree, part_tree, comm):
         d_it_data = comm.bcast(d_it_data, root=root)
       PT.add_child(dist_base, d_it_data)
 
-def recover_dist_tree(part_tree, comm):
+def recover_dist_tree(part_tree, comm, data_transfer=[]):
   """ Regenerate a distributed tree from a partitioned tree.
 
   The partitioned tree should have been created using Maia, or
   must at least contains GlobalNumbering nodes as defined by Maia
   (see :ref:`part_tree`).
 
-  The following nodes are managed : GridCoordinates, Elements, ZoneBC, ZoneGridConnectivity
-  FlowSolution, DiscreteData and ZoneSubRegion.
-
+  Important:
+    Similarly to :func:`partition_dist_tree`, this function reports only geometric information
+    (such as boundary conditions, zone subregion, etc.) on the created dist_tree;
+    data fields are **not** transfered
+    automatically. Use :attr:`data_transfer` keyword argument
+    or see :ref:`Transfer module<user_man_transfer>`. 
+  
   Args:
     part_tree (CGNSTree) : Partitioned CGNS Tree
     comm       (MPIComm) : MPI communicator
+    data_transfer (list of str): Labels of data nodes to transfer during operation
+      (see :attr:`data_transfer`)
   Returns:
     CGNSTree: distributed cgns tree
 
@@ -403,15 +430,45 @@ def recover_dist_tree(part_tree, comm):
     # > BND and JNS
     _recover_BC(dist_zone, part_zones, comm)
     _recover_GC(dist_zone, part_zones, comm)
+    
+    # To mimic partitioning behaviour, we create here the geometric support of containers
+    # (such as ZoneSubRegion) without transfering fields
+    filter = {'FlowSolution_t'         : ('I', ['*/']),
+              'DiscreteData_t'         : ('I', ['*/']),
+              'ZoneSubRegion_t'        : ('I', ['*/']),
+              'BCDataSet_t'            : ('I', ['ZoneBC_t/*/*/']),
+              'ArbitraryGridMotion_t'  : ('I', [])}
 
-    # > Flow Solution and Discrete Data
-    PTB.part_sol_to_dist_sol(dist_zone, part_zones, comm)
-    PTB.part_discdata_to_dist_discdata(dist_zone, part_zones, comm)
-    PTB.part_subregion_to_dist_subregion(dist_zone, part_zones, comm)
-
-    # > Todo : BCDataSet
+    part_to_dist._part_zones_to_dist_zone(dist_zone, part_zones, comm, filter)
+    is_empty_cont = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'BCDataSet_t'] \
+                           and PT.maia.getDistribution(n) is None
+    PT.rm_children_from_predicate(dist_zone, is_empty_cont)
+    for dist_bc in PT.iter_children_from_labels(dist_zone, ['ZoneBC_t', 'BC_t']):
+      PT.rm_children_from_predicate(dist_bc, is_empty_cont)
+      PT.rm_nodes_from_label(dist_bc, 'BCData_t', depth=2)
 
   MJT.copy_donor_subset(dist_tree)
+
+  # Transfer fields
+  if isinstance(data_transfer, str): # Convert to list if single string provided
+    data_transfer = [data_transfer]
+  # Fields
+  if 'FIELDS' in data_transfer or 'ALL' in data_transfer:
+    labels = part_to_dist.LABELS
+  else:
+    labels = [label for label in part_to_dist.LABELS if label in data_transfer]
+  # UserDefinedData
+  if 'UserDefinedData_t' in data_transfer or 'ALL' in data_transfer:
+    PT.graph.cgns.depth_first_search(part_tree, v := UDDCollector(), depth='all')
+    # Propagate paths across ranks
+    ud_paths = sorted(set([path for rank_paths in comm.allgather(v.ud_paths) for path in rank_paths]))
+  else:
+    ud_paths = []
+
+  if labels:
+    part_to_dist.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, labels, comm)
+  for path in ud_paths:
+    part_to_dist.part_tree_to_dist_tree_copy(dist_tree, part_tree, path, comm)
 
   return dist_tree
 

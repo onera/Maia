@@ -1,8 +1,12 @@
+.. _user_man_transfer:
+
 Transfer module
 ===============
 
 The ``maia.transfer`` contains functions that exchange data between the 
 partitioned and distributed meshes. 
+
+.. _user_man_field_transfer:
 
 Fields transfer
 ---------------
@@ -90,6 +94,8 @@ Lastly, we use the following rules to manage missing label keys in dictionaries:
 .. autofunction:: maia.transfer.part_zones_to_dist_zone_only
 .. autofunction:: maia.transfer.dist_zone_to_part_zones_all
 .. autofunction:: maia.transfer.part_zones_to_dist_zone_all
+
+.. _user_man_metadata_transfer:
 
 Metadata transfer
 -----------------

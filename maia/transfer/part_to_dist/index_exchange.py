@@ -55,7 +55,10 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   for p_zone in part_zones:
     node = PT.get_node_from_path(p_zone, node_path)
     if node:
-      if PT.Subset.GridLocation(node) == 'Vertex':
+      if is_bcds := PT.get_label(node) == 'BCDataSet_t':
+        bc_parent = PT.get_node_from_path(p_zone, PT.utils.path_head(node_path))
+      location = PT.BCDataSet.GridLocation(node, bc_parent) if is_bcds else PT.Subset.GridLocation(node)
+      if location == 'Vertex':
         ln_to_gn = PT.get_value(MT.getGlobalNumbering(p_zone, 'Vertex'))
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
@@ -170,7 +173,7 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     if ancestor_n:
       for node in PT.iter_children_from_predicate(ancestor_n, name_predicate):
         part_pl = PT.get_child_from_name(node, 'PointList')[1]
-        loc = PT.Subset.GridLocation(node)
+        loc = PT.BCDataSet.GridLocation(node, ancestor_n) if PT.get_label(node) == 'BCDataSet_t' else PT.Subset.GridLocation(node)
         if PT.Zone.Type(part_zone) == 'Unstructured':
           if loc == 'Vertex':
             ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))

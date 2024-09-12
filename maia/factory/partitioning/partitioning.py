@@ -11,12 +11,25 @@ from maia.utils     import par_utils
 from maia.utils     import logging as mlog
 
 from maia.transfer.dist_to_part import data_exchange  as BTP
+from maia.transfer.dist_to_part import tree_api       as dist_to_part
 
 from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
 from .load_balancing import balancing_quality
+
+from maia.pytree.graph.algo import step
+class UDDCollector:
+  """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
+  def __init__(self):
+      self.ud_paths = list()
+  def pre(self, nodes):
+    path = "/".join([PT.get_name(n) for n in nodes])
+    last = nodes[-1]
+    if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) != ':CGNS#Distribution':
+      self.ud_paths.append(PT.utils.path_tail(path, 1))
+      return step.over # Stop exploring this level after search
 
 def set_default(dist_tree, comm):
 
@@ -29,6 +42,7 @@ def set_default(dist_tree, comm):
 
   default = {'graph_part_tool'         : None,
              'zone_to_parts'           : None,
+             'data_transfer'           : [],
              'reordering'              : default_renum,
              'part_interface_loc'      : None,
              'output_connectivity'     : 'Element',
@@ -53,8 +67,8 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
 
   Important:
     Geometric information (such as boundary conditions, zone subregion, etc.) are reported
-    on the partitioned tree; however, data fields (BCDataSet, FlowSolution, etc.) are not
-    transfered automatically. See ``maia.transfer`` module.
+    on the partitioned tree; however, data fields (BCDataSet, FlowSolution, etc.) are **not**
+    transfered automatically. Use :attr:`data_transfer` keyword argument or see :ref:`Transfer module<user_man_transfer>`.
 
   See reference documentation for the description of the keyword arguments.
 
@@ -127,6 +141,27 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
       mlog.stat("[partition_dist_tree] After partitioning, repartition statistics are:")
 
     balancing_quality.compute_balance_and_splits(n_cell_per_block, comm, comm.Get_rank()==0)
+
+  # Transfer fields
+  if data_transfer := options['data_transfer']:
+    if isinstance(data_transfer, str): # Convert to list if single string provided
+      data_transfer = [data_transfer]
+    # Fields
+    if 'FIELDS' in data_transfer or 'ALL' in data_transfer:
+      labels = dist_to_part.LABELS
+    else:
+      labels = [label for label in dist_to_part.LABELS if label in data_transfer]
+    # UserDefinedData
+    if 'UserDefinedData_t' in data_transfer or 'ALL' in data_transfer:
+      PT.graph.cgns.depth_first_search(dist_tree, v := UDDCollector(), depth='all')
+      ud_paths = v.ud_paths
+    else:
+      ud_paths = []
+
+    if labels:
+      dist_to_part.dist_tree_to_part_tree_only_labels(dist_tree, part_tree, labels, comm)
+    for path in ud_paths:
+      dist_to_part.dist_tree_to_part_tree_copy(dist_tree, part_tree, path, comm)
 
   return part_tree
 

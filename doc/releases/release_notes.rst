@@ -30,6 +30,7 @@ Developpement version
 - rearrange_element_sections: split reordering and concatenation in two functions (flexibility)
 - localize_points, compute_wall_distance: allow 2D polygonal or Elements meshes
 - ngons_to_elements: functionnality is now truly parallel, and more nodes are managed
+- partitioning, recover_dist_tree: add ``data_transfer`` shortcut to transfer fields or UDD nodes
 
 🐞 Fixes
 ^^^^^^^^

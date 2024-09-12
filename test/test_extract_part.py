@@ -209,7 +209,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
                                             )
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr.yaml')
@@ -245,7 +245,7 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, comm, write_output):
   part_tree_ep = extractor.get_extract_part_tree()
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, 'ALL')
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr.yaml')
@@ -279,7 +279,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, comm, write_output):
   part_tree_ep = extractor.get_extract_part_tree()
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, ['FIELDS'])
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_point_list.yaml')
@@ -313,7 +313,7 @@ def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
   part_tree_ep = extractor.get_extract_part_tree()
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, ['ZoneSubRegion_t', 'FlowSolution_t'])
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_face_from_point_list.yaml')
@@ -350,7 +350,7 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
   # Mio.write_trees(part_tree_ep,'OUT_TEST_VERTEX/part_tree_extract.cgns',comm)
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, 'FIELDS')
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_vertex_from_zsr.yaml')
@@ -384,7 +384,7 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
                                                 )
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, 'FIELDS')
   PT.get_node_from_label(dist_tree_ep,'ZoneSubRegion_t')[3] = 'FlowSolution_t'
 
   # > Compare to reference solution
@@ -443,7 +443,7 @@ def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
   #                             parent=part_zone_ep)
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, 'ALL')
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_bcs_from_family.yaml')
@@ -522,7 +522,7 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
   #                             parent=part_zone_ep)
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm,['FIELDS'])
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_zsr_from_family.yaml')
@@ -576,7 +576,7 @@ def test_extract_from_bc_name_S(partial_bc, comm, write_output):
                                                )
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm,'FIELDS')
 
   # # > Compare to reference solution
   # ref_file = os.path.join(ref_dir, f'extract_s_ymax.cgns')
@@ -610,7 +610,7 @@ def test_extract_cell_from_zsr_S(comm, write_output):
                                            )
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm,'ALL')
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_cell_from_zsr_S.yaml')
@@ -665,7 +665,7 @@ def test_extractor_cell_from_zsr_S(zsr_loc, comm, write_output):
                                            )
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm)
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, ['FlowSolution_t', 'ZoneSubRegion_t'])
 
   # > Compare to reference solution
   file_name = f'extractor_cell_from_zsr_vtx_S' if zsr_loc=='Vertex' else f'extractor_cell_from_zsr_cell_S'

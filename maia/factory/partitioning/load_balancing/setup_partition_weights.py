@@ -18,7 +18,7 @@ def compute_nosplit_weights(tree, comm):
     tree (CGNSTree)  : (Minimal) distributed tree : only zone names and sizes are needed
     comm (MPI.Comm)  : MPI Communicator
   Returns:
-    dict: ``zone_to_parts`` dictionnary expected by :func:`partition_dist_tree`
+    dict: ``zone_to_parts`` dictionnary expected by :func:`~maia.factory.partition_dist_tree`
 
   Example:
       .. literalinclude:: snippets/test_factory.py
@@ -68,7 +68,7 @@ def npart_per_zone(tree, comm, n_part=1):
     n_part (int,optional) : Number of partitions to produce on each zone by the proc.
       Defaults to 1.
   Returns:
-    dict: ``zone_to_parts`` dictionnary expected by :func:`partition_dist_tree`
+    dict: ``zone_to_parts`` dictionnary expected by :func:`~maia.factory.partition_dist_tree`
 
   Example:
       .. literalinclude:: snippets/test_factory.py
@@ -128,7 +128,7 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
       Default to False.
 
   Returns:
-    dict: ``zone_to_parts`` dictionnary expected by :func:`partition_dist_tree`
+    dict: ``zone_to_parts`` dictionnary expected by :func:`~maia.factory.partition_dist_tree`
 
   Example:
       .. literalinclude:: snippets/test_factory.py
