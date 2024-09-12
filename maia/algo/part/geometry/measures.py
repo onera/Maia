@@ -1,24 +1,25 @@
 import numpy as np
 
 import maia.pytree      as PT
-import maia.pytree.maia as MT
 
 from   maia.utils     import np_utils
 from   maia.utils     import logging as mlog
 
 from   maia.algo.part import connectivity_utils as CU
+from   maia.algo.part import geometry as GEO
 
 from .utils import place_in_container
 
 import cmaia.part_algo as cpart_algo
 
 def compute_edge_measure(zone):
+  """ Compute the lenght of all edges of a 1D, 2D or 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
-      raise NotImplementedError("Only U-elts zones are managed")
+      raise RuntimeError("3D NGon zones are not managed")
     edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
 
     # Compute lenght : |L| = ||x2 - x1||
@@ -31,9 +32,10 @@ def compute_edge_measure(zone):
       lenght += (cz[second_vtx] - cz[first_vtx])**2
     return np.sqrt(lenght)
   else:
-    raise NotImplementedError("Only U-elts zones are managed")
+    raise NotImplementedError("Structured zones are not managed")
 
 def compute_face_measure(zone):
+  """ Compute the area of all faces of a 2D or 3D zone and return a raw array"""
 
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
@@ -47,8 +49,7 @@ def compute_face_measure(zone):
       _coords.append(c if c is not None else np.zeros_like(coords[0]))
     _coords = np_utils.interweave_arrays(_coords)
 
-    from maia.algo.part.geometry import _compute_zone_centers
-    face_center = _compute_zone_centers(zone, 2)
+    face_center = GEO._compute_zone_centers(zone, 2)
 
     _coords.shape = (-1, 3)
     face_center.shape = (-1, 3)
@@ -148,9 +149,8 @@ def _compute_elt_volume(elt_node, coords, out):
     np.add.reduceat(face_contrib, cell_face_idx, out=out)
     out *= (1/3.)
 
-    
-  
 def compute_cell_measure(zone):
+  """ Compute the volume of all cells of a 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
@@ -186,17 +186,12 @@ def compute_cell_measure(zone):
 
 def _compute_zone_measures(zone, dim):
   """Dispatch measures computing according to zone dimension and 
-  requested dimension.
-  Return a raw array or None"""
-  zone_dim = PT.Zone.CellDimension(zone)
+  requested dimension. Return a raw array"""
   if dim == 'CellCenter':
-    dim = zone_dim
-  if dim == 3 and zone_dim >= 3:
-    return compute_cell_measure(zone)
-  elif dim == 2 and zone_dim >= 2:
-    return compute_face_measure(zone)
-  elif dim == 1 and zone_dim >= 1:
-    return compute_edge_measure(zone)
+    dim = PT.Zone.CellDimension(zone)
+  return {3: compute_cell_measure,
+          2: compute_face_measure,
+          1: compute_edge_measure}[dim](zone)
 
 def compute_zone_measures(zone, dim):
   """ Implementation of maia.algo.compute_measures for a given partitioned zone.
@@ -204,11 +199,11 @@ def compute_zone_measures(zone, dim):
 
   cell_dim = PT.Zone.CellDimension(zone)
   rq_dim = cell_dim if dim == 'CellCenter' else dim
-  measure = _compute_zone_measures(zone, rq_dim)
-  if measure is None:
+  if cell_dim < rq_dim:
     msg = f"Zone '{PT.get_name(zone)}' skipped during measures computing because "\
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"
     mlog.warning(msg)
-
-  elif measure.size > 0:
-    place_in_container(zone, rq_dim, {'Measure' : measure})
+  else:
+    measure = _compute_zone_measures(zone, rq_dim)
+    if measure.size > 0:
+      place_in_container(zone, rq_dim, {'Measure' : measure})

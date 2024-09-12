@@ -1,13 +1,12 @@
 import numpy as np
 
 import maia.pytree      as PT
-import maia.pytree.maia as MT
 
-from   maia.algo.part import connectivity_utils as CU
-from   maia.utils     import np_utils
-from   maia.utils     import logging as mlog
+from maia.algo.part import connectivity_utils as CU
+from maia.utils     import np_utils
+from maia.utils     import logging as mlog
 
-from .utils                   import place_in_container
+from .utils         import place_in_container
 
 import cmaia.part_algo as cpart_algo
 

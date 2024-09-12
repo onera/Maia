@@ -14,6 +14,7 @@ from ..s_to_u import zonedims_to_ngon, convert_s_to_ngon
 from  .utils  import place_in_container
 
 def compute_edge_measure(zone, comm):
+  """ Compute the lenght of all edges of a 1D, 2D or 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
@@ -33,9 +34,10 @@ def compute_edge_measure(zone, comm):
       lenght += (dircoord[1::2] - dircoord[0::2])**2
     return np.sqrt(lenght)
   else:
-    raise NotImplementedError("Only U-elts zones are managed")
+    raise NotImplementedError("Structured zones are not managed")
 
 def compute_face_measure(zone, comm):
+  """ Compute the area of all faces of a 2D or 3D distributed zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
   zone_dim = PT.Zone.CellDimension(zone)
@@ -90,7 +92,6 @@ def compute_face_measure(zone, comm):
   normalflux = 0.5*np.add.reduceat(crossprod, face_vtx_idx[:-1])
   measure = np.linalg.norm(normalflux, axis=1)
   return measure
-
 
 def _compute_face_circulation(vtx_distri, dist_coords, face_vtx_idx, face_vtx_n, face_vtx, comm):
   """
@@ -157,8 +158,8 @@ def _decompose_sections_to_face_vtx(zone):
   cell_face_idx = np_utils.sizes_to_indices(np.concatenate(all_cell_face_n))
   return face_vtx_idx, face_vtx_n, face_vtx, cell_face_idx
 
-
 def compute_cell_measure(zone, comm):
+  """ Compute the volume of all cells of a 3D distributed zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
@@ -228,20 +229,14 @@ def compute_cell_measure(zone, comm):
   return measure
 
 
-
 def _compute_zone_measures(zone, dim, comm):
   """Dispatch measures computing according to zone dimension and 
-  requested dimension.
-  Return a raw array or None"""
-  zone_dim = PT.Zone.CellDimension(zone)
+  requested dimension. Return a raw array"""
   if dim == 'CellCenter':
-    dim = zone_dim
-  if dim == 3 and zone_dim >= 3:
-    return compute_cell_measure(zone, comm)
-  elif dim == 2 and zone_dim >= 2:
-    return compute_face_measure(zone, comm)
-  elif dim == 1 and zone_dim >= 1:
-    return compute_edge_measure(zone, comm)
+    dim = PT.Zone.CellDimension(zone)
+  return {3: compute_cell_measure,
+          2: compute_face_measure,
+          1: compute_edge_measure}[dim](zone, comm)
 
 def compute_zone_measures(zone, dim, comm):
   """ Implementation of maia.algo.compute_measures for a given distributed zone.
@@ -249,11 +244,10 @@ def compute_zone_measures(zone, dim, comm):
 
   cell_dim = PT.Zone.CellDimension(zone)
   rq_dim = cell_dim if dim == 'CellCenter' else dim
-  measure = _compute_zone_measures(zone, rq_dim, comm)
-  if measure is None:
+  if cell_dim < rq_dim:
     msg = f"Zone '{PT.get_name(zone)}' skipped during measures computing because "\
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"
     mlog.warning(msg)
-
   else:
+    measure = _compute_zone_measures(zone, rq_dim, comm)
     place_in_container(zone, rq_dim, {'Measure' : measure}, comm)

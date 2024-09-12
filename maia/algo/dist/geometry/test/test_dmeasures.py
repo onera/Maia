@@ -1,18 +1,19 @@
 import pytest
 import pytest_parallel
-import os
+import numpy as np
 from mpi4py import MPI
 
-import maia.pytree        as PT
 import maia
+import maia.pytree        as PT
 
 from maia.utils import test_utils as TU
+from maia.utils import par_utils
 
 from maia.algo.dist.geometry import measures as GEO
 
 @pytest_parallel.mark.parallel(1)
 def test_decompose_sections_to_face_vtx(comm):
-  tree = maia.io.file_to_dist_tree(os.path.join(TU.mesh_dir, 'hex_2_prism_2.yaml'), comm)
+  tree = maia.io.file_to_dist_tree(TU.mesh_dir/'hex_2_prism_2.yaml', comm)
   # HEXA EC  : [1, 2, 5, 4, 6, 7, 10, 9,   6, 7, 10, 9, 11, 12, 15, 14]
   # PENTA EC : [2, 3, 5, 7, 8, 10,   7, 8, 10, 12, 13, 15]
   zone = PT.get_all_Zone_t(tree)[0]
@@ -25,6 +26,21 @@ def test_decompose_sections_to_face_vtx(comm):
   assert (face_vtx[66:84]  == [7,8,13,12, 8,10,15,13, 10,7,12,15, 7,10,8, 12,13,15]).all()
   assert (cell_face_idx == [0,6,12,17,22]).all()
 
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("elt_kind", ['QUAD_4', 'Poly'])
+def test_compute_edge_lenght2d(elt_kind, comm):
+  tree = maia.factory.generate_dist_block(5, 'QUAD_4', comm)
+  if elt_kind == 'Poly':
+    maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  
+  edge_lenght = GEO.compute_edge_measure(zone, comm)
+  assert (edge_lenght == 0.25).all()
+
+  if elt_kind == 'QUAD_4': 
+    assert comm.allreduce(edge_lenght.sum(), MPI.SUM) == 4 # External edges only
+  else:
+    assert comm.allreduce(edge_lenght.sum(), MPI.SUM) == 10  # Internal & External edges
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("elt_kind", ['Poly', 'HEXA_8', 'S'])
 def test_compute_face_area3d(elt_kind, comm):

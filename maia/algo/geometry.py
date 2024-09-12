@@ -53,7 +53,7 @@ def compute_centers(t, dim, comm=None):
   Cartesian and cylindrical coordinates are supported.
 
   Input tree is modified inplace : results are stored in a
-  ``DiscreteData_t`` container named ``Geometry_{3|2|1}d``. Note that for
+  ``DiscreteData_t`` container named ``Geometry_{1|2|3}d``. Note that for
   unstructured zones described by standard elements, centers are computed
   only for elements explicitly defined in sections.
 
@@ -91,12 +91,11 @@ def compute_measures(t, dim, comm=None):
   situation are skipped).
 
   Warning:
-    For structured meshes, ``dim = 1`` is not yet implemented.
-
-  Only cartesian coordinates are supported.
+    - For structured meshes, ``dim = 1`` is not yet implemented.
+    - Only cartesian coordinates are supported.
 
   Input tree is modified inplace : results are stored in a
-  ``DiscreteData_t`` container named ``Geometry_{3|2|1}d``. Note that for
+  ``DiscreteData_t`` container named ``Geometry_{1|2|3}d``. Note that for
   unstructured zones described by standard elements, measures are computed
   only for elements explicitly defined in sections.
 
