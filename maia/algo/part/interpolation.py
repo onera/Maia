@@ -1,6 +1,5 @@
 from mpi4py import MPI
 import numpy as np
-import warnings
 
 import Pypdm.Pypdm as PDM
 
@@ -340,10 +339,6 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
 
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
-def interpolate_from_part_trees(src_tree, tgt_tree, comm, containers_name, location, **options):
-  warnings.warn("This function is deprecated in favor of interpolate, and will be removed in next release",
-    DeprecationWarning, stacklevel=2)
-  return interpolate(src_tree, tgt_tree, comm, containers_name, location, **options)
 
 def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options):
   """Same as interpolate, but return the interpolator object instead
@@ -355,9 +350,3 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **opti
 
   src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, location, **options)
   return Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, src_location, location, comm)
-
-
-def create_interpolator_from_part_trees(src_tree, tgt_tree, comm, src_location, location, **options):
-  warnings.warn("This function is deprecated in favor of create_interpolator, and will be removed in next release",
-    DeprecationWarning, stacklevel=2)
-  return create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options)

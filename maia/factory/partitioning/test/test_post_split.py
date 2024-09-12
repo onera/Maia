@@ -109,7 +109,7 @@ Zone.P2.N3 Zone_t:
   dist_zone = PT.yaml.to_node(dt)
   part_zone = PT.yaml.to_node(pt)
   PS.copy_additional_nodes(dist_zone, part_zone)
-  assert PT.get_label(PT.get_node_from_name(dist_zone, '.Solver#BC')) == PT.get_label(PT.get_node_from_name(part_zone, '.Solver#BC'))
+  assert PT.get_node_from_name(part_zone, '.Solver#BC') is None
   assert PT.get_value(PT.get_node_from_name(dist_zone, 'GridConnectivityDonorName')) == PT.get_value(PT.get_node_from_name(part_zone, 'GridConnectivityDonorName'))
   assert (PT.get_value(PT.get_node_from_name(dist_zone, 'Translation')) == \
           PT.get_value(PT.get_node_from_name(part_zone, 'Translation'))).all()
