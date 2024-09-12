@@ -50,7 +50,7 @@ job:build:
     - cd $CUSTOM_CI_DIR
     - mkdir -p build && cd build
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2 gcc/10.2.0
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j 24
 
@@ -63,7 +63,7 @@ job:doc:
   script:
     - cd $CUSTOM_CI_DIR/build
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2 gcc/10.2.0
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh
     - export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
     - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
@@ -129,12 +129,14 @@ job:portability_gnum:
   script:
     - cd $CUSTOM_CI_DIR
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2 gcc/10.2.0
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - mkdir -p build_int64 && cd build_int64
     - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
     - make -j 24
     - source source.sh
+    - mpirun -np 4 test/maia_doctest_unit_tests
     - mpirun -np 4 python3 -m pytest ../maia/
+    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
 
 job:portability_cfd6:
   stage: test
@@ -143,17 +145,66 @@ job:portability_cfd6:
   script:
     - cd $CUSTOM_CI_DIR
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+    - module load socle-cfd/6.0-intel2220-impi
     - mkdir -p build_cfd6 && cd build_cfd6
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug 
-                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 
-                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
+    - cmake ../ -DCMAKE_BUILD_TYPE=Debug
+                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17
+                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2'
                 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
     - make -j 24
     - source $ELSASPIRO/.env_elsA
     - source source.sh
     - mpirun -np 4 python3 -m pytest ../maia/
 
+job:portability_openmpi:
+  stage: test
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  script:
+    - cd $CUSTOM_CI_DIR
+    - source /tmp_user/juno/sonics/dist/socle_cfd7/source.sh
+    - mkdir -p build_cfd7 && cd build_cfd7
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - make -j 24
+    - source source.sh
+    - mpiexec -np 4 test/maia_doctest_unit_tests
+    - mpiexec -np 4 pytest ../maia/
+    - mpiexec -np 4 pytest ../test/ 
+
+job:portability_llvm:
+  stage: test
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  script:
+    - cd $CUSTOM_CI_DIR
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi
+    - export CC=icx; export CXX=icpx
+    - mkdir -p build_llvm && cd build_llvm
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - make -j 24
+    - source source.sh
+    - mpirun -np 4 test/maia_doctest_unit_tests
+    - mpirun -np 4 python3 -m pytest ../maia/
+    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
+
+job:portability_optim:
+  stage: test
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  script:
+    - cd $CUSTOM_CI_DIR
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+    - mkdir -p build_cfd6_optim && cd build_cfd6_optim
+    - export CFLAGS="-O3 -g -DNDEBUG -ftree-vectorize -ftree-loop-vectorize -fvect-cost-model=unlimited -ftree-loop-optimize -march=native -fopenmp-simd -mtune=intel -mprefer-vector-width=512"
+    - export CXXFLAGS=$CFLAGS
+    - cmake -DCMAKE_BUILD_TYPE=Release -Dmaia_ENABLE_TESTS=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - make -j 24
+    - source source.sh
+    - mpirun -np 4 test/maia_doctest_unit_tests
+    - mpirun -np 4 python3 -m pytest ../maia/
+    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic -k "not test_wall_distance_U"
 
 # Deploy the documentation sphinx documentation to the site and pages, only if branch is dev
 pages:
