@@ -71,6 +71,9 @@ def test_recover_UDData(missing_part_node, comm):
     PT.new_node('.Solver#BC', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
     PT.new_node('.Solver#Property', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
 
+  # This one already exists on dist_tree, but it should be updated
+  PT.new_UserDefinedData('.Solver#BC', value=np.array([42]), parent=PT.get_node_from_name(dist_tree, 'Zmax'))
+
   if missing_part_node:
     PT.rm_nodes_from_label(part_tree, 'ZoneBC_t')
 
@@ -84,6 +87,8 @@ def test_recover_UDData(missing_part_node, comm):
     assert PT.is_same_node(dist_ud, part_ud) # Nodes are matched in same order, so this comparison is OK
   assert PT.get_label(PT.get_child_from_name(dist_base, 'MyFamily')) == 'Family_t'
   assert PT.get_child_from_name(dist_base, 'MyOtherFamily') is None
+  if not missing_part_node:
+    assert PT.get_node_from_path(dist_base, 'zone/ZoneBC/Zmax/.Solver#BC')[1].size != 1
 
   uds = [PT.new_Descriptor('Descr1', 'Value1', parent=part_tree), PT.new_Descriptor('Descr2', 'Value2', parent=part_tree)]
   pred = [lambda n : PT.get_label(n) == 'Descriptor_t'] if missing_part_node else 'Descr*'

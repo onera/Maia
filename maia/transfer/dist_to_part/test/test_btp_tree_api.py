@@ -27,6 +27,9 @@ def test_recover_UDData(missing_part_node, comm):
 
   if missing_part_node:
     PT.rm_nodes_from_label(part_tree, 'ZoneBC_t')
+  else:
+  # This one already exists on part_tree, but it should be updated
+    PT.new_UserDefinedData('.Solver#BC', value=np.array([42]), parent=PT.get_node_from_name(part_tree, 'Zmax'))
 
   ud_predicates = [['CGNSBase_t', 'Family_t', lambda n : PT.get_name(n).startswith('.Solver#')],
                   'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/.Solver#*']
@@ -36,6 +39,8 @@ def test_recover_UDData(missing_part_node, comm):
   for dist_ud, part_ud in zip(PT.get_nodes_from_name(dist_tree, '.Solver#*'), PT.get_nodes_from_name(part_tree, '.Solver#*')):
     assert PT.is_same_node(dist_ud, part_ud) # Nodes are matched in same order, so this comparison is OK
 
+  if not missing_part_node:
+    assert PT.get_node_from_path(part_base, 'zone.P0.N0/ZoneBC/Zmax/.Solver#BC')[1].size != 1
 
   ud = PT.new_UserDefinedData('TopLevelNode', [1,2,3], parent=dist_tree)
   transfer.dist_tree_to_part_tree_copy(dist_tree, part_tree, 'TopLevelNode', comm)

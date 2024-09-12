@@ -112,4 +112,8 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
         part_root = PT.get_node_from_path(part_tree, dist_root_path)
         part_roots = [] if part_root is None else [part_root]
     _child_predicate = PT.utils.path_tail(predicates, cut) if isinstance(predicates, str) else predicates[cut:]
+    # Remove nodes if they exist on dist tree, to force update of values
+    for dist_path in PT.predicates_to_paths(dist_root, _child_predicate):
+      PT.rm_node_from_path(dist_root, dist_path)
+
     discover_nodes_from_matching(dist_root, part_roots, _child_predicate, comm, child_list=['*'], get_value='leaf')
