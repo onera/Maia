@@ -8,7 +8,9 @@ from   maia.utils     import logging as mlog
 from   maia.algo.part import connectivity_utils as CU
 from   maia.algo.part import geometry as GEO
 
-from .utils import place_in_container
+from .utils import get_local_coordinates, place_in_container
+
+from maia.algo.geometry_utils import ELT_FACE_VTX, compute_face_circulation
 
 import cmaia.part_algo as cpart_algo
 
@@ -81,26 +83,7 @@ def compute_face_measure(zone):
 
   return measure
 
-def _compute_face_circulation(coords, face_vtx_idx, face_vtx_n, face_vtx):
-  """
-  Compute, for each face, the term xF.nF|F| where xF is the face mean center, nF the unit outward normal
-  and |F| the area of the face.
-  """
-  _coords = np.stack(coords, axis=1)
-
-  center = np.add.reduceat(_coords[face_vtx-1], face_vtx_idx[:-1]) / face_vtx_n.reshape((-1,1))
-
-  # Compute mean normal flux on each face : ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
-  face_vtx_next = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
-  reps = np_utils.repeated_arange(face_vtx_n) # To access face center
-  face_center_reps = center[reps]
-  crossprod = np.cross(_coords[face_vtx-1] - face_center_reps, _coords[face_vtx_next-1] - face_center_reps)
-  normalflux = 0.5*np.add.reduceat(crossprod, face_vtx_idx[:-1])
-
-  face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
-  return face_contrib
-
-def _compute_elt_volume(elt_node, coords, out):
+def _compute_elt_volume(zone, elt_node, coords, out):
   assert out.size == PT.Element.Size(elt_node)
   elt_kind = PT.Element.CGNSName(elt_node)
 
@@ -122,16 +105,7 @@ def _compute_elt_volume(elt_node, coords, out):
 
   else:
     n_elt = PT.Element.Size(elt_node)
-    
-    if elt_kind == 'PYRA_5':
-      base_n   = np.array([4,3,3,3,3], np.int32)
-      base_seq = np.array([1,4,3,2, 1,2,5, 2,3,5, 3,4,5, 4,1,5]) - 1
-    elif elt_kind == 'PENTA_6':
-      base_n   = np.array([4,4,4,3,3], np.int32)
-      base_seq = np.array([1,2,5,4, 2,3,6,5 ,3,1,4,6, 1,3,2, 4,5,6]) - 1
-    elif elt_kind == 'HEXA_8':
-      base_n   = np.array([4,4,4,4,4,4], np.int32)
-      base_seq = np.array([1,4,3,2, 1,2,6,5 ,2,3,7,6, 3,4,8,7, 1,5,8,4, 5,6,7,8]) - 1
+    base_n, base_seq = ELT_FACE_VTX[elt_kind]
 
     face_vtx_n = np.tile(base_n, n_elt)
     face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n)
@@ -142,7 +116,8 @@ def _compute_elt_volume(elt_node, coords, out):
 
     # Final assembly : for each cell, sum the quantities computed on each cell. We don't need to recover cell_face
     # since this is identity by construction
-    face_contrib = _compute_face_circulation(coords, face_vtx_idx, face_vtx_n, face_vtx)
+    local_coords = get_local_coordinates(zone, face_vtx)
+    face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
     cell_face_idx = base_n.size * np.arange(PT.Element.Size(elt_node))
     np.add.reduceat(face_contrib, cell_face_idx, out=out)
     out *= (1/3.)
@@ -165,7 +140,8 @@ def compute_cell_measure(zone):
       cell_face_idx = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
       cell_face     = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
 
-      face_contrib = _compute_face_circulation(coords, face_vtx_idx, face_vtx_n, face_vtx)
+      local_coords = get_local_coordinates(zone, face_vtx)
+      face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
       # Assembly : for each cell, sum the quantities computed on each face
       measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib[np.abs(cell_face)-1], cell_face_idx[:-1])
 
@@ -174,7 +150,7 @@ def compute_cell_measure(zone):
       start = 0
       for elt in PT.Zone.get_ordered_elements_per_dim(zone)[3]:
         end = start + PT.Element.Size(elt)
-        _compute_elt_volume(elt, coords, measure[start:end])
+        _compute_elt_volume(zone, elt, coords, measure[start:end])
         start = end
   else:
     measure = cpart_algo.compute_volume_cell_s(*PT.Zone.CellSize(zone), *coords)

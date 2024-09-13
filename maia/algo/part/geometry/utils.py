@@ -7,6 +7,14 @@ from maia.utils import np_utils
 
 from maia.algo.geometry_utils import DIM_TO_LOC, update_container
 
+def get_local_coordinates(zone, vtx_ids):
+  """ Return a tuple similar to PT.Zone.coordinates, but with coordinates of vertex requested by vtx_ids.
+  vtx_ids must start at 1.
+  """
+  coords = PT.Zone.coordinates(zone)
+  access_idx = vtx_ids - 1
+  return coords._make([c[access_idx] if c is not None else None for c in coords])
+
 def place_in_container(zone, rq_dim, fields):
   cell_dim = PT.Zone.CellDimension(zone)
   output_loc = DIM_TO_LOC[cell_dim][rq_dim]

@@ -11,7 +11,10 @@ from maia.utils import np_utils
 from maia.utils import logging as mlog
 
 from ..s_to_u import zonedims_to_ngon, convert_s_to_ngon
-from  .utils  import place_in_container
+from  .utils  import get_local_coordinates, place_in_container
+
+from maia.algo.geometry_utils import ELT_FACE_VTX, compute_face_circulation
+
 
 def compute_edge_measure(zone, comm):
   """ Compute the lenght of all edges of a 1D, 2D or 3D zone and return a raw array"""
@@ -21,20 +24,17 @@ def compute_edge_measure(zone, comm):
   if PT.Zone.Type(zone) == "Unstructured":
     global_distri = PT.Zone.CellDimension == 1
     edge_vtx_idx, edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
-
-    dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
-    vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
-
-    part_data = EP.block_to_part(dist_coords, vtx_distri, [edge_vtx], comm)
-    local_coords = [part_data[key][0] for key in part_data.keys()]
-
-    # Compute lenght : |L| = ||x2 - x1||
-    lenght = np.zeros(edge_vtx_idx.size-1)
-    for dircoord in local_coords:
-      lenght += (dircoord[1::2] - dircoord[0::2])**2
-    return np.sqrt(lenght)
   else:
     raise NotImplementedError("Structured zones are not managed")
+
+  local_coords = get_local_coordinates(zone, edge_vtx, comm)
+
+  # Compute lenght : |L| = ||x2 - x1||
+  lenght = np.zeros(edge_vtx_idx.size-1)
+  for dircoord in local_coords:
+    if dircoord is not None:
+      lenght += (dircoord[1::2] - dircoord[0::2])**2
+  return np.sqrt(lenght)
 
 def compute_face_measure(zone, comm):
   """ Compute the area of all faces of a 2D or 3D distributed zone and return a raw array"""
@@ -64,11 +64,7 @@ def compute_face_measure(zone, comm):
       face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
 
   # Get local coordinates
-  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
-
-  part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
-  local_coords = [part_data[key][0] for key in part_data.keys()]
+  local_coords = [c for c in get_local_coordinates(zone, face_vtx, comm) if c is not None]
   local_coords_next = [np_utils.roll_once_by_stride(face_vtx_idx, coords) for coords in local_coords]
 
   if len(local_coords) == 2 : #We are in phydim==2, Add Z array
@@ -93,29 +89,6 @@ def compute_face_measure(zone, comm):
   measure = np.linalg.norm(normalflux, axis=1)
   return measure
 
-def _compute_face_circulation(vtx_distri, dist_coords, face_vtx_idx, face_vtx_n, face_vtx, comm):
-  """
-  Compute, for each face, the term xF.nF|F| where xF is the face mean center, nF the unit outward normal
-  and |F| the area of the face.
-  """
-  # Get local coords corresponding to face_vtx
-  part_data = EP.block_to_part(dist_coords._asdict(), vtx_distri, [face_vtx], comm)
-  local_coords = [part_data[key][0] for key in part_data.keys()]
-  local_coords_next = [np_utils.roll_once_by_stride(face_vtx_idx, coords) for coords in local_coords]
-
-  _local_coords = np.stack(local_coords, axis=1)
-  _local_coords_next = np.stack(local_coords_next, axis=1)
-  center = np.add.reduceat(_local_coords, face_vtx_idx[:-1]) / face_vtx_n.reshape((-1,1))
-
-  # Compute mean normal flux on each face : ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
-  reps = np_utils.repeated_arange(face_vtx_n) # To access face center
-  face_center_reps = center[reps]
-  crossprod = np.cross(_local_coords - face_center_reps, _local_coords_next - face_center_reps)
-  normalflux = 0.5*np.add.reduceat(crossprod, face_vtx_idx[:-1])
-
-  face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
-  return face_contrib
-
 def _decompose_sections_to_face_vtx(zone):
   """
   Create a ngon like connectivity from 3D elements of a zone, but without face unification
@@ -130,18 +103,7 @@ def _decompose_sections_to_face_vtx(zone):
     elt_kind = PT.Element.CGNSName(elt)
     n_elt = elt_distri[1] - elt_distri[0]
 
-    if elt_kind == 'TETRA_4':
-      base_n   = np.array([3,3,3,3], np.int32)
-      base_seq = np.array([1,3,2, 1,2,4, 2,3,4, 3,1,4]) - 1
-    if elt_kind == 'PYRA_5':
-      base_n   = np.array([4,3,3,3,3], np.int32)
-      base_seq = np.array([1,4,3,2, 1,2,5, 2,3,5, 3,4,5, 4,1,5]) - 1
-    elif elt_kind == 'PENTA_6':
-      base_n   = np.array([4,4,4,3,3], np.int32)
-      base_seq = np.array([1,2,5,4, 2,3,6,5 ,3,1,4,6, 1,3,2, 4,5,6]) - 1
-    elif elt_kind == 'HEXA_8':
-      base_n   = np.array([4,4,4,4,4,4], np.int32)
-      base_seq = np.array([1,4,3,2, 1,2,6,5 ,2,3,7,6, 3,4,8,7, 1,5,8,4, 5,6,7,8]) - 1
+    base_n, base_seq = ELT_FACE_VTX[elt_kind]
 
     face_vtx_n = np.tile(base_n, n_elt)
     # Where to read in element connectivity to reconstitute all faces (with reps)
@@ -193,7 +155,8 @@ def compute_cell_measure(zone, comm):
     cell_face_idx = np.empty(_cell_face_idx.size, np.int32)
     np.subtract(_cell_face_idx, _cell_face_idx[0], out=cell_face_idx)
 
-    face_contrib = _compute_face_circulation(MT.getDistribution(zone, 'Vertex')[1], coords, face_vtx_idx, face_vtx_n, face_vtx, comm)
+    local_coords = get_local_coordinates(zone, face_vtx, comm)
+    face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
     # Assembly : for each cell, sum the quantities computed on each face
     face_contrib_loc = EP.block_to_part(face_contrib, face_distri, [np.abs(cell_face)], comm)[0]
     measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib_loc, cell_face_idx[:-1])
@@ -202,7 +165,8 @@ def compute_cell_measure(zone, comm):
     # Compute center in current layout (section by section), then we will exchange to match 
     # cell distribution (we could probably do the opposite as well)
     face_vtx_idx, face_vtx_n, face_vtx, cell_face_idx = _decompose_sections_to_face_vtx(zone)
-    face_contrib = _compute_face_circulation(MT.getDistribution(zone, 'Vertex')[1], coords, face_vtx_idx, face_vtx_n, face_vtx, comm)
+    local_coords = get_local_coordinates(zone, face_vtx, comm)
+    face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
     measure_elt = (1/3.) * np.add.reduceat(face_contrib, cell_face_idx[:-1])
 
     # Finally, move measure to allCell distribution (same method than _entity_vtx_connectivity_elt)

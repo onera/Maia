@@ -4,8 +4,21 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils import py_utils, par_utils
+from maia.transfer import protocols as EP
 
 from maia.algo.geometry_utils import DIM_TO_LOC, update_container
+
+def get_local_coordinates(zone, vtx_ids, comm):
+  """ Return a tuple similar to PT.Zone.coordinates, but with coordinates of vertex requested by vtx_ids.
+  Exchange is performed in the function. vtx_ids must start at 1.
+  """
+  coords = PT.Zone.coordinates(zone)
+  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+
+  dist_data = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
+  part_data = EP.block_to_part(dist_data, vtx_distri, [vtx_ids], comm)
+  
+  return coords._make([part_data[key][0] if key in part_data else None for key in coords._fields])
 
 def place_in_container(zone, rq_dim, fields, comm):
   cell_dim = PT.Zone.CellDimension(zone)
