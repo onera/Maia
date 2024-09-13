@@ -20,13 +20,22 @@ ELT_FACE_VTX = {'TETRA_4' : (np.array([3,3,3,3], np.int32),
                              np.array([1,4,3,2, 1,2,6,5 ,2,3,7,6, 3,4,8,7, 1,5,8,4, 5,6,7,8]) - 1)
                 }
 
-def compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n):
+def compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n):
   """
-  Compute, for each face, the term xF.nF|F| where xF is the face mean center, nF the unit outward normal
+  Compute, for each face, the term nF|F| where nF is the unit outward normal
   and |F| the area of the face.
+  Also return face meancenter to save computations
   Coordinates are supposed to be already expended, following face_vtx array.
   """
+
+  # Filter void coords if phy_dim == 2
+  local_coords = [c for c in local_coords if c is not None]
+
   local_coords_next = [np_utils.roll_once_by_stride(face_vtx_idx, coords) for coords in local_coords]
+
+  if len(local_coords) == 2 : # Complete with 0 if phy_dim == 2
+    local_coords.append(np.zeros_like(local_coords[0]))
+    local_coords_next.append(np.zeros_like(local_coords[0]))
 
   _local_coords      = np.stack(local_coords, axis=1)
   _local_coords_next = np.stack(local_coords_next, axis=1)
@@ -38,8 +47,7 @@ def compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n):
   crossprod = np.cross(_local_coords - face_center_reps, _local_coords_next - face_center_reps)
   normalflux = 0.5*np.add.reduceat(crossprod, face_vtx_idx[:-1])
 
-  face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
-  return face_contrib
+  return center, normalflux
 
 def update_container(zone, container_name, loc, fields={}):
   """ Utility to retrieve a container from its name, or create it """

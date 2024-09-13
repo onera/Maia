@@ -13,7 +13,7 @@ from maia.utils import logging as mlog
 from ..s_to_u import zonedims_to_ngon, convert_s_to_ngon
 from  .utils  import get_local_coordinates, place_in_container
 
-from maia.algo.geometry_utils import ELT_FACE_VTX, compute_face_circulation
+from maia.algo.geometry_utils import ELT_FACE_VTX, compute_center_and_flux
 
 
 def compute_edge_measure(zone, comm):
@@ -62,30 +62,12 @@ def compute_face_measure(zone, comm):
     else:
       global_distri = PT.Zone.CellDimension(zone) == 2
       face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
+  face_vtx_n = np.diff(face_vtx_idx)
 
   # Get local coordinates
-  local_coords = [c for c in get_local_coordinates(zone, face_vtx, comm) if c is not None]
-  local_coords_next = [np_utils.roll_once_by_stride(face_vtx_idx, coords) for coords in local_coords]
+  local_coords = get_local_coordinates(zone, face_vtx, comm)
 
-  if len(local_coords) == 2 : #We are in phydim==2, Add Z array
-    local_coords.append(np.zeros_like(local_coords[0]))
-    local_coords_next.append(np.zeros_like(local_coords[0]))
-
-  # Compute area using cross product + triangulation from face meancenter
-  _local_coords = np_utils.interweave_arrays(local_coords)
-  _local_coords_next = np_utils.interweave_arrays(local_coords_next)
-  _local_coords.shape        = (-1,3)
-  _local_coords_next.shape   = (-1,3)
-
-  face_vtx_n      = np.diff(face_vtx_idx)
-  face_meancenter = np.add.reduceat(_local_coords, face_vtx_idx[:-1]) / face_vtx_n.reshape((-1,1))
-
-  # |K| = ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
-  reps = np_utils.repeated_arange(face_vtx_n) # To access face center
-  face_center_reps = face_meancenter[reps]
-  crossprod = np.cross(_local_coords - face_center_reps, _local_coords_next - face_center_reps)
-  # Sum per face
-  normalflux = 0.5*np.add.reduceat(crossprod, face_vtx_idx[:-1])
+  _, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
   measure = np.linalg.norm(normalflux, axis=1)
   return measure
 
@@ -156,7 +138,9 @@ def compute_cell_measure(zone, comm):
     np.subtract(_cell_face_idx, _cell_face_idx[0], out=cell_face_idx)
 
     local_coords = get_local_coordinates(zone, face_vtx, comm)
-    face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
+    center, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+    face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
+
     # Assembly : for each cell, sum the quantities computed on each face
     face_contrib_loc = EP.block_to_part(face_contrib, face_distri, [np.abs(cell_face)], comm)[0]
     measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib_loc, cell_face_idx[:-1])
@@ -166,7 +150,8 @@ def compute_cell_measure(zone, comm):
     # cell distribution (we could probably do the opposite as well)
     face_vtx_idx, face_vtx_n, face_vtx, cell_face_idx = _decompose_sections_to_face_vtx(zone)
     local_coords = get_local_coordinates(zone, face_vtx, comm)
-    face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
+    center, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+    face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
     measure_elt = (1/3.) * np.add.reduceat(face_contrib, cell_face_idx[:-1])
 
     # Finally, move measure to allCell distribution (same method than _entity_vtx_connectivity_elt)

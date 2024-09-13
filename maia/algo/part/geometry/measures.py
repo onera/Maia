@@ -6,11 +6,10 @@ from   maia.utils     import np_utils
 from   maia.utils     import logging as mlog
 
 from   maia.algo.part import connectivity_utils as CU
-from   maia.algo.part import geometry as GEO
 
 from .utils import get_local_coordinates, place_in_container
 
-from maia.algo.geometry_utils import ELT_FACE_VTX, compute_face_circulation
+from maia.algo.geometry_utils import ELT_FACE_VTX, compute_center_and_flux
 
 import cmaia.part_algo as cpart_algo
 
@@ -44,15 +43,6 @@ def compute_face_measure(zone):
 
 
   if PT.Zone.Type(zone) == "Unstructured":
-    _coords = []
-    for c in coords:
-      _coords.append(c if c is not None else np.zeros_like(coords[0]))
-    _coords = np_utils.interweave_arrays(_coords)
-
-    face_center = GEO._compute_zone_centers(zone, 2)
-
-    _coords.shape = (-1, 3)
-    face_center.shape = (-1, 3)
 
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
@@ -61,14 +51,11 @@ def compute_face_measure(zone):
     else:
       face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
 
-    face_vtx_next = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
-    # |K| = ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
-    reps = np_utils.repeated_arange(np.diff(face_vtx_idx)) # To access face center
-    face_center_reps = face_center[reps]
-    crossprod = np.cross(_coords[face_vtx-1] - face_center_reps, _coords[face_vtx_next-1] - face_center_reps)
-    # Sum per face
-    normalflux = 0.5*np.add.reduceat(crossprod, face_vtx_idx[:-1])
+    local_coords = get_local_coordinates(zone, face_vtx)
+    face_vtx_n = np.diff(face_vtx_idx)
+    _, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
     measure = np.linalg.norm(normalflux, axis=1)
+
   else:
     vtx_size = [1,1,1]
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
@@ -117,7 +104,9 @@ def _compute_elt_volume(zone, elt_node, coords, out):
     # Final assembly : for each cell, sum the quantities computed on each cell. We don't need to recover cell_face
     # since this is identity by construction
     local_coords = get_local_coordinates(zone, face_vtx)
-    face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
+    center, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+    face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
+
     cell_face_idx = base_n.size * np.arange(PT.Element.Size(elt_node))
     np.add.reduceat(face_contrib, cell_face_idx, out=out)
     out *= (1/3.)
@@ -141,7 +130,10 @@ def compute_cell_measure(zone):
       cell_face     = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
 
       local_coords = get_local_coordinates(zone, face_vtx)
-      face_contrib = compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
+
+      center, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+      face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
+
       # Assembly : for each cell, sum the quantities computed on each face
       measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib[np.abs(cell_face)-1], cell_face_idx[:-1])
 

@@ -17,7 +17,8 @@ def test_compute_face_circulation(comm):
   face_vtx = np.array([1,2,5, 3,4,6, 2,3,6,9,8,5, 5,8,7, 6,10,9])
   # Extend coords
   local_coords = [c[face_vtx-1] for c in [cx,cy,cz]]
-  circu = GU.compute_face_circulation(local_coords, face_vtx_idx, face_vtx_n)
+  center, flux = GU.compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+  circu = np.sum(center*flux, axis=1)
   areas = np.array([.1125, .1125, 0, .075, .075])
   areas[2] = 1. - areas.sum()
   assert np.allclose(2*areas, circu) # Since cz==2, and normal is Oz axis, product xF.nF is 2
@@ -29,7 +30,8 @@ def test_compute_face_circulation(comm):
   face_vtx_idx = np.array([0,4])
   face_vtx_n = np.array([4])
   # Face center is (.5, .5, .5), unit normal (1,0,1) and face area 1 -> out is 1.
-  circu = GU.compute_face_circulation([cx,cy,cz], face_vtx_idx, face_vtx_n)
+  center,flux = GU.compute_center_and_flux([cx,cy,cz], face_vtx_idx, face_vtx_n)
+  circu = np.sum(center*flux, axis=1)
   assert np.allclose(circu, [1.])
 
 def test_update_container():
