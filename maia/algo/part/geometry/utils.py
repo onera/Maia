@@ -38,7 +38,6 @@ def place_in_container(zone, rq_dim, fields):
         if output_loc == 'FaceCenter':
           ng = PT.Zone.NGonNode(zone)
         elif output_loc == 'EdgeCenter':
-          assert PT.Zone.CellDimension(zone) == 2
           ng = MT.Zone.EdgeNode(zone)
         er = PT.Element.Range(ng)
         pl = np.arange(er[0], er[1]+1, dtype=np.int32).reshape((1,-1), order='F')

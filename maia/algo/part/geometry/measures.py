@@ -18,8 +18,6 @@ def compute_edge_measure(zone):
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
   if PT.Zone.Type(zone) == "Unstructured":
-    if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
-      raise RuntimeError("3D NGon zones are not managed")
     edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
 
     # Compute lenght : |L| = ||x2 - x1||

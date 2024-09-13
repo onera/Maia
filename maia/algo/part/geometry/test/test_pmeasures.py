@@ -50,6 +50,22 @@ def test_compute_edge_lenght2d(elt_kind, comm):
   else:
     assert comm.allreduce(edge_lenght.sum(), MPI.SUM) == 10 + 1 # Internal, External & part interface edges
 
+@pytest_parallel.mark.parallel(1)
+def test_compute_edge_lenght_poly3D(comm):
+  tree = maia.factory.generate_dist_block(3, 'NFACE_n', comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  
+  # Create some edges
+  edge_co = np.array([1,2,2,3, 9,18,18,27, 20,23,23,26], np.int32)
+  edge = PT.new_Elements('EdgeElements', 'BAR_2', erange=[45,50], econn=edge_co, parent=zone)
+  # We should create GlobalNumbering, but it is not required by function :-)
+
+  edge_lenght = measures.compute_edge_measure(zone)
+
+  assert (edge_lenght == 0.5).all()
+  assert edge_lenght.size == PT.Element.Size(edge) # Only renseigned edges are computed
+
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("elt_kind", ['Poly', 'HEXA_8', 'S'])
 def test_compute_face_area3d(elt_kind, comm):

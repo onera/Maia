@@ -51,7 +51,6 @@ def place_in_container(zone, rq_dim, fields, comm):
         if output_loc == 'FaceCenter':
           ng = PT.Zone.NGonNode(zone)
         elif output_loc == 'EdgeCenter':
-          assert PT.Zone.CellDimension(zone) == 2
           ng = MT.Zone.EdgeNode(zone)
         er = PT.Element.Range(ng)
         distri = MT.getDistribution(ng, 'Element')[1]

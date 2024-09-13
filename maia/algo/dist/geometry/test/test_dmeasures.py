@@ -41,6 +41,26 @@ def test_compute_edge_lenght2d(elt_kind, comm):
     assert comm.allreduce(edge_lenght.sum(), MPI.SUM) == 4 # External edges only
   else:
     assert comm.allreduce(edge_lenght.sum(), MPI.SUM) == 10  # Internal & External edges
+
+@pytest_parallel.mark.parallel(2)
+def test_compute_edge_lenght_poly3D(comm):
+  tree = maia.factory.generate_dist_block(3, 'NFACE_n', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  
+  # Create some edges
+  if comm.rank == 0:
+    edge_co = np.array([1,2,2,3, 9,18], zone[1].dtype)
+  elif comm.rank == 1:
+    edge_co = np.array([18,27, 20,23,23,26], zone[1].dtype)
+  edge = PT.new_Elements('EdgeElements', 'BAR_2', erange=[45,50], econn=edge_co, parent=zone)
+  PT.maia.newDistribution({'Element' : par_utils.dn_to_distribution(3, comm)}, parent=edge)
+
+  edge_lenght = GEO.compute_edge_measure(zone, comm)
+
+  assert (edge_lenght == 0.5).all()
+  assert comm.allreduce(edge_lenght.size, MPI.SUM) == PT.Element.Size(edge) # Only renseigned edges are computed
+
+
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("elt_kind", ['Poly', 'HEXA_8', 'S'])
 def test_compute_face_area3d(elt_kind, comm):
