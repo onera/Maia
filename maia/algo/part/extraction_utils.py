@@ -55,8 +55,8 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
   partial_field = PT.get_child_from_name(ref_zsr_node, patch_name) is not None
 
   # list all FS and ZSR paths
-  paths = PT.predicates_to_paths(mask_zone, 'FlowSolution_t/DataArray_t')
-  paths += PT.predicates_to_paths(mask_zone, 'ZoneSubRegion_t/DataArray_t',)
+  is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
+  paths = PT.predicates_to_paths(mask_zone, [is_container, 'DataArray_t'])
   # dtypes: gives the information path -> dtype
   dtypes = dict()
   # for each path in each zone:

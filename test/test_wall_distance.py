@@ -69,7 +69,7 @@ def test_wall_distance_U(method, comm, write_output):
   maia.algo.part.compute_wall_distance(part_tree, comm, method=method, perio=perio)
 
   # Save file and compare
-  maia.transfer.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, ['FlowSolution_t'], comm)
+  maia.transfer.part_tree_to_dist_tree_only_labels(dist_tree, part_tree, ['DiscreteData_t'], comm)
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)

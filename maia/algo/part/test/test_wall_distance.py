@@ -185,7 +185,7 @@ def test_walldistance_perio(comm):
                        [3, 2, 0, 0, 3, 2, 2, 2]]
 
   for z, zone in enumerate(PT.get_all_Zone_t(part_tree)):
-    fs = PT.get_child_from_name_and_label(zone, 'WallDistance', 'FlowSolution_t')
+    fs = PT.get_child_from_name_and_label(zone, 'WallDistance', 'DiscreteData_t')
     assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
     assert np.allclose(PT.get_value(PT.get_child_from_name(fs, 'TurbulentDistance')), expected_wd, rtol=1e-10)
     assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltGnum'))  == expected_gnum[z]).all()

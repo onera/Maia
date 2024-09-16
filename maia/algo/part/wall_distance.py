@@ -239,7 +239,7 @@ class WallDistance:
       # Test if FlowSolution already exists or create it
       fs_node = PT.get_child_from_name(part_zone, self.out_fs_n)
       if fs_node is None:
-        fs_node = PT.new_FlowSolution(name=self.out_fs_n, loc=output_loc, parent=part_zone)
+        fs_node = PT.new_DiscreteData(name=self.out_fs_n, loc=output_loc, parent=part_zone)
       assert PT.Subset.GridLocation(fs_node) == output_loc
       if output_loc == "CellCenter":
         shape = PT.Zone.CellSize(part_zone)
@@ -406,7 +406,7 @@ def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name
     NGon connectivities grids. In addition, partitions must have been created from a single initial domain
     with this method.
 
-  Tree is modified inplace: computed distance are added in a FlowSolution container whose
+  Tree is modified inplace: computed distance are added in a DiscreteData container whose
   name can be specified with out_fs_name parameter.
 
   The following optional parameters can be used to control the underlying method:
@@ -421,7 +421,7 @@ def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name
     point_cloud (str, optional): Points to project on the surface. Can either be one of
       "CellCenter" or "Vertex" (coordinates are retrieved from the mesh) or the name of a FlowSolution
       node in which coordinates are stored. Defaults to CellCenter.
-    out_fs_name (str, optional): Name of the output FlowSolution_t node storing wall distance data.
+    out_fs_name (str, optional): Name of the output DiscreteData_t node storing wall distance data.
     **options: Additional options related to geometric method (see above)
 
   Example:

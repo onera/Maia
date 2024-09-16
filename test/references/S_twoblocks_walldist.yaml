@@ -3,7 +3,7 @@ CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
 Base CGNSBase_t I4 [3, 3]:
   Large Zone_t I4 [[17, 16, 0], [9, 8, 0], [7, 6, 0]]:
     ZoneType ZoneType_t 'Structured':
-    WallDistance FlowSolution_t:
+    WallDistance DiscreteData_t:
       GridLocation GridLocation_t 'CellCenter':
       TurbulentDistance DataArray_t:
         R8 : [[[0.5, 0.5, 0.5, 0.5, 0.5, 0.5], [0.5, 1.5, 1.5, 1.5, 1.5, 0.5], [0.5, 1.5, 2.5, 2.5, 1.5, 0.5], [0.5, 1.5,
@@ -240,7 +240,7 @@ Base CGNSBase_t I4 [3, 3]:
               1, 0], [0, 0, 1, 1, 1, 0], [0, 0, 1, 1, 1, 0], [0, 0, 1, 1, 1, 0], [0, 0, 0, 1, 1, 0], [0, 0, 0, 0, 0, 0]]]
   Small Zone_t I4 [[7, 6, 0], [9, 8, 0], [5, 4, 0]]:
     ZoneType ZoneType_t 'Structured':
-    WallDistance FlowSolution_t:
+    WallDistance DiscreteData_t:
       GridLocation GridLocation_t 'CellCenter':
       TurbulentDistance DataArray_t:
         R8 : [[[0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5],

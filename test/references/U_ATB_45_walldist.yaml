@@ -3,7 +3,7 @@ CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
 Base CGNSBase_t I4 [3, 3]:
   bump_45 Zone_t I4 [[792, 460, 0]]:
     ZoneType ZoneType_t 'Unstructured':
-    WallDistance FlowSolution_t:
+    WallDistance DiscreteData_t:
       GridLocation GridLocation_t 'CellCenter':
       TurbulentDistance DataArray_t:
         R8 : [0.00014509576340593236, 0.00013420938173351645, 0.00012704688103752797, 0.00012192469334066934, 0.0001146150538579867,
