@@ -178,7 +178,7 @@ def compute_cell_measure(zone, comm):
   return measure
 
 
-def _compute_zone_measures(zone, dim, comm):
+def _compute_elements_measure(zone, dim, comm):
   """Dispatch measures computing according to zone dimension and 
   requested dimension. Return a raw array"""
   if dim == 'CellCenter':
@@ -187,8 +187,8 @@ def _compute_zone_measures(zone, dim, comm):
           2: compute_face_measure,
           1: compute_edge_measure}[dim](zone, comm)
 
-def compute_zone_measures(zone, dim, comm):
-  """ Implementation of maia.algo.compute_measures for a given distributed zone.
+def compute_elements_measure(zone, dim, comm):
+  """ Implementation of maia.algo.compute_elements_measure for a given distributed zone.
   See the calling function for full documentation """
 
   cell_dim = PT.Zone.CellDimension(zone)
@@ -198,5 +198,5 @@ def compute_zone_measures(zone, dim, comm):
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"
     mlog.warning(msg)
   else:
-    measure = _compute_zone_measures(zone, rq_dim, comm)
+    measure = _compute_elements_measure(zone, rq_dim, comm)
     place_in_container(zone, rq_dim, {'Measure' : measure}, comm)

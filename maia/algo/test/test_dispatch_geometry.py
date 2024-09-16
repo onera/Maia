@@ -152,7 +152,7 @@ def test_compute_elements_center(parallel, comm):
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("parallel", ["part", "dist"])
-def test_compute_measures(parallel, comm):
+def test_compute_elements_measure(parallel, comm):
 
   def rename_append(parent, child_dict):
     for zname, t in child_dict.items():
@@ -215,15 +215,15 @@ def test_compute_measures(parallel, comm):
   # Last base is Base1D_X -> rm Y coord
   PT.rm_nodes_from_name(base, 'CoordinateY')
 
-  geometry.compute_measures(tree, 3, comm)
-  geometry.compute_measures(tree, 2, comm)
+  geometry.compute_elements_measure(tree, 3, comm)
+  geometry.compute_elements_measure(tree, 2, comm)
 
   # For edges, we need to remove poly3d and structured meshes (not implemented)
   mask = PT.shallow_copy(tree)
   PT.rm_nodes_from_name(mask, '3d_poly*')
   PT.rm_nodes_from_name(mask, '3d_str*')
   PT.rm_nodes_from_name(mask, '2d_str*')
-  geometry.compute_measures(mask, 1, comm) 
+  geometry.compute_elements_measure(mask, 1, comm) 
   tree = PT.union(tree, mask)
 
   for base in PT.get_all_CGNSBase_t(tree):
@@ -247,7 +247,7 @@ def test_compute_measures(parallel, comm):
           dim = int(PT.get_name(sol)[9])
           if cell_dim == dim:
             computed = PT.get_child_from_name(sol, f'Measure')[1].reshape(-1, order='F')
-            expected = geometry._compute_zone_measures(zone, dim, comm)
+            expected = geometry._compute_elements_measure(zone, dim, comm)
             assert np.allclose(computed, expected)
 
 
@@ -257,7 +257,7 @@ def test_compute_measures(parallel, comm):
         for sol in PT.get_children_from_name(zone, f'Geometry_*'):
           dim = int(PT.get_name(sol)[-2])
           computed = PT.get_child_from_name(sol, f'Measure')[1]
-          expected = geometry._compute_zone_measures(zone, dim, comm)
+          expected = geometry._compute_elements_measure(zone, dim, comm)
           assert np.allclose(computed, expected)
 
           if PT.Subset.GridLocation(sol) in ['FaceCenter', 'EdgeCenter']:

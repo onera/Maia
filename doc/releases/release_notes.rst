@@ -16,7 +16,7 @@ Developpement version
 ^^^^^^^^^^^^^^^
 - Algo module: add ``remove_degen_faces_from_family``
 - Algo module: add ``edge_pe_to_ngon``/``ngon_to_edge_pe`` to convert 2D polyhedric connectivities
-- Algo module: add ``compute_measures`` to compute length, area or volume of grid elements
+- Algo module: add ``compute_elements_measure`` to compute length, area or volume of mesh entities
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^

@@ -15,14 +15,14 @@ def _compute_elements_center(zone, dim, comm=None):
   else:
     return part_geometry._compute_elements_center(zone, dim)
 
-def _compute_zone_measures(zone, dim, comm=None):
+def _compute_elements_measure(zone, dim, comm=None):
   """Dispatch measure computing according to zone dimension and 
   requested dimension """
   if MT.getDistribution(zone) is not None:
     assert comm is not None
-    return dist_geometry._compute_zone_measures(zone, dim, comm)
+    return dist_geometry._compute_elements_measure(zone, dim, comm)
   else:
-    return part_geometry._compute_zone_measures(zone, dim)
+    return part_geometry._compute_elements_measure(zone, dim)
   
 
 def compute_elements_center(t, dim, comm=None):
@@ -77,7 +77,7 @@ def compute_elements_center(t, dim, comm=None):
     else:
       part_geometry.compute_elements_center(zone, dim)
 
-def compute_measures(t, dim, comm=None):
+def compute_elements_measure(t, dim, comm=None):
   """Compute the length, area or volume of the specified mesh entity.
 
   As for :func:`compute_elements_center`, the mesh entity on which measures
@@ -105,8 +105,8 @@ def compute_measures(t, dim, comm=None):
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #compute_measures@start
-        :end-before: #compute_measures@end
+        :start-after: #compute_elements_measure@start
+        :end-before: #compute_elements_measure@end
         :dedent: 2
   """
 
@@ -114,7 +114,7 @@ def compute_measures(t, dim, comm=None):
     
     if MT.getDistribution(zone) is not None:
       assert comm is not None
-      dist_geometry.compute_zone_measures(zone, dim, comm)
+      dist_geometry.compute_elements_measure(zone, dim, comm)
     else:
-      part_geometry.compute_zone_measures(zone, dim)
+      part_geometry.compute_elements_measure(zone, dim)
 

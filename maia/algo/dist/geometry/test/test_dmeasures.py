@@ -83,7 +83,7 @@ def test_compute_face_area2d(elt_kind, comm):
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
-  face_area = GEO._compute_zone_measures(zone, 2, comm)
+  face_area = GEO._compute_elements_measure(zone, 2, comm)
   assert (face_area == 0.125).all()
   assert comm.allreduce(face_area.sum(), MPI.SUM) == 1
 

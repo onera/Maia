@@ -104,7 +104,7 @@ The following algorithms applies on maia distributed or partitioned trees
 .. autofunction:: maia.algo.transform_affine
 .. autofunction:: maia.algo.scale_mesh
 .. autofunction:: maia.algo.compute_elements_center
-.. autofunction:: maia.algo.compute_measures
+.. autofunction:: maia.algo.compute_elements_measure
 .. autofunction:: maia.algo.cartesian_to_cylindrical
 .. autofunction:: maia.algo.cylindrical_to_cartesian
 .. autofunction:: maia.algo.pe_to_nface

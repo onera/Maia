@@ -70,7 +70,7 @@ def test_compute_face_area2d(elt_kind, comm):
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
 
-  face_area = measures._compute_zone_measures(zone, 2)
+  face_area = measures._compute_elements_measure(zone, 2)
   if elt_kind == 'S':
     assert (face_area == 1./16).all()
   else:
