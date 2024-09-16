@@ -141,23 +141,86 @@ class FieldComparison(EqualArray):
       return EqualArray.__call__(self, stack1, stack2)
 
 
-def _relative_norm_comparison(tol, comm, tensor_name, suffixes, x, ref):
-  x_val   = [PT.get_value(PT.get_node_from_name(x  , tensor_name+suffix)) for suffix in suffixes]
-  ref_val = [PT.get_value(PT.get_node_from_name(ref, tensor_name+suffix)) for suffix in suffixes]
+def _relative_tensor_norm_comparison(tol, comm, x_nodes, ref_nodes, tensor_rank):
+  x_val   = [PT.get_value(x_node  ) for x_node   in x_nodes  ]
+  ref_val = [PT.get_value(ref_node) for ref_node in ref_nodes]
 
   x_cat   = np.concatenate(x_val)
   ref_cat = np.concatenate(ref_val)
 
-  return relative_norm_comparison(tol, comm, n_dim=len(suffixes))(x_cat, ref_cat)
+  return relative_norm_comparison(tol, comm, n_dim=len(x_nodes))(x_cat, ref_cat)
+
+def _sym_to_full_rank_2_tensor(flds, dim):
+  if dim == 2:
+    return [flds[0],flds[1],
+            flds[1],flds[2]]
+  elif dim == 3:
+    return [flds[0],flds[1],flds[2],
+            flds[1],flds[3],flds[4],
+            flds[2],flds[4],flds[5]]
+  else:
+    raise AssertionError(f'dimension {dim} is not implemented')
+
+suffixes = {
+  ('rank_1','2D'): ['X','Y'],
+  ('rank_1','3D'): ['X','Y','Z'],
+  ('rank_2','2D'): ['XX','XY','YX','YY'],
+  ('rank_2','3D'): ['XX','XY','XZ','YX','YY','YZ','ZX','ZY','ZZ'],
+}
+suffixes_sym = {
+  '2D' : ['XX','XY','YY'],
+  '3D' : ['XX','XY','XZ',  'YY','YZ',  'ZZ'],
+}
+
+def find_and_check_tensor_fields(node, tensor_name, tensor_rank):
+  fields = [PT.get_node_from_name(node, tensor_name+suffix) for suffix in suffixes[(f'rank_{tensor_rank}','3D')]]
+  fields = [f for f in fields if f is not None]
+
+  fld_suffs = [PT.get_name(f)[-tensor_rank:] for f in fields]
+
+  sorted_pairs = sorted(zip(fld_suffs, fields))
+  fld_suffs = [pair[0] for pair in sorted_pairs]
+  fields    = [pair[1] for pair in sorted_pairs]
+
+  dim = 3 if any('Z' in node for node in fld_suffs) else 2
+
+  possible_suffs     = suffixes[(f'rank_{tensor_rank}',f'{dim}D')]
+  possible_suffs_sym = suffixes_sym[f'{dim}D']
+  if tensor_rank == 1:
+    if len(fld_suffs)==len(possible_suffs) and fld_suffs == possible_suffs:
+      return fields
+    else:
+      err_msg = f'Tensor field \'{tensor_name}\' of rank {tensor_rank} in dimension {dim}: found components {fld_suffs}.\n' \
+                f'It does not match components {possible_suffs} (vector in {dim}D).\n'
+      raise RuntimeError(err_msg)
+  elif tensor_rank == 2:
+    if len(fld_suffs)==len(possible_suffs) and fld_suffs == possible_suffs:
+      return fields
+    elif len(fld_suffs)==len(possible_suffs_sym) and fld_suffs == possible_suffs_sym:
+      return _sym_to_full_rank_2_tensor(fields, dim)
+    else:
+      err_msg = f'Tensor field \'{tensor_name}\' of rank {tensor_rank} in dimension {dim}: found components {fld_suffs}.\n' \
+                f'It does not match components {possible_suffs} (full {tensor_rank}-tensor in {dim}D),\n' \
+                f'or components {possible_suffs_sym} (full {tensor_rank}-tensor in {dim}D)\n'
+      raise RuntimeError(err_msg)
+  else:
+    raise AssertionError(f'tensor_rank {tensor_rank} is not implemented')
 
 
-suffixes_rank_1 = ['X','Y','Z']
-suffixes_rank_2 = ['XX','XY','XZ','YX','YY','YZ','ZX','ZY','ZZ']
-
-def relative_norm_comparison_rank_1(tol, comm, tensor_name, x, ref):
-  return _relative_norm_comparison(tol, comm, tensor_name, suffixes_rank_1, x, ref)
-def relative_norm_comparison_rank_2(tol, comm, tensor_name, x, ref):
-  return _relative_norm_comparison(tol, comm, tensor_name, suffixes_rank_2, x, ref)
+def _tensor_info(name):
+  if name[-2:] in suffixes[('rank_2','3D')]: # If the name matches order 2 tensors
+    tensor_rank = 2
+    tensor_name = name[:-2]
+    is_first_component = name[-2:] == 'XX'
+  elif name[-1:] in suffixes[('rank_1','3D')]: # If the name matches order 1 tensors
+    tensor_rank = 1
+    tensor_name = name[:-1]
+    is_first_component = name[-1:] == 'X'
+  else:
+    tensor_rank = 0
+    tensor_name = ''
+    is_first_component = True
+  return tensor_rank, is_first_component, tensor_name
 
 
 class TensorFieldComparison(EqualArray):
@@ -166,6 +229,10 @@ class TensorFieldComparison(EqualArray):
   To identify tensors, the functions looks at the name of the current field.
   If it ends with 'X' or 'XX', then it will look for 'Y'/'Z' or 'XY'/... sibling nodes,
   reconstruct a tensor field from them, and then do the comparison on them
+
+  Tensor of rank 0 (i.e. scalar field), 1 and 2 are supported.
+  Rank-2 tensors that only have components ['XX','XY','YY'] or ['XX','XY','XZ','YY','YZ','ZZ'] are interpreted as symmetric tensors.
+  Missing components (e.g. having 'VelocityZ' without 'VelocityX/Y') will result in a error.
 
   Args:
     tol (Float): tolerance
@@ -192,18 +259,14 @@ class TensorFieldComparison(EqualArray):
     ref = PT.get_value(node_ref,raw=True)
     if PT.get_label(node_x) == 'DataArray_t' and x.dtype.kind == 'f':
       parent_x,parent_ref = stack1[-2], stack2[-2]
-      if name_x[-2:] in suffixes_rank_2:
-        if name_x[-2:] == 'XX':
-          tensor_name = name_x[:-2]
-          return relative_norm_comparison_rank_2(self.tol, self.comm, tensor_name, parent_x, parent_ref)
+      tensor_rank, is_first_component, tensor_name = _tensor_info(name_x)
+      if tensor_rank>0:
+        x_nodes   = find_and_check_tensor_fields(parent_x  , tensor_name, tensor_rank)
+        ref_nodes = find_and_check_tensor_fields(parent_ref, tensor_name, tensor_rank)
+        if is_first_component:
+          return _relative_tensor_norm_comparison(self.tol, self.comm, x_nodes, ref_nodes, tensor_rank)
         else:
-          return True, '', '' # Tested within 'XX'
-      if name_x[-1] in suffixes_rank_1:
-        if name_x[-1] == 'X':
-          tensor_name = name_x[:-1]
-          return relative_norm_comparison_rank_1(self.tol, self.comm, tensor_name, parent_x, parent_ref)
-        else:
-          return True, '', '' # Tested within 'X'
+          return True, '', '' # Other component are actually tested within by the first component
       else: # scalar
         return relative_norm_comparison(self.tol, self.comm)(x, ref)
     else:

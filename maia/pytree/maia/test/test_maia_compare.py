@@ -8,6 +8,7 @@ from maia.pytree.yaml   import parse_yaml_cgns
 
 from maia.pytree.maia.compare import close_in_relative_norm, equal_array_report
 from maia.pytree.maia.compare import FieldComparison, TensorFieldComparison
+from maia.pytree.maia.compare import _sym_to_full_rank_2_tensor, _tensor_info, find_and_check_tensor_fields
 
 import maia.pytree as PT
 
@@ -223,4 +224,89 @@ FlowSolution FlowSolution_t []:
   assert err_report == '/FlowSolution/Momentum -- Values differ: RMS mean diff: 5.000e-01, RMS ref mean: 3.742e+00, rel error: 1.336e-01\n' \
                        '/FlowSolution/VelocityGradient -- Values differ: RMS mean diff: 7.071e-01, RMS ref mean: 1.000e+00, rel error: 7.071e-01\n'
 
+def test_diff_tree_tensor_field_comp_sym():
+  # YX, ZX, ZY not here: consider the field is a symmetric tensor
+  t_ref = """
+FlowSolution FlowSolution_t []:
+  StressXX DataArray_t [1.,1.]:
+  StressXY DataArray_t [0.,0.]:
+  StressXZ DataArray_t [0.,0.]:
+  StressYY DataArray_t [0.,0.]:
+  StressYZ DataArray_t [0.,0.]:
+  StressZZ DataArray_t [0.,0.]:
+  VelocityGradientXX DataArray_t [1.,1.]:
+  VelocityGradientXY DataArray_t [0.,0.]:
+  VelocityGradientXZ DataArray_t [0.,0.]:
+  VelocityGradientYY DataArray_t [0.,0.]:
+  VelocityGradientYZ DataArray_t [0.,0.]:
+  VelocityGradientZZ DataArray_t [0.,0.]:
+"""
+  t = """
+FlowSolution FlowSolution_t []:
+  StressXX DataArray_t [1.,1.]:
+  StressXY DataArray_t [0.,0.]:
+  StressXZ DataArray_t [0.,0.]:
+  StressYY DataArray_t [0.,0.]:
+  StressYZ DataArray_t [0.,0.]:
+  StressZZ DataArray_t [0.,0.]:
+  VelocityGradientXX DataArray_t [1.,1.]:
+  VelocityGradientXY DataArray_t [0.,0.]:
+  VelocityGradientXZ DataArray_t [1.,1.]: # DIFF HERE
+  VelocityGradientYY DataArray_t [0.,0.]:
+  VelocityGradientYZ DataArray_t [0.,0.]:
+  VelocityGradientZZ DataArray_t [0.,0.]:
+"""
+  t_ref = parse_yaml_cgns.to_node(t_ref)
+  t     = parse_yaml_cgns.to_node(t)
 
+  is_ok, err_report, warn_report = PT.diff_tree(t, t_ref, comp = TensorFieldComparison(1.e-12, MPI.COMM_SELF))
+  assert not is_ok
+  assert err_report == '/FlowSolution/VelocityGradient -- Values differ: RMS mean diff: 1.414e+00, RMS ref mean: 1.000e+00, rel error: 1.414e+00\n'
+
+
+def test_sym_to_full_rank_2_tensor():
+  assert _sym_to_full_rank_2_tensor(['XX','XY','YY'],2) == ['XX','XY',
+                                                            'XY','YY']
+  assert _sym_to_full_rank_2_tensor(['XX','XY','XZ','YY','YZ','ZZ'],3) == ['XX','XY','XZ',
+                                                                           'XY','YY','YZ',
+                                                                           'XZ','YZ','ZZ']
+
+
+def test_tensor_info():
+                                      # rank,is_first_component,    name
+                                      #  |           |               |
+                                      #  v           v               v
+  assert _tensor_info('CoordinateX') == (1  ,      True        , 'Coordinate')
+  assert _tensor_info('CoordinateZ') == (1  ,      False       , 'Coordinate')
+  assert _tensor_info('StressXX'   ) == (2  ,      True        , 'Stress'    )
+  assert _tensor_info('StressXZ'   ) == (2  ,      False       , 'Stress'    )
+
+
+def test_find_and_check_tensor_fields():
+  t = """
+FlowSolution FlowSolution_t []:
+  StressXX DataArray_t [1.,1.]:
+  StressXY DataArray_t [0.,0.]:
+  StressXZ DataArray_t [0.,0.]:
+  StressYY DataArray_t [0.,0.]:
+  StressYZ DataArray_t [0.,0.]:
+  StressZZ DataArray_t [0.,0.]:
+"""
+  t = parse_yaml_cgns.to_node(t)
+  flds = find_and_check_tensor_fields(t,'Stress',2)
+  flds_names = [PT.get_name(fld) for fld in flds]
+  assert flds_names == ['StressXX','StressXY','StressXZ',
+                        'StressXY','StressYY','StressYZ',
+                        'StressXZ','StressYZ','StressZZ']
+
+
+  t_wrong = """
+FlowSolution FlowSolution_t []:
+  StressZZ DataArray_t [0.,0.]:
+"""
+  t_wrong = parse_yaml_cgns.to_node(t_wrong)
+  with pytest.raises(RuntimeError) as err_msg:
+    find_and_check_tensor_fields(t_wrong,'Stress',2)
+  assert str(err_msg.value) == "Tensor field 'Stress' of rank 2 in dimension 3: found components ['ZZ'].\n" \
+                               "It does not match components ['XX', 'XY', 'XZ', 'YX', 'YY', 'YZ', 'ZX', 'ZY', 'ZZ'] (full 2-tensor in 3D),\n" \
+                               "or components ['XX', 'XY', 'XZ', 'YY', 'YZ', 'ZZ'] (full 2-tensor in 3D)\n"
