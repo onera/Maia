@@ -175,7 +175,7 @@ def compute_edge_center(zone):
     raise NotImplementedError("Only U-elts zones are managed")
 
 
-def _compute_zone_centers(zone, dim):
+def _compute_elements_center(zone, dim):
   """Dispatch centers computing according to zone dimension and 
   requested dimension.
   Return a raw interlaced array or None"""
@@ -189,13 +189,13 @@ def _compute_zone_centers(zone, dim):
   elif dim == 1 and zone_dim >= 1:
     return compute_edge_center(zone)
 
-def compute_zone_centers(zone, dim):
-  """ Implementation of maia.algo.compute_centers for a given partitioned zone.
+def compute_elements_center(zone, dim):
+  """ Implementation of maia.algo.compute_elements_center for a given partitioned zone.
   See the calling function for full documentation """
   
   cell_dim = PT.Zone.CellDimension(zone)
   rq_dim = cell_dim if dim == 'CellCenter' else dim
-  interlaced_centers = _compute_zone_centers(zone, rq_dim)
+  interlaced_centers = _compute_elements_center(zone, rq_dim)
   if interlaced_centers is None:
     msg = f"Zone '{PT.get_name(zone)}' skipped during centers computing because "\
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"

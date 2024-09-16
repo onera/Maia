@@ -82,7 +82,7 @@ def test_interpolation_non_overlaping_cubes(comm, strategy, src_elt, tgt_elt, wr
     sol = PT.get_value(sol_n)
     # Expected sol can be recomputed using cell centers
     expected_sol = np.empty_like(sol)
-    cell_center  = MA.part.geometry._compute_zone_centers(tgt_part, 'CellCenter')
+    cell_center  = MA.part.geometry._compute_elements_center(tgt_part, 'CellCenter')
     for icell in range(sol.shape[0]):
       expected_sol[icell] = -int(cell_center[3*icell] < 0.95) + \
           10*min(int(10*cell_center[3*icell+1]+1), 10) + 100*int(10*cell_center[3*icell+2])

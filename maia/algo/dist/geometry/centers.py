@@ -139,7 +139,7 @@ def compute_cell_center(zone, comm):
     return _mean_coords_from_connectivity_cyl(cell_vtx_idx, *local_coords)
 
 
-def _compute_zone_centers(zone, dim, comm):
+def _compute_elements_center(zone, dim, comm):
   """Dispatch centers computing according to zone dimension and 
   requested dimension
   Return a raw interlaced array or None"""
@@ -153,13 +153,13 @@ def _compute_zone_centers(zone, dim, comm):
   elif dim == 1 and zone_dim >= 1:
     return compute_edge_center(zone, comm)
 
-def compute_zone_centers(zone, dim, comm):
-  """ Implementation of maia.algo.compute_centers for a given distributed zone.
+def compute_elements_center(zone, dim, comm):
+  """ Implementation of maia.algo.compute_elements_center for a given distributed zone.
   See the above function for full documentation """
 
   cell_dim = PT.Zone.CellDimension(zone)
   rq_dim = cell_dim if dim == 'CellCenter' else dim
-  interlaced_centers = _compute_zone_centers(zone, rq_dim, comm)
+  interlaced_centers = _compute_elements_center(zone, rq_dim, comm)
   if interlaced_centers is None:
     msg = f"Zone '{PT.get_name(zone)}' skipped during centers computing because "\
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"

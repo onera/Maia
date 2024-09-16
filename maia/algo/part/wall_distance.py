@@ -15,7 +15,7 @@ from maia.transfer                   import utils as tr_utils
 from maia.factory.dist_from_part     import discover_nodes_from_matching
 
 from maia.algo.part.extract_boundary import extract_surf_from_bc
-from maia.algo.part.geometry         import _compute_zone_centers
+from maia.algo.part.geometry         import _compute_elements_center
 
 from .point_cloud_utils              import get_point_cloud
 
@@ -209,7 +209,7 @@ class WallDistance:
       n_cell = cell_ln_to_gn.shape[0]
       n_face = face_ln_to_gn.shape[0]
 
-      center_cell = _compute_zone_centers(part_zone, 'CellCenter')
+      center_cell = _compute_elements_center(part_zone, 'CellCenter')
       assert(center_cell.size == 3*n_cell)
 
       # Keep numpy alive

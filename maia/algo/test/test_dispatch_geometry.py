@@ -25,7 +25,7 @@ def generate_dist_line(comm):
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("parallel", ["dist", "part"])
-def test_compute_centers(parallel, comm):
+def test_compute_elements_center(parallel, comm):
 
   def rename_append(parent, child_dict):
     for zname, t in child_dict.items():
@@ -88,15 +88,15 @@ def test_compute_centers(parallel, comm):
   PT.rm_nodes_from_name(base, 'CoordinateY')
 
 
-  geometry.compute_centers(tree, 3, comm) 
-  geometry.compute_centers(tree, 2, comm) 
+  geometry.compute_elements_center(tree, 3, comm) 
+  geometry.compute_elements_center(tree, 2, comm) 
 
   # For edges, we need to remove poly3d and structured meshes (not implemented)
   mask = PT.shallow_copy(tree)
   PT.rm_nodes_from_name(mask, '3d_poly*')
   PT.rm_nodes_from_name(mask, '3d_str*')
   PT.rm_nodes_from_name(mask, '2d_str*')
-  geometry.compute_centers(mask, 1, comm) 
+  geometry.compute_elements_center(mask, 1, comm) 
   tree = PT.union(tree, mask)
 
   for base in PT.get_all_CGNSBase_t(tree):
@@ -123,7 +123,7 @@ def test_compute_centers(parallel, comm):
             computed = np.zeros(3*arrays[0].size, arrays[0].dtype)
             for i,array in enumerate(arrays):
               computed[i::3] = array.reshape(-1, order='F')
-            expected = geometry._compute_zone_centers(zone, dim, comm)
+            expected = geometry._compute_elements_center(zone, dim, comm)
             assert np.allclose(computed, expected)
 
 
@@ -136,7 +136,7 @@ def test_compute_centers(parallel, comm):
           computed = np.zeros(3*arrays[0].size, arrays[0].dtype)
           for i,array in enumerate(arrays):
             computed[i::3] = array
-          expected = geometry._compute_zone_centers(zone, dim, comm)
+          expected = geometry._compute_elements_center(zone, dim, comm)
           assert np.allclose(computed, expected)
 
           if PT.Subset.GridLocation(sol) in ['FaceCenter', 'EdgeCenter']:

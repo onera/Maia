@@ -11,23 +11,23 @@ from maia.algo.part.geometry import measures
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("elt_kind", ['QUAD_4', 'Poly'])
-def test_compute_edge_lenght2d(elt_kind, comm):
+def test_compute_edge_length2d(elt_kind, comm):
   tree = maia.factory.generate_dist_block(5, 'QUAD_4', comm)
   if elt_kind == 'Poly':
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   
-  edge_lenght = measures.compute_edge_measure(zone)
-  assert (edge_lenght == 0.25).all()
+  edge_length = measures.compute_edge_measure(zone)
+  assert (edge_length == 0.25).all()
 
   if elt_kind == 'QUAD_4': 
-    assert comm.allreduce(edge_lenght.sum(), MPI.SUM) == 4 # External edges only
+    assert comm.allreduce(edge_length.sum(), MPI.SUM) == 4 # External edges only
   else:
-    assert comm.allreduce(edge_lenght.sum(), MPI.SUM) == 10 + 1 # Internal, External & part interface edges
+    assert comm.allreduce(edge_length.sum(), MPI.SUM) == 10 + 1 # Internal, External & part interface edges
 
 @pytest_parallel.mark.parallel(1)
-def test_compute_edge_lenght_poly3D(comm):
+def test_compute_edge_length_poly3D(comm):
   tree = maia.factory.generate_dist_block(3, 'NFACE_n', comm)
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
@@ -37,10 +37,10 @@ def test_compute_edge_lenght_poly3D(comm):
   edge = PT.new_Elements('EdgeElements', 'BAR_2', erange=[45,50], econn=edge_co, parent=zone)
   # We should create GlobalNumbering, but it is not required by function :-)
 
-  edge_lenght = measures.compute_edge_measure(zone)
+  edge_length = measures.compute_edge_measure(zone)
 
-  assert (edge_lenght == 0.5).all()
-  assert edge_lenght.size == PT.Element.Size(edge) # Only renseigned edges are computed
+  assert (edge_length == 0.5).all()
+  assert edge_length.size == PT.Element.Size(edge) # Only renseigned edges are computed
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("elt_kind", ['Poly', 'HEXA_8', 'S'])

@@ -6,14 +6,14 @@ from .dist import geometry as dist_geometry
 from .part import geometry as part_geometry
 
 
-def _compute_zone_centers(zone, dim, comm=None):
+def _compute_elements_center(zone, dim, comm=None):
   """Dispatch centers computing according to zone dimension and 
   requested dimension """
   if MT.getDistribution(zone) is not None:
     assert comm is not None
-    return dist_geometry._compute_zone_centers(zone, dim, comm)
+    return dist_geometry._compute_elements_center(zone, dim, comm)
   else:
-    return part_geometry._compute_zone_centers(zone, dim)
+    return part_geometry._compute_elements_center(zone, dim)
 
 def _compute_zone_measures(zone, dim, comm=None):
   """Dispatch measure computing according to zone dimension and 
@@ -25,7 +25,7 @@ def _compute_zone_measures(zone, dim, comm=None):
     return part_geometry._compute_zone_measures(zone, dim)
   
 
-def compute_centers(t, dim, comm=None):
+def compute_elements_center(t, dim, comm=None):
   """Compute the centers of the specified mesh entity.
 
   The mesh entity on which centers are computed must be specified using
@@ -64,8 +64,8 @@ def compute_centers(t, dim, comm=None):
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #compute_centers@start
-        :end-before: #compute_centers@end
+        :start-after: #compute_elements_center@start
+        :end-before: #compute_elements_center@end
         :dedent: 2
   """
 
@@ -73,19 +73,18 @@ def compute_centers(t, dim, comm=None):
     
     if MT.getDistribution(zone) is not None:
       assert comm is not None
-      dist_geometry.compute_zone_centers(zone, dim, comm)
+      dist_geometry.compute_elements_center(zone, dim, comm)
     else:
-      part_geometry.compute_zone_centers(zone, dim)
+      part_geometry.compute_elements_center(zone, dim)
 
 def compute_measures(t, dim, comm=None):
-  """Compute the lenght, area or volume of the specified mesh entity.
+  """Compute the length, area or volume of the specified mesh entity.
 
-  As for :func:`compute_centers`, 
-  the mesh entity on which measures are computed must be specified using
-  ``dim`` parameter: values of 1, 2, and 3 correspond respectively to edges,
-  faces and cells. 
+  As for :func:`compute_elements_center`, the mesh entity on which measures
+  are computed must be specified using ``dim`` parameter: values of 1, 2, and 3
+  correspond respectively to edges, faces and cells. 
   For convenience, the keyword ``CellCenter`` can be used to indicate, on
-  each zone, the higher available dimension. See :func:`compute_centers` for the
+  each zone, the higher available dimension. See :func:`compute_elements_center` for the
   summarizing table.
   Note that some combinations do not make sense (zones in this
   situation are skipped).

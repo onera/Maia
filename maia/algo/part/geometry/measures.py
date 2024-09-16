@@ -14,22 +14,22 @@ from maia.algo.geometry_utils import ELT_FACE_VTX, compute_center_and_flux
 import cmaia.part_algo as cpart_algo
 
 def compute_edge_measure(zone):
-  """ Compute the lenght of all edges of a 1D, 2D or 3D zone and return a raw array"""
+  """ Compute the length of all edges of a 1D, 2D or 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
   if PT.Zone.Type(zone) == "Unstructured":
     edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
 
-    # Compute lenght : |L| = ||x2 - x1||
+    # Compute length : |L| = ||x2 - x1||
     first_vtx  = edge_vtx[0::2] - 1
     second_vtx = edge_vtx[1::2] - 1
-    lenght = (coords[0][second_vtx] - coords[0][first_vtx])**2
+    length = (coords[0][second_vtx] - coords[0][first_vtx])**2
     if (cy := coords[1]) is not None:
-      lenght += (cy[second_vtx] - cy[first_vtx])**2
+      length += (cy[second_vtx] - cy[first_vtx])**2
     if (cz := coords[2]) is not None:
-      lenght += (cz[second_vtx] - cz[first_vtx])**2
-    return np.sqrt(lenght)
+      length += (cz[second_vtx] - cz[first_vtx])**2
+    return np.sqrt(length)
   else:
     raise NotImplementedError("Structured zones are not managed")
 

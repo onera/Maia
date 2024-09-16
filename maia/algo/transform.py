@@ -9,7 +9,7 @@ from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
 
-from .geometry import _compute_zone_centers
+from .geometry import _compute_elements_center
 
 def _to_xyz(r, theta, z):
   return r*np.cos(theta), r*np.sin(theta), z
@@ -199,13 +199,13 @@ def scale_mesh(t, s=1.):
 
 # Belows are helper functions to compute entity theta coordinate, depending of GridLocation
 def _compute_cellcenter_theta(z, comm):
-  theta = _compute_zone_centers(z, 3, comm)[1::3]
+  theta = _compute_elements_center(z, 3, comm)[1::3]
   if PT.Zone.Type(z) == 'Structured' and MT.getDistribution(z) is None:
     theta = theta.reshape(PT.Zone.CellSize(z), order='F')
   return theta
 
 COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
-                 'FaceCenter'  : lambda z,comm : _compute_zone_centers(z,2,comm)[1::3], #Only partial subsets -> no reshape needed
+                 'FaceCenter'  : lambda z,comm : _compute_elements_center(z,2,comm)[1::3], #Only partial subsets -> no reshape needed
                  'Vertex'      : lambda z,c : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
 
 def _get_subset_container(nodes):

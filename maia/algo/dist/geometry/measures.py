@@ -17,7 +17,7 @@ from maia.algo.geometry_utils import ELT_FACE_VTX, compute_center_and_flux
 
 
 def compute_edge_measure(zone, comm):
-  """ Compute the lenght of all edges of a 1D, 2D or 3D zone and return a raw array"""
+  """ Compute the length of all edges of a 1D, 2D or 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
@@ -29,12 +29,12 @@ def compute_edge_measure(zone, comm):
 
   local_coords = get_local_coordinates(zone, edge_vtx, comm)
 
-  # Compute lenght : |L| = ||x2 - x1||
-  lenght = np.zeros(edge_vtx_idx.size-1)
+  # Compute length : |L| = ||x2 - x1||
+  length = np.zeros(edge_vtx_idx.size-1)
   for dircoord in local_coords:
     if dircoord is not None:
-      lenght += (dircoord[1::2] - dircoord[0::2])**2
-  return np.sqrt(lenght)
+      length += (dircoord[1::2] - dircoord[0::2])**2
+  return np.sqrt(length)
 
 def compute_face_measure(zone, comm):
   """ Compute the area of all faces of a 2D or 3D distributed zone and return a raw array"""
