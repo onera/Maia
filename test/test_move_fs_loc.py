@@ -22,7 +22,7 @@ def test_centers_to_node(jn_loc, comm, write_output):
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
   # Create a Centers solution
-  maia.algo.compute_centers(part_tree, 'CellCenter')
+  maia.algo.compute_elements_center(part_tree, 'CellCenter')
   for part in PT.get_all_Zone_t(part_tree):
     PT.update_child(part, 'Geometry_3d', 'FlowSolution_t')
 

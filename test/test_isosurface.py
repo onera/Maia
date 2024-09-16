@@ -35,7 +35,7 @@ def generate_test_tree(n_vtx,n_part,comm, build_bc_zsr=False):
     cy = PT.get_child_from_name(gc, 'CoordinateY')[1]
     cz = PT.get_child_from_name(gc, 'CoordinateZ')[1]
 
-    cell_center = maia.algo.part.geometry._compute_zone_centers(zone, 3)
+    cell_center = maia.algo.part.geometry._compute_elements_center(zone, 3)
     ccx = cell_center[0::3]
     ccy = cell_center[1::3]
     ccz = cell_center[2::3]

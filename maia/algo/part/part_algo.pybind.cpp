@@ -138,8 +138,8 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("nx").noconvert(),
         py::arg("ny").noconvert(),
         py::arg("nz").noconvert(),
-        py::arg("np_cr").noconvert(),
-        py::arg("np_ctheta").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
         py::arg("np_cz").noconvert());
 
   m.def("compute_center_cell_s_cyl", &compute_center_cell_s_cyl,
@@ -164,6 +164,22 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("nz").noconvert(),
         py::arg("np_cr").noconvert(),
         py::arg("np_ctheta").noconvert(),
+        py::arg("np_cz").noconvert());
+
+  m.def("compute_area_face_s", &compute_area_face_s,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
+        py::arg("np_cz").noconvert());
+
+  m.def("compute_volume_cell_s", &compute_volume_cell_s,
+        py::arg("nx").noconvert(),
+        py::arg("ny").noconvert(),
+        py::arg("nz").noconvert(),
+        py::arg("np_cx").noconvert(),
+        py::arg("np_cy").noconvert(),
         py::arg("np_cz").noconvert());
 
   m.def("compute_face_normal_u", &compute_face_normal_u,

@@ -17,6 +17,7 @@ Developpement version
 - Algo module: add ``remove_degen_faces_from_family``
 - Algo module: add ``edge_pe_to_ngon``/``ngon_to_edge_pe`` to convert 2D polyhedric connectivities
 - Algo module: add ``find_ridges`` functionnality to retrieve topological ridges between surfaces
+- Algo module: add ``compute_elements_measure`` to compute length, area or volume of mesh entities
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +26,7 @@ Developpement version
 - interpolate: managed Vertex located fields for all values of ``strategy`` parameter
 - adapt_mesh_with_feflo: allow users to change temporary directory for meshb files
 - recover_dist_tree: manage poly 2D (NGON+BAR) meshes
-- Introduce ``compute_centers`` which allows more configurations for entities centers computing
+- Introduce ``compute_elements_center`` which allows more configurations for centers computing
 - merge_zones: add ``family`` option for subset merge parameter
 - rearrange_element_sections: split reordering and concatenation in two functions (flexibility)
 - localize_points, compute_wall_distance: allow 2D polygonal or Elements meshes

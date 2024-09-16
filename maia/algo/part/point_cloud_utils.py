@@ -6,7 +6,7 @@ import maia.pytree.maia   as MT
 
 from maia.utils                  import np_utils, as_pdm_gnum, layouts
 
-from .geometry       import _compute_zone_centers
+from .geometry       import _compute_elements_center
 from .multidom_gnum  import _get_shifted_arrays
 
 def _get_zone_ln_to_gn_from_loc(zone, location):
@@ -30,7 +30,7 @@ def get_point_cloud(zone, location='CellCenter'):
 
   elif location == 'CellCenter':
     cell_ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, location)
-    center_cell = _compute_zone_centers(zone, 'CellCenter')
+    center_cell = _compute_elements_center(zone, 'CellCenter')
     return center_cell, cell_ln_to_gn
   
   else: #Try to catch a container with the given name
