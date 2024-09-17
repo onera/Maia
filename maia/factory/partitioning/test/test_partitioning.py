@@ -29,16 +29,17 @@ class Test_split_ngon_2d:
     assert PT.get_child_from_name(edge, 'ParentElements') is not None
     assert PT.get_child_from_name(ngon, 'ParentElements') is None
   def check_bcs(self, part_tree, comm):
-    bc_xmin = PT.get_node_from_name(part_tree, 'Xmin')
-    bc_ymin = PT.get_node_from_name(part_tree, 'Ymin')
-    bc_ymax = PT.get_node_from_name(part_tree, 'Ymax')
-    if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[1,2]]).all()
-      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[3,8]]).all()
-      assert bc_ymax is None
-    elif comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[13,15,16]]).all()
-      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[9]]).all()
+    part_zone = PT.get_node_from_label(part_tree, 'Zone_t')
+    edge_center = maia.algo.geometry._compute_elements_center(part_zone, 1)
+    for bc_name in ['Xmin', 'Xmax', 'Ymin', 'Ymax']:
+      bc = PT.get_node_from_name(part_zone, bc_name)
+      n_elt = PT.Subset.n_elem(bc) if bc is not None else 0
+      assert comm.allreduce(n_elt, MPI.SUM) == 3
+      if bc is not None:
+        pl = PT.get_child_from_name(bc, 'PointList')[1][0]
+        dir = 'XY'.index(bc_name[0]) # 0 or 1, depending of direction
+        val = 0. if 'min' in bc_name else 1.
+        assert (edge_center[dir::3][pl-1] == val).all()
 
   @pytest.mark.parametrize("no_pe", [False, True])
   def test_input_pe(self, no_pe, comm):
@@ -72,23 +73,23 @@ class Test_split_elt_2d:
     assert len(PT.get_all_Zone_t(part_tree)) == 1
     bar  = PT.get_node_from_name(part_tree, 'BAR_2.0')
     quad = PT.get_node_from_name(part_tree, 'QUAD_4.0')
-    if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [1,4]).all()
-      assert (PT.get_child_from_name(bar, 'ElementRange')[1] == [5,8]).all()
-    if comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(quad, 'ElementRange')[1] == [1,5]).all()
-      assert (PT.get_child_from_name(bar, 'ElementRange')[1] == [6,13]).all()
+    assert comm.allreduce(PT.Element.Size(quad), MPI.SUM) == 9
+    assert comm.allreduce(PT.Element.Size(bar),  MPI.SUM) == 12 # Bnd edges only
+    assert PT.Element.Range(quad)[0] == 1
+    assert PT.Element.Range(bar)[0]  == PT.Element.Range(quad)[1] + 1
   def check_bcs(self, part_tree, comm):
-    bc_xmin = PT.get_node_from_name(part_tree, 'Xmin')
-    bc_ymin = PT.get_node_from_name(part_tree, 'Ymin')
-    bc_ymax = PT.get_node_from_name(part_tree, 'Ymax')
-    if comm.Get_rank() == 0:
-      assert (PT.get_child_from_name(bc_ymin, 'PointList')[1] == [[5,6]]).all()
-      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[7,8]]).all()
-      assert bc_ymax is None
-    elif comm.Get_rank() == 1:
-      assert (PT.get_child_from_name(bc_ymax, 'PointList')[1] == [[7,8,9]]).all()
-      assert (PT.get_child_from_name(bc_xmin, 'PointList')[1] == [[10]]).all()
+    part_zone = PT.get_node_from_label(part_tree, 'Zone_t')
+    offset = PT.Element.Range(PT.get_child_from_name(part_zone, 'BAR_2.0'))[0]
+    edge_center = maia.algo.geometry._compute_elements_center(part_zone, 1)
+    for bc_name in ['Xmin', 'Xmax', 'Ymin', 'Ymax']:
+      bc = PT.get_node_from_name(part_zone, bc_name)
+      n_elt = PT.Subset.n_elem(bc) if bc is not None else 0
+      assert comm.allreduce(n_elt, MPI.SUM) == 3
+      if bc is not None:
+        pl = PT.get_child_from_name(bc, 'PointList')[1][0]
+        dir = 'XY'.index(bc_name[0]) # 0 or 1, depending of direction
+        val = 0. if 'min' in bc_name else 1.
+        assert (edge_center[dir::3][pl-offset] == val).all()
 
   @pytest.mark.parametrize("output_jn_loc", ["Vertex", "FaceCenter"])
   def test_output_loc(self, output_jn_loc, comm):
