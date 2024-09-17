@@ -101,7 +101,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
 
   MT.newDistribution({'Index' : np.array([*bc_range, bc_size.prod()], pdm_gnum_dtype)}, parent=bc_u)
-  allowed_types = ['FamilyName_t'] #Copy these nodes to bc_u
+  allowed_types = ['FamilyName_t', 'Descriptor_t', 'AdditionalFamilyName_t'] #Copy these nodes to bc_u
   for allowed_child in [c for c in PT.get_children(bc_s) if PT.get_label(c) in allowed_types]:
     PT.add_child(bc_u, allowed_child)
   return bc_u
