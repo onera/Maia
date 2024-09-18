@@ -66,7 +66,7 @@ def test_extract_faces_mesh(comm):
   assert (cx == [1,1,1,1,1,1,1,1,1]).all()
   assert (cy == [0,.5,1,0,.5,1,0,.5,1]).all()
   assert (cz == [0,0,0,.5,.5,.5,1,1,1]).all()
-  assert (face_vtx == [4,5,2,1,5,6,3,2,7,8,5,4,8,9,6,5]).all()
+  assert (face_vtx == [1,2,5,4,2,3,6,5,4,5,8,7,5,6,9,8]).all()
   assert (vtx_ids == [3,6,9,12,15,18,21,24,27]).all()
 
   # Test S

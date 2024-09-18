@@ -30,7 +30,7 @@ def test_extract_surf_zone(comm):
     ElementRange IndexRange_t [1,8]:
     ElementStartOffset DataArray_t {dtype} [0,4,8,12,16,20,24,28,32]:
     ElementConnectivity DataArray_t:
-      {dtype} : [2,5,4,1,3,6,5,2,5,8,7,4,6,9,8,5,10,11,6,3,11,12,9,6,13,14,11,10,14,15,12,11]
+      {dtype} : [1,4,5,2,2,5,6,3,4,7,8,5,5,8,9,6,3,6,11,10,6,9,12,11,10,11,14,13,11,12,15,14]
   """
   expected_ngon_full = PT.yaml.to_node(yt)
   expected_ngon = F2D.distribute_element_node(expected_ngon_full, comm)

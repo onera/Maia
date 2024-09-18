@@ -46,6 +46,13 @@ maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
 pdm_geometry_kinds = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE, 
                       PDM._PDM_GEOMETRY_KIND_SURFACIC, PDM._PDM_GEOMETRY_KIND_VOLUMIC]
 
+from packaging.version import Version, InvalidVersion
+_PDM_VERSION = PDM.__version__.replace('.untagged', '')
+try:
+  PDM_VERSION = Version(_PDM_VERSION)
+except InvalidVersion:
+  PDM_VERSION = Version(_PDM_VERSION[:5])
+
 def prepare_part_weight(bases_to_block, zone_to_weights):
   n_zones = sum([len(zones) for zones in bases_to_block.values()])
   n_parts = sum([len(weights) for weights in zone_to_weights.values()])
@@ -66,6 +73,7 @@ def prepare_part_weight(bases_to_block, zone_to_weights):
 def set_mpart_reordering(multipart, reorder_options, keep_alive):
   renum_cell_method = "PDM_PART_RENUM_CELL_" + reorder_options['cell_renum_method']
   renum_face_method = "PDM_PART_RENUM_FACE_" + reorder_options['face_renum_method']
+  renum_edge_method = "PDM_PART_RENUM_EDGE_" + reorder_options['edge_renum_method']
   renum_vtx_method  = "PDM_PART_RENUM_VTX_"  + reorder_options['vtx_renum_method']
   part_tool_dic = {'parmetis': 1, 'ptscotch': 2, 'hyperplane': 3}
   if "CACHEBLOCKING" in reorder_options['cell_renum_method']:
@@ -77,7 +85,7 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                     reorder_options['n_face_per_pack'],
                                     pdm_part_tool],
                                     dtype='int32', order='c')
-  elif "HPC" in reorder_options['cell_renum_method']:
+  elif any(["HPC" in reorder_options[f'{entity}_renum_method'] for entity in ['cell', 'face', 'vtx']]):
     pdm_part_tool     = part_tool_dic[reorder_options['graph_part_tool']]
     cacheblocking_props = np.array([reorder_options['n_cell_per_cache'],  # n_cell_per_cache_wanted
                                     0,                                    # is_asynchrone
@@ -90,12 +98,33 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
                                     1], dtype=np.int32)                   # enforce_rank_in_subdomain
   else:
     cacheblocking_props = None
-  multipart.reordering_set(-1,
-                           renum_cell_method.encode('utf-8'),
-                           cacheblocking_props,
-                           renum_face_method.encode('utf-8'))
-  multipart.reordering_vtx_set(-1,
-                               renum_vtx_method.encode('utf-8'))
+
+  if Version("2.6") <= PDM_VERSION:
+    multipart.renum_method_set(-1, 
+                               PDM._PDM_MESH_ENTITY_CELL,
+                               renum_cell_method.encode('utf-8'),
+                               cacheblocking_props)
+    multipart.renum_method_set(-1, 
+                              PDM._PDM_MESH_ENTITY_FACE,
+                              renum_face_method.encode('utf-8'),
+                              cacheblocking_props)
+    multipart.renum_method_set(-1, 
+                              PDM._PDM_MESH_ENTITY_EDGE,
+                              renum_edge_method.encode('utf-8'),
+                              None)
+    multipart.renum_method_set(-1, 
+                              PDM._PDM_MESH_ENTITY_VTX,
+                              renum_vtx_method.encode('utf-8'),
+                              cacheblocking_props)
+
+  else:
+    multipart.reordering_set(-1,
+                            renum_cell_method.encode('utf-8'),
+                            cacheblocking_props,
+                            renum_face_method.encode('utf-8'))
+    multipart.reordering_vtx_set(-1,
+                                renum_vtx_method.encode('utf-8'))
+
   keep_alive.append(cacheblocking_props)
 
 def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
