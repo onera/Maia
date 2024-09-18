@@ -35,6 +35,7 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
     
     zone_name = PT.get_name(extract_zone)
     part_zone = PT.get_node_from_name_and_label(part_tree, zone_name, 'Zone_t')
+    is_own_data = etb['ExtractingCnt'] == container_name
 
     if partial_field and part1_gnum1[i_zone].size==0:
       continue # Pass if no recovering
@@ -53,8 +54,15 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
         # If output zone is 2D, we need to remove the useless direction in output PR
         extract_dir = etb['@@maia_extract_direction@@']
         part1_pr[i_zone] = np.delete(part1_pr[i_zone], extract_dir, axis=0)
-      PT.new_IndexRange(value=part1_pr[i_zone], parent=FS_ep)
-      PT.maia.newGlobalNumbering({'Index' : part1_gnum1[i_zone]}, parent=FS_ep)
+      if is_own_data and PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']:
+        # For owndata, output a FlowSolution without PR instead of keep a ZoneSubRegion
+        zsize = PT.Zone.CellSize(extract_zone) if PT.Subset.GridLocation(FS_ep) == 'CellCenter' else \
+                PT.Zone.VertexSize(extract_zone)
+        assert (part1_pr[i_zone][:,0] == 1).all() and (part1_pr[i_zone][:,1] == zsize).all()
+        PT.set_label(FS_ep, 'FlowSolution_t')
+      else:
+        PT.new_IndexRange(value=part1_pr[i_zone], parent=FS_ep)
+        PT.maia.newGlobalNumbering({'Index' : part1_gnum1[i_zone]}, parent=FS_ep)
 
     for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
       fld_name = PT.get_name(fld_node)

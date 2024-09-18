@@ -39,7 +39,7 @@ Base CGNSBase_t I4 [3, 3]:
       cylinder DataArray_t:
         R8 : [[[3.0, 3.0, 3.0, 3.0, 3.0], [0.0, 0.0, 0.0, 0.0, 0.0], [-1.0, -1.0, -1.0, -1.0, -1.0], [0.0, 0.0, 0.0, 0.0,
               0.0], [3.0, 3.0, 3.0, 3.0, 3.0]]]
-    ZSR_FlowSolution ZoneSubRegion_t:
+    ZSR_FlowSolution FlowSolution_t:
       GridLocation GridLocation_t 'CellCenter':
       ZSR_ccx DataArray_t:
         R8 : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -50,4 +50,3 @@ Base CGNSBase_t I4 [3, 3]:
       ZSR_ccz DataArray_t:
         R8 : [-2.0, -2.0, -2.0, -2.0, -2.0, -1.0, -1.0, -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0,
               2.0, 2.0, 2.0, 2.0, 2.0]
-      PointRange IndexRange_t I4 [[1, 1], [1, 5], [1, 5]]:

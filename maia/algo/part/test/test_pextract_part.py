@@ -267,15 +267,11 @@ def test_bc_name_api(cgns_name, bc_loc, comm):
     assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 9
 
   if len(zone_n) > 0:
-    zsr = PT.get_node_from_label(extracted_tree, 'ZoneSubRegion_t')
+    cnt = PT.get_node_from_label(extracted_tree, 'FlowSolution_t')
     expt_loc  = "Vertex" if bc_loc == 'Vtx' else 'CellCenter'
     expt_size = PT.Zone.VertexSize(zone_n[0]) if bc_loc == 'Vtx' else PT.Zone.CellSize(zone_n[0])
-    assert PT.Subset.GridLocation(zsr) == expt_loc
-    patch = PT.Subset.getPatch(zsr)
-    if cgns_name == 'Structured':
-      assert (PT.PointRange.SizePerIndex(patch) == expt_size).all()
-    else:
-      assert PT.PointList.n_elem(patch) == expt_size.prod()
+    assert PT.Subset.GridLocation(cnt) == expt_loc
+    assert PT.get_child_from_predicate(cnt, lambda n : PT.get_name(n) in ['PointList', 'PointRange']) is None
 
 
 @pytest_parallel.mark.parallel(3)

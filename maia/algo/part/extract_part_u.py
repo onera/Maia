@@ -39,7 +39,8 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
   
 
   # > Get PTP and parentElement for the good location
-  ptp        = exch_tool_box['part_to_part'][grid_location]
+  ptp         = exch_tool_box['part_to_part'][grid_location]
+  is_own_data = exch_tool_box['ExtractingCnt'] == container_name
   
   # LN_TO_GN
   _grid_location    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
@@ -101,7 +102,13 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
     # Update global numbering in FS
     partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
     if extract_zone is not None and len(partial_gnum)!=0:
-      PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
+      if is_own_data and PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']:
+        # For owndata, output a FlowSolution without PL instead of keep a ZoneSubRegion
+        assert (new_point_list == np.arange(point_list.size)).all()
+        PT.set_label(FS_ep, 'FlowSolution_t')
+        PT.rm_children_from_name(FS_ep, 'PointList')
+      else:
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
 
   if part1_data[0].size==0 and extract_zone is not None:
     PT.rm_child(extract_zone, FS_ep)

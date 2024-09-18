@@ -173,7 +173,7 @@ def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
         ccx, ccy, ccz = cx, cy, cz
         elt_range     = [1]
       else:
-        sys.exit()
+        raise AssertionError
 
       point_list_loc = initialize_zsr_by_eq(zone, [ccx,ccy,ccz], plane_eq, location)
     if point_list_loc[0].size!=0:
@@ -385,7 +385,6 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, 'FIELDS')
-  PT.get_node_from_label(dist_tree_ep,'ZoneSubRegion_t')[3] = 'FlowSolution_t'
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_bc_from_bc_name.yaml')
