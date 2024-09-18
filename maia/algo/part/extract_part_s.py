@@ -39,8 +39,9 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
     if partial_field and part1_gnum1[i_zone].size==0:
       continue # Pass if no recovering
 
-    if PT.get_label(mask_container) == 'FlowSolution_t':
+    if (mask_label := PT.get_label(mask_container)) in ['FlowSolution_t', 'DiscreteData_t']:
       FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      PT.set_label(FS_ep, mask_label)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
       FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     else:

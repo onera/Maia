@@ -29,8 +29,9 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
 
   # > FlowSolution node def by zone
   if extract_zone is not None :
-    if PT.get_label(mask_container) in ['FlowSolution_t', 'DiscreteData_t']:
+    if (mask_label := PT.get_label(mask_container)) in ['FlowSolution_t', 'DiscreteData_t']:
       FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      PT.set_label(FS_ep, mask_label)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
       FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     else:
