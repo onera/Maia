@@ -45,16 +45,16 @@ Base CGNSBase_t I4 [2, 3]:
               46, 58, 57, 57, 58, 70, 69, 23, 24, 12, 11, 35, 36, 24, 23, 47, 48, 36, 35, 59, 60, 48, 47, 71, 72, 60, 59]
     ZoneBC ZoneBC_t:
       Zmin BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t I4 [[1, 2, 3, 4, 5]]:
       Zmax BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t I4 [[26, 27, 28, 29, 30]]:
       Ymin BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t I4 [[81, 82, 83, 84, 85]]:
       Ymax BC_t 'Null':
-        GridLocation GridLocation_t 'FaceCenter':
+        GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t I4 [[106, 107, 108, 109, 110]]:
     FlowSolution_NC FlowSolution_t:
       GridLocation GridLocation_t 'Vertex':

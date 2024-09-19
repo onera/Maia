@@ -29,8 +29,9 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
 
   # > FlowSolution node def by zone
   if extract_zone is not None :
-    if PT.get_label(mask_container) in ['FlowSolution_t', 'DiscreteData_t']:
+    if (mask_label := PT.get_label(mask_container)) in ['FlowSolution_t', 'DiscreteData_t']:
       FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      PT.set_label(FS_ep, mask_label)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
       FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     else:
@@ -38,7 +39,8 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
   
 
   # > Get PTP and parentElement for the good location
-  ptp        = exch_tool_box['part_to_part'][grid_location]
+  ptp         = exch_tool_box['part_to_part'][grid_location]
+  is_own_data = exch_tool_box['ExtractingCnt'] == container_name
   
   # LN_TO_GN
   _grid_location    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
@@ -100,7 +102,13 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
     # Update global numbering in FS
     partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
     if extract_zone is not None and len(partial_gnum)!=0:
-      PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
+      if is_own_data and PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']:
+        # For owndata, output a FlowSolution without PL instead of keep a ZoneSubRegion
+        assert (new_point_list == np.arange(point_list.size)).all()
+        PT.set_label(FS_ep, 'FlowSolution_t')
+        PT.rm_children_from_name(FS_ep, 'PointList')
+      else:
+        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
 
   if part1_data[0].size==0 and extract_zone is not None:
     PT.rm_child(extract_zone, FS_ep)
@@ -274,7 +282,8 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
         bc_gn = bc_info['group_entity_ln_to_gn']
         if bc_pl.size != 0:
           bc_name = bc_path.split('/')[-1]
-          bc_n = PT.new_BC(bc_name, point_list=bc_pl.reshape((1,-1), order='F'), loc=dim_name, parent=zonebc_n)
+          bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) else dim_name
+          bc_n = PT.new_BC(bc_name, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
           PT.maia.newGlobalNumbering({'Index':bc_gn}, parent=bc_n)
     bc_type +=1 
 

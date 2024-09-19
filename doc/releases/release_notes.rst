@@ -37,6 +37,7 @@ Developpement version
 ^^^^^^^^
 - transform_affine: update periodic values of GridConnectivity_t nodes
 - extract_part: prevent a crash when a rank get no cells on extracted U zone
+- extract_part: fix missing fields problem occuring on some 2D structured extractions
 - recover_dist_tree: prevent a crash when a partitioned CGNSBase_t does not exist on all ranks
 - partitioning : fix internal edges creation and BCs on 2D/NGon meshes
 - partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes

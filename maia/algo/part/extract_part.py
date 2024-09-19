@@ -110,6 +110,7 @@ class Extractor:
         extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.location, comm,
                                                       # equilibrate=equilibrate,
                                                       graph_part_tool=graph_part_tool)
+      etb['ExtractingCnt'] = None
       self.exch_tool_box[dom_path] = etb
       for extract_zone in extract_zones:
         if PT.Zone.n_vtx(extract_zone)!=0:
@@ -147,8 +148,12 @@ def _extract_part_from_zsr(part_tree, zsr_name, comm,
   extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
   l_containers_name = [name for name in containers_name]
-  if transfer_dataset and zsr_name not in l_containers_name:
-    l_containers_name += [zsr_name]
+  if transfer_dataset:
+    # This will be usefull to detect self data exchange later
+    for subdict in extractor.exch_tool_box.values():
+      subdict['ExtractingCnt'] = zsr_name
+    if zsr_name not in l_containers_name:
+      l_containers_name += [zsr_name]
   if l_containers_name:
     extractor.exchange_fields(l_containers_name)
 
@@ -166,9 +171,13 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   Dimension of the output mesh is set up accordingly to the GridLocation of the ZoneSubRegion.
   Submesh is returned as an independant partitioned CGNSTree and includes the relevant connectivities.
 
-  Fields found under the ZSR node are transfered to the extracted mesh if ``transfer_dataset`` is set to True.
-  In addition, additional containers specified in ``containers_name`` list are transfered to the extracted tree.
-  Containers to be transfered can be either of label FlowSolution_t or ZoneSubRegion_t.
+  Data fields existing in the volumic mesh can be transfered to the extracted mesh by two ways:
+
+  - if ``transfer_dataset`` is set to ``True``, fields found under the ZoneSubRegion are transfered on the
+    extracted mesh, where they are stored in a FlowSolution_t container since they cover all cells (or vertices). 
+  - Other containers of label FlowSolution_t, DiscreteData_t or ZoneSubRegion_t are transfered if their name
+    is requested in the ``containers_name`` list. They are stored in a container of corresponding label in
+    extracted tree.
 
   Args:
     part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. U-Elts
@@ -285,12 +294,14 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
         if transfer_dataset:
           there_is_bcdataset = set_transfer_dataset(bc_n, zsr_bc_n, PT.Zone.Type(part_zone))
 
+  _transfer_dataset = False
   if transfer_dataset and comm.allreduce(there_is_bcdataset, MPI.LOR):
+    _transfer_dataset = True
     l_containers_name.append(bc_name) # not to change the initial containers_name list
 
 
   extract_tree, dim = _extract_part_from_zsr(local_part_tree, bc_name, comm,
-                                             transfer_dataset=False,
+                                             transfer_dataset=_transfer_dataset,
                                              containers_name=l_containers_name,
                                            **options)
   end = time.time()

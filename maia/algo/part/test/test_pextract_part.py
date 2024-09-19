@@ -48,8 +48,8 @@ def test_extract_part_simple_u(location, comm):
 def test_extract_part_simple_s(bc_loc, comm):
   part_tree = sample_part_tree('Structured', comm, bc_loc)
 
-  location = 'Vertex' if bc_loc=='Vertex' else 'KFaceCenter'
-  pr = PT.get_value(PT.get_child_from_predicates(part_tree, f'CGNSBase_t/Zone_t/ZoneBC_t/Zmax/PointRange'))
+  location = 'Vertex' if bc_loc=='Vertex' else 'JFaceCenter'
+  pr = PT.get_value(PT.get_child_from_predicates(part_tree, f'CGNSBase_t/Zone_t/ZoneBC_t/Ymax/PointRange'))
   ex_zones, etb_zones = EP.extract_part_one_domain_s(PT.get_all_Zone_t(part_tree), \
       [pr], location, comm)
 
@@ -146,9 +146,10 @@ def test_exch_field(cgns_name, partial, comm):
     assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
     if cgns_name=='Structured':
       pr = PT.get_node_from_name(extr_sol, 'PointRange')[1]
-      i_ar = np.arange(min(pr[0]), max(pr[0])+1)
-      j_ar = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
-      k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
+      assert pr.shape == (2,2)
+      i_ar = np.arange(pr[0,0], pr[0,1]+1)
+      j_ar = np.array([[1]]) # This is the extracting direction
+      k_ar = np.arange(pr[1,0], pr[1,1]+1).reshape(-1,1,1)
       pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, 'Vertex', PT.Zone.VertexSize(extr_zone)).flatten()
       lnum = extractor.exch_tool_box['Base/zone'][PT.get_name(extr_zone)]['parent_lnum_vtx']
       lnum = lnum[pl-1]
@@ -225,15 +226,51 @@ def test_zsr_api(cgns_name, comm):
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
-def test_bc_name_api(cgns_name, comm):
+@pytest.mark.parametrize("bc_loc" , ['Face', 'Vtx'])
+def test_bc_name_api(cgns_name, bc_loc, comm):
   dist_tree = maia.factory.generate_dist_block(4, cgns_name, comm)
+
+  irank = comm.Get_rank()
+  bc = PT.get_node_from_name(dist_tree, 'Xmin')
+  if cgns_name == 'Structured' and bc_loc == 'Face':
+    # Move BC to FaceCenter
+    PT.update_child(bc, 'GridLocation', value='IFaceCenter')
+    pr = PT.get_child_from_name(bc, 'PointRange')[1]
+    distri = PT.get_node_from_name(bc, 'Index')[1]
+    distri[:] = [3*irank, 3*(irank+1), 9]
+    pr[1:,1] -= 1
+  elif cgns_name == 'Poly' and bc_loc == 'Vtx':
+    # Move BC to Vertex
+    PT.update_child(bc, 'GridLocation', value='Vertex')
+    pl = PT.get_child_from_name(bc, 'PointList')
+    distri = PT.get_node_from_name(bc, 'Index')[1]
+    distri[:] = [5*irank, 16 if irank==2 else 5*(irank+1), 16]
+    _pl = (np.arange(1, 4**3, 4, dtype=pl[1].dtype)[distri[0]:distri[1]]).reshape((1,-1), order='F')
+    PT.set_value(pl, _pl)
+  
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
+  # Add a (full) field to the BC
+  bc = PT.get_node_from_name(part_tree, 'Xmin')
+  if bc is not None:
+    bcds = PT.new_BCDataSet(parent=bc)
+    PT.new_BCData('DirichletData', fields={'range': np.arange(PT.Subset.n_elem(bc))}, parent=bcds)
+  
   extracted_tree = EP.extract_part_from_bc_name(part_tree, 'Xmin', comm)
 
   zone_n = PT.get_all_Zone_t(extracted_tree)
   n_cell_extr = PT.Zone.n_cell(zone_n[0]) if len(zone_n)==1 else 0
-  assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 9
+  if cgns_name == 'Poly' and bc_loc == 'Vtx':
+    # In this case, we are creating a point cloud
+    assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 0
+  else:
+    assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 9
+
+  if len(zone_n) > 0:
+    cnt = PT.get_node_from_label(extracted_tree, 'FlowSolution_t')
+    expt_loc  = "Vertex" if bc_loc == 'Vtx' else 'CellCenter'
+    assert PT.Subset.GridLocation(cnt) == expt_loc
+    assert PT.get_child_from_predicate(cnt, lambda n : PT.get_name(n) in ['PointList', 'PointRange']) is None
 
 
 @pytest_parallel.mark.parallel(3)

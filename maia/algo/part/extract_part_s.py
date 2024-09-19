@@ -35,12 +35,14 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
     
     zone_name = PT.get_name(extract_zone)
     part_zone = PT.get_node_from_name_and_label(part_tree, zone_name, 'Zone_t')
+    is_own_data = etb['ExtractingCnt'] == container_name
 
     if partial_field and part1_gnum1[i_zone].size==0:
       continue # Pass if no recovering
 
-    if PT.get_label(mask_container) == 'FlowSolution_t':
+    if (mask_label := PT.get_label(mask_container)) in ['FlowSolution_t', 'DiscreteData_t']:
       FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      PT.set_label(FS_ep, mask_label)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
       FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
     else:
@@ -48,8 +50,19 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
 
     # Add partial numbering to node
     if partial_field:
-      pr_n = PT.new_IndexRange(value=part1_pr[i_zone], parent=FS_ep)
-      gn_n = PT.maia.newGlobalNumbering({'Index' : part1_gnum1[i_zone]}, parent=FS_ep)
+      if mesh_dim < 3:
+        # If output zone is 2D, we need to remove the useless direction in output PR
+        extract_dir = etb['@@maia_extract_direction@@']
+        part1_pr[i_zone] = np.delete(part1_pr[i_zone], extract_dir, axis=0)
+      if is_own_data and PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']:
+        # For owndata, output a FlowSolution without PR instead of keep a ZoneSubRegion
+        zsize = PT.Zone.CellSize(extract_zone) if PT.Subset.GridLocation(FS_ep) == 'CellCenter' else \
+                PT.Zone.VertexSize(extract_zone)
+        assert (part1_pr[i_zone][:,0] == 1).all() and (part1_pr[i_zone][:,1] == zsize).all()
+        PT.set_label(FS_ep, 'FlowSolution_t')
+      else:
+        PT.new_IndexRange(value=part1_pr[i_zone], parent=FS_ep)
+        PT.maia.newGlobalNumbering({'Index' : part1_gnum1[i_zone]}, parent=FS_ep)
 
     for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
       fld_name = PT.get_name(fld_node)
@@ -132,6 +145,8 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
       pr[mask,1]+=1
       size_per_dim+=1
 
+    if location != 'CellCenter':
+      etb['@@maia_extract_direction@@'] = extract_dir
     # n_dim_pop = 0
     extract_zone_dim = np.zeros((3-n_dim_pop,3), dtype=np.int32)
     extract_zone_dim[:,0] = size_per_dim[mask]+1 # size_per_dim[mask]+1
@@ -155,30 +170,27 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
     vtx_per_dir  = zone_dim[:,0]
     cell_per_dir = zone_dim[:,1]
 
-    gn = PT.get_child_from_name(part_zone, ':CGNS#GlobalNumbering')
-    gn_vtx  = PT.get_value(PT.get_node_from_name(gn, 'Vertex'))
-    gn_face = PT.get_value(PT.get_node_from_name(gn, 'Face'))
-    gn_cell = PT.get_value(PT.get_node_from_name(gn, 'Cell'))
+    gn_entities = {key: PT.maia.getGlobalNumbering(part_zone, key)[1] for key in ['Vertex', 'Face', 'Cell']}
 
-    i_ar_cell = np.arange(min(pr[0]), max(pr[0]))
-    j_ar_cell = np.arange(min(pr[1]), max(pr[1])).reshape(-1,1)
-    k_ar_cell = np.arange(min(pr[2]), max(pr[2])).reshape(-1,1,1)
+    _pr = pr.copy()
+    if n_dim_pop > 0:
+      # If we are extracting a 2D mesh, pr (stored in vertices) has one constant line [1,1]
+      # When generating cell_range, we need to add one, otherwise we have an empty range
+      _pr[extract_dir, 1] = max(pr[extract_dir]) + 1
+      _pr[extract_dir, 0] = min(pr[extract_dir])
+    i_ar_cell = np.arange(min(_pr[0]), max(_pr[0]))
+    j_ar_cell = np.arange(min(_pr[1]), max(_pr[1])).reshape(-1,1)
+    k_ar_cell = np.arange(min(_pr[2]), max(_pr[2])).reshape(-1,1,1)
 
-    if n_dim_pop==1:
-      ijk_to_faceIndex = [s_numbering.ijk_to_faceiIndex, s_numbering.ijk_to_facejIndex, s_numbering.ijk_to_facekIndex]
-
-      locnum_cell = ijk_to_faceIndex[extract_dir](i_ar_cell, j_ar_cell, k_ar_cell, \
-                            cell_per_dir, vtx_per_dir).flatten()
-      lcell_gn.append(gn_face[locnum_cell-1])
-    else:
-      locnum_cell = s_numbering.ijk_to_index(i_ar_cell, j_ar_cell, k_ar_cell, cell_per_dir).flatten()
-      lcell_gn.append(gn_cell[locnum_cell-1])
+    locnum_cell = s_numbering.ijk_to_index_from_loc(i_ar_cell, j_ar_cell, k_ar_cell, location, vtx_per_dir).flatten()
+    entity = 'Face' if n_dim_pop == 1 else 'Cell'
+    lcell_gn.append(gn_entities[entity][locnum_cell-1])
 
     i_ar_vtx = np.arange(min(pr[0]), max(pr[0])+1)
     j_ar_vtx = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
     k_ar_vtx = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
-    locnum_vtx = s_numbering.ijk_to_index(i_ar_vtx, j_ar_vtx, k_ar_vtx, vtx_per_dir).flatten()
-    lvtx_gn.append(gn_vtx[locnum_vtx - 1])
+    locnum_vtx = s_numbering.ijk_to_index_from_loc(i_ar_vtx, j_ar_vtx, k_ar_vtx, 'Vertex', vtx_per_dir).flatten()
+    lvtx_gn.append(gn_entities['Vertex'][locnum_vtx-1])
 
     etb[zone_name] = {'parent_lnum_vtx' :locnum_vtx,
                       'parent_lnum_cell':locnum_cell}
