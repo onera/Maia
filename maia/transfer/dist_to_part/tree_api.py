@@ -116,9 +116,13 @@ def dist_tree_to_part_tree_copy(dist_tree, part_tree, predicates, comm):
     # so we update the correponding name to include wildcard *
     names = path.split('/')
     if len(names) >= 2:
-      if PT.get_label(PT.get_node_from_path(dist_tree, f'{names[0]}/{names[1]}')) == 'Zone_t':
+      if PT.get_label(PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 2))) == 'Zone_t':
         names[1] += '.P*.N*'
-    
+    # Same for GC_t nodes
+    if len(names) >= 4:
+      if PT.get_label(PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 4))) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
+        names[3] += '.*'
+
     # Now copy dist_node to partitioned tree
     dist_node = PT.get_node_from_path(dist_tree, path)
     if len(names) > 1:
