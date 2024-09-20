@@ -1,4 +1,4 @@
-from packaging.version import Version, InvalidVersion
+from packaging.version import Version
 import numpy as np
 import Pypdm.Pypdm as PDM
 
@@ -10,12 +10,6 @@ from maia.pytree.sids import elements_utils as EU
 import maia
 from maia.utils import np_utils, par_utils, layouts
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
-
-_PDM_VERSION = PDM.__version__.replace('.untagged', '')
-try:
-  PDM_VERSION = Version(_PDM_VERSION)
-except InvalidVersion:
-  PDM_VERSION = Version(_PDM_VERSION[:5])
 
 def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
 
@@ -69,11 +63,12 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   if not isinstance(n_vtx, int):
     raise NotImplementedError("Poly/NFACE_n generation does not supports variable number of vertices")
 
-  if Version("2.6") <= PDM_VERSION:
+  if Version("2.6") <= Version(maia.PDM_VERSION.base_version):
     dcube = PDM.DCubeGenerator(n_vtx, edge_length, *origin, comm)
     dcube_dims = dcube.dcube_dim_get()
     dcube_val  = dcube.dcube_val_get()
   else:
+    # PDM dcube generation has a bug in normal orientation up to version 2.5, so we generate it ourself
     from cmaia.dist_algo import generate_dcube
     _origin = [float(elt) for elt in origin]
     dcube_dims, dcube_val = generate_dcube(n_vtx, float(edge_length), *_origin, comm.Get_rank(), comm.Get_size())

@@ -1,12 +1,12 @@
+from packaging.version import Version
 import numpy              as np
 import Pypdm.Pypdm        as PDM
 
+import maia
 import maia.pytree        as PT
 
 from . import cgns_to_pdm_dmesh
 from .pdm_part_to_cgns_zone   import pdm_part_to_cgns_zone
-
-from maia.utils import py_utils
 
 maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
                       "face"   : PDM._PDM_MESH_ENTITY_FACE,
@@ -45,13 +45,6 @@ maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
 
 pdm_geometry_kinds = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE, 
                       PDM._PDM_GEOMETRY_KIND_SURFACIC, PDM._PDM_GEOMETRY_KIND_VOLUMIC]
-
-from packaging.version import Version, InvalidVersion
-_PDM_VERSION = PDM.__version__.replace('.untagged', '')
-try:
-  PDM_VERSION = Version(_PDM_VERSION)
-except InvalidVersion:
-  PDM_VERSION = Version(_PDM_VERSION[:5])
 
 def prepare_part_weight(bases_to_block, zone_to_weights):
   n_zones = sum([len(zones) for zones in bases_to_block.values()])
@@ -99,7 +92,7 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
   else:
     cacheblocking_props = None
 
-  if Version("2.6") <= PDM_VERSION:
+  if Version("2.6") <= Version(maia.PDM_VERSION.base_version):
     multipart.renum_method_set(-1, 
                                PDM._PDM_MESH_ENTITY_CELL,
                                renum_cell_method.encode('utf-8'),
