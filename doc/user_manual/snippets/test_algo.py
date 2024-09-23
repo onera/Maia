@@ -130,18 +130,6 @@ def test_merge_connected_zones():
   assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 1
   #merge_connected_zones@end
 
-def test_compute_cell_center():
-  #compute_cell_center@start
-  from mpi4py import MPI
-  import maia
-  from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-
-  for zone in maia.pytree.iter_all_Zone_t(part_tree):
-    cell_center = maia.algo.part.compute_cell_center(zone)
-  #compute_cell_center@end
-
 def test_compute_elements_center():
   #compute_elements_center@start
   from mpi4py import MPI
@@ -163,29 +151,6 @@ def test_compute_elements_measure():
   maia.algo.compute_elements_measure(dist_tree, 3, MPI.COMM_WORLD)
   assert maia.pytree.get_node_from_name(dist_tree, 'Geometry_3d') is not None
   #compute_elements_measure@end
-
-def test_compute_face_center():
-  #compute_face_center@start
-  from mpi4py import MPI
-  import maia
-  from   maia.utils.test_utils import mesh_dir
-  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-
-  for zone in maia.pytree.iter_all_Zone_t(part_tree):
-    face_center = maia.algo.part.compute_face_center(zone)
-  #compute_face_center@end
-
-def test_compute_edge_center():
-  #compute_edge_center@start
-  from mpi4py import MPI
-  import maia
-  dist_tree = maia.factory.generate_dist_block(10, "QUAD_4",  MPI.COMM_WORLD)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
-
-  for zone in maia.pytree.iter_all_Zone_t(part_tree):
-    edge_center = maia.algo.part.geometry.compute_edge_center(zone)
-  #compute_edge_center@end
 
 def test_compute_wall_distance():
   #compute_wall_distance@start
@@ -568,21 +533,6 @@ def test_convert_mixed_to_elements():
   maia.algo.dist.convert_elements_to_mixed(dist_tree, MPI.COMM_WORLD)
   maia.algo.dist.convert_mixed_to_elements(dist_tree, MPI.COMM_WORLD)
   #convert_mixed_to_elements@end
-
-def test_rearrange_element_sections():
-  #rearrange_element_sections@start
-  from mpi4py import MPI
-  import maia
-  import maia.pytree as PT
-
-  dist_tree = maia.factory.generate_dist_block(11, 'PYRA_5', MPI.COMM_WORLD)
-  pyras = PT.get_node_from_name(dist_tree, 'PYRA_5.0')
-  assert PT.Element.Range(pyras)[0] == 1 #Until now 3D elements are first
-
-  maia.algo.dist.rearrange_element_sections(dist_tree, MPI.COMM_WORLD)
-  tris = PT.get_node_from_name(dist_tree, 'TRI_3') #Now 2D elements are first
-  assert PT.Element.Range(tris)[0] == 1
-  #rearrange_element_sections@end
 
 def test_reorder_elt_sections_from_dim():
   #reorder_elt_sections_from_dim@start

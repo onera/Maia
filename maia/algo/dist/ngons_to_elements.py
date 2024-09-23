@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 
 import maia
@@ -198,4 +199,6 @@ def convert_ngon_to_elements(dist_tree, comm):
   MJT.copy_donor_subset(dist_tree)
 
 def ngons_to_elements(dist_tree, comm):
+  msg = "This function has been renamed into ``convert_ngon_to_elements``. Former name will be removed in next release."
+  warnings.warn(msg, DeprecationWarning, stacklevel=2)
   return convert_ngon_to_elements(dist_tree, comm)

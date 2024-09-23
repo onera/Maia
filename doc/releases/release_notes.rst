@@ -48,7 +48,9 @@ Developpement version
 🚧 API change
 ^^^^^^^^^^^^^
 - dist_tree_to_file, part_tree_to_file & write_trees: add ``links`` parameter
-- ``ngons_to_elements`` renamed into ``convert_ngon_to_elements``
+- Rename ``ngons_to_elements`` into ``convert_ngon_to_elements``
+- Remove direct calls ``compute_{cell|face|edge}_center`` in favor of ``compute_elements_center``
+- Split ``rearrange_element_sections`` into ``reorder_elt_sections_...`` + ``concatenate_elt_sections``
 
 
 v1.4 (May 2024)

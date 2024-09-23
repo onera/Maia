@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 
 import maia.pytree      as PT
@@ -207,7 +208,7 @@ def reorder_elt_sections_from_dim(dist_tree, reverse=False):
   reorder_sections(dist_tree, lambda elts: sorted(elts, key=key_func))
 
 
-# Moved from rearrange_element_sections. To be deprecated ?
+# Moved from rearrange_element_sections. Deprecated in v1.5
 def rearrange_element_sections(dist_tree, comm):
   """
   Rearanges Elements_t sections such that for each zone,
@@ -228,5 +229,8 @@ def rearrange_element_sections(dist_tree, comm):
         :end-before: #rearrange_element_sections@end
         :dedent: 2
   """
+  msg = "This function is deprecated, and will be removed in next release. "\
+        "Consider using reorder_elt_sections_from_dim and concatenate_elt_sections instead."
+  warnings.warn(msg, DeprecationWarning, stacklevel=2)
   reorder_elt_sections_from_dim(dist_tree)
   concatenate_elt_sections(dist_tree, comm)

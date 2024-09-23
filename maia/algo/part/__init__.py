@@ -13,7 +13,7 @@ from .extract_part           import extract_part_from_bc_name,\
                                     extract_part_from_family,\
                                     extract_part_from_zsr
 
-from .geometry               import compute_cell_center,\
+from .geometry_deprecated    import compute_cell_center,\
                                     compute_edge_center,\
                                     compute_face_center
 

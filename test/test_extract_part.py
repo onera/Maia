@@ -1,10 +1,8 @@
 import pytest
 import pytest_parallel
 import os
-import mpi4py.MPI as MPI
 import numpy      as np
 
-import Pypdm.Pypdm  as PDM
 import maia.pytree  as PT
 
 import maia
@@ -36,7 +34,7 @@ def plane_eq(x,y,z) :
 def initialize_bc(zone, bc_name):
   is_struct = PT.Zone.Type(zone)=='Structured'
   
-  face_center = maia.algo.part.geometry.compute_face_center(zone)
+  face_center = maia.algo.part.geometry._compute_elements_center(zone, 2)
   cfx = face_center[0::3]
   cfy = face_center[1::3]
   cfz = face_center[2::3]
@@ -165,7 +163,7 @@ def generate_test_tree(n_vtx,n_part,location,cgns_name,comm):
       elif location=="FaceCenter":
         path_elt_rge  = 'NGonElements/ElementRange'
         elt_range     = PT.get_node_from_path(zone,path_elt_rge)[1]
-        face_center   = maia. algo.part.geometry.compute_face_center(zone)
+        face_center   = maia.algo.part.geometry._compute_elements_center(zone, 2)
         ccx = face_center[0::3]
         ccy = face_center[1::3]
         ccz = face_center[2::3]

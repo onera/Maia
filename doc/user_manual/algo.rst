@@ -30,7 +30,6 @@ Connectivities conversions
 .. autofunction:: maia.algo.dist.convert_mixed_to_elements
 .. autofunction:: maia.algo.dist.reorder_elt_sections_from_dim
 .. autofunction:: maia.algo.dist.concatenate_elt_sections
-.. autofunction:: maia.algo.dist.rearrange_element_sections
 .. autofunction:: maia.algo.dist.generate_jns_vertex_list
 .. autofunction:: maia.algo.dist.find_ridges
 
@@ -70,9 +69,6 @@ The following algorithms applies on maia partitioned trees.
 Geometric calculations
 ^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: maia.algo.part.compute_cell_center
-.. autofunction:: maia.algo.part.compute_face_center
-.. autofunction:: maia.algo.part.compute_edge_center
 .. autofunction:: maia.algo.part.compute_wall_distance
 .. autofunction:: maia.algo.part.localize_points
 .. autofunction:: maia.algo.part.find_closest_points
