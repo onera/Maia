@@ -41,6 +41,9 @@ def fix_point_ranges(size_tree):
     base_name = PT.get_name(base)
     zone_name = PT.get_name(zone)
     gc_path     = base_name + '/' + zone_name
+    # Some GC are defined as GridConnectivity1to1_t, but are in fact NearMatch -> skip them (see #141)
+    if (jtype := PT.get_node_from_path(gc, '.Solver#Property/jtype')) is not None and PT.get_value(jtype) != 'match':
+      continue
     # WARNING: for hybrid case structured zone could have PointList, PointListDonor.
     if PT.get_child_from_label(gc, 'IndexRange_t') is not None:
       transform     = PT.GridConnectivity.Transform(gc)
@@ -243,6 +246,15 @@ def rm_legacy_nodes(tree):
       arrays_removed = arrays_removed or len(PT.get_children(fs)) < n_child_bck
   if arrays_removed:
     logging.error(f"Some empty arrays under FlowSolution_t nodes have been skipped when reading file")
+
+  # Some legacy tools place a useless PointListDonor in tree when using NearMatch GC_t, remove it
+  pld_removed = False
+  for gc in PT.get_children_from_predicates(tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
+    if PT.GridConnectivity.Type(gc) == 'Abutting' and PT.get_node_from_name(gc, 'NMRatio') is not None:
+      pld_removed = pld_removed or PT.get_child_from_name(gc, 'PointListDonor') is not None
+      PT.rm_children_from_name(gc, 'PointListDonor*')
+  if pld_removed:
+    logging.warning(f"Useless PointListDonor under NearMatch GridConnectivity_t nodes skipped when reading file")
 
 def corr_index_range_names(tree):
   corr = False

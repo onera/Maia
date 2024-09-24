@@ -298,6 +298,14 @@ def test_rm_legacy_nodes():
   ZoneC Zone_t [[11,10,0]]:
     :elsA#Hybrid UserDefinedData_t:
     .cedre#Geometry UserDefinedData_t:
+    ZoneGridConnectivity ZoneGridConnectivity_t:
+      GridConnectivity GridConnectivity_t:
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        PointRange IndexRange_t [[1,1], [1,10], [1,3]]:
+        PointListDonor IndexArray_t:
+        PointListDonor#Size DataArray_t [3, 1]:
+        UserDefinedData UserDefinedData_t:
+          NMRatio DataArray_t [1., 2., 1.]:
   """
   tree = PT.yaml.to_cgns_tree(yt)
   fix_tree.rm_legacy_nodes(tree)
@@ -306,6 +314,8 @@ def test_rm_legacy_nodes():
   
   assert PT.get_node_from_name(tree, 'GoodArray') is not None
   assert PT.get_node_from_name(tree, 'WrongArray') is None
+
+  assert PT.get_node_from_name(tree, 'PointListDonor*') is None
 
 def test_corr_index_range_names():
   yt = """
