@@ -1,6 +1,7 @@
 import pytest
 import pytest_parallel
 
+import mpi4py.MPI as MPI
 import numpy as np
 import os
 import maia.pytree as PT
@@ -82,9 +83,10 @@ def test_perio_elements(comm):
   dist_algo.redistribute_tree(tree, 'gather', comm)
   if comm.Get_rank() == 0:
     zone = PT.get_all_Zone_t(tree)[0]
-    face_center = maia.algo.part.compute_face_center(zone)
+    maia.algo.compute_elements_center(zone, 2, MPI.COMM_SELF)
     xmin = PT.get_node_from_predicates(zone, ['Xmin_0', 'PointList'])[1] - PT.Zone.n_cell(zone) - 1
     xmax = PT.get_node_from_predicates(zone, ['Xmax_0', 'PointList'])[1] - PT.Zone.n_cell(zone) - 1
-    assert np.allclose(face_center[3*xmin+0], face_center[3*xmax+0]-1)
-    assert np.allclose(face_center[3*xmin+1], face_center[3*xmax+1])
-    assert np.allclose(face_center[3*xmin+2], face_center[3*xmax+2])
+    face_center_x, face_center_y, face_center_z = [PT.get_node_from_path(zone, f'Geometry_2d/Center{d}')[1] for d in 'XYZ']
+    assert np.allclose(face_center_x[xmin], face_center_x[xmax]-1)
+    assert np.allclose(face_center_y[xmin], face_center_y[xmax])
+    assert np.allclose(face_center_z[xmin], face_center_z[xmax])
