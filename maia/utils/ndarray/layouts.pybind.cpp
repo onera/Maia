@@ -2,77 +2,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
-
-#include "std_e/parallel/algorithm/sort.hpp"
-#include "std_e/debug.hpp"
-#include "maia/utils/parallel/mpi4py.hpp"
-
 namespace py = pybind11;
 
 
-
-
-
-/*
-Renumber array indices from 0 to n_unique (input array must be sorted)
-*/
-template<typename T> // Work only for I4 / I8 
-void unique(py::array_t<T> x) {
-  if (x.size() == 0) return;
-
-  auto x_ptr = x.mutable_data();
-  T new_index = 0;
-  T cur_value = x_ptr[0];
-  x_ptr[0] = 0;
-  for (size_t i=1; i < x.size(); ++i) {
-    if (x_ptr[i] != cur_value) {
-      cur_value = x_ptr[i];
-      new_index++;
-    }
-    x_ptr[i] = new_index;
-  }
-
-}
-
-auto parallel_sort(py::array_t<int64_t> x,
-                   py::object mpi4py_comm)
-{
-  
-  auto x_ptr = x.mutable_data();
-  MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
-  
-  std_e::span<int64_t> x_span(x_ptr, x_ptr+ x.size());
-  auto [x_sorted,distri] = std_e::sort(x_span, comm); // !! distri = vector<int> ; x_sorted = vector<long int>
-
-  auto x_sorted_np = py::array_t<int64_t>(x_sorted.size(), x_sorted.data());
-  auto distri_np = py::array_t<int>(distri.size(), distri.data());
-
-  return py::make_tuple(x_sorted_np, distri_np);
-}
-
-auto parallel_isort(py::array_t<int64_t> x1,
-                    py::array_t<int64_t> x2,
-                    py::object mpi4py_comm)
-{
-  
-  auto x1_ptr = x1.mutable_data();
-  auto x2_ptr = x2.mutable_data();
-  MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
-
-  auto x1_vec = std::vector<int64_t>(x1_ptr, x1_ptr + x1.size());
-  auto x2_vec = std::vector<int64_t>(x2_ptr, x2_ptr + x2.size());
-
-  auto proj = [](int i, int j){ return i; }; // Only sort by looking at the first argument
-  auto [x1_sorted,x2_sorted,distri] = std_e::indirect_sort(std::tie(x1_vec,x2_vec),comm,proj);
-
-  auto x1_sorted_np = py::array_t<int64_t>(x1_sorted.size(), x1_sorted.data());
-  auto x2_sorted_np = py::array_t<int64_t>(x2_sorted.size(), x2_sorted.data());
-  auto distri_np    = py::array_t<int>(distri.size(), distri.data());
-
-  return py::make_tuple(x1_sorted_np, x2_sorted_np, distri_np);
-}
-
-                  
 void put_strided(py::buffer            write_buff,
                  py::array_t<int64_t>  write_idx,
                  py::array_t<int64_t>  write_counts,
@@ -92,7 +24,7 @@ void put_strided(py::buffer            write_buff,
   size_t s_data = out_buff_info.itemsize;
   
   std::vector<int64_t> write_displs;
-  write_displs.reserve(write_counts.size()+1); // TODO :: use resize
+  write_displs.reserve(write_counts.size()+1);
   write_displs[0] = 0;
 
   std::partial_sum(_write_counts, _write_counts+write_counts.size(), &write_displs[1]);
@@ -141,34 +73,6 @@ void take_stridedDI(py::array_t<int64_t> counts,
     }
   }
 
-}
-
-template<typename T>
-void binary_search(py::array_t<T> distri, 
-                   py::array_t<T> indices,
-                   py::array_t<int32_t> out)
-{
-    auto _distri  = distri.data();
-    auto _indices = indices.data();
-    auto _out     = out.mutable_data();
-    int N = distri.size() - 1;
-    for (int i = 0; i < indices.size(); ++i) {
-      int left = 0;
-      int right = N;
-      int ind = (left + right) / 2;
-      T elt = _indices[i] - 1;
-      while (right - left > 1) {
-          if (elt < _distri[ind]) {
-              right = ind;
-          }
-          else if (elt >= _distri[ind]) {
-              left = ind;
-          }
-          ind = (left + right) / 2;
-      }
-      if (elt >= _distri[ind] && elt < _distri[right]) _out[i] = ind;
-      else                                             _out[i] = -1;
-    }
 }
 
 std::tuple<py::array_t<int64_t>, py::array_t<int64_t>>
@@ -573,24 +477,5 @@ void register_layouts_module(py::module_& parent) {
         py::arg("displs").noconvert(),
         py::arg("values").noconvert(),
         py::arg("indices").noconvert(),
-        py::arg("out").noconvert());
-  m.def("parallel_sort", &parallel_sort,
-        py::arg("x").noconvert(),
-        py::arg("comm").noconvert());
-  m.def("parallel_isort", &parallel_isort,
-        py::arg("x1").noconvert(),
-        py::arg("x2").noconvert(),
-        py::arg("comm").noconvert());
-  m.def("unique", &unique<int32_t>,
-        py::arg("x").noconvert());
-  m.def("unique", &unique<int64_t>,
-        py::arg("x").noconvert());
-  m.def("binarysearch", &binary_search<int32_t>,
-        py::arg("distri").noconvert(),
-        py::arg("gnum").noconvert(),
-        py::arg("out").noconvert());
-  m.def("binarysearch", &binary_search<int64_t>,
-        py::arg("distri").noconvert(),
-        py::arg("gnum").noconvert(),
         py::arg("out").noconvert());
 }
