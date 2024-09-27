@@ -107,6 +107,49 @@ counting_sort(py::array_t<int64_t>& np_array, int n_bins) {
   return std::make_tuple(np_out, np_counts);
 }
 
+std::tuple<py::list, py::array_t<int64_t>>
+counting_sort_mult(py::list array_list, int n_bins) {
+
+  auto np_counts = py::array_t<int64_t>(n_bins);
+  auto counts = np_counts.mutable_data();
+  for(size_t i=0; i < n_bins; ++i) {
+    counts[i] = 0;
+  }
+
+
+  for (auto item: array_list) {
+    auto np_array = py::cast<py::array_t<int>>(item);
+    size_t size = np_array.size();
+    auto array = np_array.data();
+    for(size_t i=0; i < size; ++i) {
+      counts[array[i]]++;
+    }
+  }
+
+  std::vector<int> displs(n_bins+1, 0);
+  for(size_t i=0; i < n_bins; ++i) {
+    displs[i+1] = displs[i] + counts[i];
+    counts[i] = 0;
+  }
+
+  py::list out_list;
+  
+  for (auto item: array_list) {
+    auto np_array = py::cast<py::array_t<int>>(item);
+    auto array = np_array.data();
+    size_t size = np_array.size();
+    auto np_out = py::array_t<int64_t>(size);
+    auto out = np_out.mutable_data();
+    for(size_t i=0; i < size; ++i) {
+      out[i] = displs[array[i]] + counts[array[i]];
+      counts[array[i]]++;
+    }
+    out_list.append(np_out);
+  }
+
+  return std::make_tuple(out_list, np_counts);
+}
+
 template<typename T>
 py::array_t<T>
 extract_from_indices(py::array_t<T>& np_array, 
@@ -461,6 +504,9 @@ void register_layouts_module(py::module_& parent) {
         py::arg("array2").noconvert());
   m.def("counting_sort", &counting_sort,
         py::arg("array").noconvert(),
+        py::arg("n_bins").noconvert());
+  m.def("counting_sort_mult", &counting_sort_mult,
+        py::arg("arrays").noconvert(),
         py::arg("n_bins").noconvert());
   m.def("take_stridedDI", &take_stridedDI,
         py::arg("counts").noconvert(),
