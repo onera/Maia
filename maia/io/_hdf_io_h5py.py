@@ -11,7 +11,7 @@ from .hdf._hdf_cgns import open_from_path,\
 from .fix_tree      import fix_point_ranges, corr_index_range_names,\
                            ensure_symmetric_gc1to1, rm_legacy_nodes,\
                            add_missing_pr_in_bcdataset, check_datasize, \
-                           fix_structured_pr_shape
+                           fix_structured_pr_shape, check_namings
 
 from maia.utils import logging as mlog
 
@@ -44,6 +44,7 @@ def load_size_tree(filename, comm):
     raise ValueError(f"{filename} is not a valid HDF5 file")
   if comm.Get_rank() == 0:
     size_tree = load_tree_partial(filename, load_data)
+    check_namings(size_tree)
     rm_legacy_nodes(size_tree)
     corr_index_range_names(size_tree)
     check_datasize(size_tree)

@@ -2,6 +2,7 @@ from   mpi4py             import MPI
 import numpy              as     np
 
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 
 import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
@@ -265,3 +266,14 @@ def corr_index_range_names(tree):
         corr = True
   if corr:
     logging.error(f"Some IndexRange_t nodes under BC_t nodes have been renamed ('ElementRange' -> 'PointRange').")
+
+def check_namings(tree):
+  intra_jn = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+                        and PT.maia.conv.is_intra_gc(PT.get_name(n))
+    
+  for zone in PT.iter_all_Zone_t(tree):
+    if MT.conv.is_part_zone(PT.get_name(zone)) or PT.get_child_from_predicates(zone, ['ZoneGridConnectivity_t', intra_jn]) is not None:
+      msg = 'CGNS file is read as a distributed tree, but uses Maia naming conventions of partitioned trees. ' \
+            'Did you mean to use maia.io.file_to_part_tree ?'
+      logging.warning(msg)
+      break

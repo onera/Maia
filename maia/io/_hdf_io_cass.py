@@ -4,7 +4,7 @@ import Converter.PyTree   as C
 
 import maia.pytree        as PT
 
-from .fix_tree import fix_point_ranges, ensure_symmetric_gc1to1, fix_zone_datatype,\
+from .fix_tree import check_namings, fix_point_ranges, ensure_symmetric_gc1to1, fix_zone_datatype,\
                       rm_legacy_nodes, add_missing_pr_in_bcdataset, fix_structured_pr_shape
 
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
@@ -100,6 +100,7 @@ def load_size_tree(filename, comm):
                                                     dataShape=size_data,
                                                     format='bin_hdf')
     fix_zone_datatype(size_tree, size_data)
+    check_namings(size_tree)
     add_sizes_to_tree(size_tree, size_data)
     fix_point_ranges(size_tree)
     fix_structured_pr_shape(size_tree)

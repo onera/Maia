@@ -12,6 +12,8 @@ from maia.io import fix_tree
 class log_capture:
   def __init__(self):
     self.logs = ''
+  def reset(self):
+    self.logs = ''
   def log(self, msg):
     self.logs += msg
 
@@ -335,3 +337,28 @@ Base0 CGNSBase_t [3,3]:
   irB = PT.get_node_from_label(bcB, 'IndexRange_t')
   assert PT.get_name(irA) == 'PointRange'
   assert PT.get_name(irB) == 'WrongName'
+
+def test_check_namings():
+  tree = PT.yaml.to_cgns_tree("""
+  ZoneA Zone_t:
+    ZoneGridConnectivity_t ZoneGridConnectivity_t:
+      match1 GridConnectivity_t:
+  """)
+  base = PT.get_node_from_label(tree, 'CGNSBase_t')
+  gc   = PT.get_node_from_label(tree, 'GridConnectivity_t')
+
+  log_collector = log_capture()
+  mlog.add_printer_to_logger('maia-warnings', log_collector)
+
+  fix_tree.check_namings(tree)
+  assert len(log_collector.logs) == 0
+
+  PT.new_Zone('Zone.P6.N0', type='Unstructured', parent=base)
+  fix_tree.check_namings(tree)
+  assert len(log_collector.logs) > 0
+
+  log_collector.reset()
+  PT.rm_nodes_from_name(tree, 'Zone.P6.N0')
+  PT.set_name(gc, 'JN.P5.N2.LT.P12.N5')
+  fix_tree.check_namings(tree)
+  assert len(log_collector.logs) > 0

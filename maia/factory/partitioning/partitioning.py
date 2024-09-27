@@ -171,6 +171,14 @@ def _partitioning(dist_tree,
                   comm,
                   part_options):
 
+  intra_jn = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
+                        and PT.maia.conv.is_intra_gc(PT.get_name(n))
+  gc = PT.get_child_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', intra_jn])
+  if gc is not None:
+    msg = f"Your distributed tree has some GC_t nodes whose name uses maia internal conventions for internal splits, eg. '{PT.get_name(gc)}'.\n" \
+          f"To avoid unexpected interactions, partitioning has been aborted. Please rename your GC_t nodes before trying again."
+    raise RuntimeError(msg)
+
   n_blocks = len(PT.get_all_Zone_t(dist_tree))
   blocks_str = "blocks" if n_blocks > 1 else "block"
   mlog.info(f"Partitioning tree of {n_blocks} initial {blocks_str}...")

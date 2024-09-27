@@ -39,3 +39,8 @@ def test_name_intra_gc():
 def test_is_intra_gc():
   assert conv.is_intra_gc('JN.P219.N0192.LT.P0.N11') == True
   assert conv.is_intra_gc('myjoin.5') == False
+
+def test_is_part_zone():
+  assert conv.is_part_zone('myZone.5') == False
+  assert conv.is_part_zone('myZone.5.P12.N3') == True
+  assert conv.is_part_zone('myZone.5.P12.N3.other') == False

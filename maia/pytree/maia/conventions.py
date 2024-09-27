@@ -38,3 +38,6 @@ def name_intra_gc(cur_proc:int, cur_part:int, opp_proc:int, opp_part:int) -> str
 
 def is_intra_gc(gc_name:str) -> bool:
   return bool(re.match(r"JN\.P\d+\.N\d+\.LT\.P\d+\.N\d+", gc_name))
+
+def is_part_zone(z_name:str) -> bool:
+  return bool(re.match(r".*\.P\d+\.N\d+$", z_name))
