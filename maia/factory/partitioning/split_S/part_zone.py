@@ -469,6 +469,8 @@ def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
   idx_dim = PT.Zone.IndexDimension(d_zone)
   dist_cell_size = PT.Zone.CellSize(d_zone)
 
+  if PT.Zone.n_cell(d_zone) == 0:
+    raise NotImplementedError("Partitioning structured point cloud without cells is not implemented")
   if dist_cell_size.size > 1:
     all_parts = SCT.split_S_block(dist_cell_size, len(all_weights), all_weights)
   else:

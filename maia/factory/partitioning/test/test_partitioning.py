@@ -204,6 +204,10 @@ def test_split_point_cloud(comm):
   assert PT.Zone.n_cell(part_zone) == 0
   assert comm.allreduce(PT.Zone.n_vtx(part_zone), MPI.SUM) == 13**3
 
+  dist_tree = maia.factory.generate_dist_points(13, 'Structured', comm)
+  with pytest.raises(NotImplementedError):
+    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+
 PART_TOOLS = ["hilbert"]
 if maia.pdm_has_ptscotch:
   PART_TOOLS.append("ptscotch")
