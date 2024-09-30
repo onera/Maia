@@ -9,15 +9,15 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Developpement version
+v1.5 (September 2024)
 ---------------------
 
 💡 New Features
 ^^^^^^^^^^^^^^^
-- Algo module: add ``remove_degen_faces_from_family``
 - Algo module: add ``edge_pe_to_ngon``/``ngon_to_edge_pe`` to convert 2D polyhedric connectivities
 - Algo module: add ``find_ridges`` functionnality to retrieve topological ridges between surfaces
 - Algo module: add ``compute_elements_measure`` to compute length, area or volume of mesh entities
+- Algo module: add ``remove_degen_faces_from_family`` to cleanup faces with zero surface
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
