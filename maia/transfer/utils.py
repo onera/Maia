@@ -50,8 +50,7 @@ def create_all_elt_distribution(dist_elts, comm):
   have if all the Element_t nodes were concatenated
   """
   elt_sections_dn  = [PT.Element.Size(elt) for elt in dist_elts]
-  elt_sections_idx = np_utils.sizes_to_indices(elt_sections_dn)
-  return par_utils.uniform_distribution(elt_sections_idx[-1], comm)
+  return par_utils.uniform_distribution(sum(elt_sections_dn), comm)
 
 def collect_cgns_g_numbering(part_nodes, name, prefix=''):
   """

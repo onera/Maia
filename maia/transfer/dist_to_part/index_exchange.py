@@ -103,6 +103,12 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
 
   elif entity == 'Elements':
     elts = PT.get_children_from_label(dist_zone, 'Elements_t')
+    # For 3DPoly zone w/o NFaceElements (ie with only NGON+PE), create a fake NFace
+    # node to correctly compute 'all-elements' distri & numbering (see #144)
+    if PT.Zone.has_ngon_elements(dist_zone) and not PT.Zone.has_nface_elements(dist_zone) and PT.Zone.CellDimension(dist_zone) == 3:
+      assert len(elts) == 1, f'Unable to guess position of missing NFaceElements in zone {dist_zone}. Try to add it manually.'
+      ng_size = PT.Element.Size(PT.Zone.NGonNode(dist_zone))
+      elts.append(PT.new_Elements('NFaceElements', 'NFACE_n', erange=[ng_size+1, ng_size+PT.Zone.n_cell(dist_zone)]))
     distri_partial = te_utils.create_all_elt_distribution(elts, comm)
     ln_to_gn_list = [te_utils.create_all_elt_g_numbering(p_zone, elts) for p_zone in part_zones]
     # Get elt_to_entity indirection from PDM, which is needed if we have a NGON/NFace output
