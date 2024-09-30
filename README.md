@@ -1,4 +1,4 @@
-**Maia** is a Python and C++ library for parallel algorithms and manipulations over CGNS meshes. Maia introduces a parallel representation of the CGNS trees and uses [ParaDiGM](https://gitlab.onera.net/numerics/mesh/paradigm/) as a back-end to provide various functions applicable to these trees.
+**Maia** is a Python and C++ library for parallel algorithms and manipulations over CGNS meshes. Maia introduces a parallel representation of the CGNS trees and uses [ParaDiGM](https://github.com/onera/paradigm/) as a back-end to provide various functions applicable to these trees.
 
 ## Getting started ##
 

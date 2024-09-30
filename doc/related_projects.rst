@@ -19,6 +19,8 @@ The ParaDiGM library provide the developers a progressive framework, which consi
 low-, mid- and high-level services helpfull to write scientific
 computing software that rely on a mesh.
 
+https://github.com/onera/paradigm
+
 Cassiopée
 ---------
 
