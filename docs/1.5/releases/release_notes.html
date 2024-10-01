@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Release notes &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Related projects" href="../related_projects.html" />
+    <link rel="prev" title="Yaml parsing" href="../maia_pytree/yaml.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.5
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Release notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#v1-5-september-2024">v1.5 (September 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#new-features">💡 New Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#feature-improvements">🚀 Feature improvements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fixes">🐞 Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#api-change">🚧 API change</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#v1-4-may-2024">v1.4 (May 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">💡 New Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">🚀 Feature improvements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">🐞 Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">🚧 API change</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#v1-3-january-2024">v1.3 (January 2024)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id6">💡 New Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">🚀 Feature improvements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">🐞 Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">🚧 API change</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#v1-2-july-2023">v1.2 (July 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id10">💡 New Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">🚀 Feature improvements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">🐞 Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id13">🚧 API change</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#advanced-users-devs">🔧 Advanced users / devs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#v1-1-may-2023">v1.1 (May 2023)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id14">💡 New Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id15">🚀 Feature improvements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">🐞 Fixes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id17">🔧 Advanced users / devs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#v1-0-march-2023">v1.0 (March 2023)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Release notes</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/releases/release_notes.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="release-notes">
+<span id="id1"></span><h1>Release notes<a class="headerlink" href="#release-notes" title="Permalink to this heading"></a></h1>
+<p id="whatsnew">This page contains information about what has changed in each new version of <strong>Maia</strong>.</p>
+<section id="v1-5-september-2024">
+<h2>v1.5 (September 2024)<a class="headerlink" href="#v1-5-september-2024" title="Permalink to this heading"></a></h2>
+<section id="new-features">
+<h3>💡 New Features<a class="headerlink" href="#new-features" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">edge_pe_to_ngon</span></code>/<code class="docutils literal notranslate"><span class="pre">ngon_to_edge_pe</span></code> to convert 2D polyhedric connectivities</p></li>
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">find_ridges</span></code> functionnality to retrieve topological ridges between surfaces</p></li>
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">compute_elements_measure</span></code> to compute length, area or volume of mesh entities</p></li>
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">remove_degen_faces_from_family</span></code> to cleanup faces with zero surface</p></li>
+</ul>
+</section>
+<section id="feature-improvements">
+<h3>🚀 Feature improvements<a class="headerlink" href="#feature-improvements" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>dist_tree_to_file, part_tree_to_file, write_trees: write user provided links</p></li>
+<li><p>part_tree_to_file: write CGNSBase_t misc. children</p></li>
+<li><p>interpolate: managed Vertex located fields for all values of <code class="docutils literal notranslate"><span class="pre">strategy</span></code> parameter</p></li>
+<li><p>adapt_mesh_with_feflo: allow users to change temporary directory for meshb files</p></li>
+<li><p>recover_dist_tree: manage poly 2D (NGON+BAR) meshes</p></li>
+<li><p>Introduce <code class="docutils literal notranslate"><span class="pre">compute_elements_center</span></code> which allows more configurations for centers computing</p></li>
+<li><p>merge_zones: add <code class="docutils literal notranslate"><span class="pre">family</span></code> option for subset merge parameter</p></li>
+<li><p>rearrange_element_sections: split reordering and concatenation in two functions (flexibility)</p></li>
+<li><p>localize_points, compute_wall_distance: allow 2D polygonal or Elements meshes</p></li>
+<li><p>ngons_to_elements: functionnality is now truly parallel, and more nodes are managed</p></li>
+<li><p>partitioning, recover_dist_tree: add <code class="docutils literal notranslate"><span class="pre">data_transfer</span></code> shortcut to transfer fields or UDD nodes</p></li>
+</ul>
+</section>
+<section id="fixes">
+<h3>🐞 Fixes<a class="headerlink" href="#fixes" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>transform_affine: update periodic values of GridConnectivity_t nodes</p></li>
+<li><p>extract_part: prevent a crash when a rank get no cells on extracted U zone</p></li>
+<li><p>extract_part: fix missing fields problem occuring on some 2D structured extractions</p></li>
+<li><p>recover_dist_tree: prevent a crash when a partitioned CGNSBase_t does not exist on all ranks</p></li>
+<li><p>partitioning : fix internal edges creation and BCs on 2D/NGon meshes</p></li>
+<li><p>partitioning : fix PointList values of hybrid U/S GridConnectivity_t nodes</p></li>
+<li><p>partitioning: manage <code class="docutils literal notranslate"><span class="pre">DiscreteData_t</span></code> nodes with PointList</p></li>
+<li><p>convert_elements_to_ngon: preserve CellCenter BC_t nodes during conversion</p></li>
+<li><p>file_to_dist_tree: fix read of structured BCs having both PointList and BCDataSet children</p></li>
+</ul>
+</section>
+<section id="api-change">
+<h3>🚧 API change<a class="headerlink" href="#api-change" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>dist_tree_to_file, part_tree_to_file &amp; write_trees: add <code class="docutils literal notranslate"><span class="pre">links</span></code> parameter</p></li>
+<li><p>Rename <code class="docutils literal notranslate"><span class="pre">ngons_to_elements</span></code> into <code class="docutils literal notranslate"><span class="pre">convert_ngon_to_elements</span></code></p></li>
+<li><p>Remove direct calls <code class="docutils literal notranslate"><span class="pre">compute_{cell|face|edge}_center</span></code> in favor of <code class="docutils literal notranslate"><span class="pre">compute_elements_center</span></code></p></li>
+<li><p>Split <code class="docutils literal notranslate"><span class="pre">rearrange_element_sections</span></code> into <code class="docutils literal notranslate"><span class="pre">reorder_elt_sections_...</span></code> + <code class="docutils literal notranslate"><span class="pre">concatenate_elt_sections</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="v1-4-may-2024">
+<h2>v1.4 (May 2024)<a class="headerlink" href="#v1-4-may-2024" title="Permalink to this heading"></a></h2>
+<section id="id2">
+<h3>💡 New Features<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">cartesian_to_cylindrical</span></code>/<code class="docutils literal notranslate"><span class="pre">cylindrical_to_cartesian</span></code> to change axis system</p></li>
+<li><p>Transfer module: add two functions to copy nodes between distributed and partitioned trees</p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>🚀 Feature improvements<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>adapt_mesh_with_feflo: manage axisymmetric meshes when <code class="docutils literal notranslate"><span class="pre">perio=True</span></code></p></li>
+<li><p>adapt_mesh_with_feflo: manage general U/elt meshes in meshb converter</p></li>
+<li><p>compute_wall_distance: use volumic face global numbering in ClosestEltGnum result</p></li>
+<li><p>closest_points: allow meshes of any cell dimension</p></li>
+<li><p>Manage ArbitraryGridMotion_t nodes in IO, split and data transfer</p></li>
+<li><p>Manage global BCData_t arrays in IO, split and data transfer</p></li>
+<li><p>Add shortcut functions to duplicate zones belonging to a family</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>🐞 Fixes<a class="headerlink" href="#id4" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>extract_part: ensure dtype correctness of transfered arrays</p></li>
+<li><p>extract_part_from_bc_name: prevent crash if BCDataSet has a PointList or PointRange</p></li>
+<li><p>extract_part_from_family: prevent a crash if a BC name is identical to the requested family</p></li>
+<li><p>recover_dist_tree: prevent a crash if some Elements_t nodes does not exist in every zones</p></li>
+<li><p>recover_dist_tree: use gnum_dtype as output kind of created zones</p></li>
+<li><p>convert_elements_to_ngon: update FaceCenter / CellCenter PointList arrays</p></li>
+<li><p>partitioning: fix creation of cells global numbering for multisection element meshes</p></li>
+<li><p>merge_zones: fix type mismatch occurring on I4 meshes with I8 production</p></li>
+<li><p><strong>[v1.4.1]</strong> mesh adaptation: fix tensorial metric and trees with multiple Elements_t of same type</p></li>
+<li><p><strong>[v1.4.1]</strong> merge_zones: prevent a crash when zones have non 1to1 GridConnectivity nodes</p></li>
+<li><p><strong>[v1.4.2]</strong> file_to_dist_tree: restore Python 3.7 compatibility</p></li>
+</ul>
+</section>
+<section id="id5">
+<h3>🚧 API change<a class="headerlink" href="#id5" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>default value for <code class="docutils literal notranslate"><span class="pre">apply_to_fields</span></code> is now <code class="docutils literal notranslate"><span class="pre">True</span></code> in exposed functions</p></li>
+<li><p>convert_s_to_u: now return <code class="docutils literal notranslate"><span class="pre">None</span></code> as announced</p></li>
+<li><p>Change exposed functions in <code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> (refer to related documentation)</p></li>
+</ul>
+</section>
+</section>
+<section id="v1-3-january-2024">
+<h2>v1.3 (January 2024)<a class="headerlink" href="#v1-3-january-2024" title="Permalink to this heading"></a></h2>
+<section id="id6">
+<h3>💡 New Features<a class="headerlink" href="#id6" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">extract_part_from_family</span></code> API to extract a submesh from FamilyName nodes</p></li>
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">scale_mesh</span></code> to scale the coordinates of a cartesian mesh</p></li>
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">nodes_to_centers</span></code> to interpolate FlowSolution_t from Vertex to CellCenter</p></li>
+</ul>
+</section>
+<section id="id7">
+<h3>🚀 Feature improvements<a class="headerlink" href="#id7" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>connect_1to1_families: manage Elements meshes</p></li>
+<li><p>extract_part_from_xxx: transfer BCs on extracted meshes and manage structured meshes</p></li>
+<li><p>partitioning: enable split of 2D/1D structured meshes</p></li>
+<li><p>interpolation: allow input fields to be Vertex located in some cases</p></li>
+<li><p>poly_old_to_new / poly_new_to_old : manage <em>mixed</em> elements</p></li>
+<li><p>convert_elements_to_ngon : manage <em>mixed</em> elements</p></li>
+<li><p>adapt_mesh_with_feflo: add an option to manage periodic meshes</p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>🐞 Fixes<a class="headerlink" href="#id8" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>merge_zones: manage S/U GridConnectivity_t when merging U zones</p></li>
+<li><p>add_joins_donor_name: prevent a crash when some GCs already have their DonorName</p></li>
+<li><p>transform_affine : manage partitioned S zones and 2D meshes</p></li>
+<li><p>transfer module : prevent a bug occurring when subset nodes have a dot in their name</p></li>
+<li><p>convert_mixed_to_elements: prevent a bug occurring when multiple MIXED nodes are used</p></li>
+<li><p><strong>[v1.3.1]</strong> io: fix read of unstructured BCDataSet having a PointList</p></li>
+</ul>
+</section>
+<section id="id9">
+<h3>🚧 API change<a class="headerlink" href="#id9" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>extract_part_from_zsr: add <code class="docutils literal notranslate"><span class="pre">transfert_dataset</span></code> argument for easier transfer of current ZSR fields</p></li>
+<li><p>convert_s_to_u: operate inplace (input tree is modified). Will return None in next release.</p></li>
+</ul>
+</section>
+</section>
+<section id="v1-2-july-2023">
+<h2>v1.2 (July 2023)<a class="headerlink" href="#v1-2-july-2023" title="Permalink to this heading"></a></h2>
+<section id="id10">
+<h3>💡 New Features<a class="headerlink" href="#id10" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Algo module: add <code class="docutils literal notranslate"><span class="pre">adapt_mesh_with_feflo</span></code>, wrapping <em>Feflo.a</em> to perform mesh adaptation</p></li>
+<li><p>Factory module : add <code class="docutils literal notranslate"><span class="pre">dist_to_full_tree</span></code> to gather a distributed tree into a standard tree</p></li>
+<li><p>File management: add <code class="docutils literal notranslate"><span class="pre">read_links</span></code> function to get the links from a CGNS file</p></li>
+<li><p>File management: add <code class="docutils literal notranslate"><span class="pre">file_to_part_tree</span></code> function to read maia partitioned trees</p></li>
+</ul>
+</section>
+<section id="id11">
+<h3>🚀 Feature improvements<a class="headerlink" href="#id11" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>file_to_dist_tree: correct unsigned NFace connectivity if possible</p></li>
+<li><p>wall_distance: add an option to take into account periodic connectivities</p></li>
+<li><p>poly_old_to_new / poly_new_to_old : support 2D meshes</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>🐞 Fixes<a class="headerlink" href="#id12" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>merge_zones: fix unwanted merge of BCDataSet_t when merge_strategy is None</p></li>
+<li><p>partitioning: fix global numbering of S BCDataSet + fix GC-related ZGC</p></li>
+<li><p>isosurface: fix poor performances + better management of corner cases</p></li>
+<li><p>distributed io: fix read/write of S meshes for data smaller than comm size</p></li>
+<li><p>elements to ngon conversion: manage vertex located BCs</p></li>
+</ul>
+</section>
+<section id="id13">
+<h3>🚧 API change<a class="headerlink" href="#id13" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>redistribute_tree: remove default value for policy</p></li>
+<li><p>wall_distance: remove families parameter</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">distribute_tree</span></code> renamed into <code class="docutils literal notranslate"><span class="pre">full_to_dist_tree</span></code></p></li>
+</ul>
+</section>
+<section id="advanced-users-devs">
+<h3>🔧 Advanced users / devs<a class="headerlink" href="#advanced-users-devs" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Add a method to give a global id to any object in parallel</p></li>
+</ul>
+</section>
+</section>
+<section id="v1-1-may-2023">
+<h2>v1.1 (May 2023)<a class="headerlink" href="#v1-1-may-2023" title="Permalink to this heading"></a></h2>
+<section id="id14">
+<h3>💡 New Features<a class="headerlink" href="#id14" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>Algo module: generate (periodic) 1to1 GridConnectivity between selected BC or GC</p></li>
+<li><p>Factory module: generate 2D spherical meshes and points clouds</p></li>
+</ul>
+</section>
+<section id="id15">
+<h3>🚀 Feature improvements<a class="headerlink" href="#id15" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>generate_dist_block: enable generation of structured meshes</p></li>
+<li><p>partitioning: enable split of 2D (NGON/Elts) and 1D (Elts) meshes</p></li>
+<li><p>partitioning: copy AdditionalFamilyName and ReferenceState from BCs to the partitions</p></li>
+<li><p>compute_face_center : manage structured meshes</p></li>
+<li><p>merge_zones: allow wildcards in zone_paths</p></li>
+<li><p>isosurface: recover volumic GCs on surfacic tree (as BCs)</p></li>
+<li><p>transfer (part-&gt;dist): manage BC/BCDataSet created on partitions for structured meshes</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>🐞 Fixes<a class="headerlink" href="#id16" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>convert_elements_to_ngon: prevent a memory error &amp; better management of 2D meshes</p></li>
+<li><p>isosurface: improve robustness of edge reconstruction</p></li>
+<li><p>partitioning: fix split of structured GCs and BCDataSet</p></li>
+<li><p>merge_zone: fix a bug occurring when FamilyName appears under some BC_t nodes</p></li>
+</ul>
+</section>
+<section id="id17">
+<h3>🔧 Advanced users / devs<a class="headerlink" href="#id17" title="Permalink to this heading"></a></h3>
+<ul class="simple">
+<li><p>use new pytest_parallel module</p></li>
+<li><p>transfer (part-&gt;dist): add user callback to reduce shared entities</p></li>
+</ul>
+</section>
+</section>
+<section id="v1-0-march-2023">
+<h2>v1.0 (March 2023)<a class="headerlink" href="#v1-0-march-2023" title="Permalink to this heading"></a></h2>
+<p>First release of Maia !</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../maia_pytree/yaml.html" class="btn btn-neutral float-left" title="Yaml parsing" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../related_projects.html" class="btn btn-neutral float-right" title="Related projects" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.5
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
