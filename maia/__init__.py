@@ -3,7 +3,7 @@ Maia: Distributed algorithms and manipulations over CGNS meshes
 """
 from packaging.version import Version, InvalidVersion
 
-__version__ = '1.5'
+__version__ = '1.6.dev'
 
 import Pypdm.Pypdm as PDM
 
