@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from maia.pytree.typing import *
 import maia.pytree.node as N
@@ -17,18 +18,21 @@ def generate_line(node, lines, ident=0, line_max=120):
   # Get value and type
   node_value = N.get_value(node)
   if isinstance(node_value, np.ndarray) and node_value.size == 1:
-    node_value = node_value[0]
+    if N.get_label(node) not in ['IndexArray_t', 'DataArray_t']:
+      node_value = node_value[0]
   value_type = None
   value      = None
   if isinstance(node_value, str):
     value = f"'{node_value}'"
-  elif isinstance(node_value, (int, float, list, np.float32)):
+  elif isinstance(node_value, (int, float, list, np.integer, np.float32)):
     value = str(node_value)
   elif isinstance(node_value, (tuple, set)):
     value = str(list(node_value))
   elif isinstance(node_value, np.ndarray):
     value_type = f"{CGK.dtype_to_cgns[node_value.dtype]}"
     value = f"{node_value.tolist()}"
+  elif node_value is not None:
+    warnings.warn(f'Unable to convert value of node {N.get_name(node)}', RuntimeWarning)
 
   #Short lines, with or without value_type / value
   if value:
