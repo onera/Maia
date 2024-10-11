@@ -222,3 +222,5 @@ def reduce_mean(dist_data,dist_stride):
   """
   indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.add.reduceat(dist_data, indices) / dist_stride
+
+from ._protocols.g_indexer import GIndexer

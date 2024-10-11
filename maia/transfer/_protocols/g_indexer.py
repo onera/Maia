@@ -378,35 +378,215 @@ class GIndexer_m:
 
 class GIndexer:
 
+  """
+  A proxy object allowing to access distributed data in read or write mode.
+
+  Notations:
+
+  - :math:`s` : number of processes (equal to ``comm.Get_size()``)
+  - :math:`n` : global size of the distributed collection (equal to ``distri[s+1]``)
+  - :math:`dn` : for each rank :math:`j`, size of its section of the collection
+    (equal to ``distri[j+1]-distri[j]``)
+  - :math:`pn` : for each rank :math:`j`, number of accessed indices (equal to ``len(g_idx)``)
+  - :math:`c` : for constant buffer access, number of data per item of the collection
+
+  """
+
   def __init__(self, distri, g_idx, comm):
+    """ Create a GIndexer proxy object
+
+    The proxy object is described by two arrays of integer,
+    satisfying these rules:
+    
+    - **distri** (size :math:`s+1`):
+
+      - same value on all processes;
+      - ``distri[0] == 0``, ``distri[s] == n``, and ``distri[j] <= distri[j+1]`` for all ``j``.
+
+    - **g_idx** (size :math:`pn`):
+
+      - different size and value on each process;
+      - values in range :math:`[1, n]`.
+
+    Args:
+      distri (integer array of size :math:`s+1`) : distribution of the collection
+      g_idx (integer array of size :math:`pn`) : accessed global indices
+      comm (MPIComm) : communicator
+    """
     self.indexer = GIndexer_m(distri, [g_idx], comm)
 
-  def Take_into(self, data_in, data_out):
-    self.indexer.Take_into(data_in, [data_out])
+  def take(self, data_in:list) -> list:
+    """ ``take`` implementation for generic Python objects 
     
-  def Take(self, data_in):
+    Exchanged data are serialized using ``pickle`` module. 
+
+    Args:
+      data_in (list of size :math:`dn`) : section of the distributed data
+    Returns:
+      list of size :math:`pn`: values extracted at the requested indices
+    """
+    return self.indexer.take(data_in)[0]
+
+  def put(self, data_in:list) -> list:
+    """ ``put`` implementation for generic Python objects 
+    
+    Exchanged data are serialized using ``pickle`` module.
+
+    Note that:
+
+    - if a global index does not appears in any idx list, its associated data in the output
+      buffer will be ``None``;
+    - if a global index appears more than once in the idx lists, the associated data in the output
+      buffer will be the last encoutered (in increasing processes order)
+
+    Args:
+      data_in (list of size :math:`pn`) : data to write at each accessed index
+    Returns:
+      list of size :math:`dn`: output distributed data
+    """
+    return self.indexer.put([data_in])
+
+  def Take_into(self, data_in, data_out):
+    """ Inplace ``take`` implementation for buffer-like objects 
+
+    Input and output buffer must respectively be of size :math:`c*dn` and
+    :math:`c*pn`, where :math:`c` is a positive integer. The datatype
+    of the input and the ouput buffer must match.
+
+    The value of :math:`c` and the datatype must be the
+    same across all the processes. 
+    
+    Args:
+      data_in  (buffer) : section of the distributed data
+      data_out (buffer) : preallocated buffer to store extracted values
+    """
+    self.indexer.Take_into(data_in, [data_out])
+
+  def Put_into(self, data_in, data_out):
+    """ Inplace ``put`` implementation for buffer-like objects 
+
+    Input and output buffer must respectively be of size :math:`c*pn` and
+    :math:`c*dn`, where :math:`c` is a positive integer. The datatype
+    of the input and the ouput buffer must match.
+
+    The value of :math:`c` and the datatype must be the
+    same across all the processes. 
+
+    Note that:
+
+    - if a global index does not appears in any idx list, its associated data in the output
+      buffer will be unchanged;
+    - if a global index appears more than once in the idx lists, the associated data in the output
+      buffer will be the last encoutered (in increasing processes order)
+    
+    Args:
+      data_in  (buffer) : data to write at each accessed index
+      data_out (buffer) : preallocated buffer to store distributed data
+    """
+    self.indexer.Put_into([data_in], data_out)
+    
+  def Take(self, data_in) -> np.ndarray:
+    """ ``take`` implementation for buffer-like objects 
+
+    Input buffer must be of size :math:`c*dn`, where :math:`c` is a
+    positive integer.
+    The value of :math:`c` and the datatype of the input buffer must be the
+    same across all the processes. 
+
+    The output buffer is allocated as a numpy array of size :math:`c*pn`
+    and of datatype equal to the one of the input data.
+    
+    Args:
+      data_in (buffer of size :math:`c*dn`) : section of the distributed data
+    Returns:
+      buffer of size :math:`c*pn`: values extracted at the requested indices
+    """
     return self.indexer.Take(data_in)[0]
+
+  def Put(self, data_in) -> np.ndarray:
+    """ ``put`` implementation for buffer-like objects 
+
+    Input buffer must be of size :math:`c*pn`, where :math:`c` is a
+    positive integer.
+    The value of :math:`c` and the datatype of the input buffer must be the
+    same across all the processes. 
+
+    The output buffer is allocated as a numpy array of size :math:`c*dn`
+    and of datatype equal to the one of the input data.
+
+    Note that:
+
+    - if a global index does not appears in any idx list, its associated data in the output
+      buffer will be uninitialized;
+    - if a global index appears more than once in the idx lists, the associated data in the output
+      buffer will be the last encoutered (in increasing processes order)
+
+    Args:
+      data_in (buffer of size :math:`c*pn`) : data to write at each accessed index
+    Returns:
+      buffer of size :math:`c*pn`: output distributed data
+    """
+
+    return self.indexer.Put([data_in])
 
   def Take_v_into(self, data_in, counts_in, data_out, counts_out):
     self.indexer.Take_v_into(data_in, counts_in, [data_out], [counts_out])
 
-  def Take_v(self, data_in, counts_in):
-    data_out_l, counts_out_l = self.indexer.Take_v(data_in, counts_in)
-    return data_out_l[0], counts_out_l[0]
+  def Take_v(self, buff_in, counts_in):
+    """ ``take`` implementation for variable buffer-like objects 
 
-  def take(self, data_in):
-    return self.indexer.take(data_in)[0]
+    The variable input buffer is described by two objets:
 
-  def Put_into(self, data_in, data_out):
-    self.indexer.Put_into([data_in], data_out)
+    - an integer array ``counts_in`` of size :math:`dn`;
+    - a buffer object of size ``counts_in.sum()``.
+      The datatype of this input buffer must be the same across all the processes.
 
-  def Put(self, data_in):
-    return self.indexer.Put([data_in])
+    Similarly, the output data is returned as a pair of two newly allocated numpy arrays:
+
+    - an integer array ``counts_out`` of size :math:`pn`;
+    - a buffer object of size ``counts_out.sum()``.
+      The datatype of this output buffer is set to be the same than the input buffer.
+
+    Be aware that following mpi4py convention, the order of objects is ``(buff, counts)``.
+    
+    Args:
+      buff_in (buffer) : values for the distributed data
+      counts_in (np array of :math:`dn` int) : counts for the distributed data
+    Returns:
+      tuple: pair of values extracted at the requested indices, ie:
+
+      - **buff_out** (*buffer*): extracted values
+      - **counts_out** (np array of :math:`pn` int): extracted counts
+    """
+    #TODO : to follow mpi4py and other funcs signature, we should use tuple in input
+    #def Take_v(self, data_in): with data_in == (buff_in, counts_in)
+    buff_out_l, counts_out_l = self.indexer.Take_v(buff_in, counts_in)
+    return buff_out_l[0], counts_out_l[0]
    
-  def Put_v(self, data_in, counts_in):
-    return self.indexer.Put_v([data_in], [counts_in])
+  def Put_v(self, buff_in, counts_in):
+    """ ``put`` implementation for variable buffer-like objects 
 
-  def put(self, data_in):
-    return self.indexer.put([data_in])
-   
+    The variable input buffer is described by two objets:
 
+    - an integer array ``counts_in`` of size :math:`pn`;
+    - a buffer object of size ``counts_in.sum()``.
+      The datatype of this input buffer must be the same across all the processes.
+
+    Similarly, the output data is returned as a pair of two newly allocated numpy arrays:
+
+    - an integer array ``counts_out`` of size :math:`dn`;
+    - a buffer object of size ``counts_out.sum()``.
+      The datatype of this output buffer is set to be the same than the input buffer.
+
+    Be aware that following mpi4py convention, the order of objects is ``(buff, counts)``.
+
+    Args:
+      buff_in (buffer) : values to write
+      counts_in (np array of :math:`pn` int) : number of values to write at each accessed index
+    Returns:
+      tuple: pair of values at each global index, ie:
+
+      - **buff_out** (*buffer*): values for the output distributed data
+      - **counts_out** (np array of :math:`dn` int): counts for output distributed data
+    """
+    return self.indexer.Put_v([buff_in], [counts_in])
