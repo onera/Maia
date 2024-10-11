@@ -53,7 +53,7 @@ def put_strided(a, indices, indices_count, read_counts, read):
   from cmaia.utils import layouts
   layouts.put_strided(a, indices, indices_count, read_counts, read)
 
-class GIndexer:
+class GIndexer_m:
 
   def __init__(self, distri, g_idx_l, comm):
     assert distri.size == comm.Get_size() + 1
@@ -374,4 +374,39 @@ class GIndexer:
         out.append(None)
       r_start += size
     return out
+
+
+class GIndexer:
+
+  def __init__(self, distri, g_idx, comm):
+    self.indexer = GIndexer_m(distri, [g_idx], comm)
+
+  def Take_into(self, data_in, data_out):
+    self.indexer.Take_into(data_in, [data_out])
+    
+  def Take(self, data_in):
+    return self.indexer.Take(data_in)[0]
+
+  def Take_v_into(self, data_in, counts_in, data_out, counts_out):
+    self.indexer.Take_v_into(data_in, counts_in, [data_out], [counts_out])
+
+  def Take_v(self, data_in, counts_in):
+    data_out_l, counts_out_l = self.indexer.Take_v(data_in, counts_in)
+    return data_out_l[0], counts_out_l[0]
+
+  def take(self, data_in):
+    return self.indexer.take(data_in)[0]
+
+  def Put_into(self, data_in, data_out):
+    self.indexer.Put_into([data_in], data_out)
+
+  def Put(self, data_in):
+    return self.indexer.Put([data_in])
+   
+  def Put_v(self, data_in, counts_in):
+    return self.indexer.Put_v([data_in], [counts_in])
+
+  def put(self, data_in):
+    return self.indexer.put([data_in])
+   
 
