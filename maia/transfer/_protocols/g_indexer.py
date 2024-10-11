@@ -148,7 +148,7 @@ class GIndexer_m:
       counts = self.comm.allreduce(counts, MPI.MAX)
 
     data_out_l = [np.empty(counts*pn, data_in.dtype) for pn in self.pn]
-    self.Take_into(data_in, data_out_l)
+    GIndexer_m.Take_into(self, data_in, data_out_l)
     return data_out_l
 
 
@@ -236,7 +236,7 @@ class GIndexer_m:
 
     joined = np.frombuffer(b''.join(pickelized), dtype=np.int8)
     
-    data_out_l, counts_out_l = self.Take_v(joined, counts_in)
+    data_out_l, counts_out_l = GIndexer_m.Take_v(self, joined, counts_in)
     
     res = list()
     for data_out, counts_out in zip(data_out_l, counts_out_l):
@@ -296,7 +296,7 @@ class GIndexer_m:
       dtype  = self.comm.allreduce(dtype,  MPI.MAX)
 
     data_out = np.empty(counts*self.dn, dtype)
-    self.Put_into(data_in_l, data_out)
+    GIndexer_m.Put_into(self, data_in_l, data_out)
     return data_out
 
   def Put_v(self, data_in_l, counts_in_l):
@@ -363,7 +363,7 @@ class GIndexer_m:
       counts_in_l.append(np.array([len(p) for p in pickelized], dtype=int))
       joined_l.append(np.frombuffer(b''.join(pickelized), dtype=np.int8))
     
-    data_out, counts_out = self.Put_v(joined_l, counts_in_l)
+    data_out, counts_out = GIndexer_m.Put_v(self, joined_l, counts_in_l)
     
     out = []
     r_start = 0
@@ -376,7 +376,7 @@ class GIndexer_m:
     return out
 
 
-class GIndexer:
+class GIndexer(GIndexer_m):
 
   """
   A proxy object allowing to access distributed data in read or write mode.
@@ -413,7 +413,7 @@ class GIndexer:
       g_idx (integer array of size :math:`pn`) : accessed global indices
       comm (MPIComm) : communicator
     """
-    self.indexer = GIndexer_m(distri, [g_idx], comm)
+    super().__init__(distri, [g_idx], comm)
 
   def take(self, data_in:list) -> list:
     """ ``take`` implementation for generic Python objects 
@@ -425,7 +425,7 @@ class GIndexer:
     Returns:
       list of size :math:`pn`: values extracted at the requested indices
     """
-    return self.indexer.take(data_in)[0]
+    return super().take(data_in)[0]
 
   def put(self, data_in:list) -> list:
     """ ``put`` implementation for generic Python objects 
@@ -444,7 +444,7 @@ class GIndexer:
     Returns:
       list of size :math:`dn`: output distributed data
     """
-    return self.indexer.put([data_in])
+    return super().put([data_in])
 
   def Take_into(self, data_in, data_out):
     """ Inplace ``take`` implementation for buffer-like objects 
@@ -460,7 +460,7 @@ class GIndexer:
       data_in  (buffer) : section of the distributed data
       data_out (buffer) : preallocated buffer to store extracted values
     """
-    self.indexer.Take_into(data_in, [data_out])
+    super().Take_into(data_in, [data_out])
 
   def Put_into(self, data_in, data_out):
     """ Inplace ``put`` implementation for buffer-like objects 
@@ -483,7 +483,7 @@ class GIndexer:
       data_in  (buffer) : data to write at each accessed index
       data_out (buffer) : preallocated buffer to store distributed data
     """
-    self.indexer.Put_into([data_in], data_out)
+    super().Put_into([data_in], data_out)
     
   def Take(self, data_in) -> np.ndarray:
     """ ``take`` implementation for buffer-like objects 
@@ -501,7 +501,7 @@ class GIndexer:
     Returns:
       buffer of size :math:`c*pn`: values extracted at the requested indices
     """
-    return self.indexer.Take(data_in)[0]
+    return super().Take(data_in)[0]
 
   def Put(self, data_in) -> np.ndarray:
     """ ``put`` implementation for buffer-like objects 
@@ -527,10 +527,10 @@ class GIndexer:
       buffer of size :math:`c*pn`: output distributed data
     """
 
-    return self.indexer.Put([data_in])
+    return super().Put([data_in])
 
   def Take_v_into(self, data_in, counts_in, data_out, counts_out):
-    self.indexer.Take_v_into(data_in, counts_in, [data_out], [counts_out])
+    super().Take_v_into(data_in, counts_in, [data_out], [counts_out])
 
   def Take_v(self, buff_in, counts_in):
     """ ``take`` implementation for variable buffer-like objects 
@@ -560,7 +560,7 @@ class GIndexer:
     """
     #TODO : to follow mpi4py and other funcs signature, we should use tuple in input
     #def Take_v(self, data_in): with data_in == (buff_in, counts_in)
-    buff_out_l, counts_out_l = self.indexer.Take_v(buff_in, counts_in)
+    buff_out_l, counts_out_l = super().Take_v(buff_in, counts_in)
     return buff_out_l[0], counts_out_l[0]
    
   def Put_v(self, buff_in, counts_in):
@@ -589,4 +589,4 @@ class GIndexer:
       - **buff_out** (*buffer*): values for the output distributed data
       - **counts_out** (np array of :math:`dn` int): counts for output distributed data
     """
-    return self.indexer.Put_v([buff_in], [counts_in])
+    return super().Put_v([buff_in], [counts_in])
