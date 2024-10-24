@@ -300,6 +300,8 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
         # Exchange global data (take first partition knowing a value)
         master = comm.allreduce(comm.Get_rank() if len(lngn_list) > 0 else comm.Get_size()+1, op=MPI.MIN)
         glob_data_send = None
+        if master > comm.Get_size(): # no data any where to exchange -> nothing to do
+          continue
         if comm.Get_rank() == master:
           glob_data_send = {path: data[0] for path,data in part_data_glo.items()}
         glob_data_dist = comm.bcast(glob_data_send, root=master)
