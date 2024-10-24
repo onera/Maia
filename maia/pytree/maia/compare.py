@@ -3,7 +3,7 @@ import numpy as np
 import maia.pytree as PT
 
 def sq_norm(x):
-  return np.inner(x,x)
+  return np.sum(x*x)
 
 def norm(x, comm):
   res = comm.allreduce(sq_norm(x), MPI.SUM)
