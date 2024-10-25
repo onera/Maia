@@ -15,27 +15,61 @@ def _to_xyz(r, theta, z):
 def _to_rthetaz(x, y, z):
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
 
-def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz):
-
+def _reduce_mean(vtx_id, vtx_id_idx, *arrays, skip_odd_coords=False):
   vtx_id_n = np.diff(vtx_id_idx)
+  # cf issue #147
+  coords_mean = []
+  for array in arrays:
+    array_vtx_id = array[vtx_id-1]
+    if vtx_id_idx[-1] == len(array_vtx_id):
+      coord_sum = np.add.reduceat(array_vtx_id, vtx_id_idx[:-1])
+    else:
+      coord_sum = np.add.reduceat(array_vtx_id, vtx_id_idx)[:-1]
+    if skip_odd_coords:
+      coords_mean.append(coord_sum[::2] / vtx_id_n[::2])
+    else:
+      coords_mean.append(coord_sum / vtx_id_n)
+  return coords_mean
 
-  mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz, skip_odd_coords=False):
+  coords_mean = _reduce_mean(vtx_id, vtx_id_idx, cx, cy, cz, skip_odd_coords=skip_odd_coords)
+  return np_utils.interweave_arrays(coords_mean)
 
-  return np_utils.interweave_arrays([mean_x, mean_y, mean_z])
-
-def _mean_coords_from_connectivity_cyl(vtx_id_idx, vtx_id, cr, ctheta, cz):
+def _mean_coords_from_connectivity_cyl(vtx_id_idx, vtx_id, cr, ctheta, cz, skip_odd_coords=False):
 
   vtx_id_n = np.diff(vtx_id_idx)
 
   cx,cy,cz = _to_xyz(cr, ctheta, cz)
+  coords_mean = _reduce_mean(vtx_id, vtx_id_idx, cx, cy, cz, skip_odd_coords=skip_odd_coords)
+  return np_utils.interweave_arrays(_to_rthetaz(*coords_mean))
 
-  mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+
+# def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz):
+
+#   vtx_id_n = np.diff(vtx_id_idx)
+#   from super_miles.utils import logger
+#   logger.warn(vtx_id_idx)
+#   logger.warn(cx)
+#   logger.warn(len(cx))
+
+#   mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+#   mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+#   mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+
+#   return np_utils.interweave_arrays([mean_x, mean_y, mean_z])
+
+# def _mean_coords_from_connectivity_cyl(vtx_id_idx, vtx_id, cr, ctheta, cz):
+
+#   vtx_id_n = np.diff(vtx_id_idx)
+
+#   cx,cy,cz = _to_xyz(cr, ctheta, cz)
+
+#   mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+#   mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+#   mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
   
-  return np_utils.interweave_arrays(_to_rthetaz(mean_x, mean_y, mean_z))
+#   return np_utils.interweave_arrays(_to_rthetaz(mean_x, mean_y, mean_z))
+
 
 def compute_cell_center(zone):
   """Compute the cell centers of a partitioned zone.
@@ -80,7 +114,7 @@ def compute_cell_center(zone):
 
   return center_cell
 
-def compute_face_center(zone):
+def compute_face_center(zone,face_indices=None):
   """Compute the face centers of a partitioned zone.
 
   Input zone must have cartesian or cylindrical coordinates recorded under a unique
@@ -94,6 +128,7 @@ def compute_face_center(zone):
 
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U CGNS Zone
+    face_indices ((celldim,n_face) array): Optional face index filtering array 
   Returns:
     array: Flat (interlaced) numpy array of face centers
 
@@ -115,10 +150,21 @@ def compute_face_center(zone):
     else:
       face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
     _coords = coords if coords[2] is not None else [coords[0], coords[1], np.zeros_like(coords[0])]
-    if isinstance(coords, PT.CartesianCoordinates):
-      return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *_coords)
-    elif isinstance(coords, PT.CylindricalCoordinates):
-      return _mean_coords_from_connectivity_cyl(face_vtx_idx, face_vtx, *_coords)
+    if face_indices is None:
+      if isinstance(coords, PT.CartesianCoordinates):
+        return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *_coords)
+      elif isinstance(coords, PT.CylindricalCoordinates):
+        return _mean_coords_from_connectivity_cyl(face_vtx_idx, face_vtx, *_coords)
+    else:
+      # face_indices must broadcastable to (1,face_nb) (to follow the cgns standard)
+      face_indices = np.atleast_2d(face_indices)
+      assert face_indices.ndim == 2
+      assert face_indices.shape[0] == 1
+      face_vtx_idx = np.concatenate([face_vtx_idx[ind:ind+2] for ind in face_indices[0]-1])
+      if isinstance(coords, PT.CartesianCoordinates):
+        return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *_coords, skip_odd_coords=True)
+      elif isinstance(coords, PT.CylindricalCoordinates):
+        return _mean_coords_from_connectivity_cyl(face_vtx_idx, face_vtx, *_coords, skip_odd_coords=True)
   else:
     vtx_size = [1,1,1]
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
@@ -129,11 +175,14 @@ def compute_face_center(zone):
       _cz = np.zeros(vtx_size, dtype=float, order='F')
     else:
       _cz = np.atleast_3d(coords[2])
-    if isinstance(coords, PT.CartesianCoordinates):
-      centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
-    elif isinstance(coords, PT.CylindricalCoordinates):
-      centers = cpart_algo.compute_center_face_s_cyl(*vtx_size, _cx, _cy, _cz)
-
+    if face_indices is None:
+      if isinstance(coords, PT.CartesianCoordinates):
+        centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
+      elif isinstance(coords, PT.CylindricalCoordinates):
+        centers = cpart_algo.compute_center_face_s_cyl(*vtx_size, _cx, _cy, _cz)
+    else:
+      raise NotImplementedError(("'maia.algo.part.geometry.centers.compute_face_center' "
+                  "not implemented for structured zones with 'face_indices'."))
     return centers
 
 def compute_edge_center(zone):

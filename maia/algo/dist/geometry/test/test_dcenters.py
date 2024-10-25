@@ -23,11 +23,68 @@ def to_expected_cyl(expected_cart):
 def test_compute_face_center3d(cylindrical, comm):
   tree = maia.factory.generate_dist_block(3, 'Poly', comm)
   zone = PT.get_all_Zone_t(tree)[0]
-  
+
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
   face_center = GEO.compute_face_center(zone, comm)
+
+  if comm.Get_rank() == 0:
+    expected_face_center = np.array([
+        0.25, 0.25, 0. ,  0.75, 0.25, 0. ,  0.25, 0.75, 0. ,  0.75, 0.75, 0. , 
+        0.25, 0.25, 0.5,  0.75, 0.25, 0.5,  0.25, 0.75, 0.5,  0.75, 0.75, 0.5, 
+        0.25, 0.25, 1. ,  0.75, 0.25, 1. ,  0.25, 0.75, 1. ,  0.75, 0.75, 1. ,
+    ])
+  elif comm.Get_rank() == 1:
+    expected_face_center = np.array([
+        0. , 0.25, 0.25,  0. , 0.75, 0.25,  0.,  0.25, 0.75,  0. , 0.75, 0.75,
+        0.5, 0.25, 0.25,  0.5, 0.75, 0.25,  0.5, 0.25, 0.75,  0.5, 0.75, 0.75,
+        1. , 0.25, 0.25,  1. , 0.75, 0.25,  1.,  0.25, 0.75,  1. , 0.75, 0.75,
+    ])
+  if comm.Get_rank() == 2:
+    expected_face_center = np.array([
+        0.25, 0. , 0.25,  0.25, 0. , 0.75,  0.75, 0. , 0.25,  0.75, 0. , 0.75, 
+        0.25, 0.5, 0.25,  0.25, 0.5, 0.75,  0.75, 0.5, 0.25,  0.75, 0.5, 0.75,
+        0.25, 1. , 0.25,  0.25, 1. , 0.75,  0.75, 1. , 0.25,  0.75, 1. , 0.75,
+    ])
+
+  if cylindrical:
+    expected_face_center = to_expected_cyl(expected_face_center)
+
+  assert np.allclose(face_center, expected_face_center)
+
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [
+  False,
+  # True
+  ])
+def test_compute_face_center3d_filtered(cylindrical, comm):
+  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  # face_ind = PT.get_value(PT.get_node_from_path(zone,"NGonElements/:CGNS#Distribution/Element"))
+  # face_ind = (np.arange(face_ind[0],face_ind[1])+1)[None]
+  face_ind = PT.get_value(PT.get_node_from_path(zone,"ZoneBC/Ymin/PointList"))
+  # if comm.rank == 0:
+  #   # face_ind = np.array([[1,2,3,4]],dtype=np.int32)
+  #   face_ind = np.array([[2,3,4,5]],dtype=np.int32)
+  # else:
+  #   face_ind = np.array([[2,3,4,5]],dtype=np.int32)
+  #   # face_ind = np.array([[]],dtype=np.int32)
+  from super_miles.utils import logger
+  # logger.warn(comm.rank,face_ind)
+  # if comm.rank == 0:
+  #   PT.print_tree(zone)
+  #   print(flush=True)
+  
+  if cylindrical:
+    maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
+
+  logger.warn(comm.rank,face_ind)
+  comm.barrier()
+  face_center = GEO.compute_face_center(zone, comm, face_ind)
+  logger.warn(comm.rank,face_center)
+  return
 
   if comm.Get_rank() == 0:
     expected_face_center = np.array([

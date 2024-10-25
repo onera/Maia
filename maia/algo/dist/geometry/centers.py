@@ -17,20 +17,33 @@ def _to_xyz(r, theta, z):
 def _to_rthetaz(x, y, z):
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
 
-def _reduce_mean(vtx_id_idx, *arrays):
+def _reduce_mean(vtx_id_idx, *arrays, skip_odd_coords=False):
+  # cf issue #147
   vtx_id_n = np.diff(vtx_id_idx)
-  return [np.add.reduceat(array, vtx_id_idx[:-1]) / vtx_id_n for array in arrays]
+  coords_mean = []
+  for array in arrays:
+    if vtx_id_idx[-1] == len(array):
+      coord_sum = np.add.reduceat(array, vtx_id_idx[:-1])
+    else:
+      coord_sum = np.add.reduceat(array, vtx_id_idx)[:-1]
+    if skip_odd_coords:
+      coords_mean.append(coord_sum[::2] / vtx_id_n[::2])
+    else:
+      coords_mean.append(coord_sum / vtx_id_n)
+  return coords_mean
+  # vtx_id_n = np.diff(vtx_id_idx)
+  # return [np.add.reduceat(array, vtx_id_idx[:-1]) / vtx_id_n for array in arrays]
 
 
-def _mean_coords_from_connectivity(vtx_id_idx, cx_expd, cy_expd, cz_expd):
+def _mean_coords_from_connectivity(vtx_id_idx, cx_expd, cy_expd, cz_expd, skip_odd_coords=False):
   """ Coordinates should be repeted to match the size of vtx_id_idx """
-  coords_mean = _reduce_mean(vtx_id_idx, cx_expd, cy_expd, cz_expd)
+  coords_mean = _reduce_mean(vtx_id_idx, cx_expd, cy_expd, cz_expd, skip_odd_coords=skip_odd_coords)
   return np_utils.interweave_arrays(coords_mean)
 
-def _mean_coords_from_connectivity_cyl(vtx_id_idx, cr_expd, ctheta_expd, cz_expd):
+def _mean_coords_from_connectivity_cyl(vtx_id_idx, cr_expd, ctheta_expd, cz_expd, skip_odd_coords=False):
   """ Coordinates should be repeted to match the size of vtx_id_idx """
   cx,cy,cz = _to_xyz(cr_expd, ctheta_expd, cz_expd)
-  coords_mean = _reduce_mean(vtx_id_idx, cx, cy, cz)
+  coords_mean = _reduce_mean(vtx_id_idx, cx, cy, cz, skip_odd_coords=skip_odd_coords)
   return np_utils.interweave_arrays(_to_rthetaz(*coords_mean))
 
 def compute_edge_center(zone, comm):
@@ -62,7 +75,7 @@ def compute_edge_center(zone, comm):
   elif isinstance(coords, PT.CylindricalCoordinates):
     return _mean_coords_from_connectivity_cyl(edge_vtx_idx, *local_coords)
 
-def compute_face_center(zone, comm):
+def compute_face_center(zone, comm, face_indices=None):
   """Compute the face center of a distributed zone.
 
   Input zone must have cartesian coordinates recorded under a unique
@@ -79,6 +92,7 @@ def compute_face_center(zone, comm):
   zone_dim = PT.Zone.CellDimension(zone)
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
+  from super_miles.utils import logger
   if PT.Zone.Type(zone) == "Structured":
     vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
@@ -93,12 +107,29 @@ def compute_face_center(zone, comm):
       _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
       face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
       np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
+      if face_indices is not None:
+        all_face_distri = MT.getDistribution(ngon_node, 'Element')[1]
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
     else:
       global_distri = PT.Zone.CellDimension(zone) == 2
       face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
 
 
+  if face_indices is not None:
+    dface_stride = np.diff(face_vtx_idx).astype(np.int32, copy=False)
+    face_indices = np.atleast_2d(face_indices)
+    assert face_indices.ndim == 2
+    assert face_indices.shape[0] == 1
+    # block to part avec la dist des faces avec ln_to_gn == face_indices
+    # --> on va chercher seulement les face_vtx qui nous interessent
+    from super_miles.utils import logger
+    logger.error(comm.rank,dface_stride,face_indices)
+    ext_face_vtx_stride, ext_face_vtx = EP.block_to_part_strided(dface_stride,
+                          face_vtx, all_face_distri, [face_indices[0]-1], comm)
+    face_vtx = ext_face_vtx[0]
+    face_vtx_idx = np.cumsum(np.concatenate([[0],ext_face_vtx_stride[0]]))
+    logger.warn(comm.rank,face_vtx,face_vtx_idx)
+  
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
