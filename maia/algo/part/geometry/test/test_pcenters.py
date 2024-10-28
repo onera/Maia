@@ -179,6 +179,7 @@ def test_compute_cell_center_u_ngon_filtered(comm,cell_ind):
                             0.25, 0.75, 0.75, 
                             0.75, 0.75, 0.75])
   assert (cell_center == expected_cart[cell_ind]).all()
+  
 # Face center ---
 
 @pytest_parallel.mark.parallel(1)

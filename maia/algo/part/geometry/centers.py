@@ -128,7 +128,7 @@ def compute_face_center(zone,face_indices=None):
 
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U CGNS Zone
-    face_indices ((celldim,n_face) array): Optional face index filtering array 
+    face_indices ((n_face,) array): Optional face index filtering array 
   Returns:
     array: Flat (interlaced) numpy array of face centers
 
