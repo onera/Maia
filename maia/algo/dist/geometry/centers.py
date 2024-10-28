@@ -22,6 +22,7 @@ def _reduce_mean(vtx_id_idx, *arrays, skip_odd_coords=False):
   # cf issue #147
   vtx_id_n = np.diff(vtx_id_idx)
   coords_mean = []
+  if not len(vtx_id_idx): return np.array([]),np.array([]),np.array([])
   for array in arrays:
     if vtx_id_idx[-1] == len(array):
       coord_sum = np.add.reduceat(array, vtx_id_idx[:-1])
@@ -32,9 +33,6 @@ def _reduce_mean(vtx_id_idx, *arrays, skip_odd_coords=False):
     else:
       coords_mean.append(coord_sum / vtx_id_n)
   return coords_mean
-  # vtx_id_n = np.diff(vtx_id_idx)
-  # return [np.add.reduceat(array, vtx_id_idx[:-1]) / vtx_id_n for array in arrays]
-
 
 def _mean_coords_from_connectivity(vtx_id_idx, cx_expd, cy_expd, cz_expd, skip_odd_coords=False):
   """ Coordinates should be repeted to match the size of vtx_id_idx """
@@ -47,7 +45,7 @@ def _mean_coords_from_connectivity_cyl(vtx_id_idx, cr_expd, ctheta_expd, cz_expd
   coords_mean = _reduce_mean(vtx_id_idx, cx, cy, cz, skip_odd_coords=skip_odd_coords)
   return np_utils.interweave_arrays(_to_rthetaz(*coords_mean))
 
-def compute_edge_center(zone, comm):
+def compute_edge_center(zone, comm, edge_indices=None):
   """Compute the edge centers of a distributed zone.
 
   Input zone must have cartesian coordinates or cylindrical coordinates recorded under a unique
@@ -55,10 +53,37 @@ def compute_edge_center(zone, comm):
   Centers are computed using a basic average over the vertices of the edges.
   """
   if PT.Zone.Type(zone) == "Unstructured":
+    if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
+      raise NotImplementedError("Only U-elts zones are managed")
     global_distri = PT.Zone.CellDimension == 1
     edge_vtx_idx, edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
+    if edge_indices is not None:
+      # recovering all edge distri
+      if comm.rank == 0: dist_min = 0
+      else: dist_min = comm.recv(source=comm.rank-1)
+      dist_max = dist_min+edge_vtx_idx.shape[0]-1
+      if comm.rank != comm.size-1: req = comm.send(dist_max,dest=comm.rank+1)
+      all_edge_distri = np.array([dist_min,dist_max,comm.allreduce(dist_max,op=MPI.MAX)])
+      # offsetting the edge_indices
+      ordered_elts = PT.Zone.get_ordered_elements_per_dim(zone)
+      index_offset = sum([PT.Element.Size(e) for e in ordered_elts[3]])
+      index_offset += sum([PT.Element.Size(e) for e in ordered_elts[2]])
+      edge_indices = np.asarray(edge_indices)-index_offset
   else:
     raise NotImplementedError("Only U zones are managed")
+  
+  if edge_indices is not None:
+    dedge_stride = np.diff(edge_vtx_idx).astype(np.int32, copy=False)
+    edge_indices = np.atleast_2d(edge_indices).astype(np.int64, copy=False)
+    assert edge_indices.ndim == 2
+    assert edge_indices.shape[0] == 1
+    # /!\ ln_to_gn indexes from **1** onward
+    # block to part avec la dist des edges avec ln_to_gn == edge_indices
+    ext_edge_vtx_stride, ext_edge_vtx = EP.block_to_part_strided(dedge_stride,
+                          edge_vtx, all_edge_distri, [edge_indices[0]], comm)
+    edge_vtx = ext_edge_vtx[0]
+    edge_vtx_idx = np.cumsum(np.concatenate([[0],ext_edge_vtx_stride[0]]))
+  
 
   coords = PT.Zone.coordinates(zone)
 
@@ -101,9 +126,9 @@ def compute_face_center(zone, comm, face_indices=None):
     _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
     face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
     np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
+    face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
     if face_indices is not None:
       all_face_distri = MT.getDistribution(ngon_node, 'Element')[1]
-    face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
   else:
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
@@ -155,17 +180,41 @@ def compute_face_center(zone, comm, face_indices=None):
   elif isinstance(coords, PT.CylindricalCoordinates):
     return _mean_coords_from_connectivity_cyl(face_vtx_idx, *local_coords)
 
-def compute_cell_center(zone, comm):
+def compute_cell_center(zone, comm, cell_indices=None):
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
   if PT.Zone.Type(zone) == "Structured":
     cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone))
+    if cell_indices is not None:
+      all_cell_distri = MT.getDistribution(zone, 'Cell')[1]
   else:
     if PT.Zone.has_ngon_elements(zone):
       cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_ngon(zone, comm)
+      if cell_indices is not None:
+        all_cell_distri = MT.getDistribution(zone, 'Cell')[1]
     else:
       cell_vtx_idx, cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 3, True)
+      if cell_indices is not None:
+        # recovering all cell distri
+        if comm.rank == 0: dist_min = 0
+        else: dist_min = comm.recv(source=comm.rank-1)
+        dist_max = dist_min+cell_vtx_idx.shape[0]-1
+        if comm.rank != comm.size-1: req = comm.send(dist_max,dest=comm.rank+1)
+        all_cell_distri = np.array([dist_min,dist_max,comm.allreduce(dist_max,op=MPI.MAX)])
+        # no need for offsetting the cell_indices, since 3 is the highest dim
 
+
+  if cell_indices is not None:
+    dcell_stride = np.diff(cell_vtx_idx).astype(np.int32, copy=False)
+    cell_indices = np.atleast_2d(cell_indices).astype(np.int64, copy=False)
+    assert cell_indices.ndim == 2
+    assert cell_indices.shape[0] == 1
+    # /!\ ln_to_gn indexes from **1** onward
+    # block to part avec la dist des cells avec ln_to_gn == cell_indices
+    ext_cell_vtx_stride, ext_cell_vtx = EP.block_to_part_strided(dcell_stride,
+                          cell_vtx, all_cell_distri, [cell_indices[0]], comm)
+    cell_vtx = ext_cell_vtx[0]
+    cell_vtx_idx = np.cumsum(np.concatenate([[0],ext_cell_vtx_stride[0]]))
 
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))

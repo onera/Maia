@@ -164,8 +164,11 @@ def entity_vtx_connectivity_elt(zone, comm, dim, distri_global):
     all_cell_vtx.append(ec)
     all_cell_vtx_n.append(ec_idx)
 
-  cell_vtx_n = np.concatenate(all_cell_vtx_n, dtype=np.int32)
-  cell_vtx = np.concatenate(all_cell_vtx)
-  cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n)
+  if len(all_cell_vtx_n):
+    cell_vtx_n = np.concatenate(all_cell_vtx_n, dtype=np.int32)
+    cell_vtx = np.concatenate(all_cell_vtx)
+    cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n)
+  else: 
+    cell_vtx_idx, cell_vtx = np.array([],dtype=np.int32), np.array([],np.int32)
 
   return cell_vtx_idx, cell_vtx

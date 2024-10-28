@@ -17,6 +17,113 @@ def to_expected_cyl(expected_cart):
   expected_cyl[2::3] = z                    #Z
   return expected_cyl
 
+#region edge_center ------------------------------------------------------------
+@pytest.mark.skip("Not implemented for U-NGON zones")
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [
+  False,
+  True
+  ])
+def test_compute_edge_center_3d_u_ngon(cylindrical,comm):
+  raise NotImplementedError
+
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [False, True])
+def test_compute_edge_center_3d_u_elts(cylindrical,comm):
+  tree = maia.factory.generate_dist_block(3, 'HEXA_8', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  if cylindrical:
+    maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
+
+  edge_center = GEO.compute_edge_center(zone, comm)
+
+  assert np.allclose(edge_center,[])
+
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [False,True])
+def test_compute_edge_center_2d_u_elts(cylindrical,comm):
+  tree = maia.factory.generate_dist_block(5, 'TRI_3', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  if cylindrical:
+    maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
+
+  edge_center = GEO.compute_edge_center(zone, comm)
+
+  expec = [
+    [0.125, 0.   , 0.   ,   0.375, 0.   , 0.   , 
+     0.625, 0.   , 0.   ,   0.875, 0.   , 0.   , 
+     0.125, 1.   , 0.   ,   0.375, 1.   , 0.   ],
+    [0.625, 1.   , 0.   ,   0.875, 1.   , 0.   ,
+     0.   , 0.125, 0.   ,   0.   , 0.375, 0.   ,
+     0.   , 0.625, 0.   ],
+    [0.   , 0.875, 0.   ,   1.   , 0.125, 0.   ,
+     1.   , 0.375, 0.   ,   1.   , 0.625, 0.   ,
+     1.   , 0.875, 0.   ],
+  ]
+  expected_edge_center = np.array(expec[comm.rank])
+
+  if cylindrical:
+    expected_edge_center = to_expected_cyl(expected_edge_center)
+
+  assert np.allclose(edge_center, expected_edge_center)
+
+@pytest.mark.skip("Not implemented for S zones")
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [
+  False,
+  True
+  ])
+def test_compute_edge_center_3d_s(cylindrical,comm):
+  raise NotImplementedError
+
+@pytest.mark.skip("Not implemented for U-NGON zones")
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [
+  False,
+  True
+  ])
+def test_compute_edge_center_3d_u_ngon_filtered(cylindrical,comm):
+  raise NotImplementedError
+
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [False, True])
+@pytest.mark.parametrize("bc_path,expec", [
+  ("ZoneBC/Xmin/PointList", [[0.   , 0.125, 0.   , 0.   , 0.375, 0.   ], [0.   , 0.625, 0.  , ], [0.   , 0.875, 0.   ]]),
+  ("ZoneBC/Xmax/PointList", [[1.   , 0.125, 0.   , 1.   , 0.375, 0.   ],[1.   , 0.625, 0.   ],[1.   , 0.875, 0.   ]]),
+  ("ZoneBC/Ymin/PointList", [[0.125, 0.   , 0.   , 0.375, 0.   , 0.   ],[0.625, 0.   , 0.   ],[0.875, 0.   , 0.   ]]),
+  ("ZoneBC/Ymax/PointList", [[0.125, 1.   , 0.   , 0.375, 1.   , 0.   ],[0.625, 1.   , 0.   ],[0.875, 1.   , 0.   ]]),
+  ])
+def test_compute_edge_center_2d_u_elts_filtered(cylindrical,comm,bc_path,expec):
+  tree = maia.factory.generate_dist_block(5, 'TRI_3', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  edge_ind = PT.get_value(PT.get_node_from_path(zone,bc_path))
+
+  if cylindrical:
+    maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
+
+  edge_center = GEO.compute_edge_center(zone, comm, edge_indices=edge_ind)
+
+  expected_edge_center = np.array(expec[comm.rank])
+
+  if cylindrical:
+    expected_edge_center = to_expected_cyl(expected_edge_center)
+
+  assert np.allclose(edge_center, expected_edge_center)
+
+@pytest.mark.skip("Not implemented for S zones")
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("cylindrical", [
+  False,
+  True
+  ])
+def test_compute_edge_center_3d_s_filtered(cylindrical,comm):
+  raise NotImplementedError
+
+#endregion edge_center ---------------------------------------------------------
+#region face_center ------------------------------------------------------------
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("cylindrical", [False, True])
@@ -88,7 +195,6 @@ def test_compute_face_center3d_s(cylindrical, comm):
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
-  # logger.warn(comm.rank, face_ind)
   face_center = GEO.compute_face_center(zone, comm)
   expec = [
     [0.  , 0.25, 0.25,   0.5 , 0.25, 0.25,   1.  , 0.25, 0.25,   0.  , 0.75, 0.25,
@@ -152,7 +258,6 @@ def test_compute_face_center3d_u_elts_filtered(cylindrical, comm, bc_path,expec)
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
   face_center = GEO.compute_face_center(zone, comm, face_ind)
-  # return
   expected_face_center = np.array(expec[comm.rank])
 
   if cylindrical:
@@ -355,6 +460,9 @@ def test_compute_face_center2d_s_filtered(cylindrical, comm, pr, expec):
 
   assert np.allclose(face_center, expected_face_center)
 
+#endregion face_center ---------------------------------------------------------
+#region cell_center ------------------------------------------------------------
+
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("elt_kind", ["S", "NFACE_n", "Poly"])
 @pytest.mark.parametrize("cylindrical", [False, True])
@@ -380,3 +488,86 @@ def test_compute_cell_center(elt_kind, cylindrical, comm):
       ][comm.Get_rank()]
 
   assert np.allclose(expt_cell_center, cell_center)
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("cylindrical", [
+  False,True])
+@pytest.mark.parametrize("cell_indices,expec",[
+  ([[1],[2]],[[0.25,0.25,0.25],[0.75,0.25,0.25]]),
+  ([[1,2,5,6],[3,4,7,8]],[[0.25,0.25,0.25, 0.75,0.25,0.25, 0.25,0.25,0.75, 0.75,0.25,0.75,],
+                          [0.25,0.75,0.25, 0.75,0.75,0.25, 0.25,0.75,0.75, 0.75,0.75,0.75]]),
+  ([[1,2],[]],[[0.25,0.25,0.25,0.75,0.25,0.25],[]]),
+  ([[],[1,2]],[[],[0.25,0.25,0.25,0.75,0.25,0.25]]),
+  ([[],[]],[[],[]]),
+])
+def test_compute_cell_center_u_ngon_filtered(cylindrical, comm, cell_indices, expec):
+  tree = maia.factory.generate_dist_block(3, "NFace_n", comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  if cylindrical:
+    maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
+  
+  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=cell_indices[comm.rank])
+
+  expected_cell_center = np.array(expec[comm.rank])
+
+  if cylindrical:
+    expected_cell_center = to_expected_cyl(expected_cell_center)
+
+  assert np.allclose(cell_center,expected_cell_center)
+
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("cylindrical", [False, True])
+@pytest.mark.parametrize("cell_indices,expec",[
+  ([[1],[2]],[[0.25,0.25,0.25],[0.75,0.25,0.25]]),
+  ([[1,2,5,6],[3,4,7,8]],[[0.25,0.25,0.25, 0.75,0.25,0.25, 0.25,0.25,0.75, 0.75,0.25,0.75,],
+                          [0.25,0.75,0.25, 0.75,0.75,0.25, 0.25,0.75,0.75, 0.75,0.75,0.75]]),
+  ([[1,2],[]],[[0.25,0.25,0.25,0.75,0.25,0.25],[]]),
+  ([[],[1,2]],[[],[0.25,0.25,0.25,0.75,0.25,0.25]]),
+  ([[],[]],[[],[]]),
+])
+def test_compute_cell_center_u_elts_filtered(cylindrical, comm, cell_indices, expec):
+  tree = maia.factory.generate_dist_block(3, "HEXA_8", comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  if cylindrical:
+    maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
+  
+  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=cell_indices[comm.rank])
+
+  expected_cell_center = np.array(expec[comm.rank])
+
+  if cylindrical:
+    expected_cell_center = to_expected_cyl(expected_cell_center)
+
+  assert np.allclose(cell_center,expected_cell_center)
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("cylindrical", [False,True])
+@pytest.mark.parametrize("cell_indices,expec",[
+  ([[[1,1],[1,1],[1,1]],[[2,2],[2,2],[2,2]]],[[0.25,0.25,0.25],[0.75,0.75,0.75]]),
+  ([[[1,1],[1,2],[1,1]],[[2,2],[2,2],[1,2]]],[[0.25,0.25,0.25, 0.25,0.75,0.25],[0.75,0.75,0.25, 0.75,0.75,0.75]]),
+])
+def test_compute_cell_center_s_filtered(cylindrical, comm, cell_indices, expec):
+  tree = maia.factory.generate_dist_block(3, "S", comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  n_vtx  = PT.Zone.VertexSize(zone)
+  from maia.utils import pr_utils
+  point_list = pr_utils.compute_pointList_from_pointRanges([np.asarray(cell_indices[comm.rank])],
+                                                           n_vtx,f"CellCenter")
+
+  if cylindrical:
+    maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
+  
+  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=point_list)
+
+  expected_cell_center = np.array(expec[comm.rank])
+
+  if cylindrical:
+    expected_cell_center = to_expected_cyl(expected_cell_center)
+
+  assert np.allclose(cell_center,expected_cell_center)
+  
+#endregion cell_center ------------------------------------------------------------
