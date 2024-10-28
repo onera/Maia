@@ -2,7 +2,7 @@ import numpy as np
 
 import maia.pytree as PT
 
-from .s_numbering_funcs import ijk_to_index_from_loc
+from .s_numbering_funcs import ijk_to_index_from_loc, ij_to_index_from_loc
 
 def normal_index_shift(point_range, n_vtx, bnd_axis, input_loc, output_loc):
   """
@@ -42,17 +42,34 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, loc, order='F'):
 
   n_cell_S = [nv - 1 for nv in n_vtx_S]
 
+  dim = len(n_vtx_S)
+
   # The lambda func ijk_to_func redirect to the good indexing function depending
   # on the output grid location
-  ijk_to_func = lambda i,j,k : ijk_to_index_from_loc(i,j,k, loc, n_vtx_S)
+  if dim == 3:
+    ijk_to_func = lambda i,j,k : ijk_to_index_from_loc(i,j,k, loc, n_vtx_S)
+  elif dim == 2:
+    ijk_to_func = lambda i,j : ij_to_index_from_loc(i,j, loc, n_vtx_S)
+  elif dim == 1:
+    ijk_to_func = lambda i : i
+  else:
+    raise AssertionError(f"Invalid 'n_vtx_S' argument ({n_vtx_S})")
 
   # The lambda func ijk_to_vect_func is a wrapping to ijk_to_func (and so to the good indexing func)
   # but with args expressed as numpy arrays : this allow vectorial call of indexing function as if we did an
   # imbricated loop
-  if order == 'F':
-    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
-  elif order == 'C':
-    ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx.reshape(-1,1,1), j_idx.reshape(-1,1), k_idx)
+  if dim == 3:
+    if order == 'F':
+      ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
+    elif order == 'C':
+      ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx.reshape(-1,1,1), j_idx.reshape(-1,1), k_idx)
+  elif dim == 2:
+    if order == 'F':
+      ijk_to_vect_func = lambda i_idx, j_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1))
+    elif order == 'C':
+      ijk_to_vect_func = lambda i_idx, j_idx : ijk_to_func(i_idx.reshape(-1,1), j_idx)
+  elif dim == 1:
+    ijk_to_vect_func = lambda i_idx : ijk_to_func(i_idx)
 
   sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
   point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=n_vtx_S.dtype)
