@@ -9,6 +9,20 @@ def test_generate_dist_points():
   assert PT.Zone.n_vtx(zone) == 10**3
   #generate_dist_points@end
 
+def test_generate_dist_lines():
+  #generate_dist_line@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  start_point = np.array([0., 0., 0.])
+  end_point   = np.array([1., 2., 0.])
+  dist_tree = maia.factory.generate_dist_line(10, 'Unstructured', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, "Zone_t")
+  assert PT.Zone.n_vtx (zone)==5
+  assert PT.Zone.n_cell(zone)==4
+  #generate_dist_line@end
+
 def test_generate_dist_block():
   #generate_dist_block@start
   from mpi4py import MPI
