@@ -14,6 +14,7 @@ def test_generate_dist_lines():
   from mpi4py import MPI
   import maia
   import maia.pytree as PT
+  import numpy as np
 
   start_point = np.array([0., 0., 0.])
   end_point   = np.array([1., 2., 0.])
