@@ -10,6 +10,7 @@ Generation
 Generation functions create a distributed tree from some parameters.
 
 .. autofunction:: maia.factory.generate_dist_points
+.. autofunction:: maia.factory.generate_dist_line
 .. autofunction:: maia.factory.generate_dist_block
 .. autofunction:: maia.factory.generate_dist_sphere
 

@@ -1,4 +1,3 @@
-
 import maia
 import maia.pytree as PT
 from   maia.utils  import par_utils
@@ -20,8 +19,8 @@ def generate_dist_line(start, end, n_point, comm):
 
   Example:
     .. literalinclude:: snippets/test_factory.py
-      :start-after: #generate_line@start
-      :end-before:  #generate_line@end
+      :start-after: #generate_dist_line@start
+      :end-before:  #generate_dist_line@end
       :dedent: 2
   """
   dist_tree = PT.new_CGNSTree()
