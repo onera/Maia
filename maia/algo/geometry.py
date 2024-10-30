@@ -6,14 +6,14 @@ from .dist import geometry as dist_geometry
 from .part import geometry as part_geometry
 
 
-def _compute_elements_center(zone, dim, comm=None):
+def _compute_elements_center(zone, dim, comm=None, element_indices=None):
   """Dispatch centers computing according to zone dimension and 
   requested dimension """
   if MT.getDistribution(zone) is not None:
     assert comm is not None
-    return dist_geometry._compute_elements_center(zone, dim, comm)
+    return dist_geometry._compute_elements_center(zone, dim, comm, element_indices)
   else:
-    return part_geometry._compute_elements_center(zone, dim)
+    return part_geometry._compute_elements_center(zone, dim, element_indices)
 
 def _compute_elements_measure(zone, dim, comm=None):
   """Dispatch measure computing according to zone dimension and 
