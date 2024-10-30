@@ -19,12 +19,21 @@ def _to_rthetaz(x, y, z):
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
 
 def _reduce_mean(vtx_id_idx, *arrays, skip_odd_coords=False):
-  # cf issue #147
+  if not len(vtx_id_idx): return np.array([]),np.array([]),np.array([])
   vtx_id_n = np.diff(vtx_id_idx)
   coords_mean = []
-  if not len(vtx_id_idx): return np.array([]),np.array([]),np.array([])
   for array in arrays:
-    if vtx_id_idx[-1] == len(array):
+    # cf issue #147
+    # np.add.reduceat sums chunks (described by vtx_id_idx) of the provided array
+    # but with 2 catches:
+    # - values vtx_id_idx should not be >= len(array)
+    # - the last value of coord_sum is sum(array[vtx_id_idx[-1]:len(array)])
+    if np.amax(vtx_id_idx[:-1],initial=0) == len(array):
+      # e.g. vtx_id_idx = [1,4,2,3] / array [0,1,2,3]
+      array = np.append(array,0)
+      coord_sum = np.add.reduceat(array, vtx_id_idx)[:-1]
+    elif vtx_id_idx[-1] == len(array):
+      # e.g. vtx_id_idx = [1,4] / array [0,1,2,3]
       coord_sum = np.add.reduceat(array, vtx_id_idx[:-1])
     else:
       coord_sum = np.add.reduceat(array, vtx_id_idx)[:-1]
@@ -52,6 +61,12 @@ def compute_edge_center(zone, comm, edge_indices=None):
   GridCoordinates node.
   Centers are computed using a basic average over the vertices of the edges.
   """
+  if edge_indices is not None:
+    # edge_indices must be broadcastable to (1,edge_nb) (to follow the cgns standard)
+    edge_indices = np.atleast_2d(edge_indices).astype(np.int64, copy=False)
+    assert edge_indices.ndim == 2
+    assert edge_indices.shape[0] == 1
+
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
       raise NotImplementedError("Only U-elts zones are managed")
@@ -74,16 +89,12 @@ def compute_edge_center(zone, comm, edge_indices=None):
   
   if edge_indices is not None:
     dedge_stride = np.diff(edge_vtx_idx).astype(np.int32, copy=False)
-    edge_indices = np.atleast_2d(edge_indices).astype(np.int64, copy=False)
-    assert edge_indices.ndim == 2
-    assert edge_indices.shape[0] == 1
     # /!\ ln_to_gn indexes from **1** onward
     # block to part avec la dist des edges avec ln_to_gn == edge_indices
     ext_edge_vtx_stride, ext_edge_vtx = EP.block_to_part_strided(dedge_stride,
                           edge_vtx, all_edge_distri, [edge_indices[0]], comm)
     edge_vtx = ext_edge_vtx[0]
     edge_vtx_idx = np.cumsum(np.concatenate([[0],ext_edge_vtx_stride[0]]))
-  
 
   coords = PT.Zone.coordinates(zone)
 
@@ -118,6 +129,12 @@ def compute_face_center(zone, comm, face_indices=None):
   """
   zone_dim = PT.Zone.CellDimension(zone)
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
+
+  if face_indices is not None:
+    # face_indices must be broadcastable to (1,face_nb) (to follow the cgns standard)
+    face_indices = np.atleast_2d(face_indices).astype(np.int64, copy=False)
+    assert face_indices.ndim == 2
+    assert face_indices.shape[0] == 1
 
   if PT.Zone.Type(zone) == "Structured":
     vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
@@ -155,9 +172,6 @@ def compute_face_center(zone, comm, face_indices=None):
 
   if face_indices is not None:
     dface_stride = np.diff(face_vtx_idx).astype(np.int32, copy=False)
-    face_indices = np.atleast_2d(face_indices).astype(np.int64, copy=False)
-    assert face_indices.ndim == 2
-    assert face_indices.shape[0] == 1
     # /!\ ln_to_gn indexes from **1** onward
     # block to part avec la dist des faces avec ln_to_gn == face_indices
     ext_face_vtx_stride, ext_face_vtx = EP.block_to_part_strided(dface_stride,
@@ -183,6 +197,12 @@ def compute_face_center(zone, comm, face_indices=None):
 def compute_cell_center(zone, comm, cell_indices=None):
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
+  if cell_indices is not None:
+    # cell_indices must be broadcastable to (1,cell_nb) (to follow the cgns standard)
+    cell_indices = np.atleast_2d(cell_indices).astype(np.int64, copy=False)
+    assert cell_indices.ndim == 2
+    assert cell_indices.shape[0] == 1
+
   if PT.Zone.Type(zone) == "Structured":
     cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone))
     if cell_indices is not None:
@@ -206,9 +226,6 @@ def compute_cell_center(zone, comm, cell_indices=None):
 
   if cell_indices is not None:
     dcell_stride = np.diff(cell_vtx_idx).astype(np.int32, copy=False)
-    cell_indices = np.atleast_2d(cell_indices).astype(np.int64, copy=False)
-    assert cell_indices.ndim == 2
-    assert cell_indices.shape[0] == 1
     # /!\ ln_to_gn indexes from **1** onward
     # block to part avec la dist des cells avec ln_to_gn == cell_indices
     ext_cell_vtx_stride, ext_cell_vtx = EP.block_to_part_strided(dcell_stride,
@@ -229,7 +246,7 @@ def compute_cell_center(zone, comm, cell_indices=None):
     return _mean_coords_from_connectivity_cyl(cell_vtx_idx, *local_coords)
 
 
-def _compute_elements_center(zone, dim, comm):
+def _compute_elements_center(zone, dim, comm, element_indices=None):
   """Dispatch centers computing according to zone dimension and 
   requested dimension
   Return a raw interlaced array or None"""
@@ -237,19 +254,19 @@ def _compute_elements_center(zone, dim, comm):
   if dim == 'CellCenter':
     dim = zone_dim
   if dim == 3 and zone_dim >= 3:
-    return compute_cell_center(zone, comm)
+    return compute_cell_center(zone, comm, cell_indices=element_indices)
   elif dim == 2 and zone_dim >= 2:
-    return compute_face_center(zone, comm)
+    return compute_face_center(zone, comm, face_indices=element_indices)
   elif dim == 1 and zone_dim >= 1:
-    return compute_edge_center(zone, comm)
+    return compute_edge_center(zone, comm, edge_indices=element_indices)
 
-def compute_elements_center(zone, dim, comm):
+def compute_elements_center(zone, dim, comm, element_indices=None):
   """ Implementation of maia.algo.compute_elements_center for a given distributed zone.
   See the above function for full documentation """
 
   cell_dim = PT.Zone.CellDimension(zone)
   rq_dim = cell_dim if dim == 'CellCenter' else dim
-  interlaced_centers = _compute_elements_center(zone, rq_dim, comm)
+  interlaced_centers = _compute_elements_center(zone, rq_dim, comm, element_indices)
   if interlaced_centers is None:
     msg = f"Zone '{PT.get_name(zone)}' skipped during centers computing because "\
           f"its dimension is too low (cell_dim={cell_dim} < {rq_dim})"

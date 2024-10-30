@@ -227,7 +227,6 @@ def test_compute_face_center3d_u_ngon_filtered(cylindrical, comm, bc_path, expec
   zone = PT.get_all_Zone_t(tree)[0]
 
   face_ind = PT.get_value(PT.get_node_from_path(zone,bc_path))
-  
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
@@ -490,8 +489,7 @@ def test_compute_cell_center(elt_kind, cylindrical, comm):
   assert np.allclose(expt_cell_center, cell_center)
 
 @pytest_parallel.mark.parallel(2)
-@pytest.mark.parametrize("cylindrical", [
-  False,True])
+@pytest.mark.parametrize("cylindrical", [False,True])
 @pytest.mark.parametrize("cell_indices,expec",[
   ([[1],[2]],[[0.25,0.25,0.25],[0.75,0.25,0.25]]),
   ([[1,2,5,6],[3,4,7,8]],[[0.25,0.25,0.25, 0.75,0.25,0.25, 0.25,0.25,0.75, 0.75,0.25,0.75,],

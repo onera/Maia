@@ -25,7 +25,7 @@ def _compute_elements_measure(zone, dim, comm=None):
     return part_geometry._compute_elements_measure(zone, dim)
   
 
-def compute_elements_center(t, dim, comm=None):
+def compute_elements_center(t, dim, comm=None, element_indices=None):
   """Compute the centers of the specified mesh entity.
 
   The mesh entity on which centers are computed must be specified using
@@ -61,6 +61,7 @@ def compute_elements_center(t, dim, comm=None):
     t    (CGNSTree)            : Tree starting at Zone_t level or higher
     dim  (int or 'CellCenter') : Entity on which centers are computed (see above)
     comm       (MPIComm)       : MPI communicator, mandatory only for distributed trees
+    element_indicies (array)   : Numpy array (or similar) of filtering indices
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -73,9 +74,9 @@ def compute_elements_center(t, dim, comm=None):
     
     if MT.getDistribution(zone) is not None:
       assert comm is not None
-      dist_geometry.compute_elements_center(zone, dim, comm)
+      dist_geometry.compute_elements_center(zone, dim, comm, element_indices)
     else:
-      part_geometry.compute_elements_center(zone, dim)
+      part_geometry.compute_elements_center(zone, dim, element_indices)
 
 def compute_elements_measure(t, dim, comm=None):
   """Compute the length, area or volume of the specified mesh entity.
