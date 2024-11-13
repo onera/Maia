@@ -31,9 +31,9 @@ def generate_dist_line(start, end, n_point, comm):
   delta       = length/(n_point-1)
   vtx_distrib = par_utils.uniform_distribution(n_point, comm)
   dn_vtx      = vtx_distrib[1]-vtx_distrib[0]
-  x = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[0]
-  y = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[1]
-  z = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[2]
+  x = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[0]+start[0]
+  y = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[1]+start[1]
+  z = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[2]+start[2]
   
   # > Edge connectivity
   bar_distrib = par_utils.uniform_distribution(n_point-1, comm)
