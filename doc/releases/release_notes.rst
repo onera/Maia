@@ -9,6 +9,13 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Developpement version
+---------------------
+
+🐞 Fixes
+^^^^^^^^
+- merge_zones: copy AdditionalFamilyName nodes when merging subsets
+
 v1.5 (September 2024)
 ---------------------
 

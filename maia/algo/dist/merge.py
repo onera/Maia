@@ -478,7 +478,7 @@ def pre_merge_families_per_zone(zone, query, comm):
       parent = node_list[-2] if len(node_list) > 1 else zone
       merged_node = GN.concatenate_subset_nodes(nodes, comm, output_name=f'merged{fam}',
                                                 additional_data_queries=[[bcds_no_pl, 'BCData_t', 'DataArray_t']],
-                                                additional_child_queries=['FamilyName_t'])
+                                                additional_child_queries=['AdditionalFamilyName_t', 'FamilyName_t'])
 
       # Also merge BCDS with pl if node is a BC
       if PT.get_label(merged_node) == 'BC_t':
@@ -707,15 +707,22 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
     else:
       PT.new_DataArray(PT.get_name(nodes[-1]), merged_data[path], parent=merged_parent)
 
-  additional_types = ['GridLocation_t', 'FamilyName_t', 'Descriptor_t',
-                      'GridConnectivityType_t', 'GridConnectivityProperty_t']
-  additional_names = []
+  # Add these nodes taking value for any input node
+  additional_types = ['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t']
   for type in additional_types:
     for sub_node in PT.iter_children_from_label(ref_node, type):
       PT.add_child(merged_node, sub_node)
-  for name in additional_names:
-    for sub_node in PT.iter_children_from_name(ref_node, name):
-      PT.add_child(merged_node, sub_node)
+
+  # Add these nodes only if same name / value on all input nodes
+  merge_me = lambda n : PT.get_label(n) in ['AdditionalFamilyName_t', 'FamilyName_t', 'Descriptor_t']
+  common = {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
+             for n in PT.iter_children_from_predicate(ref_node, merge_me)}
+  for subset_node in [x for x in subset_nodes if x is not None]:
+    # Use set intersection to eliminate nodes that does not appear on this subset
+    common = common & {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
+                        for n in PT.iter_children_from_predicate(subset_node, merge_me)}
+  for c in sorted(common): #Sort to garantie same insertion order across mpi ranks
+    PT.new_child(merged_node, name=c[0], label=c[1], value=c[2])
 
   MT.newDistribution({'Index' : merged_pl_distri}, merged_node)
 
