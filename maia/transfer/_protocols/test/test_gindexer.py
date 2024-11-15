@@ -18,10 +18,10 @@ class Test_g_indexer:
 
   def init_p(self, comm):
     distri = np.array([0, 5, 5, 8, 12])
-    g_idx = [np.array([1,3,5,7,9]),
-             np.array([12,10]),
+    g_idx = [np.array([0,2,4,6,8]),
+             np.array([11,9]),
              np.array([], int),      # Rank 2 requests no indices !
-             np.array([1,1,10,1,2]) # Indices can be requested more than once
+             np.array([0,0,9,0,1]) # Indices can be requested more than once
             ][comm.rank]
 
     self.g_idx = g_idx
@@ -243,10 +243,10 @@ class Test_g_indexer:
   def test_failures(self, comm):
     # Creating a DI with an 'out of bounds' index should raise :
     distri = np.array([0, 5, 5, 8, 12])
-    g_idx = [np.array([1,3,5,7,9]),
-             np.array([12,10]),
+    g_idx = [np.array([0,2,4,6,8]),
+             np.array([11,9]),
              np.array([], int),      # Rank 2 requests no indices !
-             np.array([1,1,15,1,2]) # Indices can be requested more than once
+             np.array([0,0,14,0,1]) # Indices can be requested more than once
             ][comm.rank]
     with pytest.raises(IndexError):
       DI = GIndexer(distri, g_idx, comm)
@@ -265,7 +265,8 @@ def test_perfo(comm):
 
   distri = 10000 * np.arange(comm.size+1)
 
-  gnum = np.random.randint(0, distri[-1], 10000000) + 1
+  gnum = np.random.randint(0, distri[-1], 10000000)
+  gnum1 = gnum+1
   comm.barrier()
   st = time.time()
   DI = GIndexer(distri, gnum, comm)
@@ -276,17 +277,17 @@ def test_perfo(comm):
   import Pypdm.Pypdm as PDM
   #PDM.BlockToPart
   distri = distri.astype(np.int32)
-  gnum = gnum.astype(np.int32)
+  gnum1  = gnum1.astype(np.int32)
   comm.barrier()
   st = time.time()
-  BTP = PDM.BlockToPart(distri, comm, [gnum], 1)
+  BTP = PDM.BlockToPart(distri, comm, [gnum1], 1)
   ed = time.time()
   if comm.rank == 0:
     print("Creation time BlockToPart", ed-st)
 
   comm.barrier()
   st = time.time()
-  PTB = PDM.PartToBlock(comm, [gnum], pWeight=None, partN=1, t_distrib=0, t_post=1, userDistribution=distri)
+  PTB = PDM.PartToBlock(comm, [gnum1], pWeight=None, partN=1, t_distrib=0, t_post=1, userDistribution=distri)
   ed = time.time()
   if comm.rank == 0:
     print("Creation time PartToBlock", ed-st)

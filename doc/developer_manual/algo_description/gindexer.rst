@@ -300,5 +300,5 @@ API reference
     :member-order: bysource
 
 .. autoclass:: maia.transfer.protocols.GIndexer_m
-    :members: __init__, take, put, Take_into, Put_into, Take, Put, Take_v, Put_v
+    :members:
     :member-order: bysource

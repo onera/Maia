@@ -73,10 +73,17 @@ class GIndexer_m:
   """
 
   def __init__(self, distri, g_idx_l, comm):
+    """ Generalization of :func:`GIndexer.__init__` for multi index access.
+
+    Args:
+      distri (integer array of size :math:`s+1`) : distribution of the collection
+      g_idx_l (N integer arrays of size :math:`pn_k`) : accessed global indices
+      comm (MPIComm) : communicator
+    """
     assert distri.size == comm.Get_size() + 1
 
     # Binary search : for each gnum, find the corresponding rank in distribution
-    owning_rank_l = [np.searchsorted(distri, g_idx-1, side='right') - 1 for g_idx in g_idx_l]
+    owning_rank_l = [np.searchsorted(distri, g_idx, side='right') - 1 for g_idx in g_idx_l]
 
     ok = all( (0 <= owning_rank).all() and (owning_rank < comm.Get_size()).all() for owning_rank in owning_rank_l)
     if not comm.allreduce(ok, op=MPI.LAND):
@@ -95,7 +102,7 @@ class GIndexer_m:
     for g_idx, sorting_idx in zip(g_idx_l, sorting_idx_l):
       send_data[sorting_idx] = g_idx
     comm.Alltoallv((send_data, send_counts), (recv_data, recv_counts))
-    recv_data -= (distri[comm.Get_rank()] + 1)
+    recv_data -= distri[comm.Get_rank()]
 
     self.comm = comm
     self.dn = distri[comm.Get_rank()+1] - distri[comm.Get_rank()]   # Number of managed indices
@@ -478,7 +485,7 @@ class GIndexer(GIndexer_m):
     - **g_idx** (size :math:`pn`):
 
       - different size and value on each process;
-      - values in range :math:`[1, n]`.
+      - values in range :math:`[0, n-1]`.
 
     Args:
       distri (integer array of size :math:`s+1`) : distribution of the collection
