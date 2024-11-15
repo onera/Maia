@@ -232,6 +232,10 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
           lngn_list.append(PT.get_value(MT.getGlobalNumbering(node, 'Index')))
     else:
+      if not par_utils.exists_anywhere(part_zones, matching_region_path+'/:CGNS#GlobalNumbering/Index', comm):
+        # For structured zones, gnum are not created during partitioning so add it now
+        assert PT.Zone.Type(dist_zone) == "Structured"
+        IPTB.create_part_pr_gnum(dist_zone, part_zones, matching_region_path, comm)
       lngn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
     #Exchange
