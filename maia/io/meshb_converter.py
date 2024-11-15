@@ -1,3 +1,4 @@
+from packaging.version import Version
 import time
 import mpi4py.MPI as MPI
 
@@ -63,7 +64,10 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   face_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_SURFACIC)
   cell_groups = dmesh_nodal.dmesh_nodal_get_group(PDM._PDM_GEOMETRY_KIND_VOLUMIC)
 
-  vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
+  if Version("2.6") <= Version(maia.PDM_VERSION.base_version):
+    vtx_data = dmesh_nodal.dmesh_nodal_get_vtx_tag(comm)
+  else:
+    vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
   vtx_tag = vtx_data['np_vtx_tag']
 
 

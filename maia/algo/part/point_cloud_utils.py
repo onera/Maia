@@ -74,6 +74,9 @@ def create_sub_numbering(lngn_l, comm):
   gnums.
   """
   n_part = len(lngn_l)
+  if comm.allreduce(n_part) == 0:
+    return []
+
   gen_gnum = PDM.GlobalNumbering(3, n_part, 0, 0., comm)
 
   for i_part, lngn in enumerate(lngn_l):
