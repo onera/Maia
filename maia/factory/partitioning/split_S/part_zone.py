@@ -195,7 +195,7 @@ def create_subsets(d_zone, p_zone):
     _part_range = np.copy(part_range)
     if subset_loc == 'Vertex':
       _part_range[:,1] += 1
-    elif 'FaceCenter' in subset_loc:
+    elif 'FaceCenter' in subset_loc or 'EdgeCenter' in subset_loc:
       dir = {'I':0, 'J':1, 'K':2}[subset_loc[0]]
       _part_range[dir,1] += 1
     # Compute intersection of PointRange, in dist zone numbering
