@@ -138,16 +138,16 @@ class GIndexer_m:
     pickelized = [pickle.dumps(data) for data in data_in]
     counts_in  = np.array([len(p) for p in pickelized], dtype=int)
 
-    joined = np.frombuffer(b''.join(pickelized), dtype=np.int8)
+    buff_in = np.frombuffer(b''.join(pickelized), dtype=np.int8)
     
-    data_out_l, counts_out_l = GIndexer_m.Take_v(self, joined, counts_in)
+    data_out_l = GIndexer_m.Take_v(self, (buff_in, counts_in))
     
     res = list()
-    for data_out, counts_out in zip(data_out_l, counts_out_l):
+    for (buff_out, counts_out) in data_out_l:
       out = []
       r_start = 0
       for size in counts_out:
-        out.append(pickle.loads(data_out[r_start:r_start+size].tobytes()))
+        out.append(pickle.loads(buff_out[r_start:r_start+size].tobytes()))
         r_start += size
       res.append(out)
     return res
@@ -161,20 +161,20 @@ class GIndexer_m:
     Returns:
       list of size :math:`dn`: output distributed data
     """
-    counts_in_l = list()
-    joined_l    = list()
+    _data_in_l = list()
     for data_in in data_in_l:
       pickelized = [pickle.dumps(data) for data in data_in]
-      counts_in_l.append(np.array([len(p) for p in pickelized], dtype=int))
-      joined_l.append(np.frombuffer(b''.join(pickelized), dtype=np.int8))
+      counts_in = np.array([len(p) for p in pickelized], dtype=int)
+      buff_in   = np.frombuffer(b''.join(pickelized), dtype=np.int8)
+      _data_in_l.append((buff_in, counts_in))
     
-    data_out, counts_out = GIndexer_m.Put_v(self, joined_l, counts_in_l)
+    buff_out, counts_out = GIndexer_m.Put_v(self, _data_in_l)
     
     out = []
     r_start = 0
     for size in counts_out:
       if size != 0:
-        out.append(pickle.loads(data_out[r_start:r_start+size].tobytes()))
+        out.append(pickle.loads(buff_out[r_start:r_start+size].tobytes()))
       else:
         out.append(None)
       r_start += size
@@ -268,6 +268,7 @@ class GIndexer_m:
 
   def Take(self, data_in):
     """ Generalization of :func:`GIndexer.Take` for multi index access.
+
     Args:
       data_in (buffer of size :math:`c*dn`) : section of the distributed data
     Returns:
@@ -286,7 +287,7 @@ class GIndexer_m:
     """ Generalization of :func:`GIndexer.Put` for multi index access.
 
     Args:
-      data_in (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
+      data_in_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
         data to write at each accessed index
     Returns:
       buffer of size :math:`c*pn`: output distributed data
@@ -334,30 +335,28 @@ class GIndexer_m:
       take_strided(_counts_out, recv_buff, part_write_pos, data_out)
 
 
-  def Take_v(self, data_in, counts_in):
+  def Take_v(self, data_in):
     """ Generalization of :func:`GIndexer.Take_v` for multi index access.
 
     Args:
-      buff_in (buffer) : values for the distributed data
-      counts_in (np array of :math:`dn` int) : counts for the distributed data
+      data_in (variable buffer): section of the distributed data, ie tuple of values
+        (**buff_in** (*buffer*), **counts_in** (*np array of* :math:`dn` *int*))
     Returns:
-      tuple: pair of values extracted at the requested indices, ie:
-
-      - **buff_out_l** (:math:`N` *buffer*): extracted values for each index list
-      - **counts_out_l** (:math`N` ndarray of :math:`pn_k` int): extracted counts for each index list
+      list of N variable buffer: for each index list, data extracted as tuple of values \
+        (**buff_out** (*buffer*), **counts_out** (*np array of* :math:`pn_k` *int*))
     """
     # Variable stride
 
+    buff_in, counts_in = data_in
     assert isinstance(counts_in, np.ndarray)
     assert counts_in.size == self.dn
     assert counts_in.dtype == int
-    assert data_in.size == counts_in.sum()
+    assert buff_in.size == counts_in.sum()
     # Exchange counts_in
     # _ : in all_to_all layout. Do not call Take because we need the intermediate layout
     _counts_in  = counts_in[self.dist_select_idx]
     _counts_out = np.empty(sum(self.pn), counts_in.dtype)
     self.comm.Alltoallv((_counts_in, self.dist_counts), (_counts_out, self.part_counts))
-    counts_out_l = [_counts_out[part_write_pos] for part_write_pos in self.part_write_pos]
 
     # Count the actual number of items to send/recv, using stride array
     # (this is the partial sum of portion of the stride array related to the given rank)
@@ -372,39 +371,39 @@ class GIndexer_m:
       idx_recv += self.part_counts[i]
 
     
-    send_buff = np.empty(send_counts.sum(), data_in.dtype)
-    take_strided(counts_in, data_in, self.dist_select_idx, send_buff)
+    send_buff = np.empty(send_counts.sum(), buff_in.dtype)
+    take_strided(counts_in, buff_in, self.dist_select_idx, send_buff)
 
     # Exchange data buffer
-    recv_buff = np.empty(recv_counts.sum(), data_in.dtype)
+    recv_buff = np.empty(recv_counts.sum(), buff_in.dtype)
     self.comm.Alltoallv((send_buff, send_counts), (recv_buff, recv_counts))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
     data_out_l = list()
-    for counts_out, part_write_pos in zip(counts_out_l, self.part_write_pos):
-      data_out = np.empty(counts_out.sum(), recv_buff.dtype)
-      take_strided(_counts_out, recv_buff, part_write_pos, data_out)
-      data_out_l.append(data_out)
+    for part_write_pos in self.part_write_pos:
+      counts_out = _counts_out[part_write_pos]
+      buff_out = np.empty(counts_out.sum(), recv_buff.dtype)
+      take_strided(_counts_out, recv_buff, part_write_pos, buff_out)
+      data_out_l.append((buff_out, counts_out))
 
-    return data_out_l, counts_out_l
+    return data_out_l
 
 
-  def Put_v(self, buff_in_l, counts_in_l):
+  def Put_v(self, data_in_l):
     """ Generalization of :func:`GIndexer.Put_v` for multi index access.
 
     Args:
-      buff_in_l (:math:`N` buffers) : values to write for each index list
-      counts_in_l (:math:`N` ndarray of :math:`pn_k` int) : number of values
-        to write at each accessed index, for each index list
+      data_in_l (list of N variable buffer): for each index list, values to write as pair \
+        (**buff_in** (*buffer*), **counts_in** (*np array of* :math:`pn_k` *int*))
     Returns:
-      tuple: pair of values at each global index, ie:
-
-      - **buff_out** (*buffer*): values for the output distributed data
-      - **counts_out** (np array of :math:`dn` int): counts for output distributed data
+      variable buffer: output distributed data, returned as pair of values \
+        (**buff_out** (*buffer*), **counts_out** (*np array of* :math:`dn` *int*))
     """
     # Variable stride
 
-    assert len(counts_in_l) == len(buff_in_l) == len(self.pn)
+    buff_in_l   = [data_in[0] for data_in in data_in_l]
+    counts_in_l = [data_in[1] for data_in in data_in_l]
+    assert len(data_in_l) == len(self.pn)
     assert all(counts_in.size == pn for counts_in,pn in zip(counts_in_l, self.pn))
     assert all(counts_in.dtype == int for counts_in in counts_in_l)
     assert all(data_in.size == counts_in.sum() for data_in, counts_in in zip(buff_in_l, counts_in_l))
@@ -611,7 +610,7 @@ class GIndexer(GIndexer_m):
   def Take_v_into(self, data_in, counts_in, data_out, counts_out):
     super().Take_v_into(data_in, counts_in, [data_out], [counts_out])
 
-  def Take_v(self, buff_in, counts_in):
+  def Take_v(self, data_in):
     """ ``take`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by two objets:
@@ -629,20 +628,15 @@ class GIndexer(GIndexer_m):
     Be aware that following mpi4py convention, the order of objects is ``(buff, counts)``.
     
     Args:
-      buff_in (buffer) : values for the distributed data
-      counts_in (np array of :math:`dn` int) : counts for the distributed data
+      data_in (variable buffer): section of the distributed data, ie tuple of values
+        (**buff_in** (*buffer*), **counts_in** (*np array of* :math:`dn` *int*))
     Returns:
-      tuple: pair of values extracted at the requested indices, ie:
-
-      - **buff_out** (*buffer*): extracted values
-      - **counts_out** (np array of :math:`pn` int): extracted counts
+      variable buffer: data extracted at the requested indices, as a tuple of values \
+        (**buff_out** (*buffer*), **counts_out** (*np array of* :math:`pn` *int*))
     """
-    #TODO : to follow mpi4py and other funcs signature, we should use tuple in input
-    #def Take_v(self, data_in): with data_in == (buff_in, counts_in)
-    buff_out_l, counts_out_l = super().Take_v(buff_in, counts_in)
-    return buff_out_l[0], counts_out_l[0]
+    return super().Take_v(data_in)[0]
    
-  def Put_v(self, buff_in, counts_in):
+  def Put_v(self, data_in):
     """ ``put`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by two objets:
@@ -660,12 +654,10 @@ class GIndexer(GIndexer_m):
     Be aware that following mpi4py convention, the order of objects is ``(buff, counts)``.
 
     Args:
-      buff_in (buffer) : values to write
-      counts_in (np array of :math:`pn` int) : number of values to write at each accessed index
+      data_in (variable buffer): data to write at each accessed index, ie tuple 
+        (**buff_in** (*buffer*), **counts_in** (*np array of* :math:`pn` *int*))
     Returns:
-      tuple: pair of values at each global index, ie:
-
-      - **buff_out** (*buffer*): values for the output distributed data
-      - **counts_out** (np array of :math:`dn` int): counts for output distributed data
+      variable buffer: output distributed data, returned as the tuple of values \
+        (**buff_out** (*buffer*), **counts_out** (*np array of* :math:`dn` *int*))
     """
-    return super().Put_v([buff_in], [counts_in])
+    return super().Put_v([data_in])

@@ -199,7 +199,7 @@ class Test_g_indexer:
     # If we requested an index for which no data has been provided
     # by the managing process (counts_in = 0), we will simply get
     # not data for this index (counts_out = 0)
-    data_out, counts_out  = DI.Take_v(data_in, counts_in)
+    data_out, counts_out  = DI.Take_v((data_in, counts_in))
 
     expected_out = [
       (np.array([0,0,2,0,0]), np.array([50.,55])),
@@ -228,7 +228,7 @@ class Test_g_indexer:
       data_in =np.array([100.,105, 20]) 
 
 
-    data_out, counts_out = DI.Put_v(data_in, counts_in)
+    data_out, counts_out = DI.Put_v((data_in, counts_in))
 
     expected_out = [
       (np.array([0,1,0,0,2]), np.array([20., 50.,55])),
@@ -324,7 +324,7 @@ def test_perfo(comm):
   counts_in = np.random.randint(0,4+1,dn)
   data_in = np.empty(counts_in.sum(), float)
   st = time.time()
-  data_out, counts_out = DI.Take_v(data_in, counts_in)
+  data_out, counts_out = DI.Take_v((data_in, counts_in))
   ed = time.time()
   if comm.rank == 0:
     print("Exchange time Take_v", ed-st)
@@ -337,7 +337,7 @@ def test_perfo(comm):
     print("Exchange time BTPvar", ed-st)
 
   st = time.time()
-  DI.Put_v(data_out, counts_out)
+  DI.Put_v((data_out, counts_out))
   ed = time.time()
   if comm.rank == 0:
     print("Exchange time Put_v", ed-st)

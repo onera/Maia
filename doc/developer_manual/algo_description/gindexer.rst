@@ -238,7 +238,7 @@ Here is an exemple of the ``take`` implementation for a variable buffer::
     counts    = array([3])                   #nb of values for glob idx 4..5
     dist_data = array([11,12,21], dtype=int) #values (3)
 
-  extr, counts_o = GI.Take_v(dist_data, counts)
+  extr, counts_o = GI.Take_v((dist_data, counts))
   # P0 : counts_o = array([3,1])                   #nb of vals got for [4,0]
   #      extr     = array([11,12,21,1], dtype=int) #values (3, then 1)
   # P1 : counts_o = array([1,2])                   #nb of vals got for [1,3]
@@ -264,7 +264,7 @@ And here is an exemple of the ``put`` implementation for a variable buffer::
     counts = array([2])                        #nb of vals to write at [0]
     values = array([100.1,100.2],    dtype='f')#values (2)
 
-  dist_data_new, counts_new = GI.Put_v(values, counts)
+  dist_data_new, counts_new = GI.Put_v((values, counts))
   # P0 : counts_new    = array([2,0])                   #nb of vals for 0..2
   #      dist_data_new = array([100.1,100.2],dtype='f') #values (2, then 0)
   # P1 : counts_new    = array([0,1])                   #nb of vals for 2..4
