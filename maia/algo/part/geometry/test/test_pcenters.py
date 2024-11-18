@@ -31,6 +31,7 @@ def test_compute_cell_center_u_ngon(comm):
     for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
       node = PT.get_child_from_name(elt_node, name)
       node[1] = node[1].astype(np.int32)
+  PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
 
   cell_center = centers.compute_cell_center(zoneU)
 
@@ -102,6 +103,8 @@ def test_compute_cell_center_u_ngon_cyl(comm):
     for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
       node = PT.get_child_from_name(elt_node, name)
       node[1] = node[1].astype(np.int32)
+  PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
+
   maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
   expected_cyl = np.array([0.35355339, 0.78539816, 0.25, 
                            0.79056942, 0.32175055, 0.25, 
@@ -155,8 +158,8 @@ def test_compute_cell_center_s_cyl(comm):
 
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize("cell_indices,expec",[
-  ([8,1],[0.75,0.75,0.75,0.25,0.25,0.25]),
-  ([2,1],[[0.75,0.25,0.25,0.25,0.25,0.25]]),
+  ([44,37],[0.75,0.75,0.75,0.25,0.25,0.25]),
+  ([38,37],[[0.75,0.25,0.25,0.25,0.25,0.25]]),
   ([],[]),
 ])
 def test_compute_cell_center_u_ngon_filtered(comm,cell_indices,expec):
@@ -168,7 +171,9 @@ def test_compute_cell_center_u_ngon_filtered(comm,cell_indices,expec):
     for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
       node = PT.get_child_from_name(elt_node, name)
       node[1] = node[1].astype(np.int32)
+  PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
 
+  cell_indices = np.array(cell_indices).reshape((1,-1), order='F')
   cell_center = centers.compute_cell_center(zoneU,cell_indices)
   assert np.allclose(cell_center,np.array(expec))
 
@@ -187,6 +192,7 @@ def test_compute_cell_center_u_elts_filtered(comm,cell_indices,expec):
     for name in ['ElementConnectivity']:
       node = PT.get_child_from_name(elt_node, name)
       node[1] = node[1].astype(np.int32)
+  cell_indices = np.array(cell_indices).reshape((1,-1), order='F')
   cell_center = centers.compute_cell_center(zoneU,cell_indices)
   assert np.allclose(cell_center,np.array(expec))
 
@@ -200,6 +206,7 @@ def test_compute_cell_center_s_filtered(comm,cell_indices,expec):
   tree = maia.factory.generate_dist_block(3, 'S', comm)
   tree = maia.factory.partition_dist_tree(tree, comm)
   zoneS = PT.get_all_Zone_t(tree)[0]
+  cell_indices = np.array(cell_indices).reshape((1,-1), order='F')
   cell_center = centers.compute_cell_center(zoneS,cell_indices)
   assert np.allclose(cell_center,np.array(expec))
   
@@ -323,10 +330,10 @@ def test_compute_face_center_3d_s_cyl(comm):
 
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize("face_ind",[
-  [1],
-  [1,2,3],
-  [1,3,5,7,9,11],
-  [11,12,14]
+  np.array([[1]]),
+  np.array([[1,2,3]]),
+  np.array([[1,3,5,7,9,11]]),
+  np.array([[11,12,14]])
 ])
 def test_compute_face_center_3d_u_ngon_filtered(comm,face_ind):
   tree = dcube_generate(3, 1., [0,0,0], comm)
@@ -343,17 +350,16 @@ def test_compute_face_center_3d_u_ngon_filtered(comm,face_ind):
       0.25,0.5 ,0.25,   0.25,0.5 ,0.75,   0.75,0.5 ,0.25,   0.75,0.5 ,0.75,
       0.25,1.  ,0.25,   0.25,1.  ,0.75,   0.75,1.  ,0.25,   0.75,1.  ,0.75,])
   out = centers.compute_face_center(zone,face_ind)
-  face_ind = np.asarray(face_ind)
   for d in range(3):
-    assert np.array_equal(out[d::3], expected[d::3][face_ind-1])
+    assert np.array_equal(out[d::3], expected[d::3][face_ind[0]-1])
 
 
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize("face_ind",[
-  [1,2,3],
-  [1,3,5,7,9,11],
-  [11,12,14],
-  [],
+ np.array([[1,2,3]]),
+ np.array([[1,3,5,7,9,11]]),
+ np.array([[11,12,14]]),
+ np.array([[]]),
 ])
 def test_compute_face_center_3d_s_filtered(comm,face_ind):
   tree = maia.factory.generate_dist_block(3, 'Structured', comm)
@@ -374,20 +380,19 @@ def test_compute_face_center_3d_s_filtered(comm,face_ind):
      0.25,0.75,0.5 , 0.75,0.75,0.5 , 0.25,0.25,1.  ,
      0.75,0.25,1.  , 0.25,0.75,1.  , 0.75,0.75,1.  ]) # End of KFaces
   out = centers.compute_face_center(zone,face_ind)
-  face_ind = np.asarray(face_ind)
-  if not len(face_ind):
+  if face_ind.size == 0:
     assert len(out) == 0
   else:
     for d in range(3):
-      assert np.allclose(out[d::3], expected_cart[d::3][face_ind-1])
+      assert np.allclose(out[d::3], expected_cart[d::3][face_ind[0]-1])
 
 
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize("face_ind",[
-  [1],
-  [1,2,3],
-  [1,3,5,7,9,11],
-  [11,12,14]
+  np.array([[1]]),
+  np.array([[1,2,3]]),
+  np.array([[1,3,5,7,9,11]]),
+  np.array([[11,12,14]])
 ])
 def test_compute_face_center_3d_u_elts_cyl_filtered(comm,face_ind):
   # Test unstructured in cylindrical coordinates
@@ -398,22 +403,22 @@ def test_compute_face_center_3d_u_elts_cyl_filtered(comm,face_ind):
   expected_cyl = to_expected_cyl(expected_cart)
   maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
   out = centers.compute_face_center(zone,face_ind)
-  face_ind = np.asarray(face_ind)
   for d in range(3):
-    assert np.allclose(out[d::3], expected_cyl[d::3][face_ind-1])
+    assert np.allclose(out[d::3], expected_cyl[d::3][face_ind[0]-1])
 
 
 
 @pytest.mark.skipif(not maia.pdm_has_ptscotch, reason="Require PTScotch")
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize("face_ind",[
-  [1],
-  [1,2,3],
-  [5,4,3],
-  [5,2,1]
+  np.array([[1]]),
+  np.array([[1,2,3]]),
+  np.array([[5,4,3]]),
+  np.array([[5,2,1]])
 ])
 def test_compute_face_center_3d_u_elts_filtered(comm,face_ind):
   tree = dcube_nodal_generate(2, 1., [0,0,0], 'HEXA_8', comm)
+  maia.algo.dist.reorder_elt_sections_from_dim(tree) # Put face first, for easier face idx selection
   
   part_tree = maia.factory.partition_dist_tree(tree, comm, graph_part_tool='ptscotch')
   # Nb : metis is not robust if n_cell == 1
@@ -422,9 +427,8 @@ def test_compute_face_center_3d_u_elts_filtered(comm,face_ind):
   expected = np.array([0.5,0.5,0., 0.5,0.5,1., 0.,0.5,0.5,
                        1.,0.5,0.5, 0.5,0.,0.5, 0.5,1.,0.5])
   out = centers.compute_face_center(zone,face_ind)
-  face_ind = np.asarray(face_ind)
   for d in range(3):
-    assert np.array_equal(out[d::3], expected[d::3][face_ind-1])
+    assert np.array_equal(out[d::3], expected[d::3][face_ind[0]-1])
 
 @pytest.mark.parametrize("phydim", [3,2])
 @pytest_parallel.mark.parallel(1)
@@ -442,10 +446,10 @@ def test_compute_face_center_2d(phydim, comm):
 
 @pytest.mark.parametrize("phydim", [3,2])
 @pytest.mark.parametrize("face_ind", [
-  [1],
-  [1,2,3],
-  [1,3,5,7],
-  [6,7,5]
+  np.array([[1]]),
+  np.array([[1,2,3]]),
+  np.array([[1,3,5,7]]),
+  np.array([[6,7,5]])
 ])
 @pytest_parallel.mark.parallel(1)
 def test_compute_face_center_2d_filtered(phydim, comm, face_ind):
@@ -460,9 +464,8 @@ def test_compute_face_center_2d_filtered(phydim, comm, face_ind):
                        1/6, 0.5, 0.,   0.5, 0.5, 0.,   5/6, 0.5, 0.,
                        1/6, 5/6, 0.,   0.5, 5/6, 0.,   5/6, 5/6, 0.])
   out = centers.compute_face_center(zone,face_ind)
-  face_ind = np.asarray(face_ind)
   for d in range(3):
-    assert np.allclose(out[d::3], expected[d::3][face_ind-1])
+    assert np.allclose(out[d::3], expected[d::3][face_ind[0]-1])
 
 def test_compute_face_center_2d_s(comm):
   # With CZ   
@@ -491,10 +494,10 @@ def test_compute_face_center_2d_s(comm):
 
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize("face_ind",[
-  [1],
-  [1,2,3],
-  [3,1,2],
-  [],
+  np.array([[1]]),
+  np.array([[1,2,3]]),
+  np.array([[3,1,2]]),
+  np.array([[]]),
 ])
 def test_compute_face_center_2d_s_filtered(comm,face_ind):
   tree = maia.factory.generate_dist_block([3,3,1], 'Structured', comm)
@@ -510,12 +513,12 @@ def test_compute_face_center_2d_s_filtered(comm,face_ind):
   expected = np.array([0.25, 0.25, 0.025,  0.75 ,0.25,0.05, 
                        0.25, 0.75, 0.025,  0.75, 0.75, 0.1])
   out = centers.compute_face_center(zone,face_ind)
-  face_ind = np.asarray(face_ind)
-  if not len(face_ind):
+  
+  if face_ind.size == 0:
     assert len(out) == 0
   else:
     for d in range(3):
-      assert np.allclose(out[d::3], expected[d::3][face_ind-1])
+      assert np.allclose(out[d::3], expected[d::3][face_ind[0]-1])
 
 def test_compute_face_center_2d_s_cyl(comm):
   # Without CZ, in cyl coords (move by hand, fct does not manage z == 0 ...)
@@ -570,12 +573,14 @@ def test_compute_edge_center_u_ngon_filtered(comm,edge_indices,expec):
 @pytest.mark.parametrize("cyl", [False,True])
 @pytest.mark.parametrize("phydim", [3,2])
 @pytest.mark.parametrize("edge_indices,expec", [
-  ([1],[0.25,0.,0.]),
-  ([3,2,1],[0.25,1.,0., 0.75,0.,0., 0.25,0.,0.]),
+  ([5],[0.25,0.,0.]),
+  ([7,6,5],[0.25,1.,0., 0.75,0.,0., 0.25,0.,0.]),
   ([],[])
 ])
 @pytest_parallel.mark.parallel(1)
 def test_compute_edge_center_u_elts_filtered(comm,cyl,phydim,edge_indices,expec):
+  edge_indices = np.array(edge_indices).reshape((1,-1), order='F')
+
   tree = maia.factory.generate_dist_block(3, "QUAD_4", comm)
   if cyl:
     maia.algo.cartesian_to_cylindrical(tree, axis=(0,0,1))
