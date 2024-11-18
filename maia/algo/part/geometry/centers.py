@@ -3,7 +3,7 @@ import numpy as np
 import maia.pytree      as PT
 
 from maia.algo.part import connectivity_utils as CU
-from maia.utils     import np_utils
+from maia.utils     import np_utils, s_numbering
 from maia.utils     import logging as mlog
 
 from .utils         import place_in_container
@@ -46,6 +46,8 @@ def compute_cell_center(zone, cell_indices=None):
 
   Args:
     zone (CGNSTree): Partitionned CGNS Zone
+    cell_indices (ndarray) : pointlist like array of cells ids or None. If provided,
+      centers are computed only for the specified cells.
   Returns:
     array: Flat (interlaced) numpy array of cell centers
 
@@ -59,7 +61,7 @@ def compute_cell_center(zone, cell_indices=None):
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
   if cell_indices is not None:
-    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2 and cell_indices.shape[0] == 1
+    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
     if cell_indices.size == 0:
       return np.empty(0, dtype=np.float64)
 
@@ -76,13 +78,14 @@ def compute_cell_center(zone, cell_indices=None):
       center_cell = cpart_algo.compute_center_cell_s_cyl(*PT.Zone.CellSize(zone), *coords)
     elif isinstance(coords, PT.CartesianCoordinates):
       center_cell = cpart_algo.compute_center_cell_s(*PT.Zone.CellSize(zone), *coords)
-    if cell_indices is not None:
-      #raise NotImplementedError # Input should be a pointlist of size 3, and not a global num, which is not defined in S CGNS
-      center_cell = np_utils.interweave_arrays([center_cell[i::3][cell_indices[0]-1] for i in range(3)])
+    if cell_indices is not None: # Filtering is done afterward, which is less performant
+      _cell_indices = s_numbering.ijk_to_index_from_loc(*cell_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
+      center_cell_idx = np.arange(0, 3*(PT.Zone.n_cell(zone)+1), 3)
+      center_cell = np_utils.take_strided(center_cell_idx, center_cell, _cell_indices)
 
   return center_cell
 
-def compute_face_center(zone,face_indices=None):
+def compute_face_center(zone, face_indices=None, face_indices_loc=None):
   """Compute the face centers of a partitioned zone.
 
   Input zone must have cartesian or cylindrical coordinates recorded under a unique
@@ -96,7 +99,9 @@ def compute_face_center(zone,face_indices=None):
 
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U CGNS Zone
-    face_indices ((n_face,) array): Optional face index filtering array 
+    face_indices (ndarray) : pointlist like array of faces ids or None. If provided,
+      centers are computed only for the specified faces. If the mesh is structured 2D,
+      face_indices_loc is requested as well and indicates the location of the pointlist.
   Returns:
     array: Flat (interlaced) numpy array of face centers
 
@@ -111,7 +116,10 @@ def compute_face_center(zone,face_indices=None):
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
   if face_indices is not None:
-    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2 and face_indices.shape[0] == 1
+    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
+    if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
+      assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
+        "Indices location must be specified when filtering faces center on 3D structured meshes"
     if face_indices.size == 0:
       return np.empty(0, dtype=np.float64)
 
@@ -136,9 +144,14 @@ def compute_face_center(zone,face_indices=None):
       centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
     elif isinstance(coords, PT.CylindricalCoordinates):
       centers = cpart_algo.compute_center_face_s_cyl(*vtx_size, _cx, _cy, _cz)
-    if face_indices is not None: # filtering afterward
-      #raise NotImplementedError # Input should be a pointlist of size 3, and not a global num, which is not defined in S CGNS
-      centers = np_utils.interweave_arrays([centers[i::3][face_indices[0]-1] for i in range(3)])
+    if face_indices is not None: # Filtering is done afterward, which is less performant
+      if zone_dim == 2:
+        _face_indices = s_numbering.ij_to_index_from_loc(*face_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
+      else:
+        _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
+      center_idx = np.arange(0, 3*(centers.size//3 + 1), 3)
+      centers = np_utils.take_strided(center_idx, centers, _face_indices)
+
     return centers
 
 def compute_edge_center(zone,edge_indices=None):
@@ -153,7 +166,8 @@ def compute_edge_center(zone,edge_indices=None):
 
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U-elts CGNS Zone
-    edge_indices ((n_edge,) array): Optional edge index filtering array 
+    edge_indices (ndarray) : pointlist like array of edges ids or None. If provided,
+      centers are computed only for the specified edges. 
   Returns:
     array: Flat (interlaced) numpy array of edge centers
 
@@ -186,7 +200,7 @@ def compute_edge_center(zone,edge_indices=None):
     raise NotImplementedError("Only U-elts zones are managed")
 
 
-def _compute_elements_center(zone, dim, element_indices=None):
+def _compute_elements_center(zone, dim, element_indices=None, element_loc=None):
   """Dispatch centers computing according to zone dimension and 
   requested dimension.
   If element_indices is not None, center is computed only for the
@@ -198,7 +212,7 @@ def _compute_elements_center(zone, dim, element_indices=None):
   if dim == 3 and zone_dim >= 3:
     return compute_cell_center(zone, element_indices)
   elif dim == 2 and zone_dim >= 2:
-    return compute_face_center(zone, element_indices)
+    return compute_face_center(zone, element_indices, element_loc)
   elif dim == 1 and zone_dim >= 1:
     return compute_edge_center(zone, element_indices)
 

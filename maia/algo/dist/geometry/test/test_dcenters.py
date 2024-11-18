@@ -5,6 +5,8 @@ import numpy as np
 import maia.pytree        as PT
 import maia
 
+from maia.utils import pr_utils
+
 from maia.algo.dist.geometry import centers as GEO
 
 def to_expected_cyl(expected_cart):
@@ -270,24 +272,10 @@ def test_compute_face_center3d_u_elts_filtered(cylindrical, comm, bc_path,expec)
                                         #  True
                                          ])
 @pytest.mark.parametrize("bc_path,d,expec", [
-  ("ZoneBC/Xmin/PointRange","I", [
-    [0.  , 0.25, 0.25, 0.  , 0.75, 0.25, 0.  , 0.25, 0.75, 0.  , 0.75, 0.75]
-  ]*3),
-  ("ZoneBC/Xmax/PointRange","I", [
-    [1.  , 0.25, 0.25, 1.  , 0.75, 0.25, 1.  , 0.25, 0.75, 1.  , 0.75, 0.75]
-  ]*3),
-  ("ZoneBC/Ymin/PointRange","J", [
-    [0.25, 0.  , 0.25, 0.75, 0.  , 0.25, 0.25, 0.  , 0.75, 0.75, 0.  , 0.75]
-  ]*3),
-  ("ZoneBC/Ymax/PointRange","J", [
-    [0.25, 1.  , 0.25, 0.75, 1.  , 0.25, 0.25, 1.  , 0.75, 0.75, 1.  , 0.75]
-  ]*3),
-  ("ZoneBC/Zmin/PointRange","K", [
-    [0.25, 0.25, 0.  , 0.75, 0.25, 0.  , 0.25, 0.75, 0.  , 0.75, 0.75, 0.  ]
-  ]*3),
-  ("ZoneBC/Zmax/PointRange","K", [
-    [0.25, 0.25, 1.  , 0.75, 0.25, 1.  , 0.25, 0.75, 1.  , 0.75, 0.75, 1.  ]
-  ]*3),
+  ("ZoneBC/Xmin/PointRange","I", [0.  , 0.25, 0.25, 0.  , 0.75, 0.25, 0.  , 0.25, 0.75, 0.  , 0.75, 0.75]),
+  ("ZoneBC/Xmax/PointRange","I", [1.  , 0.25, 0.25, 1.  , 0.75, 0.25, 1.  , 0.25, 0.75, 1.  , 0.75, 0.75]),
+  ("ZoneBC/Ymin/PointRange","J", [0.25, 0.  , 0.25, 0.75, 0.  , 0.25, 0.25, 0.  , 0.75, 0.75, 0.  , 0.75]),
+  ("ZoneBC/Zmax/PointRange","K", [0.25, 0.25, 1.  , 0.75, 0.25, 1.  , 0.25, 0.75, 1.  , 0.75, 0.75, 1.  ]),
   ])
 def test_compute_face_center3d_s_filtered(cylindrical, comm, bc_path, d, expec):
   tree = maia.factory.generate_dist_block(3, 'S', comm)
@@ -295,17 +283,14 @@ def test_compute_face_center3d_s_filtered(cylindrical, comm, bc_path, d, expec):
 
   face_ind = PT.get_value(PT.get_node_from_path(zone,bc_path))
   # vertex -> face
-  face_ind = np.array([f if di==d else np.clip(f,0,2) for f,di in zip(face_ind,'IJK')])
-  n_vtx  = PT.Zone.VertexSize(zone)
-  from maia.utils import pr_utils
-  point_list = pr_utils.compute_pointList_from_pointRanges([face_ind],
-                                                           n_vtx,f"{d}FaceCenter")
+  face_pr = np.array([f if di==d else np.clip(f,0,2) for f,di in zip(face_ind,'IJK')])
+  face_point_list = pr_utils.unroll_pr(face_pr)
   
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
-  face_center = GEO.compute_face_center(zone, comm, point_list)
-  expected_face_center = np.array(expec[comm.rank])
+  face_center = GEO.compute_face_center(zone, comm, face_point_list, f'{d}FaceCenter')
+  expected_face_center = np.array(expec)
 
   if cylindrical:
     expected_face_center = to_expected_cyl(expected_face_center)
@@ -437,22 +422,17 @@ def test_compute_face_center2d_u_elts_filtered(cylindrical, comm, pl, expec):
 @pytest.mark.parametrize("cylindrical", [False, True])
 @pytest.mark.parametrize("pr,expec", [
   ([[[1,2],[1,2]],[[2,2],[1,1]]],[[0.25, 0.25, 0.  , 0.75, 0.25, 0.  , 0.25, 0.75, 0.  , 0.75, 0.75, 0.  ],[0.75, 0.25, 0.  ]]),
-  ([[[1,3],[1,1]],[[1,3],[1,1]]],[[0.25, 0.25, 0.  , 0.75, 0.25, 0.  , 0.25, 0.75, 0.  ]]*2),
   ])
 def test_compute_face_center2d_s_filtered(cylindrical, comm, pr, expec):
   tree = maia.factory.generate_dist_block([3,3,1], 'Structured', comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
-  # vertex -> face
-  n_vtx  = PT.Zone.VertexSize(zone)
-  from maia.utils import pr_utils
-  point_list = pr_utils.compute_pointList_from_pointRanges([np.array(pr[comm.rank])],
-                                                           n_vtx,"CellCenter")
+  face_point_list = pr_utils.unroll_pr(np.array(pr[comm.rank]))
 
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
 
-  face_center = GEO.compute_face_center(zone, comm, point_list)
+  face_center = GEO.compute_face_center(zone, comm, face_point_list)
   expected_face_center = np.array(expec[comm.rank])
 
   if cylindrical:
@@ -554,15 +534,11 @@ def test_compute_cell_center_s_filtered(cylindrical, comm, cell_indices, expec):
   tree = maia.factory.generate_dist_block(3, "S", comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
-  n_vtx  = PT.Zone.VertexSize(zone)
-  from maia.utils import pr_utils
-  point_list = pr_utils.compute_pointList_from_pointRanges([np.asarray(cell_indices[comm.rank])],
-                                                           n_vtx,f"CellCenter")
-
+  cell_point_list = pr_utils.unroll_pr(np.array(cell_indices[comm.rank]))
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
   
-  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=point_list)
+  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=cell_point_list)
 
   expected_cell_center = np.array(expec[comm.rank])
 

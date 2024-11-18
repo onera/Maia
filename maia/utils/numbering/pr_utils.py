@@ -32,6 +32,40 @@ def transform_bnd_pr_size(point_range, input_loc, output_loc):
     size += (~mask)
   return size
 
+def unroll_pr(pr):
+  """
+  Create a structured pointList of size (idx_dim,N) spawning the same region than the input PR.
+  Unrolling if done following cgns conventions : increasing i, then j, then k
+  """
+  inc = 2*(pr[:,0] <= pr[:,1]) - 1 #In each direction, 1 if pr[l,0] <= pr[l,1] else - 1
+
+  # Here we build for each direction a looping array range(start, end+1) if pr is increasing
+  # or range(start, end-1, -1) if pr is decreasing
+  np_idx_arrays = []
+  for l in range(pr.shape[0]):
+    np_idx_arrays.append(np.arange(pr[l,0], pr[l,1] + inc[l], inc[l]))
+
+  def cartesian_product(*arrays):
+    #https://stackoverflow.com/questions/11144513/cartesian-product-of-x-and-y-array-points-into-single-array-of-2d-points/
+    la = len(arrays)
+    dtype = np.result_type(*arrays)
+    arr = np.empty([len(a) for a in arrays] + [la], dtype=dtype)
+    for i, a in enumerate(np.ix_(*arrays)):
+        arr[...,i] = a
+    return arr.reshape(-1, la)
+
+  out_tmp = cartesian_product(*reversed(np_idx_arrays)).T
+  out = np.empty_like(out_tmp)
+
+  assert pr.shape[0] >= 2
+  out[0,:] = out_tmp[-1,:]
+  out[-1,:] = out_tmp[0,:]
+  if pr.shape[0] == 3:
+    out[1,:] = out_tmp[1,:]
+
+  return out
+
+
 def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, loc, order='F'):
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must

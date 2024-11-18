@@ -39,6 +39,9 @@ def compute_edge_center(zone, comm, edge_indices=None):
   Input zone must have cartesian coordinates or cylindrical coordinates recorded under a unique
   GridCoordinates node.
   Centers are computed using a basic average over the vertices of the edges.
+
+  edge_indices is a pointlist like array of edges ids or None. If provided,
+    centers are computed only for the specified edges. 
   """
   if edge_indices is not None:
     assert isinstance(edge_indices, np.ndarray) and edge_indices.ndim == 2 and edge_indices.shape[0] == 1
@@ -68,7 +71,7 @@ def compute_edge_center(zone, comm, edge_indices=None):
   elif isinstance(coords, PT.CylindricalCoordinates):
     return _mean_coords_from_connectivity_cyl(edge_vtx_idx, *local_coords)
 
-def compute_face_center(zone, comm, face_indices=None):
+def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
   """Compute the face center of a distributed zone.
 
   Input zone must have cartesian coordinates recorded under a unique
@@ -78,7 +81,9 @@ def compute_face_center(zone, comm, face_indices=None):
 
   Args:
     zone (CGNSTree): Distributed 3D or 2D U-NGon CGNS Zone
-    face_indices ((n_face,) array): Optional face index filtering array 
+    face_indices (ndarray) : pointlist like array of faces ids or None. If provided,
+      centers are computed only for the specified faces. If the mesh is structured 2D,
+      face_indices_loc is requested as well and indicates the location of the pointlist.
   Returns:
     face_normal (array): Flat (interlaced) numpy array of face centers
 
@@ -87,35 +92,40 @@ def compute_face_center(zone, comm, face_indices=None):
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
   if face_indices is not None:
-    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2 and face_indices.shape[0] == 1
+    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
+    if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
+      assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
+        "Indices location must be specified when filtering faces center on 3D structured meshes"
 
-  if PT.Zone.Type(zone) == "Structured":
-    vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
-    vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
-    ngon_node = zonedims_to_ngon(vtx_size, comm)
+  if PT.Zone.Type(zone) == "Structured" and zone_dim == 2:
+    face_vtx_idx, face_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim, face_indices)
+  elif PT.Zone.Type(zone) == "Unstructured" and not PT.Zone.has_ngon_elements(zone): # unstructured elements
+    global_distri = PT.Zone.CellDimension(zone) == 2
+    _face_indices = face_indices[0] if face_indices is not None else None
+    face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri, _face_indices)
+
+  # Other cases (Structured 3D or NGON) does not manage idx filtering : we do it manually
+  else:
+    if PT.Zone.Type(zone) == "Structured" and zone_dim == 3:
+      ngon_node = zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
+      if face_indices is not None:
+        from maia.utils.numbering import s_numbering_funcs
+        _face_indices = s_numbering_funcs.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone))
+    elif PT.Zone.Type(zone) == "Unstructured" and PT.Zone.has_ngon_elements(zone):
+      ngon_node = PT.Zone.NGonNode(zone)
+      if face_indices is not None:
+        _face_indices = face_indices[0] - PT.Element.Range(ngon_node)[0] + 1
+
     _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
     face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
     np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
     face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-  else:
-    _face_indices = face_indices[0] if face_indices is not None else None
-    if PT.Zone.has_ngon_elements(zone):
-      ngon_node = PT.Zone.NGonNode(zone)
-      _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
-      np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
-      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-      if face_indices is not None:
-        face_distri = PT.maia.getDistribution(ngon_node, 'Element')[1]
-        face_vtx_n = np.diff(face_vtx_idx).astype(np.int32, copy=False)
-        _face_indices += (-PT.Element.Range(ngon_node)[0] + 1)
-        face_vtx_n, face_vtx = EP.block_to_part_strided(face_vtx_n, face_vtx, face_distri, [_face_indices], comm)
-        face_vtx = face_vtx[0]
-        face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n[0], face_vtx_idx.dtype)
-
-    else: # unstructured elements
-      global_distri = PT.Zone.CellDimension(zone) == 2
-      face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri, _face_indices)
+    if face_indices is not None:
+      face_distri = PT.maia.getDistribution(ngon_node, 'Element')[1]
+      face_vtx_n = np.diff(face_vtx_idx).astype(np.int32, copy=False)
+      face_vtx_n, face_vtx = EP.block_to_part_strided(face_vtx_n, face_vtx, face_distri, [_face_indices], comm)
+      face_vtx = face_vtx[0]
+      face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n[0], face_vtx_idx.dtype)
   
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
@@ -136,10 +146,10 @@ def compute_cell_center(zone, comm, cell_indices=None):
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
   if cell_indices is not None:
-    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2 and cell_indices.shape[0] == 1
+    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
 
   if PT.Zone.Type(zone) == "Structured":
-    cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone))
+    cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone), cell_indices)
   else:
     _cell_indices = cell_indices[0] if cell_indices is not None else None
     if PT.Zone.has_ngon_elements(zone):
@@ -160,7 +170,7 @@ def compute_cell_center(zone, comm, cell_indices=None):
     return _mean_coords_from_connectivity_cyl(cell_vtx_idx, *local_coords)
 
 
-def _compute_elements_center(zone, dim, comm, element_indices=None):
+def _compute_elements_center(zone, dim, comm, element_indices=None, element_loc=None):
   """Dispatch centers computing according to zone dimension and 
   requested dimension
   If element_indices is not None, center is computed only for the
@@ -172,7 +182,7 @@ def _compute_elements_center(zone, dim, comm, element_indices=None):
   if dim == 3 and zone_dim >= 3:
     return compute_cell_center(zone, comm, element_indices)
   elif dim == 2 and zone_dim >= 2:
-    return compute_face_center(zone, comm, element_indices)
+    return compute_face_center(zone, comm, element_indices, element_loc)
   elif dim == 1 and zone_dim >= 1:
     return compute_edge_center(zone, comm, element_indices)
 

@@ -50,17 +50,29 @@ def combine_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_distrib, edge_
   
   return global_face_vtx
 
-def cell_vtx_connectivity_S(zone_S, dim):
+def cell_vtx_connectivity_S(zone_S, dim, cell_subset=None):
   # NB this is not factorised with part.connectivity_utils because arrays layout seems different
   # Maybe we could merge it 
   vertex_size = PT.Zone.VertexSize(zone_S)
   cell_distri = MT.getDistribution(zone_S, 'Cell')[1]
 
-  cell_idx = np.arange(cell_distri[0]+1, cell_distri[1]+1, dtype=zone_S[1].dtype) # Distributed view of cells, as idx  
-  dn_cell  = cell_idx.size
+  if cell_subset is not None:
+    # cell_i, cell_j and cell_k are provided
+    if dim == 2:
+      cell_i, cell_j = cell_subset
+    if dim == 3:
+      cell_i, cell_j, cell_k = cell_subset
+  else:
+    # Compute cell_i, cell_j, cell_k for all cells of the mesh (distributed)
+    cell_idx = np.arange(cell_distri[0]+1, cell_distri[1]+1, dtype=zone_S[1].dtype) # Distributed view of cells, as idx  
+    if dim == 2:
+      cell_i, cell_j = s_numbering.index_to_ij(cell_idx, PT.Zone.CellSize(zone_S))
+    elif dim == 3:
+      cell_i, cell_j, cell_k = s_numbering.index_to_ijk(cell_idx, PT.Zone.CellSize(zone_S))
+
+  dn_cell  = cell_i.size
 
   if dim == 2:
-    cell_i, cell_j = s_numbering.index_to_ij(cell_idx, PT.Zone.CellSize(zone_S))
     cell_vtx = np.zeros(4*dn_cell, zone_S[1].dtype)
     cell_vtx_idx = 4*np.arange(0, dn_cell+1, dtype=np.int32)
     cell_vtx[0::4] = s_numbering.ij_to_index(cell_i,   cell_j,   vertex_size).flatten()
@@ -68,7 +80,6 @@ def cell_vtx_connectivity_S(zone_S, dim):
     cell_vtx[2::4] = s_numbering.ij_to_index(cell_i+1, cell_j+1, vertex_size).flatten()
     cell_vtx[3::4] = s_numbering.ij_to_index(cell_i,   cell_j+1, vertex_size).flatten()
   elif dim == 3:
-    cell_i, cell_j, cell_k = s_numbering.index_to_ijk(cell_idx, PT.Zone.CellSize(zone_S))
     cell_vtx = np.zeros(8*dn_cell, zone_S[1].dtype)
     cell_vtx_idx = 8*np.arange(0, dn_cell+1, dtype=np.int32)
     cell_vtx[0::8] = s_numbering.ijk_to_index(cell_i,   cell_j,   cell_k,   vertex_size).flatten()
