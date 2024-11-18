@@ -18,8 +18,7 @@ def test_generate_dist_lines():
 
   start_point = np.array([0., 0., 0.])
   end_point   = np.array([1., 2., 0.])
-  dist_tree = maia.factory.generate_dist_line(start_point, end_point,
-                                              5, MPI.COMM_WORLD)
+  dist_tree = maia.factory.generate_dist_line(5, start_point, end_point, MPI.COMM_WORLD)
   zone = PT.get_node_from_label(dist_tree, "Zone_t")
   assert PT.Zone.n_vtx (zone)==5
   assert PT.Zone.n_cell(zone)==4
