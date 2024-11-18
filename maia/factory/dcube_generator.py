@@ -247,7 +247,7 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'
   return dist_tree
 
 
-def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_length=1.):
+def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), end=np.ones(3)):
   """Generate a distributed mesh with a cartesian topology.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
@@ -259,8 +259,8 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
   - ``"NFACE_n"`` produces an unstructured 3d zone with a NFace+NGon connectivity,
   - ``"NGON_n"``  produces an unstructured 2d zone with faces described by a NGon
     node (**not yet implemented**),
-  - Other names must be in ``["TRI_3", "QUAD_4", "TETRA_4", "PYRA_5", "PENTA_6", "HEXA_8"]``
-    and produces an unstructured 2d or 3d zone with corresponding standard elements.
+  - Other names must be in ``["BAR_2", "TRI_3", "QUAD_4", "TETRA_4", "PYRA_5", "PENTA_6", "HEXA_8"]``
+    and produces an unstructured 1d, 2d or 3d zone with corresponding standard elements.
 
   In all cases, the created zone contains the cartesian grid coordinates and the relevant number
   of boundary conditions.
@@ -286,14 +286,40 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), edge_le
         :end-before: #generate_dist_block@end
         :dedent: 2
   """
+  # > Generate unit mesh
+  edge_length = 1.
+  lorigin     = np.zeros(3)
   if cgns_elmt_name in ["Structured", "S"]:
-    return dcube_struct_generate(n_vtx, edge_length, origin, comm)
+    dim_max = min(len(origin), len(end))
+    if not isinstance(n_vtx, int):
+      dim_max = min(len(n_vtx), dim_max)
+    lorigin   = np.zeros(dim_max)
+    dist_tree = dcube_struct_generate(n_vtx, edge_length, lorigin, comm)
   elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
-    dist_tree = dcube_generate(n_vtx, edge_length, origin, comm)
+    dist_tree = dcube_generate(n_vtx, edge_length, lorigin, comm)
     if cgns_elmt_name.upper() == "NFACE_N":
       for zone in PT.get_all_Zone_t(dist_tree):
         maia.algo.pe_to_nface(zone, comm, removePE=True)
     return dist_tree
+  elif cgns_elmt_name in ["BAR_2"]:
+    assert isinstance(n_vtx, int)
+    return maia.factory.generate_dist_line(origin, end, n_vtx, comm)
   else:
-    return dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm)
+    dist_tree = dcube_nodal_generate(n_vtx, edge_length, lorigin, cgns_elmt_name, comm)
 
+  # > Generate scaling and transform args according to dim
+  dim_max = min(len(origin), len(end))
+  lorigin = np.zeros(3)
+  lend    = np.ones(3)
+  lorigin[:dim_max] = origin[:dim_max]
+  lend   [:dim_max] = end   [:dim_max]
+  length  = lend-lorigin
+
+  # > Apply scaling and transform
+  maia.algo.scale_mesh(dist_tree, length)
+  for dim, coord_name in enumerate(['CoordinateX', 'CoordinateY', 'CoordinateZ'][:dim_max]):
+    coord_n = PT.get_node_from_name(dist_tree, coord_name)
+    coord = PT.get_value(coord_n)+lorigin[dim]
+    PT.set_value(coord_n, coord)
+
+  return dist_tree
