@@ -141,7 +141,7 @@ def test_walldistance_elts(comm):
 @pytest_parallel.mark.parallel(2)
 def test_walldistance_perio(comm):
   #Case generation
-  dist_treeU = maia.factory.generate_dist_block(3, "Poly", comm, end=np.array([2.,2.,2.]))
+  dist_treeU = maia.factory.generate_dist_block(3, "Poly", comm, length=np.array([2.,2.,2.]))
   coordX, coordY, coordZ = PT.Zone.coordinates(PT.get_node_from_label(dist_treeU, 'Zone_t'))
   coordX += coordY
   coordY -= coordZ

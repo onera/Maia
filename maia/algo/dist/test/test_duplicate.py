@@ -165,7 +165,7 @@ def test_duplicate_zones_from_periodic_join_by_rotation_to_360(from_family, comm
 def test_duplicate_2d(from_family, comm):
 
   # Prepare 2D periodic case
-  dist_tree = maia.factory.generate_dist_block([5,2,1], 'TRI_3', comm, origin=[.5, -0.5])
+  dist_tree = maia.factory.generate_dist_block([5,2], 'TRI_3', comm, origin=[.5, -0.5])
   maia.algo.scale_mesh(dist_tree, [4,1])
   zone = PT.get_node_from_label(dist_tree, 'Zone_t')
   cx = PT.get_node_from_name(zone, 'CoordinateX')

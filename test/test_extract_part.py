@@ -219,7 +219,7 @@ def test_extract_cell_from_zsr_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), comm)
   
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
@@ -255,7 +255,7 @@ def test_extractor_cell_from_zsr_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), comm)
   
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
@@ -289,7 +289,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), comm)
   
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 # @pytest.mark.parametrize("graph_part_tool", ["hilbert","ptscotch","parmetis"])
@@ -323,7 +323,7 @@ def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns'), comm)
 
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
@@ -360,7 +360,7 @@ def test_extract_vertex_from_zsr_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , comm)
 
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
@@ -394,7 +394,7 @@ def test_extract_bc_from_bc_name_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')                , comm)
 
   # > Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
@@ -452,7 +452,7 @@ def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')               , comm)
 
   # > Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 
@@ -531,7 +531,7 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')               , comm)
 
   # > Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 @pytest_parallel.mark.parallel([1,3])
@@ -619,7 +619,7 @@ def test_extract_cell_from_zsr_S(comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')       , comm)
 
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
 
 @pytest.mark.parametrize("zsr_loc", ["Vertex", "CellCenter"])
@@ -675,4 +675,4 @@ def test_extractor_cell_from_zsr_S(zsr_loc, comm, write_output):
     Mio.dist_tree_to_file(ref_sol     , os.path.join(out_dir, 'ref_sol.cgns')       , comm)
 
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)

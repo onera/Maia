@@ -96,10 +96,9 @@ def test_dcube_nodal_generate_ridges(comm):
 @pytest.mark.parametrize("cgns_elmt_name", ["BAR_2", "TETRA_4"])
 @pytest_parallel.mark.parallel([2])
 def test_dist_block_generate_deformed_cube(cgns_elmt_name, comm):
-  # Do not test value since this is a PDM function
   dist_tree = dcube_generator.generate_dist_block(10, cgns_elmt_name, comm,
                                                   origin=[-1.,-1.,-1.],
-                                                  end=[2.,-2.,0.])
+                                                  length=[3.,-1.,1.])
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   assert PT.get_value(zone).dtype == pdm_gnum_dtype

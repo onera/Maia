@@ -5,7 +5,7 @@ from   maia        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import numpy as np
 
-def generate_dist_line(start, end, n_point, comm):
+def generate_dist_line(n_point, start, end, comm):
   """
   Generate distributed straight line between start and end coordinates
   discretized with n_points.

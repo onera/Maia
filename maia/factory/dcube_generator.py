@@ -145,6 +145,8 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   if isinstance(n_vtx, int):
     n_vtx = [n_vtx, n_vtx, n_vtx]
+  if phy_dim==2 and len(n_vtx)==2:
+    n_vtx = n_vtx+[1]
   assert len(n_vtx) == 3
 
   dcube = PDM.DCubeNodalGenerator(*n_vtx, edge_length, *origin, t_elmt, 1, comm)
@@ -247,7 +249,7 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'
   return dist_tree
 
 
-def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), end=np.ones(3)):
+def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=1.):
   """Generate a distributed mesh with a cartesian topology.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
@@ -276,7 +278,8 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), end=np.
     comm       (MPIComm) : MPI communicator
     origin (array, optional) : Coordinates of the origin of the generated mesh. Defaults
         to zero vector.
-    edge_length (float, optional) : Edge size of the generated mesh. Defaults to 1.
+    length (float or array of float, optional) : Length by dimension of the generated mesh.
+        Defaults to 1 in each direction.
   Returns:
     CGNSTree: distributed cgns tree
 
@@ -286,40 +289,40 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), end=np.
         :end-before: #generate_dist_block@end
         :dedent: 2
   """
+  # > Check entry dimension
+  dim_max = len(origin)
+  if not isinstance(n_vtx, int):
+    assert len(origin)==len(n_vtx), f"generate_dist_block: origin and n_vtx argument must be with same shape ({len(origin)} and {len(n_vtx)})"
+  if isinstance(length, float):
+    if cgns_elmt_name=='BAR_2':
+      length = np.full(dim_max, length, dtype=np.float64)
+      length[1:] = 0.
+    else:
+      length = np.full(dim_max, length, dtype=np.float64)
+  assert len(origin)==len(length), f"generate_dist_block: origin and length argument must be with same shape ({len(origin)} and {len(length)})"
+
   # > Generate unit mesh
   edge_length = 1.
-  lorigin     = np.zeros(3)
+  l_origin    = np.zeros(dim_max)
   if cgns_elmt_name in ["Structured", "S"]:
-    dim_max = min(len(origin), len(end))
-    if not isinstance(n_vtx, int):
-      dim_max = min(len(n_vtx), dim_max)
-    lorigin   = np.zeros(dim_max)
-    dist_tree = dcube_struct_generate(n_vtx, edge_length, lorigin, comm)
+    dist_tree = dcube_struct_generate(n_vtx, edge_length, l_origin, comm)
   elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
-    dist_tree = dcube_generate(n_vtx, edge_length, lorigin, comm)
+    dist_tree = dcube_generate(n_vtx, edge_length, l_origin, comm)
     if cgns_elmt_name.upper() == "NFACE_N":
       for zone in PT.get_all_Zone_t(dist_tree):
         maia.algo.pe_to_nface(zone, comm, removePE=True)
-    return dist_tree
   elif cgns_elmt_name in ["BAR_2"]:
     assert isinstance(n_vtx, int)
-    return maia.factory.generate_dist_line(origin, end, n_vtx, comm)
+    end = np.array(origin)+np.array(length)
+    return maia.factory.generate_dist_line(n_vtx, origin, end, comm)
   else:
-    dist_tree = dcube_nodal_generate(n_vtx, edge_length, lorigin, cgns_elmt_name, comm)
-
-  # > Generate scaling and transform args according to dim
-  dim_max = min(len(origin), len(end))
-  lorigin = np.zeros(3)
-  lend    = np.ones(3)
-  lorigin[:dim_max] = origin[:dim_max]
-  lend   [:dim_max] = end   [:dim_max]
-  length  = lend-lorigin
+    dist_tree = dcube_nodal_generate(n_vtx, edge_length, l_origin, cgns_elmt_name, comm)
 
   # > Apply scaling and transform
   maia.algo.scale_mesh(dist_tree, length)
   for dim, coord_name in enumerate(['CoordinateX', 'CoordinateY', 'CoordinateZ'][:dim_max]):
     coord_n = PT.get_node_from_name(dist_tree, coord_name)
-    coord = PT.get_value(coord_n)+lorigin[dim]
+    coord = PT.get_value(coord_n)+origin[dim]
     PT.set_value(coord_n, coord)
 
   return dist_tree
