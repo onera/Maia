@@ -390,9 +390,10 @@ def test_compute_face_center2d_s(cylindrical, comm):
 def test_compute_face_center2d_u_ngon_filtered(cylindrical, pl, expec, comm):
   tree = maia.factory.generate_dist_block(3, 'TRI_3', comm)
   maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  maia.algo.dist.reorder_elt_sections_from_dim(tree, reverse=True)
   zone = PT.get_all_Zone_t(tree)[0]
 
-  face_ind = pl[comm.rank]
+  face_ind = np.array(pl[comm.rank], int).reshape((1,-1), order='F')
 
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
@@ -419,7 +420,7 @@ def test_compute_face_center2d_u_elts_filtered(cylindrical, comm, pl, expec):
   tree = maia.factory.generate_dist_block(3, 'TRI_3', comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
-  face_ind = pl[comm.rank]
+  face_ind = np.array(pl[comm.rank], int).reshape((1,-1), order='F')
 
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
@@ -491,11 +492,11 @@ def test_compute_cell_center(elt_kind, cylindrical, comm):
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("cylindrical", [False,True])
 @pytest.mark.parametrize("cell_indices,expec",[
-  ([[1],[2]],[[0.25,0.25,0.25],[0.75,0.25,0.25]]),
-  ([[1,2,5,6],[3,4,7,8]],[[0.25,0.25,0.25, 0.75,0.25,0.25, 0.25,0.25,0.75, 0.75,0.25,0.75,],
+  ([[37],[38]],[[0.25,0.25,0.25],[0.75,0.25,0.25]]),
+  ([[37,38,41,42],[39,40,43,44]],[[0.25,0.25,0.25, 0.75,0.25,0.25, 0.25,0.25,0.75, 0.75,0.25,0.75,],
                           [0.25,0.75,0.25, 0.75,0.75,0.25, 0.25,0.75,0.75, 0.75,0.75,0.75]]),
-  ([[1,2],[]],[[0.25,0.25,0.25,0.75,0.25,0.25],[]]),
-  ([[],[1,2]],[[],[0.25,0.25,0.25,0.75,0.25,0.25]]),
+  ([[37,38],[]],[[0.25,0.25,0.25,0.75,0.25,0.25],[]]),
+  ([[],[37,38]],[[],[0.25,0.25,0.25,0.75,0.25,0.25]]),
   ([[],[]],[[],[]]),
 ])
 def test_compute_cell_center_u_ngon_filtered(cylindrical, comm, cell_indices, expec):
@@ -505,7 +506,8 @@ def test_compute_cell_center_u_ngon_filtered(cylindrical, comm, cell_indices, ex
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
   
-  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=cell_indices[comm.rank])
+  _cell_indices = np.array(cell_indices[comm.rank], int).reshape((1,-1), order='F')
+  cell_center = GEO.compute_cell_center(zone, comm, _cell_indices)
 
   expected_cell_center = np.array(expec[comm.rank])
 
@@ -532,7 +534,8 @@ def test_compute_cell_center_u_elts_filtered(cylindrical, comm, cell_indices, ex
   if cylindrical:
     maia.algo.cartesian_to_cylindrical(tree, (0,0,1))
   
-  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=cell_indices[comm.rank])
+  _cell_indices = np.array(cell_indices[comm.rank], int).reshape((1,-1), order='F')
+  cell_center = GEO.compute_cell_center(zone, comm, cell_indices=_cell_indices)
 
   expected_cell_center = np.array(expec[comm.rank])
 
