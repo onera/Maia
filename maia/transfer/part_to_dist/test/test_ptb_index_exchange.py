@@ -344,7 +344,8 @@ Zone.P2.N0 Zone_t:
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
 
 @pytest_parallel.mark.parallel(3)
-def test_part_ngon_to_dist_ngon(comm):
+@pytest.mark.parametrize("with_pe", [True, False])
+def test_part_ngon_to_dist_ngon(with_pe, comm):
   rank = comm.Get_rank()
   size = comm.Get_size()
 
@@ -424,11 +425,15 @@ Zone.P2.N1 Zone_t:
 
   pT = PT.yaml.to_cgns_tree(yt)
 
+  if not with_pe:
+    PT.rm_nodes_from_name(pT, 'ParentElements')
+
   IPTB.part_ngon_to_dist_ngon(dist_zone, PT.get_all_Zone_t(pT), 'Ngon', comm)
 
   ngon = PT.request_node_from_name(dist_zone, 'Ngon')
   assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
-  assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
+  if with_pe:
+    assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = PT.get_value(MT.getDistribution(ngon, 'Element'))
   distri_eltc = PT.get_value(MT.getDistribution(ngon, 'ElementConnectivity'))
