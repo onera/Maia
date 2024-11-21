@@ -170,7 +170,7 @@ def test_compute_iso_surface():
   import maia
   from   maia.utils.test_utils import mesh_dir
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', MPI.COMM_WORLD)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD, preserve_orientation=True)
   maia.algo.part.compute_wall_distance(part_tree, MPI.COMM_WORLD, point_cloud='Vertex')
 
   part_tree_iso = maia.algo.part.iso_surface(part_tree, "WallDistance/TurbulentDistance", iso_val=0.25,\
@@ -187,7 +187,7 @@ def test_compute_plane_slice():
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', MPI.COMM_WORLD)
   maia.algo.dist.merge_connected_zones(dist_tree, MPI.COMM_WORLD) # Isosurf requires single block mesh
-  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD, preserve_orientation=True)
 
   slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.5], MPI.COMM_WORLD, elt_type='QUAD_4')
   #compute_plane_slice@end
