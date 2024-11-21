@@ -117,7 +117,7 @@ def ijk_to_index_from_loc(i,j,k, loc, n_vtx):
     return ijk_to_facejIndex(i,j,k,n_cell,n_vtx)
   elif loc == 'KFaceCenter':
     return ijk_to_facekIndex(i,j,k,n_cell,n_vtx)
-  raise ValueError("Unsupported location")
+  raise ValueError(f"Unsupported location '{loc}'.")
 
 def index_to_ijk_from_loc(idx, loc, n_vtx):
   """Dispatch index to ijk for 3D meshes, depending of grid location"""
@@ -132,7 +132,7 @@ def index_to_ijk_from_loc(idx, loc, n_vtx):
     return facejIndex_to_ijk(idx, n_cell, n_vtx)
   elif loc == 'KFaceCenter':
     return facekIndex_to_ijk(idx, n_cell, n_vtx)
-  raise ValueError("Unsupported location")
+  raise ValueError(f"Unsupported location '{loc}'.")
 
 def ij_to_index_from_loc(i,j, loc, n_vtx):
   """Dispatch ij to index for 2D meshes, depending of grid location"""
@@ -145,7 +145,7 @@ def ij_to_index_from_loc(i,j, loc, n_vtx):
     return ij_to_edgeiIndex(i,j,n_cell,n_vtx)
   elif loc == 'JEdgeCenter':
     return ij_to_edgejIndex(i,j,n_cell,n_vtx)
-  raise ValueError("Unsupported location")
+  raise ValueError(f"Unsupported location '{loc}'.")
 
 def index_to_ij_from_loc(idx, loc, n_vtx):
   """Dispatch index to ij for 2D meshes, depending of grid location"""
@@ -158,7 +158,7 @@ def index_to_ij_from_loc(idx, loc, n_vtx):
     return edgeiIndex_to_ij(idx, n_cell, n_vtx)
   elif loc == 'JEdgeCenter':
     return edgejIndex_to_ij(idx, n_cell, n_vtx)
-  raise ValueError("Unsupported location")
+  raise ValueError(f"Unsupported location '{loc}'.")
 
 ## 3D funcs
 

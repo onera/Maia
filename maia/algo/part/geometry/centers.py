@@ -3,7 +3,7 @@ import numpy as np
 import maia.pytree      as PT
 
 from maia.algo.part import connectivity_utils as CU
-from maia.utils     import np_utils
+from maia.utils     import np_utils, s_numbering
 from maia.utils     import logging as mlog
 
 from .utils         import place_in_container
@@ -37,7 +37,7 @@ def _mean_coords_from_connectivity_cyl(vtx_id_idx, vtx_id, cr, ctheta, cz):
   
   return np_utils.interweave_arrays(_to_rthetaz(mean_x, mean_y, mean_z))
 
-def compute_cell_center(zone):
+def compute_cell_center(zone, cell_indices=None):
   """Compute the cell centers of a partitioned zone.
 
   Input zone must have cartesian or cylindrical coordinates recorded under a unique
@@ -46,6 +46,8 @@ def compute_cell_center(zone):
 
   Args:
     zone (CGNSTree): Partitionned CGNS Zone
+    cell_indices (ndarray) : pointlist like array of cells ids or None. If provided,
+      centers are computed only for the specified cells.
   Returns:
     array: Flat (interlaced) numpy array of cell centers
 
@@ -58,29 +60,32 @@ def compute_cell_center(zone):
   coords = PT.Zone.coordinates(zone)
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
+  if cell_indices is not None:
+    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
+    if cell_indices.size == 0:
+      return np.empty(0, dtype=np.float64)
+
   if PT.Zone.Type(zone) == "Unstructured":
-    n_cell     = PT.Zone.n_cell(zone)
-    if PT.Zone.has_ngon_elements(zone):
-      face_vtx_idx, face_vtx, ngon_pe = PT.Zone.ngon_connectivity(zone)
-      if isinstance(coords, PT.CylindricalCoordinates):
-        center_cell = cpart_algo.compute_center_cell_u_cyl(n_cell, *coords, face_vtx, face_vtx_idx, ngon_pe)
-      elif isinstance(coords, PT.CartesianCoordinates):
-        center_cell = cpart_algo.compute_center_cell_u(n_cell, *coords, face_vtx, face_vtx_idx, ngon_pe)
-    else:
-      cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone)
-      if isinstance(coords, PT.CylindricalCoordinates):
-        center_cell = _mean_coords_from_connectivity_cyl(cell_vtx_idx, cell_vtx, *coords)
-      elif isinstance(coords, PT.CartesianCoordinates):
-        center_cell = _mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, *coords)
+    cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone, dim=3, elts_subset=cell_indices)
+
+    if isinstance(coords, PT.CylindricalCoordinates):
+      center_cell = _mean_coords_from_connectivity_cyl(cell_vtx_idx, cell_vtx, *coords)
+    elif isinstance(coords, PT.CartesianCoordinates):
+      center_cell = _mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, *coords)
+        
   else:
     if isinstance(coords, PT.CylindricalCoordinates):
       center_cell = cpart_algo.compute_center_cell_s_cyl(*PT.Zone.CellSize(zone), *coords)
     elif isinstance(coords, PT.CartesianCoordinates):
       center_cell = cpart_algo.compute_center_cell_s(*PT.Zone.CellSize(zone), *coords)
+    if cell_indices is not None: # Filtering is done afterward, which is less performant
+      _cell_indices = s_numbering.ijk_to_index_from_loc(*cell_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
+      center_cell_idx = np.arange(0, 3*(PT.Zone.n_cell(zone)+1), 3)
+      center_cell = np_utils.take_strided(center_cell_idx, center_cell, _cell_indices)
 
   return center_cell
 
-def compute_face_center(zone):
+def compute_face_center(zone, face_indices=None, face_indices_loc=None):
   """Compute the face centers of a partitioned zone.
 
   Input zone must have cartesian or cylindrical coordinates recorded under a unique
@@ -94,6 +99,9 @@ def compute_face_center(zone):
 
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U CGNS Zone
+    face_indices (ndarray) : pointlist like array of faces ids or None. If provided,
+      centers are computed only for the specified faces. If the mesh is structured 2D,
+      face_indices_loc is requested as well and indicates the location of the pointlist.
   Returns:
     array: Flat (interlaced) numpy array of face centers
 
@@ -107,13 +115,16 @@ def compute_face_center(zone):
   zone_dim = PT.Zone.CellDimension(zone)
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
+  if face_indices is not None:
+    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
+    if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
+      assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
+        "Indices location must be specified when filtering faces center on 3D structured meshes"
+    if face_indices.size == 0:
+      return np.empty(0, dtype=np.float64)
+
   if PT.Zone.Type(zone) == "Unstructured":
-    if PT.Zone.has_ngon_elements(zone):
-      ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-    else:
-      face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
+    face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2, elts_subset=face_indices)
     _coords = coords if coords[2] is not None else [coords[0], coords[1], np.zeros_like(coords[0])]
     if isinstance(coords, PT.CartesianCoordinates):
       return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *_coords)
@@ -133,10 +144,17 @@ def compute_face_center(zone):
       centers = cpart_algo.compute_center_face_s(*vtx_size, _cx, _cy, _cz)
     elif isinstance(coords, PT.CylindricalCoordinates):
       centers = cpart_algo.compute_center_face_s_cyl(*vtx_size, _cx, _cy, _cz)
+    if face_indices is not None: # Filtering is done afterward, which is less performant
+      if zone_dim == 2:
+        _face_indices = s_numbering.ij_to_index_from_loc(*face_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
+      else:
+        _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
+      center_idx = np.arange(0, 3*(centers.size//3 + 1), 3)
+      centers = np_utils.take_strided(center_idx, centers, _face_indices)
 
     return centers
 
-def compute_edge_center(zone):
+def compute_edge_center(zone,edge_indices=None):
   """Compute the edge centers of a partitioned zone.
 
   Input zone must have cartesian or cylindrical coordinates recorded under a unique
@@ -148,6 +166,8 @@ def compute_edge_center(zone):
 
   Args:
     zone (CGNSTree): Partitionned 2D or 3D U-elts CGNS Zone
+    edge_indices (ndarray) : pointlist like array of edges ids or None. If provided,
+      centers are computed only for the specified edges. 
   Returns:
     array: Flat (interlaced) numpy array of edge centers
 
@@ -159,6 +179,11 @@ def compute_edge_center(zone):
   """
   coords = PT.Zone.coordinates(zone)
 
+  if edge_indices is not None:
+    assert isinstance(edge_indices, np.ndarray) and edge_indices.ndim == 2 and edge_indices.shape[0] == 1
+    if edge_indices.size == 0:
+      return np.empty(0, dtype=np.float64)
+
   _coords = []
   for c in coords:
     _coords.append(c if c is not None else np.zeros_like(coords[0]))
@@ -166,7 +191,7 @@ def compute_edge_center(zone):
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
       raise NotImplementedError("Only U-elts zones are managed")
-    edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
+    edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1, elts_subset=edge_indices)
     if isinstance(coords, PT.CartesianCoordinates):
       return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, *_coords)
     elif isinstance(coords, PT.CylindricalCoordinates):
@@ -175,19 +200,21 @@ def compute_edge_center(zone):
     raise NotImplementedError("Only U-elts zones are managed")
 
 
-def _compute_elements_center(zone, dim):
+def _compute_elements_center(zone, dim, element_indices=None, element_loc=None):
   """Dispatch centers computing according to zone dimension and 
   requested dimension.
+  If element_indices is not None, center is computed only for the
+  specified elements (in absolute numbering)
   Return a raw interlaced array or None"""
   zone_dim = PT.Zone.CellDimension(zone)
   if dim == 'CellCenter':
     dim = zone_dim
   if dim == 3 and zone_dim >= 3:
-    return compute_cell_center(zone)
+    return compute_cell_center(zone, element_indices)
   elif dim == 2 and zone_dim >= 2:
-    return compute_face_center(zone)
+    return compute_face_center(zone, element_indices, element_loc)
   elif dim == 1 and zone_dim >= 1:
-    return compute_edge_center(zone)
+    return compute_edge_center(zone, element_indices)
 
 def compute_elements_center(zone, dim):
   """ Implementation of maia.algo.compute_elements_center for a given partitioned zone.

@@ -18,3 +18,4 @@ Hedi El Amami
 Alain Hervault
 Nicolas Dellinger
 Thomas Hennion
+Romain Paris

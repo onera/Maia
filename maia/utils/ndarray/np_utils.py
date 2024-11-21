@@ -252,6 +252,18 @@ def roll_once_by_stride(array_idx, array):
   rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
   return np.delete(extended, rm_idx)
 
+def take_strided2(array_idx, array, indices):
+  """ Same as take_strided, but also return the idx array
+  TODO : Other function should be removed
+  """
+
+  out_size = array_idx[indices+1] - array_idx[indices]
+  out_idx  = sizes_to_indices(out_size, array_idx.dtype)
+
+  out = np.empty(out_size.sum(), array.dtype)
+  layouts.take_strided(array_idx, array, indices, out)
+
+  return out_idx, out
 def take_strided(array_idx, array, indices):
   """
   An equivalent to numpy.take (a[ind]), but with strided values in array

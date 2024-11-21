@@ -77,20 +77,32 @@ def cell_vtx_connectivity_elts(zone, dim):
 
   return cell_vtx_idx, cell_vtx
 
-def cell_vtx_connectivity(zone, dim=3):
+def cell_vtx_connectivity(zone, dim=3, elts_subset=None):
   """
   Compute and return the cell->vtx connectivity on a partitioned zone
+
+  If elts_subset is None, cell_vtx connectivity is computed for all elements of the zone.
+  Otherwise, a 2d numpy array of element indices (in absolute numbering) must be provided;
+  cell_vtx connectivity for the requested indices (only U meshes)
   """
   assert dim in [1,2,3]
   assert PT.Zone.Type(zone) in ['Structured', 'Unstructured']
   
   if PT.Zone.Type(zone) == 'Structured':
-    return cell_vtx_connectivity_S(zone, dim)
+    cell_vtx_idx, cell_vtx = cell_vtx_connectivity_S(zone, dim)
   else:
     if PT.Zone.has_ngon_elements(zone):
       if dim == 1:
-        return cell_vtx_connectivity_elts(zone, dim)
+        cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(zone, dim)
       else:
-        return cell_vtx_connectivity_ngon(zone, dim)
+        cell_vtx_idx, cell_vtx = cell_vtx_connectivity_ngon(zone, dim)
     else: # zone has standard elements
-      return cell_vtx_connectivity_elts(zone, dim)
+      cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(zone, dim)
+  
+  if elts_subset is not None:
+    assert PT.Zone.Type(zone) == 'Unstructured'
+    offset = PT.Zone.get_elt_range_per_dim(zone)[dim][0]
+    _elts_ids = elts_subset[0].astype(int, copy=False) - offset
+    cell_vtx_idx, cell_vtx = np_utils.take_strided2(cell_vtx_idx.astype(int, copy=False), cell_vtx, _elts_ids)
+
+  return cell_vtx_idx, cell_vtx

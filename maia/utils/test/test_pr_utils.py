@@ -55,6 +55,18 @@ class Test_transform_bnd_pr_size():
     with pytest.raises(ValueError):
       pr_utils.transform_bnd_pr_size(cell_range, 'CellCenter', 'Vertex')
 
+def test_unroll_pr():
+  out = pr_utils.unroll_pr(np.array([[1, 4], [2,3], [5,6]]))
+  assert out.shape == (3,16) and out.flags.f_contiguous
+  assert (out == np.array([[1,2,3,4,1,2,3,4,1,2,3,4,1,2,3,4],
+                           [2,2,2,2,3,3,3,3,2,2,2,2,3,3,3,3],
+                           [5,5,5,5,5,5,5,5,6,6,6,6,6,6,6,6]])).all()
+  out = pr_utils.unroll_pr(np.array([[1, 4], [7,5]]))
+  assert out.shape == (2,12) and out.flags.f_contiguous
+  assert (out == np.array([[1,2,3,4,1,2,3,4,1,2,3,4],
+                           [7,7,7,7,6,6,6,6,5,5,5,5]])).all()
+  assert (pr_utils.unroll_pr(np.array([[1,1], [4,4], [1,1]])) == np.array([[1], [4], [1]])).all()
+
 class Test_compute_pointList_from_pointRanges():
   class Test_face():
     nVtx       = np.array([3, 3, 3], np.int32)
