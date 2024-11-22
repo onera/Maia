@@ -385,8 +385,8 @@ def test_recover_dist_tree_ngon(comm):
 
       vtx_gnum = np.array([1,2,3,6,7,8,11,12,13,16,17,18,21,22,23,26,27,28,31,32,33,36,37,38,41,42,43], pdm_dtype)
       cell_gnum = np.array([1,2,5,6,9,10,13,14], pdm_dtype)
-      ngon_gnum = np.array([1,2,3,6,7,8,11,12,13,16,17,18,21,22,25,26,29,30,33,34,37,38,41,42,45,46,49,
-                            50,53,54,57,58,61,62,65,66], pdm_dtype)
+      ngon_gnum = np.array([1,2,5,6,9,10,13,14,17,18,21,22, 25,26,27,28,29,30,31,32,33,34,35,36,
+                            45,46,47,48,53,54,55,56,61,62,63,64], pdm_dtype)
       zbc = PT.new_ZoneBC(parent=part_zone)
       bc = PT.new_BC(type='BCWall', point_list=[[1,4,2,3]], parent=zbc)
       PT.new_GridLocation('FaceCenter', bc)
@@ -398,8 +398,8 @@ def test_recover_dist_tree_ngon(comm):
       PT.rm_nodes_from_name(part_zone, ':CGNS#Distribution')
       vtx_gnum =  np.array([3,4,5, 8,9,10,13,14,15,18,19,20,23,24,25,28,29,30,33,34,35,38,39,40,43,44,45], pdm_dtype)
       cell_gnum = np.array([3,4,7,8,11,12,15,16], pdm_dtype)
-      ngon_gnum = np.array([3,4,5,8,9,10,13,14,15,18,19,20,23,24,27,28,31,32,35,36,39,40,43,44,
-                            47,48,51,52,55,56,59,60,63,64,67,68], pdm_dtype)
+      ngon_gnum = np.array([3,4,7,8,11,12,15,16,19,20,23,24, 33,34,35,36,37,38,39,40,41,42,43,44,
+                            49,50,51,52,57,58,59,60,65,66,67,68], pdm_dtype)
 
     ngon = PT.get_node_from_path(part_zone, 'NGonElements')
     MT.newGlobalNumbering({'Element' : ngon_gnum}, parent=ngon)
