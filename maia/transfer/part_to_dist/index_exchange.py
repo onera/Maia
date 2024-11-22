@@ -11,7 +11,8 @@ from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils     as te_utils
 from maia.transfer  import protocols as EP
 
-LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell', 'FaceCenter': 'Face',
+LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell',
+             'IEdgeCenter': 'Edge', 'JEdgeCenter': 'Edge',
              'IFaceCenter': 'Face', 'JFaceCenter': 'Face', 'KFaceCenter': 'Face'}
 
 def create_part_pl_gnum_unique(part_zones, node_path, comm):

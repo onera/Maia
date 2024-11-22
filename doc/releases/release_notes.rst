@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- partition_dist_tree: manage ZoneSubRegion nodes when splitting structured meshes
+
 🐞 Fixes
 ^^^^^^^^
 - merge_zones: copy AdditionalFamilyName nodes when merging subsets

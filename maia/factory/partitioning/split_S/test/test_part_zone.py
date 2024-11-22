@@ -1,6 +1,7 @@
 import pytest_parallel
 import numpy as np
 
+import maia
 import maia.pytree as PT
 from maia.factory.partitioning.split_S import part_zone as splitS
 
@@ -172,6 +173,81 @@ Small.P2.N1 Zone_t:
     assert PT.get_value(match2_2) == 'Big.P2.N1'
     assert (PT.get_node_from_name(match2_2, 'PointRange')[1] == [[2,1],[4,4],[5,1]]).all()
     assert (PT.get_node_from_name(match2_2, 'PointRangeDonor')[1] == [[6,6],[1,2],[1,5]]).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_create_subset(comm):
+  dist_tree = maia.factory.generate_dist_block(4, 'Structured', comm)
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  
+  PT.new_ZoneSubRegion(f'ZSR_VtxBnd', loc='Vertex', point_range=[[4,4],[1,4],[1,4]], parent=dist_zone)
+  PT.new_ZoneSubRegion(f'ZSR_FaceBnd', loc='KFaceCenter', point_range=[[1,3],[1,3],[4,4]], parent=dist_zone)
+
+  fs = PT.new_FlowSolution(f'FSPartialVtx', loc='Vertex', parent=dist_zone)
+  PT.new_IndexRange(value=[[2,4],[2,4],[3,4]], parent=fs)
+  fs = PT.new_FlowSolution(f'FSPartialCell', loc='CellCenter', parent=dist_zone)
+  PT.new_IndexRange(value=[[2,2],[2,2],[2,2]], parent=fs)
+
+  if comm.rank == 0:
+    part_zone = PT.new_Zone('zone.P0.N0', type='Structured', size=[[3,2,0],[4,3,0],[4,3,0]])
+    PT.maia.newGlobalNumbering({'CellRange': [[1,2],[1,3],[1,3]]}, part_zone)
+  elif comm.rank == 1:
+    part_zone = PT.new_Zone('zone.P1.N0', type='Structured', size=[[2,1,0],[4,3,0],[4,3,0]])
+    PT.maia.newGlobalNumbering({'CellRange': [[3,3],[1,3],[1,3]]}, part_zone)
+
+  splitS.create_subsets(dist_zone, part_zone) 
+
+  if comm.rank == 0:
+    assert (PT.get_node_from_path(part_zone, 'FSPartialCell/PointRange')[1] == [[2,2],[2,2],[2,2]]).all()
+    assert (PT.get_node_from_path(part_zone, 'FSPartialVtx/PointRange')[1] == [[2,3], [2,4], [3,4]]).all()
+    assert  PT.get_node_from_path(part_zone, 'ZSR_VtxBnd') is None
+    assert (PT.get_node_from_path(part_zone, 'ZSR_FaceBnd/PointRange')[1] == [[1,2], [1,3], [4,4]]).all()
+  if comm.rank == 1:
+    assert  PT.get_node_from_path(part_zone, 'FSPartialCell') is None
+    assert (PT.get_node_from_path(part_zone, 'FSPartialVtx/PointRange')[1] == [[1,2], [2,4], [3,4]]).all()
+    assert (PT.get_node_from_path(part_zone, 'ZSR_VtxBnd/PointRange')[1] == [[2,2], [1,4], [1,4]]).all()
+    assert (PT.get_node_from_path(part_zone, 'ZSR_FaceBnd/PointRange')[1] == [[1,1], [1,3], [4,4]]).all()
+
+@pytest_parallel.mark.parallel(3)
+def test_create_subset_2d(comm):
+  dist_tree = maia.factory.generate_dist_block([5,5,1], 'Structured', comm)  
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')                    
+                                                                             
+  PT.new_ZoneSubRegion('ZSR_VtxBnd', loc='Vertex', parent=dist_zone,         
+                       point_range=[[5,5],[1,5]])                            
+  PT.new_ZoneSubRegion('ZSR_FaceBnd', loc='JEdgeCenter', parent=dist_zone,   
+                       point_range=[[1,4],[1,1]])                            
+
+  fs = PT.new_FlowSolution(f'FSPartialVtx', loc='Vertex', parent=dist_zone)
+  PT.new_IndexRange(value=[[1,5],[3,5],], parent=fs)
+  fs = PT.new_FlowSolution(f'FSPartialCell', loc='CellCenter', parent=dist_zone)
+  PT.new_IndexRange(value=[[2,3],[2,3]], parent=fs)
+
+  if comm.rank == 0:
+    part_zone = PT.new_Zone('zone.P0.N0', type='Structured', size=[[3,2,0],[5,4,0]])    # Partititons
+    PT.maia.newGlobalNumbering({'CellRange': [[1,2],[1,4]]}, part_zone)                 # +---------+
+  elif comm.rank == 1:                                                                  # | 0 0 1 1 |
+    part_zone = PT.new_Zone('zone.P1.N0', type='Structured', size=[[3,2,0],[3,2,0]])    # | 0 0 1 1 |
+    PT.maia.newGlobalNumbering({'CellRange': [[3,4],[3,4]]}, part_zone)                 # | 0 0 2 2 |
+  elif comm.rank == 2:                                                                  # | 0 0 2 2 |
+    part_zone = PT.new_Zone('zone.P2.N0', type='Structured', size=[[3,2,0],[3,2,0]])    # +---------+
+    PT.maia.newGlobalNumbering({'CellRange': [[3,4],[1,2]]}, part_zone)
+
+  splitS.create_subsets(dist_zone, part_zone) 
+  if comm.rank == 0:
+    assert (PT.get_node_from_path(part_zone, 'FSPartialCell/PointRange')[1] == [[2,2],[2,3]]).all()
+    assert (PT.get_node_from_path(part_zone, 'FSPartialVtx/PointRange')[1] == [[1,3], [3,5]]).all()
+    assert  PT.get_node_from_path(part_zone, 'ZSR_VtxBnd') is None
+    assert (PT.get_node_from_path(part_zone, 'ZSR_FaceBnd/PointRange')[1] == [[1,2], [1,1]]).all()
+  if comm.rank == 1:
+    assert (PT.get_node_from_path(part_zone, 'FSPartialCell/PointRange')[1] == [[1,1],[1,1]]).all()
+    assert (PT.get_node_from_path(part_zone, 'FSPartialVtx/PointRange')[1] == [[1,3], [1,3]]).all()
+    assert (PT.get_node_from_path(part_zone, 'ZSR_VtxBnd/PointRange')[1] == [[3,3], [1,3]]).all()
+    assert  PT.get_node_from_path(part_zone, 'ZSR_FaceBnd') is None
+  if comm.rank == 2:
+    assert (PT.get_node_from_path(part_zone, 'FSPartialCell/PointRange')[1] == [[1,1],[2,2]]).all()
+    assert (PT.get_node_from_path(part_zone, 'FSPartialVtx/PointRange')[1] == [[1,3], [3,3]]).all()
+    assert (PT.get_node_from_path(part_zone, 'ZSR_VtxBnd/PointRange')[1] == [[3,3], [1,3]]).all()
+    assert (PT.get_node_from_path(part_zone, 'ZSR_FaceBnd/PointRange')[1] == [[1,2],[1,1]]).all()
 
 def test_create_zone_gnums():
   dist_zone_cell = np.array([6,8,4])

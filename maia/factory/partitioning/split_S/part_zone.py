@@ -8,9 +8,13 @@ from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, s_numbering
 from .          import split_cut_tree as SCT
 
+from maia.transfer.part_to_dist.index_exchange import create_part_pr_gnum
+
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
 dir_to_idx = {'x':0, 'y':1, 'z':2}
 min_max_as_int = lambda st : 0 if 'min' in st else 1
+is_subset = lambda n : PT.get_label(n) in ['DiscreteData_t', 'FlowSolution_t', 'ZoneSubRegion_t'] \
+                   and PT.get_child_from_name(n, 'PointRange') is not None
 
 def zone_cell_range(zone):
   """ Return the size of a point_range 2d array """
@@ -179,6 +183,32 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             PT.new_child(part_bc, 'zone_offset', 'DataArray_t', p_zone_offset)
   if len(PT.get_children(zbc)) == 0:
     PT.rm_child(p_zone, zbc)
+
+def create_subsets(d_zone, p_zone):
+  """ Create subset nodes (such as ZoneSubRegion) on partitioned zones 
+  by computing intersection of the input PR with the part zone size """
+  part_range = PT.maia.getGlobalNumbering(p_zone, 'CellRange')[1]
+  for subset in PT.get_children_from_predicate(d_zone, is_subset):
+    subset_pr  = PT.Subset.getPatch(subset)[1]
+    subset_loc = PT.Subset.GridLocation(subset)
+    # Convert part_range in relevant GridLocation
+    _part_range = np.copy(part_range)
+    if subset_loc == 'Vertex':
+      _part_range[:,1] += 1
+    elif 'FaceCenter' in subset_loc or 'EdgeCenter' in subset_loc:
+      dir = {'I':0, 'J':1, 'K':2}[subset_loc[0]]
+      _part_range[dir,1] += 1
+    # Compute intersection of PointRange, in dist zone numbering
+    inter = intersect_pr(subset_pr, _part_range)
+    # Reshift to match part zone numbering
+    if inter is not None:
+      part_pr = inter - np.tile(_part_range[:,0],(2,1)).T + 1
+      part_subset = PT.new_node(PT.get_name(subset), PT.get_label(subset), PT.get_value(subset), parent=p_zone)
+      PT.new_GridLocation(subset_loc, part_subset)
+      PT.new_IndexRange(value=part_pr, parent=part_subset)
+      for label in ['Descriptor_t', 'FamilyName_t', 'AdditionalFamilyName_t']:
+        for node in PT.get_children_from_label(subset, label):
+          PT.add_child(part_subset, PT.deep_copy(node))
 
 def create_internal_gcs(d_zone, p_zones, p_zones_offset, comm):
   """
@@ -500,10 +530,14 @@ def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
     PT.new_DataArray("CellSize", PT.Zone.CellSize(d_zone), parent=gn_node)
 
     create_bcs(d_zone, part_zone, cell_bounds[:,0])
+    create_subsets(d_zone, part_zone)
 
     part_zones.append(part_zone)
 
   parts_offset = [np.asarray(part, dtype=np.int32)[:,0] + 1 for part in my_parts]
   create_internal_gcs(d_zone, part_zones, parts_offset, comm)
 
+  # Add GlobalNumbering nodes to created subsets
+  for subset in PT.get_children_from_predicate(d_zone, is_subset):
+    create_part_pr_gnum(d_zone, part_zones, PT.get_name(subset), comm)
   return part_zones
