@@ -15,7 +15,7 @@ Developpement version
 🐞 Fixes
 ^^^^^^^^
 - merge_zones: copy AdditionalFamilyName nodes when merging subsets
-- recover_dist_tree: Fixes a bug in NFace values and manage missing PE case
+- recover_dist_tree: fix a bug in NFace values and manage missing PE case
 
 v1.5 (September 2024)
 ---------------------
