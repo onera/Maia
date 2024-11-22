@@ -235,6 +235,7 @@ def test_get_joins_dist_tree(comm):
   BaseI CGNSBase_t:
     ZoneA.P0.N0 Zone_t:
       ZoneType ZoneType_t "Unstructured":
+      :CGNS#Distribution UserDefinedData_t:
       ZGC ZoneGridConnectivity_t:
         matchAB.0 GridConnectivity_t "ZoneB.P0.N0":
           GridConnectivityType GridConnectivityType_t "Abutting1to1":
@@ -250,6 +251,7 @@ def test_get_joins_dist_tree(comm):
   BaseI CGNSBase_t:
     ZoneA Zone_t:
       ZoneType ZoneType_t "Unstructured":
+      :CGNS#Distribution UserDefinedData_t:
       ZGC ZoneGridConnectivity_t:
         matchAB GridConnectivity_t "ZoneB":
           GridConnectivityType GridConnectivityType_t "Abutting1to1":
@@ -509,3 +511,18 @@ def test_recover_dist_tree_edge(edges_only, comm):
   maia.algo.dist.redistribute_tree(dist_tree_bck, 'gather.0', comm)
 
   assert PT.is_same_tree(dist_tree, dist_tree_bck)
+
+@pytest_parallel.mark.parallel(3)
+def test_recover_poly3d_nface_validity(comm):
+  tree  = maia.factory.generate_dist_block(10, 'Poly', comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+ 
+  tree = maia.factory.recover_dist_tree(ptree, comm)
+  # Check that we do not have duplicate positive faces indices detected in NFace_n Elements connectivity,
+  # because there is a bug in case preserve_orientation=False if part_nface_to_dist_nface is used directly
+  nface = PT.Zone.NFaceNode(PT.get_all_Zone_t(tree)[0])
+  ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+
+  from maia.transfer import protocols as EP
+  out_sign = EP.part_to_block([np.sign(ec)], None, [np.abs(ec)], comm, reduce_func=EP.reduce_sum)
+  assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)
