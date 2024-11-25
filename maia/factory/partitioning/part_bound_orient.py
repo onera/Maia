@@ -9,6 +9,8 @@ import maia
 from maia.utils    import par_utils
 from maia.transfer import protocols as EP
 
+is_ngon_3d = lambda z : PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
+
 def orientation_preserved(part_zones, comm):
   """
   Return False if partitions interface faces has be reoriented during split
@@ -17,6 +19,8 @@ def orientation_preserved(part_zones, comm):
 
   Only relevant for 3D NGON zones.
   """
+  assert all([is_ngon_3d(z) for z in part_zones]), "Only 3D NGon zones are supported"
+
   gnum_list = list()
   data_list = list()
   for part_zone in part_zones:
@@ -53,6 +57,7 @@ def preserve_orientation(part_zones, comm):
 
   Only relevant for 3D NGON zones.
   """
+  assert all([is_ngon_3d(z) for z in part_zones]), "Only 3D NGon zones are supported"
 
   zone_proc_offset = par_utils.dn_to_distribution(len(part_zones), comm)[0]
 
@@ -97,7 +102,7 @@ def preserve_orientation(part_zones, comm):
     cur_zone_glob = zone_proc_offset + izone
 
     # Only faces having out_stride == 1 should be considered, and in addition
-    # we need to retrive their local num in all face (because we extracted bnd faces)
+    # we need to retrieve their local num in all face (because we extracted bnd faces)
     ext_faces_left_pe = bnd_list[izone]
     todeal = ext_faces_left_pe[out_stride[izone]==1]
 
@@ -117,7 +122,7 @@ def preserve_orientation(part_zones, comm):
         pe[iface, 1] = pe[iface, 0] # Swap PE
         pe[iface, 0] = 0
         
-        # Swap CNT
+        # Swap face_vtx connectivity
         ec_view = ec[eso[iface]:eso[iface+1]]
         ec_view[:] = ec_view[::-1]
 

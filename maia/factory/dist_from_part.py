@@ -188,6 +188,7 @@ def _recover_elements(dist_zone, part_zones, comm):
   has_ngon  = 'NGON_n'  in elt_kinds
   has_nface = 'NFACE_n' in elt_kinds
   has_edge  = 'BAR_2'   in elt_kinds
+  has_pe    = PT.get_child_from_predicates(fake_zone, 'Elements_t/ParentElements') is not None
 
   is_poly = has_ngon
   if not is_poly and has_edge: # Maybe 2D Poly with Bar + ParentElements
@@ -249,7 +250,10 @@ def _recover_elements(dist_zone, part_zones, comm):
       n_face_tot  = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1][1]
       nface_range = PT.get_node_from_path(dist_zone, f'{nface_name}/ElementRange')[1]
       nface_range += n_face_tot
-      nface_to_pe(dist_zone, comm)
+      if has_pe:
+        nface_to_pe(dist_zone, comm)
+      if not has_nface:
+        PT.rm_children_from_name(dist_zone, nface_name)
 
   # Deal standard elements
   else:

@@ -102,7 +102,7 @@ def nface_to_pe(zone, comm, remove_NFace=False):
   _cell_face_idx = cell_face_idx - nface_distri_c[0] #Go to local idx
 
   face_cell = PDM_dcellface_to_dfacecell(comm, face_distri, cell_distri, _cell_face_idx, _cell_face)
-  # Strangly PDM can return negative indices if face has only a right parent
+  # Strangely PDM can return negative indices if face has only a right parent
   face_cell = abs(face_cell)
   np_utils.shift_nonzeros(face_cell, PT.Element.Range(nface_node)[0]-1) # Refer to NFace global ids
 
