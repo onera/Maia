@@ -8,12 +8,14 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 import maia
-from maia.utils         import test_utils as TU
-from maia.factory import generate_dist_block
-from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.factory import dsphere_generator as DSG
+from maia.utils    import test_utils as TU
+from maia.factory  import generate_dist_block
+from maia.factory  import dsphere_generator as DSG
+from maia.transfer import protocols as EP
 
 from maia.factory import dist_from_part as DFP
+
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 @pytest_parallel.mark.parallel(3)
@@ -235,6 +237,7 @@ def test_get_joins_dist_tree(comm):
   BaseI CGNSBase_t:
     ZoneA.P0.N0 Zone_t:
       ZoneType ZoneType_t "Unstructured":
+      :CGNS#Distribution UserDefinedData_t:
       ZGC ZoneGridConnectivity_t:
         matchAB.0 GridConnectivity_t "ZoneB.P0.N0":
           GridConnectivityType GridConnectivityType_t "Abutting1to1":
@@ -250,6 +253,7 @@ def test_get_joins_dist_tree(comm):
   BaseI CGNSBase_t:
     ZoneA Zone_t:
       ZoneType ZoneType_t "Unstructured":
+      :CGNS#Distribution UserDefinedData_t:
       ZGC ZoneGridConnectivity_t:
         matchAB GridConnectivity_t "ZoneB":
           GridConnectivityType GridConnectivityType_t "Abutting1to1":
@@ -383,8 +387,8 @@ def test_recover_dist_tree_ngon(comm):
 
       vtx_gnum = np.array([1,2,3,6,7,8,11,12,13,16,17,18,21,22,23,26,27,28,31,32,33,36,37,38,41,42,43], pdm_dtype)
       cell_gnum = np.array([1,2,5,6,9,10,13,14], pdm_dtype)
-      ngon_gnum = np.array([1,2,3,6,7,8,11,12,13,16,17,18,21,22,25,26,29,30,33,34,37,38,41,42,45,46,49,
-                            50,53,54,57,58,61,62,65,66], pdm_dtype)
+      ngon_gnum = np.array([1,2,5,6,9,10,13,14,17,18,21,22, 25,26,27,28,29,30,31,32,33,34,35,36,
+                            45,46,47,48,53,54,55,56,61,62,63,64], pdm_dtype)
       zbc = PT.new_ZoneBC(parent=part_zone)
       bc = PT.new_BC(type='BCWall', point_list=[[1,4,2,3]], parent=zbc)
       PT.new_GridLocation('FaceCenter', bc)
@@ -396,8 +400,8 @@ def test_recover_dist_tree_ngon(comm):
       PT.rm_nodes_from_name(part_zone, ':CGNS#Distribution')
       vtx_gnum =  np.array([3,4,5, 8,9,10,13,14,15,18,19,20,23,24,25,28,29,30,33,34,35,38,39,40,43,44,45], pdm_dtype)
       cell_gnum = np.array([3,4,7,8,11,12,15,16], pdm_dtype)
-      ngon_gnum = np.array([3,4,5,8,9,10,13,14,15,18,19,20,23,24,27,28,31,32,35,36,39,40,43,44,
-                            47,48,51,52,55,56,59,60,63,64,67,68], pdm_dtype)
+      ngon_gnum = np.array([3,4,7,8,11,12,15,16,19,20,23,24, 33,34,35,36,37,38,39,40,41,42,43,44,
+                            49,50,51,52,57,58,59,60,65,66,67,68], pdm_dtype)
 
     ngon = PT.get_node_from_path(part_zone, 'NGonElements')
     MT.newGlobalNumbering({'Element' : ngon_gnum}, parent=ngon)
@@ -509,3 +513,18 @@ def test_recover_dist_tree_edge(edges_only, comm):
   maia.algo.dist.redistribute_tree(dist_tree_bck, 'gather.0', comm)
 
   assert PT.is_same_tree(dist_tree, dist_tree_bck)
+
+@pytest_parallel.mark.parallel(3)
+def test_recover_poly3d_nface_validity(comm):
+  tree  = maia.factory.generate_dist_block(10, 'Poly', comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+ 
+  tree = maia.factory.recover_dist_tree(ptree, comm)
+  # Check that we do not have duplicate positive faces indices detected in NFace_n Elements connectivity.
+  # This can happen in case preserve_orientatioin=False if partitions are not properly reoriented
+  # before calling part_nface_to_dist_nface
+  nface = PT.Zone.NFaceNode(PT.get_all_Zone_t(tree)[0])
+  ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
+
+  out_sign = EP.part_to_block([np.sign(ec)], None, [np.abs(ec)], comm, reduce_func=EP.reduce_sum)
+  assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)

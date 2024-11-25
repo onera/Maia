@@ -116,6 +116,7 @@ def _get_joins_dist_tree(parts_per_dom, comm):
     dist_zone = PT.update_child(dist_base, dist_zone_name, 'Zone_t')
 
     PT.new_child(dist_zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
+    PT.maia.newDistribution(parent=dist_zone) # Needed to call relevant function nace_to_pe later
     # Elements are needed only if there are some FaceCenter jns
     if par_utils.any_true(part_zones, has_face_intra_gc, comm):
       _recover_elements(dist_zone, part_zones, comm)
@@ -187,6 +188,7 @@ def _recover_elements(dist_zone, part_zones, comm):
   has_ngon  = 'NGON_n'  in elt_kinds
   has_nface = 'NFACE_n' in elt_kinds
   has_edge  = 'BAR_2'   in elt_kinds
+  has_pe    = PT.get_child_from_predicates(fake_zone, 'Elements_t/ParentElements') is not None
 
   is_poly = has_ngon
   if not is_poly and has_edge: # Maybe 2D Poly with Bar + ParentElements
@@ -224,15 +226,34 @@ def _recover_elements(dist_zone, part_zones, comm):
         ngon_range += n_edge_tot
 
     elif cell_dim == 3: #3D with NGON + NFACE or NGON only
+      from maia.algo                  import pe_to_nface, nface_to_pe
+      from maia.factory.partitioning  import part_bound_orient as PBO
+      
+      _part_zones = [PT.shallow_copy(zone) for zone in part_zones] # Since we add/remove nodes, do a shallow copy
+      if not PBO.orientation_preserved(_part_zones, comm):
+        # This is to avoid modification of input partitioned tree
+        to_copy = lambda n : PT.get_name(n) in ['ElementConnectivity', 'ParentElements']
+        for zone in _part_zones:
+          for node in PT.get_children_from_predicates(zone, ['Elements_t', to_copy]):
+            node[1] = node[1].copy()
+        PBO.preserve_orientation(_part_zones, comm)
+      for zone in _part_zones:
+        if not has_nface:
+          pe_to_nface(zone)
+        PT.rm_children_from_name(PT.Zone.NGonNode(zone), 'ParentElements')
+
       ngon_name = elt_names[elt_kinds.index('NGON_n')]
-      IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
-      if has_nface:
-        nface_name = elt_names[elt_kinds.index('NFACE_n')]
-        IPTB.part_nface_to_dist_nface(dist_zone, part_zones, nface_name, ngon_name, comm)
-        # > Shift nface element_range and create all cell distri
-        n_face_tot  = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1][1]
-        nface_range = PT.get_node_from_path(dist_zone, f'{nface_name}/ElementRange')[1]
-        nface_range += n_face_tot
+      nface_name = elt_names[elt_kinds.index('NFACE_n')] if has_nface else 'NFaceElements'
+      IPTB.part_ngon_to_dist_ngon(dist_zone, _part_zones, ngon_name, comm)
+      IPTB.part_nface_to_dist_nface(dist_zone, _part_zones, nface_name, ngon_name, comm)
+      # > Shift nface element_range
+      n_face_tot  = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1][1]
+      nface_range = PT.get_node_from_path(dist_zone, f'{nface_name}/ElementRange')[1]
+      nface_range += n_face_tot
+      if has_pe:
+        nface_to_pe(dist_zone, comm)
+      if not has_nface:
+        PT.rm_children_from_name(dist_zone, nface_name)
 
   # Deal standard elements
   else:

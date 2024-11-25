@@ -9,7 +9,8 @@ import maia.utils.logging as mlog
 from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
-from maia.utils    import np_utils, layouts, py_utils
+from maia.factory.partitioning import part_bound_orient as PBO
+from maia.utils    import np_utils, layouts
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
 
@@ -215,6 +216,11 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_par
   if iso_kind=="FIELD" : 
     assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)
 
+  if not PBO.orientation_preserved(part_zones, comm):
+    if elt_type == 'NGON_n':
+      raise RuntimeError("Isosurface and slice functionnalies with elt_typ='NGON_n' require the mesh to have been split with preserve_orientation=True")
+    else:
+      mlog.warning("Mesh has not been partitioned with preserve_orientation=True, which can lead to inconsistent orientations for isosurface and slice outputs")
 
   n_part = len(part_zones)
 
