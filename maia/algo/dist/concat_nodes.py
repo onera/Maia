@@ -51,6 +51,14 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
   newsize = PT.get_node_from_name(node, 'PointList')[1].shape[1]
   distri = par_utils.dn_to_distribution(newsize, comm)
   MT.newDistribution({'Index' : distri}, node)
+
+  for bcds_n in PT.get_children_from_label(node, 'BCDataSet_t'):
+    bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
+    if bcds_pl_n is not None:
+      bcds_pl = PT.get_value(bcds_pl_n)[0]
+      bcds_distrib = par_utils.dn_to_distribution(bcds_pl.size, comm)
+      PT.maia.newDistribution({'Index':bcds_distrib}, parent=bcds_n)
+
   return node
 
 def concatenate_jns(tree, comm):
