@@ -4,6 +4,8 @@ import maia.pytree.maia   as MT
 from maia.utils import np_utils, par_utils
 from maia.algo.dist import matching_jns_tools as MJT
 
+import numpy as np
+
 def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
     additional_data_queries=[], additional_child_queries=[], master=None):
   """
@@ -39,16 +41,12 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
 
   #Copy child nodes
   for child_query in ['GridLocation_t'] + additional_child_queries:
-    common = {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
-              for n in PT.iter_children_from_predicate(master, child_query)}
-    for subset_node in nodes:
-      # Use set intersection to eliminate nodes that does not appear on this subset
-      common = common & {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
-                          for n in PT.iter_children_from_predicate(subset_node, child_query)}
-    for c in sorted(common): #Sort to garantie same insertion order across mpi ranks
-      # Even if we did not use children for comparison, we must add it in created node -> redo search
-      PT.add_child(node, PT.get_child_from_name(master, c[0]))
-
+    for childs in PT.iter_children_from_predicates(master, child_query, ancestors=True):
+      parent = node
+      for child in childs[:-1]:
+        parent = PT.update_child(parent, PT.get_name(child), PT.get_label(child), PT.get_value(child))
+      child = childs[-1]
+      PT.new_child(parent, PT.get_name(child), PT.get_label(child), PT.get_value(child), children=PT.get_children(child))
 
   newsize = PT.get_node_from_name(node, 'PointList')[1].shape[1]
   distri = par_utils.dn_to_distribution(newsize, comm)
