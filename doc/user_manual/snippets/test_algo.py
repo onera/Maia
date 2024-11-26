@@ -705,3 +705,19 @@ def test_extract_edges():
   edge_dist_tree = maia.algo.dist.extract_part.extract_edges(dist_tree, domain_pl, MPI.COMM_WORLD)
 
   #extract_edges@end
+
+def test_concat_from_fam():
+  #concat_from_fam@start
+  import mpi4py.MPI as MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils import mesh_dir
+  import numpy
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', MPI.COMM_WORLD)
+
+  maia.algo.dist.concatenate_patch_from_families(dist_tree, ['RIDGE'], MPI.COMM_WORLD)
+
+  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
+  assert len(PT.get_nodes_from_predicate(dist_tree, is_edge_bc))==1
+  #concat_from_fam@end

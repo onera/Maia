@@ -221,6 +221,14 @@ def concatenate_patch_from_families(dist_tree, families, comm):
     dist_tree (CGNSTree) : Distributed unstructured tree
     families  (list)     : Family names 
     comm      (MPIComm)  : MPI communicator
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :language: python
+      :start-after: #concat_from_fam@start
+      :end-before:  #concat_from_fam@end
+      :dedent: 2
+
   """
 
   for dist_zone in PT.iter_all_Zone_t(dist_tree):
