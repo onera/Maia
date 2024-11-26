@@ -11,7 +11,10 @@ from .extract_boundary       import extract_faces_mesh,\
 
 from .extract_part           import extract_part_from_bc_name,\
                                     extract_part_from_family,\
-                                    extract_part_from_zsr
+                                    extract_part_from_zsr,\
+                                    create_extractor_from_zsr,\
+                                    create_extractor_from_bc_name,\
+                                    create_extractor_from_family
 
 from .geometry_deprecated    import compute_cell_center,\
                                     compute_edge_center,\
