@@ -5,11 +5,17 @@ import maia.pytree        as PT
 from maia         import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.factory import dcloud_generator
 
+def check_dims(tree, celldim, phydim):
+  for base in PT.iter_children_from_label(tree, 'CGNSBase_t'):
+    assert (PT.get_value(base) == [celldim, phydim]).all()
+    for zone in PT.get_all_Zone_t(base):
+      assert PT.Zone.CellDimension(zone) == celldim
+
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("zone_type", ["Unstructured", "Structured"])
 def test_generate_points(zone_type, comm):
   dist_tree = dcloud_generator.generate_dist_points([6,4,1], zone_type, comm)
-  assert (PT.get_all_CGNSBase_t(dist_tree)[0][1] == [3,3]).all()
+  assert (PT.get_all_CGNSBase_t(dist_tree)[0][1] == [3 if zone_type=="Unstructured" else 2, 3]).all()
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   assert PT.get_value(zone).dtype == pdm_gnum_dtype
@@ -44,6 +50,31 @@ def test_generate_points_dims(zone_type, comm):
   assert PT.Zone.n_vtx(zone) == 6
   assert PT.get_node_from_name(zone, 'CoordinateY') is None
   assert PT.get_node_from_name(zone, 'CoordinateZ') is None
+  
+
+  check_dims(dcloud_generator.generate_dist_points([6,4,8], "S", comm), 3, 3)
+  check_dims(dcloud_generator.generate_dist_points([6,4,1], "S", comm), 2, 3)
+  check_dims(dcloud_generator.generate_dist_points([6,1,1], "S", comm), 1, 3)
+  check_dims(dcloud_generator.generate_dist_points([6,4]  , "S", comm), 2, 3)
+  check_dims(dcloud_generator.generate_dist_points([6,1]  , "S", comm), 1, 3)
+  check_dims(dcloud_generator.generate_dist_points([6]    , "S", comm), 1, 3)
+  check_dims(dcloud_generator.generate_dist_points(6      , "S", comm), 3, 3)
+
+  for nvtx_list in [[6,4,9], [6,4,1], [6,1,1]]:
+    with pytest.raises(AssertionError):
+      dcloud_generator.generate_dist_points(nvtx_list, "S", comm, origin=[0., 0.], max_coords=[1., 1.])
+
+  check_dims(dcloud_generator.generate_dist_points([6,4]  , "S", comm, origin=[0., 0.], max_coords=[1., 1.]), 2, 2)
+  check_dims(dcloud_generator.generate_dist_points([6,1]  , "S", comm, origin=[0., 0.], max_coords=[1., 1.]), 1, 2)
+  check_dims(dcloud_generator.generate_dist_points([6]    , "S", comm, origin=[0., 0.], max_coords=[1., 1.]), 1, 2)
+  check_dims(dcloud_generator.generate_dist_points(6      , "S", comm, origin=[0., 0.], max_coords=[1., 1.]), 2, 2)
+
+  for nvtx_list in [[4,7,2], [6,4,1], [6,1,1], [6,4], [6,1]]:
+    with pytest.raises(AssertionError):
+      dcloud_generator.generate_dist_points(nvtx_list, "S", comm, origin=[0.], max_coords=[1.])
+
+  check_dims(dcloud_generator.generate_dist_points([6]    , "S", comm, origin=[0.], max_coords=[1.]), 1, 1)
+  check_dims(dcloud_generator.generate_dist_points(6      , "S", comm, origin=[0.], max_coords=[1.]), 1, 1)
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("dim", [3,1])
