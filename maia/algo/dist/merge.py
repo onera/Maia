@@ -393,8 +393,8 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
         PT.add_child(zgc, child)
       PT.rm_child(merged_zone, zbc)
 
-
   return merged_zone
+
 
 def _merge_allmesh_data(mbm, zones, merged_zone, data_queries):
   """

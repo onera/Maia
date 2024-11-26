@@ -143,3 +143,86 @@ def concatenate_jns(tree, comm):
       break
   if perio_found:
     MJT.add_joins_donor_name(tree, comm, force=True)
+
+
+def concatenate_zone_patch(dist_zone, family, comm):
+  """
+  Go through BCs belonging to family to get and add pre-concatenation informations,
+  then concatenate BCs with concatenate_subset_nodes function and add some information in 
+  concatenated BC to be able te retrieve initial BCs.
+  """
+  assert PT.Zone.Type(dist_zone)=="Unstructured"
+
+  # > Predicates to find family BCs
+  is_subset_container = lambda n: PT.get_label(n) in ['ZoneBC_t']
+  is_subset = lambda n: PT.get_label(n) in ['BC_t'] and\
+                        PT.predicate.belongs_to_family(n, family, True)
+
+  # > Find BCDataSet nodes in first BC -> all other family BCs must have them
+  bc_n = PT.get_node_from_predicates(dist_zone, [is_subset_container, is_subset])
+  bcd_pl_predicates    = ["BCDataSet_t", "IndexArray_t"]
+  bcd_gl_predicates    = ["BCDataSet_t", "GridLocation_t"]
+  bcd_array_predicates = ["BCDataSet_t", "BCData_t", "DataArray_t"]
+  bcd_pl_paths    = PT.predicates_to_paths(bc_n, bcd_pl_predicates)
+  bcd_gl_paths    = PT.predicates_to_paths(bc_n, bcd_gl_predicates)
+  bcd_array_paths = PT.predicates_to_paths(bc_n, bcd_array_predicates)
+
+  # > Go through family BCs gathering informations
+  bc_nodes = list() 
+  bc_names = list()
+  bc_ordin = list() 
+  zone_bc_n = PT.get_node_from_label(dist_zone, "ZoneBC_t")
+  for i_bc, bc_n in enumerate(PT.get_nodes_from_predicates(dist_zone, [is_subset_container, is_subset])):
+    bc_pl  = PT.Subset.getPatch(bc_n)[1][0]
+    bcds_n = PT.new_BCDataSet(":maia#concatenate", parent=bc_n)
+    PT.new_BCData('DirichletData',
+                  fields={'OriginalBCId':np.full(bc_pl.size, i_bc)},
+                  parent=bcds_n)
+    ord_n = PT.get_child_from_label(bc_n, 'Ordinal_t')
+
+    bc_nodes.append(bc_n)
+    bc_names.append(PT.get_name(bc_n))
+    if ord_n is not None:
+      bc_ordin.append(str(PT.get_value(ord_n)[0]))
+
+    for path in bcd_array_paths:
+      bcd_path = PT.utils.path_head(path, 2)
+      bcd_n = PT.get_node_from_path(bc_n, bcd_path)
+      if PT.get_child_from_name(bcd_n, 'OriginalBCId') is None:
+        array = PT.get_child_from_label(bcd_n, 'DataArray_t')[1]
+        PT.new_DataArray('OriginalBCId', np.full(array.size, i_bc), parent=bcd_n)
+        obcid_name = bcd_path+'/'+'OriginalBCId'
+        if obcid_name not in bcd_array_paths:
+          bcd_array_paths.append(obcid_name)
+
+    PT.rm_child(zone_bc_n, bc_n)
+
+  if len(bc_ordin)!=0:
+    assert len(bc_ordin)==len(bc_nodes)
+
+  bc_n = concatenate_subset_nodes(bc_nodes, comm, output_name=family,
+                                  additional_data_queries=bcd_pl_paths+bcd_array_paths+[':maia#concatenate/DirichletData/OriginalBCId'],
+                                  additional_child_queries=['FamilyName_t']+bcd_gl_paths)
+  PT.new_Descriptor('BCNames'  , '\n'.join(bc_names), parent=bc_n)
+  PT.new_Descriptor('BCOrdinal', '\n'.join(bc_ordin), parent=bc_n)
+  PT.add_child(zone_bc_n, bc_n)
+
+
+def concatenate_patch_from_families(dist_tree, families, comm):
+  """
+  Create unique BC for each family while concatenating associated BCDataSets.
+  Initial BCs will be removed after concatenation.
+
+  Note:
+    This function add some nodes in concatenated BCs to preserve pre-concatenate tree info.
+    Do not delete them if, for any reason, you want to retrieve initial tree.
+
+  Args:
+    dist_tree (CGNSTree) : Distributed unstructured tree
+    families  (list)     : Family names 
+    comm      (MPIComm)  : MPI communicator
+  """
+
+  for dist_zone in PT.iter_all_Zone_t(dist_tree):
+    for family in families:
+      concatenate_zone_patch(dist_zone, family, comm)

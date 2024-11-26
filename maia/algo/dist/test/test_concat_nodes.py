@@ -1,13 +1,17 @@
 import pytest
 import pytest_parallel
+import os
 import numpy as np
 
+import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils          import par_utils
 from maia.factory        import full_to_dist as F2D
+
+import maia.utils.test_utils as TU
 
 from maia.algo.dist import concat_nodes as GN
 
@@ -115,3 +119,36 @@ def test_concatenate_jns(comm, mode):
   if mode=='periodic':
     assert all(['.P' in gc[0] for gc in gcs])
     assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivityProperty_t')) == 2
+
+
+@pytest_parallel.mark.parallel(3)
+def test_concatenate_patch(comm):
+  mesh_path = os.path.join(TU.mesh_dir,'flat_plate_3d.yaml')
+  dist_tree = maia.io.file_to_dist_tree(mesh_path, comm)
+
+  def tag_fam_in_bcs(dist_tree, bc_names, family_name):
+    for bc_name in bc_names:
+      bc_n = PT.get_node_from_name_and_label(dist_tree, bc_name, 'BC_t')
+      PT.new_FamilyName(family_name, parent=bc_n)
+  
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(0, 5)], 'WALL')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(5, 9)], 'SYM')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(9,10)], 'FARFIELD')
+  tag_fam_in_bcs(dist_tree, [f'ridge.{i}'   for i in range(0,20)], 'RIDGE')
+
+  GN.concatenate_patch_from_families(dist_tree, ['WALL','SYM','FARFIELD','RIDGE'], comm)
+
+  bc_nodes = PT.get_nodes_from_label(dist_tree, "BC_t")
+  assert ([PT.get_name(n) for n in bc_nodes]==['WALL','SYM','FARFIELD','RIDGE'])
+  print([PT.get_name(n) for n in bc_nodes])
+  for bc_n in bc_nodes:
+    assert PT.get_node_from_path (bc_n, ':maia#concatenate/DirichletData/OriginalBCId') is not None
+    assert PT.get_child_from_name(bc_n, 'BCNames') is not None
+    assert PT.get_child_from_name(bc_n, 'BCOrdinal') is not None
+  
+    bcd_n = PT.get_node_from_path(bc_n, ':maia#concatenate/DirichletData')
+    assert PT.get_child_from_name(bcd_n, 'OriginalBCId') is not None
+    
+    bcd_n = PT.get_node_from_path(bc_n, 'BCDataSet/NeumannData')
+    assert PT.get_child_from_name(bcd_n, 'ParamU') is not None
+    assert PT.get_child_from_name(bcd_n, 'OriginalBCId') is not None
