@@ -14,6 +14,11 @@ from maia.utils.test_utils import sample_mesh_dir
 
 from maia.io.hdf import _hdf_cgns as HCG
 
+if subprocess.run("which h5ls", capture_output=True, shell=True).returncode == 0:
+  know_hdf_utils = True
+else:
+  know_hdf_utils = False
+
 sample_tree = """
   Base CGNSBase_t [2,2]:
     ZoneU Zone_t [[6, 0, 0]]:
@@ -63,6 +68,7 @@ class Test_AttributeRW:
     assert self.attr_rw.read_str_33(gid, b'name') == 'GridCoordinates'
     assert self.attr_rw.read_bytes_3(gid, b'type') == b'MT'
 
+  @pytest.mark.skipif(not know_hdf_utils, reason="Require hdf5 utilities")
   def test_write(self, tmp_hdf_file):
     fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
     gid = HCG.open_from_path(fid, 'Base/ZoneU')
@@ -77,6 +83,7 @@ class Test_AttributeRW:
     check_h5ls_output(out, "Attribute: some_attribute scalar", '"AttrValue"')
     check_h5ls_output(out, "Attribute: flags {1}", '1')
 
+@pytest.mark.skipif(not know_hdf_utils, reason="Require hdf5 utilities")
 def test_add_root_attribute(tmp_hdf_file):
   fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
   gid = HCG.open_from_path(fid, 'Base/ZoneU')
@@ -125,6 +132,7 @@ def test_load_data(ref_hdf_file):
   data = HCG.load_data(gid)
   assert np.array_equal(data, [[1,2], [3,4]]) and data.dtype == np.float64 and np.isfortran(data)
 
+@pytest.mark.skipif(not know_hdf_utils, reason="Require hdf5 utilities")
 def test_write_data(tmp_hdf_file):
   fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
   gid = HCG.open_from_path(fid, 'Base/ZoneU/GridCoordinates')
@@ -140,6 +148,7 @@ def test_write_data(tmp_hdf_file):
     out[idx+1] = out[idx+1][4:] #Some hdf version include (0) before data : remote it
   assert out[idx+1] == '0, 0, 0, 1, 1, 1'
 
+@pytest.mark.skipif(not know_hdf_utils, reason="Require hdf5 utilities")
 def test_write_link(tmp_hdf_file):
   fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
   gid = HCG.open_from_path(fid, 'Base/ZoneU/GridCoordinates')
@@ -244,6 +253,7 @@ def test_load_node_partial(partial, ref_hdf_file):
 
   assert PT.is_same_tree(parent, PT.yaml.to_node(yt))
 
+@pytest.mark.skipif(not know_hdf_utils, reason="Require hdf5 utilities")
 def test_write_node_partial(tmp_hdf_file):
   tree = PT.yaml.to_cgns_tree(sample_tree)
   node = PT.get_node_from_path(tree, 'Base/ZoneU/GridCoordinates')
@@ -298,6 +308,7 @@ def test_load_tree_partial(partial, ref_hdf_file):
     yt = sample_tree
   assert PT.is_same_tree(tree, PT.yaml.to_cgns_tree(yt))
 
+@pytest.mark.skipif(not know_hdf_utils, reason="Require hdf5 utilities")
 def test_write_tree_partial(tmp_path, ref_hdf_file):
   tree = PT.yaml.to_cgns_tree(sample_tree)
   outfile = str(tmp_path / Path('only_coords.hdf'))

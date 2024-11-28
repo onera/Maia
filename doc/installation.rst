@@ -99,6 +99,7 @@ Running Maia tests requires:
 * :code:`doctest` (C++ library)
 * :code:`pytest` > 6 (python package)
 * :code:`ruamel` (python package for YAML parsing)
+* :code:`h5ls` and :code:`h5diff` (HDF5 utilities that generally come with the HDF5 library)
 
 If :code:`doctest` is not found on the environment, it will be downloaded from GitHub by CMake. This should be transparent.
 

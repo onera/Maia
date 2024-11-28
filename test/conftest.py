@@ -6,10 +6,8 @@ from mpi4py import MPI
 import maia.io
 from maia.utils                              import test_utils as TU
 from maia.utils.py_utils                     import uniform_distribution_at
-# pytest.register_assert_rewrite("pytest_check.check")
 
 def rename_reports(config, comm):
-# https://stackoverflow.com/questions/59577426/how-to-rename-the-title-of-the-html-report-generated-by-pytest-html-plug-in
   if comm.Get_rank() == 0:
     if not os.path.exists('reports'):
       os.makedirs('reports')
@@ -19,7 +17,6 @@ def rename_reports(config, comm):
 
   #Only proc 0 holds test results, others are empty
   if comm.Get_rank() == 0:
-    config.option.htmlpath = 'reports/' + "report_func_test.html"
     config.option.xmlpath  = 'reports/' + "report_func_test.xml"
 
 def generate_cgns_files(comm):
@@ -52,20 +49,3 @@ def pytest_configure(config):
   if config.getoption('gen_hdf'):
     generate_cgns_files(comm)
   comm.barrier()
-
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-
-  pytest_html = item.config.pluginmanager.getplugin('html')
-  outcome = yield
-  report = outcome.get_result()
-  extra = getattr(report, 'extra', [])
-  if report.when == 'call':
-    # always add url to report
-    extra.append(pytest_html.extras.url('http://www.example.com/'))
-    xfail = hasattr(report, 'wasxfail')
-    if (report.skipped and xfail) or (report.failed and not xfail):
-      # only add additional html on failure
-      extra.append(pytest_html.extras.html('<div>Additional HTML</div>'))
-    report.extra = extra
-
