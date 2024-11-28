@@ -15,8 +15,9 @@ import maia.utils.test_utils as TU
 
 from maia.algo.dist import concat_nodes as GN
 
+@pytest.mark.parametrize("default_bcds", [True, False])
 @pytest_parallel.mark.parallel([1,2])
-def test_concatenate_subset_nodes(comm):
+def test_concatenate_subset_nodes(default_bcds, comm):
   yt = """
   BCa BC_t "BCFarfield":
     GridLocation GridLocation_t "FaceCenter":
@@ -46,8 +47,11 @@ def test_concatenate_subset_nodes(comm):
       expected_pl = [[3,4, 50,60,70,80]]
       expected_data = [30,40, 5.,6.,7.,8]
 
-  node = GN.concatenate_subset_nodes(subset_nodes, comm, output_name='BothBC', \
-      additional_data_queries = ['BCDataSet/BCData/Data'])
+  if default_bcds:
+    node = GN.concatenate_subset_nodes(subset_nodes, comm, output_name='BothBC', \
+        additional_data_queries = ['BCDataSet/BCData/Data'])
+  else:
+    node = GN.concatenate_bc_nodes(subset_nodes, comm, output_name='BothBC')
   assert PT.get_name(node) == 'BothBC'
   assert PT.get_value(node) == 'BCFarfield'
   assert PT.Subset.GridLocation(node) == 'FaceCenter'
