@@ -52,9 +52,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
         child = childs[-1]
         PT.new_child(parent, PT.get_name(child), PT.get_label(child), PT.get_value(child), children=PT.get_children(child))
 
-    intersected_node = empty_subset_nodes[0]
-    for n in empty_subset_nodes[1:]:
-      intersected_node = PT.intersection(intersected_node, n)
+    intersected_node = PT.intersection(*empty_subset_nodes)
 
     for childs in PT.iter_children_from_predicates(intersected_node, child_query, ancestors=True):
       parent = node
