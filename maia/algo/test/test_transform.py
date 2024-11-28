@@ -408,7 +408,7 @@ class Test_cart_to_cyl:
 
     dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
     if comm.Get_size() > 1:
-      part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+      part_tree = maia.factory.partition_dist_tree(dist_tree, comm, graph_part_tool='gnum')
     else:
       part_tree = dist_tree
 

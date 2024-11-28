@@ -12,6 +12,7 @@ from maia.factory      import dcube_generator as DCG
 from maia.factory      import partition_dist_tree
 
 from maia.utils     import test_utils as TU
+from maia.utils     import np_utils
 from maia.algo.part import localize as LOC
 
 @pytest_parallel.mark.parallel(1)
@@ -63,19 +64,20 @@ def test_mesh_location(reverse, comm):
   if comm.rank == 0:
     expected_tgt_data = [{'located_ids' : [0], 'unlocated_ids' : [], 'location' : [4]},
                          {'located_ids' : [], 'unlocated_ids' : [0], 'location' : []}]
-    expected_src_data = [{'elt_pts_inside_idx' : [0,0,0,0,1], 'points_gnum' : [3]}]
   if comm.rank == 1:
     expected_tgt_data = [{'located_ids' : [0,1], 'unlocated_ids' : [2], 'location' : [4,8]}]
-    expected_src_data = [{'points_gnum' : []},
-                         {'elt_pts_inside_idx' : [0,0,2], 'points_gnum' : [1,2]}]
 
   for i_part, expct_data in enumerate(expected_tgt_data):
     for key in expct_data:
       assert (tgt_data[i_part][key] == expct_data[key]).all()
   if reverse:
-    for i_part, expct_data in enumerate(expected_src_data):
-      for key in expct_data:
-        assert np.allclose(src_data[i_part][key], expct_data[key])
+    elt_pts_inside_idx_full = np.array([0,0,0,0,2,2,2,2,3])
+    points_gnum_full = np.array([1,2,3])
+    for i_part, zone in enumerate(PT.get_all_Zone_t(tree)):
+      cell_gnum = PT.maia.get_global_numbering(zone, 'Cell')[1].astype(np.int64)
+      expected_idx, expected_gnum = np_utils.take_strided2(elt_pts_inside_idx_full, points_gnum_full , cell_gnum-1)
+      assert np.array_equal(src_data[i_part]['elt_pts_inside_idx'], expected_idx)
+      assert np.array_equal(src_data[i_part]['points_gnum']       , expected_gnum)
 
 @pytest_parallel.mark.parallel(1)
 def test_mesh_location_mdom(comm):

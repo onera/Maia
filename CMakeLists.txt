@@ -61,6 +61,7 @@ include(${PROJECT_UTILS_CMAKE_DIR}/default_flags.cmake)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE) # default to Release
 endif()
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread") # Needed for Topaze https://stackoverflow.com/a/61439452
 ### Additionnal build types
 include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 
@@ -70,7 +71,7 @@ include(${PROJECT_UTILS_CMAKE_DIR}/additional_build_types.cmake)
 # ------------------------------------------------------------------------------
 ## System dependencies ###
 if (NOT TARGET Python::Python OR NOT TARGET Python::NumPy)
-  project_find_package(Python REQUIRED COMPONENTS Development NumPy)
+  project_find_package(Python 3.8 REQUIRED COMPONENTS Development NumPy)
 endif()
 if (NOT TARGET MPI::MPI_CXX)
   project_find_package(MPI REQUIRED COMPONENTS CXX)

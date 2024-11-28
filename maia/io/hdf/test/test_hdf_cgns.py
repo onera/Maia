@@ -200,6 +200,7 @@ def test_load_data_partial(ref_hdf_file):
                                      [[1,0], [1,1], [1,2], [1,1], [0,0],[1,1],[1,1],[1,1]], [2,2], [0]])
   assert np.array_equal(data, [1,3,4]) and data.dtype == np.float64
 
+@pytest.mark.skipif(not know_hdf_utils, reason="Require hdf5 utilities")
 @pytest.mark.parametrize('combinated', [False, True])
 def test_write_data_partial(tmp_hdf_file, combinated):
   fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
