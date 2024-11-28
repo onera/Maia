@@ -121,8 +121,9 @@ def test_concatenate_jns(comm, mode):
     assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivityProperty_t')) == 2
 
 
+@pytest.mark.parametrize("specified", [True, False])
 @pytest_parallel.mark.parallel(3)
-def test_concatenate_patch(comm):
+def test_concatenate_patch(specified, comm):
   mesh_path = os.path.join(TU.mesh_dir,'flat_plate_3d.yaml')
   dist_tree = maia.io.file_to_dist_tree(mesh_path, comm)
 
@@ -136,11 +137,16 @@ def test_concatenate_patch(comm):
   tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(9,10)], 'FARFIELD')
   tag_fam_in_bcs(dist_tree, [f'ridge.{i}'   for i in range(0,20)], 'RIDGE')
 
-  GN.concatenate_patch_from_families(dist_tree, ['WALL','SYM','FARFIELD','RIDGE'], comm)
+  if specified:
+    families = ['WALL','FARFIELD','RIDGE']
+    GN.concatenate_subset_from_families(dist_tree, comm, families)
+  else:
+    families = ['WALL', 'SYM', 'FARFIELD','RIDGE']
+    GN.concatenate_subset_from_families(dist_tree, comm)
 
-  bc_nodes = PT.get_nodes_from_label(dist_tree, "BC_t")
-  assert ([PT.get_name(n) for n in bc_nodes]==['WALL','SYM','FARFIELD','RIDGE'])
-  print([PT.get_name(n) for n in bc_nodes])
+  is_merged_bc = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) in families
+  bc_nodes = PT.get_nodes_from_predicate(dist_tree, is_merged_bc)
+  assert ([PT.get_name(n) for n in bc_nodes]==families)
   for bc_n in bc_nodes:
     assert PT.get_node_from_path (bc_n, ':maia#concatenate/DirichletData/OriginalBCId') is not None
     assert PT.get_child_from_name(bc_n, 'BCNames') is not None
@@ -152,3 +158,9 @@ def test_concatenate_patch(comm):
     bcd_n = PT.get_node_from_path(bc_n, 'BCDataSet/NeumannData')
     assert PT.get_child_from_name(bcd_n, 'ParamU') is not None
     assert PT.get_child_from_name(bcd_n, 'OriginalBCId') is not None
+
+  if specified:
+    is_sym = lambda n: PT.get_label(n) in ['BC_t'] and\
+                       PT.predicate.belongs_to_family(n, 'SYM', True)
+
+    assert len(PT.get_nodes_from_predicate(dist_tree, is_sym))==4

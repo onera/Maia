@@ -2,7 +2,7 @@
 Distributed algorithms for distributed trees
 """
 
-from .concat_nodes               import concatenate_patch_from_families
+from .concat_nodes               import concatenate_subset_from_families
 
 from .conformize_jn              import conformize_jn_pair
 
