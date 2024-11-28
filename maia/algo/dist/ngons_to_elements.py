@@ -113,7 +113,11 @@ def _ngon_to_elements_zone(zone, comm):
     n_treated += n_elt_loc
     elt_shift += distri[-1]
 
-  assert n_treated == cell_n.size
+  remaining_cells = comm.allreduce(cell_n.size - n_treated)
+  if remaining_cells != 0:
+    msg = f"Input polyedric mesh can not be converted to standard elements, because some cells differs from standard elements" \
+          f" TETRA_4, PYRA_5, PENTA_6 or HEXA_8 ({remaining_cells} cells detected on zone {PT.get_name(zone)})"
+    raise RuntimeError(msg)
 
   # Now get for each cell section the corresponding vertices, which will be
   # gathered to make nodal connectivity
