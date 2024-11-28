@@ -70,7 +70,12 @@ def test_extract_part_simple_s_from_api(bc_loc, comm):
     PT.new_FlowSolution('FlowSol#Vtx', loc='Vertex', fields={'cx':cx}, parent=part_zone)
 
   for bc_name in ['Xmin','Xmax','Ymin','Ymax','Zmin','Zmax']:
-    extract_part_tree = EP.extract_part_from_bc_name(part_tree, bc_name, comm, containers_name=['FlowSol#Vtx'])
+    if bc_name.endswith('min'):
+      extract_part_tree = EP.extract_part_from_bc_name(part_tree, bc_name, comm, containers_name=['FlowSol#Vtx'])
+    else:
+      extractor = EP.create_extractor_from_bc_name(part_tree, bc_name, comm)
+      extract_part_tree = extractor.get_extract_part_tree()
+      extractor.exchange_fields(['FlowSol#Vtx'])
     extract_dist_tree = maia.factory.recover_dist_tree(extract_part_tree, comm, data_transfer='FIELDS')
     extract_dist_zone = PT.get_all_Zone_t(extract_dist_tree)[0]
     assert PT.Zone.n_vtx( extract_dist_zone)==100
@@ -212,13 +217,15 @@ def test_zsr_api(cgns_name, comm):
     for zone in PT.get_all_Zone_t(part_tree):
       if cgns_name=="Structured":
         pr = np.array([[1,1],[1,1],[1,2]], dtype=np.int32)
-        zsr_n = PT.new_ZoneSubRegion('ToExtract', loc='CellCenter', point_range=pr, parent=zone)
+        PT.new_ZoneSubRegion('ToExtract', loc='CellCenter', point_range=pr, parent=zone)
       else:
         n_face = PT.Zone.n_face(zone)
         pl = np.array([1,2], dtype=np.int32).reshape((1,-1)) + n_face
-        zsr_n = PT.new_ZoneSubRegion('ToExtract', loc='CellCenter', point_list=pl, parent=zone)
-  extracted_tree = EP.extract_part_from_zsr(part_tree, 'ToExtract', comm)
-
+        PT.new_ZoneSubRegion('ToExtract', loc='CellCenter', point_list=pl, parent=zone)
+  if cgns_name == 'Structured':
+    extracted_tree = EP.extract_part_from_zsr(part_tree, 'ToExtract', comm)
+  else:
+    extracted_tree = EP.create_extractor_from_zsr(part_tree, 'ToExtract', comm).get_extract_part_tree()
   zone_n = PT.get_all_Zone_t(extracted_tree)
   n_cell_extr = PT.Zone.n_cell(zone_n[0]) if len(zone_n)==1 else 0
   assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 4
