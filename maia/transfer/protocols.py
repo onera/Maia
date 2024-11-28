@@ -8,6 +8,8 @@ from maia.utils import par_utils, np_utils
 
 from . import _protocols
 
+from ._protocols import GIndexer, GIndexer_m
+
 def _check_dict_keys(data_dict, comm):
   if comm.Get_size() == 0:
     return
@@ -222,5 +224,3 @@ def reduce_mean(dist_data,dist_stride):
   """
   indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.add.reduceat(dist_data, indices) / dist_stride
-
-from ._protocols.g_indexer import GIndexer, GIndexer_m

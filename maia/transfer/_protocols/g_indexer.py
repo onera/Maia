@@ -2,32 +2,13 @@ from mpi4py import MPI
 import numpy as np
 import pickle
 
+from cmaia.utils import layouts
 
 def counting_sort(array, n_bins):
-  from cmaia.utils import layouts
   return layouts.counting_sort(array, n_bins)
 
 def counting_sort_mult(arrays, n_bins):
-  from cmaia.utils import layouts
   return layouts.counting_sort_mult(arrays, n_bins)
-  counts = np.zeros(n_bins, int)
-  for array in arrays:
-    counts += np.bincount(array, minlength=n_bins)
-
-  displ = np.empty(counts.size+1, int)
-  displ[0] = 0
-  np.cumsum(counts, out=displ[1:])
-
-  counts *= 0
-  out_list = list()
-  for array in arrays:
-    out = np.empty_like(array)
-    for i in range(array.size):
-      out[i] = displ[array[i]] + counts[array[i]]
-      counts[array[i]] += 1
-    out_list.append(out)
-
-  return out_list, counts
 
 def take_strided(a_counts, a_val, indices, out):
   """
@@ -40,7 +21,6 @@ def take_strided(a_counts, a_val, indices, out):
   values will be extracted
   take_strided(a_counts, a_val, [2,0]) = [1000, 1001,  10,11,12]
   """
-  from cmaia.utils import layouts
   layouts.take_stridedDI(a_counts, a_val, indices, out)
 
 def put_strided(a, indices, indices_count, read_counts, read):
@@ -50,7 +30,6 @@ def put_strided(a, indices, indices_count, read_counts, read):
   If an index occurs multiple times in indices array, it erase the previously written
   value. A check is performed on counts to write only compatible data
   """
-  from cmaia.utils import layouts
   layouts.put_strided(a, indices, indices_count, read_counts, read)
 
 class GIndexer_m:
