@@ -202,7 +202,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
     - Partitions must come from a single initial domain on input tree.
   
   See also:
-    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name``,
+    :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name`` and ``transfer_dataset``,
     and returns an Extractor object which can be used to exchange containers more than once through its
     ``Extractor.exchange_fields(container_name)`` method.
   
@@ -271,6 +271,11 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   ``zsr_name`` becomes ``bc_name`` and optional ``transfer_dataset`` argument allows to 
   transfer BCDataSet (without PointList or PointRange) from BC to the extracted mesh (default to ``True``).
 
+  See also:
+    :func:`create_extractor_from_bc_name` takes the same parameters, excepted ``containers_name`` and ``transfer_dataset``,
+    and returns an Extractor object which can be used to exchange containers more than once through its
+    ``Extractor.exchange_fields(container_name)`` method.
+
   Example:
     .. literalinclude:: snippets/test_algo.py
       :start-after: #extract_from_bc_name@start
@@ -314,35 +319,29 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
 
   return extract_tree
 
-
-def extract_part_from_family(part_tree, family_name, comm,
-                             transfer_dataset=True,
-                             containers_name=[],
-                             **options):
-  """Extract the submesh defined by the provided family name from the input volumic
-  partitioned tree.
+def create_extractor_from_bc_name(part_tree, bc_name, comm, **options):
+  """Same as extract_part_from_bc_name, but return the extractor object."""
   
-  Family related nodes can be labelled either as BC_t or ZoneSubRegion_t, but their
-  GridLocation must have the same value. They generate a merged output on the resulting extracted tree.
+  # Local copy of the part_tree to add ZSR 
+  local_part_tree   = PT.shallow_copy(part_tree)
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
-  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`.
+  # Adding ZSR to tree
+  for domain, part_zones in part_tree_per_dom.items():
+    for part_zone in part_zones:
+      bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
+      if bc_n is not None:
+        PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
 
-  Warning:
-    Only U-NGon meshes are managed in this function.
+  return create_extractor_from_zsr(local_part_tree, bc_name, comm, **options)
 
-  Example:
-    .. literalinclude:: snippets/test_algo.py
-      :start-after: #extract_from_family@start
-      :end-before:  #extract_from_family@end
-      :dedent: 2
-  """
-  start = time.time()
 
+def _prepare_extract_from_family(part_tree, family_name, comm):
+  
   if PT.get_value(PT.get_node_from_name(part_tree, 'ZoneType'))=='Structured':
     raise RuntimeError(f'extract_part_from_family function is not implemented for Structured meshes.')
 
   # Local copy of the part_tree to add ZSR 
-  l_containers_name = [name for name in containers_name]
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
@@ -376,9 +375,8 @@ def extract_part_from_family(part_tree, family_name, comm,
     if len(set(location)) > 1:
       # Not checking subregion extents, possible ?
       raise ValueError(f"Specified family refers to nodes with different GridLocation value : {set(location)}.")
-     
+
   # Adding ZSR to tree
-  there_is_bcdataset = dict((path, False) for path in fam_node_paths)
   for domain, part_zones in part_tree_per_dom.items():
     for part_zone in part_zones:
 
@@ -387,18 +385,7 @@ def extract_part_from_family(part_tree, family_name, comm,
         fam_node = PT.get_node_from_path(part_zone, path)
         if fam_node is not None:
 
-          if PT.get_label(fam_node)=='BC_t':
-            bc_name = PT.get_name(fam_node)
-            if transfer_dataset:
-              zsr_bc_n = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name)
-              there_is_bcdataset[path] = set_transfer_dataset(fam_node, zsr_bc_n, PT.Zone.Type(part_zone))
-              if PT.get_child_from_label(zsr_bc_n, 'DataArray_t') is not None:
-                PT.add_child(part_zone, zsr_bc_n)
-
           if PT.get_label(fam_node)=="ZoneSubRegion_t":
-            if transfer_dataset:
-              if PT.get_child_from_label(fam_node, 'DataArray_t') is not None:
-                there_is_bcdataset[path] = True
             related_path = PT.Subset.ZSRExtent(fam_node, part_zone)
             fam_node = PT.get_node_from_path(part_zone, related_path)
 
@@ -410,6 +397,62 @@ def extract_part_from_family(part_tree, family_name, comm,
         fam_pl = np.unique(fam_pl, axis=1) # If pl.size == 0, this line fails with numpy 1.17
         PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl, loc=location[0], parent=part_zone)
 
+  return local_part_tree, fam_node_paths
+
+
+def extract_part_from_family(part_tree, family_name, comm,
+                             transfer_dataset=True,
+                             containers_name=[],
+                             **options):
+  """Extract the submesh defined by the provided family name from the input volumic
+  partitioned tree.
+  
+  Family related nodes can be labelled either as BC_t or ZoneSubRegion_t, but their
+  GridLocation must have the same value. They generate a merged output on the resulting extracted tree.
+
+  Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`.
+
+  Warning:
+    Only U-NGon meshes are managed in this function.
+  See also:
+    :func:`create_extractor_from_family` takes the same parameters, excepted ``containers_name`` and ``transfer_dataset``,
+    and returns an Extractor object which can be used to exchange containers more than once through its
+    ``Extractor.exchange_fields(container_name)`` method.
+
+  Example:
+    .. literalinclude:: snippets/test_algo.py
+      :start-after: #extract_from_family@start
+      :end-before:  #extract_from_family@end
+      :dedent: 2
+  """
+  start = time.time()
+
+  local_part_tree, fam_node_paths = _prepare_extract_from_family(part_tree, family_name, comm)
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
+     
+  # Adding ZSR to tree
+  there_is_bcdataset = dict((path, False) for path in fam_node_paths)
+  if transfer_dataset:
+    for domain, part_zones in part_tree_per_dom.items():
+      for part_zone in part_zones:
+
+        for path in fam_node_paths:
+          fam_node = PT.get_node_from_path(part_zone, path)
+          if fam_node is not None:
+
+            if PT.get_label(fam_node)=='BC_t':
+              bc_name = PT.get_name(fam_node)
+              zsr_bc_n = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name)
+              there_is_bcdataset[path] = set_transfer_dataset(fam_node, zsr_bc_n, PT.Zone.Type(part_zone))
+              if PT.get_child_from_label(zsr_bc_n, 'DataArray_t') is not None:
+                PT.add_child(part_zone, zsr_bc_n)
+
+            if PT.get_label(fam_node)=="ZoneSubRegion_t":
+              if PT.get_child_from_label(fam_node, 'DataArray_t') is not None:
+                there_is_bcdataset[path] = True
+
+
+  l_containers_name = [name for name in containers_name]
   # Synchronize container names
   for node_path, there_is in there_is_bcdataset.items():
     if transfer_dataset and comm.allreduce(there_is, MPI.LOR):
@@ -431,3 +474,12 @@ def extract_part_from_family(part_tree, family_name, comm,
             f"(Σ={mlog.size_to_str(n_cell_all)})")
 
   return extract_tree
+
+
+  
+def create_extractor_from_family(part_tree, family_name, comm, **options):
+  """Same as extract_part_from_bc_name, but return the extractor object."""
+
+  local_part_tree, _ = _prepare_extract_from_family(part_tree, family_name, comm)
+
+  return create_extractor_from_zsr(local_part_tree, f"__{family_name}", comm, **options)

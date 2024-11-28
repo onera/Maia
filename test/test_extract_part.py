@@ -494,11 +494,9 @@ def test_extract_zsr_from_family_U(graph_part_tool, comm, write_output):
     PT.new_node('FamilyName', label='FamilyName_t', value='ZSRs', parent=zsr_n)
 
   # > Extract part
-  part_tree_ep = EXP.extract_part_from_family(part_tree, "ZSRs", comm,
-                                              transfer_dataset=False,
-                                              graph_part_tool=graph_part_tool,
-                                              containers_name=['FlowSolution_NC','ZSR_x'],
-                                              )
+  extractor = EXP.create_extractor_from_family(part_tree, "ZSRs", comm, graph_part_tool=graph_part_tool)
+  part_tree_ep = extractor.get_extract_part_tree()
+  extractor.exchange_fields(['FlowSolution_NC', 'ZSR_x'])
 
   # # > For paraview visu
   # part_zone_ep = PT.get_node_from_label(part_tree_ep,'Zone_t')

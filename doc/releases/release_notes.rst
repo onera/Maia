@@ -15,6 +15,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - partition_dist_tree: manage ZoneSubRegion nodes when splitting structured meshes
+- extract_part: also expose extractor object in ``bc_name`` and ``family`` APIs
 
 🐞 Fixes
 ^^^^^^^^
