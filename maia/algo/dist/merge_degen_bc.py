@@ -10,10 +10,11 @@ from maia.transfer            import protocols             as EP
 from maia.utils               import par_utils, np_utils
 from maia.utils.parallel      import algo as par_algo
 
-from .merge_ids     import merge_distributed_ids
-from .vertex_list   import face_ids_to_vtx_ids
-from maia.algo.part import closest_points as CLO
-from maia.algo.dist import merge_jn       as MJN
+from .merge_ids      import merge_distributed_ids
+from .vertex_list    import face_ids_to_vtx_ids
+from .geometry.utils import get_local_coordinates
+from maia.algo.part  import closest_points as CLO
+from maia.algo.dist  import merge_jn       as MJN
 
 import Pypdm.Pypdm as PDM
 
@@ -159,10 +160,8 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   zone_n = PT.get_node_from_path(dist_tree, zone_path)
   ngon_n = PT.Zone.NGonNode(zone_n)
   
-  coords = PT.Zone.coordinates(zone_n)._asdict()
-  distri_vtx = PT.get_value(MT.getDistribution(zone_n, 'Vertex'))
-  part_data_coords = EP.block_to_part(coords, distri_vtx, [pl_degen_vtx], comm)
-  tgt_coords = np_utils.interweave_arrays([part_data_coords[k][0] for k in coords.keys()])
+  part_data_coords = get_local_coordinates(zone_n, pl_degen_vtx, comm)
+  tgt_coords = np_utils.interweave_arrays(part_data_coords)
 
   # Find vertices have same coords (using gnum, they will have same id in output)
   pdm_gnum = PDM.GlobalNumbering(3, 1, True, 1E-10, comm)
@@ -173,7 +172,7 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   distri   = par_utils.uniform_distribution(comm.allreduce(merged_id.max(initial=0), MPI.MAX), comm)
   distri_f = par_utils.partial_to_full_distribution(distri, comm)
   selected_vtx_id = EP.part_to_block([pl_degen_vtx], distri_f, [merged_id], comm, EP.reduce_max)
-  old_to_new_degen_faces_nodes = EP.block_to_part(selected_vtx_id, distri_f, [merged_id], comm)[0]
+  old_to_new_degen_faces_nodes = EP.block_to_part(selected_vtx_id, distri_f, merged_id-1, comm, legacy=False)
   
   # Identify nodes to remove (nodes of degen face not beloging to old_to_new)
   remove_mask = par_algo.gnum_isin(pl_degen_vtx, np.unique(old_to_new_degen_faces_nodes), comm, invert=True)

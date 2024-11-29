@@ -51,8 +51,8 @@ def compute_edge_center(zone, comm):
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, [edge_vtx], comm)
-  local_coords = [part_data[key][0] for key in part_data.keys()]
+  part_data = EP.block_to_part(dist_coords, vtx_distri, edge_vtx-1, comm, legacy=False)
+  local_coords = [part_data[key] for key in part_data.keys()]
 
   while len(local_coords) < 3 : #We are in phydim < 3 case, add Y and/or Z array
     local_coords.append(np.zeros_like(local_coords[0]))
@@ -103,8 +103,8 @@ def compute_face_center(zone, comm):
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, [face_vtx], comm)
-  local_coords = [part_data[key][0] for key in part_data.keys()]
+  part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx-1, comm, legacy=False)
+  local_coords = [part_data[key] for key in part_data.keys()]
 
   if len(local_coords) == 2 : #We are in phydim==2, Add Z array
     local_coords.append(np.zeros_like(local_coords[0]))
@@ -130,8 +130,8 @@ def compute_cell_center(zone, comm):
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, [cell_vtx], comm)
-  local_coords = [part_data[key][0] for key in part_data.keys()]
+  part_data = EP.block_to_part(dist_coords, vtx_distri, cell_vtx-1, comm, legacy=False)
+  local_coords = [part_data[key] for key in part_data.keys()]
 
   if isinstance(coords, PT.CartesianCoordinates):
     return _mean_coords_from_connectivity(cell_vtx_idx, *local_coords)

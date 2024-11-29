@@ -162,10 +162,10 @@ def is_unique_strided_serialized(array, stride, comm):
   dist_data = EP.part_to_block([count], distri, [unique_gnum], comm, reduce_func=EP.reduce_sum)
   is_unique = np.zeros(distri[1]-distri[0], dtype=bool)
   is_unique[dist_data==1] = True
-  part_data = EP.block_to_part(is_unique, distri, [unique_gnum], comm)
+  part_data = EP.block_to_part(is_unique, distri, unique_gnum-1, comm, legacy=False)
   
   mask = np.zeros(n_elt, dtype=bool)
-  ids  = idx[part_data[0]]
+  ids  = idx[part_data]
   mask[ids] = True
 
   return mask

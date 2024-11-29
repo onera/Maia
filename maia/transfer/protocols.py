@@ -44,15 +44,21 @@ def BlockToBlock(distri_in, distri_out, comm):
   else:
     return _protocols.BlockToBlock(_full_distri_in, _full_distri_out, comm)
 
-def BlockToPart(distri, ln_to_gn_list, comm):
+def BlockToPart(distri, ln_to_gn_list, comm, legacy=True):
   """
   Create a PDM BlockToPart object, with auto gnum conversion
   and extended distribution
   """
   full_distri = auto_expand_distri(distri, comm)
-  _full_distri = maia.utils.as_pdm_gnum(full_distri)
-  _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
-  return PDM.BlockToPart(_full_distri, comm, _ln_to_gn_list, len(_ln_to_gn_list))
+  if legacy:
+    _full_distri = maia.utils.as_pdm_gnum(full_distri)
+    _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
+    return PDM.BlockToPart(_full_distri, comm, _ln_to_gn_list, len(_ln_to_gn_list))
+  else:
+    if isinstance(ln_to_gn_list, list):
+      return GIndexer_m(full_distri, ln_to_gn_list, comm)
+    else:
+      return GIndexer(full_distri, ln_to_gn_list, comm)
 
 def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False):
   """
@@ -102,20 +108,22 @@ def block_to_block(data_in, distri_in, distri_out, comm):
 
   return block_data_out
 
-def block_to_part(dist_data, distri, ln_to_gn_list, comm):
+def block_to_part(dist_data, distri, ln_to_gn_list, comm, legacy=True):
   """
   Create and exchange using a BlockToPart object.
   Allow single field or dict of fields
   """
-  BTP = BlockToPart(distri, ln_to_gn_list, comm)
+  BTP = BlockToPart(distri, ln_to_gn_list, comm, legacy)
+
+  exch_one = lambda d_field: BTP.exchange_field(d_field)[1] if legacy else BTP.Take(d_field)
 
   if isinstance(dist_data, dict):
     _check_dict_keys(dist_data, comm)
     part_data = dict()
     for name, d_field in dist_data.items():
-      part_data[name] = BTP.exchange_field(d_field)[1]
+      part_data[name] = exch_one(d_field)
   else:
-    _, part_data = BTP.exchange_field(dist_data)
+    part_data = exch_one(dist_data)
 
   return part_data
 

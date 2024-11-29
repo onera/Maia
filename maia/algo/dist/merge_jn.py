@@ -28,7 +28,7 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
 
   # 1. Get the left cell of the faces to delete
   dist_data = {'PE' : pe[:,0]}
-  part_data = EP.block_to_part(dist_data, face_distri, [del_faces], comm)
+  part_data = EP.block_to_part(dist_data, face_distri, [del_faces-1], comm, legacy=False)
   
   # 2. Put it in the right cell of the faces to keep
   #TODO : exchange of ref_faces could be avoided using get gnum copy
@@ -55,9 +55,9 @@ def _update_ngon_update_EC(ngon, vtx_distri_ini, old_to_new_vtx, comm):
   """
   # C/ Update vertex ids in EC
   ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
-  part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, [PT.get_value(ngon_ec_n)], comm)
-  assert len(ngon_ec_n[1]) == len(part_data[0])
-  PT.set_value(ngon_ec_n, part_data[0])
+  part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, PT.get_value(ngon_ec_n)-1, comm, legacy=False)
+  assert len(ngon_ec_n[1]) == len(part_data)
+  PT.set_value(ngon_ec_n, part_data)
 
 def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   """
@@ -87,10 +87,10 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
 
   #Update list of faces
   nface_ec_n = PT.get_child_from_name(nface, 'ElementConnectivity')
-  part_data = EP.block_to_part(old_to_new_face, face_distri_ini, [np.abs(nface_ec_n[1])], comm)
-  assert len(nface_ec_n[1]) == len(part_data[0])
+  part_data = EP.block_to_part(old_to_new_face, face_distri_ini, np.abs(nface_ec_n[1])-1, comm, legacy=False)
+  assert len(nface_ec_n[1]) == len(part_data)
   #Get sign of nface_ec to preserve orientation
-  PT.set_value(nface_ec_n, np.sign(nface_ec_n[1]) * part_data[0])
+  PT.set_value(nface_ec_n, np.sign(nface_ec_n[1]) * part_data)
 
   #Update ElementRange
   er = PT.Element.Range(nface)
@@ -183,8 +183,8 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
       PT.add_child(zsr, PT.deep_copy(pl_node))
 
   #Get new index for every PL at once
-  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0] for fs in all_nodes]
-  part_data_pl = EP.block_to_part(old_to_new_face, entity_distri, all_pl_list, comm)
+  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0]-1 for fs in all_nodes]
+  part_data_pl = EP.block_to_part(old_to_new_face, entity_distri, all_pl_list, comm, legacy=False)
 
   part_offset = 0
   for node_list, data_query in all_nodes_and_queries:
@@ -196,7 +196,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   # but do not apply old_to_new transformation.
   # Note that we will lost symmetry PL/PLD for internal jn, we need a rule to update it afterward
   all_pld = [PT.get_child_from_name(jn, 'PointListDonor') for jn in i_jn_list]
-  updated_pld = EP.block_to_part(old_to_new_face, entity_distri, [pld[1][0] for pld in all_pld], comm)
+  updated_pld = EP.block_to_part(old_to_new_face, entity_distri, [pld[1][0]-1 for pld in all_pld], comm, legacy=False)
   for i, pld in enumerate(all_pld):
     PT.set_value(pld, updated_pld[i].reshape((1,-1), order='F'))
 

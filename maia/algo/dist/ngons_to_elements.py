@@ -58,9 +58,9 @@ def _ngon_to_elements_zone(zone, comm):
     elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
       distri = MT.getDistribution(subset, 'Index')[1]
       _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
-    all_pl.append(_pl - PT.Element.Range(ngon_n)[0] + 1)
+    all_pl.append(_pl - PT.Element.Range(ngon_n)[0])
     
-  new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm)
+  new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm, legacy=False)
   
   for subset, _pl in zip(PT.iter_all_subsets(zone, 'FaceCenter'), new_pl):
     PT.rm_children_from_name(subset, 'PointList')
@@ -80,7 +80,7 @@ def _ngon_to_elements_zone(zone, comm):
   # Design choice : get the number of vertices (with reps) for **all** cells,
   # thus we can check if elements seems to be standard. Otherwise, we could
   # do it only for cells having 5 faces to resolve prism / pyra ambiguity
-  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, [cell_face], comm)[0]
+  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, np.abs(cell_face)-1, comm, legacy=False)
   cell_nvtx_tot = np.add.reduceat(cell_nvtx_per_face, _cell_face_idx[:-1])
 
   n_treated = 0
@@ -135,13 +135,13 @@ def _ngon_to_elements_zone(zone, comm):
     elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
       distri = MT.getDistribution(subset, 'Index')[1]
       _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
-    all_pl.append(_pl - PT.Element.Range(nface_n)[0] + 1)
+    all_pl.append(_pl - PT.Element.Range(nface_n)[0])
 
   # This last one is for fields supported by allCells (eg. FlowSolution)
-  _pl = np_utils.single_dim_pr_to_pl(np.array([[1, PT.Element.Size(nface_n)]]), cell_distri)[0]
+  _pl = np.arange(cell_distri[0], cell_distri[1])
   all_pl.append(_pl)
 
-  new_pl = EP.block_to_part(new_cell_id, cell_distri, all_pl, comm)
+  new_pl = EP.block_to_part(new_cell_id, cell_distri, all_pl, comm, legacy=False)
   
   # Update CellCentered PointList
   for subset, _pl in zip(PT.iter_all_subsets(zone, 'CellCenter'), new_pl[:-1]):

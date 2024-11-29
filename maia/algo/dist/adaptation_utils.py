@@ -9,6 +9,7 @@ from   maia.algo.dist import transform as dist_transform
 from   maia.algo.dist.merge_ids      import merge_distributed_ids
 from   maia.algo.dist.remove_element import remove_elts_from_pl
 from   maia.algo.dist.subset_tools   import vtx_ids_to_face_ids
+from   maia.algo.dist.geometry.utils import get_local_coordinates
 
 import numpy as np
 
@@ -42,10 +43,11 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
   # Update GridCoordinates
   coords_keys = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
   coord_nodes = {key: PT.get_node_from_name(zone, key) for key in coords_keys}
-  coords = {key: PT.get_value(node) for key, node in coord_nodes.items()}
-  new_coords = EP.block_to_part(coords, distri, [vtx_pl], comm)
+  old_coords = PT.Zone.coordinates(zone)._asdict()
+  new_coords = get_local_coordinates(zone, vtx_pl, comm)._asdict()
+
   for key in coords_keys:
-    PT.set_value(coord_nodes[key], np.concatenate([coords[key], new_coords[key][0]]))
+    PT.set_value(coord_nodes[key], np.concatenate([old_coords[key], new_coords[key]]))
 
   # Update FlowSolution
   is_loc_fs = lambda n: PT.get_label(n)=='FlowSolution_t' and PT.Subset.GridLocation(n)=='Vertex'
@@ -54,10 +56,10 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
 
     arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
     arrays = {PT.get_name(array_n) : PT.get_value(array_n) for array_n in arrays_n}
-    new_arrays = EP.block_to_part(arrays, distri, [vtx_pl], comm)
+    new_arrays = EP.block_to_part(arrays, distri, vtx_pl-1, comm, legacy=False)
     for array_n in arrays_n:
       key = PT.get_name(array_n)
-      PT.set_value(array_n, np.concatenate([arrays[key], new_arrays[key][0]]))
+      PT.set_value(array_n, np.concatenate([arrays[key], new_arrays[key]]))
 
   # Update distribution and zone size
   PT.get_value(zone)[0][0] += comm.allreduce(vtx_pl.size, op=MPI.SUM)
@@ -71,8 +73,6 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
   vtx_gnum = np.concatenate([old_gnum, new_gnum])
 
   # Update GridCoordinates
-  coords_keys = ['CoordinateX', 'CoordinateY', 'CoordinateZ']
-  coord_nodes = {key: PT.get_node_from_name(zone, key) for key in coords_keys}
   coords = {key: [PT.get_value(node)] for key, node in coord_nodes.items()}
   new_coords = EP.part_to_block(coords, new_distri, [vtx_gnum], comm)
   for key in coords_keys:
@@ -226,21 +226,20 @@ def update_elt_vtx_numbering(zone, elt_n, old_to_new_vtx, comm, elt_pl=None):
   if elt_n is not None:
     ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
     ec    = PT.get_value(ec_n)
+    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
 
     if elt_pl is None:
-      vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
-      ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec], comm)[0]
+      ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec-1, comm, legacy=False)
     else:
       elt_size   = PT.Element.NVtx(elt_n)
       elt_offset = PT.Element.Range(elt_n)[0]
       elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
-      vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
 
       elt_pl_shft = elt_pl - elt_offset +1
       ptb = EP.PartToBlock(elt_distri, [elt_pl_shft], comm)
       ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
       ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-      new_num_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
+      new_num_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm, legacy=False)
       ec[ec_ids] = new_num_ec
 
     PT.set_value(ec_n, ec)
@@ -357,7 +356,7 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
     for bc_n in PT.get_children_from_predicate(zone_bc_n, is_vtx_bc):
       bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
       bc_pl   = PT.get_value(bc_pl_n)[0]
-      bc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, [bc_pl], comm)[0]
+      bc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, bc_pl-1, comm, legacy=False)
       assert (bc_pl!=-1).all()
       PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
 
@@ -368,13 +367,13 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
     for gc_n in PT.get_children_from_predicate(zone_gc_n, is_vtx_gc):
       gc_pl_n = PT.get_child_from_name(gc_n, 'PointList')
       gc_pl   = PT.get_value(gc_pl_n)[0]
-      gc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, [gc_pl], comm)[0]
+      gc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, gc_pl-1, comm, legacy=False)
       assert (gc_pl!=-1).all()
       PT.set_value(gc_pl_n, gc_pl.reshape((1,-1), order='F'))
 
       gc_pld_n = PT.get_child_from_name(gc_n, 'PointListDonor')
       gc_pld   = PT.get_value(gc_pld_n)[0]
-      gc_pld   = EP.block_to_part(old_to_new_vtx, vtx_distri, [gc_pld], comm)[0]
+      gc_pld   = EP.block_to_part(old_to_new_vtx, vtx_distri, gc_pld-1, comm, legacy=False)
       assert (gc_pld!=-1).all()
       PT.set_value(gc_pld_n, gc_pld.reshape((1,-1), order='F'))
 
@@ -423,7 +422,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
   n_elt_to_add = ids.size
   ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-  duplicated_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
+  duplicated_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm, legacy=False)
   new_ec = np.concatenate([ec, duplicated_ec])
   
   # > Update element distribution
@@ -496,7 +495,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
       ids = ptb.getBlockGnumCopy()-elt_distri[0]-1
       n_elt_to_add_l = ids.size
       ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-      new_bc_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, [ec[ec_ids]], comm)[0]
+      new_bc_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm, legacy=False)
       new_ec.append(new_bc_ec)
 
       # > Compute element distribution
@@ -625,9 +624,9 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
       # > Set BC connectivity in vtx shared numbering
       vtx_ptb = EP.PartToBlock(vtx_distri, [this_bc_vtx], comm)
       vtx_ids = vtx_ptb.getBlockGnumCopy()
-      bc_vtx_renum = EP.block_to_part(old_to_new_vtx, vtx_distri, [vtx_ids], comm) # Numbering of these vertices in shared numerotation
+      bc_vtx_renum = EP.block_to_part(old_to_new_vtx, vtx_distri, vtx_ids-1, comm, legacy=False) # Numbering of these vertices in shared numerotation
       
-      bc_vtx[i_side].append(bc_vtx_renum[0])
+      bc_vtx[i_side].append(bc_vtx_renum)
 
   # > Perfom comparaisons
   for src_bc_n, src_bc_vtx in zip(bc_nodes[0], bc_vtx[0]):
@@ -713,7 +712,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
                                            zones_face_vtx,
                                            comm)
   constraint_pl = np.absolute(_out_face[0]['np_interface_ids_face'][0::2])
-  constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], [constraint_pl], comm)[0]
+  constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], constraint_pl-1, comm, legacy=False)
 
   # > Update free BC
   bc_n        = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
@@ -1012,11 +1011,11 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     
     fake_vtx_distri = par_utils.dn_to_distribution(old_to_new_vtx.size, comm)
     for i_previous_per in range(0, i_per):
-      new_vtx_nums[i_previous_per][0] = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_nums[i_previous_per][0]], comm)[0]
-      new_vtx_nums[i_previous_per][1] = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_nums[i_previous_per][1]], comm)[0]
+      part_data = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_nums[i_previous_per][k]-1 for k in range(2)], comm, legacy=False)
+      new_vtx_nums[i_previous_per][0], new_vtx_nums[i_previous_per][1] = part_data
     
-    new_vtx_num[0] = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_num[0]], comm)[0]
-    new_vtx_num[1] = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_num[1]], comm)[0]
+    part_data = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_num[k]-1 for k in range(2)], comm, legacy=False)
+    new_vtx_num[0], new_vtx_num[1] = part_data
     new_vtx_nums.append(new_vtx_num)
 
     # > Set Vertex BC to preserve join infos

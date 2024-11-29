@@ -257,7 +257,7 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
       i_cloud = matching_vtx['np_cloud_pair'][2*i_itrf+j]
       parent_vtx_num = clouds[i_cloud]['parent_vtx']
       distri_vtx = par_utils.dn_to_distribution(parent_vtx_num.size, comm)
-      matching_vtx[side][i_itrf]  = EP.block_to_part(parent_vtx_num,  distri_vtx,  [matching_vtx[side][i_itrf]],  comm)[0]
+      matching_vtx[side][i_itrf]  = EP.block_to_part(parent_vtx_num,  distri_vtx, matching_vtx[side][i_itrf]-1,  comm, legacy=False)
 
   for i_itrf in range(n_interface_face):
     for j, side in enumerate(['lgnum_cur', 'lgnum_opp']):
@@ -265,7 +265,7 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
       parent_face_num = clouds[i_cloud]['parent_face']
       parent_zone = PT.get_node_from_path(dist_tree, PTu.path_head(clouds_path[i_cloud], 2))
       distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
-      gnum_2d = EP.block_to_part(parent_face_num, distri_face, [matching_face[side][i_itrf]], comm)[0]
+      gnum_2d = EP.block_to_part(parent_face_num, distri_face, matching_face[side][i_itrf]-1, comm, legacy=False)
       # At this point face are in gnum but local to 2d dimension : shift back
       matching_face[side][i_itrf] = _shift_face_num(gnum_2d, parent_zone, reverse=True)
 
