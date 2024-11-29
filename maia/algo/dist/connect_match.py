@@ -164,10 +164,11 @@ def _clean_degenerated_vtx_interface(out_vtx, out_face):
   # Retrieve interface having no faces (interface come in same order)
   idx = 0
   is_empty = np.ones(vtx_pair.size//2, bool)
-  for view in np.split(face_pair, face_pair.size // 2):
-      while not (vtx_pair[2*idx:2*(idx+1)] == view).all():
-          idx += 1
-      is_empty[idx] = False
+  if face_pair.size:
+    for view in np.split(face_pair, face_pair.size // 2):
+        while not (vtx_pair[2*idx:2*(idx+1)] == view).all():
+            idx += 1
+        is_empty[idx] = False
 
   # Filter
   out_vtx['np_cloud_pair'] = out_vtx['np_cloud_pair'][~np.repeat(is_empty, 2)]
