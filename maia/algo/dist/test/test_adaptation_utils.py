@@ -373,7 +373,7 @@ def test_constraint_other_side_join(comm):
       """,f"""
       Zone Zone_t:
         :CGNS#Distribution UserDefinedData_t:
-          Vertex DataArray_t [6, 14, 14]:
+          Vertex DataArray_t [7, 14, 14]:
         TRI Elements_t I4 [5, 0]:
           ElementRange IndexRange_t I4 [1, 10]:
           ElementConnectivity DataArray_t I4 [2,12,10, 4,9,12, 13,5,8, 6,5,13, 2,4,12]:

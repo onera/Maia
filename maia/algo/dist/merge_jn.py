@@ -26,27 +26,25 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   #TODO This method asserts that PE is CGNS compliant ie left_parent != 0 for bnd elements
   assert not np.any(pe[:,0] == 0)
 
+  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
+
   # 1. Get the left cell of the faces to delete
-  dist_data = {'PE' : pe[:,0]}
-  part_data = EP.block_to_part(dist_data, face_distri, [del_faces-1], comm, legacy=False)
+  part_data = EP.GIndexer(face_distri_f, del_faces-1, comm).Take(pe[:,0])
   
   # 2. Put it in the right cell of the faces to keep
-  #TODO : exchange of ref_faces could be avoided using get gnum copy
-  part_data['FaceId'] = [ref_faces]
-  dist_data = EP.part_to_block(part_data, face_distri, [ref_faces], comm)
-
-  local_faces = dist_data['FaceId'] - face_distri[0] - 1
-  assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
-  pe[local_faces, 1] = dist_data['PE']
+  GI = EP.GIndexer(face_distri_f, ref_faces-1, comm)
+  assert np.max(pe[GI.access_counts > 0, 1], initial=0) == 0 #Initial = trick to admit empty array
+  GI.Put_into(part_data, pe[:,1])
 
 def _update_ngon_remove_faces(ngon, del_faces, comm):
   """
   Remove faces from EC, PE and ESO and update distribution info in ngon
   """
   face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
-  part_data = [del_faces]
-  dist_data = EP.part_to_block(part_data, face_distri, [del_faces], comm)
-  local_faces = dist_data - face_distri[0] - 1
+  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
+  
+  GI = EP.GIndexer(face_distri_f, del_faces-1, comm)
+  local_faces = np.nonzero(GI.access_counts > 0)[0]
   RME.remove_ngons(ngon, local_faces, comm)
   
 def _update_ngon_update_EC(ngon, vtx_distri_ini, old_to_new_vtx, comm):

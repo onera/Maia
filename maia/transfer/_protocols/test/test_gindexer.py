@@ -30,6 +30,15 @@ class Test_g_indexer:
 
   def test_create(self, comm):
     DI = self.init_p(comm)
+    assert DI.empty_dist == True
+    assert DI.empty_part == True
+    excepted_counts = [[4,1,1,0,1],
+                       [],
+                       [0,1,0],
+                       [1,2,0,1]
+                      ][comm.rank]
+
+    assert np.array_equal(DI.access_counts, excepted_counts)
 
   def test_python_obj(self, comm):
     DI = self.init_p(comm)

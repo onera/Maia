@@ -60,7 +60,7 @@ def BlockToPart(distri, ln_to_gn_list, comm, legacy=True):
     else:
       return GIndexer(full_distri, ln_to_gn_list, comm)
 
-def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False):
+def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False, legacy=True):
   """
   Create a PDM PartToBlock object, with auto gnum conversion
   and extended distribution
@@ -69,14 +69,23 @@ def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=Fals
     full_distri = auto_expand_distri(distri, comm)
     _full_distri = maia.utils.as_pdm_gnum(full_distri)
   else:
+    assert legacy, "distri=None only supported for legacy version"
     _full_distri = None
-  _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
-  
-  t_post = 2 if keep_multiple else 1
-  pWeight = [np.ones(lngn.size) for lngn in ln_to_gn_list] if weight else None
 
-  return PDM.PartToBlock(comm, _ln_to_gn_list, pWeight=pWeight, partN=len(_ln_to_gn_list),
-                         t_distrib=0, t_post=t_post, userDistribution=_full_distri)
+  if legacy:
+    _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
+    
+    t_post = 2 if keep_multiple else 1
+    pWeight = [np.ones(lngn.size) for lngn in ln_to_gn_list] if weight else None
+
+    return PDM.PartToBlock(comm, _ln_to_gn_list, pWeight=pWeight, partN=len(_ln_to_gn_list),
+                          t_distrib=0, t_post=t_post, userDistribution=_full_distri)
+  else:
+    assert not keep_multiple, "keep_multiple only supported for legacy version"
+    if isinstance(ln_to_gn_list, list):
+      return GIndexer_m(_full_distri, ln_to_gn_list, comm)
+    else:
+      return GIndexer(_full_distri, ln_to_gn_list, comm)
 
 def PartToPart(gnum1, gnum2, comm):
   """
@@ -151,6 +160,7 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
   Allow single field or dict of fields
   """
   if reduce_func is not None:
+    # Only legacy == True is supported in this case. PartToBlock will raise in other case
     PTB = PartToBlock(distri, ln_to_gn_list, comm, keep_multiple=True, **kwargs)
     def _exchange_one(part_fields):
       p_stride = [np.ones(p_f.size, dtype=np.int32) for p_f in part_fields]
@@ -159,9 +169,9 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
       return dist_data
   else:
     PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+    legacy = kwargs.get('legacy', True)
     def _exchange_one(part_fields):
-      _, dist_data = PTB.exchange_field(part_fields)
-      return dist_data
+      return PTB.exchange_field(part_fields)[1] if legacy else PTB.Put(part_fields)
 
   if isinstance(part_data, dict):
     _check_dict_keys(part_data, comm)

@@ -193,7 +193,7 @@ def is_unique_strided(array, stride, comm):
   part_mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
 
   # Retrieve mask on initial distribution
-  mask = EP.part_to_block([part_mask], distri, [origin], comm)
+  mask = EP.part_to_block(part_mask, distri, origin-1, comm, legacy=False)
   
   return mask
 

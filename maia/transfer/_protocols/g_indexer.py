@@ -95,6 +95,12 @@ class GIndexer_m:
     self._empty_part = None                       # True if at least one rank has pn == 0
 
   @property
+  def access_counts(self):
+    counts = np.zeros(self.dn, np.int32)
+    np.add.at(counts, self.dist_select_idx, 1)
+    return counts
+
+  @property
   def empty_dist(self):
     return self._empty_dist
   @property

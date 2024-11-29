@@ -151,11 +151,13 @@ def _ngon_to_elements_zone(zone, comm):
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
   is_cell_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and PT.Subset.GridLocation(n) == 'CellCenter'
-  cell_data = {path: [PT.get_node_from_path(zone, path)[1]] for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t'])}
-  elt_data  = EP.part_to_block(cell_data, cell_distri, [new_pl[-1] - quad_range[1]], comm)
-  for path, data in elt_data.items():
-    field = PT.get_node_from_path(zone, path)
-    PT.set_value(field, data)
+  cell_distri_f = par_utils.partial_to_full_distribution(cell_distri, comm)
+  GI = EP.GIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
+
+  for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t']):
+    data = PT.get_node_from_path(zone, path)[1]
+    GI.Put_into(data, data) # Inplace update of node data
+
 
   # Remove NGON/NFACE elements
   PT.rm_child(zone, ngon_n)
