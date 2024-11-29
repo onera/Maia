@@ -169,16 +169,17 @@ class GIndexer_m:
     """
     assert len(data_out_l) == len(self.pn)
     counts_in  = data_in.size  // self.dn if self.dn != 0 else 0
-    counts_out = 0 # Init for procs having n_part == 0
+    counts_out_l = [data_out.size // pn for data_out, pn in zip(data_out_l, self.pn) if pn != 0]
+    assert len(set(counts_out_l)) <= 1, "Different counts_out detected"
+    counts_out = counts_out_l[0] if len(counts_out_l) > 0 else 0
 
     if data_in.size - counts_in*self.dn != 0:
       raise ValueError("Input data size is not a multiple of managed idx")
     for data_out, pn in zip(data_out_l, self.pn):
-      counts_out = data_out.size // pn if pn != 0 else 0
       if data_out.size - counts_out*pn != 0:
         raise ValueError("Output data size is not a multiple of requested idx")
-      if counts_in != counts_out and counts_in*counts_out != 0:
-        raise ValueError("Input and output counts does not match")
+    if counts_in != counts_out and counts_in*counts_out != 0:
+      raise ValueError("Input and output counts does not match")
 
 
     send_buff = np.empty(counts_in*self.dist_select_idx.size, data_in.dtype)
@@ -211,17 +212,18 @@ class GIndexer_m:
       data_out  (buffer) : preallocated buffer to store distributed data
     """
     assert len(data_in_l) == len(self.pn)
-    counts_in  = 0
     counts_out = data_out.size // self.dn if self.dn != 0 else 0
+    counts_in_l = [data_in.size // pn for data_in, pn in zip(data_in_l, self.pn) if pn != 0]
+    assert len(set(counts_in_l)) <= 1, "Different counts_in detected"
+    counts_in = counts_in_l[0] if len(counts_in_l) > 0 else 0
 
     if data_out.size - counts_out*self.dn != 0:
       raise ValueError("Output data size is not a multiple of requested idx")
     for data_in, pn in zip(data_in_l, self.pn):
-      counts_in  = data_in.size  // pn if pn != 0 else 0
       if data_in.size - counts_in*pn != 0:
         raise ValueError("Input data size is not a multiple of managed idx")
-      if counts_in != counts_out and counts_in*counts_out != 0:
-        raise ValueError("Input and output counts does not match")
+    if counts_in != counts_out and counts_in*counts_out != 0:
+      raise ValueError("Input and output counts does not match")
 
 
     send_buff = np.empty(counts_in*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=data_out.dtype)
