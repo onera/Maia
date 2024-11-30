@@ -250,6 +250,9 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
     raise ValueError("The join is not periodic only by rotation !")
 
   # Find the number of duplication needed
+  for i in range(len(rotation_angle_a)):
+    if abs(rotation_angle_a[i]) < 5*np.finfo(np.float64).eps:
+      rotation_angle_a[i] = 0.
   index = np.where(rotation_angle_a != 0)[0]
   if index.size == 1:
     sectors_number = abs(int(np.round(2*np.pi/rotation_angle_a[index])))
