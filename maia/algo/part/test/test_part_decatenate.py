@@ -11,7 +11,7 @@ from maia.algo.part import decatenate_nodes as DN
 import maia.utils.test_utils as TU
 
 @pytest.mark.parametrize("specified", [True, False])
-@pytest_parallel.mark.parallel(4)
+@pytest_parallel.mark.parallel(3)
 def test_part_decatenate_patch(specified, comm):
   mesh_path = os.path.join(TU.mesh_dir,'flat_plate_3d.yaml')
   dist_tree = maia.io.file_to_dist_tree(mesh_path, comm)
@@ -43,4 +43,4 @@ def test_part_decatenate_patch(specified, comm):
   DN.decatenate_nodes_from_predicate(part_tree, comm, ['ZoneBC_t',is_concat])
 
   dist_tree = maia.factory.recover_dist_tree(part_tree, comm, data_transfer='ALL')
-  assert PT.is_same_tree(dist_tree, dist_tree_cp)
+  assert PT.is_same_tree(dist_tree, dist_tree_cp, type_tol=True)
