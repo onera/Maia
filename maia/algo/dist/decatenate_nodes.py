@@ -56,15 +56,15 @@ def decatenate_subset_from_predicate(dist_tree, comm, predicate=is_concat):
       if orig_bc_ordin_n is not None:
         orig_bc_ordin = np.array(PT.get_value(orig_bc_ordin_n).split('\n'), dtype=np.int32)
 
-      n_id = len(orig_bc_names)
       PT.rm_child(zone_bc_n, concat_bc_n)
 
-      for bc_id in range(n_id):
-        bc_pl_ids = np.where(concat_bc_id==bc_id)[0]
+      for bc_id, bc_name in enumerate(orig_bc_names):
 
+        bc_pl_ids = np.where(concat_bc_id==bc_id)[0]
         bc_pl = concat_bc_pl[bc_pl_ids]
         bc_distrib = par_utils.dn_to_distribution(bc_pl.size, comm)
-        bc_n = PT.new_BC(orig_bc_names[bc_id], concat_bc_type,
+
+        bc_n = PT.new_BC(bc_name, concat_bc_type,
                          point_list=bc_pl.reshape((1,-1), order='F'),
                          loc=concat_bc_loc,
                          parent=zone_bc_n)

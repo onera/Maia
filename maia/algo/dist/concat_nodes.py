@@ -61,8 +61,7 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
       child = childs[-1]
       PT.new_child(parent, PT.get_name(child), PT.get_label(child), PT.get_value(child), children=PT.get_children(child))
 
-
-  newsize = PT.get_node_from_name(node, 'PointList')[1].shape[1]
+  newsize = PT.get_child_from_name(node, 'PointList')[1].shape[1]
   distri = par_utils.dn_to_distribution(newsize, comm)
   MT.newDistribution({'Index' : distri}, node)
 
