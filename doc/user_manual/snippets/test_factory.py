@@ -9,21 +9,6 @@ def test_generate_dist_points():
   assert PT.Zone.n_vtx(zone) == 10**3
   #generate_dist_points@end
 
-def test_generate_dist_lines():
-  #generate_dist_line@start
-  from mpi4py import MPI
-  import maia
-  import maia.pytree as PT
-  import numpy as np
-
-  start_point = np.array([0., 0., 0.])
-  end_point   = np.array([1., 2., 0.])
-  dist_tree = maia.factory.generate_dist_line(5, start_point, end_point, MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(dist_tree, "Zone_t")
-  assert PT.Zone.n_vtx (zone)==5
-  assert PT.Zone.n_cell(zone)==4
-  #generate_dist_line@end
-
 def test_generate_dist_block():
   #generate_dist_block@start
   from mpi4py import MPI
@@ -41,6 +26,10 @@ def test_generate_dist_block():
   dist_tree = maia.factory.generate_dist_block(10, 'TETRA_4', MPI.COMM_WORLD)
   zone = PT.get_node_from_label(dist_tree, 'Zone_t')
   assert PT.Element.CGNSName(PT.get_child_from_label(zone, 'Elements_t')) == 'TETRA_4'
+
+  dist_tree= maia.factory.generate_dist_block(5, 'BAR_2', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  assert PT.Element.CGNSName(PT.get_child_from_label(zone, 'Elements_t')) == 'BAR_2'
   #generate_dist_block@end
 
 def test_generate_dist_sphere():

@@ -1,7 +1,5 @@
 from .dcloud_generator  import generate_dist_points
 
-from .dline_generator   import generate_dist_line
-
 from .dcube_generator   import generate_dist_block
 
 from .dist_from_part    import recover_dist_tree

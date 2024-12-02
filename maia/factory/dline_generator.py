@@ -24,17 +24,20 @@ def generate_dist_line(n_point, start, end, comm):
       :end-before:  #generate_dist_line@end
       :dedent: 2
   """
+  phy_dim     = len(start)
+
   dist_tree = PT.new_CGNSTree()
-  dist_base = PT.new_CGNSBase(parent=dist_tree)
+  dist_base = PT.new_CGNSBase(cell_dim=1, phy_dim=phy_dim, parent=dist_tree)
 
   # > Vertices
   length      = np.array(end)-np.array(start)
   delta       = length/(n_point-1)
   vtx_distrib = par_utils.uniform_distribution(n_point, comm)
   dn_vtx      = vtx_distrib[1]-vtx_distrib[0]
-  x = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[0]+start[0]
-  y = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[1]+start[1]
-  z = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=np.float64)*delta[2]+start[2]
+  coords = {}
+  for i in range(phy_dim):
+    key = 'Coordinate' + 'XYZ'[i]
+    coords[key] = np.arange(vtx_distrib[0], vtx_distrib[1], dtype=float)*delta[i]+start[i]
   
   # > Edge connectivity
   bar_distrib = par_utils.uniform_distribution(n_point-1, comm)
@@ -46,7 +49,6 @@ def generate_dist_line(n_point, start, end, comm):
   ec[1::2] = b
 
   # > Create zone
-  coords={'CoordinateX' : x, 'CoordinateY' : y, 'CoordinateZ' : z}
   dist_zone = PT.new_Zone(f'Line', type='Unstructured', size=np.array([[n_point,n_point-1,0]], dtype=pdm_gnum_dtype), parent=dist_base)
   PT.new_GridCoordinates(fields=coords, parent=dist_zone)
   elmt_n = PT.new_Elements('BAR_2', type='BAR_2', erange=[1,n_point-1], econn=ec, parent=dist_zone)
