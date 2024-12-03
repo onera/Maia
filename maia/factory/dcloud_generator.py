@@ -38,6 +38,8 @@ def dpoint_cloud_cartesian_generate(n_vtx, coord_min, coord_max, comm):
 
   if isinstance(n_vtx, int): # Expand scalar to list
     n_vtx = phy_dim * [n_vtx]
+  elif isinstance(n_vtx, tuple):
+    n_vtx = list(n_vtx)
   assert isinstance(n_vtx, list)
   cell_dim = len(n_vtx)
   assert cell_dim <= phy_dim, f"CellDimension ({cell_dim}) can not exceed PhysicalDimension ({phy_dim})"

@@ -11,6 +11,10 @@ import maia
 from maia.utils import np_utils, par_utils, layouts
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
 
+from .dline_generator import generate_dist_line
+
+_is_iterable = lambda obj: hasattr(obj, '__len__')
+
 def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
 
   g_dims  = dmesh_nodal.dmesh_nodal_get_g_dims()
@@ -250,36 +254,51 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'
 
 
 def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=1.):
-  """Generate a distributed mesh with a cartesian topology.
+  """Generate a distributed mesh with a block shape (line, parallelogram or parallelepiped). 
   
-  Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
-  :cgns:`Zone_t`. The kind 
-  and cell dimension of the zone is controled by the cgns_elmt_name parameter: 
+  This function returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
+  :cgns:`Zone_t`. The created zone contains the grid coordinates and the relevant number
+  of boundary conditions.
+  
+  The kind and CGNS cell dimension :math:`d_m` of the zone is controled by the ``cgns_elmt_name`` parameter: 
 
-  - ``"Structured"`` (or ``"S"``) produces a structured zone,
-  - ``"Poly"`` produces an unstructured 3d zone with a NGon+PE connectivity,
-  - ``"NFACE_n"`` produces an unstructured 3d zone with a NFace+NGon connectivity,
-  - ``"NGON_n"``  produces an unstructured 2d zone with faces described by a NGon
-    node (**not yet implemented**),
+  - ``"Structured"`` (or ``"S"``) produces a structured zone, which dimension is equal to ``n_vtx.size``,
+  - ``"NFACE_n"`` produces a hexa filled unstructured 3d zone with NFace+NGon connectivity,
+  - ``"NGON_n"``  produces a quad filled unstructured 2d zone with NGon+Bar connectivity
+    (**not yet implemented**),
   - Other names must be in ``["BAR_2", "TRI_3", "QUAD_4", "TETRA_4", "PYRA_5", "PENTA_6", "HEXA_8"]``
     and produces an unstructured 1d, 2d or 3d zone with corresponding standard elements.
 
-  In all cases, the created zone contains the cartesian grid coordinates and the relevant number
-  of boundary conditions.
+  The `CGNS physical dimension <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase>`_
+  :math:`d_\phi` is deduced from the shape of the ``origin`` parameter. Note that the physical dimension must be
+  upper or equal to the cell dimension.
 
-  When creating 2 dimensional zones, the
-  `physical dimension <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase>`_
-  is set equal to the length of the origin parameter.
+  The number of vertices in each direction is given by ``n_vtx`` parameter, which is a tuple of 
+  size :math:`d_m`. If a scalar is provided, its value is broadcasted to a uniform tuple.
+
+  Lastly, the geometric size and the position of the zone is computed from the combination of ``origin`` and
+  ``length`` parameters. The first one, which is an array of size :math:`d_\phi`, set the position of the
+  'first vertex' of the zone. The length parameter can be either:
+
+  - a scalar, which leads to a line, a square or a cube aligned with the canonical axes. Its length is
+    then the same in each direction;
+  - a tuple of size :math:`d_m`, which leads to a line, a rectangle or a rectangular cuboid aligned with
+    the canonical axes. Its length is then equal to the specified value in each direction;
+  - a list of :math:`d_m` vectors, each one of size :math:`d_\phi`. In this case, the generated line, parallelogram
+    or parallelepiped is no more aligned with the canonical axes, but with the provided basis.
+    Its length is equal to the norm of the basis vector in each direction (**for now implemented only for BAR_2**).
+
+  Note that ``length`` can contain negative values.
 
   Args:
-    n_vtx (int or array of int) : Number of vertices in each direction. Scalars
+    n_vtx (int or tuple of int) : Number of vertices in each direction. Scalars
       automatically extend to uniform array.
     cgns_elmt_name (str) : requested kind of elements
     comm       (MPIComm) : MPI communicator
     origin (array, optional) : Coordinates of the origin of the generated mesh. Defaults
         to zero vector.
-    length (float or array of float, optional) : Length by dimension of the generated mesh.
-        Defaults to 1 in each direction.
+    length (float or tuple(s) of floats, optional) : Length for each dimension of the generated mesh
+      (see above). Defaults to 1.
   Returns:
     CGNSTree: distributed cgns tree
 
@@ -289,38 +308,78 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=
         :end-before: #generate_dist_block@end
         :dedent: 2
   """
-  # > Check entry dimension
-  dim_max = len(origin)
-  if not isinstance(n_vtx, int):
-    assert len(origin)==len(n_vtx), f"generate_dist_block: origin and n_vtx argument must be with same shape ({len(origin)} and {len(n_vtx)})"
-  if isinstance(length, float):
-    if cgns_elmt_name=='BAR_2':
-      length = np.full(dim_max, length, dtype=np.float64)
-      length[1:] = 0.
-    else:
-      length = np.full(dim_max, length, dtype=np.float64)
-  assert len(origin)==len(length), f"generate_dist_block: origin and length argument must be with same shape ({len(origin)} and {len(length)})"
+  # > Retrive entry dimensions
+  phy_dim = len(origin)
+  if cgns_elmt_name in ['Structured', 'S']:
+    if _is_iterable(n_vtx):
+      cell_dim = len(n_vtx)
+      for k in n_vtx[::-1]:
+        if k != 1:
+          break
+        cell_dim -= 1
+    else: # Can not guess from scalar n_vtx --> use origin vector
+      cell_dim = len(origin)
+  elif cgns_elmt_name == 'BAR_2':
+    cell_dim = 1
+  elif cgns_elmt_name in ['TRI_3', 'QUAD_4', 'NGON_n']:
+    cell_dim = 2
+  else:
+    cell_dim = 3
 
-  # > Generate unit mesh
-  edge_length = 1.
-  l_origin    = np.zeros(dim_max)
-  if cgns_elmt_name in ["Structured", "S"]:
-    dist_tree = dcube_struct_generate(n_vtx, edge_length, l_origin, comm)
+  # > Convert length to full vector
+  need_rotate = False
+  # Special case of BAR_2 : we allow [l1,l2,l3] to be converted in [[l1,l2,l3]]
+  if cgns_elmt_name == 'BAR_2' and _is_iterable(length) and not _is_iterable(length[0]) and len(length) == phy_dim:
+    length = [length]
+
+  if not _is_iterable(length): # Scalar case : extend to tuple case
+    length = np.full(cell_dim, length, dtype=np.float64)
+  else:
+    if not _is_iterable(length[0]): # tuple case
+      assert len(length) == cell_dim, f"length argument is a tuple (case 2), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
+    else:
+      msg_outer = f"length argument is a list of tuple (case 3), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
+      msg_inner = f"length argument is a list of tuple (case 3), but the size of each tuple is not equal to PhysicalDimension ({[len(ld) for ld in length]}) vs {phy_dim})"
+      assert len(length) == cell_dim, msg_outer
+      assert all([len(ld) == phy_dim for ld in length]), msg_inner
+
+      need_rotate = True
+
+  origin = np.asarray(origin, float)
+
+  # First case manage correctly origin / length --> direct return of disttree
+  if cgns_elmt_name in ["BAR_2"]:
+    end = origin.copy()
+    if need_rotate:
+      end += length[0]
+    else:
+      end[0] += length[0]
+    return generate_dist_line(n_vtx, origin, end, comm)
+  
+  # Structured case manage case 2, but not general case (rotate)
+  elif cgns_elmt_name in ["Structured", "S"]:
+    if need_rotate:
+      raise NotImplementedError("Custom generic lengt not yet implemented for structured mesh")
+    _length = np.zeros(phy_dim)
+    _length[:cell_dim] = length
+    return dcube_struct_generate(n_vtx, _length, origin, comm)
+
+  # Other cases do not manage anything: use origin=0., length=1. (unit mesh), and rescale afterward
   elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
-    dist_tree = dcube_generate(n_vtx, edge_length, l_origin, comm)
+    dist_tree = dcube_generate(n_vtx, 1., np.zeros(phy_dim), comm)
     if cgns_elmt_name.upper() == "NFACE_N":
       for zone in PT.get_all_Zone_t(dist_tree):
         maia.algo.pe_to_nface(zone, comm, removePE=True)
-  elif cgns_elmt_name in ["BAR_2"]:
-    assert isinstance(n_vtx, int)
-    end = np.array(origin)+np.array(length)
-    return maia.factory.generate_dist_line(n_vtx, origin, end, comm)
   else:
-    dist_tree = dcube_nodal_generate(n_vtx, edge_length, l_origin, cgns_elmt_name, comm)
+    dist_tree = dcube_nodal_generate(n_vtx, 1., np.zeros(phy_dim), cgns_elmt_name, comm)
 
   # > Apply scaling and transform
-  maia.algo.scale_mesh(dist_tree, length)
-  for dim, coord_name in enumerate(['CoordinateX', 'CoordinateY', 'CoordinateZ'][:dim_max]):
+  if need_rotate:
+    raise NotImplementedError("Custom generic length not yet implemented")
+
+  scale_length = [l for l in length] + [1.]*(3-cell_dim)
+  maia.algo.scale_mesh(dist_tree, scale_length)
+  for dim, coord_name in enumerate(['CoordinateX', 'CoordinateY', 'CoordinateZ'][:phy_dim]):
     coord_n = PT.get_node_from_name(dist_tree, coord_name)
     coord = PT.get_value(coord_n)+origin[dim]
     PT.set_value(coord_n, coord)

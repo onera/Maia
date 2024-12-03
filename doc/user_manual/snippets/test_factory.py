@@ -12,24 +12,24 @@ def test_generate_dist_points():
 def test_generate_dist_block():
   #generate_dist_block@start
   from mpi4py import MPI
-  import maia
-  import maia.pytree as PT
+  comm = MPI.COMM_WORLD
 
-  dist_tree = maia.factory.generate_dist_block([10,20,10], 'Structured', MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  assert PT.Zone.Type(zone) == "Structured"
+  from maia.factory import generate_dist_block
 
-  dist_tree = maia.factory.generate_dist_block(10, 'Poly', MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  assert PT.Element.CGNSName(PT.get_child_from_label(zone, 'Elements_t')) == 'NGON_n'
+  # 3D unstructured polyedric zone (basic)
+  dist_tree = generate_dist_block(11, 'Poly', comm)
+  # 3D structured zone, different number of vertices in each direction
+  dist_tree = generate_dist_block((11,21,11), 'Structured', comm)
+  # 3D unstructured zone, different length in each direction
+  dist_tree = generate_dist_block(11, 'TETRA_4', comm, length=(1.,1.,10.))
+  
+  # 2D structured zone, PhyDim=3, variable nb. of vertices, custom origin
+  dist_tree = generate_dist_block((11,21), 'S', comm, origin=[2.,3.,1.5])
+  # 2D unstructured zone, PhyDim=2, custom length direction (not yet implemented)
+  #dist_tree = generate_dist_block(6, 'QUAD_4', comm, origin=[0., 0.], length=[[0.707,0.707], [-0.707,0.707]])
 
-  dist_tree = maia.factory.generate_dist_block(10, 'TETRA_4', MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  assert PT.Element.CGNSName(PT.get_child_from_label(zone, 'Elements_t')) == 'TETRA_4'
-
-  dist_tree= maia.factory.generate_dist_block(5, 'BAR_2', MPI.COMM_WORLD)
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  assert PT.Element.CGNSName(PT.get_child_from_label(zone, 'Elements_t')) == 'BAR_2'
+  # 1D unstructured zone, PhyDim=3, custom origin and end point
+  dist_tree = generate_dist_block(6, 'BAR_2', comm, origin=[0.25, 0.25, 0.], length=[[1,0.,-1.]])
   #generate_dist_block@end
 
 def test_generate_dist_sphere():

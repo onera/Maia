@@ -17,14 +17,12 @@ def generate_dist_line(n_point, start, end, comm):
     comm    (MPIComm)     : MPI communicator
   Returns:
     CGNSTree: Line mesh (distributed)
-
-  Example:
-    .. literalinclude:: snippets/test_factory.py
-      :start-after: #generate_dist_line@start
-      :end-before:  #generate_dist_line@end
-      :dedent: 2
   """
   phy_dim     = len(start)
+
+  if not isinstance(n_point, int):
+    assert len(n_point) == 1
+    n_point = n_point[0]
 
   dist_tree = PT.new_CGNSTree()
   dist_base = PT.new_CGNSBase(cell_dim=1, phy_dim=phy_dim, parent=dist_tree)
