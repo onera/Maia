@@ -32,35 +32,49 @@ def dpoint_cloud_cartesian_generate(n_vtx, coord_min, coord_max, comm):
   return a CGNS PyTree
   """
 
-  assert len(coord_min) == len(coord_max)
-  cloud_dim = len(coord_min)
-  assert cloud_dim >= 1
+  assert len(coord_min) == len(coord_max), f"Dimension of coord_min ({len(coord_min)}) and coord_max ({len(coord_max)}) must be equal"
+  phy_dim = len(coord_min)
+  assert phy_dim >= 1
 
   if isinstance(n_vtx, int): # Expand scalar to list
-    n_vtx = cloud_dim * [n_vtx]
+    n_vtx = phy_dim * [n_vtx]
+  elif isinstance(n_vtx, tuple):
+    n_vtx = list(n_vtx)
   assert isinstance(n_vtx, list)
+  cell_dim = len(n_vtx)
+  assert cell_dim <= phy_dim, f"CellDimension ({cell_dim}) can not exceed PhysicalDimension ({phy_dim})"
+  
+  while (len(n_vtx) > 1 and n_vtx[-1] == 1): # Remove trailing 1 to compute cell_dim
+    n_vtx = n_vtx[:-1]
+    cell_dim -= 1
 
   # Complete to fake 3D
   _coord_min = np.empty(3)
   _coord_max = np.empty(3)
-  for i in range(cloud_dim):
+  for i in range(phy_dim):
     _coord_min[i] = coord_min[i]
     _coord_max[i] = coord_max[i]
-  for i in range(cloud_dim, 3):
+  for i in range(phy_dim, 3):
     _coord_min[i] = 0.
     _coord_max[i] = 0.
-  _n_vtx = n_vtx + (3-cloud_dim) * [1]
+  _n_vtx = n_vtx + (3-cell_dim) * [1]
+
 
   dpoint_cloud = PDM.dpoint_cloud_gen_cartesian(comm, *_n_vtx, *_coord_min, *_coord_max)
   dist_zone = _dcloud_to_cgns(dpoint_cloud, comm)
+  # Easier to create zone as structured
+  zsize = np.array([[_n_vtx, 0, 0] for _n_vtx in n_vtx[:cell_dim]], dtype=pdm_gnum_dtype)
+  PT.set_value(dist_zone, zsize)
+  PT.update_child(dist_zone, 'ZoneType', value='Structured')
 
   # Remove useless coords if fake 3D was used
-  for dir in ['Z', 'Y', 'X'][:3-cloud_dim]:
+  for dir in ['Z', 'Y', 'X'][:3-phy_dim]:
     PT.rm_nodes_from_name(dist_zone, f'Coordinate{dir}')
 
   # Complete tree and return
   dist_tree = PT.new_CGNSTree()
-  dist_base = PT.new_CGNSBase('Base', cell_dim=cloud_dim, phy_dim=cloud_dim, parent=dist_tree)
+  # Cell dimension is not specified for a mesh without Elements_t, so we put same value as phy_dim...
+  dist_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=phy_dim, parent=dist_tree)
   PT.add_child(dist_base, dist_zone)
 
   return dist_tree
@@ -136,14 +150,14 @@ def generate_dist_points(n_vtx, zone_type, comm, origin=np.zeros(3), max_coords=
   dist_tree = dpoint_cloud_cartesian_generate(n_vtx, origin, max_coords, comm)
 
   if zone_type in ["Unstructured", "U"]:
+    for base in PT.iter_all_CGNSBase_t(dist_tree):
+      base[1].fill(base[1][1]) # Update cell_dim to be == to phydim (no proper def in S)
+      for zone in PT.iter_all_Zone_t(base):
+        zsize = np.array([[PT.Zone.n_vtx(zone), 0, 0]], order='F', dtype=pdm_gnum_dtype)
+        PT.set_value(zone, zsize)
+        PT.update_child(zone, 'ZoneType', value='Unstructured')
     return dist_tree
   elif zone_type in ["Structured", "S"]:
-    for zone in PT.iter_all_Zone_t(dist_tree):
-      if isinstance(n_vtx, int):
-        n_vtx = len(origin) * [n_vtx]
-      zsize = np.array([[_n_vtx, 0, 0] for _n_vtx in n_vtx], dtype=pdm_gnum_dtype)
-      PT.set_value(zone, zsize)
-      PT.update_child(zone, 'ZoneType', value='Structured')
     return dist_tree
   else:
     raise ValueError(f"Unexpected value for zone_type parameter : {zone_type}")

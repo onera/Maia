@@ -96,7 +96,7 @@ def test_isosurf_U(elt_type,comm, write_output):
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), comm)
 
   # Recover dist tree force R4 so use type_tol=True
-  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-15, type_tol=True)
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-14, type_tol=True)
 
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")

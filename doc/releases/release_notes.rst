@@ -14,6 +14,7 @@ Developpement version
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
+- generate_dist_block: add element kind ``BAR_2`` to generate lineic 1D meshes
 - partition_dist_tree: manage ZoneSubRegion nodes when splitting structured meshes
 - extract_part: also expose extractor object in ``bc_name`` and ``family`` APIs
 
@@ -21,6 +22,10 @@ Developpement version
 ^^^^^^^^
 - merge_zones: copy AdditionalFamilyName nodes when merging subsets
 - recover_dist_tree: fix a bug in NFace values and manage missing PE case
+
+🚧 API change
+^^^^^^^^^^^^^
+- generate_dist_block: rename parameter ``edge_length`` into ``length``
 
 v1.5 (September 2024)
 ---------------------
