@@ -185,7 +185,7 @@ def concatenate_subset_from_families(dist_tree, comm, families='*'):
   Args:
     dist_tree (CGNSTree) : Distributed unstructured tree
     comm      (MPIComm)  : MPI communicator
-    families  (str or list, optional) : Family names. Default to '*'. 
+    families  (str or list, optional) : Family names. Default to ``"*"``. 
 
   Example:
     .. literalinclude:: snippets/test_algo.py
