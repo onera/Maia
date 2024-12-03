@@ -1,9 +1,8 @@
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils import np_utils, par_utils
+from maia.utils import par_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.algo.dist import matching_jns_tools as MJT
 
 import numpy as np
 
@@ -15,7 +14,7 @@ def decatenate_subset_from_predicate(dist_tree, comm, predicate=is_concat):
   Decatenate subset matching predicate using `OriginalBCId` data.
 
   Args:
-    dist_tree (CGNSTree) : Distributed unstructured tree
+    dist_tree (CGNSTree) : Distributed unstructured tree, starting at Zone_t level or higher.
     comm      (MPIComm)  : MPI communicator
     predicate (callable) : Conditions to select node to decatenate. Default to all nodes having a ':maia#concatenate' child. 
 
