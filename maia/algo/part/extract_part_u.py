@@ -157,11 +157,12 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   # > Discover BCs
   dist_zone = PT.new_Zone('Zone')
   gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
+  child_list = ['GridLocation', 'FamilyName_t', 'AdditionalFamilyName_t', 'Descriptor_t']
   for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim):
     if LOC_TO_DIM[dim_name]<=dim:
       is_dim_bc = lambda n: PT.get_label(n)=="BC_t" and\
                             PT.Subset.GridLocation(n)==dim_name
-      dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=['GridLocation'])
+      dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
       pdm_ep.part_n_group_set(bc_type+1, n_gdom_bcs)
@@ -281,9 +282,13 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
         bc_pl = bc_info['group_entity']
         bc_gn = bc_info['group_entity_ln_to_gn']
         if bc_pl.size != 0:
+          dist_bc = PT.get_node_from_path(dist_zone, bc_path)
           bc_name = bc_path.split('/')[-1]
+          bc_val = PT.get_value(dist_bc) if PT.get_value(dist_bc) is not None else 'Null'
           bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) else dim_name
-          bc_n = PT.new_BC(bc_name, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
+          bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
+          for child in PT.get_children_from_predicate(dist_bc, lambda n : PT.get_name(n) != 'GridLocation'):
+            PT.add_child(bc_n, child)
           PT.maia.newGlobalNumbering({'Index':bc_gn}, parent=bc_n)
     bc_type +=1 
 
