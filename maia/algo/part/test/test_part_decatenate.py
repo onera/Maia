@@ -3,7 +3,7 @@ import pytest_parallel
 import os
 
 import maia
-import maia.pytree        as PT
+import maia.pytree as PT
 
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.part import decatenate_nodes as DN
