@@ -131,6 +131,13 @@ class Extractor:
             if len(PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'))==0:
               PT.rm_child(zone_n, zgc_n)
 
+    # Copy Families existing on extracted tree
+    is_family_name = lambda n :  PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+    found_family_name = set([PT.get_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
+    for family_name in sorted(found_family_name):
+      fam_node = PT.get_node_from_name_and_label(part_tree, family_name, 'Family_t', depth=2)
+      if fam_node is not None:
+        PT.add_child(extract_base, PT.deep_copy(fam_node))
     self.extract_tree = extract_tree
 
   def exchange_fields(self, fs_container):
