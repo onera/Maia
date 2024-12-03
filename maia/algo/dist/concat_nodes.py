@@ -183,8 +183,8 @@ def concatenate_subset_from_families(dist_tree, comm, families='*'):
     Do not delete them if, for any reason, you want to retrieve initial tree.
 
   Args:
-    dist_tree (CGNSTree) : Distributed unstructured tree
-    comm      (MPIComm)  : MPI communicator
+    dist_tree (CGNSTree)              : Distributed unstructured tree
+    comm      (MPIComm)               : MPI communicator
     families  (str or list, optional) : Family names. Default to ``"*"``. 
 
   Example:
@@ -207,6 +207,7 @@ def concatenate_subset_from_families(dist_tree, comm, families='*'):
           families.append(PT.get_value(n))
 
     # > Merge bc nodes from a same family
+    zone_bc_n = PT.get_node_from_label(dist_zone, "ZoneBC_t")
     for family in families:
 
       # > Predicates to find family BCs
@@ -216,7 +217,6 @@ def concatenate_subset_from_families(dist_tree, comm, families='*'):
 
       # > Go through family BCs gathering informations
       bc_nodes = list() ; bc_names = list() ; bc_ordin = list() 
-      zone_bc_n = PT.get_node_from_label(dist_zone, "ZoneBC_t")
       for i_bc, bc_n in enumerate(PT.get_nodes_from_predicates(dist_zone, [is_subset_container, is_subset])):
         bc_pl  = PT.Subset.getPatch(bc_n)[1][0]
         bcds_n = PT.new_BCDataSet(":maia#concatenate", parent=bc_n)

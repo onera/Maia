@@ -9,14 +9,17 @@ import numpy as np
 
 is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
 
-def decatenate_subset_from_predicate(dist_tree, comm, predicate=is_concat):
+def decatenate_subset_from_predicate(dist_tree, comm, families='*'):
   """
-  Decatenate subset matching predicate using `OriginalBCId` data.
+  Decatenate BC from each family using `OriginalBCId` data.
+
+  Warning:
+    Each family from ``families`` argument must lead to unique BC.
 
   Args:
-    dist_tree (CGNSTree) : Distributed unstructured tree, starting at Zone_t level or higher.
-    comm      (MPIComm)  : MPI communicator
-    predicate (callable) : Conditions to select node to decatenate. Default to all nodes having a ':maia#concatenate' child. 
+    dist_tree (CGNSTree)              : Distributed unstructured tree, starting at Zone_t level or higher.
+    comm      (MPIComm)               : MPI communicator
+    families  (str or list, optional) : Family names. Default to ``"*"``. 
 
   Example:
     .. literalinclude:: snippets/test_algo.py
@@ -30,9 +33,23 @@ def decatenate_subset_from_predicate(dist_tree, comm, predicate=is_concat):
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
 
+    # > If all families, we need to discover them first
+    if families=='*':
+      families = list()
+      for n in PT.get_nodes_from_label(dist_zone, 'FamilyName_t'):
+        if PT.get_value(n) not in families:
+          families.append(PT.get_value(n))
+
     # > Merge bc nodes from a same family
     zone_bc_n = PT.get_child_from_label(dist_zone, "ZoneBC_t")
-    for concat_bc_n in PT.get_nodes_from_predicate(dist_zone, predicate):
+    for family in families:
+
+      # > Predicates to find family BCs
+      is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, family)
+      bc_nodes = PT.get_nodes_from_predicates(dist_zone, ['ZoneBC_t', is_bc_from_fam])
+      if len(bc_nodes)>1:
+        raise ValueError(f"Family {family} leads to multiple BCs.")
+      concat_bc_n = bc_nodes[0]
 
       # > For now only BCs are managed
       if PT.get_label(concat_bc_n)!='BC_t':

@@ -35,7 +35,6 @@ def test_decatenate_patch(specified, comm):
     families = ['WALL', 'SYM', 'FARFIELD','RIDGE']
     GN.concatenate_subset_from_families(dist_tree, comm)
 
-  is_concat = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) in families
-  DN.decatenate_subset_from_predicate(dist_tree, comm, is_concat)
+  DN.decatenate_subset_from_predicate(dist_tree, comm, families)
 
   assert PT.is_same_tree(dist_tree, dist_tree_cp)

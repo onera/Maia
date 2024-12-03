@@ -6,28 +6,35 @@ from   maia import npy_pdm_gnum_dtype as pdm_dtype
 import numpy as np
 
 
-is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
-
-def decatenate_nodes_from_predicate(part_tree, comm, predicates=['Zone_BC_t', is_concat]):
+def decatenate_nodes_from_predicate(part_tree, comm, families='*'):
   """
-  Decatenate subset matching predicates using `OriginalBCId` data.
+  Decatenate BC from each family using `OriginalBCId` data.
+
+  Warning:
+    Each family from ``families`` argument must lead to unique BC.
 
   Args:
-    part_tree (CGNSTree) : Partitioned unstructured tree
-    comm      (MPIComm)  : MPI communicator
-    predicates (list of callable) : Conditions to select node to decatenate. Default to all BC nodes having a ':maia#concatenate' child.
+    part_tree (CGNSTree)              : Partitioned unstructured tree
+    comm      (MPIComm)               : MPI communicator
+    families  (str or list, optional) : Family names. Default to ``"*"``. 
   """
 
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
   for domain, part_zones in part_tree_per_dom.items():
 
-    dist_zone = ['MaskedZone', None, [], 'Zone_t']
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, predicates, comm,
-      child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'BCNames', 'BCOrdinal'], get_value='leaf')
+    for family in families:
+      # > Predicates to find family BCs over all procs
+      is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, family)
+      predicates = ['ZoneBC_t', is_bc_from_fam]
+      dist_zone = ['MaskedZone', None, [], 'Zone_t']
+      dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, predicates, comm,
+        child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'BCNames', 'BCOrdinal'], get_value='leaf')
 
-    concat_bc_paths = PT.predicates_to_paths(dist_zone, predicates)
+      concat_bc_paths = PT.predicates_to_paths(dist_zone, predicates)
+      if len(concat_bc_paths)>1:
+        raise ValueError(f"Family {family} leads to multiple BCs.")
+      concat_bc_path = concat_bc_paths[0]
 
-    for concat_bc_path in concat_bc_paths:
       bcds_paths = list()
 
       dist_bc_n = PT.get_node_from_path(dist_zone, concat_bc_path)

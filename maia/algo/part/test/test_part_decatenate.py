@@ -20,7 +20,7 @@ def test_part_decatenate_patch(specified, comm):
     for bc_name in bc_names:
       bc_n = PT.get_node_from_name_and_label(dist_tree, bc_name, 'BC_t')
       PT.new_FamilyName(family_name, parent=bc_n)
-  
+
   tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(0, 5)], 'WALL')
   tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(5, 9)], 'SYM')
   tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(9,10)], 'FARFIELD')
@@ -34,13 +34,12 @@ def test_part_decatenate_patch(specified, comm):
   else:
     families = ['WALL', 'SYM', 'FARFIELD','RIDGE']
     GN.concatenate_subset_from_families(dist_tree, comm)
-  
+
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, data_transfer='ALL')
   to_copy1 = ["CGNSBase_t", "Zone_t", "ZoneBC_t", "BC_t", "Descriptor_t"]
   maia.transfer.dist_tree_to_part_tree_copy(dist_tree, part_tree, to_copy1, comm)
 
-  is_concat = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) in families
-  DN.decatenate_nodes_from_predicate(part_tree, comm, ['ZoneBC_t',is_concat])
+  DN.decatenate_nodes_from_predicate(part_tree, comm, families)
 
   dist_tree = maia.factory.recover_dist_tree(part_tree, comm, data_transfer='ALL')
   assert PT.is_same_tree(dist_tree, dist_tree_cp, type_tol=True)

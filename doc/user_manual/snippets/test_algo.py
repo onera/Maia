@@ -733,8 +733,7 @@ def test_decatenate_from_predicate():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', MPI.COMM_WORLD)
 
   maia.algo.dist.concatenate_subset_from_families(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
-  is_concat = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n)=='RIDGE'
-  maia.algo.dist.decatenate_subset_from_predicate(dist_tree, MPI.COMM_WORLD, predicate=is_concat)
+  maia.algo.dist.decatenate_subset_from_predicate(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
 
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
   assert len(PT.get_nodes_from_predicate(dist_tree, is_edge_bc))==9
