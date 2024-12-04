@@ -14,7 +14,7 @@ def sample_part_tree(cgns_name, comm, bc_loc='Vertex'):
     dist_tree = maia.factory.dcube_generator.dcube_struct_generate(5, 1., [0.,0.,0.], comm, bc_location=bc_loc)
   else:
     dist_tree = maia.factory.generate_dist_block(3, "Poly", comm)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, graph_part_tool='gnum')
   return part_tree
 
 @pytest_parallel.mark.parallel(2)
