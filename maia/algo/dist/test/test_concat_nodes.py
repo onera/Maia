@@ -141,6 +141,13 @@ def test_concatenate_patch(specified, comm):
   tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(9,10)], 'FARFIELD')
   tag_fam_in_bcs(dist_tree, [f'ridge.{i}'   for i in range(0,20)], 'RIDGE')
 
+  # > Create ZSR with BCRegionName
+  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  bc_n = PT.get_node_from_name_and_label(dist_zone, 'surface.3', 'BC_t')
+  bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))
+  PT.new_ZoneSubRegion('zsr_surface.3', bc_name='surface.3',
+                       fields={'fld': bc_pl[0]}, parent=dist_zone)
+
   if specified:
     families = ['WALL','FARFIELD','RIDGE']
     GN.concatenate_subset_from_families(dist_tree, comm, families)
@@ -168,3 +175,11 @@ def test_concatenate_patch(specified, comm):
                        PT.predicate.belongs_to_family(n, 'SYM', True)
 
     assert len(PT.get_nodes_from_predicate(dist_tree, is_sym))==4
+
+  zsr_n = PT.get_node_from_name(dist_zone, 'zsr_surface.3')
+  assert PT.get_child_from_name(zsr_n, 'BCRegionName') is None
+  zsr_pl_n = PT.get_child_from_name(zsr_n, 'PointList')
+  zsr_fld_n = PT.get_child_from_name(zsr_n, 'fld')
+  assert zsr_pl_n is not None
+  assert np.array_equal(zsr_pl_n[1],bc_pl)
+  assert np.array_equal(zsr_fld_n[1],bc_pl[0])

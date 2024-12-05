@@ -179,8 +179,13 @@ def concatenate_subset_from_families(dist_tree, comm, families='*'):
   Initial BCs will be removed after concatenation.
 
   Note:
-    This function add some nodes in concatenated BCs to preserve pre-concatenate tree info.
+    - This function add some nodes in concatenated BCs to preserve pre-concatenate tree info.
     Do not delete them if, for any reason, you want to retrieve initial tree.
+    - If ``dist_tree`` has ZoneSubRegion nodes with BCRegionName related to a concatenate BC,
+    the BCRegionName descriptor will be replaced by related BC PointList. 
+
+  Warning:
+    BCDataSet arrays must consistent over all BCs from each family.
 
   Args:
     dist_tree (CGNSTree)              : Distributed unstructured tree
@@ -225,8 +230,18 @@ def concatenate_subset_from_families(dist_tree, comm, families='*'):
                       parent=bcds_n)
         ord_n = PT.get_child_from_label(bc_n, 'Ordinal_t')
 
+        # > Manage ZSR with BCRegionName
+        bc_name = PT.get_name(bc_n)
+        is_zsr_rel_to_bc = lambda n: PT.get_label(n)=='ZoneSubRegion_t' and\
+                                     PT.get_child_from_name(n, 'BCRegionName') is not None and\
+                        PT.get_value(PT.get_child_from_name(n, 'BCRegionName'))==bc_name 
+        for zsr_bc_n in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
+          pl_n = PT.get_child_from_name(bc_n, 'PointList')
+          PT.new_IndexArray(value=PT.get_value(pl_n), parent=zsr_bc_n)
+          PT.rm_children_from_name(zsr_bc_n, 'BCRegionName')
+
         bc_nodes.append(bc_n)
-        bc_names.append(PT.get_name(bc_n))
+        bc_names.append(bc_name)
         if ord_n is not None:
           bc_ordin.append(str(PT.get_value(ord_n)[0]))
 

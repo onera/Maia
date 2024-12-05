@@ -6,9 +6,9 @@ from   maia import npy_pdm_gnum_dtype as pdm_dtype
 import numpy as np
 
 
-def decatenate_nodes_from_predicate(part_tree, comm, families='*'):
+def deconcatenate_subset_from_families(part_tree, comm, families='*'):
   """
-  Decatenate BC from each family using `OriginalBCId` data.
+  Deconcatenate BC from each family using `OriginalBCId` data.
 
   Warning:
     Each family from ``families`` argument must lead to unique BC.
@@ -22,6 +22,19 @@ def decatenate_nodes_from_predicate(part_tree, comm, families='*'):
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
   for domain, part_zones in part_tree_per_dom.items():
 
+    # > If all families, we need to discover them first
+    if families=='*':
+
+      predicates = ['ZoneBC_t', 'BC_t']
+      dist_zone = ['MaskedZone', None, [], 'Zone_t']
+      dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, predicates, comm,
+        child_list=['FamilyName_t'], get_value='leaf')
+
+      families = list()
+      for n in PT.get_nodes_from_label(dist_zone, 'FamilyName_t'):
+        if PT.get_value(n) not in families:
+          families.append(PT.get_value(n))
+
     for family in families:
       # > Predicates to find family BCs over all procs
       is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, family)
@@ -29,6 +42,8 @@ def decatenate_nodes_from_predicate(part_tree, comm, families='*'):
       dist_zone = ['MaskedZone', None, [], 'Zone_t']
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, predicates, comm,
         child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'BCNames', 'BCOrdinal'], get_value='leaf')
+
+
 
       concat_bc_paths = PT.predicates_to_paths(dist_zone, predicates)
       if len(concat_bc_paths)>1:
@@ -47,7 +62,7 @@ def decatenate_nodes_from_predicate(part_tree, comm, families='*'):
 
           # > For now only BCs are managed
           if PT.get_label(concat_bc_n)!='BC_t':
-            raise NotImplementedError(f"decatenate_subset_from_predicate only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
+            raise NotImplementedError(f"deconcatenate_subset_from_families only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
 
           # > Get concatenated BC node informations
           concat_bc_type = PT.get_value(concat_bc_n)
@@ -130,7 +145,7 @@ def decatenate_nodes_from_predicate(part_tree, comm, families='*'):
                   bc_bcd_n = PT.new_BCData(PT.get_name(bcd_n), fields=fields, parent=bc_bcds_n)
                   PT.rm_children_from_name(bc_bcd_n, 'OriginalBCId')
 
-      # > Generate gnum for decatenated BCs
+      # > Generate gnum for deconcatenated BCs
       for bc_name in orig_bc_names:
         all_bc_gn = list()
 
@@ -149,7 +164,7 @@ def decatenate_nodes_from_predicate(part_tree, comm, families='*'):
             bc_gn_n = PT.maia.getGlobalNumbering(bc_n, 'Index')
             PT.set_value(bc_gn_n, all_bc_gn[i_part])
 
-      # > Generate gnum for decatenated BCDSs
+      # > Generate gnum for deconcatenated BCDSs
       gather_bcds_paths = comm.allgather(bcds_paths)
       bcds_paths = list()
       for rank in range(comm.size):

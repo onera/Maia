@@ -9,9 +9,9 @@ import numpy as np
 
 is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
 
-def decatenate_subset_from_predicate(dist_tree, comm, families='*'):
+def deconcatenate_subset_from_families(dist_tree, comm, families='*'):
   """
-  Decatenate BC from each family using `OriginalBCId` data.
+  Deconcatenate BC from each family using `OriginalBCId` data.
 
   Warning:
     Each family from ``families`` argument must lead to unique BC.
@@ -24,8 +24,8 @@ def decatenate_subset_from_predicate(dist_tree, comm, families='*'):
   Example:
     .. literalinclude:: snippets/test_algo.py
       :language: python
-      :start-after: #decatenate_from_name@start
-      :end-before:  #decatenate_from_name@end
+      :start-after: #deconcatenate_from_name@start
+      :end-before:  #deconcatenate_from_name@end
       :dedent: 2
 
   """
@@ -53,7 +53,7 @@ def decatenate_subset_from_predicate(dist_tree, comm, families='*'):
 
       # > For now only BCs are managed
       if PT.get_label(concat_bc_n)!='BC_t':
-        raise NotImplementedError(f"decatenate_subset_from_predicate only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
+        raise NotImplementedError(f"deconcatenate_subset_from_families only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
 
       # > Get concatenated BC node informations
       concat_bc_type = PT.get_value(concat_bc_n)
@@ -90,7 +90,7 @@ def decatenate_subset_from_predicate(dist_tree, comm, families='*'):
         if orig_bc_ordin_n is not None:
           PT.new_node('Ordinal', 'Ordinal_t', orig_bc_ordin[bc_id], parent=bc_n)
 
-        # > Decatenate related BCDataSet children
+        # > Deconcatenate related BCDataSet children
         for nodes in PT.iter_children_from_predicates(concat_bc_n, 'BCDataSet_t/BCData_t', ancestors=True):
           bcds_n = nodes[0]
           bcd_n  = nodes[1]
