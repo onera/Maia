@@ -6,7 +6,7 @@ from   maia import npy_pdm_gnum_dtype as pdm_dtype
 import numpy as np
 
 
-def deconcatenate_subset_from_families(part_tree, comm, families='*'):
+def deconcatenate_subsets_from_families(part_tree, comm, families='*'):
   """
   Deconcatenate BC from each family using `OriginalBCId` data.
 
@@ -62,7 +62,7 @@ def deconcatenate_subset_from_families(part_tree, comm, families='*'):
 
           # > For now only BCs are managed
           if PT.get_label(concat_bc_n)!='BC_t':
-            raise NotImplementedError(f"deconcatenate_subset_from_families only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
+            raise NotImplementedError(f"deconcatenation service only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
 
           # > Get concatenated BC node informations
           concat_bc_type = PT.get_value(concat_bc_n)

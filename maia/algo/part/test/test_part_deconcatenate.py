@@ -30,18 +30,18 @@ def test_part_deconcatenate_patch(specified, comm):
 
   if specified:
     families = ['WALL','FARFIELD','RIDGE']
-    GN.concatenate_subset_from_families(dist_tree, comm, families)
+    GN.concatenate_subsets_from_families(dist_tree, comm, families)
   else:
-    GN.concatenate_subset_from_families(dist_tree, comm)
+    GN.concatenate_subsets_from_families(dist_tree, comm)
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, data_transfer='ALL')
   to_copy1 = ["CGNSBase_t", "Zone_t", "ZoneBC_t", "BC_t", "Descriptor_t"]
   maia.transfer.dist_tree_to_part_tree_copy(dist_tree, part_tree, to_copy1, comm)
 
   if specified:
-    DN.deconcatenate_subset_from_families(part_tree, comm, families)
+    DN.deconcatenate_subsets_from_families(part_tree, comm, families)
   else:
-    DN.deconcatenate_subset_from_families(part_tree, comm)
+    DN.deconcatenate_subsets_from_families(part_tree, comm)
 
   dist_tree = maia.factory.recover_dist_tree(part_tree, comm, data_transfer='ALL')
   assert PT.is_same_tree(dist_tree, dist_tree_cp, type_tol=True)

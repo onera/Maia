@@ -30,11 +30,11 @@ def test_deconcatenate_patch(specified, comm):
 
   if specified:
     families = ['WALL','FARFIELD','RIDGE']
-    GN.concatenate_subset_from_families(dist_tree, comm, families)
+    GN.concatenate_subsets_from_families(dist_tree, comm, families)
   else:
     families = ['WALL', 'SYM', 'FARFIELD','RIDGE']
-    GN.concatenate_subset_from_families(dist_tree, comm)
+    GN.concatenate_subsets_from_families(dist_tree, comm)
 
-  DN.deconcatenate_subset_from_families(dist_tree, comm, families)
+  DN.deconcatenate_subsets_from_families(dist_tree, comm, families)
 
   assert PT.is_same_tree(dist_tree, dist_tree_cp)

@@ -9,23 +9,29 @@ import numpy as np
 
 is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
 
-def deconcatenate_subset_from_families(dist_tree, comm, families='*'):
-  """
-  Deconcatenate BC from each family using `OriginalBCId` data.
+def deconcatenate_subsets_from_families(dist_tree, comm, families='*'):
+  """ For each given family, deconcatenate the related BC gathered with
+  the concatenation service.
 
+  If the shorcut ``'*'`` is used for ``families`` argument,
+  all the detected FamilyName values in the tree will be used.
+
+  BCDataSet are deconcatenated as well, and metadata (such as FamilyName, Descriptors, etc.)
+  is preserved on generated BCs. Tree is modified inplace.
+  
   Warning:
-    Each family from ``families`` argument must lead to unique BC.
+    Each family from ``families`` argument must lead to unique BC, including the custom node
+    added by :func:`~maia.algo.dist.concatenate_subsets_from_families`.
 
   Args:
     dist_tree (CGNSTree)              : Distributed unstructured tree, starting at Zone_t level or higher.
     comm      (MPIComm)               : MPI communicator
-    families  (str or list, optional) : Family names. Default to ``"*"``. 
+    families  (list of str or '*', optional) : Family names. Default to ``"*"``. 
 
   Example:
     .. literalinclude:: snippets/test_algo.py
-      :language: python
-      :start-after: #deconcatenate_from_name@start
-      :end-before:  #deconcatenate_from_name@end
+      :start-after: #deconcatenate_from_fam@start
+      :end-before:  #deconcatenate_from_fam@end
       :dedent: 2
 
   """
@@ -53,7 +59,7 @@ def deconcatenate_subset_from_families(dist_tree, comm, families='*'):
 
       # > For now only BCs are managed
       if PT.get_label(concat_bc_n)!='BC_t':
-        raise NotImplementedError(f"deconcatenate_subset_from_families only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
+        raise NotImplementedError(f"Deconcatenation only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
 
       # > Get concatenated BC node informations
       concat_bc_type = PT.get_value(concat_bc_n)

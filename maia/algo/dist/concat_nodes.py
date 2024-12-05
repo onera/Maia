@@ -173,28 +173,33 @@ def concatenate_jns(tree, comm):
     MJT.add_joins_donor_name(tree, comm, force=True)
 
 
-def concatenate_subset_from_families(dist_tree, comm, families='*'):
-  """
-  Create unique BC for each family while concatenating associated BCDataSets.
-  Initial BCs will be removed after concatenation.
+def concatenate_subsets_from_families(dist_tree, comm, families='*'):
+  """ For each family, gather the related BC nodes into a single BC.
+
+  If the shorcut ``'*'`` is used for ``families`` argument,
+  all the detected FamilyName values in the tree will be used.
+
+  BCDataSet are concatenated as well, and common metadata (such as FamilyName, Descriptors, etc.)
+  are preserved. Tree is modified inplace and initial BCs are removed after concatenation.
 
   Note:
-    - This function add some nodes in concatenated BCs to preserve pre-concatenate tree info.
-    Do not delete them if, for any reason, you want to retrieve initial tree.
-    - If ``dist_tree`` has ZoneSubRegion nodes with BCRegionName related to a concatenate BC,
-    the BCRegionName descriptor will be replaced by related BC PointList. 
+
+    - This function add some nodes in resulting BCs to preserve pre-concatenate tree info.
+      Do not delete them if, for any reason, you want to retrieve initial tree
+      (see :func:`~maia.algo.dist.deconcatenate_subsets_from_families`)
+    - If ``dist_tree`` has ZoneSubRegion nodes with BCRegionName related to a concatenated BC,
+      the BCRegionName descriptor will be replaced by the associated PointList. 
 
   Warning:
-    BCDataSet arrays must consistent over all BCs from each family.
+    For each family-grouped BCs, BCDataSet nodes must have the same tree structure
 
   Args:
-    dist_tree (CGNSTree)              : Distributed unstructured tree
+    dist_tree (CGNSTree)              : Distributed unstructured tree, starting at Zone_t level or higher.
     comm      (MPIComm)               : MPI communicator
-    families  (str or list, optional) : Family names. Default to ``"*"``. 
+    families  (list of str or '*', optional) : Family names. Default to ``"*"``. 
 
   Example:
     .. literalinclude:: snippets/test_algo.py
-      :language: python
       :start-after: #concat_from_fam@start
       :end-before:  #concat_from_fam@end
       :dedent: 2

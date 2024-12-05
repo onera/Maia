@@ -150,10 +150,10 @@ def test_concatenate_patch(specified, comm):
 
   if specified:
     families = ['WALL','FARFIELD','RIDGE']
-    GN.concatenate_subset_from_families(dist_tree, comm, families)
+    GN.concatenate_subsets_from_families(dist_tree, comm, families)
   else:
     families = ['WALL', 'SYM', 'FARFIELD','RIDGE']
-    GN.concatenate_subset_from_families(dist_tree, comm)
+    GN.concatenate_subsets_from_families(dist_tree, comm)
 
   is_merged_bc = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) in families
   bc_nodes = PT.get_nodes_from_predicate(dist_tree, is_merged_bc)

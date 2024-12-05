@@ -55,8 +55,8 @@ Data management
 ^^^^^^^^^^^^^^^
 
 .. autofunction:: maia.algo.dist.redistribute_tree
-.. autofunction:: maia.algo.dist.concatenate_subset_from_families
-.. autofunction:: maia.algo.dist.deconcatenate_subset_from_families
+.. autofunction:: maia.algo.dist.concatenate_subsets_from_families
+.. autofunction:: maia.algo.dist.deconcatenate_subsets_from_families
 
 ..
   from .extract_surf_dmesh     import extract_surf_tree_from_bc
