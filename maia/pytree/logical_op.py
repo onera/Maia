@@ -53,10 +53,10 @@ def _rm_common_children(node1, node2, comp_func):
 
 begin_api_export()
 
-def union(t1:CGNSTree, t2:CGNSTree) -> CGNSTree:
+def union(*trees:CGNSTree) -> CGNSTree:
   """ Create a new tree from the union of the input trees.
 
-  Nodes existing on both input trees keeps the value and label of ``t1``.
+  Nodes existing on more than one input trees keep the value and label of their first appearance.
   Note also that output values are shared references to input trees.
   Uses :func:`deep_copy` afterwards if you want an independant copy.
 
@@ -64,8 +64,7 @@ def union(t1:CGNSTree, t2:CGNSTree) -> CGNSTree:
     Input root nodes must have the same name. An exception will be raised otherwise.
 
   Args:
-    t1 (CGNSTree): First CGNS node
-    t2 (CGNSTree): Second CGNS node
+    trees (CGNSTree): Input trees
   Returns:
     CGNSTree: Tree created from union
   Example:
@@ -94,14 +93,16 @@ def union(t1:CGNSTree, t2:CGNSTree) -> CGNSTree:
         └───ZoneGridConnectivity ZoneGridConnectivity_t 
             └───match GridConnectivity1to1_t "Zone1"
   """
-  in_names = [PT.get_name(n) for n in [t1, t2]]
+  assert len(trees) > 0
+  in_names = [PT.get_name(n) for n in trees]
   if len(set(in_names)) != 1:
     raise ValueError(f"Mismatching names for input nodes : {in_names}")
-  union_nodes = PT.shallow_copy(t1)
-  _add_children_to_node_from_another(union_nodes, t2)
+  union_nodes = PT.shallow_copy(trees[0])
+  for t2 in trees[1:]:
+    _add_children_to_node_from_another(union_nodes, t2)
   return union_nodes
 
-def intersection(t1:CGNSTree, t2:CGNSTree, 
+def intersection(*trees:CGNSTree,
                  comp_func:Callable[[CGNSTree, CGNSTree],bool]=PT.is_same_node) -> CGNSTree:
   """ Create a new tree from the intersection of the input trees.
 
@@ -110,15 +111,14 @@ def intersection(t1:CGNSTree, t2:CGNSTree,
   If not provided, the function :func:`is_same_node` is used.
 
   If the intersection is empty, result contains only the root node.
-  Note also that output values are shared references to input tree ``t1``.
+  Note also that output values are shared references to first input tree.
   Uses :func:`deep_copy` afterwards if you want an independant copy.
 
   Important: 
     Input root nodes must have the same name. An exception will be raised otherwise.
 
   Args:
-    t1 (CGNSTree): First CGNS node
-    t2 (CGNSTree): Second CGNS node
+    trees (CGNSTree): Input trees
     comp_func (Callable): Binary predicate used for comparison (see above)
   Returns:
     CGNSTree: Tree created from intersection
@@ -146,11 +146,13 @@ def intersection(t1:CGNSTree, t2:CGNSTree,
     └───Base CGNSBase_t 
         └───Zone2 Zone_t 
   """
-  in_names = [PT.get_name(n) for n in [t1, t2]]
+  assert len(trees) > 0
+  in_names = [PT.get_name(n) for n in trees]
   if len(set(in_names)) != 1:
     raise ValueError(f"Mismatching names for input nodes : {in_names}")
-  intersect_nodes = PT.shallow_copy(t1)
-  _rm_not_common_children(intersect_nodes, t2, comp_func)
+  intersect_nodes = PT.shallow_copy(trees[0])
+  for t2 in trees[1:]:
+    _rm_not_common_children(intersect_nodes, t2, comp_func)
   return intersect_nodes
 
 def difference(t1:CGNSTree, t2:CGNSTree,

@@ -123,6 +123,31 @@ def test_union():
   assert PT.is_same_tree(PLO.union(tree2a, tree2b), ref_union_tree)
   assert PT.is_same_tree(PLO.union(tree2b, tree2a), ref_union_tree)
 
+def test_union_mult():
+  
+  z1 = PT.new_Zone(type='Structured')
+  z2 = PT.new_Zone(type='Structured')
+  zbc2 = PT.new_ZoneBC(z2)
+  PT.new_BC('BCA', type='BCWall', loc='Vertex', parent=zbc2)
+  z3 = PT.new_Zone(type='Structured', family='AIRCRAFT')
+  z4 = PT.new_Zone(type='Structured', family='AIRPLANE')
+  zbc4 = PT.new_ZoneBC(z4)
+  PT.new_BC('BCA', loc='CellCenter', parent=zbc4) # Skipped because exists on t2
+  PT.new_BC('BCB', loc='CellCenter', parent=zbc4)
+  union = PT.union(z1, z2, z3, z4)
+
+  expected = PT.yaml.to_node("""
+  Zone Zone_t:
+    ZoneType ZoneType_t "Structured":
+    ZoneBC ZoneBC_t:
+      BCA BC_t "BCWall":
+        GridLocation GridLocation_t "Vertex":
+      BCB BC_t "Null":
+        GridLocation GridLocation_t "CellCenter":
+    FamilyName FamilyName_t "AIRCRAFT":
+  """)
+  assert PT.is_same_tree(union, expected)
+
 
 def test_intersection():
   ref_intersect_tree1 = PT.yaml.to_cgns_tree("""
@@ -155,6 +180,26 @@ def test_intersection():
   
   assert PT.is_same_tree(PLO.intersection(tree2a, tree2b), ref_intersect_tree2)
   assert PT.is_same_tree(PLO.intersection(tree2b, tree2a), ref_intersect_tree2)
+
+def test_intersection_mult():
+  
+  zones = [PT.new_Zone(type='Structured') for _ in range(4)]
+  zbcs  = [PT.new_ZoneBC(parent=zone) for zone in zones]
+  bcAs  = [PT.new_BC('BCA', type='BCWall', loc='CellCenter', parent=zbc) for zbc in zbcs]
+  PT.new_FamilyName('WALL', parent=bcAs[2])
+  bcBs  = [PT.new_BC('BCB', loc='CellCenter', parent=zbc) for zbc in zbcs]
+  bcBs[3][0] = "OtherName=>removed"
+
+  inter = PT.intersection(*zones)
+
+  expected = PT.yaml.to_node("""
+  Zone Zone_t:
+    ZoneType ZoneType_t "Structured":
+    ZoneBC ZoneBC_t:
+      BCA BC_t "BCWall":
+        GridLocation GridLocation_t "CellCenter":
+  """)
+  assert PT.is_same_tree(inter, expected)
 
 
 def test_difference():

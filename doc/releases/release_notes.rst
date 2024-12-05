@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
+💡 New Features
+^^^^^^^^^^^^^^^
+- Algo module: add ``(de)concatenate_subsets_from_family`` functions to (un)gather BC nodes
+
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - generate_dist_block: add element kind ``BAR_2`` to generate lineic 1D meshes
