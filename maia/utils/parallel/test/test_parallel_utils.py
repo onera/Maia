@@ -1,3 +1,4 @@
+import pytest
 import pytest_parallel
 
 import numpy as np
@@ -45,6 +46,16 @@ def test_dn_to_distribution(comm):
   assert distrib.dtype == npy_pdm_gnum_dtype
   assert (distrib == expt_distri_f[[comm.rank, comm.rank+1, comm.size]]).all()
 
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("weights", [False, True])
+def test_distribution_from_gnum(weights, comm):
+  if comm.rank == 0:
+    lngn_list = [np.empty(0, npy_pdm_gnum_dtype), np.array([4,3,1,10], npy_pdm_gnum_dtype)]
+    expt_distri = [0,2,10] if weights else [0,5,10]
+  if comm.rank == 1:
+    lngn_list = [np.array([2,3,1,1,5,4], npy_pdm_gnum_dtype)]
+    expt_distri = [2,10,10] if weights else [5,10,10]
+  assert (utils.distribution_from_gnum(lngn_list, comm, weights) == expt_distri).all()
 
 @pytest_parallel.mark.parallel(3)
 def test_partial_to_full_distribution(comm):

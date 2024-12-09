@@ -18,15 +18,17 @@ from maia.algo.dist  import merge_jn       as MJN
 
 import Pypdm.Pypdm as PDM
 
-def distribute_unique_vtx_ids_from_face_ids(pl_faces, ngon_n, comm):
+def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
   """
   Get only unique nodes of faces in list and distribute it over all procs uniformly
   """
   # Get the nodes ids of all faces in pl_faces
   _, nodes_pl = face_ids_to_vtx_ids(pl_faces, ngon_n, comm)
   # Make unique
-  PTB = EP.PartToBlock(None, [nodes_pl], comm, weight=True)
-  nodes_pl = PTB.getBlockGnumCopy()
+  vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
+  GI = EP.GIndexer(vtx_distri_f, nodes_pl-1, comm)
+  nodes_pl = np.flatnonzero(GI.access_counts > 0) + vtx_distri[0] + 1
+
   # Because result could be badly distributed, redistribute it
   distrib_nodes_pl_init   = par_utils.gather_and_shift(nodes_pl.size, comm, pdm_gnum_dtype)
   distrib_nodes_pl_wanted = par_utils.uniform_distribution(distrib_nodes_pl_init[-1], comm)
@@ -253,6 +255,7 @@ def remove_degen_faces_from_family(dist_tree, degen_family, comm):
   
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     zone_n = PT.get_node_from_path(dist_tree, zone_path)
+    vtx_distri = PT.maia.get_distribution(zone_n, 'Vertex')[1]
     
     pl_degen_faces_list = []
     for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):
@@ -269,6 +272,6 @@ def remove_degen_faces_from_family(dist_tree, degen_family, comm):
     _, pl_degen_faces = np_utils.concatenate_point_list(pl_degen_faces_list, pdm_gnum_dtype)
 
     # List with unique nodes
-    nodes_degen_faces = distribute_unique_vtx_ids_from_face_ids(pl_degen_faces, PT.Zone.NGonNode(zone_n), comm)
+    nodes_degen_faces = distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_degen_faces, PT.Zone.NGonNode(zone_n), comm)
     
     remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, nodes_degen_faces, comm)

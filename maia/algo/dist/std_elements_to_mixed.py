@@ -29,7 +29,6 @@ def convert_elements_to_mixed(dist_tree, comm):
     for zone in PT.get_all_Zone_t(dist_tree):
         part_data_ec = []
         part_data_eso = []
-        part_stride_ec = []
         ln_to_gn_list = []
         nb_nodes_prev = 0
         nb_elem_prev = 0
@@ -51,17 +50,15 @@ def convert_elements_to_mixed(dist_tree, comm):
             mixed_partial_ec[::nb_nodes_per_elem+1] = elem_type
             for i in range(nb_nodes_per_elem):
                 mixed_partial_ec[i+1::nb_nodes_per_elem+1] = elem_ec[i::nb_nodes_per_elem]
-            part_data_ec.append(mixed_partial_ec)
-            stride_ec = (nb_nodes_per_elem+1)*np.ones(nb_elem_loc,dtype = np.int32)
-            part_stride_ec.append(stride_ec)
+            stride_ec = (nb_nodes_per_elem+1)*np.ones(nb_elem_loc, dtype=int)
             
             mixed_partial_eso = (nb_nodes_per_elem+1)*np.arange(nb_elem_loc,dtype = elem_ec.dtype) + \
                                 nb_nodes_prev + (nb_nodes_per_elem+1)*elem_distrib[0]
             part_data_eso.append(mixed_partial_eso)
-            stride_eso = np.ones(nb_elem_loc,dtype = np.int32)
+            part_data_ec.append((mixed_partial_ec, stride_ec))
     
             ln_to_gn = np.array(range(nb_elem_loc),dtype=elem_distrib.dtype) + \
-                       nb_elem_prev + elem_distrib[0] + 1
+                       nb_elem_prev + elem_distrib[0]
             ln_to_gn_list.append(ln_to_gn)
             
             nb_nodes_prev += (nb_nodes_per_elem+1)*PT.Element.Size(element)
@@ -71,10 +68,11 @@ def convert_elements_to_mixed(dist_tree, comm):
         # 2/ Delete standard nodes and add mixed nodes
         PT.rm_nodes_from_label(zone,'Elements_t')
         elem_distrib = MUPar.uniform_distribution(nb_elem_prev,comm)
-        ptb = MTP.PartToBlock(elem_distrib,ln_to_gn_list,comm)
-    
-        __, dist_data_eso_wo_last = ptb.exchange_field(part_data_eso)    
-        dist_stride_ec, dist_data_ec = ptb.exchange_field(part_data_ec,part_stride_ec)
+        elem_distrib_f = MUPar.partial_to_full_distribution(elem_distrib, comm)
+
+        GI = MTP.GIndexer_m(elem_distrib_f, ln_to_gn_list, comm)
+        dist_data_eso_wo_last = GI.Put(part_data_eso)
+        dist_data_ec, dist_stride_ec = GI.Put_v(part_data_ec)
         
         dist_data_eso = np.empty(len(dist_data_eso_wo_last)+1,dtype=dist_data_eso_wo_last.dtype)
         dist_data_eso[:-1] = dist_data_eso_wo_last

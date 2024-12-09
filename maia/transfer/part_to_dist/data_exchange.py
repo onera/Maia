@@ -11,12 +11,6 @@ from maia.transfer import utils     as te_utils,\
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from .                           import index_exchange as IPTB
 
-def _lngn_to_distri(lngn_list, comm):
-  ptb = EP.PartToBlock(None, lngn_list, comm)
-  pdm_distri = ptb.getDistributionCopy()
-  return par_utils.full_to_partial_distribution(pdm_distri, comm)
-
-
 def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   """
   Wrapper for discover_nodes_from_matching which add the node path in distree,

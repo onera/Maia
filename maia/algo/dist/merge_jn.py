@@ -105,21 +105,22 @@ def _update_subset(node, pl_new, data_query, comm):
     path = "/".join([PT.get_name(n) for n in data_nodes])
     data_n = data_nodes[-1]
     if data_n[1].ndim == 1:
-      part_data[path] = [data_n[1]]
+      part_data[path] = data_n[1]
     else:
       assert data_n[1].ndim == 2 and data_n[1].shape[0] == 1
-      part_data[path] = [data_n[1][0]]
+      part_data[path] = data_n[1][0]
 
   #Add PL, needed for next blocktoblock
   pl_identifier = r'@\PointList/@' # just a string that is unlikely to clash
-  part_data[pl_identifier] = [pl_new]
+  part_data[pl_identifier] = pl_new
 
-  PTB = EP.PartToBlock(None, [pl_new], comm)
-  PTB.PartToBlock_Exchange(dist_data, part_data)
+  old_distri_f = par_utils.distribution_from_gnum(pl_new, comm, full=True)
 
-  d_pl_new = PTB.getBlockGnumCopy()
-
-  new_distri_full = par_utils.gather_and_shift(len(d_pl_new), comm, pdm_dtype)
+  GI = EP.GIndexer(old_distri_f, pl_new-1, comm)
+  mask = (GI.access_counts > 0)
+  dist_data = {field: GI.Put(pdata)[mask] for field, pdata in part_data.items()}
+  
+  new_distri_full = par_utils.gather_and_shift(mask.sum(), comm, pdm_dtype)
   #Result is badly distributed, we can do a BlockToBlock to have a uniform distribution
   ideal_distri      = par_utils.uniform_distribution(new_distri_full[-1], comm)
   dist_data_ideal = EP.block_to_block(dist_data, new_distri_full, ideal_distri, comm)
@@ -236,23 +237,23 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
   pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
-  PTB = EP.PartToBlock(vtx_distri_ini, [vtx_to_remove], comm)
-  local_vtx_to_rmv = PTB.getBlockGnumCopy() - vtx_distri_ini[0] - 1
+  GI = EP.GIndexer(pdm_distrib, vtx_to_remove-1, comm)
+  mask = GI.access_counts == 0
 
   #Update all vertex entities
   for coord_n in PT.iter_children_from_predicates(zone, ['GridCoordinates_t', 'DataArray_t']):
-    PT.set_value(coord_n, np.delete(coord_n[1], local_vtx_to_rmv))
+    PT.set_value(coord_n, coord_n[1][mask])
 
   is_all_vtx_sol = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] \
       and PT.Subset.GridLocation(n) == 'Vertex' and PT.get_node_from_path(n, 'PointList') is None
 
   for node in PT.iter_children_from_predicate(zone, is_all_vtx_sol):
     for data_n in PT.iter_children_from_label(node, 'DataArray_t'):
-      PT.set_value(data_n, np.delete(data_n[1], local_vtx_to_rmv))
+      PT.set_value(data_n, data_n[1][mask])
 
   # Update vertex distribution
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
-  n_rmvd   = len(local_vtx_to_rmv)
+  n_rmvd   = mask.size - mask.sum()
   n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm, pdm_dtype)
   vtx_distri = vtx_distri_ini - [n_rmvd_offset[i_rank], n_rmvd_offset[i_rank+1],  n_rmvd_offset[n_rank]]
   MT.newDistribution({'Vertex' : vtx_distri}, zone)

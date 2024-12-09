@@ -65,22 +65,24 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
       part_pl = PT.get_child_from_name(node, 'PointList')[1][0]
       ln_to_gn_list.append(ln_to_gn[part_pl-1])
 
-  #Exchange is not needed. We use PTB just to count the element without multiplicity
-  PTB = EP.PartToBlock(None, ln_to_gn_list, comm)
+  blk_distri_f = par_utils.distribution_from_gnum(ln_to_gn_list, comm, full=True)
+
+  #First count the element without multiplicity
+  GI = EP.GIndexer_m(blk_distri_f, [gn-1 for gn in ln_to_gn_list], comm)
+  mask = (GI.access_counts > 0)
 
   # Exchange size of filtered gnum and shift to create a create global numbering
-  blk_distri = PTB.getDistributionCopy()
-  blk_gnum   = PTB.getBlockGnumCopy()
-  blk_n_elem = len(blk_gnum)
+  blk_n_elem = mask.sum()
   blk_offset = par_utils.gather_and_shift(blk_n_elem, comm, dtype=np.int32)
   group_gnum = np.arange(blk_n_elem, dtype=pdm_gnum_dtype)+blk_offset[i_rank]+1
 
   # Now send this back to partitions. Caution, We have to use a variable stride 
   # (1 if gnum is know; 0 elsewhere). With variable stride exchange2 seems simpler
-  blk_stride = np.zeros(blk_distri[i_rank+1] - blk_distri[i_rank], dtype=np.int32)
-  blk_stride[blk_gnum - blk_distri[i_rank] - 1] = 1
+  blk_stride = np.zeros(blk_distri_f[i_rank+1] - blk_distri_f[i_rank], dtype=int)
+  blk_stride[mask] = 1
 
-  _, part_lngn = EP.block_to_part_strided(blk_stride, group_gnum, blk_distri, ln_to_gn_list, comm)
+  data_out = GI.Take_v((group_gnum, blk_stride))
+  part_lngn = [data[0] for data in data_out]
 
   #Add in partitioned zones
   i_zone = 0
@@ -162,7 +164,9 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     ln_to_gn_list = [PT.get_node_from_path(part_zone, gn_path)[1] for part_zone in part_zones \
         if PT.get_node_from_path(part_zone, gn_path) is not None]
 
-  PTB = EP.PartToBlock(None, ln_to_gn_list, comm)
+  distri   = par_utils.distribution_from_gnum(ln_to_gn_list, comm)
+  distri_f = par_utils.partial_to_full_distribution(distri, comm)
+  GI = EP.GIndexer_m(distri_f, [gn-1 for gn in ln_to_gn_list], comm)
 
   idx_dim = 1 if PT.Zone.Type(dist_zone) == 'Unstructured' else dist_zone[1].shape[0]
   keys = ['pl_i', 'pl_j', 'pl_k'][:idx_dim]
@@ -189,16 +193,13 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   # Exchange and create dist pointlist
   dist_pl = []
   for key in keys: #This factorize U and S PL shapes
-    _, dist_pl_key = PTB.exchange_field(part_pl_list[key])
-    dist_pl.append(dist_pl_key)
+    dist_pl.append(GI.Put(part_pl_list[key]))
   dist_pl = np.asarray(dist_pl, order='F')
   pl = PT.new_IndexArray(value=dist_pl, parent=dist_node)
   assert pl[1].ndim == 2 and pl[1].shape[0] == idx_dim
 
   # Add distribution in dist_node
-  distri_ud = MT.newDistribution(parent=dist_node)
-  full_distri    = PTB.getDistributionCopy()
-  PT.new_DataArray('Index', par_utils.full_to_partial_distribution(full_distri, comm), parent=distri_ud)
+  MT.newDistribution({'Index' : distri}, parent=dist_node)
 
 
 def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size):
@@ -300,7 +301,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
 
-  part_ec   = list()
+  data_in_l = list()
   cst_stride = 0
   elt_id   = 0
   min_section_gn = np.iinfo(pdm_gnum_dtype).max
@@ -318,26 +319,31 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
 
       # Move to global and add in part_data
       EC    = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
-      part_ec.append(vtx_gnum_l[ipart][EC-1])
+      part_ec = vtx_gnum_l[ipart][EC-1]
+      stride_in = cst_stride*np.ones(part_ec.size // cst_stride, int)
     else:
-      part_ec.append(np.empty(0, pdm_gnum_dtype))
+      part_ec = np.empty(0, pdm_gnum_dtype)
+      stride_in = np.empty(0, int)
+
+    data_in_l.append((part_ec, stride_in))
 
   #Get values for proc having no elt
-  cst_stride = comm.allreduce(cst_stride, MPI.MAX)
   elt_id     = comm.allreduce(elt_id, MPI.MAX)
   min_section_gn = comm.allreduce(min_section_gn, MPI.MIN)
   max_section_gn = comm.allreduce(max_section_gn, MPI.MAX)
 
   # Exchange : for multiple elements (eg. BAR) we take the first received
-  PTB = EP.PartToBlock(None, elt_gnum_l, comm)
-  PTBDistribution = PTB.getDistributionCopy()
+  distri_elt   = par_utils.distribution_from_gnum(elt_gnum_l, comm)
+  distri_elt_f = par_utils.partial_to_full_distribution(distri_elt, comm)
 
-  _, dist_ec = PTB.exchange_field(part_ec, cst_stride)
+  GI = EP.GIndexer_m(distri_elt_f, [gn-1 for gn in elt_gnum_l], comm)
+
+  # Faster than filtering, even if stride is constant
+  dist_ec, _ = GI.Put_v(data_in_l)
 
   # > Add in disttree
   elt_node = PT.new_Elements(elem_name, type=elt_id, erange=[min_section_gn, max_section_gn], econn=dist_ec, parent=dist_zone)
 
-  distri_elt = par_utils.full_to_partial_distribution(PTBDistribution, comm)
   MT.newDistribution({'Element' : distri_elt}, parent=elt_node)
 
 def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
@@ -479,8 +485,7 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   ngon_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Element', ngon_name)
 
   # Init dicts
-  part_ec   = list()
-  part_stride = list()
+  part_data = list()
 
   # Collect partitioned data
   for ipart, part_zone in enumerate(part_zones):
@@ -490,14 +495,15 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
 
     # Move to global and add in part_data
     EC_sign = np.sign(EC)
-    part_ec.append(EC_sign*ngon_gnum_l[ipart][np.abs(EC)-1])
-    part_stride.append(np.diff(ECIdx).astype(np.int32))
+    part_data.append((EC_sign*ngon_gnum_l[ipart][np.abs(EC)-1], 
+                      np.diff(ECIdx).astype(int)))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
-  PTB = EP.PartToBlock(None, cell_gnum_l, comm)
-  PTBDistribution = PTB.getDistributionCopy()
+  distri_cell   = par_utils.distribution_from_gnum(cell_gnum_l, comm)
+  distri_cell_f = par_utils.partial_to_full_distribution(distri_cell, comm)
+  GI = EP.GIndexer_m(distri_cell_f, [gn-1 for gn in cell_gnum_l], comm)
 
-  d_elt_n, dist_ec = PTB.exchange_field(part_ec, part_stride)
+  dist_ec, d_elt_n = GI.Put_v(part_data)
 
   # ElementStartOffset must be shifted
   dist_eso = np_utils.sizes_to_indices(d_elt_n, pdm_gnum_dtype)
@@ -505,11 +511,9 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   dist_eso += shift_eso[comm.Get_rank()]
 
   # > Add in disttree
-  n_cellTot = PTBDistribution[n_rank]
+  n_cellTot = distri_cell[-1]
   elt_range = np.array([1, n_cellTot], dtype=pdm_gnum_dtype)
   elt_node = PT.new_NFaceElements(elem_name, erange=elt_range, eso=dist_eso, ec=dist_ec, parent=dist_zone)
 
-  distri_cell_face = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
-  distri_ud = MT.newDistribution(parent=elt_node)
-  PT.new_DataArray('Element',             PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
-  PT.new_DataArray('ElementConnectivity',distri_cell_face[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  distri_cell_face = par_utils.dn_to_distribution(dist_ec.shape[0], comm)
+  MT.newDistribution({'Element' : distri_cell, 'ElementConnectivity' : distri_cell_face}, parent=elt_node)

@@ -129,10 +129,12 @@ class DistSorter:
   arrays send to sort will be reorder to match key sorting order
   """
   def __init__(self, key, comm):
-    self.ptb = EP.PartToBlock(None, [key], comm, weight=[np.ones(key.size, np.int32)])
+    distri = par_utils.distribution_from_gnum([key], comm, True, True)
+    self.GI = EP.GIndexer(distri, key-1, comm)
+    self.mask = self.GI.access_counts > 0
 
   def sort(self, array):
-    _, sorted = self.ptb.exchange_field([array])
+    sorted = self.GI.Put(array)[self.mask]
     return sorted
 
 

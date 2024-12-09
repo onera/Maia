@@ -639,12 +639,13 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
         else:
           _append_or_create(part_data, path, data)
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
-      ptb = EP.PartToBlock(distri_ptb, [pl], comm)
-      dist_data = {key: ptb.exchange_field(pdata)[1] for key, pdata in part_data.items()}
-      dist_data['PL'] = ptb.getBlockGnumCopy()
-
+      distri_ptb_f = par_utils.partial_to_full_distribution(distri_ptb, comm)
       stride = np.zeros(distri_ptb[1] - distri_ptb[0], np.int32)
-      stride[dist_data['PL'] - distri_ptb[0] - 1] = 1
+      GI = EP.GIndexer(distri_ptb_f, pl-1, comm)
+      mask = GI.access_counts > 0
+      stride[mask] = 1
+      dist_data = {key: GI.Put(pdata[0])[mask] for key, pdata in part_data.items()}
+      dist_data['PL'] = np.flatnonzero(mask) + distri_ptb[0] + 1
 
       has_data.append(True)
       strides.append(stride)

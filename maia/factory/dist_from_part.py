@@ -393,8 +393,8 @@ def recover_dist_tree(part_tree, comm, data_transfer=[]):
     # Create zone distributions
     vtx_lngn_list  = tr_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
     cell_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Cell')
-    vtx_distri  = PTB._lngn_to_distri(vtx_lngn_list, comm)
-    cell_distri = PTB._lngn_to_distri(cell_lngn_list, comm)
+    vtx_distri  = par_utils.distribution_from_gnum(vtx_lngn_list, comm)
+    cell_distri = par_utils.distribution_from_gnum(cell_lngn_list, comm)
 
     MT.newDistribution({'Vertex' : vtx_distri, 'Cell' : cell_distri}, parent=dist_zone)
     if PT.Zone.Type(dist_zone) == "Unstructured":
@@ -403,7 +403,7 @@ def recover_dist_tree(part_tree, comm, data_transfer=[]):
       d_zone_dims = _recover_dist_block_size(part_zones, comm)
       if d_zone_dims.shape[0] == 3:
         face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
-        face_distri = PTB._lngn_to_distri(face_lngn_list, comm)
+        face_distri = par_utils.distribution_from_gnum(face_lngn_list, comm)
         MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
     PT.set_value(dist_zone, d_zone_dims)
 
