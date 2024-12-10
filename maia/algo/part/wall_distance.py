@@ -63,7 +63,7 @@ class WallDistance:
     self._n_face_orig_bnd_tot_idx = [0] # Exclude periodized patchs
     
     self.perio = perio
-    self.periodicities = []
+    self.periodicities_per_group = {}
     
   def _shift_id_and_push_in_global_list(self, parts_datas, all_parts_datas, i_dom, perio_ghost):
 
@@ -134,7 +134,7 @@ class WallDistance:
     all_parts_datas = [face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l]
 
     i_dom = -1
-    for part_zones in parts_per_dom:
+    for dist_zone_path, part_zones in parts_per_dom.items():
       
       i_dom += 1
       parts_datas = [data for data in extract_surf_from_bc(part_zones, self.bc_predicate, comm)]
@@ -146,8 +146,12 @@ class WallDistance:
       self._shift_id_and_push_in_global_list(parts_datas, all_parts_datas, i_dom, False)
       
       if self.perio:
+        for gn, group in enumerate(self.grouped_zone_paths):
+          if dist_zone_path in group:
+            group_num = gn
+            break
         parts_surf_to_dupl_l = [parts_datas]
-        for perio_val in self.periodicities:
+        for perio_val in self.periodicities_per_group[group_num]:
           perio_val_opp = (perio_val[0], -perio_val[1], -perio_val[2]) #Center, angle, translation
 
           parts_surf_to_dupl_next_l = []
@@ -222,7 +226,7 @@ class WallDistance:
                                        n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
                                        n_vtx, vtx_coords, vtx_ln_to_gn)
 
-  def _get(self, i_domain, part_zones):
+  def _get(self, i_domain, part_zones, dist_zone_path):
     """
     Get results after wall distance computation and store it in the FlowSolution
     node of name self.out_fs_name
@@ -267,7 +271,11 @@ class WallDistance:
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
       closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
       if self.perio:
-        closest_surf_domain = closest_surf_domain//(3**(len(self.periodicities)))
+        for gn, group in enumerate(self.grouped_zone_paths):
+          if dist_zone_path in group:
+            group_num = gn
+            break
+        closest_surf_domain = closest_surf_domain//(3**len(self.periodicities_per_group[group_num]))
       PT.new_DataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
 
       # Reput closest face gnum in shifted numbering, but ignoring periodic patches
@@ -288,15 +296,14 @@ class WallDistance:
         merge_rule = lambda path: MT.conv.get_part_prefix(path))
 
     # Group partitions by original dist domain
-    parts_per_dom = list()
+    parts_per_dom = dict()
     for zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
-      parts_per_dom.append(tr_utils.get_partitioned_zones(self.part_tree, zone_path))
+      parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(self.part_tree, zone_path)
     assert len(parts_per_dom) >= 1
     
         
     if self.method == "cloud":
-      is_gc_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-              and PT.GridConnectivity.isperiodic(n)
+      is_gc_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
       gc_predicate = ['ZoneGridConnectivity_t', is_gc_perio]
       
       # Recover existing periodicities
@@ -306,16 +313,26 @@ class WallDistance:
         discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, self.mpi_comm,
           child_list=['GridConnectivityProperty_t', 'GridConnectivityType_t'],
           merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
+          #After GC discovery, cleanup donor name suffix
+        for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
+          val = PT.get_value(jn)
+          PT.set_value(jn, MT.conv.get_part_prefix(val))
 
-      all_periodicities, _ = PT.Tree.find_periodic_jns(skeleton_tree)
-      # Filter periodicities to get only one over two jns
-      for perio_val in all_periodicities:
-        for u_perio in self.periodicities:
-          if _are_same_perio_abs(perio_val, u_perio):
-            break
-        else:
-          self.periodicities.append(perio_val)
-      if len(self.periodicities) == 0:
+      self.grouped_zone_paths = PT.Tree.find_connected_zones(skeleton_tree)
+      for g, group in enumerate(self.grouped_zone_paths):
+        self.periodicities_per_group[g] = []
+        fake_tree = PT.new_CGNSTree()
+        fake_base = PT.new_CGNSBase(group[0].split('/')[0], parent=fake_tree)
+        for zone_path in group:
+          PT.add_child(fake_base, PT.get_node_from_path(skeleton_tree, zone_path))
+        all_periodicities, _ = PT.Tree.find_periodic_jns(fake_tree)
+        for perio_val in all_periodicities:
+          for u_perio in self.periodicities_per_group[g]:
+            if _are_same_perio_abs(perio_val, u_perio):
+              break
+          else:
+            self.periodicities_per_group[g].append(perio_val)
+      if len(self.periodicities_per_group) == 0:
         self.perio = False #Disable perio to avoid unecessary loops
 
     elif self.perio: #Propagation + perio : not managed
@@ -324,17 +341,24 @@ class WallDistance:
         
     # Create walldist structure
     # Multidomain is not managed for n_part_surf, n_part_surf is the total of partitions
-    n_part_surf = sum([len(part_zones) for part_zones in parts_per_dom])
+    n_part_surf = sum([len(part_zones) for part_zones in parts_per_dom.values()])
     if self.method == "propagation":
+      first_dom = next(iter(parts_per_dom.keys()))
       if len(parts_per_dom) > 1:
         raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
-      elif len(parts_per_dom[0]) > 0 and PT.Zone.CellDimension(parts_per_dom[0][0]) != 3:
+      elif len(parts_per_dom[first_dom]) > 0 and PT.Zone.CellDimension(parts_per_dom[first_dom][0]) != 3:
         raise NotImplementedError("Wall_distance computation with method 'propagation' only supports 3D meshes")
       self._walldist = PDM.DistCellCenterSurf(self.mpi_comm, n_part_surf, n_part_vol=1)
     elif self.method == "cloud":
-      n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom]
+      n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom.values()]
       if self.perio:
-        n_part_surf = n_part_surf*3**(len(self.periodicities))
+        n_part_surf = 0
+        for dist_zone_path, part_zones in parts_per_dom.items():
+          for gn, group in enumerate(self.grouped_zone_paths):
+            if dist_zone_path in group:
+              group_num = gn
+              break
+          n_part_surf += len(part_zones)*3**(len(self.periodicities_per_group[group_num]))
       self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
 
     self._setup_surf_mesh(parts_per_dom, self.mpi_comm)
@@ -343,14 +367,14 @@ class WallDistance:
 
     # Prepare mesh depending on method
     if self.method == "cloud":
-      for i_domain, part_zones in enumerate(parts_per_dom):
+      for i_domain, part_zones in enumerate(parts_per_dom.values()):
         for i_part, part_zone in enumerate(part_zones):
           points, points_lngn = get_point_cloud(part_zone, self.point_cloud)
           self._keep_alive.extend([points, points_lngn])
           self._walldist.cloud_set(i_domain, i_part, points_lngn.shape[0], points, points_lngn)
 
     elif self.method == "propagation":
-      for i_domain, part_zones in enumerate(parts_per_dom):
+      for i_domain, part_zones in enumerate(parts_per_dom.values()):
         self._walldist.n_part_vol = len(part_zones)
         if len(part_zones) > 0 and PT.Zone.Type(part_zones[0]) != 'Unstructured':
           raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
@@ -361,13 +385,13 @@ class WallDistance:
 
     # Get results -- OK because name of method is the same for 2 PDM objects
     self.closest_elt_gnum = list() # To collect gnum (in surface) result
-    for i_domain, part_zones in enumerate(parts_per_dom):
-      self._get(i_domain, part_zones)
+    for i_domain, (dist_zone_path, part_zones) in enumerate(parts_per_dom.items()):
+      self._get(i_domain, part_zones, dist_zone_path)
 
     # PartToPart to put back the ClosestEltGnum in volumic numbering (construct it only once)
     closest_parent_face = EP.part_to_part(self.face_parent_gnum_l, self.face_ln_to_gn_l, self.closest_elt_gnum, self.mpi_comm)
     i_part = 0
-    for part_zones in parts_per_dom:
+    for part_zones in parts_per_dom.values():
       for part_zone in part_zones:
         fs_node = PT.get_child_from_name(part_zone, self.out_fs_n)
         shape = PT.get_child_from_name(fs_node, 'Distance')[1].shape

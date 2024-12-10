@@ -27,6 +27,7 @@ Developpement version
 - merge_zones: copy AdditionalFamilyName nodes when merging subsets
 - recover_dist_tree: fix a bug in NFace values and manage missing PE case
 - file_to_part_tree: fix an error occuring when ``redispatch=True`` and remove too agressive checks
+- wall_distance: fix case ``periodic=True`` on meshes having unconnected zones groups
 
 🚧 API change
 ^^^^^^^^^^^^^
