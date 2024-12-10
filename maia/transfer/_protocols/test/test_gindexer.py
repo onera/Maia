@@ -3,7 +3,7 @@ import pytest_parallel
 
 import numpy as np
 
-from maia.transfer._protocols.g_indexer import GIndexer
+from maia.transfer._protocols.g_indexer import GIndexer, GIndexer_m
 
 @pytest_parallel.mark.parallel(4)
 class Test_g_indexer:
@@ -262,7 +262,21 @@ class Test_g_indexer:
 
 
 
+@pytest_parallel.mark.parallel(3)
+def test_empty_part(comm):
+  # This is to ensure that exchanges work well even in 0-size part case,
+  # since cst_stride has to be guess in this case
 
+  distri = np.array([0,1,2,2])
+  gnum = [[np.array([], int)],
+          [],
+          [np.array([0,1], int), np.array([], int)]][comm.rank]
+  field = [np.array([42], np.int32),
+           np.array([24], np.int32),
+           np.array([], np.int32)][comm.rank]
+
+  GI = GIndexer_m(distri, gnum, comm)
+  assert (GI.Put(GI.Take(field)) == field).all()
 
 
 

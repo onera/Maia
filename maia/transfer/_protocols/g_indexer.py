@@ -95,12 +95,6 @@ class GIndexer_m:
     self._empty_part = None                       # True if at least one rank has pn == 0
 
   @property
-  def access_counts(self):
-    counts = np.zeros(self.dn, np.int32)
-    np.add.at(counts, self.dist_select_idx, 1)
-    return counts
-
-  @property
   def empty_dist(self):
     return self._empty_dist
   @property
@@ -336,8 +330,8 @@ class GIndexer_m:
 
     buff_in, counts_in = data_in
     assert isinstance(counts_in, np.ndarray)
+    assert np.issubdtype(counts_in.dtype, np.integer)
     assert counts_in.size == self.dn
-    assert counts_in.dtype == int
     assert buff_in.size == counts_in.sum()
     # Exchange counts_in
     # _ : in all_to_all layout. Do not call Take because we need the intermediate layout
@@ -392,24 +386,26 @@ class GIndexer_m:
     counts_in_l = [data_in[1] for data_in in data_in_l]
     assert len(data_in_l) == len(self.pn)
     assert all(counts_in.size == pn for counts_in,pn in zip(counts_in_l, self.pn))
-    assert all(counts_in.dtype == int for counts_in in counts_in_l)
+    assert all(np.issubdtype(counts_in.dtype, np.integer) for counts_in in counts_in_l)
     assert all(data_in.size == counts_in.sum() for data_in, counts_in in zip(buff_in_l, counts_in_l))
 
-    dtype  = buff_in_l[0].dtype.str if len(buff_in_l) > 0 else ''
+    data_dtype = buff_in_l[0].dtype.str   if len(self.pn) > 0 else ''
+    cnts_dtype = counts_in_l[0].dtype.str if len(self.pn) > 0 else ''
     if self.empty_part:
-      dtype = self.comm.allreduce(dtype,  MPI.MAX)
+      out_dtype = self.comm.allreduce(data_dtype+cnts_dtype,  MPI.MAX)
+      data_dtype, cnts_dtype = out_dtype[:3], out_dtype[3:]
 
 
     # Exchange counts_in
     # _ : in all_to_all layout. Do not call Put because we need the intermediate layout
-    _counts_in = np.empty(sum([part_write_pos.size for part_write_pos in self.part_write_pos]), dtype=int)
-    _counts_out = np.empty(self.dist_counts.sum(),  dtype=int)
+    _counts_in = np.empty(sum([part_write_pos.size for part_write_pos in self.part_write_pos]), dtype=cnts_dtype)
+    _counts_out = np.empty(self.dist_counts.sum(),  dtype=_counts_in.dtype)
     for counts_in, part_write_pos in zip(counts_in_l, self.part_write_pos):
       _counts_in[part_write_pos] = counts_in
 
     self.comm.Alltoallv((_counts_in, self.part_counts), 
                         (_counts_out, self.dist_counts))
-    counts_out  = np.zeros(self.dn, dtype=int)
+    counts_out  = np.zeros(self.dn, dtype=_counts_out.dtype)
     counts_out[self.dist_select_idx] = _counts_out
 
     # Count the actual number of items to send/recv, using stride array
@@ -424,7 +420,7 @@ class GIndexer_m:
       idx_recv += self.dist_counts[i]
 
     # Prepare send buffer (put data in alltoall layout)
-    send_buff = np.empty(send_counts.sum(), dtype)
+    send_buff = np.empty(send_counts.sum(), data_dtype)
     for i, part_write_pos in enumerate(self.part_write_pos):
       put_strided(send_buff, part_write_pos, _counts_in, counts_in_l[i], buff_in_l[i])
 
@@ -437,6 +433,15 @@ class GIndexer_m:
     put_strided(data_out, self.dist_select_idx, counts_out, _counts_out, recv_buff)
 
     return data_out, counts_out
+  
+  @property
+  def access_counts(self):
+    """ For each global index, total number of apparitions in the ``g_idx`` arrays,
+    returned as an integer array of size :math:`dn`."""
+    counts = np.zeros(self.dn, int)
+    np.add.at(counts, self.dist_select_idx, 1)
+    return counts
+
 
 
 
