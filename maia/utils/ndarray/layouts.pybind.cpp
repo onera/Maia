@@ -7,8 +7,8 @@ namespace py = pybind11;
 
 template<typename I>
 void put_strided(py::buffer            write_buff,
-                 py::array_t<int64_t>  write_idx,
                  py::array_t<I>        write_counts,
+                 py::array_t<int64_t>  write_idx,
                  py::array_t<I>        read_counts,
                  py::buffer            read_buff)                
 {
@@ -520,14 +520,14 @@ void register_layouts_module(py::module_& parent) {
         py::arg("out").noconvert());
   m.def("put_strided", &put_strided<int32_t>, 
         py::arg("write_buff").noconvert(),
-        py::arg("write_idx").noconvert(),
         py::arg("write_counts").noconvert(),
+        py::arg("write_idx").noconvert(),
         py::arg("read_counts").noconvert(),
         py::arg("read_buff").noconvert());
   m.def("put_strided", &put_strided<int64_t>, 
         py::arg("write_buff").noconvert(),
-        py::arg("write_idx").noconvert(),
         py::arg("write_counts").noconvert(),
+        py::arg("write_idx").noconvert(),
         py::arg("read_counts").noconvert(),
         py::arg("read_buff").noconvert());
   m.def("take_strided", &take_strided,

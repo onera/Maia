@@ -21,7 +21,7 @@ def test_put_strided():
     data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3,   3.1,   4.1])
     data_out.fill(-1)
 
-    layouts.put_strided(data_out, idx, counts_out, counts_in, data_in)
+    layouts.put_strided(data_out, counts_out, idx, counts_in, data_in)
     assert (data_out == np.array([2.1,2.2,2.3,  1.1,1.2,  3.1])).all()
     
 
@@ -29,7 +29,7 @@ def test_put_strided():
     data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3, 2.4,   3.1,   4.1])
     data_out.fill(-1)
 
-    layouts.put_strided(data_out, idx, counts_out, counts_in, data_in)
+    layouts.put_strided(data_out, counts_out, idx, counts_in, data_in)
     assert (data_out == np.array([-1,-1.,-1.,  1.1,1.2,  3.1])).all()
 
 
@@ -37,5 +37,5 @@ def test_put_strided():
     data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3,   3.1,   4.1, 4.2]) 
     data_out.fill(-1)
 
-    layouts.put_strided(data_out, idx, counts_out, counts_in, data_in)
+    layouts.put_strided(data_out, counts_out, idx, counts_in, data_in)
     assert (data_out == np.array([2.1,2.2,2.3,  4.1,4.2,  3.1])).all()

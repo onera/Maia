@@ -23,14 +23,14 @@ def take_strided(a_counts, a_val, indices, out):
   """
   layouts.take_stridedDI(a_counts, a_val, indices, out)
 
-def put_strided(a, indices, indices_count, read_counts, read):
+def put_strided(a, a_count, indices, read_counts, read):
   """
-  Write in an array strided array (a) at provided indices (indices, indices_count)
+  Write in an array strided array (a, a_count) at provided indices
   from an input data (read, read_count).
   If an index occurs multiple times in indices array, it erase the previously written
   value. A check is performed on counts to write only compatible data
   """
-  layouts.put_strided(a, indices, indices_count, read_counts, read)
+  layouts.put_strided(a, a_count, indices, read_counts, read)
 
 class GIndexer_m:
   """
@@ -380,6 +380,25 @@ class GIndexer_m:
       variable buffer: output distributed data, returned as pair of values \
         (**buff_out** (*buffer*), **counts_out** (*np array of* :math:`dn` *int*))
     """
+    # Note for later: extension to keep_multiple is not so complicated : 
+    # compute counts_out with np.add.at(counts_out, self.dist_select_idx, _counts_out) instead of np.put
+    # (because np.put is responsible of 'keeping last value')
+    # Then update last put_strided to remove the check on the size : loop becomes
+    # 
+    # std::vector<int> offset(write_counts.size(), 0);
+    # for (int i=0; i < write_idx.size(); ++i) {
+    #   int idx = _write_idx[i];
+    #   int w_start = write_displs[idx] + offset[idx];
+    #   int w_end   = write_displs[idx+1];
+    #
+    #   std::copy_n(_read_buff + s_data*r_idx,
+    #               _read_counts[i]*s_data,
+    #               _write_buff + s_data*w_start);
+    #
+    #   offset[idx] += _read_counts[i];
+    #   r_idx       += _read_counts[i];
+    # } 
+
     # Variable stride
 
     buff_in_l   = [data_in[0] for data_in in data_in_l]
@@ -422,7 +441,7 @@ class GIndexer_m:
     # Prepare send buffer (put data in alltoall layout)
     send_buff = np.empty(send_counts.sum(), data_dtype)
     for i, part_write_pos in enumerate(self.part_write_pos):
-      put_strided(send_buff, part_write_pos, _counts_in, counts_in_l[i], buff_in_l[i])
+      put_strided(send_buff, _counts_in, part_write_pos, counts_in_l[i], buff_in_l[i])
 
     # Exchange data buffer
     recv_buff = np.empty(recv_counts.sum(), send_buff.dtype)
@@ -430,7 +449,7 @@ class GIndexer_m:
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
     data_out = np.empty(counts_out.sum(), recv_buff.dtype)
-    put_strided(data_out, self.dist_select_idx, counts_out, _counts_out, recv_buff)
+    put_strided(data_out, counts_out, self.dist_select_idx, _counts_out, recv_buff)
 
     return data_out, counts_out
   
