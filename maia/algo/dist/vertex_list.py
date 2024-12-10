@@ -34,11 +34,11 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
 
   # Get the vertex associated to the faces in FaceList
   p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      distri_ngon, [face_ids], comm)
+      distri_ngon, face_ids-1, comm, legacy=False)
 
-  face_offset_l = np_utils.sizes_to_indices(p_stride[0])
+  face_offset_l = np_utils.sizes_to_indices(p_stride)
 
-  return face_offset_l, part_data[0]
+  return face_offset_l, part_data
 
 def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm):
   """
@@ -91,10 +91,10 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
   b_stride[PTB.getBlockGnumCopy() - first - 1] = d_stride
 
   p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      PTB.getDistributionCopy(), [restricted_pl_vtx], comm)
+      PTB.getDistributionCopy(), restricted_pl_vtx-1, comm, legacy=False)
 
-  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"][0], return_index=True)
-  extended_pl_d = part_data["vtx_to_face_d"][0][unique_idx]
+  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"], return_index=True)
+  extended_pl_d = part_data["vtx_to_face_d"][unique_idx]
 
   return extended_pl, extended_pl_d
 

@@ -117,7 +117,7 @@ def _ngon_to_elements_zone(zone, comm):
 
   # Now get for each cell section the corresponding vertices, which will be
   # gathered to make nodal connectivity
-  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx, face_distri, cell_face_section, comm)
+  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx, face_distri, [np.abs(p)-1 for p in cell_face_section], comm, legacy=False)
 
   combine_funcs = [combine_to_tetra, combine_to_pyra, combine_to_penta, combine_to_hexa]
 

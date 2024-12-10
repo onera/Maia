@@ -29,19 +29,19 @@ class Test_g_indexer:
     return GIndexer(distri, g_idx, comm)
 
   def test_create(self, comm):
-    DI = self.init_p(comm)
-    assert DI.empty_dist == True
-    assert DI.empty_part == True
+    GI = self.init_p(comm)
+    assert GI.empty_dist == True
+    assert GI.empty_part == True
     excepted_counts = [[4,1,1,0,1],
                        [],
                        [0,1,0],
                        [1,2,0,1]
                       ][comm.rank]
 
-    assert np.array_equal(DI.access_counts, excepted_counts)
+    assert np.array_equal(GI.access_counts, excepted_counts)
 
   def test_python_obj(self, comm):
-    DI = self.init_p(comm)
+    GI = self.init_p(comm)
 
     # Accessing python objects: each rank holds a part of a global list, 
     # depending of which indices its manages
@@ -53,7 +53,7 @@ class Test_g_indexer:
               ][comm.rank]
 
     # We can access the desired indices of the global list with take function
-    data_out = DI.take(data_in) 
+    data_out = GI.take(data_in) 
     expected_out = [['a', 'letter c', 'e', ['a','list','of','g'],'i'], 
                     ['l', 42.0], 
                     [],
@@ -69,7 +69,7 @@ class Test_g_indexer:
               ['a', 'aaa', 42.0, 'aaaa', 'b']
               ][comm.rank] # Values to put at indices 1,1,10,1,2
 
-    data_out = DI.put(data_in)
+    data_out = GI.put(data_in)
 
 
     # Note that :
@@ -83,7 +83,7 @@ class Test_g_indexer:
     assert data_out == expected_out
 
   def test_buffer(self, comm):
-    DI = self.init_p(comm)
+    GI = self.init_p(comm)
     # Accessing buffer objects : following mpi4py convention, buffer objects
     # can be used with the uppercase counterpart of the functions :
 
@@ -93,7 +93,7 @@ class Test_g_indexer:
               np.array([90., 100, 110, 120])
               ][comm.rank] #Indices 9...12
 
-    data_out = DI.Take(data_in) 
+    data_out = GI.Take(data_in) 
     expected_out = [np.array([10.,30,50,70,90]),
                     np.array([120.,100]),
                     np.array([], float),
@@ -104,7 +104,7 @@ class Test_g_indexer:
     # We can also put result in a pre allocated buffer with the _into variant ;
     # note that out buffer must have good size and datatype
     data_out = np.empty(self.g_idx.size, float)
-    DI.Take_into(data_in, data_out)
+    GI.Take_into(data_in, data_out)
     assert np.allclose(data_out, expected_out)
 
     # We can put values from a buffer object, using uppercase Put function :
@@ -115,13 +115,13 @@ class Test_g_indexer:
               np.array([10.,10,100,10,20]) # Values to put at indices 1,1,10,1,2
               ][comm.rank]
 
-    data_out = DI.Put(data_in)
+    data_out = GI.Put(data_in)
 
     # When using buffer variants, unfilled indices take a random (unitialized) value
     # Again, we can put the result in a preallocated buffer:
     dn_size = self.distri[comm.rank+1] - self.distri[comm.rank]
     data_out = -1*np.ones(dn_size, float)
-    DI.Put_into(data_in, data_out)
+    GI.Put_into(data_in, data_out)
 
     expected_out = [np.array([10., 20, 30, -1, 50]),
                     np.array([], float),
@@ -135,7 +135,7 @@ class Test_g_indexer:
     
    
   def test_cst_buffer(self, comm):
-    DI = self.init_p(comm)
+    GI = self.init_p(comm)
 
     # Input buffer is allowed to have more than  1 element per index : however, this number 
     # must remain constant when using Take / Take_into :
@@ -148,7 +148,7 @@ class Test_g_indexer:
     ][comm.rank] #Indices 9...12, with 2 values per indices
 
     data_out = np.empty(2*self.g_idx.size, float)  # Out buffer will store 2 values per requested idx
-    DI.Take_into(data_in, data_out) 
+    GI.Take_into(data_in, data_out) 
 
     expected_out = [np.array([10.,15, 30,35, 50,55, 70,75, 90,95]),
                     np.array([120.,125, 100,105]),
@@ -158,7 +158,7 @@ class Test_g_indexer:
     assert np.allclose(data_out, expected_out)
 
     # Similar w/o preallocated buffer:
-    data_out = DI.Take(data_in)
+    data_out = GI.Take(data_in)
     assert np.allclose(data_out, expected_out)
 
     # and write more than 1 element per index 
@@ -171,8 +171,8 @@ class Test_g_indexer:
 
     dn_size = self.distri[comm.rank+1] - self.distri[comm.rank]
     data_out = -1*np.ones(2*dn_size, float)
-    DI.Put_into(data_in, data_out)
-    data_out2 = DI.Put(data_in) #Equivalent w/o preallocated buffer
+    GI.Put_into(data_in, data_out)
+    data_out2 = GI.Put(data_in) #Equivalent w/o preallocated buffer
 
     expected_out = [np.array([10.,15, 20,25, 30,35, -1,-1, 50,55]),
                     np.array([], float),
@@ -183,7 +183,7 @@ class Test_g_indexer:
 
   def test_variable_buffer(self, comm):
     rank = comm.rank
-    DI = self.init_p(comm)
+    GI = self.init_p(comm)
 
     # When it comes to variables sizes, Take_v must be used (as we would use
     # AllToAllv with mpi4py). The expected input is now a counting array 
@@ -208,7 +208,7 @@ class Test_g_indexer:
     # If we requested an index for which no data has been provided
     # by the managing process (counts_in = 0), we will simply get
     # not data for this index (counts_out = 0)
-    data_out, counts_out  = DI.Take_v((data_in, counts_in))
+    data_out, counts_out  = GI.Take_v((data_in, counts_in))
 
     expected_out = [
       (np.array([0,0,2,0,0]), np.array([50.,55])),
@@ -237,7 +237,7 @@ class Test_g_indexer:
       data_in =np.array([100.,105, 20]) 
 
 
-    data_out, counts_out = DI.Put_v((data_in, counts_in))
+    data_out, counts_out = GI.Put_v((data_in, counts_in))
 
     expected_out = [
       (np.array([0,1,0,0,2]), np.array([20., 50.,55])),
@@ -250,7 +250,7 @@ class Test_g_indexer:
     assert np.allclose(data_out, expected_out[1])
 
   def test_failures(self, comm):
-    # Creating a DI with an 'out of bounds' index should raise :
+    # Creating a GI with an 'out of bounds' index should raise :
     distri = np.array([0, 5, 5, 8, 12])
     g_idx = [np.array([0,2,4,6,8]),
              np.array([11,9]),
@@ -258,7 +258,7 @@ class Test_g_indexer:
              np.array([0,0,14,0,1]) # Indices can be requested more than once
             ][comm.rank]
     with pytest.raises(IndexError):
-      DI = GIndexer(distri, g_idx, comm)
+      GI = GIndexer(distri, g_idx, comm)
 
 
 
@@ -292,7 +292,7 @@ def test_perfo(comm):
   gnum1 = gnum+1
   comm.barrier()
   st = time.time()
-  DI = GIndexer(distri, gnum, comm)
+  GI = GIndexer(distri, gnum, comm)
   ed = time.time()
   if comm.rank == 0:
     print("Creation time GIndexer", ed-st)
@@ -320,7 +320,7 @@ def test_perfo(comm):
   data_in = np.empty(dn, float)
 
   st = time.time()
-  data_out = DI.Take(data_in)
+  data_out = GI.Take(data_in)
   ed = time.time()
   if comm.rank == 0:
     print("Exchange time Take", ed-st)
@@ -332,7 +332,7 @@ def test_perfo(comm):
     print("Exchange time BTP", ed-st)
 
   st = time.time()
-  DI.Put(data_out)
+  GI.Put(data_out)
   ed = time.time()
   if comm.rank == 0:
     print("Exchange time Put", ed-st)
@@ -347,7 +347,7 @@ def test_perfo(comm):
   counts_in = np.random.randint(0,4+1,dn)
   data_in = np.empty(counts_in.sum(), float)
   st = time.time()
-  data_out, counts_out = DI.Take_v((data_in, counts_in))
+  data_out, counts_out = GI.Take_v((data_in, counts_in))
   ed = time.time()
   if comm.rank == 0:
     print("Exchange time Take_v", ed-st)
@@ -360,7 +360,7 @@ def test_perfo(comm):
     print("Exchange time BTPvar", ed-st)
 
   st = time.time()
-  DI.Put_v((data_out, counts_out))
+  GI.Put_v((data_out, counts_out))
   ed = time.time()
   if comm.rank == 0:
     print("Exchange time Put_v", ed-st)
