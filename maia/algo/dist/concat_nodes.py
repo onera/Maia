@@ -212,7 +212,7 @@ def concatenate_subsets_from_families(dist_tree, comm, families='*'):
     # > If all families, we need to discover them first
     if families=='*':
       families = list()
-      for n in PT.get_nodes_from_label(dist_zone, 'FamilyName_t'):
+      for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t'):
         if PT.get_value(n) not in families:
           families.append(PT.get_value(n))
 
@@ -304,7 +304,7 @@ def deconcatenate_subsets_from_families(dist_tree, comm, families='*'):
     # > If all families, we need to discover them first
     if families=='*':
       families = list()
-      for n in PT.get_nodes_from_label(dist_zone, 'FamilyName_t'):
+      for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t'):
         if PT.get_value(n) not in families:
           families.append(PT.get_value(n))
 
