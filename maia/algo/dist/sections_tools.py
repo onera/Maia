@@ -1,4 +1,3 @@
-import warnings
 import numpy as np
 
 import maia.pytree      as PT
@@ -206,31 +205,3 @@ def reorder_elt_sections_from_dim(dist_tree, reverse=False):
     return (sign * PT.Element.Dimension(e), idx)
 
   reorder_sections(dist_tree, lambda elts: sorted(elts, key=key_func))
-
-
-# Moved from rearrange_element_sections. Deprecated in v1.5
-def rearrange_element_sections(dist_tree, comm):
-  """
-  Rearanges Elements_t sections such that for each zone,
-  sections are ordered in ascending dimensions order
-  and there is only one section by ElementType.
-  Sections are renamed based on their ElementType.
-
-  The tree is modified in place.
-  The Elements_t nodes are guaranteed to be ordered by ascending ElementRange.
-
-  Args:
-    dist_tree  (CGNSTree): Tree with an element-based connectivity
-    comm       (`MPIComm`): MPI communicator
-
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #rearrange_element_sections@start
-        :end-before: #rearrange_element_sections@end
-        :dedent: 2
-  """
-  msg = "This function is deprecated, and will be removed in next release. "\
-        "Consider using reorder_elt_sections_from_dim and concatenate_elt_sections instead."
-  warnings.warn(msg, DeprecationWarning, stacklevel=2)
-  reorder_elt_sections_from_dim(dist_tree)
-  concatenate_elt_sections(dist_tree, comm)

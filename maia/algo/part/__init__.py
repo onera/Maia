@@ -16,10 +16,6 @@ from .extract_part           import extract_part_from_bc_name,\
                                     create_extractor_from_bc_name,\
                                     create_extractor_from_family
 
-from .geometry_deprecated    import compute_cell_center,\
-                                    compute_edge_center,\
-                                    compute_face_center
-
 from .interpolation          import interpolate,\
                                     create_interpolator,\
                                     Interpolator
