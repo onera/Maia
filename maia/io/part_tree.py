@@ -87,8 +87,16 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
   else:
     from maia.io.cgns_io_tree import load_size_tree
     from h5py import h5f
-    from .hdf._hdf_cgns import open_from_path, _load_node_partial
-    tree = load_size_tree(filename, comm)
+    from .hdf._hdf_cgns import open_from_path, _load_node_partial, load_tree_partial
+
+    if comm.Get_rank() == 0:
+      dont_load_zone = lambda N, labels, S : labels[-1] == 'Zone_t' or not 'Zone_t' in labels
+      size_tree = load_tree_partial(filename, dont_load_zone)
+      PT.rm_nodes_from_predicate(size_tree, lambda n : PT.get_label(n) == 'DataArray_t' and PT.get_name(n).endswith('#Size'))
+    else:
+      size_tree = None
+
+    tree = comm.bcast(size_tree, root=0)
 
   if redispatch:
     zones_to_read = _read_part_from_size(tree, filename, comm)
