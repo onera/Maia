@@ -22,7 +22,7 @@ def test_extract_surf_zone(comm):
 
   surf_zone = EXC.extract_surf_zone_from_queries(zone, [['ZoneBC_t', 'BC_t']], comm)
 
-  assert PT.Zone.CellSize(surf_zone) == 2*2*2 #2BC, 2*2 faces
+  assert PT.Zone.n_cell(surf_zone) == 2*2*2 #2BC, 2*2 faces
   
   dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
   yt = f"""

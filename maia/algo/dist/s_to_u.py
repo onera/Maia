@@ -57,7 +57,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
   shift = pr_utils.normal_index_shift(point_range, n_vtx_zone, bnd_axis, input_loc, output_loc)
   #Prepare sub pointRanges from slabs
-  sub_pr_list = [np.asarray(slab) for slab in bc_slabs]
+  sub_pr_list = [np.asarray(slab, point_range.dtype) for slab in bc_slabs]
   for sub_pr in sub_pr_list:
     sub_pr[:,0] += point_range[:,0]
     sub_pr[:,1] += point_range[:,0] - 1
@@ -84,7 +84,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
       ds_loc   = input_loc
     ds_size = PT.PointRange.SizePerIndex(ds_point_range)
     ds_slabs = HFR2S.compute_slabs(ds_size, ds_distri[0:2])
-    ds_sub_pr_list = [np.asarray(slab) for slab in ds_slabs]
+    ds_sub_pr_list = [np.asarray(slab, ds_point_range[1].dtype) for slab in ds_slabs]
     for sub_pr in ds_sub_pr_list:
       sub_pr[:,0] += ds_point_range[1][:,0]
       sub_pr[:,1] += ds_point_range[1][:,0] - 1
@@ -151,7 +151,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   gc_range = py_utils.uniform_distribution_at(gc_size.prod(), i_rank, n_rank)
   gc_slabs = HFR2S.compute_slabs(gc_size, gc_range)
 
-  sub_pr_list = [np.asarray(slab) for slab in gc_slabs]
+  sub_pr_list = [np.asarray(slab, point_range.dtype) for slab in gc_slabs]
   #Compute sub pointranges from slab
   for sub_pr in sub_pr_list:
     sub_pr[:,0] += point_range_loc[:,0]
@@ -213,7 +213,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 
-  n_cell_zone = n_vtx_zone - 1
+  n_cell_zone = tuple(k-1 for k in n_vtx_zone)
 
   nf_i, nf_j, nf_k = n_face_per_dir(n_vtx_zone, n_cell_zone)
   n_face_tot = nf_i + nf_j + nf_k
@@ -222,7 +222,7 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   n_face_loc = face_distri[1] - face_distri[0]
   #Bounds stores for each proc [id of first iface, id of first jface, id of first kface, id of last kface]
   # assuming that face are globally ordered i, then j, then k
-  bounds = np.empty(4, dtype=n_cell_zone.dtype)
+  bounds = np.empty(4, dtype=pdm_gnum_dtype)
   bounds[0] = face_distri[0]
   bounds[1] = bounds[0]
   if bounds[0] < nf_i:

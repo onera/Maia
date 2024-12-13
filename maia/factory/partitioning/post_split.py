@@ -229,9 +229,10 @@ def hybrid_jns_as_ijk(part_tree, comm):
       opp_jn_name = PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
       try:
         opp_zone_size, opp_zone_jns = zone_s_data_all[opp_rank][opp_zone_path]
+        opp_zone_size_vtx = tuple(k+1 for k in opp_zone_size)
         opp_loc = opp_zone_jns[opp_jn_name]
         pl_donor = PT.get_child_from_name(gc, 'PointListDonor')
-        pld_ijk = s_numbering.index_to_ijk_from_loc(pl_donor[1][0], opp_loc, opp_zone_size+1)
+        pld_ijk = s_numbering.index_to_ijk_from_loc(pl_donor[1][0], opp_loc, opp_zone_size_vtx)
 
         PT.set_value(pl_donor, pld_ijk)
       except KeyError:
@@ -255,9 +256,8 @@ def post_partitioning(dist_tree, part_tree, comm):
     for p_zone in part_zones:
       PT.rm_children_from_label(p_zone, 'FakeElements_t')
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'Vertex'  , comm)
-    if PT.Zone.Type(dist_zone) == 'Structured':
-      if PT.Zone.CellSize(dist_zone).size == 3:
-        IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'SFace', comm)
+    if PT.Zone.Type(dist_zone) == 'Structured' and PT.Zone.IndexDimension(dist_zone) == 3:
+      IBTP.dist_pl_to_part_pl(dist_zone, part_zones, pl_paths, 'SFace', comm)
     for part_zone in part_zones:
       copy_additional_nodes(dist_zone, part_zone)
 

@@ -225,9 +225,9 @@ def test_zone_u_size():
   #Simulate a 10*5*2 vtx zone
   zone_u = N.new_Zone('Zone', size=[[100, 36, 0]], type='Unstructured')
 
-  assert SIDS.Zone.VertexSize(zone_u) == 10*5*2
-  assert SIDS.Zone.CellSize(zone_u) == 9*4*1
-  assert SIDS.Zone.VertexBoundarySize(zone_u) == 0
+  assert SIDS.Zone.VertexSize(zone_u) == (10*5*2,)
+  assert SIDS.Zone.CellSize(zone_u) == (9*4*1,)
+  assert SIDS.Zone.VertexBoundarySize(zone_u) == (0,)
 
   assert SIDS.Zone.n_vtx(zone_u) == 10*5*2
   assert SIDS.Zone.n_cell(zone_u) == 9*4*1
@@ -237,13 +237,13 @@ def test_zone_s_size():
   #Simulate a 10*5*2 vtx zone
   zone_s = N.new_Zone('Zone', size=[[10,9,0], [5,4,0], [2,1,0]], type='Structured')
 
-  assert np.all(SIDS.Zone.VertexSize(zone_s) == [10,5,2])
-  assert np.all(SIDS.Zone.CellSize(zone_s) == [9,4,1])
-  assert np.all(SIDS.Zone.FaceSize(zone_s) == [10*(5-1)*(2-1), (10-1)*5*(2-1), (10-1)*(5-1)*2]) # [10*4*1, 9*5*1, 9*4*2]
-  assert np.all(SIDS.Zone.IFaceSize(zone_s) == [10, (5-1), (2-1)]) # [10, 4, 1]
-  assert np.all(SIDS.Zone.JFaceSize(zone_s) == [(10-1), 5, (2-1)]) # [9, 5, 1]
-  assert np.all(SIDS.Zone.KFaceSize(zone_s) == [(10-1), (5-1), 2]) # [9, 4, 2]
-  assert np.all(SIDS.Zone.VertexBoundarySize(zone_s) == [0,0,0])
+  assert SIDS.Zone.VertexSize(zone_s) == (10,5,2)
+  assert SIDS.Zone.CellSize(zone_s) == (9,4,1)
+  assert SIDS.Zone.FaceSize(zone_s) == (10*(5-1)*(2-1), (10-1)*5*(2-1), (10-1)*(5-1)*2) # [10*4*1, 9*5*1, 9*4*2]
+  assert SIDS.Zone.IFaceSize(zone_s) == (10, (5-1), (2-1)) # [10, 4, 1]
+  assert SIDS.Zone.JFaceSize(zone_s) == ((10-1), 5, (2-1)) # [9, 5, 1]
+  assert SIDS.Zone.KFaceSize(zone_s) == ((10-1), (5-1), 2) # [9, 4, 2]
+  assert SIDS.Zone.VertexBoundarySize(zone_s) == (0,0,0)
 
   assert SIDS.Zone.n_vtx(zone_s) == 10*5*2
   assert SIDS.Zone.n_cell(zone_s) == 9*4*1

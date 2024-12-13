@@ -157,7 +157,7 @@ def _recover_dist_block_size(part_zones, comm):
 
   # Choose any starting point
   first = next(iter(zones_to_size_g))
-  idx_dim = zones_to_size_g[first].size
+  idx_dim = len(zones_to_size_g[first])
   d_zone_dims = np.zeros((idx_dim,3), pdm_dtype, order='F')
   d_zone_dims[:,1] += zones_to_size_g[first] #Cell size
   for axis in range(3):

@@ -228,12 +228,12 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
         continue # Pass if no recovering
 
       vtx_size = PT.Zone.VertexSize(extract_zone)
-      if vtx_size.size==2:
+      if len(vtx_size) ==2:
         # To retreive numbering, use new vertex size with old location
         # It is important to insert 1 at good position, given by extract_dir
         mask = np.ones(3, bool)
         mask[etb['@@maia_extract_direction@@']] = False
-        _vtx_size = np.ones(3, vtx_size.dtype)
+        _vtx_size = np.ones(3, int)
         _vtx_size[mask] = vtx_size
         vtx_size = _vtx_size
       part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, grid_location, vtx_size)

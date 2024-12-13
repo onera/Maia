@@ -1,5 +1,6 @@
 import warnings
 import numpy as np
+import math
 import itertools
 
 from maia.pytree.typing import *
@@ -159,47 +160,42 @@ class Zone:
       >>> PT.Zone.IndexDimension(zone)
       1
     """
-    z_sizes = N.get_value(zone_node)
-    return (z_sizes[:,0]).size
+    return N.get_value(zone_node).shape[0]
 
   @staticmethod
-  def VertexSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+  def VertexSize(zone_node:CGNSTree) -> Tuple[int]:
     """
     Return the number of vertices per direction of a Zone_t node
 
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      int or ndarray of int : number of vertices in each direction 
-      for structured zones, total number of vertices for unstructured zones
+      tuple of :func:`IndexDimension` int : number of vertices in each direction 
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0], [2,1,0]])
       >>> PT.Zone.VertexSize(zone)
-      array([11, 6, 2], dtype=int32)
+      (11, 6, 2)
     """
-    sizes = N.get_value(zone_node)[:,0]
-    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
+    return tuple(N.get_value(zone_node)[:,0])
 
   @staticmethod
-  def CellSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+  def CellSize(zone_node:CGNSTree) -> Tuple[int]:
     """
     Return the number of cells per direction of a Zone_t node
 
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      int or ndarray of int : number of cells in each direction 
-      for structured zones, total number of cells for unstructured zones
+      tuple of :func:`IndexDimension` int : number of cells in each direction 
     Example:
       >>> zone = PT.new_Zone(type='Unstructured', size=[[11,10,0]])
       >>> PT.Zone.CellSize(zone)
-      10
+      (10,)
     """
-    sizes = N.get_value(zone_node)[:,1]
-    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
+    return tuple(N.get_value(zone_node)[:,1])
 
   @staticmethod
-  def FaceSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+  def FaceSize(zone_node:CGNSTree) -> Tuple[int]:
     """
     Return the number of faces per direction of a Zone_t node
 
@@ -209,121 +205,106 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      int or array of int : number of faces in each direction 
-      for structured zones, total number of faces for unstructured zones
+      tuple of :func:`IndexDimension` int : number of faces in each direction 
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.FaceSize(zone)
-      array([55, 60], dtype=int32)
+      (55, 60)
 
     Warning:
       Unstructured zones are supported only if they have a NGon connectivity
     """
-    def compute_nface_per_direction(d, dim, vtx_size, cell_size):
-      n_face_per_direction = vtx_size[d%dim]
-      if dim >= 2:
-        n_face_per_direction *= cell_size[(d+1)%dim]
-      if dim == 3:
-        n_face_per_direction *= cell_size[(d+2)%dim]
-      return n_face_per_direction
-
-    # Find face number
-    vtx_size  = Zone.VertexSize(zone_node)
-    cell_size = Zone.CellSize(zone_node)
     if Zone.Type(zone_node) == "Structured":
-      dim = len(vtx_size)
-      # n_face = np.sum([vtx_size[(0+d)%dim]*cell_size[(1+d)%dim]*cell_size[(2+d)%dim] for d in range(dim)])
-      n_face = np.array([compute_nface_per_direction(d, dim, vtx_size, cell_size) for d in range(dim)], cell_size.dtype)
+      dirfacesize = [Zone.IFaceSize, Zone.JFaceSize, Zone.KFaceSize][:Zone.IndexDimension(zone_node)]
+      n_face = tuple(math.prod(func(zone_node)) for func in dirfacesize)
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
       er = W.get_child_from_name(ngon_node, 'ElementRange')[1]
-      n_face = er[1] - er[0] + 1
+      n_face = (er[1] - er[0] + 1,)
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
     return n_face
 
   @staticmethod
-  def IFaceSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+  def IFaceSize(zone_node:CGNSTree) -> Tuple[int]:
     """
     Return the number of I normal faces in each direction for a structured Zone_t node
 
     Args:
       zone_node (CGNSTree): Input structured Zone_t node
     Returns:
-      int or array of int : number of faces in each direction 
+      tuple of :func:`IndexDimension` int : number of faces in each direction 
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.IFaceSize(zone)
-      array([11,  5], dtype=int32)
+      (11, 5)
     """
+    
+    if not Zone.Type(zone_node) == "Structured":
+      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
 
     # Find face number
     vtx_size  = Zone.VertexSize(zone_node)
     cell_size = Zone.CellSize(zone_node)
-    if Zone.Type(zone_node) == "Structured":
-      dim = len(vtx_size)
-      n_iface = [vtx_size[0]]
-      if dim > 1:
-        n_iface.append(cell_size[1])
-      if dim > 2:
-        n_iface.append(cell_size[2])
-      return np.array(n_iface, vtx_size.dtype)
-    else:
-      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
+    dim = len(vtx_size)
+    n_iface = (vtx_size[0],)
+    if dim > 1:
+      n_iface = n_iface + (cell_size[1],)
+    if dim > 2:
+      n_iface = n_iface + (cell_size[2],)
+    return n_iface
     
   @staticmethod
-  def JFaceSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+  def JFaceSize(zone_node:CGNSTree) -> Tuple[int]:
     """
     Return the number of J normal faces in each direction for a structured Zone_t node
 
     Args:
       zone_node (CGNSTree): Input structured Zone_t node
     Returns:
-      int or array of int : number of faces in each direction 
+      tuple of :func:`IndexDimension` int : number of faces in each direction 
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.JFaceSize(zone)
-      array([10,  6], dtype=int32)
+      (10, 6)
     """
 
+    if not Zone.Type(zone_node) == "Structured":
+      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
     # Find face number
     vtx_size  = Zone.VertexSize(zone_node)
     cell_size = Zone.CellSize(zone_node)
-    if Zone.Type(zone_node) == "Structured":
-      dim = len(vtx_size)
-      assert 2 <= dim
-      n_jface = [cell_size[0], vtx_size[1]]
-      if dim == 3:
-        n_jface.append(cell_size[2])
-      return np.array(n_jface, vtx_size.dtype)
-    else:
-      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
+    dim = len(vtx_size)
+    assert 2 <= dim
+    n_jface = (cell_size[0], vtx_size[1])
+    if dim == 3:
+      n_jface = n_jface + (cell_size[2],)
+    return n_jface
     
   @staticmethod
-  def KFaceSize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+  def KFaceSize(zone_node:CGNSTree) -> Tuple[int]:
     """
     Return the number of K normal faces in each direction for a structured Zone_t node
 
     Args:
       zone_node (CGNSTree): Input structured Zone_t node
     Returns:
-      int or array of int : number of faces in each direction 
+      tuple of :func:`IndexDimension` int : number of faces in each direction 
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0], [4,3,0]])
       >>> PT.Zone.KFaceSize(zone)
-      array([10,  5,  4], dtype=int32)
+      (10, 5, 4)
     """
 
+    if not Zone.Type(zone_node) == "Structured":
+      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
     # Find face number
     vtx_size  = Zone.VertexSize(zone_node)
     cell_size = Zone.CellSize(zone_node)
-    if Zone.Type(zone_node) == "Structured":
-      dim = len(vtx_size)
-      assert 3 <= dim
-      n_kface = [cell_size[0], cell_size[1], vtx_size[2]]
-      return np.array(n_kface, vtx_size.dtype)
-    else:
-      raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
+    dim = len(vtx_size)
+    assert 3 <= dim
+    n_kface = (cell_size[0], cell_size[1], vtx_size[2])
+    return n_kface
 
   @staticmethod
   def NGonNode(zone_node:CGNSTree) -> CGNSTree:
@@ -356,22 +337,20 @@ class Zone:
     return utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
 
   @staticmethod
-  def VertexBoundarySize(zone_node:CGNSTree) -> Union[int, np.ndarray]:
+  def VertexBoundarySize(zone_node:CGNSTree) -> Tuple[int]:
     """
     Return the number of boundary vertices per direction of a Zone_t node
 
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      int or ndarray of int : number of boundary vtx in each direction 
-      for structured zones, total number of boundary vtx for unstructured zones
+      tuple of :func:`IndexDimension` int : number of boundary vertices in each direction 
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0],[6,5,0]])
       >>> PT.Zone.VertexBoundarySize(zone)
-      array([0, 0], dtype=int32)
+      (0, 0)
     """
-    sizes = N.get_value(zone_node)[:,2]
-    return sizes[0] if Zone.Type(zone_node) == 'Unstructured' else sizes
+    return tuple(N.get_value(zone_node)[:,2])
 
   @staticmethod
   def Type(zone_node:CGNSTree) -> str:
@@ -404,7 +383,7 @@ class Zone:
       >>> PT.Zone.n_vtx(zone)
       11
     """
-    return np.prod(Zone.VertexSize(zone_node))
+    return math.prod(Zone.VertexSize(zone_node))
 
   @staticmethod
   def n_cell(zone_node:CGNSTree) -> int:
@@ -420,7 +399,7 @@ class Zone:
       >>> PT.Zone.n_cell(zone)
       50
     """
-    return np.prod(Zone.CellSize(zone_node))
+    return math.prod(Zone.CellSize(zone_node))
 
   @staticmethod
   def n_face(zone_node:CGNSTree) -> int:
@@ -439,7 +418,7 @@ class Zone:
     Warning:
       Unstructured zones are supported only if they have a NGon connectivity
     """
-    return np.sum(Zone.FaceSize(zone_node))
+    return sum(Zone.FaceSize(zone_node))
 
   @staticmethod
   def n_vtx_bnd(zone_node:CGNSTree) -> int:
@@ -455,7 +434,7 @@ class Zone:
       >>> PT.Zone.n_vtx_bnd(zone)
       0
     """
-    return np.prod(Zone.VertexBoundarySize(zone_node))
+    return math.prod(Zone.VertexBoundarySize(zone_node))
 
   @staticmethod
   def has_ngon_elements(zone_node: CGNSTree) -> bool:

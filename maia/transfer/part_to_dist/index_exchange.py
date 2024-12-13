@@ -205,8 +205,8 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
 def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size):
   """ Convert a structured partitioned (local) i,j,k triplet to the corresponding
   global triplet in the distributed block """
-  pcell_size = pvtx_size - 1
-  dcell_size = dvtx_size - 1
+  pcell_size = tuple(k-1 for k in pvtx_size)
+  dcell_size = tuple(k-1 for k in dvtx_size)
   idx_dim = ptriplet.size
   ptriplet = ptriplet.tolist() + [1] if idx_dim == 2 else ptriplet #Manage 2D
   if loc == 'Vertex':
@@ -214,7 +214,7 @@ def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size)
     dtriplet = s_numbering.index_to_ijk(gnum, dvtx_size)
   elif loc == 'CellCenter':
     gnum = ln_to_gn[s_numbering.ijk_to_index(*ptriplet, pcell_size)-1]
-    dtriplet = s_numbering.index_to_ijk(gnum, dvtx_size-1)
+    dtriplet = s_numbering.index_to_ijk(gnum, dcell_size)
   elif loc == 'IFaceCenter':
     gnum = ln_to_gn[s_numbering.ijk_to_faceiIndex(*ptriplet, pcell_size, pvtx_size)-1]
     dtriplet = s_numbering.faceiIndex_to_ijk(gnum, dcell_size, dvtx_size)
@@ -273,7 +273,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   all_top = [item for sublist in all_top for item in sublist]
 
   # Select max and min corners to create PR
-  dist_pr = np.empty((idx_dim,2), dtype=dist_vtx_size.dtype, order='F')
+  dist_pr = np.empty((idx_dim,2), dtype=dist_zone[1].dtype, order='F')
   dist_pr[:,0] = min(all_bottom)
   dist_pr[:,1] = max(all_top)
 

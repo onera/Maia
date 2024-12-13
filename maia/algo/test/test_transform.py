@@ -289,10 +289,8 @@ class Test_change_basis_simple:
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
-      n_cell = PT.Zone.CellSize(zone) if partitioned else np.diff(MT.get_distribution(zone, 'Cell')[1])[0]
-      n_cell = n_cell.tolist() if isinstance(n_cell, np.ndarray) else [n_cell]
-      n_vtx = PT.Zone.VertexSize(zone) if partitioned else np.diff(MT.get_distribution(zone, 'Vertex')[1])[0]
-      n_vtx = n_vtx.tolist() if isinstance(n_vtx, np.ndarray) else [n_vtx]
+      n_cell = PT.Zone.CellSize(zone) if partitioned else (np.diff(MT.get_distribution(zone, 'Cell')[1])[0],)
+      n_vtx = PT.Zone.VertexSize(zone) if partitioned else (np.diff(MT.get_distribution(zone, 'Vertex')[1])[0],)
 
       # Create fields in zone
       PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)

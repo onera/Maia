@@ -12,7 +12,7 @@ dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 from maia.algo.part import extract_boundary as EXB
 
 def test_pr_to_face_pl():
-  n_vtx = np.array([4,5,5], np.int32)
+  n_vtx = (4,5,5)
   pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,1], [1,3], [1,3]], order='F'), 'Vertex')
   assert (pl == [[1,5,17,21]]).all()
   pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,4], [1,5], [5,5]], order='F'), 'Vertex')
@@ -23,7 +23,7 @@ def test_pr_to_face_pl():
   assert (pl == [[173,174,175,176,177,178,179,180,181,182,183,184]]).all()
 
   #2D 
-  n_vtx = np.array([5,3], np.int32)
+  n_vtx = (5,3)
   pl = EXB._pr_to_face_pl(n_vtx, np.array([[5,5], [1,3]], order='F'), 'Vertex')
   assert (pl == [[5,10]]).all()
   pl = EXB._pr_to_face_pl(n_vtx, np.array([[1,4], [1,1]], order='F'), 'CellCenter')

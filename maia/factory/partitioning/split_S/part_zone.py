@@ -19,7 +19,7 @@ is_subset = lambda n : PT.get_label(n) in ['DiscreteData_t', 'FlowSolution_t', '
 def zone_cell_range(zone):
   """ Return the size of a point_range 2d array """
   n_cell = PT.Zone.CellSize(zone)
-  zone_range = np.empty((n_cell.shape[0], 2), n_cell.dtype)
+  zone_range = np.empty((len(n_cell), 2), zone[1].dtype)
   zone_range[:,0] = 1
   zone_range[:,1] = n_cell
   return zone_range
@@ -400,7 +400,7 @@ def split_original_joins_S(all_part_zones, comm):
 
 def compute_face_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
   dist_cell_per_dir = dist_zone_cell_size
-  dist_vtx_per_dir  = dist_zone_cell_size + 1
+  dist_vtx_per_dir  = tuple(k+1 for k in dist_zone_cell_size)
   part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
 
   part_face_per_dir = np.array([(part_cell_per_dir[0]+1)*part_cell_per_dir[1]*part_cell_per_dir[2],
@@ -418,8 +418,8 @@ def compute_face_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
   return face_lntogn
 
 def compute_edge_gnum(dist_zone_cell_size, cell_window, dtype=pdm_dtype):
-  assert dist_zone_cell_size.size == 2 # Only for 2D zones for now
-  _dist_vtx_per_dir = dist_zone_cell_size + 1
+  assert len(dist_zone_cell_size) == 2 # Only for 2D zones for now
+  _dist_vtx_per_dir = tuple(k+1 for k in dist_zone_cell_size)
   part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
   n_edge_i, n_edge_j = (part_cell_per_dir[0]+1)*part_cell_per_dir[1], (part_cell_per_dir[1]+1)*part_cell_per_dir[0]
   edge_lntogn = np.empty(n_edge_i+n_edge_j, dtype=dtype)
@@ -441,10 +441,10 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
   of the original dist_zone in each direction)
   """
 
-  idx_dim = dist_zone_cell_size.size
+  idx_dim = len(dist_zone_cell_size)
   dist_cell_per_dir = dist_zone_cell_size
   part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
-  dist_vtx_per_dir  = dist_zone_cell_size + 1
+  dist_vtx_per_dir  = tuple(k+1 for k in dist_zone_cell_size)
 
   # Vertex
   i_ar  = np.arange(cell_window[0,0], cell_window[0,1]+1, dtype=dtype)
@@ -501,7 +501,7 @@ def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
 
   if PT.Zone.n_cell(d_zone) == 0:
     raise NotImplementedError("Partitioning structured point cloud without cells is not implemented")
-  if dist_cell_size.size > 1:
+  if idx_dim > 1:
     all_parts = SCT.split_S_block(dist_cell_size, len(all_weights), all_weights)
   else:
     all_parts = SCT.split_S_line(dist_cell_size, all_weights)

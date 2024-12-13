@@ -106,7 +106,7 @@ from cmaia.utils import numbering as cnumbering
 
 def ijk_to_index_from_loc(i,j,k, loc, n_vtx):
   """Dispatch ijk to index for 3D meshes, depending of grid location"""
-  n_cell = n_vtx - 1
+  n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
     return ijk_to_index(i,j,k, n_vtx)
   elif loc == 'CellCenter':
@@ -121,7 +121,7 @@ def ijk_to_index_from_loc(i,j,k, loc, n_vtx):
 
 def index_to_ijk_from_loc(idx, loc, n_vtx):
   """Dispatch index to ijk for 3D meshes, depending of grid location"""
-  n_cell = n_vtx - 1
+  n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
     return index_to_ijk(idx, n_vtx)
   elif loc == 'CellCenter':
@@ -136,7 +136,7 @@ def index_to_ijk_from_loc(idx, loc, n_vtx):
 
 def ij_to_index_from_loc(i,j, loc, n_vtx):
   """Dispatch ij to index for 2D meshes, depending of grid location"""
-  n_cell = n_vtx - 1
+  n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
     return ij_to_index(i,j, n_vtx)
   elif loc == 'CellCenter':
@@ -149,7 +149,7 @@ def ij_to_index_from_loc(i,j, loc, n_vtx):
 
 def index_to_ij_from_loc(idx, loc, n_vtx):
   """Dispatch index to ij for 2D meshes, depending of grid location"""
-  n_cell = n_vtx - 1
+  n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
     return index_to_ij(idx, n_vtx)
   elif loc == 'CellCenter':

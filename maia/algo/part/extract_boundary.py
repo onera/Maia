@@ -59,7 +59,7 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   # We can do it if we extend input args *and* if we do the shift manually for JEdge
   # (since nFacesI evaluates to 0 in func)
 
-  cell_dim = n_vtx_zone.size
+  cell_dim = len(n_vtx_zone)
   bnd_axis = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=input_loc))
 
   # It is safer to reuse slabs to manage all cases (eg input location or reversed pr)
@@ -70,8 +70,7 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
   slab[0:cell_dim,1] = bc_size + pr[:,0] - 1
   slab[bnd_axis,:] += pr_utils.normal_index_shift(pr, n_vtx_zone, bnd_axis, input_loc, "FaceCenter")
 
-  _n_vtx_zone = np.ones(3, n_vtx_zone.dtype)
-  _n_vtx_zone[0:cell_dim] = n_vtx_zone
+  _n_vtx_zone = n_vtx_zone[:cell_dim] + tuple(1 for _ in range(3-cell_dim))
 
   pl = pr_utils.compute_pointList_from_pointRanges([slab], _n_vtx_zone,  ['I', 'J', 'K'][bnd_axis]+'FaceCenter')
   if cell_dim == 2 and bnd_axis == 1:
