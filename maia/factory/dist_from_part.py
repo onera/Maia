@@ -143,7 +143,9 @@ def _recover_dist_block_size(part_zones, comm):
     zones_to_size[zone_name] = PT.Zone.CellSize(part_zone)
     zones_to_join[zone_name] = []
     for intra_jn in PT.iter_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', intra1to1]):
-      light_jn = PT.new_GridConnectivity1to1(donor_name=PT.get_value(intra_jn),
+      donor_path = PT.get_value(intra_jn)
+      donor_zone = donor_path if not '/' in donor_path else donor_path.split('/')[1]
+      light_jn = PT.new_GridConnectivity1to1(donor_name=donor_zone,
                                              point_range=PT.Subset.getPatch(intra_jn)[1])
       zones_to_join[zone_name].append(light_jn)
 
