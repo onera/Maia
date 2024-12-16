@@ -1,7 +1,8 @@
 import warnings
+import numpy as np
+
 from maia.pytree.typing import *
 from maia.pytree.meta import api_export
-
 import maia.pytree as PT
 
 IS_RELATED_ZSR = lambda n : PT.get_label(n) == 'ZoneSubRegion_t' \
@@ -31,11 +32,11 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
   - if ``mode == 'view'``, fields in the ZSR and in the BCDataSet share the same memory.
 
   Args:
-    tree (CGNSTree): Input tree (starting at root level)
+    tree (CGNSTree): Input tree, starting at Zone_t level or higher
     mode (str, optional): Controls how the fields are created (see above). Defaults to ``'move'``.
 
   Example:
-    >>> tree = PT.yaml.to_cgns_tree('''
+    >>> zone = PT.yaml.to_zone('''
     ... Zone Zone_t:
     ...   ZoneBC ZoneBC_t:
     ...     Wing BC_t 'BCWall':
@@ -43,8 +44,8 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
     ...     field DataArray_t [10,20,30,40]:
     ...     BCRegionName Descriptor_t "Wing":
     ... ''')
-    >>> PT.subregion_fields_to_bcdataset(tree)
-    >>> PT.print_tree(PT.get_node_from_label(tree, 'Zone_t'))
+    >>> PT.subregion_fields_to_bcdataset(zone)
+    >>> PT.print_tree(zone)
     Zone Zone_t 
     ├───ZoneBC ZoneBC_t 
     │   └───Wing BC_t "BCWall"
@@ -92,11 +93,11 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
   - if ``mode == 'view'``, fields in the BCDataSet and in the ZSR share the same memory.
 
   Args:
-    tree (CGNSTree): Input tree (starting at root level)
+    tree (CGNSTree): Input tree, starting at Zone_t level or higher
     mode (str, optional): Controls how the fields are created (see above). Defaults to ``'move'``.
 
   Example:
-    >>> tree = PT.yaml.to_cgns_tree('''
+    >>> zone = PT.yaml.to_node('''
     ... Zone Zone_t:
     ...   ZoneBC ZoneBC_t:
     ...     Wing BC_t 'BCWall':
@@ -106,8 +107,8 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
     ...   WingExtraction ZoneSubRegion_t:
     ...     BCRegionName Descriptor_t "Wing":
     ... ''')
-    >>> PT.subregion_fields_from_bcdataset(tree)
-    >>> PT.print_tree(PT.get_node_from_label(tree, 'Zone_t'))
+    >>> PT.subregion_fields_from_bcdataset(zone)
+    >>> PT.print_tree(zone, 'Zone_t')
     Zone Zone_t 
     ├───ZoneBC ZoneBC_t 
     │   └───Wing BC_t "BCWall"
