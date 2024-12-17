@@ -67,11 +67,22 @@ def update_zone_pointers(part_tree):
 def copy_additional_nodes(dist_zone, part_zone):
   """
   """
+  is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t']
+  is_partial   = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
+
   #Zone data
   types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ZoneIterativeData_t']
   for node in PT.get_children(dist_zone):
     if PT.get_label(node) in types:
       PT.add_child(part_zone, node)
+
+  # Full containers (FS & DD) -- partial containers are created before
+  types = ['GridLocation_t']
+  for d_fs in PT.iter_children_from_predicate(dist_zone, lambda n : is_container(n) and not is_partial(n)):
+    p_fs = PT.new_child(part_zone, PT.get_name(d_fs), PT.get_label(d_fs), PT.get_value(d_fs))
+    for node in PT.get_children(d_fs):
+      if PT.get_label(node) in types:
+        PT.add_child(p_fs, node)
     
   #BCs
   types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ReferenceState_t', 'Ordinal_t']

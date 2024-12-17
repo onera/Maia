@@ -56,8 +56,9 @@ class Test_fields_exchange:
     _create_dist_sol(dist_tree, comm)   # Create artificial fields on the distributed zone
     part_tree = _split(dist_tree, comm) # Split to get the partitioned tree
   
-    # For now, we have no solution on the partitioned tree : 
-    assert PT.get_node_from_label(part_tree, 'FlowSolution_t') is None
+    # For now, we have no fields on the partitioned tree : 
+    assert PT.get_node_from_label(part_tree, 'FlowSolution_t') is not None
+    assert PT.get_node_from_predicates(part_tree, 'FlowSolution_t/DataArray_t') is None
     return dist_tree, part_tree
 
 
@@ -226,7 +227,7 @@ class Test_multiple_labels_exchange:
     dist_tree, part_tree = self.get_trees(comm)
     # At tree level API, one can select only some labels to exchange
     MT.dist_to_part.dist_tree_to_part_tree_only_labels(dist_tree, part_tree, ['BCDataSet_t'], comm)
-    assert PT.get_node_from_label(part_tree, 'FlowSolution_t') is None
+    assert PT.get_node_from_predicates(part_tree, 'FlowSolution_t/DataArray_t') is None
     for part in PT.get_all_Zone_t(part_tree):
       bc_amont = PT.get_node_from_name_and_label(part, 'amont', 'BC_t')
       bc_aval  = PT.get_node_from_name_and_label(part, 'aval',  'BC_t')

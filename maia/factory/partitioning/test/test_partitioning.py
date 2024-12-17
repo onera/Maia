@@ -364,10 +364,11 @@ def test_split_and_transfer(data_transfer, comm):
 
   ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer=data_transfer)
 
+  assert len(PT.get_nodes_from_label(ptree, 'FlowSolution_t')) == 1
   if 'FlowSolution_t' in data_transfer or 'ALL' in data_transfer:
-    assert len(PT.get_nodes_from_label(ptree, 'FlowSolution_t')) == 1
+    assert len(PT.get_nodes_from_name(ptree, 'CstField')) == 1
   else:
-    assert len(PT.get_nodes_from_label(ptree, 'FlowSolution_t')) == 0
+    assert len(PT.get_nodes_from_name(ptree, 'CstField')) == 0
 
   if 'BCDataSet_t' in data_transfer or 'ALL' in data_transfer:
     assert len(PT.get_nodes_from_label(ptree, 'BCDataSet_t')) == len(PT.get_nodes_from_label(ptree, 'BC_t'))

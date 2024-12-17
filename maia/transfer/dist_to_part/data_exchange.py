@@ -116,8 +116,8 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
           p_sol = PT.get_child_from_name(part_zone, PT.get_name(d_sol))
           shape = PT.get_child_from_name(p_sol, 'PointList')[1].shape[1]
         else:
-          p_sol = PT.new_child(part_zone, PT.get_name(d_sol), PT.get_label(d_sol), PT.get_value(d_sol))
-          PT.new_GridLocation(location, parent=p_sol)
+          p_sol = PT.update_child(part_zone, PT.get_name(d_sol), PT.get_label(d_sol), PT.get_value(d_sol))
+          PT.update_child(p_sol, 'GridLocation', 'GridLocation_t', location)
           shape = PT.Zone.VertexSize(part_zone) if location == 'Vertex' else PT.Zone.CellSize(part_zone)
         for data_name, data in part_data.items():
           #F is mandatory to keep shared reference. Normally no copy is done
