@@ -23,13 +23,14 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
   """ Move the data fields from ZoneSubRegion nodes to their related BC node, if existing.
   
   ZoneSubRegion nodes must be explicitly related to a BC node through the BCRegionName descriptor.
-  Data fields will be added in a BCDataSet named as the ZoneSubRegion node.
+  Data fields will be added in a BCDataSet named as the ZoneSubRegion (under a DirichletData node).
+  This function is particularly useful for viewing BC data using Paraview.
 
   The operation performed depends of the value of ``mode`` argument:
 
   - if ``mode == 'move'``, fields are removed from the ZSR node (which is itself preserved);
-  - if ``mode == 'copy'``, fields remains in the ZSR node and a copy is done in the BCDataSet;
-  - if ``mode == 'view'``, fields in the ZSR and in the BCDataSet share the same memory.
+  - if ``mode == 'copy'``, fields remains in the ZSR node and a copy is placed in the BCDataSet;
+  - if ``mode == 'view'``, fields in the ZSR and those added in BCDataSet share the same memory.
 
   Args:
     tree (CGNSTree): Input tree, starting at Zone_t level or higher
@@ -64,9 +65,7 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
     for zsr_n in PT.get_children_from_predicate(zone, IS_RELATED_ZSR):
 
       zsr_name = PT.get_name(zsr_n)
-      bc_name  = PT.get_value(PT.get_child_from_name(zsr_n, "BCRegionName"))
-
-      bc_n = PT.get_child_from_predicates(zone, f"ZoneBC_t/{bc_name}")
+      bc_n = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
       
       bcdataset_n = PT.update_child(bc_n, f'{zsr_name}', 'BCDataSet_t', 'UserDefined')
       bcdata_n = PT.update_child(bcdataset_n, 'DirichletData', 'BCData_t')
@@ -89,8 +88,8 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
   The operation performed depends of the value of ``mode`` argument:
 
   - if ``mode == 'move'``, fields are removed from the BCDataSet node (which is itself preserved);
-  - if ``mode == 'copy'``, fields remains in the BCDataSet node and a copy is done in the ZSR;
-  - if ``mode == 'view'``, fields in the BCDataSet and in the ZSR share the same memory.
+  - if ``mode == 'copy'``, fields remains in the BCDataSet node and a copy is placed in the ZSR;
+  - if ``mode == 'view'``, fields in the BCDataSet and those added in ZSR share the same memory.
 
   Args:
     tree (CGNSTree): Input tree, starting at Zone_t level or higher
@@ -126,10 +125,8 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
     for zsr_n in PT.get_children_from_predicate(zone, IS_RELATED_ZSR):
 
       zsr_name = PT.get_name(zsr_n)
-      bc_name  = PT.get_value(PT.get_child_from_name(zsr_n, "BCRegionName"))
+      bc_n = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
 
-      bc_n = PT.get_child_from_predicates(zone, f"ZoneBC_t/{bc_name}")
-      
       is_full_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' \
                             and PT.get_child_from_name(n, 'PointList') is None \
                             and PT.get_child_from_name(n, 'PointRange') is None
@@ -144,7 +141,7 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
           PT.rm_children_from_name(zsr_n, PT.get_name(fld_n))
           if PT.get_value(fld_n).size == 1 and (bc_size:=PT.Subset.n_elem(bc_n)) != 1: # Auto extend scalar data
             if mode == 'view':
-              msg = f"On ZoneSubRegion '{zsr_name}', can not create of view of scalar data '{fld_n[0]}'" \
+              msg = f"On ZoneSubRegion '{zsr_name}', can not create a view of scalar data '{fld_n[0]}'" \
                     f" from BCDataSet '{bc_ds[0]}', a copy is done instead"
               warnings.warn(msg, stacklevel=2)
             fld_n = PT.shallow_copy(fld_n)

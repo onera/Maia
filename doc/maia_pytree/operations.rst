@@ -59,8 +59,8 @@ Adjusting nodes
 ^^^^^^^^^^^^^^^
 
 These functions are high level shortcuts for current modifications
-of the tree structure. Only light operations such as nodes moves
-or metadata edition are performed here.
+of the tree structure. Only light operations such as moving nodes
+or editing metadata are performed here.
 
 All these fonctions operate inplace on the input tree.
 
