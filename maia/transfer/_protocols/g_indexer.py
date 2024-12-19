@@ -119,7 +119,7 @@ class GIndexer_m:
 
     buff_in = np.frombuffer(b''.join(pickelized), dtype=np.int8)
     
-    data_out_l = GIndexer_m.Take_v(self, (buff_in, counts_in))
+    data_out_l = self.Take_v((buff_in, counts_in))
     
     res = list()
     for (buff_out, counts_out) in data_out_l:
@@ -147,7 +147,7 @@ class GIndexer_m:
       buff_in   = np.frombuffer(b''.join(pickelized), dtype=np.int8)
       _data_in_l.append((buff_in, counts_in))
     
-    buff_out, counts_out = GIndexer_m.Put_v(self, _data_in_l)
+    buff_out, counts_out = self.Put_v(_data_in_l)
     
     out = []
     r_start = 0
@@ -261,7 +261,7 @@ class GIndexer_m:
       counts = self.comm.allreduce(counts, MPI.MAX)
 
     data_out_l = [np.empty(counts*pn, data_in.dtype) for pn in self.pn]
-    GIndexer_m.Take_into(self, data_in, data_out_l)
+    self.Take_into(data_in, data_out_l)
     return data_out_l
 
   def Put(self, data_in_l):
@@ -283,7 +283,7 @@ class GIndexer_m:
       dtype  = self.comm.allreduce(dtype,  MPI.MAX)
 
     data_out = np.empty(counts*self.dn, dtype)
-    GIndexer_m.Put_into(self, data_in_l, data_out)
+    self.Put_into(data_in_l, data_out)
     return data_out
 
   def Take_v_into(self, data_in, counts_in, data_out_l, counts_out_l):
@@ -465,7 +465,7 @@ class GIndexer_m:
 
 
 
-class GIndexer(GIndexer_m):
+class GIndexer:
 
   """
   A protocol object allowing to access distributed data in read or write mode.
@@ -502,7 +502,7 @@ class GIndexer(GIndexer_m):
       g_idx (integer array of size :math:`pn`) : accessed global indices
       comm (MPIComm) : communicator
     """
-    super().__init__(distri, [g_idx], comm)
+    self.GIndexer_m = GIndexer_m(distri, [g_idx], comm)
 
   def take(self, data_in:list) -> list:
     """ ``take`` implementation for generic Python objects 
@@ -516,7 +516,7 @@ class GIndexer(GIndexer_m):
     Returns:
       list of size :math:`pn`: values extracted at the requested indices
     """
-    return super().take(data_in)[0]
+    return self.GIndexer_m.take(data_in)[0]
 
   def put(self, data_in:list) -> list:
     """ ``put`` implementation for generic Python objects 
@@ -537,7 +537,7 @@ class GIndexer(GIndexer_m):
     Returns:
       list of size :math:`dn`: output distributed data
     """
-    return super().put([data_in])
+    return self.GIndexer_m.put([data_in])
 
   def Take_into(self, data_in, data_out):
     """ Inplace ``take`` implementation for buffer-like objects 
@@ -553,7 +553,7 @@ class GIndexer(GIndexer_m):
       data_in  (buffer) : section of the distributed data
       data_out (buffer) : preallocated buffer to store extracted values
     """
-    super().Take_into(data_in, [data_out])
+    self.GIndexer_m.Take_into(data_in, [data_out])
 
   def Put_into(self, data_in, data_out):
     """ Inplace ``put`` implementation for buffer-like objects 
@@ -576,7 +576,7 @@ class GIndexer(GIndexer_m):
       data_in  (buffer) : data to write at each accessed index
       data_out (buffer) : preallocated buffer to store distributed data
     """
-    super().Put_into([data_in], data_out)
+    self.GIndexer_m.Put_into([data_in], data_out)
     
   def Take(self, data_in) -> np.ndarray:
     """ ``take`` implementation for buffer-like objects 
@@ -594,7 +594,7 @@ class GIndexer(GIndexer_m):
     Returns:
       buffer of size :math:`c*pn`: values extracted at the requested indices
     """
-    return super().Take(data_in)[0]
+    return self.GIndexer_m.Take(data_in)[0]
 
   def Put(self, data_in) -> np.ndarray:
     """ ``put`` implementation for buffer-like objects 
@@ -620,10 +620,10 @@ class GIndexer(GIndexer_m):
       buffer of size :math:`c*pn`: output distributed data
     """
 
-    return super().Put([data_in])
+    return self.GIndexer_m.Put([data_in])
 
   def Take_v_into(self, data_in, counts_in, data_out, counts_out):
-    super().Take_v_into(data_in, counts_in, [data_out], [counts_out])
+    self.GIndexer_m.Take_v_into(data_in, counts_in, [data_out], [counts_out])
 
   def Take_v(self, data_in):
     """ ``take`` implementation for variable buffer-like objects 
@@ -649,7 +649,7 @@ class GIndexer(GIndexer_m):
       variable buffer: data extracted at the requested indices, as a tuple of values \
         (**buff_out** (*buffer*), **counts_out** (*np array of* :math:`pn` *int*))
     """
-    return super().Take_v(data_in)[0]
+    return self.GIndexer_m.Take_v(data_in)[0]
    
   def Put_v(self, data_in):
     """ ``put`` implementation for variable buffer-like objects 
@@ -675,4 +675,17 @@ class GIndexer(GIndexer_m):
       variable buffer: output distributed data, returned as the tuple of values \
         (**buff_out** (*buffer*), **counts_out** (*np array of* :math:`dn` *int*))
     """
-    return super().Put_v([data_in])
+    return self.GIndexer_m.Put_v([data_in])
+
+  @property
+  def empty_dist(self):
+    return self.GIndexer_m.empty_dist
+  @property
+  def empty_part(self):
+    return self.GIndexer_m.empty_part
+
+  @property
+  def access_counts(self):
+    """ For each global index, total number of apparitions in the ``g_idx`` arrays,
+    returned as an integer array of size :math:`dn`."""
+    return self.GIndexer_m.access_counts

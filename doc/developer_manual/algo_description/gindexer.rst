@@ -301,7 +301,6 @@ API reference
 .. autoclass:: maia.transfer.protocols.GIndexer
     :members:
     :member-order: bysource
-    :inherited-members:
 
 .. autoclass:: maia.transfer.protocols.GIndexer_m
     :members:
