@@ -566,11 +566,13 @@ def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
 
 def iter_all_Zone_t(root:CGNSTree) -> Iterator[CGNSTree]:
   root_label = root[3]
-  if root_label == 'CGNSBase_t':
+  if root_label == 'Zone_t':
+    yield root
+  elif root_label == 'CGNSBase_t':
     yield from iter_children_from_label(root, 'Zone_t')
   elif root_label == 'CGNSTree_t':
-    for base in iter_children_from_label(root, 'CGNSBase_t'):
-      yield from iter_children_from_label(base, 'Zone_t')
+    yield from iter_children_from_labels(root, ['CGNSBase_t', 'Zone_t'])
+  
 
 def get_all_CGNSBase_t(root:CGNSTree) -> List[CGNSTree]:
   """ Return the list of all the CGNSBase_t nodes found in input tree
@@ -597,7 +599,9 @@ def get_all_CGNSBase_t(root:CGNSTree) -> List[CGNSTree]:
   return list(iter_all_CGNSBase_t(root))
 
 def iter_all_CGNSBase_t(root:CGNSTree) -> Iterator[CGNSTree]:
-  if root[3] == 'CGNSTree_t':
+  if root[3] == 'CGNSBase_t':
+    yield root
+  elif root[3] == 'CGNSTree_t':
     yield from iter_children_from_label(root, 'CGNSBase_t')
 
 def get_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> List[CGNSTree]:

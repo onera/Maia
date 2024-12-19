@@ -55,6 +55,18 @@ it from its path:
 
 .. autofunction:: maia.pytree.rm_node_from_path
 
+Adjusting nodes
+^^^^^^^^^^^^^^^
+
+These functions are high level shortcuts for current modifications
+of the tree structure. Only light operations such as moving nodes
+or editing metadata are performed here.
+
+All these fonctions operate inplace on the input tree.
+
+.. autofunction:: maia.pytree.subregion_fields_to_bcdataset
+.. autofunction:: maia.pytree.subregion_fields_from_bcdataset
+
 Tree comparisons
 ----------------
 
