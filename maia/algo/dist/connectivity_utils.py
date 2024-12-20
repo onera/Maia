@@ -26,7 +26,9 @@ def combine_face_edge_and_edge_vtx(face_edge_idx, face_edge, edge_distrib, edge_
   """
   face_edge_idx = np_utils.safe_int_cast(face_edge_idx - face_edge_idx[0], np.int32)
   
-  global_edge_vtx = EP.block_to_part(edge_vtx, edge_distrib, np.abs(face_edge)-1, comm, legacy=False) # Cst stride = 2
+  edge_distrib_f = par_utils.partial_to_full_distribution(edge_distrib, comm)
+  GI = EP.GIndexer(edge_distrib_f, np.abs(face_edge)-1, comm)
+  global_edge_vtx = GI.Take(edge_vtx, count=2)
   
   # Convert in local numbering to be allowed to use part algo in dist context
   # We basically redefine all edges (internal edges are defined twice) instead of creating 

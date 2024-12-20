@@ -193,7 +193,7 @@ methods, where the output buffer is allocated as a numpy array::
   if rank == 1:  dist_data = array([11,13,17,19], dtype=int)  #glob idx 2..4
   if rank == 2:  dist_data = array([29,31],       dtype=int)  #glob idx 4..5
 
-  extr = GI.Take(dist_data)
+  extr = GI.Take(dist_data, count=2)
   # We extract 2 values per requested index
   # P0 : extr = array([29,31,3,5], dtype=int)   #requested indices [4,0]
   # P1 : extr = array([5,7,17,19], dtype=int)   #requested indices [1,3]
@@ -203,7 +203,7 @@ methods, where the output buffer is allocated as a numpy array::
   dist_data_new = empty(2*dn, dtype=int)
   dist_data_new.fill(-1) # To track unitialized values
 
-  GI.Put_into(extr, dist_data_new)
+  GI.Put_into(extr, dist_data_new, count=2)
   # P0 : dist_data_new = array([3,5,5,7],     dtype=int)      #glob idx 0..2
   # P1 : dist_data_new = array([-1,-1,17,19], dtype=int)      #glob idx 2..4
   # P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5
@@ -211,8 +211,7 @@ methods, where the output buffer is allocated as a numpy array::
 
 Note that as explained above, data at position 2 in ``dist_data_new`` kept
 its original value, since no process provided data for this index.
-Also note that the constant :math:`c` is automatically guessed from the buffer sizes;
-however, when using the ``_into`` methods, it is the user's responsibility to allocate
+Also note that when using the ``_into`` methods, it is the user's responsibility to allocate
 the output buffer to the correct size.
 
 .. todo ? datatype

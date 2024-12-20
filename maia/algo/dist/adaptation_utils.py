@@ -134,10 +134,12 @@ def elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm):
 
   elt_offset = PT.Element.Range(elt_n)[0]
   elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
 
   # > Get partitionned connectivity of elt_pl
   elt_ec   = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
-  pl_ec = EP.block_to_part(elt_ec, elt_distri, elt_pl-elt_offset, comm, legacy=False) # Cst stride
+  GI = EP.GIndexer(elt_distri_f, elt_pl-elt_offset, comm)
+  pl_ec = GI.Take(elt_ec, PT.Element.NVtx(elt_n))
 
   # > Get distributed vertices gnum referenced in pl_ec 
   GI = EP.GIndexer(vtx_distri_f, pl_ec-1, comm)
@@ -436,7 +438,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   elt_gnum = np.concatenate([old_gnum, new_gnum])
 
   GI = EP.GIndexer(new_elt_distri_f, elt_gnum, comm)
-  new_ec = GI.Put(new_ec) # Cst stride exchange
+  new_ec = GI.Put(new_ec, elt_size)
 
   PT.set_value(ec_n, new_ec)
 
@@ -526,7 +528,9 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
     new_gnum = np.concatenate(new_gnum)
     elt_gnum = np.concatenate([old_gnum, new_gnum])
 
-    new_ec = EP.part_to_block(new_ec, new_elt_distri, elt_gnum, comm, legacy=False)
+    new_elt_distri_f = par_utils.partial_to_full_distribution(new_elt_distri, comm)
+    GI = EP.GIndexer(new_elt_distri_f, elt_gnum, comm)
+    new_ec = GI.Put(new_ec, elt_size)
     PT.set_value(ec_n, new_ec)
 
     # > Update ElementRange
@@ -817,6 +821,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   # > Update distribution
   add_elt_distri = par_utils.dn_to_distribution(n_elt_to_add, comm)
   new_elt_distri = tgt_elt_distri+add_elt_distri
+  new_elt_distri_f = par_utils.partial_to_full_distribution(new_elt_distri, comm)
   PT.set_value(tgt_elt_distri_n, new_elt_distri)
 
   # > Update target element
@@ -830,7 +835,8 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   new_gnum = np.arange(tgt_n_elt+add_elt_distri[0],tgt_n_elt+add_elt_distri[1])
   elt_gnum = np.concatenate([old_gnum, new_gnum])
 
-  tgt_new_ec = EP.part_to_block(tgt_new_ec, new_elt_distri, elt_gnum, comm, legacy=False)
+  GI = EP.GIndexer(new_elt_distri_f, elt_gnum, comm)
+  tgt_new_ec = GI.Put(tgt_new_ec, tgt_elt_size)
   PT.set_value(tgt_ec_n, tgt_new_ec)
 
   tgt_er = PT.Element.Range(tgt_elt_n)

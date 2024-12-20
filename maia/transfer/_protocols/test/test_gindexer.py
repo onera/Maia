@@ -31,7 +31,7 @@ class Test_g_indexer:
   def test_create(self, comm):
     GI = self.init_p(comm)
     assert GI.empty_dist == True
-    assert GI.empty_part == True
+    assert GI.empty_part == False
     excepted_counts = [[4,1,1,0,1],
                        [],
                        [0,1,0],
@@ -148,7 +148,7 @@ class Test_g_indexer:
     ][comm.rank] #Indices 8...11, with 2 values per indices
 
     data_out = np.empty(2*self.g_idx.size, float)  # Out buffer will store 2 values per requested idx
-    GI.Take_into(data_in, data_out) 
+    GI.Take_into(data_in, data_out, count=2) 
 
     expected_out = [np.array([10.,15, 30,35, 50,55, 70,75, 90,95]),
                     np.array([120.,125, 100,105]),
@@ -158,7 +158,7 @@ class Test_g_indexer:
     assert np.allclose(data_out, expected_out)
 
     # Similar w/o preallocated buffer:
-    data_out = GI.Take(data_in)
+    data_out = GI.Take(data_in, count=2)
     assert np.allclose(data_out, expected_out)
 
     # and write more than 1 element per index 
@@ -171,8 +171,8 @@ class Test_g_indexer:
 
     dn_size = self.distri[comm.rank+1] - self.distri[comm.rank]
     data_out = -1*np.ones(2*dn_size, float)
-    GI.Put_into(data_in, data_out)
-    data_out2 = GI.Put(data_in) #Equivalent w/o preallocated buffer
+    GI.Put_into(data_in, data_out, count=2)
+    data_out2 = GI.Put(data_in, count=2) #Equivalent w/o preallocated buffer
 
     expected_out = [np.array([10.,15, 20,25, 30,35, -1,-1, 50,55]),
                     np.array([], float),

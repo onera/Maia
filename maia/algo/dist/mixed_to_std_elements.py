@@ -219,7 +219,7 @@ def convert_mixed_to_elements(dist_tree, comm):
             elem_distrib_f = MUPar.partial_to_full_distribution(elem_distrib, comm)
 
             GI_elem  = MTP.GIndexer_m(elem_distrib_f, ln_to_gn_list, comm)
-            econn = GI_elem.Put(part_data_ec)
+            econn = GI_elem.Put(part_data_ec, count=nb_nodes_per_elem)
             
             beg_erange += nb_elems_per_type
             label = MPSEU.element_name(elem_type)

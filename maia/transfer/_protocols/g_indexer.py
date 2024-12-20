@@ -92,7 +92,7 @@ class GIndexer_m:
     self.part_write_pos  = sorting_idx_l # Position where accessed data should be put to have it in MPI order
 
     self._empty_dist = (np.diff(distri)==0).any() # True if at least one rank has dn == 0
-    self._empty_part = None                       # True if at least one rank has pn == 0
+    self._empty_part = None                       # True if at least one rank has len(g_idx) == 0
 
   @property
   def empty_dist(self):
@@ -100,8 +100,7 @@ class GIndexer_m:
   @property
   def empty_part(self):
     if self._empty_part is None:
-      is_empty = not any(pn > 0 for pn in self.pn)
-      self._empty_part = self.comm.allreduce(is_empty, MPI.LOR)
+      self._empty_part = self.comm.allreduce(len(self.pn) == 0, MPI.LOR)
     return self._empty_part
 
 
@@ -159,131 +158,115 @@ class GIndexer_m:
       r_start += size
     return out
 
-  def Take_into(self, data_in, data_out_l):
+  def Take_into(self, data_in, data_out_l, count=1):
     """ Generalization of :func:`GIndexer.Take_into` for multi index access.
 
     Args:
       data_in    (buffer) : section of the distributed data
       data_out_l (list of :math:`N` buffer) : preallocated buffers to store extracted values
         corresponding to each index list
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     """
     assert len(data_out_l) == len(self.pn)
-    counts_in  = data_in.size  // self.dn if self.dn != 0 else 0
-    counts_out_l = [data_out.size // pn for data_out, pn in zip(data_out_l, self.pn) if pn != 0]
-    assert len(set(counts_out_l)) <= 1, "Different counts_out detected"
-    counts_out = counts_out_l[0] if len(counts_out_l) > 0 else 0
 
-    if data_in.size - counts_in*self.dn != 0:
-      raise ValueError("Input data size is not a multiple of managed idx")
-    for data_out, pn in zip(data_out_l, self.pn):
-      if data_out.size - counts_out*pn != 0:
-        raise ValueError("Output data size is not a multiple of requested idx")
-    if counts_in != counts_out and counts_in*counts_out != 0:
-      raise ValueError("Input and output counts does not match")
+    if data_in.size - count*self.dn != 0:
+      raise ValueError(f"Invalid size of input distributed buffer (expected {count*self.dn}, got {data_in.size})")
+    for ipart, (data_out, pn) in enumerate(zip(data_out_l, self.pn)):
+      if data_out.size - count*pn != 0:
+        raise ValueError(f"Invalid size of output local buffer n°{ipart} (expected {count*pn}, got {data_out.size})")
 
 
-    send_buff = np.empty(counts_in*self.dist_select_idx.size, data_in.dtype)
-    recv_buff = np.empty(counts_out*sum(self.pn),             data_in.dtype)
+    send_buff = np.empty(count*self.dist_select_idx.size, data_in.dtype)
+    recv_buff = np.empty(count*sum(self.pn),              data_in.dtype)
 
-    if counts_in == 1:
+    if count == 1:
       send_buff[:] = data_in[self.dist_select_idx]
     else:
-      pull_idx = counts_in*self.dist_select_idx
-      for j in range(counts_in):
-        send_buff[j::counts_in] = data_in[pull_idx+j]
+      pull_idx = count*self.dist_select_idx
+      for j in range(count):
+        send_buff[j::count] = data_in[pull_idx+j]
 
-    self.comm.Alltoallv((send_buff, counts_in*self.dist_counts),
-                        (recv_buff, counts_out*self.part_counts))
+    self.comm.Alltoallv((send_buff, count*self.dist_counts),
+                        (recv_buff, count*self.part_counts))
 
     # Data has been received in owning proc order : 'unsort' it to recover lngn ordering
     for data_out, part_write_pos in zip(data_out_l, self.part_write_pos):
-      if counts_out == 1:
+      if count == 1:
         data_out[:] = recv_buff[part_write_pos]
       else:
-        put_idx = counts_out*part_write_pos
-        for j in range(counts_out):
-          data_out[j::counts_out] = recv_buff[put_idx+j]
+        put_idx = count*part_write_pos
+        for j in range(count):
+          data_out[j::count] = recv_buff[put_idx+j]
 
-  def Put_into(self, data_in_l, data_out):
+  def Put_into(self, data_in_l, data_out, count=1):
     """ Generalization of :func:`GIndexer.Put_into` for multi index access.
 
     Args:
       data_in_l (list of :math:`N` buffer) : for each index list, data to write at each accessed index
       data_out  (buffer) : preallocated buffer to store distributed data
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     """
     assert len(data_in_l) == len(self.pn)
-    counts_out = data_out.size // self.dn if self.dn != 0 else 0
-    counts_in_l = [data_in.size // pn for data_in, pn in zip(data_in_l, self.pn) if pn != 0]
-    assert len(set(counts_in_l)) <= 1, "Different counts_in detected"
-    counts_in = counts_in_l[0] if len(counts_in_l) > 0 else 0
 
-    if data_out.size - counts_out*self.dn != 0:
-      raise ValueError("Output data size is not a multiple of requested idx")
-    for data_in, pn in zip(data_in_l, self.pn):
-      if data_in.size - counts_in*pn != 0:
-        raise ValueError("Input data size is not a multiple of managed idx")
-    if counts_in != counts_out and counts_in*counts_out != 0:
-      raise ValueError("Input and output counts does not match")
+    if data_out.size - count*self.dn != 0:
+      raise ValueError(f"Invalid size of output distributed buffer (expected {count*self.dn}, got {data_out.size})")
+    for ipart, (data_in, pn) in enumerate(zip(data_in_l, self.pn)):
+      if data_in.size - count*pn != 0:
+        raise ValueError(f"Invalid size of input local buffer n°{ipart} (expected {count*pn}, got {data_in.size})")
 
 
-    send_buff = np.empty(counts_in*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=data_out.dtype)
-    recv_buff = np.empty(counts_out*self.dist_counts.sum(),  dtype=data_out.dtype)
+    send_buff = np.empty(count*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=data_out.dtype)
+    recv_buff = np.empty(count*self.dist_counts.sum(),  dtype=data_out.dtype)
 
     for data_in, part_write_pos in zip(data_in_l, self.part_write_pos):
-      if counts_in == 1:
+      if count == 1:
         send_buff[part_write_pos] = data_in
       else:
-        pull_idx = counts_in*part_write_pos
-        for j in range(counts_in):
-          send_buff[pull_idx+j] = data_in[j::counts_in]
+        pull_idx = count*part_write_pos
+        for j in range(count):
+          send_buff[pull_idx+j] = data_in[j::count]
 
-    self.comm.Alltoallv((send_buff, counts_in*self.part_counts), 
-                        (recv_buff, counts_out*self.dist_counts))
+    self.comm.Alltoallv((send_buff, count*self.part_counts), 
+                        (recv_buff, count*self.dist_counts))
 
-    if counts_out == 1:
+    if count == 1:
       data_out[self.dist_select_idx] = recv_buff
     else:
-      put_idx = counts_out*self.dist_select_idx
-      for j in range(counts_out):
-        data_out[put_idx+j] = recv_buff[j::counts_out]
+      put_idx = count*self.dist_select_idx
+      for j in range(count):
+        data_out[put_idx+j] = recv_buff[j::count]
 
-  def Take(self, data_in):
+  def Take(self, data_in, count=1):
     """ Generalization of :func:`GIndexer.Take` for multi index access.
 
     Args:
       data_in (buffer of size :math:`c*dn`) : section of the distributed data
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       :math:`N` buffer of size :math:`c*pn_k`: for each index list,
       values extracted at the requested indices
     """
-    counts = data_in.size // self.dn if self.dn != 0 else 0
-    if self.empty_dist:
-      counts = self.comm.allreduce(counts, MPI.MAX)
-
-    data_out_l = [np.empty(counts*pn, data_in.dtype) for pn in self.pn]
-    self.Take_into(data_in, data_out_l)
+    data_out_l = [np.empty(count*pn, data_in.dtype) for pn in self.pn]
+    self.Take_into(data_in, data_out_l, count)
     return data_out_l
 
-  def Put(self, data_in_l):
+  def Put(self, data_in_l, count=1):
     """ Generalization of :func:`GIndexer.Put` for multi index access.
 
     Args:
       data_in_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
         data to write at each accessed index
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*pn`: output distributed data
     """
     assert len(data_in_l) == len(self.pn)
-    counts_l = [data_in.size // pn for data_in, pn in zip(data_in_l, self.pn) if pn != 0]
-    assert all(count == counts_l[0] for count in counts_l)
-    counts = counts_l[0]            if len(counts_l)  > 0 else 0
     dtype  = data_in_l[0].dtype.str if len(data_in_l) > 0 else ''
     if self.empty_part:
-      counts = self.comm.allreduce(counts, MPI.MAX)
       dtype  = self.comm.allreduce(dtype,  MPI.MAX)
 
-    data_out = np.empty(counts*self.dn, dtype)
-    self.Put_into(data_in_l, data_out)
+    data_out = np.empty(count*self.dn, dtype)
+    self.Put_into(data_in_l, data_out, count)
     return data_out
 
   def Take_v_into(self, data_in, counts_in, data_out_l, counts_out_l):
@@ -503,6 +486,7 @@ class GIndexer:
       comm (MPIComm) : communicator
     """
     self.GIndexer_m = GIndexer_m(distri, [g_idx], comm)
+    self.GIndexer_m._empty_part = False
 
   def take(self, data_in:list) -> list:
     """ ``take`` implementation for generic Python objects 
@@ -539,7 +523,7 @@ class GIndexer:
     """
     return self.GIndexer_m.put([data_in])
 
-  def Take_into(self, data_in, data_out):
+  def Take_into(self, data_in, data_out, count=1):
     """ Inplace ``take`` implementation for buffer-like objects 
 
     Input and output buffer must respectively be of size :math:`c*dn` and
@@ -552,10 +536,11 @@ class GIndexer:
     Args:
       data_in  (buffer) : section of the distributed data
       data_out (buffer) : preallocated buffer to store extracted values
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     """
-    self.GIndexer_m.Take_into(data_in, [data_out])
+    self.GIndexer_m.Take_into(data_in, [data_out], count)
 
-  def Put_into(self, data_in, data_out):
+  def Put_into(self, data_in, data_out, count=1):
     """ Inplace ``put`` implementation for buffer-like objects 
 
     Input and output buffer must respectively be of size :math:`c*pn` and
@@ -575,10 +560,11 @@ class GIndexer:
     Args:
       data_in  (buffer) : data to write at each accessed index
       data_out (buffer) : preallocated buffer to store distributed data
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     """
-    self.GIndexer_m.Put_into([data_in], data_out)
+    self.GIndexer_m.Put_into([data_in], data_out, count)
     
-  def Take(self, data_in) -> np.ndarray:
+  def Take(self, data_in, count=1) -> np.ndarray:
     """ ``take`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*dn`, where :math:`c` is a
@@ -591,12 +577,13 @@ class GIndexer:
     
     Args:
       data_in (buffer of size :math:`c*dn`) : section of the distributed data
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*pn`: values extracted at the requested indices
     """
-    return self.GIndexer_m.Take(data_in)[0]
+    return self.GIndexer_m.Take(data_in, count)[0]
 
-  def Put(self, data_in) -> np.ndarray:
+  def Put(self, data_in, count=1) -> np.ndarray:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
@@ -616,14 +603,12 @@ class GIndexer:
 
     Args:
       data_in (buffer of size :math:`c*pn`) : data to write at each accessed index
+      count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*pn`: output distributed data
     """
 
-    return self.GIndexer_m.Put([data_in])
-
-  def Take_v_into(self, data_in, counts_in, data_out, counts_out):
-    self.GIndexer_m.Take_v_into(data_in, counts_in, [data_out], [counts_out])
+    return self.GIndexer_m.Put([data_in], count)
 
   def Take_v(self, data_in):
     """ ``take`` implementation for variable buffer-like objects 
