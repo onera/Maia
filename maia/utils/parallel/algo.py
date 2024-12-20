@@ -130,7 +130,7 @@ class DistSorter:
   """
   def __init__(self, key, comm):
     distri = par_utils.distribution_from_gnum([key], comm, True, True)
-    self.GI = EP.GIndexer(distri, key-1, comm)
+    self.GI = EP.GlobalIndexer(distri, key-1, comm)
     self.mask = self.GI.access_counts > 0
 
   def sort(self, array):

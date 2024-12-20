@@ -3,12 +3,12 @@ import pytest_parallel
 
 import numpy as np
 
-from maia.transfer._protocols.g_indexer import GIndexer, GIndexer_m
+from maia.transfer._protocols.g_indexer import GlobalIndexer, GlobalMultiIndexer
 
 @pytest_parallel.mark.parallel(4)
 class Test_g_indexer:
 
-  # GIndexer wraps MPI AllToAll exchanges to perfom read/write operations
+  # GlobalIndexer wraps MPI AllToAll exchanges to perfom read/write operations
   # from global indices on a distributed array
 
   # To create the object, the following data are required :
@@ -26,7 +26,7 @@ class Test_g_indexer:
 
     self.g_idx = g_idx
     self.distri = distri
-    return GIndexer(distri, g_idx, comm)
+    return GlobalIndexer(distri, g_idx, comm)
 
   def test_create(self, comm):
     GI = self.init_p(comm)
@@ -258,7 +258,7 @@ class Test_g_indexer:
              np.array([0,0,14,0,1]) # Indices can be requested more than once
             ][comm.rank]
     with pytest.raises(IndexError):
-      GI = GIndexer(distri, g_idx, comm)
+      GI = GlobalIndexer(distri, g_idx, comm)
 
 
 
@@ -275,6 +275,6 @@ def test_empty_part(comm):
            np.array([24], np.int32),
            np.array([], np.int32)][comm.rank]
 
-  GI = GIndexer_m(distri, gnum, comm)
+  GI = GlobalMultiIndexer(distri, gnum, comm)
   assert (GI.Put(GI.Take(field)) == field).all()
 

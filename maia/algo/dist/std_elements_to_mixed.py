@@ -70,7 +70,7 @@ def convert_elements_to_mixed(dist_tree, comm):
         elem_distrib = MUPar.uniform_distribution(nb_elem_prev,comm)
         elem_distrib_f = MUPar.partial_to_full_distribution(elem_distrib, comm)
 
-        GI = MTP.GIndexer_m(elem_distrib_f, ln_to_gn_list, comm)
+        GI = MTP.GlobalMultiIndexer(elem_distrib_f, ln_to_gn_list, comm)
         dist_data_eso_wo_last = GI.Put(part_data_eso)
         dist_stride_ec, dist_data_ec = GI.Put_v(part_data_ec)
         

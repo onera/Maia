@@ -152,7 +152,7 @@ def _ngon_to_elements_zone(zone, comm):
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
   is_cell_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and PT.Subset.GridLocation(n) == 'CellCenter'
   cell_distri_f = par_utils.partial_to_full_distribution(cell_distri, comm)
-  GI = EP.GIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
+  GI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
 
   for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t']):
     data = PT.get_node_from_path(zone, path)[1]

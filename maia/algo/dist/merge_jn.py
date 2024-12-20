@@ -29,10 +29,10 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
 
   # 1. Get the left cell of the faces to delete
-  part_data = EP.GIndexer(face_distri_f, del_faces-1, comm).Take(pe[:,0])
+  part_data = EP.GlobalIndexer(face_distri_f, del_faces-1, comm).Take(pe[:,0])
   
   # 2. Put it in the right cell of the faces to keep
-  GI = EP.GIndexer(face_distri_f, ref_faces-1, comm)
+  GI = EP.GlobalIndexer(face_distri_f, ref_faces-1, comm)
   assert np.max(pe[GI.access_counts > 0, 1], initial=0) == 0 #Initial = trick to admit empty array
   GI.Put_into(part_data, pe[:,1])
 
@@ -43,7 +43,7 @@ def _update_ngon_remove_faces(ngon, del_faces, comm):
   face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
   face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
   
-  GI = EP.GIndexer(face_distri_f, del_faces-1, comm)
+  GI = EP.GlobalIndexer(face_distri_f, del_faces-1, comm)
   local_faces = np.nonzero(GI.access_counts > 0)[0]
   RME.remove_ngons(ngon, local_faces, comm)
   
@@ -116,7 +116,7 @@ def _update_subset(node, pl_new, data_query, comm):
 
   old_distri_f = par_utils.distribution_from_gnum(pl_new, comm, full=True)
 
-  GI = EP.GIndexer(old_distri_f, pl_new-1, comm)
+  GI = EP.GlobalIndexer(old_distri_f, pl_new-1, comm)
   mask = (GI.access_counts > 0)
   dist_data = {field: GI.Put(pdata)[mask] for field, pdata in part_data.items()}
   
@@ -237,7 +237,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
   pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
-  GI = EP.GIndexer(pdm_distrib, vtx_to_remove-1, comm)
+  GI = EP.GlobalIndexer(pdm_distrib, vtx_to_remove-1, comm)
   mask = GI.access_counts == 0
 
   #Update all vertex entities

@@ -131,7 +131,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   # EDGE Data
   edge_node  = MT.Zone.EdgeNode(zone)
   dedge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
-  key_from_edge = dedge_vtx[0::2] + dedge_vtx[1::2] - 1 # (GIndexer starts at 0)
+  key_from_edge = dedge_vtx[0::2] + dedge_vtx[1::2] - 1 # (GlobalIndexer starts at 0)
 
   # NGON Data
   ngon_node = PT.Zone.NGonNode(zone)

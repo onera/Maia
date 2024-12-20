@@ -641,7 +641,7 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
       distri_ptb_f = par_utils.partial_to_full_distribution(distri_ptb, comm)
       stride = np.zeros(distri_ptb[1] - distri_ptb[0], np.int32)
-      GI = EP.GIndexer(distri_ptb_f, pl-1, comm)
+      GI = EP.GlobalIndexer(distri_ptb_f, pl-1, comm)
       mask = GI.access_counts > 0
       stride[mask] = 1
       dist_data = {key: GI.Put(pdata[0])[mask] for key, pdata in part_data.items()}
@@ -773,7 +773,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
       face_distri = MT.getDistribution(ngon_node, 'Element')[1]
       face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
 
-      GI = EP.GIndexer(face_distri_f, pld-1, comm)
+      GI = EP.GlobalIndexer(face_distri_f, pld-1, comm)
       local_faces = GI.access_counts > 0
       assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
       GI.Put_into(part_pe_gc, pe[:,1])

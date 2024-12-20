@@ -8,7 +8,7 @@ from maia.utils import par_utils, np_utils
 
 from . import _protocols
 
-from ._protocols import GIndexer, GIndexer_m
+from ._protocols import GlobalIndexer, GlobalMultiIndexer
 
 def _check_dict_keys(data_dict, comm):
   if comm.Get_size() == 0:
@@ -56,9 +56,9 @@ def BlockToPart(distri, ln_to_gn_list, comm, legacy=True):
     return PDM.BlockToPart(_full_distri, comm, _ln_to_gn_list, len(_ln_to_gn_list))
   else:
     if isinstance(ln_to_gn_list, list):
-      return GIndexer_m(full_distri, ln_to_gn_list, comm)
+      return GlobalMultiIndexer(full_distri, ln_to_gn_list, comm)
     else:
-      return GIndexer(full_distri, ln_to_gn_list, comm)
+      return GlobalIndexer(full_distri, ln_to_gn_list, comm)
 
 def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False, legacy=True):
   """
@@ -83,9 +83,9 @@ def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=Fals
   else:
     assert not keep_multiple, "keep_multiple only supported for legacy version"
     if isinstance(ln_to_gn_list, list):
-      return GIndexer_m(_full_distri, ln_to_gn_list, comm)
+      return GlobalMultiIndexer(_full_distri, ln_to_gn_list, comm)
     else:
-      return GIndexer(_full_distri, ln_to_gn_list, comm)
+      return GlobalIndexer(_full_distri, ln_to_gn_list, comm)
 
 def PartToPart(gnum1, gnum2, comm):
   """

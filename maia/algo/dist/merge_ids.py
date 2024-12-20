@@ -12,7 +12,7 @@ def remove_distributed_ids(distri, ids, comm):
   with values -1 at deleted positions.
   """
   distri_f = par_utils.partial_to_full_distribution(distri, comm)
-  GI = EP.GIndexer(distri_f, ids-1, comm)
+  GI = EP.GlobalIndexer(distri_f, ids-1, comm)
   not_ids_local = (GI.access_counts == 0) # Mask is True for unaccessed ids
   
   dn_elts = distri[1] - distri[0]
@@ -39,7 +39,7 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   # Move data to procs holding ids, merging multiple elements
 
   distri_f = par_utils.partial_to_full_distribution(distri, comm)
-  GI = EP.GIndexer(distri_f, ids-1, comm)
+  GI = EP.GlobalIndexer(distri_f, ids-1, comm)
   ids_local = (GI.access_counts > 0) # True if elts are accessed
 
   dist_targets = GI.Put(targets)[ids_local]

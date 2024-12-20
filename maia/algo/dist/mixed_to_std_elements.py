@@ -218,7 +218,7 @@ def convert_mixed_to_elements(dist_tree, comm):
             elem_distrib = MUPar.uniform_distribution(nb_elems_per_type,comm)
             elem_distrib_f = MUPar.partial_to_full_distribution(elem_distrib, comm)
 
-            GI_elem  = MTP.GIndexer_m(elem_distrib_f, ln_to_gn_list, comm)
+            GI_elem  = MTP.GlobalMultiIndexer(elem_distrib_f, ln_to_gn_list, comm)
             econn = GI_elem.Put(part_data_ec, count=nb_nodes_per_elem)
             
             beg_erange += nb_elems_per_type
@@ -246,11 +246,11 @@ def convert_mixed_to_elements(dist_tree, comm):
         cells_distrib = MT.getDistribution(zone, 'Cell')[1]
         cells_distrib_f = MUPar.partial_to_full_distribution(cells_distrib, comm)
 
-        GI_cell = MTP.GIndexer_m(cells_distrib_f, ln_to_gn_cell_list, comm)
+        GI_cell = MTP.GlobalMultiIndexer(cells_distrib_f, ln_to_gn_cell_list, comm)
         dist_old_to_new_cell_numbering = GI_cell.Put(old_to_new_cell_numbering_list)
         
         # 7b. Reorder FlowSolution DataArray
-        GI_fs = MTP.GIndexer(cells_distrib_f, dist_old_to_new_cell_numbering, comm)
+        GI_fs = MTP.GlobalIndexer(cells_distrib_f, dist_old_to_new_cell_numbering, comm)
 
         is_fs_cc = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] \
                           and PT.Subset.GridLocation(n) == 'CellCenter' \

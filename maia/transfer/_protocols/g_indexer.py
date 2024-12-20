@@ -32,9 +32,9 @@ def put_strided(a, a_count, indices, read_counts, read):
   """
   layouts.put_strided(a, a_count, indices, read_counts, read)
 
-class GIndexer_m:
+class GlobalMultiIndexer:
   """
-  This is a generalization of :class:`~maia.transfer.protocols.GIndexer` where each
+  This is a generalization of :class:`~maia.transfer.protocols.GlobalIndexer` where each
   process can request access to several list of global indices.
 
   We thus need to introduce the additional notations, which are local for each rank:
@@ -42,7 +42,7 @@ class GIndexer_m:
   - :math:`N` number of global indices list provided (equal to ``len(g_idx_l)``)
   - :math:`pn_k`: for each index list :math:`k`, number of accessed indices (equal to ``len(g_idx_l[k])``)
 
-  All the methods described in :class:`~maia.transfer.protocols.GIndexer` are available,
+  All the methods described in :class:`~maia.transfer.protocols.GlobalIndexer` are available,
   but the arguments related to the accessed indices (*ie* the output of ``take`` methods, and the
   input of ``put`` methods) are now lists of size :math:`N`.
 
@@ -52,7 +52,7 @@ class GIndexer_m:
   """
 
   def __init__(self, distri, g_idx_l, comm):
-    """ Generalization of :func:`GIndexer.__init__` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.__init__` for multi index access.
 
     Args:
       distri (integer array of size :math:`s+1`) : distribution of the collection
@@ -105,7 +105,7 @@ class GIndexer_m:
 
 
   def take(self, data_in):
-    """ Generalization of :func:`GIndexer.take` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.take` for multi index access.
 
     Args:
       data_in (list of size :math:`dn`) : section of the distributed data
@@ -131,7 +131,7 @@ class GIndexer_m:
     return res
 
   def put(self, data_in_l):
-    """ Generalization of :func:`GIndexer.put` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.put` for multi index access.
 
     Args:
       data_in_l (:math:`N` list of size :math:`pn_k`) : for each index list, data to write
@@ -159,7 +159,7 @@ class GIndexer_m:
     return out
 
   def Take_into(self, data_in, data_out_l, count=1):
-    """ Generalization of :func:`GIndexer.Take_into` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.Take_into` for multi index access.
 
     Args:
       data_in    (buffer) : section of the distributed data
@@ -199,7 +199,7 @@ class GIndexer_m:
           data_out[j::count] = recv_buff[put_idx+j]
 
   def Put_into(self, data_in_l, data_out, count=1):
-    """ Generalization of :func:`GIndexer.Put_into` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.Put_into` for multi index access.
 
     Args:
       data_in_l (list of :math:`N` buffer) : for each index list, data to write at each accessed index
@@ -237,7 +237,7 @@ class GIndexer_m:
         data_out[put_idx+j] = recv_buff[j::count]
 
   def Take(self, data_in, count=1):
-    """ Generalization of :func:`GIndexer.Take` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
     Args:
       data_in (buffer of size :math:`c*dn`) : section of the distributed data
@@ -251,7 +251,7 @@ class GIndexer_m:
     return data_out_l
 
   def Put(self, data_in_l, count=1):
-    """ Generalization of :func:`GIndexer.Put` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
       data_in_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
@@ -300,7 +300,7 @@ class GIndexer_m:
 
 
   def Take_v(self, data_in):
-    """ Generalization of :func:`GIndexer.Take_v` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.Take_v` for multi index access.
 
     Args:
       data_in (variable buffer): section of the distributed data, ie tuple of values
@@ -354,7 +354,7 @@ class GIndexer_m:
 
 
   def Put_v(self, data_in_l):
-    """ Generalization of :func:`GIndexer.Put_v` for multi index access.
+    """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
       data_in_l (list of N variable buffer): for each index list, values to write as pair \
@@ -448,7 +448,7 @@ class GIndexer_m:
 
 
 
-class GIndexer:
+class GlobalIndexer:
 
   """
   A protocol object allowing to access distributed data in read or write mode.
@@ -465,7 +465,7 @@ class GIndexer:
   """
 
   def __init__(self, distri, g_idx, comm):
-    """ Create a GIndexer protocol object
+    """ Create a GlobalIndexer protocol object
 
     The protocol object is described by two arrays of integer,
     satisfying these rules:
@@ -485,7 +485,7 @@ class GIndexer:
       g_idx (integer array of size :math:`pn`) : accessed global indices
       comm (MPIComm) : communicator
     """
-    self.GIndexer_m = GIndexer_m(distri, [g_idx], comm)
+    self.GIndexer_m = GlobalMultiIndexer(distri, [g_idx], comm)
     self.GIndexer_m._empty_part = False
 
   def take(self, data_in:list) -> list:
@@ -493,7 +493,7 @@ class GIndexer:
     
     Exchanged data are serialized using ``pickle`` module, which has
     a negative impact on performances; if data is a buffer object, it is
-    strongly advised to use :func:`GIndexer.Take` instead.
+    strongly advised to use :func:`~GlobalIndexer.Take` method instead.
 
     Args:
       data_in (list of size :math:`dn`) : section of the distributed data
@@ -507,7 +507,7 @@ class GIndexer:
     
     Exchanged data are serialized using ``pickle`` module, which has
     a negative impact on performances; if data is a buffer object, it is
-    strongly advised to use :func:`GIndexer.Put` instead.
+    strongly advised to use :func:`~GlobalIndexer.Put` method instead.
 
     Note that:
 

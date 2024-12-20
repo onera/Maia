@@ -38,8 +38,8 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
   vtx_distris = [MT.getDistribution(zone, 'Vertex')[1] for zone in zones]
   vtx_distris = [par_utils.partial_to_full_distribution(di, comm) for di in vtx_distris]
 
-  indexer0 = EP.GIndexer(vtx_distris[0], pl_vtx_list[0]-1, comm)
-  indexer1 = EP.GIndexer(vtx_distris[1], pl_vtx_list[1]-1, comm)
+  indexer0 = EP.GlobalIndexer(vtx_distris[0], pl_vtx_list[0]-1, comm)
+  indexer1 = EP.GlobalIndexer(vtx_distris[1], pl_vtx_list[1]-1, comm)
 
   for coord0, coord1 in zip(*dist_coords):
     # For each component X,Y,Z : extract vtx values on the two zones (Take),

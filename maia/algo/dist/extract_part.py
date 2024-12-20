@@ -90,7 +90,7 @@ def extract_zone_edges(dist_zone, pl, comm):
   vtx_distri = PT.maia.get_distribution(dist_zone, 'Vertex')[1]
   vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
 
-  GI = maia.transfer.protocols.GIndexer(vtx_distri_f, edge_vtx-1, comm)
+  GI = maia.transfer.protocols.GlobalIndexer(vtx_distri_f, edge_vtx-1, comm)
   vtx_mask = (GI.access_counts > 0)
   coords =  PT.Zone.coordinates(dist_zone)._asdict()
   extract_coords = {key: coord[vtx_mask] for key,coord in coords.items()}

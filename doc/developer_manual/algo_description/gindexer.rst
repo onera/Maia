@@ -58,7 +58,7 @@ following mpi4py conventions, the supported data kind are:
     d = [3.14, None, 'chars', ['even', 'a', 'list'], 42] # Sequence
 
   Methods to be used in this case start with a lowercase letter, such as
-  :func:`~maia.transfer.protocols.GIndexer.take` or :func:`~maia.transfer.protocols.GIndexer.put`.
+  :func:`~maia.transfer.protocols.GlobalIndexer.take` or :func:`~maia.transfer.protocols.GlobalIndexer.put`.
   Objects are serialized during exchanges, using the ``pickle`` module: this is all-purpose but slowest
   way.
 
@@ -74,7 +74,7 @@ following mpi4py conventions, the supported data kind are:
     d = array([3,5, 5,7, 11,13, 17,19, 29,31], dtype=int)   # Buffer (c=2)
 
   Methods to be used in this case start with an uppercase letter, such as
-  :func:`~maia.transfer.protocols.GIndexer.Take` or :func:`~maia.transfer.protocols.GIndexer.Put`.
+  :func:`~maia.transfer.protocols.GlobalIndexer.Take` or :func:`~maia.transfer.protocols.GlobalIndexer.Put`.
 
 - **Variable buffer objects**: the global collection is still an homogeneous buffer, but
   the number of values may differ from each item; consequently, two arrays are needed:
@@ -89,7 +89,7 @@ following mpi4py conventions, the supported data kind are:
     d = array([1, 11, 21, 12, 11, 11, 12, 21], dtype=int) # Buffer
 
   Methods to be used for such data start with an uppercase letter and finish with ``_v``, such as
-  :func:`~maia.transfer.protocols.GIndexer.Take_v` or :func:`~maia.transfer.protocols.GIndexer.Put_v`.
+  :func:`~maia.transfer.protocols.GlobalIndexer.Take_v` or :func:`~maia.transfer.protocols.GlobalIndexer.Put_v`.
 
 Usage
 -----
@@ -100,7 +100,7 @@ Usage
 
 .. rubric:: Initialization
 
-The first step is to initialize the :class:`~maia.transfer._protocols.g_indexer.GIndexer`
+The first step is to initialize the :class:`~maia.transfer._protocols.g_indexer.GlobalIndexer`
 object by providing, in addition to the MPI communicator, two informations:
 
 - How the global collection is distributed: this is done through the ``distrib`` array,
@@ -126,7 +126,7 @@ object by providing, in addition to the MPI communicator, two informations:
     if rank == 1:  idx = array([1, 3])   # P1 will access indices 3 and 1
     if rank == 2:  idx = array([0])      # P2 will access index 0
 
-    GI = GIndexer(distri, idx, comm)
+    GI = GlobalIndexer(distri, idx, comm)
 
 The creation of the object will fail if any requested index outpasses the bounds of the
 distribution. All other configurations are managed, including the following cases:
@@ -178,14 +178,14 @@ There is nothing surprising for the ``take`` case. For the ``put`` case, notice 
 
 The first rule applies also to buffers implementations; for the second rule,
 unreferenced indices will remain unitialized when using
-:func:`~maia.transfer.protocols.GIndexer.Put`, and will get a zero counts when using
-:func:`~maia.transfer.protocols.GIndexer.Put_v`.
+:func:`~maia.transfer.protocols.GlobalIndexer.Put`, and will get a zero counts when using
+:func:`~maia.transfer.protocols.GlobalIndexer.Put_v`.
 
 **Buffer-like objects**:
 for buffer object of constant size, we offer two alternatives: the
-:func:`~maia.transfer.protocols.GIndexer.Take_into` and :func:`~maia.transfer.protocols.GIndexer.Put_into`
+:func:`~maia.transfer.protocols.GlobalIndexer.Take_into` and :func:`~maia.transfer.protocols.GlobalIndexer.Put_into`
 methods, where the output buffer is provided by the user (as in mpi4py), and the
-:func:`~maia.transfer.protocols.GIndexer.Take` and :func:`~maia.transfer.protocols.GIndexer.Put`
+:func:`~maia.transfer.protocols.GlobalIndexer.Take` and :func:`~maia.transfer.protocols.GlobalIndexer.Put`
 methods, where the output buffer is allocated as a numpy array::
 
   # Buffer of ints, with 2 values per index (c=2)
@@ -297,10 +297,10 @@ explicitly put by P1.
 API reference
 -------------
 
-.. autoclass:: maia.transfer.protocols.GIndexer
+.. autoclass:: maia.transfer.protocols.GlobalIndexer
     :members:
     :member-order: bysource
 
-.. autoclass:: maia.transfer.protocols.GIndexer_m
+.. autoclass:: maia.transfer.protocols.GlobalMultiIndexer
     :members:
     :member-order: bysource
