@@ -81,8 +81,8 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
   blk_stride = np.zeros(blk_distri_f[i_rank+1] - blk_distri_f[i_rank], dtype=int)
   blk_stride[mask] = 1
 
-  data_out = GI.Take_v((group_gnum, blk_stride))
-  part_lngn = [data[0] for data in data_out]
+  data_out = GI.Take_v((blk_stride, group_gnum))
+  part_lngn = [data[1] for data in data_out]
 
   #Add in partitioned zones
   i_zone = 0
@@ -325,7 +325,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
       part_ec = np.empty(0, pdm_gnum_dtype)
       stride_in = np.empty(0, int)
 
-    data_in_l.append((part_ec, stride_in))
+    data_in_l.append((stride_in, part_ec))
 
   #Get values for proc having no elt
   elt_id     = comm.allreduce(elt_id, MPI.MAX)
@@ -339,7 +339,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   GI = EP.GIndexer_m(distri_elt_f, [gn-1 for gn in elt_gnum_l], comm)
 
   # Faster than filtering, even if stride is constant
-  dist_ec, _ = GI.Put_v(data_in_l)
+  _, dist_ec = GI.Put_v(data_in_l)
 
   # > Add in disttree
   elt_node = PT.new_Elements(elem_name, type=elt_id, erange=[min_section_gn, max_section_gn], econn=dist_ec, parent=dist_zone)
@@ -495,15 +495,15 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
 
     # Move to global and add in part_data
     EC_sign = np.sign(EC)
-    part_data.append((EC_sign*ngon_gnum_l[ipart][np.abs(EC)-1], 
-                      np.diff(ECIdx).astype(int)))
+    part_data.append((np.diff(ECIdx),
+                      EC_sign*ngon_gnum_l[ipart][np.abs(EC)-1]))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
   distri_cell   = par_utils.distribution_from_gnum(cell_gnum_l, comm)
   distri_cell_f = par_utils.partial_to_full_distribution(distri_cell, comm)
   GI = EP.GIndexer_m(distri_cell_f, [gn-1 for gn in cell_gnum_l], comm)
 
-  dist_ec, d_elt_n = GI.Put_v(part_data)
+  d_elt_n, dist_ec = GI.Put_v(part_data)
 
   # ElementStartOffset must be shifted
   dist_eso = np_utils.sizes_to_indices(d_elt_n, pdm_gnum_dtype)

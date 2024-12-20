@@ -55,7 +55,7 @@ def convert_elements_to_mixed(dist_tree, comm):
             mixed_partial_eso = (nb_nodes_per_elem+1)*np.arange(nb_elem_loc,dtype = elem_ec.dtype) + \
                                 nb_nodes_prev + (nb_nodes_per_elem+1)*elem_distrib[0]
             part_data_eso.append(mixed_partial_eso)
-            part_data_ec.append((mixed_partial_ec, stride_ec))
+            part_data_ec.append((stride_ec, mixed_partial_ec))
     
             ln_to_gn = np.array(range(nb_elem_loc),dtype=elem_distrib.dtype) + \
                        nb_elem_prev + elem_distrib[0]
@@ -72,7 +72,7 @@ def convert_elements_to_mixed(dist_tree, comm):
 
         GI = MTP.GIndexer_m(elem_distrib_f, ln_to_gn_list, comm)
         dist_data_eso_wo_last = GI.Put(part_data_eso)
-        dist_data_ec, dist_stride_ec = GI.Put_v(part_data_ec)
+        dist_stride_ec, dist_data_ec = GI.Put_v(part_data_ec)
         
         dist_data_eso = np.empty(len(dist_data_eso_wo_last)+1,dtype=dist_data_eso_wo_last.dtype)
         dist_data_eso[:-1] = dist_data_eso_wo_last

@@ -208,7 +208,7 @@ class Test_g_indexer:
     # If we requested an index for which no data has been provided
     # by the managing process (counts_in = 0), we will simply get
     # not data for this index (counts_out = 0)
-    data_out, counts_out  = GI.Take_v((data_in, counts_in))
+    counts_out, data_out  = GI.Take_v((counts_in, data_in))
 
     expected_out = [
       (np.array([0,0,2,0,0]), np.array([50.,55])),
@@ -237,7 +237,7 @@ class Test_g_indexer:
       data_in =np.array([100.,105, 20]) 
 
 
-    data_out, counts_out = GI.Put_v((data_in, counts_in))
+    counts_out, data_out = GI.Put_v((counts_in, data_in))
 
     expected_out = [
       (np.array([0,1,0,0,2]), np.array([20., 50.,55])),

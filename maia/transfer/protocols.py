@@ -144,25 +144,25 @@ def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm, l
   BTP = BlockToPart(distri, ln_to_gn_list, comm, legacy)
 
   if legacy:
-    exch_one = lambda d_field, d_stride : BTP.exchange_field(d_field, d_stride)[::-1] # Swap to have part_data, part_stride
+    exch_one = lambda d_field, d_stride : BTP.exchange_field(d_field, d_stride)
   else:
     def exch_one(d_field, d_stride):
-      data_out = BTP.Take_v((d_field, d_stride)) #data_out is either (part_data, part_stride) (if GIndexer) or 
+      data_out = BTP.Take_v((d_stride, d_field)) #data_out is either (part_data, part_stride) (if GIndexer) or 
       if not isinstance(ln_to_gn_list, list): # In this case, data_out is a tuple part_data, part_stride
         return data_out 
       else: # In this case, data_out is a list of tuple (part_data_i, part_stride_i) -> unzip it to get two lists
-        p_field = [data[0] for data in data_out]
-        p_strid = [data[1] for data in data_out]
-        return p_field, p_strid
+        p_strid = [data[0] for data in data_out]
+        p_field = [data[1] for data in data_out]
+        return p_strid, p_field
 
   if isinstance(dist_data, dict):
     _check_dict_keys(dist_data, comm)
     part_data = dict()
     for name, d_field in dist_data.items():
-      _part_data, part_stride = exch_one(d_field, dist_stride)
+      part_stride, _part_data = exch_one(d_field, dist_stride)
       part_data[name] = _part_data
   else:
-    part_data, part_stride = exch_one(dist_data, dist_stride)
+    part_stride, part_data = exch_one(dist_data, dist_stride)
 
   return part_stride, part_data
 
