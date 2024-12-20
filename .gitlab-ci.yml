@@ -272,7 +272,7 @@ deploy_spiro_sonics:
   stage: deploy
   needs: ["init_deploy"]
   rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "disabled-for-now"
   before_script:
     - |
       cat > build_spiro.sh << EOF
@@ -360,7 +360,7 @@ deploy_juno_socle6:
 
 post_deploy:
   stage: deploy
-  needs: ["deploy_spiro_socle6", "deploy_spiro_sonics", "deploy_sator_socle6", "deploy_sator_sonics", "deploy_juno_socle6"]
+  needs: ["deploy_spiro_socle6", "deploy_sator_socle6", "deploy_sator_sonics", "deploy_juno_socle6"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   before_script: 
