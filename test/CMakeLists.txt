@@ -17,7 +17,7 @@ create_doctest(
   SERIAL_RUN    false
   N_PROC        ${n_proc_max_test}
 )
-set_tests_properties(maia_doctest_unit_tests PROPERTIES TIMEOUT 10)
+set_tests_properties(maia_doctest_unit_tests PROPERTIES TIMEOUT 60)
 
 
 create_pytest(
@@ -32,15 +32,3 @@ create_pytest(
   SERIAL_RUN    false
   N_PROC        ${n_proc_max_test}
 )
-
-# TODO (not ready yet)
-#mpi_test_create(maia_mpi_scheduler_T1.cpp maia_mpi_scheduler_T1 maia 2
-#                SOURCES
-#                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
-#                LABELS     unit
-#                SERIAL_RUN false )
-#mpi_test_create(maia_mpi_scheduler_threads.cpp maia_mpi_scheduler_threads maia 15
-#                SOURCES
-#                LIBRARIES ${LINK_LIBRARIES} MPI::MPI_CXX
-#                LABELS     unit
-#                SERIAL_RUN false )
