@@ -27,7 +27,7 @@ Base CGNSBase_t I4 [3, 3]:
   out_file = os.path.join(tmp_dir, 'yt.cgns')
   maia.io.dist_tree_to_file(dist_tree, out_file, comm)
 
-  t = maia.io.cgns_io_tree.read_tree(out_file)
+  t = maia.io.read_tree(out_file)
   assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
   TU.rm_collective_dir(tmp_dir, comm)
 
@@ -75,7 +75,7 @@ Base CGNSBase_t I4 [3, 3]:
       file_links = maia.io.read_links(out_file)
       assert file_links == [links[0]]
     else:
-      t = maia.io.cgns_io_tree.read_tree(out_file)
+      t = maia.io.read_tree(out_file)
       assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
   TU.rm_collective_dir(tmp_dir, comm)
 

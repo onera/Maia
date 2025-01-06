@@ -1,3 +1,6 @@
+_LEGACY_MSG = "Flag legacy is now ignored, and will be removed in next release"
+_LEGACY_IO  = False
+import warnings
 import os
 import time
 import mpi4py.MPI as MPI
@@ -10,32 +13,28 @@ from .distribution_tree         import add_distribution_info, clean_distribution
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity
 
+if _LEGACY_IO:
+  from . import _hdf_io_cass as _hdf_io
+else:
+  from . import _hdf_io_h5py as _hdf_io
+
 from maia.factory     import full_to_dist
 
 def load_size_tree(filename, comm, legacy=False):
   if legacy:
-    from ._hdf_io_cass import load_size_tree
-  else:
-    from ._hdf_io_h5py import load_size_tree
-  return load_size_tree(filename, comm)
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
+  return _hdf_io.load_size_tree(filename, comm)
 
-def load_partial(filename, dist_tree, hdf_filter, comm, legacy):
-  if legacy:
-    from ._hdf_io_cass import load_partial
-    load_partial(filename, dist_tree, hdf_filter, comm)
+def load_partial(filename, dist_tree, hdf_filter, comm):
+  if _LEGACY_IO:
+    _hdf_io.load_partial(filename, dist_tree, hdf_filter, comm)
   else:
-    from ._hdf_io_h5py import load_partial
-    load_partial(filename, dist_tree, hdf_filter)
-
-def write_partial(filename, dist_tree, hdf_filter, comm, links, legacy):
-  if legacy:
-    from ._hdf_io_cass import write_partial
-  else:
-    from ._hdf_io_h5py import write_partial
-  write_partial(filename, dist_tree, hdf_filter, links, comm)
+    _hdf_io.load_partial(filename, dist_tree, hdf_filter)
 
 def write_tree(tree, filename, links=[], legacy=False):
-  """Sequential write to a CGNS file.
+  """write_tree(tree, filename, links=[])
+  
+  Sequential write to a CGNS file.
 
   Args:
     tree (CGNSTree) : Tree to write
@@ -50,13 +49,13 @@ def write_tree(tree, filename, links=[], legacy=False):
   """
   filename = str(filename)
   if legacy:
-    from ._hdf_io_cass import write_full
-  else:
-    from ._hdf_io_h5py import write_full
-  write_full(filename, tree, links=links)
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
+  _hdf_io.write_full(filename, tree, links=links)
 
 def read_tree(filename, legacy=False):
-  """Sequential load of a CGNS file. 
+  """read_tree(filename)
+  
+  Sequential load of a CGNS file. 
 
   Args:
     filename (str) : Path of the file
@@ -70,13 +69,13 @@ def read_tree(filename, legacy=False):
     return tree
   else:
     if legacy:
-      from ._hdf_io_cass import read_full
-    else:
-      from ._hdf_io_h5py import read_full
-    return read_full(filename)
+      warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
+    return _hdf_io.read_full(filename)
 
 def read_links(filename, legacy=False):
-  """Detect the links embedded in a CGNS file. 
+  """read_links(filename)
+  
+  Detect the links embedded in a CGNS file. 
 
   Links information are returned as described in sids-to-python. Note that
   no data are loaded and the tree structure is not even built.
@@ -88,18 +87,17 @@ def read_links(filename, legacy=False):
   """
   filename = str(filename)
   if legacy:
-    raise NotImplementedError("read_links is only available with legacy=False")
-  else:
-    from ._hdf_io_h5py import read_links
-  return read_links(filename)
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
 
-def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
+  return _hdf_io.read_links(filename)
+
+def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() \
       if isinstance(value, (list, tuple))}
 
-  load_partial(filename, dist_tree, hdf_filter_with_dim, comm, legacy)
+  load_partial(filename, dist_tree, hdf_filter_with_dim, comm)
 
   # > Match with callable
   hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() \
@@ -116,7 +114,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
       except RuntimeError: # Not ready yet
         pass
 
-    load_partial(filename, dist_tree, next_hdf_filter, comm, legacy)
+    load_partial(filename, dist_tree, next_hdf_filter, comm)
 
     hdf_filter_with_func = {key: value for (key, value) in next_hdf_filter.items() \
         if not isinstance(value, (list, tuple))}
@@ -133,7 +131,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter, legacy):
     mlog.error(f"ElementConnectivity arrays of NFACE_n elements have been recomputed "\
                f"because they were wrongly defined (missing orientations)")
 
-def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links, legacy):
+def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links):
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
@@ -147,7 +145,7 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links, legacy):
   saving_dist_tree = PT.shallow_copy(dist_tree)
   clean_distribution_info(saving_dist_tree)
 
-  write_partial(filename, saving_dist_tree, hdf_filter_with_dim, comm, links, legacy)
+  _hdf_io.write_partial(filename, saving_dist_tree, hdf_filter_with_dim, links, comm)
 
 def fill_size_tree(tree, filename, comm, legacy=False):
   filename = str(filename)
@@ -156,13 +154,17 @@ def fill_size_tree(tree, filename, comm, legacy=False):
   # Coords#Size appears in dict -> remove it
   hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
 
-  load_tree_from_filter(filename, tree, comm, hdf_filter, legacy)
+  if legacy:
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
+  load_tree_from_filter(filename, tree, comm, hdf_filter)
   PT.rm_nodes_from_name(tree, '*#Size')
 
 
 def file_to_dist_tree(filename, comm, legacy=False):
-  """Distributed load of a CGNS file.
-
+  """file_to_dist_tree(filename, comm)
+  
+  Distributed load of a CGNS file.
+  
   Args:
     filename (str) : Path of the file
     comm     (MPIComm) : MPI communicator
@@ -181,8 +183,10 @@ def file_to_dist_tree(filename, comm, legacy=False):
     dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
 
   else:
-    dist_tree = load_size_tree(filename, comm, legacy)
-    fill_size_tree(dist_tree, filename, comm, legacy)
+    if legacy:
+      warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
+    dist_tree = load_size_tree(filename, comm)
+    fill_size_tree(dist_tree, filename, comm)
 
   end = time.time()
   dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
@@ -193,7 +197,9 @@ def file_to_dist_tree(filename, comm, legacy=False):
   return dist_tree
 
 def dist_tree_to_file(dist_tree, filename, comm, links=[], legacy=False):
-  """Distributed write to a CGNS file.
+  """dist_tree_to_file(dist_tree, filename, comm, links=[])
+  
+  Distributed write to a CGNS file.
 
   If links are used, the link description list must be identiqual on all ranks.
 
@@ -203,6 +209,8 @@ def dist_tree_to_file(dist_tree, filename, comm, links=[], legacy=False):
     links   (list) : List of links to create (see SIDS-to-Python guide)
     comm     (MPIComm) : MPI communicator
   """
+  if legacy:
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
   if links:
     dist_tree = PT.shallow_copy(dist_tree)
     for link in links: # Links override data, so delete data
@@ -215,12 +223,14 @@ def dist_tree_to_file(dist_tree, filename, comm, links=[], legacy=False):
   start = time.time()
   filename = str(filename)
   hdf_filter = create_tree_hdf_filter(dist_tree)
-  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links, legacy)
+  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links)
   end = time.time()
   mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
 def write_trees(tree, filename, comm, links=[], legacy=False):
-  """Sequential write to CGNS files.
+  """write_trees(tree, filename, comm, links=[])
+  
+  Sequential write to CGNS files.
 
   Write separate trees for each process. Rank id will be automatically
   inserted in the filename. If links are used, each rank must provide its own
@@ -243,4 +253,6 @@ def write_trees(tree, filename, comm, links=[], legacy=False):
   base_name, extension = os.path.splitext(filename)
   base_name += f"_{comm.Get_rank()}"
   _filename = base_name + extension
-  write_tree(tree, _filename, links, legacy=legacy)
+  if legacy:
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
+  write_tree(tree, _filename, links)

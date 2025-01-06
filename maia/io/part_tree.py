@@ -1,3 +1,4 @@
+import warnings
 import os
 import maia
 import maia.pytree        as PT
@@ -8,7 +9,16 @@ import maia.utils.logging as mlog
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from maia.factory.partitioning import compute_nosplit_weights
 
+from .cgns_io_tree import _LEGACY_IO, _LEGACY_MSG
 from .cgns_io_tree import write_tree
+
+if _LEGACY_IO:
+  import Converter.Filter as Filter
+  from Converter.Distributed import writeZones
+else:
+  from h5py import h5f
+  from ._hdf_io_h5py  import _write_links
+  from .hdf._hdf_cgns import open_from_path, load_tree_partial, _load_node_partial, _write_node_partial
 
 def enforce_maia_naming(part_tree, comm):
   """Rename the zones and joins of a partitionned tree such that maia
@@ -53,8 +63,10 @@ def _read_part_from_size(tree, filename, comm):
   return [path for path in compute_nosplit_weights(tree, comm)]
 
 
-def read_part_tree(filename, comm, redispatch=False, legacy=False):
-  """Read the partitioned zones from a hdf container and affect them
+def file_to_part_tree(filename, comm, redispatch=False, legacy=False):
+  """file_to_part_tree(filename, comm, redispatch=False)
+  
+  Read the partitioned zones from a hdf container and affect them
   to the ranks.
   
   If ``redispatch == False``, the CGNS zones are affected to the
@@ -67,7 +79,7 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
 
   Important:
     This function **does not** perfom the partitioning operation; input file is supposed
-    to contain an already partitioned tree, eg. saved with ``part_tree_to_file``.
+    to contain an already partitioned tree, eg. saved with :func:`part_tree_to_file`.
 
   Args:
     filename (str) : Path of the file
@@ -78,17 +90,14 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
     CGNSTree: Partitioned CGNS tree
 
   """
+  if legacy:
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
 
   # Skeleton
   filename = str(filename)
-  if legacy:
-    import Converter.Filter as Filter
+  if _LEGACY_IO:
     tree = Filter.convertFile2SkeletonTree(filename, maxDepth=2)
   else:
-    from maia.io.cgns_io_tree import load_size_tree
-    from h5py import h5f
-    from .hdf._hdf_cgns import open_from_path, _load_node_partial, load_tree_partial
-
     if comm.Get_rank() == 0:
       dont_load_zone = lambda N, labels, S : labels[-1] == 'Zone_t' or not 'Zone_t' in labels
       size_tree = load_tree_partial(filename, dont_load_zone)
@@ -104,7 +113,7 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
     zones_to_read = _read_part_from_name(tree, filename, comm)
 
   # Data
-  if legacy:
+  if _LEGACY_IO:
     to_read = list() #Read owned zones and metadata at Base level
     for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
       if zone_path in zones_to_read:
@@ -146,8 +155,10 @@ def read_part_tree(filename, comm, redispatch=False, legacy=False):
   return tree
 
 
-def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legacy=False):
-  """Gather the partitioned zones managed by all the processes and write it in a unique
+def part_tree_to_file(part_tree, filename, comm, single_file=False, links=[], legacy=False):
+  """part_tree_to_file(part_tree, filename, comm, single_file=False, links=[])
+  
+  Gather the partitioned zones managed by all the processes and write it in a unique
   hdf container.
 
   If ``single_file`` is True, one file named *filename* storing all the partitioned
@@ -160,7 +171,7 @@ def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legac
     comm     (MPIComm) : MPI communicator
     single_file (bool) : Produce a unique file if True; use CGNS links otherwise.
     links (list): List of links to create (see SIDS-to-Python guide). Each rank must provide
-      only the links related to one of its partitions. Not compatible with ``legacy=True``.
+      only the links related to one of its partitions.
 
   Example:
       .. literalinclude:: snippets/test_io.py
@@ -173,6 +184,9 @@ def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legac
   base_name, extension = os.path.splitext(filename)
   subfilename = base_name + f'_sub_{rank}' + extension
 
+  if legacy:
+    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
+
   # Get meta data nodes, this allows custom nodes located at tree top level (see #108)
   glob_nodes = PT.get_children_from_predicate(part_tree, lambda n : PT.get_label(n) != 'CGNSBase_t')
   top_tree = PT.new_node('CGNSTree', 'CGNSTree_t', children=glob_nodes)
@@ -184,17 +198,13 @@ def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legac
     # Sequential write seems to be faster than collective io -- see 01d84da7 for other methods
     # Create file and write Bases
     if rank == 0:
-      write_tree(top_tree, filename, legacy=legacy)
+      write_tree(top_tree, filename)
     comm.barrier()
     for i in range(comm.Get_size()):
       if i == rank:
-        if legacy:
-          from Converter.Distributed import writeZones
+        if _LEGACY_IO:
           writeZones(part_tree, filename, proc=-1)
         else:
-          from h5py import h5f
-          from .hdf._hdf_cgns import open_from_path, _write_node_partial
-          from ._hdf_io_h5py  import _write_links
           fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
           for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
             _links = [link for link in links if link[3].startswith(zone_path)]
@@ -213,10 +223,10 @@ def save_part_tree(part_tree, filename, comm, single_file=False, links=[], legac
     for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
       zone_links += [['', subfilename, zone_path, zone_path]]
 
-    write_tree(part_tree, subfilename, links, legacy=legacy) #Use direct API to manage name
+    write_tree(part_tree, subfilename, links) #Use direct API to manage name
 
     _zone_links = comm.gather(zone_links, root=0)
     if rank == 0:
       zone_links  = [l for proc_links in _zone_links for l in proc_links] #Flatten gather result
-      write_tree(top_tree, filename, links=zone_links, legacy=legacy)
+      write_tree(top_tree, filename, links=zone_links)
 

@@ -4,16 +4,10 @@ File management
 Maia supports HDF5/CGNS file reading and writing,
 see `related documention <https://cgns.github.io/CGNS_docs_current/hdf5/index.html>`_.
 
-The IO functions are provided by the ``maia.io`` module. All the high level functions
-accepts a ``legacy`` parameter used to control the low level CGNS-to-hdf driver:
-
-- if ``legacy==False`` (default), hdf calls are performed by the python module
-  `h5py <https://www.h5py.org/>`_.
-- if ``legacy==True``,  hdf calls are performed by 
-  `Cassiopee.Converter <http://elsa.onera.fr/Cassiopee/Converter.html>`_ module.
-
-The requested driver should be installed on your computer as well as the
-hdf5 library compiled with parallel support.
+The IO functions are provided by the ``maia.io`` module. The low level hdf
+calls are performed by the python module `h5py <https://www.h5py.org/>`_.
+Note that both the hdf5 library and the h5py module must have
+been installed on your computer with parallel support. 
 
 .. _user_man_dist_io:
 

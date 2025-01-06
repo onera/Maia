@@ -32,6 +32,7 @@ Developpement version
 🚧 API change
 ^^^^^^^^^^^^^
 - generate_dist_block: rename parameter ``edge_length`` into ``length``
+- Flag ``legacy=True`` for io functions is now ignored, and will be removed in next release
 
 v1.5 (September 2024)
 ---------------------

@@ -36,7 +36,7 @@ def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
   expected_n_files = 1 + comm.Get_size() * int(not single_file)
 
   filename = Path(mpi_tmpdir) / 'out.hdf'
-  PIO.save_part_tree(tree, str(filename), comm, single_file, links)
+  PIO.part_tree_to_file(tree, str(filename), comm, single_file, links)
   comm.barrier()
   assert filename.exists()
   assert len(list(Path(mpi_tmpdir).glob('*'))) == expected_n_files
@@ -75,18 +75,18 @@ def test_write_part_tree(mpi_tmpdir, user_links, single_file, comm):
 
 @pytest_parallel.mark.parallel(4)
 @pytest.mark.parametrize('single_file', [False, True])
-def test_read_part_tree(mpi_tmpdir, single_file, comm):
+def test_file_to_part_tree(mpi_tmpdir, single_file, comm):
 
   # Prepare test (produce part_tree_file)
   dtree = maia.factory.generate_dist_block(4, 'Poly', comm)
   tree  = maia.factory.partition_dist_tree(dtree, comm)
   expected = np.copy(PT.get_node_from_name(tree, 'CoordinateX')[1]) #Backup array for later check
   filename = Path(mpi_tmpdir) / 'out.hdf'
-  PIO.save_part_tree(tree, str(filename), comm, single_file)
+  PIO.part_tree_to_file(tree, str(filename), comm, single_file)
   comm.barrier()
 
   # Actual test
-  tree = PIO.read_part_tree(str(filename), comm)
+  tree = PIO.file_to_part_tree(str(filename), comm)
   zones = PT.get_all_Zone_t(tree)
 
   # Check: data should have been loaded
@@ -98,7 +98,7 @@ def test_read_part_tree(mpi_tmpdir, single_file, comm):
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize('redispatch', [False, True])
-def test_read_part_tree_redispatch(mpi_tmpdir, redispatch, comm):
+def test_file_to_part_tree_redispatch(mpi_tmpdir, redispatch, comm):
 
   # To get logs in printer.msg  
   err_printer = LogCapture()
@@ -111,10 +111,10 @@ def test_read_part_tree_redispatch(mpi_tmpdir, redispatch, comm):
   tree  = maia.factory.partition_dist_tree(dtree, comm)
 
   filename = Path(mpi_tmpdir) / 'out.hdf'
-  PIO.save_part_tree(tree, str(filename), comm)
+  PIO.part_tree_to_file(tree, str(filename), comm)
   comm.barrier()
   if comm.Get_rank() == 0:
-    tree = PIO.read_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
+    tree = PIO.file_to_part_tree(str(filename), MPI.COMM_SELF, redispatch=redispatch)
     if redispatch:
       assert len(PT.get_all_Zone_t(tree)) == 2
       assert PT.get_name(PT.get_all_Zone_t(tree)[1]) == 'zone.P0.N1'
