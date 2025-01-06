@@ -1,13 +1,6 @@
-#if __cplusplus > 201703L
-#include "maia/algo/part/gcs_ghosts/gcs_only_for_ghosts.hpp"
-#include "maia/__old/transform/remove_ghost_info.hpp"
-#include "cpp_cgns/interop/pycgns_converter.hpp"
-#include "maia/utils/parallel/mpi4py.hpp"
-#else //C++==17
-#endif //C++>17
+
 #include "maia/algo/part/geometry/geometry.pybind.hpp"
 #include "maia/algo/part/ngon_tools/ngon_tools.pybind.hpp"
-#include "maia/algo/part/cgns_registry/cgns_registry.pybind.hpp"
 #include "maia/algo/part/part_algo.pybind.hpp"
 
 #include <pybind11/pybind11.h>
@@ -71,28 +64,6 @@ enforce_pe_left_parent(
   }
 }
 
-#if __cplusplus > 201703L
-template<class F> auto
-apply_cpp_cgns_function_to_py_base(F&& f) {
-  return [&f](py::list py_base) {
-    cgns::tree base = cgns::to_cpp_tree(py_base);
-    f(base);
-    update_py_tree(std::move(base),py_base);
-  };
-}
-template<class F> auto
-apply_cpp_cgns_par_function_to_py_base(F&& f) {
-  return [&f](py::list py_base, py::object mpi4py_comm) {
-    cgns::tree base = cgns::to_cpp_tree(py_base);
-    MPI_Comm comm = maia::mpi4py_comm_to_comm(mpi4py_comm);
-    f(base,comm);
-    update_py_tree(std::move(base),py_base);
-  };
-}
-const auto gcs_only_for_ghosts          = apply_cpp_cgns_function_to_py_base(cgns::gcs_only_for_ghosts);
-const auto remove_ghost_info             = apply_cpp_cgns_par_function_to_py_base(maia::remove_ghost_info);
-#else //C++==17
-#endif //C++>17
 
 
 void register_part_algo_module(py::module_& parent) {
@@ -188,12 +159,4 @@ void register_part_algo_module(py::module_& parent) {
         py::arg("np_cy").noconvert(),
         py::arg("np_cz").noconvert());
 
-  #if __cplusplus > 201703L
-  m.def("gcs_only_for_ghosts"                     , gcs_only_for_ghosts                     , "For GridConnectivities, keep only in the PointList the ones that are ghosts");
-  m.def("remove_ghost_info"                       , remove_ghost_info                       , "Remove ghost nodes and ghost elements of base");
-  #else //C++==17
-  #endif //C++>17
-
-  register_cgns_registry_module(m);
-  
 }
