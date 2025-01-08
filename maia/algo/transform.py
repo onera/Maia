@@ -461,7 +461,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
         vectors_basenames = py_utils.find_vector_names(datanames, in_suffix)
         for basename in vectors_basenames:
           vectors_n = [PT.get_node_from_name(fields_node, f"{basename}{c}")  for c in in_suffix]
-          tr_fields = np_utils.matmul_cart_vectors(*[PT.get_value(n) for n in vectors_n], transition_matrix)
+          tr_fields = np_utils.matmul_cart_vectors([PT.get_value(n) for n in vectors_n], transition_matrix)
           for node, s, new_val in zip(vectors_n, out_suffix, tr_fields):
             PT.update_node(node, f'{basename}{s}', value=new_val)
     

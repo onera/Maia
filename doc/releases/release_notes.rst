@@ -19,6 +19,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - generate_dist_block: add element kind ``BAR_2`` to generate lineic 1D meshes
+- generate_dist_block: generate blocks aligned with custom basis vectors
 - partition_dist_tree: manage ZoneSubRegion nodes when splitting structured meshes
 - extract_part: also expose extractor object in ``bc_name`` and ``family`` APIs
 

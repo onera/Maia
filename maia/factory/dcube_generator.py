@@ -286,7 +286,7 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=
     the canonical axes. Its length is then equal to the specified value in each direction;
   - a list of :math:`d_m` vectors, each one of size :math:`d_\phi`. In this case, the generated line, parallelogram
     or parallelepiped is no more aligned with the canonical axes, but with the provided basis.
-    Its length is equal to the norm of the basis vector in each direction (**for now implemented only for BAR_2**).
+    Its length is equal to the norm of the basis vector in each direction.
 
   Note that ``length`` can contain negative values.
 
@@ -327,42 +327,45 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=
     cell_dim = 3
 
   # > Convert length to full vector
-  need_rotate = False
+  need_matrix = False
   # Special case of BAR_2 : we allow [l1,l2,l3] to be converted in [[l1,l2,l3]]
   if cgns_elmt_name == 'BAR_2' and _is_iterable(length) and not _is_iterable(length[0]) and len(length) == phy_dim:
     length = [length]
 
   if not _is_iterable(length): # Scalar case : extend to tuple case
+    need_scaling = length != 1.
     length = np.full(cell_dim, length, dtype=np.float64)
   else:
     if not _is_iterable(length[0]): # tuple case
       assert len(length) == cell_dim, f"length argument is a tuple (case 2), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
+      need_scaling = True
     else:
       msg_outer = f"length argument is a list of tuple (case 3), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
       msg_inner = f"length argument is a list of tuple (case 3), but the size of each tuple is not equal to PhysicalDimension ({[len(ld) for ld in length]}) vs {phy_dim})"
       assert len(length) == cell_dim, msg_outer
       assert all([len(ld) == phy_dim for ld in length]), msg_inner
 
-      need_rotate = True
+      need_matrix = True
 
   origin = np.asarray(origin, float)
 
   # First case manage correctly origin / length --> direct return of disttree
   if cgns_elmt_name in ["BAR_2"]:
     end = origin.copy()
-    if need_rotate:
+    if need_matrix:
       end += length[0]
     else:
       end[0] += length[0]
     return generate_dist_line(n_vtx, origin, end, comm)
   
-  # Structured case manage case 2, but not general case (rotate)
+  # Structured case manage case 2, but not general case --> generate unit mesh in general case to rescale afterward
   elif cgns_elmt_name in ["Structured", "S"]:
-    if need_rotate:
-      raise NotImplementedError("Custom generic lengt not yet implemented for structured mesh")
-    _length = np.zeros(phy_dim)
-    _length[:cell_dim] = length
-    return dcube_struct_generate(n_vtx, _length, origin, comm)
+    if not need_matrix:
+      _length = np.zeros(phy_dim)
+      _length[:cell_dim] = length
+      return dcube_struct_generate(n_vtx, _length, origin, comm)
+    else:
+      dist_tree = dcube_struct_generate(n_vtx, 1., np.zeros(phy_dim), comm)
 
   # Other cases do not manage anything: use origin=0., length=1. (unit mesh), and rescale afterward
   elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
@@ -374,11 +377,18 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=
     dist_tree = dcube_nodal_generate(n_vtx, 1., np.zeros(phy_dim), cgns_elmt_name, comm)
 
   # > Apply scaling and transform
-  if need_rotate:
-    raise NotImplementedError("Custom generic length not yet implemented")
+  if need_matrix:
+    matrix = np.eye(phy_dim)
+    matrix[:,0:cell_dim] = np.asarray(length).T
+    zone = PT.get_all_Zone_t(dist_tree)[0]
+    coords = [PT.get_node_from_path(zone, f'GridCoordinates/Coordinate{dir}') for dir in 'XYZ']
+    tr_coords = np_utils.matmul_cart_vectors([PT.get_value(c) for c in coords[0:phy_dim]], matrix)
+    for coord_n, new_c in zip(coords, tr_coords):
+      PT.set_value(coord_n, new_c)
+  elif need_scaling:
+    scale_length = [l for l in length] + [1.]*(3-cell_dim)
+    maia.algo.scale_mesh(dist_tree, scale_length)
 
-  scale_length = [l for l in length] + [1.]*(3-cell_dim)
-  maia.algo.scale_mesh(dist_tree, scale_length)
   for dim, coord_name in enumerate(['CoordinateX', 'CoordinateY', 'CoordinateZ'][:phy_dim]):
     coord_n = PT.get_node_from_name(dist_tree, coord_name)
     coord = PT.get_value(coord_n)+origin[dim]

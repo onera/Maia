@@ -9,6 +9,8 @@ from mpi4py import MPI
 
 import numpy as np
 
+isclose = lambda a,b : abs(a-b) < 1E-12
+
 def check_dims(tree, expected_cell_dim, expected_phy_dim):
   base = PT.get_child_from_label(tree, 'CGNSBase_t')
   zone = PT.get_child_from_label(base, 'Zone_t')
@@ -93,26 +95,41 @@ def test_dcube_nodal_generate_ridges(comm):
   assert [PT.get_name(n) for n in PT.get_children_from_label(zone, 'Elements_t')] == \
                    ['PYRA_5.0', 'TRI_3.0', 'QUAD_4.1', 'BAR_2.0', 'NODE.0']
 
-@pytest.mark.parametrize("cgns_elmt_name", ["BAR_2", "TETRA_4"])
+@pytest.mark.parametrize("cgns_elmt_name", ["TETRA_4", "S", "Poly"])
 @pytest_parallel.mark.parallel([2])
-def test_dist_block_generate_deformed_cube(cgns_elmt_name, comm):
+def test_dist_block_generate_scaled_cube(cgns_elmt_name, comm):
   dist_tree = dcube_generator.generate_dist_block(10, cgns_elmt_name, comm,
                                                   origin=[-1.,-1.,-1.],
-                                                  length=[3.,-1.,1.])
+                                                  length=[3.,-0.5,1.])
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
   assert PT.get_value(zone).dtype == pdm_gnum_dtype
-  if cgns_elmt_name=='TETRA_4':
-    assert [PT.get_name(n) for n in PT.get_children_from_label(zone, 'Elements_t')] == \
-                    ['TETRA_4.0', 'TRI_3.0']
-    assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6
-  else:
-    assert [PT.get_name(n) for n in PT.get_children_from_label(zone, 'Elements_t')] == ['BAR_2']
-    assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 0
 
-  coord_x = PT.get_node_from_name(dist_tree, 'CoordinateX')[1]
-  coord_y = PT.get_node_from_name(dist_tree, 'CoordinateY')[1]
-  coord_z = PT.get_node_from_name(dist_tree, 'CoordinateZ')[1]
-  assert comm.allreduce(np.min(coord_x), MPI.MIN) == -1. and comm.allreduce(np.max(coord_x), MPI.MAX) ==  2.
-  assert comm.allreduce(np.min(coord_y), MPI.MIN) == -2. and comm.allreduce(np.max(coord_y), MPI.MAX) == -1.
-  assert comm.allreduce(np.min(coord_z), MPI.MIN) == -1. and comm.allreduce(np.max(coord_z), MPI.MAX) ==  0.
+  coord_x, coord_y, coord_z = PT.Zone.coordinates(zone)
+  assert isclose(comm.allreduce(np.min(coord_x), MPI.MIN), -1. ) and isclose(comm.allreduce(np.max(coord_x), MPI.MAX),  2.)
+  assert isclose(comm.allreduce(np.min(coord_y), MPI.MIN), -1.5) and isclose(comm.allreduce(np.max(coord_y), MPI.MAX), -1.)
+  assert isclose(comm.allreduce(np.min(coord_z), MPI.MIN), -1. ) and isclose(comm.allreduce(np.max(coord_z), MPI.MAX),  0.)
+
+@pytest.mark.parametrize("cgns_elmt_name", ["BAR_2", "QUAD_4", "TETRA_4", "S", "Poly"])
+@pytest_parallel.mark.parallel([2])
+def test_dist_block_generate_transformed_cube(cgns_elmt_name, comm):
+  
+  if cgns_elmt_name == 'BAR_2':
+    length=[(3.,-1.,1.)]
+    bounds = [(0,3), (-1,0), (0,1)]
+  elif cgns_elmt_name == 'QUAD_4':
+    length=[(2.,0.,1), (-.5,1,0)]
+    bounds = [(-.5,2), (0,1), (0,1)]
+  else:
+    length=[(2.,0.,1), (-.5,1,0), (1,1,1)]
+    bounds = [(-.5,3), (0,2), (0,2)]
+
+  dist_tree = dcube_generator.generate_dist_block(10, cgns_elmt_name, comm, length=length)
+  
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+  coord_x, coord_y, coord_z = PT.Zone.coordinates(zone)
+
+  
+  assert isclose(comm.allreduce(np.min(coord_x), MPI.MIN), bounds[0][0]) and isclose(comm.allreduce(np.max(coord_x), MPI.MAX), bounds[0][1])
+  assert isclose(comm.allreduce(np.min(coord_y), MPI.MIN), bounds[1][0]) and isclose(comm.allreduce(np.max(coord_y), MPI.MAX), bounds[1][1])
+  assert isclose(comm.allreduce(np.min(coord_z), MPI.MIN), bounds[2][0]) and isclose(comm.allreduce(np.max(coord_z), MPI.MAX), bounds[2][1])

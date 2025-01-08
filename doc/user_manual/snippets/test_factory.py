@@ -25,11 +25,11 @@ def test_generate_dist_block():
   
   # 2D structured zone, PhyDim=3, variable nb. of vertices, custom origin
   dist_tree = generate_dist_block((11,21), 'S', comm, origin=[2.,3.,1.5])
-  # 2D unstructured zone, PhyDim=2, custom length direction (not yet implemented)
-  #dist_tree = generate_dist_block(6, 'QUAD_4', comm, origin=[0., 0.], length=[[0.707,0.707], [-0.707,0.707]])
+  # 2D unstructured zone, PhyDim=2, custom length direction
+  dist_tree = generate_dist_block(6, 'QUAD_4', comm, origin=[0., 0.], length=[(0.707,0.707), (-0.707,0.707)])
 
   # 1D unstructured zone, PhyDim=3, custom origin and end point
-  dist_tree = generate_dist_block(6, 'BAR_2', comm, origin=[0.25, 0.25, 0.], length=[[1,0.,-1.]])
+  dist_tree = generate_dist_block(6, 'BAR_2', comm, origin=[0.25, 0.25, 0.], length=[(1,0.,-1.)])
   #generate_dist_block@end
 
 def test_generate_dist_sphere():

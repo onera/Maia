@@ -304,25 +304,16 @@ def all_in_range(array, start, end, strict=False):
   return ((start <  np_array) & (np_array <  end)).all() if strict\
     else ((start <= np_array) & (np_array <= end)).all()
 
-def matmul_cart_vectors(vx, vy, vz, transform_matrix):
+def matmul_cart_vectors(vectors, transform_matrix):
   """
   Apply the transformation matrix on another matrix composed with components of vectors and return each of the modified components of the vectors
   """
-  assert vx.shape == vy.shape == vz.shape
+  assert all(v.shape == vectors[0].shape for v in vectors)
    
-  if vx.ndim == 1:
-    vectors = np.array([vx, vy, vz], order='F')
-  else:
-    vectors = np.array([vx.flatten('F'), vy.flatten('F'), vz.flatten('F')], order='F')
-
-  res_1, res_2, res_3 = np.dot(transform_matrix, vectors)
+  _vectors = np.array([v.reshape(-1, order='F') for v in vectors], order='F')
+  _res     = np.dot(transform_matrix, _vectors)
   
-  if vx.ndim != 1 :
-    res_1 = res_1.reshape(vx.shape, order='F')
-    res_2 = res_2.reshape(vy.shape, order='F')
-    res_3 = res_3.reshape(vz.shape, order='F')
-   
-  return res_1, res_2, res_3
+  return tuple(r.reshape(v.shape, order='F') for r,v in zip(_res, vectors))
 
 def create_transform_matrix(revolution_axis=(0, 0, 1)):  
   """Create a transform matrix from any axis revolution and return the transformation matrix from the former basis toward the new basis.
