@@ -4,6 +4,14 @@ import pickle
 
 from cmaia.utils import layouts
 
+# Typing
+from typing       import List, Tuple, Any
+from numpy.typing import NDArray
+NDArrayInt = NDArray[np.integer]
+Buffer = NDArray[Any] 
+VBuffer = Tuple[NDArrayInt, Buffer]  
+
+
 def counting_sort(array, n_bins):
   return layouts.counting_sort(array, n_bins)
 
@@ -51,7 +59,7 @@ class GlobalMultiIndexer:
 
   """
 
-  def __init__(self, distri, g_idx_l, comm):
+  def __init__(self, distri: NDArrayInt, g_idx_l: List[NDArrayInt], comm: MPI.Comm):
     """ Generalization of :func:`GlobalIndexer.__init__` for multi index access.
 
     Args:
@@ -95,25 +103,25 @@ class GlobalMultiIndexer:
     self._empty_part = None                       # True if at least one rank has len(g_idx) == 0
 
   @property
-  def empty_dist(self):
+  def empty_dist(self) -> bool:
     return self._empty_dist
   @property
-  def empty_part(self):
+  def empty_part(self) -> bool:
     if self._empty_part is None:
       self._empty_part = self.comm.allreduce(len(self.pn) == 0, MPI.LOR)
     return self._empty_part
 
 
-  def take(self, data_in):
+  def take(self, dist_data: List) -> List[List]:
     """ Generalization of :func:`GlobalIndexer.take` for multi index access.
 
     Args:
-      data_in (list of size :math:`dn`) : section of the distributed data
+      dist_data (list of size :math:`dn`) : section of the distributed data
     Returns:
       :math:`N` list of size :math:`pn_k` : for each index list,
       values extracted at the requested indices
     """
-    pickelized = [pickle.dumps(data) for data in data_in]
+    pickelized = [pickle.dumps(data) for data in dist_data]
     counts_in  = np.array([len(p) for p in pickelized], dtype=int)
 
     buff_in = np.frombuffer(b''.join(pickelized), dtype=np.int8)
@@ -130,17 +138,17 @@ class GlobalMultiIndexer:
       res.append(out)
     return res
 
-  def put(self, data_in_l):
+  def put(self, local_data_l: List[List]) -> List:
     """ Generalization of :func:`GlobalIndexer.put` for multi index access.
 
     Args:
-      data_in_l (:math:`N` list of size :math:`pn_k`) : for each index list, data to write
+      local_data_l (:math:`N` list of size :math:`pn_k`) : for each index list, data to write
         at each accessed index
     Returns:
       list of size :math:`dn`: output distributed data
     """
     _data_in_l = list()
-    for data_in in data_in_l:
+    for data_in in local_data_l:
       pickelized = [pickle.dumps(data) for data in data_in]
       counts_in = np.array([len(p) for p in pickelized], dtype=int)
       buff_in   = np.frombuffer(b''.join(pickelized), dtype=np.int8)
@@ -158,39 +166,39 @@ class GlobalMultiIndexer:
       r_start += size
     return out
 
-  def Take_into(self, data_in, data_out_l, count=1):
+  def Take_into(self, dist_data: Buffer, local_data_l: List[Buffer] , count=1):
     """ Generalization of :func:`GlobalIndexer.Take_into` for multi index access.
 
     Args:
-      data_in    (buffer) : section of the distributed data
-      data_out_l (list of :math:`N` buffer) : preallocated buffers to store extracted values
+      dist_data  (buffer) : section of the distributed data
+      local_data_l (list of :math:`N` buffer) : preallocated buffers to store extracted values
         corresponding to each index list
       count (int) : scalar value of :math:`c`. Defaults to 1.
     """
-    assert len(data_out_l) == len(self.pn)
+    assert len(local_data_l) == len(self.pn)
 
-    if data_in.size - count*self.dn != 0:
-      raise ValueError(f"Invalid size of input distributed buffer (expected {count*self.dn}, got {data_in.size})")
-    for ipart, (data_out, pn) in enumerate(zip(data_out_l, self.pn)):
+    if dist_data.size - count*self.dn != 0:
+      raise ValueError(f"Invalid size of input distributed buffer (expected {count*self.dn}, got {dist_data.size})")
+    for ipart, (data_out, pn) in enumerate(zip(local_data_l, self.pn)):
       if data_out.size - count*pn != 0:
         raise ValueError(f"Invalid size of output local buffer n°{ipart} (expected {count*pn}, got {data_out.size})")
 
 
-    send_buff = np.empty(count*self.dist_select_idx.size, data_in.dtype)
-    recv_buff = np.empty(count*sum(self.pn),              data_in.dtype)
+    send_buff = np.empty(count*self.dist_select_idx.size, dist_data.dtype)
+    recv_buff = np.empty(count*sum(self.pn),              dist_data.dtype)
 
     if count == 1:
-      send_buff[:] = data_in[self.dist_select_idx]
+      send_buff[:] = dist_data[self.dist_select_idx]
     else:
       pull_idx = count*self.dist_select_idx
       for j in range(count):
-        send_buff[j::count] = data_in[pull_idx+j]
+        send_buff[j::count] = dist_data[pull_idx+j]
 
     self.comm.Alltoallv((send_buff, count*self.dist_counts),
                         (recv_buff, count*self.part_counts))
 
     # Data has been received in owning proc order : 'unsort' it to recover lngn ordering
-    for data_out, part_write_pos in zip(data_out_l, self.part_write_pos):
+    for data_out, part_write_pos in zip(local_data_l, self.part_write_pos):
       if count == 1:
         data_out[:] = recv_buff[part_write_pos]
       else:
@@ -198,27 +206,27 @@ class GlobalMultiIndexer:
         for j in range(count):
           data_out[j::count] = recv_buff[put_idx+j]
 
-  def Put_into(self, data_in_l, data_out, count=1):
+  def Put_into(self, local_data_l: List[Buffer] , dist_data: Buffer, count=1):
     """ Generalization of :func:`GlobalIndexer.Put_into` for multi index access.
 
     Args:
-      data_in_l (list of :math:`N` buffer) : for each index list, data to write at each accessed index
-      data_out  (buffer) : preallocated buffer to store distributed data
+      local_data_l (list of :math:`N` buffer) : for each index list, data to write at each accessed index
+      dist_data  (buffer) : preallocated buffer to store distributed data
       count (int) : scalar value of :math:`c`. Defaults to 1.
     """
-    assert len(data_in_l) == len(self.pn)
+    assert len(local_data_l) == len(self.pn)
 
-    if data_out.size - count*self.dn != 0:
-      raise ValueError(f"Invalid size of output distributed buffer (expected {count*self.dn}, got {data_out.size})")
-    for ipart, (data_in, pn) in enumerate(zip(data_in_l, self.pn)):
+    if dist_data.size - count*self.dn != 0:
+      raise ValueError(f"Invalid size of output distributed buffer (expected {count*self.dn}, got {dist_data.size})")
+    for ipart, (data_in, pn) in enumerate(zip(local_data_l, self.pn)):
       if data_in.size - count*pn != 0:
         raise ValueError(f"Invalid size of input local buffer n°{ipart} (expected {count*pn}, got {data_in.size})")
 
 
-    send_buff = np.empty(count*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=data_out.dtype)
-    recv_buff = np.empty(count*self.dist_counts.sum(),  dtype=data_out.dtype)
+    send_buff = np.empty(count*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=dist_data.dtype)
+    recv_buff = np.empty(count*self.dist_counts.sum(),  dtype=dist_data.dtype)
 
-    for data_in, part_write_pos in zip(data_in_l, self.part_write_pos):
+    for data_in, part_write_pos in zip(local_data_l, self.part_write_pos):
       if count == 1:
         send_buff[part_write_pos] = data_in
       else:
@@ -230,44 +238,44 @@ class GlobalMultiIndexer:
                         (recv_buff, count*self.dist_counts))
 
     if count == 1:
-      data_out[self.dist_select_idx] = recv_buff
+      dist_data[self.dist_select_idx] = recv_buff
     else:
       put_idx = count*self.dist_select_idx
       for j in range(count):
-        data_out[put_idx+j] = recv_buff[j::count]
+        dist_data[put_idx+j] = recv_buff[j::count]
 
-  def Take(self, data_in, count=1):
+  def Take(self, dist_data: Buffer, count=1) -> List[NDArray] :
     """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
     Args:
-      data_in (buffer of size :math:`c*dn`) : section of the distributed data
+      dist_data (buffer of size :math:`c*dn`) : section of the distributed data
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       :math:`N` buffer of size :math:`c*pn_k`: for each index list,
       values extracted at the requested indices
     """
-    data_out_l = [np.empty(count*pn, data_in.dtype) for pn in self.pn]
-    self.Take_into(data_in, data_out_l, count)
+    data_out_l = [np.empty(count*pn, dist_data.dtype) for pn in self.pn]
+    self.Take_into(dist_data, data_out_l, count)
     return data_out_l
 
-  def Put(self, data_in_l, count=1):
+  def Put(self, local_data_l: List[Buffer] , count=1) -> NDArray:
     """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
-      data_in_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
+      local_data_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
         data to write at each accessed index
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*pn`: output distributed data
     """
-    assert len(data_in_l) == len(self.pn)
-    dtype  = data_in_l[0].dtype.str if len(data_in_l) > 0 else ''
+    assert len(local_data_l) == len(self.pn)
+    dtype  = local_data_l[0].dtype.str if len(local_data_l) > 0 else ''
     if self.empty_part:
       dtype  = self.comm.allreduce(dtype,  MPI.MAX)
 
-    data_out = np.empty(count*self.dn, dtype)
-    self.Put_into(data_in_l, data_out, count)
-    return data_out
+    dist_data = np.empty(count*self.dn, dtype)
+    self.Put_into(local_data_l, dist_data, count)
+    return dist_data
 
   def Take_v_into(self, data_in, counts_in, data_out_l, counts_out_l):
     # Retrive MPI order for counts
@@ -299,19 +307,19 @@ class GlobalMultiIndexer:
       take_strided(_counts_out, recv_buff, part_write_pos, data_out)
 
 
-  def Take_v(self, data_in):
+  def Take_v(self, dist_data: VBuffer) -> List[VBuffer] :
     """ Generalization of :func:`GlobalIndexer.Take_v` for multi index access.
 
     Args:
-      data_in (variable buffer): section of the distributed data, ie tuple of values
-        (**counts_in** (*np array of* :math:`dn` *int*), **buff_in** (*buffer*))
+      dist_data (variable buffer): section of the distributed data, ie pair of values
+        (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
     Returns:
       list of N variable buffer: for each index list, data extracted as tuple of values \
-        (**counts_out** (*np array of* :math:`pn_k` *int*), **buff_out** (*buffer*))
+        (**local_counts** (*np array of* :math:`pn_k` *int*), **local_buff** (*buffer*))
     """
     # Variable stride
 
-    counts_in, buff_in = data_in
+    counts_in, buff_in = dist_data
     assert isinstance(counts_in, np.ndarray)
     assert np.issubdtype(counts_in.dtype, np.integer)
     assert counts_in.size == self.dn
@@ -353,15 +361,15 @@ class GlobalMultiIndexer:
     return data_out_l
 
 
-  def Put_v(self, data_in_l):
+  def Put_v(self, local_data_l: List[VBuffer]) -> VBuffer:
     """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
-      data_in_l (list of N variable buffer): for each index list, values to write as pair \
-        (**counts_in** (*np array of* :math:`pn_k` *int*), **buff_in** (*buffer*))
+      local_data_l (list of N var. buffer): for each index list, values to write as pair \
+        (**local_counts** (*np array of* :math:`pn_k` *int*), **local_buff** (*buffer*))
     Returns:
       variable buffer: output distributed data, returned as pair of values \
-        (**counts_out** (*np array of* :math:`dn` *int*), **buff_out** (*buffer*))
+        (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
     """
     # Note for later: extension to keep_multiple is not so complicated : 
     # compute counts_out with np.add.at(counts_out, self.dist_select_idx, _counts_out) instead of np.put
@@ -384,9 +392,9 @@ class GlobalMultiIndexer:
 
     # Variable stride
 
-    counts_in_l = [data_in[0] for data_in in data_in_l]
-    buff_in_l   = [data_in[1] for data_in in data_in_l]
-    assert len(data_in_l) == len(self.pn)
+    counts_in_l = [data_in[0] for data_in in local_data_l]
+    buff_in_l   = [data_in[1] for data_in in local_data_l]
+    assert len(local_data_l) == len(self.pn)
     assert all(counts_in.size == pn for counts_in,pn in zip(counts_in_l, self.pn))
     assert all(np.issubdtype(counts_in.dtype, np.integer) for counts_in in counts_in_l)
     assert all(data_in.size == counts_in.sum() for data_in, counts_in in zip(buff_in_l, counts_in_l))
@@ -437,7 +445,7 @@ class GlobalMultiIndexer:
     return counts_out, data_out
   
   @property
-  def access_counts(self):
+  def access_counts(self) -> NDArrayInt:
     """ For each global index, total number of apparitions in the ``g_idx`` arrays,
     returned as an integer array of size :math:`dn`."""
     counts = np.zeros(self.dn, int)
@@ -464,7 +472,7 @@ class GlobalIndexer:
 
   """
 
-  def __init__(self, distri, g_idx, comm):
+  def __init__(self, distri:NDArrayInt, g_idx:NDArrayInt, comm:MPI.Comm):
     """ Create a GlobalIndexer protocol object
 
     The protocol object is described by two arrays of integer,
@@ -488,7 +496,7 @@ class GlobalIndexer:
     self.GIndexer_m = GlobalMultiIndexer(distri, [g_idx], comm)
     self.GIndexer_m._empty_part = False
 
-  def take(self, data_in:list) -> list:
+  def take(self, dist_data:List) -> List:
     """ ``take`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -496,13 +504,13 @@ class GlobalIndexer:
     strongly advised to use :func:`~GlobalIndexer.Take` method instead.
 
     Args:
-      data_in (list of size :math:`dn`) : section of the distributed data
+      dist_data (list of size :math:`dn`) : section of the distributed data
     Returns:
       list of size :math:`pn`: values extracted at the requested indices
     """
-    return self.GIndexer_m.take(data_in)[0]
+    return self.GIndexer_m.take(dist_data)[0]
 
-  def put(self, data_in:list) -> list:
+  def put(self, local_data: List) -> List:
     """ ``put`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -517,13 +525,13 @@ class GlobalIndexer:
       buffer will be the last encoutered (in increasing processes order)
 
     Args:
-      data_in (list of size :math:`pn`) : data to write at each accessed index
+      local_data (list of size :math:`pn`) : data to write at each accessed index
     Returns:
       list of size :math:`dn`: output distributed data
     """
-    return self.GIndexer_m.put([data_in])
+    return self.GIndexer_m.put([local_data])
 
-  def Take_into(self, data_in, data_out, count=1):
+  def Take_into(self, dist_data: Buffer, local_data: Buffer, count=1):
     """ Inplace ``take`` implementation for buffer-like objects 
 
     Input and output buffer must respectively be of size :math:`c*dn` and
@@ -534,13 +542,13 @@ class GlobalIndexer:
     same across all the processes. 
     
     Args:
-      data_in  (buffer) : section of the distributed data
-      data_out (buffer) : preallocated buffer to store extracted values
+      dist_data  (buffer) : section of the distributed data
+      local_data (buffer) : preallocated buffer to store extracted values
       count (int) : scalar value of :math:`c`. Defaults to 1.
     """
-    self.GIndexer_m.Take_into(data_in, [data_out], count)
+    self.GIndexer_m.Take_into(dist_data, [local_data], count)
 
-  def Put_into(self, data_in, data_out, count=1):
+  def Put_into(self, local_data: Buffer, dist_data: Buffer, count=1):
     """ Inplace ``put`` implementation for buffer-like objects 
 
     Input and output buffer must respectively be of size :math:`c*pn` and
@@ -558,13 +566,13 @@ class GlobalIndexer:
       buffer will be the last encoutered (in increasing processes order)
     
     Args:
-      data_in  (buffer) : data to write at each accessed index
-      data_out (buffer) : preallocated buffer to store distributed data
+      local_data (buffer) : data to write at each accessed index
+      dist_data  (buffer) : preallocated buffer to store distributed data
       count (int) : scalar value of :math:`c`. Defaults to 1.
     """
-    self.GIndexer_m.Put_into([data_in], data_out, count)
+    self.GIndexer_m.Put_into([local_data], dist_data, count)
     
-  def Take(self, data_in, count=1) -> np.ndarray:
+  def Take(self, dist_data:Buffer, count=1) -> NDArray:
     """ ``take`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*dn`, where :math:`c` is a
@@ -576,14 +584,14 @@ class GlobalIndexer:
     and of datatype equal to the one of the input data.
     
     Args:
-      data_in (buffer of size :math:`c*dn`) : section of the distributed data
+      dist_data (buffer of size :math:`c*dn`) : section of the distributed data
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*pn`: values extracted at the requested indices
     """
-    return self.GIndexer_m.Take(data_in, count)[0]
+    return self.GIndexer_m.Take(dist_data, count)[0]
 
-  def Put(self, data_in, count=1) -> np.ndarray:
+  def Put(self, local_data: Buffer, count=1) -> NDArray:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
@@ -602,15 +610,15 @@ class GlobalIndexer:
       buffer will be the last encoutered (in increasing processes order)
 
     Args:
-      data_in (buffer of size :math:`c*pn`) : data to write at each accessed index
+      local_data (buffer of size :math:`c*pn`) : data to write at each accessed index
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*pn`: output distributed data
     """
 
-    return self.GIndexer_m.Put([data_in], count)
+    return self.GIndexer_m.Put([local_data], count)
 
-  def Take_v(self, data_in):
+  def Take_v(self, dist_data: VBuffer) -> VBuffer:
     """ ``take`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by two objets:
@@ -628,15 +636,15 @@ class GlobalIndexer:
     Those two arrays must be stored in a tuple ``(counts, buff)``.
     
     Args:
-      data_in (variable buffer): section of the distributed data, ie tuple of values
-        (**counts_in** (*np array of* :math:`dn` *int*), **buff_in** (*buffer*))
+      dist_data (variable buffer): section of the distributed data, ie pair of values
+        (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
     Returns:
       variable buffer: data extracted at the requested indices, as a tuple of values \
-        (**counts_out** (*np array of* :math:`pn` *int*), **buff_out** (*buffer*))
+        (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
     """
-    return self.GIndexer_m.Take_v(data_in)[0]
+    return self.GIndexer_m.Take_v(dist_data)[0]
    
-  def Put_v(self, data_in):
+  def Put_v(self, local_data: VBuffer) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by two objets:
@@ -654,23 +662,23 @@ class GlobalIndexer:
     Those two arrays must be stored in a tuple ``(counts, buff)``.
 
     Args:
-      data_in (variable buffer): data to write at each accessed index, ie tuple 
-        (**counts_in** (*np array of* :math:`pn` *int*), **buff_in** (*buffer*))
+      local_data (variable buffer): data to write at each accessed index, ie tuple 
+        (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
     Returns:
       variable buffer: output distributed data, returned as the tuple of values \
-        (**counts_out** (*np array of* :math:`dn` *int*), **buff_out** (*buffer*))
+        (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
     """
-    return self.GIndexer_m.Put_v([data_in])
+    return self.GIndexer_m.Put_v([local_data])
 
   @property
-  def empty_dist(self):
+  def empty_dist(self) -> bool:
     return self.GIndexer_m.empty_dist
   @property
-  def empty_part(self):
+  def empty_part(self) -> bool:
     return self.GIndexer_m.empty_part
 
   @property
-  def access_counts(self):
+  def access_counts(self) -> NDArrayInt:
     """ For each global index, total number of apparitions in the ``g_idx`` arrays,
     returned as an integer array of size :math:`dn`."""
     return self.GIndexer_m.access_counts
