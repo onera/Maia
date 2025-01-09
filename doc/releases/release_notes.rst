@@ -30,6 +30,7 @@ Developpement version
 - file_to_part_tree: fix an error occuring when ``redispatch=True`` and remove too agressive checks
 - wall_distance: fix case ``periodic=True`` on meshes having unconnected zones groups
 - interpolate: prevent a crash when a rank does not hold any partition on source tree
+- redistribute_tree and full_to_dist_tree : fix an exception occuring on 2D structured meshes
 
 🚧 API change
 ^^^^^^^^^^^^^

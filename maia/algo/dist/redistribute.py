@@ -150,13 +150,13 @@ def redistribute_zone(zone, distribution, comm):
   # Get distribution
   old_distrib = {'Vertex' : MT.getDistribution(zone, "Vertex")[1],
                  'Cell'   : MT.getDistribution(zone, "Cell")[1]}
-  if PT.Zone.Type(zone) == 'Structured':
+  if PT.Zone.Type(zone) == 'Structured' and PT.Zone.IndexDimension(zone) == 3:
     old_distrib['Face'] = MT.getDistribution(zone, "Face")[1]
 
   # New distribution
   new_distrib = {'Vertex' : distribution(PT.Zone.n_vtx(zone) , comm),
                  'Cell'   : distribution(PT.Zone.n_cell(zone), comm)}
-  if PT.Zone.Type(zone) == 'Structured':
+  if PT.Zone.Type(zone) == 'Structured' and PT.Zone.IndexDimension(zone) == 3:
     new_distrib['Face'] = distribution(PT.Zone.n_face(zone), comm)
 
   MT.newDistribution(new_distrib, zone)

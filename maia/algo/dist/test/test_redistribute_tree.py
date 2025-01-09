@@ -413,3 +413,31 @@ def test_redistribute_zone_U(comm):
 
 
 # =======================================================================================
+
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("dim", [2,3])
+def test_redistribute_tree_S(dim, comm):
+
+  tree = maia.factory.generate_dist_block(dim*[6], 'S', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  RDT.redistribute_tree(tree, 'gather.1', comm)
+
+  nvt = 6*6 if dim == 2 else 6*6*6
+  nct = 5*5 if dim == 2 else 5*5*5
+  nft = 0   if dim == 2 else 3*5*5*6
+
+  if comm.rank == 0:
+    assert (MT.getDistribution(zone, 'Vertex')[1] == [0, 0, nvt]).all()
+    assert (MT.getDistribution(zone, 'Cell')[1]   == [0, 0, nct]).all()
+    if dim == 3:
+      assert (MT.getDistribution(zone, 'Face')[1] == [0, 0, nft]).all()
+  elif comm.rank == 1:
+    assert (MT.getDistribution(zone, 'Vertex')[1] == [0, nvt, nvt]).all()
+    assert (MT.getDistribution(zone, 'Cell')[1]   == [0, nct, nct]).all()
+    if dim == 3:
+      assert (MT.getDistribution(zone, 'Face')[1] == [0, nft, nft]).all()
+  else:
+    assert (MT.getDistribution(zone, 'Vertex')[1] == [nvt, nvt, nvt]).all()
+    assert (MT.getDistribution(zone, 'Cell')[1]   == [nct, nct, nct]).all()
+    if dim == 3:
+      assert (MT.getDistribution(zone, 'Face')[1] == [nft, nft, nft]).all()
