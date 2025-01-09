@@ -24,6 +24,12 @@ class Interpolator:
     
     self.output_loc = output_loc
     self.input_loc = input_loc
+    self.comm = comm
+
+    # If some rank have no partitions, store a rank used as root to share FS names
+    self.root = None
+    if comm.allreduce(len(self.src_parts) == 0, MPI.LOR):
+      self.root = self.comm.allreduce(-1 if len(self.src_parts) == 0 else comm.rank, MPI.MAX)
 
     _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, self.input_loc, comm)
     all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
@@ -87,8 +93,13 @@ class Interpolator:
       container = PT.get_node_from_path(src_part, container_name)
       assert PT.Subset.GridLocation(container) == self.input_loc
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-    fields_per_part.append(fields_name)
-    assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+      fields_per_part.append(fields_name)
+    if len(fields_per_part) > 0:
+      assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+
+    fields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
+    if self.root is not None: # Some rank have no src partitions, share field names
+      fields_names = self.comm.bcast(fields_names, root=self.root)
 
     #Cleanup target partitions
     for tgt_part in self.tgt_parts:
@@ -97,7 +108,7 @@ class Interpolator:
 
     #Collect src sol
     src_field_dic = dict()
-    for field_name in fields_per_part[0]:
+    for field_name in fields_names:
       field_path = container_name + '/' + field_name
       src_field_dic[field_name] = [PT.get_node_from_path(part, field_path)[1] for part in self.src_parts]
 

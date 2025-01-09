@@ -29,6 +29,7 @@ Developpement version
 - recover_dist_tree: fix a bug in NFace values and manage missing PE case
 - file_to_part_tree: fix an error occuring when ``redispatch=True`` and remove too agressive checks
 - wall_distance: fix case ``periodic=True`` on meshes having unconnected zones groups
+- interpolate: prevent a crash when a rank does not hold any partition on source tree
 
 🚧 API change
 ^^^^^^^^^^^^^
