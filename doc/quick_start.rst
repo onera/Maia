@@ -8,7 +8,14 @@ Quick start
 Environnements
 --------------
 
-Maia is now distributed in elsA releases (since v5.2.01) !
+Maia is now distributed in elsA releases (since v5.2.01) ! Here is an extract of the embedded maia version number for
+the latest elsA releases (see elsA documentation for full list) :
+
+  +----------+--------+--------+--------+--------+
+  | **elsA** | 5.2.03 | 5.3.01 | 5.3.02 | 5.3.03 |
+  +----------+--------+--------+--------+--------+
+  | **maia** | v1.2   | v1.3.1 | v1.4.1 | v1.5   |
+  +----------+--------+--------+--------+--------+
 
 If you need more flexibility or if you want to try the latest features, maia releases are also deployed on Onera clusters.
 This is done through *modulefiles*, named following these conventions:
@@ -22,20 +29,20 @@ This is done through *modulefiles*, named following these conventions:
 
   .. tab:: Spiro-EL8
 
-    On spiro, in addition to the DSI provided environments (socle-cfd/\*), we also support the IntelMPI/GCC software
-    chain used by Sonics. When loading maia, the later is suffixed by ``"default"`` keyword.
-
     .. code-block:: sh
 
       module use --append /scratchm/sonics/usr/modules/
       module load maia/dev-dsi-cfd6
 
-    Note that for the "default" version, dependancies have to be loaded manually, using this additional source command:
+    For versions of maia up to 1.5, in addition to the DSI provided environments (socle-cfd/\*),
+    we also support the IntelMPI/GCC software chain used by former versions of Sonics.
+    Those versions are suffixed by the ``"default"`` keyword and require the dependancies 
+    to be loaded manually, using this additional source command:
 
     .. code-block:: sh
 
       source /scratchm/sonics/dist/source.sh --env maia
-      module load maia/dev-default
+      module load maia/1.5-default
 
   .. tab:: Juno
 
@@ -60,9 +67,9 @@ This is done through *modulefiles*, named following these conventions:
       module use --append /tmp_user/sator/sonics/usr/modules/
       module load maia/dev-dsi-cfd6
 
-      # Versions based on self compiled tools
+      # Versions based on self compiled tools (only for versions ≤ 1.5)
       source /tmp_user/sator/sonics/dist/source.sh --env maia
-      module load maia/dev-default
+      module load maia/1.5-default
 
   .. tab:: LD
 

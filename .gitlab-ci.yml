@@ -268,29 +268,6 @@ deploy_spiro_socle6:
     - rsync build_spiro6.sh sonics@spiro02:${JOB_BUILD_DIR}
     - ssh sonics@spiro01 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro6.sh"
 
-deploy_spiro_sonics:
-  stage: deploy
-  needs: ["init_deploy"]
-  rules:
-    - if: $CI_COMMIT_BRANCH == "disabled-for-now"
-  before_script:
-    - |
-      cat > build_spiro.sh << EOF
-      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-      source /scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
-      export https_proxy=http://proxy.onera:80
-      cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/default \
-                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install > default.log
-      EOF
-  script:
-    - export JOB_BUILD_DIR=/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
-    - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_spiro.sh sonics@spiro02:${JOB_BUILD_DIR}
-    - ssh sonics@spiro02 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro.sh"
-
-
 deploy_sator_socle6:
   stage: deploy
   needs: ["init_deploy"]
@@ -314,26 +291,6 @@ deploy_sator_socle6:
     - rsync build_sator6.sh sonics@sator:${JOB_BUILD_DIR}
     - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator6.sh"
 
-deploy_sator_sonics:
-  stage: deploy
-  needs: ["init_deploy"]
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-  before_script:
-    - |
-      cat > build_sator.sh << EOF
-      source /tmp_user/sator/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
-      export https_proxy=http://proxy.onera:80
-      cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/default \
-                -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install > default.log
-      EOF
-  script:
-    - export JOB_BUILD_DIR=/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
-    - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_sator.sh sonics@sator:${JOB_BUILD_DIR}
-    - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator.sh"
 
 deploy_juno_socle6:
   stage: deploy
@@ -360,7 +317,7 @@ deploy_juno_socle6:
 
 post_deploy:
   stage: deploy
-  needs: ["deploy_spiro_socle6", "deploy_sator_socle6", "deploy_sator_sonics", "deploy_juno_socle6"]
+  needs: ["deploy_spiro_socle6", "deploy_sator_socle6", "deploy_juno_socle6"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   before_script: 
