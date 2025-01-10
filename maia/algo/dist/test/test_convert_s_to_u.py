@@ -86,7 +86,7 @@ def test_gc_s_to_gc_u():
 def test_zonedims_to_ngon(comm):
   #We dont test value of faceVtx/ngon here, this is carried out by Test_compute_all_ngon_connectivity
   n_vtx_zone = np.array([3,2,4])
-  ngon = s_to_u.zonedims_to_ngon(n_vtx_zone, comm)
+  ngon = s_to_u.zonedims_to_ngon(n_vtx_zone, comm, np.int32)
   n_faces = PT.get_child_from_name(ngon, "ElementStartOffset")[1].shape[0] - 1
   if comm.Get_rank() == 0:
     expected_n_faces = 15

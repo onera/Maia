@@ -209,9 +209,11 @@ def generate_ngon_from_std_elements(dist_tree, comm):
       PT.add_child(container, node)
     PT.rm_children_from_predicate(dist_zone, lambda n : PT.get_name(n) in to_remove)
 
+  is_zone     = lambda n : PT.get_label(n) == 'Zone_t'
+  is_zone_elt = lambda n : is_zone(n) and PT.Zone.Type(n) == 'Unstructured' and not PT.Zone.has_ngon_elements(n)
   for base in PT.iter_all_CGNSBase_t(dist_tree):
     extract_dim = PT.get_value(base)[0]
-    zones_u = [zone for zone in PT.iter_all_Zone_t(base) if PT.Zone.Type(zone) == "Unstructured"]
+    zones_u = PT.get_children_from_predicate(base, is_zone_elt)
 
     for zone in zones_u: #Raise if overflow is probable
       face_vtx_size = predict_face_vtx_size(zone, extract_dim)

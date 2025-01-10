@@ -1,8 +1,18 @@
-import numpy as np
-
 import maia.pytree        as PT
-import maia.pytree.sids   as sids
-from maia.algo.apply_function_to_nodes import zones_iterator
+import maia.pytree.maia   as MT
+
+from .dist import ngon_tools as dist_ngon_tools
+from .part import ngon_tools as part_ngon_tools
+
+is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
+is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
+                            PT.Zone.Type(z) == 'Unstructured' and \
+                            all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
+
+def iter_matching_zones(t, cond):
+  for z in PT.iter_all_Zone_t(t):
+    if cond(z):
+      yield z
 
 def get_pe_local(node):
   """
@@ -10,7 +20,7 @@ def get_pe_local(node):
   indices.
   If PE array was already local, no copy is done
   """
-  assert sids.Element.CGNSName(node) in ['BAR_2', 'NGON_n']
+  assert PT.Element.CGNSName(node) in ['BAR_2', 'NGON_n']
   pe_n = PT.get_child_from_name(node, "ParentElements")
   if pe_n is None:
     raise RuntimeError(f"ParentElements node not found on node {node[0]}")
@@ -18,14 +28,11 @@ def get_pe_local(node):
   if pe_val.size == 0:
     return pe_val
   else:
-    first_parent = np.max(pe_val[1]) #Get any parent and use it to check if offset is necessary
-    if first_parent > sids.Element.Range(node)[1]:
-      return pe_val - sids.Element.Range(node)[1] * (pe_val > 0)
+    first_parent = pe_val[1].max() #Get any parent and use it to check if offset is necessary
+    if first_parent > PT.Element.Range(node)[1]:
+      return pe_val - PT.Element.Range(node)[1] * (pe_val > 0)
     else:
       return pe_val
-
-def get_ngon_pe_local(ngon_node):
-  raise NotImplementedError("This function has been removed in favor of indexing.get_pe_local")
 
 def pe_to_nface(t, comm=None, removePE=False):
   """Create a NFace node from a NGon node with ParentElements.
@@ -44,14 +51,13 @@ def pe_to_nface(t, comm=None, removePE=False):
         :end-before: #pe_to_nface@end
         :dedent: 2
   """
-  for zone in zones_iterator(t):
+  predicate = lambda z: is_poly_3d_zone(z) and not PT.Zone.has_nface_elements(z)
+  for zone in iter_matching_zones(t, predicate):
     if PT.maia.getDistribution(zone) is not None:
       assert comm is not None
-      from .dist.ngon_tools import pe_to_nface
-      pe_to_nface(zone, comm, removePE)
+      dist_ngon_tools.pe_to_nface(zone, comm, removePE)
     else:
-      from .part.ngon_tools import pe_to_nface
-      pe_to_nface(zone, removePE)
+      part_ngon_tools.pe_to_nface(zone, removePE)
 
 
 def nface_to_pe(t, comm=None, removeNFace=False):
@@ -71,14 +77,13 @@ def nface_to_pe(t, comm=None, removeNFace=False):
         :end-before: #nface_to_pe@end
         :dedent: 2
   """
-  for zone in zones_iterator(t):
+  predicate = lambda z: is_poly_3d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
+  for zone in iter_matching_zones(t, predicate):
     if PT.maia.getDistribution(zone) is not None:
       assert comm is not None
-      from .dist.ngon_tools import nface_to_pe
-      nface_to_pe(zone, comm, removeNFace)
+      dist_ngon_tools.nface_to_pe(zone, comm, removeNFace)
     else:
-      from .part.ngon_tools import nface_to_pe
-      nface_to_pe(zone, removeNFace)
+      part_ngon_tools.nface_to_pe(zone, removeNFace)
 
 
 def edge_pe_to_ngon(t, comm=None, removePE=False):
@@ -98,14 +103,13 @@ def edge_pe_to_ngon(t, comm=None, removePE=False):
         :end-before: #edge_pe_to_ngon@end
         :dedent: 2
   """
-  for zone in zones_iterator(t):
+  predicate = lambda z: is_poly_2d_zone(z) and not PT.Zone.has_ngon_elements(z)
+  for zone in iter_matching_zones(t, predicate):
     if PT.maia.getDistribution(zone) is not None:
       assert comm is not None
-      from .dist.ngon_tools import edge_pe_to_ngon
-      edge_pe_to_ngon(zone, comm, removePE)
+      dist_ngon_tools.edge_pe_to_ngon(zone, comm, removePE)
     else:
-      from .part.ngon_tools import edge_pe_to_ngon
-      edge_pe_to_ngon(zone, removePE)
+      part_ngon_tools.edge_pe_to_ngon(zone, removePE)
 
 def ngon_to_edge_pe(t, comm, remove_NGon=False):
   """Create a ParentElements node in the EdgeElements node from a NGon node.
@@ -127,11 +131,10 @@ def ngon_to_edge_pe(t, comm, remove_NGon=False):
         :end-before: #ngon_to_edge_pe@end
         :dedent: 2
   """
-  for zone in zones_iterator(t):
+  predicate = lambda z: is_poly_2d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
+  for zone in iter_matching_zones(t, predicate):
     if PT.maia.getDistribution(zone) is not None:
       assert comm is not None
-      from .dist.ngon_tools import ngon_to_edge_pe
-      ngon_to_edge_pe(zone, comm, remove_NGon)
+      dist_ngon_tools.ngon_to_edge_pe(zone, comm, remove_NGon)
     else:
-      from .part.ngon_tools import ngon_to_edge_pe
-      ngon_to_edge_pe(zone, remove_NGon)
+      part_ngon_tools.ngon_to_edge_pe(zone, remove_NGon)

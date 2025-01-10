@@ -184,20 +184,19 @@ def convert_ngon_to_elements(dist_tree, comm):
         :end-before: #convert_ngon_to_elements@end
         :dedent: 2
   """
-
-  # Function require NFACE + NGON with PE
-  for zone in PT.get_all_Zone_t(dist_tree):
-    if not PT.Zone.has_nface_elements(zone):
-      maia.algo.pe_to_nface(zone, comm)
-    ng = PT.Zone.NGonNode(zone)
-    if PT.get_child_from_name(ng, 'ParentElements') is None:
-      maia.algo.nface_to_pe(zone, comm)
-
   # Needed to update the joins afterward
   MJT.add_joins_donor_name(dist_tree, comm)
 
   for zone in PT.get_all_Zone_t(dist_tree):
-    _ngon_to_elements_zone(zone, comm)
+    if PT.Zone.has_ngon_elements(zone):
+      # Function require NFACE + NGON with PE
+      if not PT.Zone.has_nface_elements(zone):
+        maia.algo.pe_to_nface(zone, comm)
+      ng = PT.Zone.NGonNode(zone)
+      if PT.get_child_from_name(ng, 'ParentElements') is None:
+        maia.algo.nface_to_pe(zone, comm)
+
+      _ngon_to_elements_zone(zone, comm)
 
   MJT.copy_donor_subset(dist_tree)
 

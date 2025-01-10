@@ -205,7 +205,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
 ###############################################################################
 
 ###############################################################################
-def zonedims_to_ngon(n_vtx_zone, comm):
+def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
   """
   Generates distributed NGonElement node from the number of
   vertices in the zone.
@@ -219,10 +219,13 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   n_face_tot = nf_i + nf_j + nf_k
   face_distri = py_utils.uniform_distribution_at(n_face_tot, i_rank, n_rank)
 
+  if dtype is None:
+    dtype = np.int32 if n_face_tot < np.iinfo(np.int32).max else np.int64
+
   n_face_loc = face_distri[1] - face_distri[0]
   #Bounds stores for each proc [id of first iface, id of first jface, id of first kface, id of last kface]
   # assuming that face are globally ordered i, then j, then k
-  bounds = np.empty(4, dtype=pdm_gnum_dtype)
+  bounds = np.empty(4, dtype=dtype)
   bounds[0] = face_distri[0]
   bounds[1] = bounds[0]
   if bounds[0] < nf_i:
@@ -235,10 +238,10 @@ def zonedims_to_ngon(n_vtx_zone, comm):
   assert bounds[3]-bounds[0] == n_face_loc
 
 
-  face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=pdm_gnum_dtype)
-  face_vtx, face_pe = s_numbering.ngon_dconnectivity_from_gnum(bounds+1,n_cell_zone, pdm_gnum_dtype)
+  face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=dtype)
+  face_vtx, face_pe = s_numbering.ngon_dconnectivity_from_gnum(bounds+1,n_cell_zone, dtype)
 
-  _erange = np.array([1, n_face_tot], dtype=pdm_gnum_dtype)
+  _erange = np.array([1, n_face_tot], dtype=dtype)
   ngon = PT.new_NGonElements('NGonElements', erange=_erange, eso=face_vtx_idx, ec=face_vtx, pe=face_pe)
 
   cg_face_distri = np.array([*face_distri, n_face_tot], dtype=pdm_gnum_dtype)
@@ -299,7 +302,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
           patch = PT.get_child_from_predicate(flow_solution_s, lambda n: PT.get_name(n) in ['PointRange', 'PointList'])
           assert patch is None, f"Partial FlowSolution_t are not supported"
 
-        PT.add_child(zone, zonedims_to_ngon(n_vtx, comm))
+        PT.add_child(zone, zonedims_to_ngon(n_vtx, comm, zone[1].dtype))
 
         loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'CellCenter': '#Cell'}
         zonebc_s = PT.get_child_from_label(zone, "ZoneBC_t")
