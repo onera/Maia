@@ -181,6 +181,12 @@ def split_original_joins(p_tree):
       for node in to_append: #Append everything at the end; otherwise we may find a new jn when looking for an old one
         PT.add_child(zone_gc, node)
 
+      # Now deal non 1to1 JNs : we are unable to cut it properly, but we still
+      # need to rename it to have correct naming conventions for other functions (see #165)
+      # We use .P?.N? as donor name suffix to emphasize the fact that the join is not really splitted
+      for gc in PT.get_children_from_predicate(zone_gc, lambda n : PT.get_label(n) == 'GridConnectivity_t' and not PT.GridConnectivity.is1to1(n)):
+        PT.update_node(gc, name=PT.get_name(gc) + '.0', value=PT.get_value(gc) + '.P?.N?')
+
 def update_gc_donor_name(part_tree, comm):
   """
   Update or add the GridConnectivityDonorName name afted join splitting

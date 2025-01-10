@@ -34,6 +34,7 @@ Developpement version
 - redistribute_tree and full_to_dist_tree : fix an exception occuring on 2D structured meshes
 - connect_1to1_families: prevent a ``ZeroDivisionError`` when no connections are found
 - duplicate_from_rotation_jns_to_360: add a tolerance to manage close to zero rotation angles
+- part_tree_to_dist_tree_copy: manage data under GridConnectivity_t nodes
 
 🚧 API change
 ^^^^^^^^^^^^^
