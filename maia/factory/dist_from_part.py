@@ -290,7 +290,7 @@ def _recover_BC(dist_zone, part_zones, comm):
   bc_predicate = ['ZoneBC_t', 'BC_t']
 
   discover_nodes_from_matching(dist_zone, part_zones, bc_predicate, comm,
-        child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t'], get_value='all')
+        child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'AdditionalFamilyName_t'], get_value='all')
 
   for bc_path in PT.predicates_to_paths(dist_zone, bc_predicate):
     if PT.Zone.Type(dist_zone) == 'Unstructured':
@@ -306,7 +306,7 @@ def _recover_GC(dist_zone, part_zones, comm):
 
   discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
-                    'GridConnectivityDonorName', 'Transform'],
+                    'GridConnectivityDonorName', 'Transform', 'FamilyName_t', 'AdditionalFamilyName_t'],
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
 
   #After GC discovery, cleanup donor name suffix
