@@ -22,6 +22,7 @@ Developpement version
 - generate_dist_block: generate blocks aligned with custom basis vectors
 - partition_dist_tree: manage ZoneSubRegion nodes when splitting structured meshes
 - extract_part: also expose extractor object in ``bc_name`` and ``family`` APIs
+- extract_part: preserve BC kind and metadata in 3D extraction
 
 🐞 Fixes
 ^^^^^^^^
@@ -31,6 +32,8 @@ Developpement version
 - wall_distance: fix case ``periodic=True`` on meshes having unconnected zones groups
 - interpolate: prevent a crash when a rank does not hold any partition on source tree
 - redistribute_tree and full_to_dist_tree : fix an exception occuring on 2D structured meshes
+- connect_1to1_families: prevent a ``ZeroDivisionError`` when no connections are found
+- duplicate_from_rotation_jns_to_360: add a tolerance to manage close to zero rotation angles
 
 🚧 API change
 ^^^^^^^^^^^^^
@@ -72,6 +75,7 @@ v1.5 (September 2024)
 - partitioning: manage ``DiscreteData_t`` nodes with PointList
 - convert_elements_to_ngon: preserve CellCenter BC_t nodes during conversion
 - file_to_dist_tree: fix read of structured BCs having both PointList and BCDataSet children
+- **[v1.5.1]** ensure compatibility with ParaDiGM 2.6.0
 
 🚧 API change
 ^^^^^^^^^^^^^
