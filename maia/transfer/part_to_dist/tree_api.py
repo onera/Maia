@@ -93,6 +93,9 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
     discover_nodes_from_matching(dist_tree, [part_tree], predicates, comm, child_list=['*'], get_value='leaf')
     return
 
+  leads_to_gc = lambda p: PT.get_label(PT.get_node_from_path(dist_tree, PT.utils.path_head(p,4))) \
+                          in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+
   # Capture start of predicate, because last node may not exist on dist tree
   _ud_predicate = PT.utils.path_head(predicates) if isinstance(predicates, str) else predicates[:-1]
   for path in PT.predicates_to_paths(dist_tree, _ud_predicate):
@@ -104,10 +107,18 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
       part_roots = [] if part_root is None else [part_root]
     else: # Deeper data
       cut = 2
-      dist_root_path = f'{names[0]}/{names[1]}'
+      dist_root_path = PT.utils.path_head(path, 2)
       dist_root = PT.get_node_from_path(dist_tree, dist_root_path)
       if PT.get_label(dist_root) == 'Zone_t': # Deal zone (names differ on partitionned tree)
         part_roots = TE.utils.get_partitioned_zones(part_tree, dist_root_path)
+        if len(names) >= 4 and leads_to_gc(path): # Data is actually below a GC : must manage jn splitting
+          cut = 4
+          dist_root_path = PT.utils.path_head(path, 4)
+          dist_root = PT.get_node_from_path(dist_tree, dist_root_path)
+          part_root_new = list() # Update part roots to start with concened GC_t
+          for part_root in part_roots:
+            part_root_new.extend(PT.get_nodes_from_predicates(part_root, f'{names[2]}/{names[3]}.*'))
+          part_roots = part_root_new
       else: # Deal others
         part_root = PT.get_node_from_path(part_tree, dist_root_path)
         part_roots = [] if part_root is None else [part_root]

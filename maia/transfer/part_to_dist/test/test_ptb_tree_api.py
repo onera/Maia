@@ -54,6 +54,12 @@ class Test_IterativeData:
 @pytest_parallel.mark.parallel(1)
 def test_recover_UDData(missing_part_node, comm):
   dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+  # Change a BC into GC
+  gc = PT.pop_node_from_path(dist_zone, 'ZoneBC/Zmin')
+  PT.update_node(gc, label='GridConnectivity_t', value='zone')
+  PT.new_child(dist_zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[gc])
+
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
   part_base = PT.get_all_CGNSBase_t(part_tree)[0]
@@ -67,7 +73,7 @@ def test_recover_UDData(missing_part_node, comm):
     PT.new_Family(f'WALL_{i}', family_bc='BCWall', parent=dist_base)
     PT.new_node('.Solver#BC', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=part_family_n)
     PT.new_node('.Solver#Property', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=part_family_n)
-  for i, bc_n  in enumerate(PT.get_nodes_from_predicates(part_zone, 'ZoneBC_t/BC_t')):
+  for i, bc_n  in enumerate(PT.get_nodes_from_predicate(part_zone, lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t'])):
     PT.new_node('.Solver#BC', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
     PT.new_node('.Solver#Property', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
 
@@ -79,12 +85,19 @@ def test_recover_UDData(missing_part_node, comm):
 
   ud_predicates = [['CGNSBase_t', 'Family_t', lambda n : PT.get_name(n).startswith('.Solver#')],
                   'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/.Solver#*',
+                  'CGNSBase_t/Zone_t/*/Zmin/.Solver#Property',
                   'CGNSBase_t/MyFamily']
   for ud_predicate in ud_predicates:
     PTB.part_tree_to_dist_tree_copy(dist_tree, part_tree, ud_predicate, comm)
 
-  for dist_ud, part_ud in zip(PT.get_nodes_from_name(dist_tree, '.Solver#*'), PT.get_nodes_from_name(part_tree, '.Solver#*')):
-    assert PT.is_same_node(dist_ud, part_ud) # Nodes are matched in same order, so this comparison is OK
+  if not missing_part_node:
+    for dist_bc in PT.get_nodes_from_label(dist_tree, 'BC_t'):
+      part_bc = PT.get_node_from_name_and_label(part_tree, PT.get_name(dist_bc), 'BC_t')
+      for name in ['.Solver#Property', '.Solver#BC']:
+        assert PT.is_same_node(PT.get_child_from_name(dist_bc, name), PT.get_child_from_name(part_bc, name))
+
+  assert (PT.get_node_from_path(dist_tree, 'Base/zone/ZoneGridConnectivity/Zmin/.Solver#Property')[1] == [0,1,2]).all()
+
   assert PT.get_label(PT.get_child_from_name(dist_base, 'MyFamily')) == 'Family_t'
   assert PT.get_child_from_name(dist_base, 'MyOtherFamily') is None
   if not missing_part_node:
