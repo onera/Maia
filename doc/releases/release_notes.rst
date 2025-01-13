@@ -23,6 +23,7 @@ Developpement version
 - partition_dist_tree: manage ZoneSubRegion nodes when splitting structured meshes
 - extract_part: also expose extractor object in ``bc_name`` and ``family`` APIs
 - extract_part: preserve BC kind and metadata in 3D extraction
+- convert_ngon_to_elements: manage 2D cases
 
 🐞 Fixes
 ^^^^^^^^
