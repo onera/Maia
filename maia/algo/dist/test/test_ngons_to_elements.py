@@ -10,60 +10,6 @@ from maia.utils import test_utils as TU
 
 from maia.algo.dist.ngons_to_elements import _ngon_to_elements_zone_3d
 
-def generate_2d_multielt(comm):
-  """ Return a NGON 2d tree containing TRI + QUAD elts """
-
-  ftree = PT.yaml.to_cgns_tree("""
-  zone Zone_t [[25, 28, 0]]:
-    ZoneType ZoneType_t 'Unstructured':
-    GridCoordinates GridCoordinates_t:
-      CoordinateX DataArray_t:
-        R8 : [0.0, 0.25, 0.5, 0.75, 1.0, 0.0, 0.25, 0.5, 0.75, 1.0, 0.0, 0.25, 0.5, 0.75, 1.0, 0.0, 0.25, 0.5, 0.75, 1.0,
-              0.0, 0.25, 0.5, 0.75, 1.0]
-      CoordinateY DataArray_t:
-        R8 : [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 0.75,
-              1.0, 1.0, 1.0, 1.0, 1.0]
-      CoordinateZ DataArray_t:
-        R8 : [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-              0.0, 0.0, 0.0, 0.0]
-    ZoneBC ZoneBC_t:
-      Ymin BC_t 'Null':
-        GridLocation GridLocation_t 'EdgeCenter':
-        PointList IndexArray_t [[1, 2, 4, 7]]:
-      Ymax BC_t 'Null':
-        GridLocation GridLocation_t 'EdgeCenter':
-        PointList IndexArray_t [[46, 49, 51, 52]]:
-      Xmin BC_t 'Null':
-        GridLocation GridLocation_t 'EdgeCenter':
-        PointList IndexArray_t [[3, 16, 28, 39]]:
-      Xmax BC_t 'Null':
-        GridLocation GridLocation_t 'EdgeCenter':
-        PointList IndexArray_t [[13, 27, 37, 50]]:
-    EdgeElements Elements_t [3, 0]:
-      ElementRange IndexRange_t [1, 52]:
-      ElementConnectivity DataArray_t:
-        I4 : [1, 2, 2, 3, 6, 1, 3, 4, 2, 6, 2, 7, 4, 5, 8, 3, 4, 8, 7, 6, 4, 9, 5, 9, 5, 10, 7, 8, 9, 8, 11, 6, 7, 11,
-              10, 9, 7, 12, 8, 12, 8, 13, 9, 13, 12, 11, 9, 14, 10, 14, 13, 12, 10, 15, 16, 11, 14, 13, 12, 16, 15, 14,
-              12, 17, 13, 17, 13, 18, 17, 16, 14, 19, 15, 20, 18, 17, 21, 16, 19, 18, 17, 21, 17, 22, 19, 20, 18, 22, 18,
-              23, 22, 21, 24, 19, 20, 24, 23, 22, 20, 25, 24, 23, 25, 24]
-    NGonElements Elements_t [22, 0]:
-      ElementRange IndexRange_t [53, 80]:
-      ElementStartOffset DataArray_t:
-        I4 : [0, 3, 6, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55, 58, 62, 66, 69, 72, 75, 78, 82,
-              85, 88]
-      ElementConnectivity DataArray_t:
-        I4 : [1, 2, 6, 6, 2, 7, 8, 7, 2, 3, 3, 4, 8, 8, 4, 9, 9, 4, 5, 9, 5, 10, 6, 7, 11, 11, 7, 12, 12, 7, 8, 12, 8,
-              13, 13, 8, 9, 13, 9, 14, 14, 9, 10, 14, 10, 15, 11, 12, 16, 16, 12, 17, 17, 12, 13, 17, 13, 18, 18, 13, 14,
-              19, 20, 19, 14, 15, 16, 17, 21, 21, 17, 22, 22, 17, 18, 22, 18, 23, 19, 24, 23, 18, 19, 20, 24, 24, 20, 25]
-    Sol FlowSolution_t:
-      GridLocation GridLocation_t 'CellCenter':
-      CellId DataArray_t:
-        R8 : [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
-              20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0]
-      nVtx DataArray_t I4 [3, 3, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 3, 3, 3, 3, 4, 3, 3]:
-  """)
-  return maia.factory.full_to_dist_tree(ftree, comm)
-
 @pytest_parallel.mark.parallel(1)
 def test_basic(comm):
 
@@ -171,10 +117,15 @@ def test_2d_basic(comm):
   for bc in PT.get_nodes_from_label(zone, 'BC_t'):
     pl = PT.get_child_from_name(bc, 'PointList')[1][0]
     assert 1 <= pl.min() and pl.min() <= 40
+    if PT.get_name(bc) == 'Ymax':
+      excepted_pl = [[30,31,32,33,34]] if comm.rank == 0 else [[36,37,38,39,40]]
+      assert (PT.get_child_from_name(bc, 'PointList')[1] == excepted_pl).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_2d_multielt(comm):
-  tree = generate_2d_multielt(comm)
+  filename = os.path.join(TU.sample_mesh_dir, '2d_elts_tri_and_quad.yaml')
+  tree = maia.io.file_to_dist_tree(filename, comm)
+
   maia.algo.dist.convert_ngon_to_elements(tree, comm)
 
   zone = PT.get_all_Zone_t(tree)[0]

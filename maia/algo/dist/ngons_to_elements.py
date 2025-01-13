@@ -19,7 +19,27 @@ is_poly_2d = lambda z: PT.Zone.CellDimension(z) == 2 and \
                         PT.Zone.Type(z) == 'Unstructured' and \
                         all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
 
+def _collected_shifted_pl(zone, loc, shift):
+  all_pl = []
+  for subset in PT.iter_all_subsets(zone, loc):
+    if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
+      _pl = pl[1][0]
+    elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
+      distri = MT.getDistribution(subset, 'Index')[1]
+      _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
+    all_pl.append(_pl + shift)
+  return all_pl
+
+def _update_pl(zone, loc, new_pl):
+  for subset, _pl in zip(PT.iter_all_subsets(zone, loc), new_pl):
+    PT.rm_children_from_name(subset, 'PointList')
+    PT.rm_children_from_name(subset, 'PointRange')
+    PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
+    # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
+  
 def _ngon_to_elements_zone_2d(zone, comm):
+  """ Implementation of conversion for 2d zones. We assume that input zones
+      are poly2d with BAR (+PE) and NGON node """
 
   # Start by constructing boundary edges
   edge_n = MT.Zone.EdgeNode(zone)
@@ -41,27 +61,13 @@ def _ngon_to_elements_zone_2d(zone, comm):
     bar_n = PT.new_Elements('BAR_2', 'BAR_2', erange=bar_range, econn=bar_vtx, parent=zone)
     MT.newDistribution({'Element' : bar_distri}, bar_n)
   
-  # Renumber PointList indexing Faces
+  # Renumber PointList indexing Edges
   new_edge_id = -1*np.ones(edge_vtx.size // 2, zone[1].dtype)
   new_edge_id[is_bnd_edge] = np.arange(bar_distri[0]+1, bar_distri[1]+1)
 
-  all_pl = []
-  for subset in PT.iter_all_subsets(zone, 'EdgeCenter'):
-    if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
-      _pl = pl[1][0]
-    elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
-      distri = MT.getDistribution(subset, 'Index')[1]
-      _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
-    all_pl.append(_pl - PT.Element.Range(edge_n)[0] + 1)
-    
-  new_pl = EP.block_to_part(new_edge_id, edge_distri, all_pl, comm)
-  
-  for subset, _pl in zip(PT.iter_all_subsets(zone, 'EdgeCenter'), new_pl):
-    PT.rm_children_from_name(subset, 'PointList')
-    PT.rm_children_from_name(subset, 'PointRange')
-    PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
-    # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
-
+  old_pl = _collected_shifted_pl(zone, 'EdgeCenter', -PT.Element.Range(edge_n)[0]+1)
+  new_pl = EP.block_to_part(new_edge_id, edge_distri, old_pl, comm)
+  _update_pl(zone, 'EdgeCenter', new_pl)
 
   # Now take care of the faces
   ngon_n = PT.Zone.NGonNode(zone)
@@ -100,21 +106,13 @@ def _ngon_to_elements_zone_2d(zone, comm):
 
   remaining_faces = comm.allreduce(face_n.size - n_treated)
   if remaining_faces != 0:
-    msg = f"Input 2d polyedric mesh can not be converted to standard elements, because some faces differs from standard elements" \
-          f" TRI_3 or QUAD_4 ({remaining_faces} faces detected on zone {PT.get_name(zone)})"
+    msg = f"Input 2d polyedric mesh can not be converted to standard elements, because some faces differs from TRI_3 or QUAD_4" \
+          f" standard elements ({remaining_faces} faces detected on zone {PT.get_name(zone)})"
     raise RuntimeError(msg)
 
 
   # Renumber PointList indexing faces (CellCenter)
-  all_pl = []
-  for subset in PT.iter_all_subsets(zone, 'CellCenter'):
-    if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
-      _pl = pl[1][0]
-    elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
-      distri = MT.getDistribution(subset, 'Index')[1]
-      _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
-    all_pl.append(_pl - PT.Element.Range(ngon_n)[0] + 1)
-
+  all_pl = _collected_shifted_pl(zone, 'CellCenter', -PT.Element.Range(ngon_n)[0]+1)
   # This last one is for fields supported by allCells (eg. FlowSolution)
   _pl = np_utils.single_dim_pr_to_pl(np.array([[1, PT.Element.Size(ngon_n)]]), face_distri)[0]
   all_pl.append(_pl)
@@ -122,10 +120,7 @@ def _ngon_to_elements_zone_2d(zone, comm):
   new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm)
 
   # Update CellCentered PointList
-  for subset, _pl in zip(PT.iter_all_subsets(zone, 'CellCenter'), new_pl[:-1]):
-    PT.rm_children_from_name(subset, 'PointList')
-    PT.rm_children_from_name(subset, 'PointRange')
-    PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
+  _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
   is_cell_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and PT.Subset.GridLocation(n) == 'CellCenter'
@@ -143,6 +138,8 @@ def _ngon_to_elements_zone_2d(zone, comm):
 
 
 def _ngon_to_elements_zone_3d(zone, comm):
+  """ Implementation of conversion for 3d zones. We assume that input zones
+      are poly3d with NGON (+PE) and NFACE node """
 
   # Start by constructing boundary faces
   ngon_n = PT.Zone.NGonNode(zone)
@@ -178,23 +175,9 @@ def _ngon_to_elements_zone_3d(zone, comm):
   new_face_id[is_bnd_tri] = np.arange(tri_distri[0]+1, tri_distri[1]+1)
   new_face_id[is_bnd_quad] = np.arange(quad_distri[0]+tri_distri[-1]+1, quad_distri[1]+tri_distri[-1]+1)
 
-  all_pl = []
-  for subset in PT.iter_all_subsets(zone, 'FaceCenter'):
-    if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
-      _pl = pl[1][0]
-    elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
-      distri = MT.getDistribution(subset, 'Index')[1]
-      _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
-    all_pl.append(_pl - PT.Element.Range(ngon_n)[0] + 1)
-    
-  new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm)
-  
-  for subset, _pl in zip(PT.iter_all_subsets(zone, 'FaceCenter'), new_pl):
-    PT.rm_children_from_name(subset, 'PointList')
-    PT.rm_children_from_name(subset, 'PointRange')
-    PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
-    # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
-
+  old_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0]+1)
+  new_pl = EP.block_to_part(new_face_id, face_distri, old_pl, comm)
+  _update_pl(zone, 'FaceCenter', new_pl)
 
   # Now take care of the cells 
   nface_n = PT.Zone.NFaceNode(zone)
@@ -259,15 +242,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
       combine_funcs[i](sections_stride[i], sections_face_vtx[i], cell_face_section[i], ec) 
 
   # Renumber PointList indexing cells
-  all_pl = []
-  for subset in PT.iter_all_subsets(zone, 'CellCenter'):
-    if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
-      _pl = pl[1][0]
-    elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
-      distri = MT.getDistribution(subset, 'Index')[1]
-      _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
-    all_pl.append(_pl - PT.Element.Range(nface_n)[0] + 1)
-
+  all_pl = _collected_shifted_pl(zone, 'CellCenter', -PT.Element.Range(nface_n)[0]+1)
   # This last one is for fields supported by allCells (eg. FlowSolution)
   _pl = np_utils.single_dim_pr_to_pl(np.array([[1, PT.Element.Size(nface_n)]]), cell_distri)[0]
   all_pl.append(_pl)
@@ -275,10 +250,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   new_pl = EP.block_to_part(new_cell_id, cell_distri, all_pl, comm)
   
   # Update CellCentered PointList
-  for subset, _pl in zip(PT.iter_all_subsets(zone, 'CellCenter'), new_pl[:-1]):
-    PT.rm_children_from_name(subset, 'PointList')
-    PT.rm_children_from_name(subset, 'PointRange')
-    PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
+  _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
   is_cell_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and PT.Subset.GridLocation(n) == 'CellCenter'
@@ -330,8 +302,8 @@ def convert_ngon_to_elements(dist_tree, comm):
       # Function require NGON + Edge with PE
       if not PT.Zone.has_ngon_elements(zone):
         maia.algo.edge_pe_to_ngon(zone, comm)
-      ng = MT.Zone.EdgeNode(zone)
-      if PT.get_child_from_name(ng, 'ParentElements') is None:
+      edge = MT.Zone.EdgeNode(zone)
+      if PT.get_child_from_name(edge, 'ParentElements') is None:
         maia.algo.ngon_to_edge_pe(zone, comm)
 
       _ngon_to_elements_zone_2d(zone, comm)
