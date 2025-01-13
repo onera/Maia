@@ -34,7 +34,18 @@ def enforce_maia_naming(part_tree, comm):
     count[prefix] += 1
     old_to_new[zone_path] = MT.conv.add_part_suffix(prefix, comm.Get_rank(), part_id)
 
+  # Unsplitted joins should not be renamed (since zone prefix does not change) 
+  # --> protect them
+  is_unsplit_gc = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.get_value(n).endswith('P?.N?')
+  gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_unsplit_gc]
+  unsplit_gcs = PT.get_children_from_predicates(part_tree, gc_predicates)
+  for gc in unsplit_gcs:
+    PT.set_label(gc, 'UserDefinedData_t')
+
   MT.rename_zones(part_tree, old_to_new, comm)
+
+  for gc in unsplit_gcs:
+    PT.set_label(gc, 'GridConnectivity_t')
 
   # Update JNs name for internal joins
   is_intra_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \

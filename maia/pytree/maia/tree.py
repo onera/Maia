@@ -53,6 +53,7 @@ def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
   
   send_stride, encoded_names = _encode(new_names)
   recv_stride, recv_encoded_names = EP.part_to_part_strided([send_stride], [encoded_names], [cur_zone_gnum], [wanted_zone_gnum], comm)
+  assert len(recv_stride[0]) == len(wanted_zone_gnum)
   recv_names = _decode(recv_stride[0], recv_encoded_names[0]) #0 because only one part
 
   # Update tree

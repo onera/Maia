@@ -122,3 +122,32 @@ def test_file_to_part_tree_redispatch(mpi_tmpdir, redispatch, comm):
     else:
       assert len(PT.get_all_Zone_t(tree)) == 1
       assert 'written for 2 procs' in err_printer.msg
+
+@pytest_parallel.mark.parallel(3)
+def test_file_to_part_tree_redispatch_jns(mpi_tmpdir, comm):
+  dtree = maia.factory.generate_dist_block(6, 'Poly', comm)
+  # Add a non 1to1 jn, to check that is it not renamed
+  bc = PT.pop_node_from_path(dtree, 'Base/zone/ZoneBC/Ymax')
+  PT.update_node(bc, label='GridConnectivity_t', value='zone')
+  PT.new_GridConnectivityType('Abutting', bc)
+  PT.new_child(PT.get_all_Zone_t(dtree)[0], 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[bc])
+
+  tree  = maia.factory.partition_dist_tree(dtree, comm)
+
+  filename = Path(mpi_tmpdir) / 'out.hdf'
+  PIO.part_tree_to_file(tree, str(filename), comm)
+  comm.barrier()
+  scomm = comm.Split(comm.rank > 0)
+  if comm.Get_rank() > 0:
+    tree = PIO.file_to_part_tree(str(filename), scomm, redispatch=True)
+    assert scomm.allreduce(len(PT.get_all_Zone_t(tree)), MPI.SUM) == 3
+    for zone in PT.iter_all_Zone_t(tree):
+      # Check zone names
+      assert PT.get_name(zone).startswith(f'zone.P{scomm.rank}')
+      # Check gcs names
+      for gc in PT.get_nodes_from_label(zone, 'GridConnectivity_t'):
+        assert '.P2' not in PT.get_name(gc) and '.P2' not in PT.get_value(gc)
+      # Check unsplitted gc
+      ymax = PT.get_node_from_predicate(zone, lambda n : 'Ymax' in PT.get_name(n))
+      if ymax is not None:
+        assert PT.get_name(ymax) == 'Ymax.0' and PT.get_value(ymax) == 'zone.P?.N?'
