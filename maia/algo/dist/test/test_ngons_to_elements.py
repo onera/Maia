@@ -8,7 +8,7 @@ import maia.pytree as PT
 
 from maia.utils import test_utils as TU
 
-from maia.algo.dist.ngons_to_elements import _ngon_to_elements_zone
+from maia.algo.dist.ngons_to_elements import _ngon_to_elements_zone_3d
 
 @pytest_parallel.mark.parallel(1)
 def test_basic(comm):
@@ -19,7 +19,7 @@ def test_basic(comm):
   zone = PT.get_node_from_label(tree, 'Zone_t')
   maia.algo.dist.convert_elements_to_ngon(tree, comm) # Note: we are not testing that, its just a way to get an ngon test
 
-  _ngon_to_elements_zone(zone, comm) # apply tested function
+  _ngon_to_elements_zone_3d(zone, comm) # apply tested function
 
   # Checks
   expected_range = [[1,2],    # TRI_3
@@ -45,7 +45,7 @@ def test_all_kinds(comm):
   zone = PT.get_node_from_label(tree, 'Zone_t')
   maia.algo.dist.convert_elements_to_ngon(tree, comm) # Note: we are not testing that, its just a way to get an ngon test
 
-  _ngon_to_elements_zone(zone, comm) # apply tested function
+  _ngon_to_elements_zone_3d(zone, comm) # apply tested function
 
    # Checks
   expected_range = [[1,6],    # TRI_3
@@ -100,3 +100,60 @@ def test_multi_sections(comm):
   cell_kind_expt = cell_kind_full_expt[cell_distri[0]:cell_distri[1]]
 
   assert (PT.get_node_from_name(zone, 'IniSection')[1] == cell_kind_expt).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_2d_basic(comm):
+  tree = maia.factory.generate_dist_block(11, 'QUAD_4', comm)
+
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  maia.algo.dist.convert_ngon_to_elements(tree, comm)
+
+  zone = PT.get_all_Zone_t(tree)[0]
+  assert PT.get_child_from_name(zone, 'NGonElements') is None
+  assert PT.get_child_from_name(zone, 'EdgeElements') is None
+
+  assert (PT.Element.Range(PT.get_child_from_name(zone, 'BAR_2')) == [1, 40]).all()
+  assert (PT.Element.Range(PT.get_child_from_name(zone, 'QUAD_4')) == [41, 140]).all()
+  for bc in PT.get_nodes_from_label(zone, 'BC_t'):
+    pl = PT.get_child_from_name(bc, 'PointList')[1][0]
+    assert 1 <= pl.min() and pl.min() <= 40
+    if PT.get_name(bc) == 'Ymax':
+      excepted_pl = [[30,31,32,33,34]] if comm.rank == 0 else [[36,37,38,39,40]]
+      assert (PT.get_child_from_name(bc, 'PointList')[1] == excepted_pl).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_2d_multielt(comm):
+  filename = os.path.join(TU.sample_mesh_dir, '2d_elts_tri_and_quad.yaml')
+  tree = maia.io.file_to_dist_tree(filename, comm)
+
+  maia.algo.dist.convert_ngon_to_elements(tree, comm)
+
+  zone = PT.get_all_Zone_t(tree)[0]
+  assert PT.get_child_from_name(zone, 'NGonElements') is None
+  assert PT.get_child_from_name(zone, 'EdgeElements') is None
+
+  bar_2 = PT.get_child_from_name(zone, 'BAR_2')
+  tri_3 = PT.get_child_from_name(zone, 'TRI_3')
+  qua_4 = PT.get_child_from_name(zone, 'QUAD_4')
+  assert (PT.Element.Range(bar_2) == [1,  16]).all()
+  assert (PT.Element.Range(tri_3) == [17, 40]).all()
+  assert (PT.Element.Range(qua_4) == [41, 44]).all()
+
+  tri_expt_f = np.array([1,2,6, 6,2,7, 3,4,8, 8,4,9, 9,4,5, 9,5,10, 6,7,11, 11,7,12, 12,7,8, 12,8,13,
+                         13,8,9, 13,9,14, 14,9,10, 14,10,15, 11,12,16, 16,12,17, 17,12,13, 17,13,18,
+                         16,17,21, 21,17,22, 22,17,18, 22,18,23, 19,20,24, 24,20,25])
+  qua_expt_f = np.array([8,7,2,3, 18,13,14,19, 20,19,14,15, 19,24,23,18])
+
+  tri_distri = PT.maia.getDistribution(tri_3, 'Element')[1]
+  qua_distri = PT.maia.getDistribution(qua_4, 'Element')[1]
+  assert (PT.get_child_from_name(tri_3, 'ElementConnectivity')[1] == tri_expt_f[3*tri_distri[0]:3*tri_distri[1]]).all()
+  assert (PT.get_child_from_name(qua_4, 'ElementConnectivity')[1] == qua_expt_f[4*qua_distri[0]:4*qua_distri[1]]).all()
+
+  cell_id_expt_f = np.array([1., 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 
+                             17, 18, 19, 22, 23, 24, 25, 27, 28, 3, 20, 21, 26])
+  n_vtx_expt_f = np.array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+                           3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4])
+
+  cell_distri = PT.maia.getDistribution(zone, 'Cell')[1]
+  assert (PT.get_node_from_name(zone, 'CellId')[1] == cell_id_expt_f[cell_distri[0]:cell_distri[1]]).all()
+  assert (PT.get_node_from_name(zone, 'nVtx'  )[1] == n_vtx_expt_f  [cell_distri[0]:cell_distri[1]]).all()
