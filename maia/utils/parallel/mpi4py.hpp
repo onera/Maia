@@ -1,6 +1,6 @@
 #pragma once
 #include <mpi.h>
-#include "mpi4py/mpi4py.MPI.h"
+#include "mpi4py/mpi4py.h"
 #include <pybind11/pybind11.h>
 
 
