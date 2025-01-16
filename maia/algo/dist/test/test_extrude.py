@@ -165,6 +165,7 @@ def test_extrude_tri_to_prism_and_tris(align):
 
     # Prepare test
     n_vtx  = 25
+    n_cell = 20
     num    = 1
     er_max = 12
     tri = PT.new_Elements('TRI', type='TRI_3', erange=[1,17], econn=[1,2,3, 1,3,4])
@@ -172,7 +173,7 @@ def test_extrude_tri_to_prism_and_tris(align):
     old_tri = PT.deep_copy(tri)
 
     # Run test
-    new_tri1, new_tri2 = maia.algo.dist.extrude._extrude_tri_to_prism_and_tris(tri, num, n_vtx, er_max, align)
+    new_tri1, new_tri2 = maia.algo.dist.extrude._extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align)
 
     # Verification
     penta = tri # Old tri is now penta
@@ -188,13 +189,14 @@ def test_extrude_tri_to_prism_and_tris(align):
     else:
         assert (get_elt_ec(new_tri1) == get_elt_ec(old_tri)).all()
     assert (PT.Element.Range(new_tri1) == [er_max+1,    er_max+17]).all()
-    assert (PT.Element.Range(new_tri2) == [er_max+1+17, er_max+2*17]).all()
+    assert (PT.Element.Range(new_tri2) == [er_max+1+20, er_max+17+20]).all()
 
 @pytest.mark.parametrize("align", [True, False])
 def test_extrude_quad_to_hexa_and_quads(align):
 
     # Prepare test
     n_vtx  = 25
+    n_cell = 17
     num    = 1
     er_max = 12
     quad = PT.new_Elements('QUAD', type='QUAD_4', erange=[1,17], econn=[1,2,5,4, 2,3,6,5])
@@ -202,7 +204,7 @@ def test_extrude_quad_to_hexa_and_quads(align):
     old_quad = PT.deep_copy(quad)
 
     # Run test
-    new_quad1, new_quad2 = maia.algo.dist.extrude._extrude_quad_to_hexa_and_quads(quad, num, n_vtx, er_max, align)
+    new_quad1, new_quad2 = maia.algo.dist.extrude._extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align)
 
     # Verification
     hexa = quad # Old quad is now hexa
@@ -272,7 +274,7 @@ def test_pl_and_data_vtx_duplication(pl, data, comm):
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("coords_dim", [2, 3])
-@pytest.mark.parametrize("kplan_type", ['perio', 'fam_bc'])
+@pytest.mark.parametrize("kplan_type", ['GC', 'BC'])
 def test_extrusion_2d_cart_ngon(coords_dim, kplan_type, comm):
 
     # Prepare 2D case
@@ -303,11 +305,11 @@ def test_extrusion_2d_cart_ngon(coords_dim, kplan_type, comm):
     assert PT.get_child_from_name(PT.Zone.NGonNode(zone), 'ParentElements') is not None
     assert len(PT.get_nodes_from_predicate(zone, is_edge_subset)) == 0
 
-    if kplan_type == 'perio':
+    if kplan_type == 'GC':
         assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4 # 4 initial BC
         assert len(PT.get_nodes_from_label(zone, 'GridConnectivity_t')) == 2
         assert np.all(np.abs(PT.get_node_from_name(zone, 'Translation')[1]) == [0., 0., 1.])
-    elif kplan_type == 'fam_bc':
+    elif kplan_type == 'BC':
         assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4 + 2
         assert len(PT.get_children_from_label(base, 'Family_t')) == 2
 

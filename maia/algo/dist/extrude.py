@@ -11,6 +11,48 @@ from maia.utils    import logging as mlog
 
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 
+def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, kplan_type, comm):
+
+    distrib_idx = par_utils.uniform_distribution(n_face2d, comm)
+    pl_former   = np.arange(distrib_idx[0], distrib_idx[1], dtype=zone[1].dtype).reshape((1,-1), order='F') + first_id
+    pl_extruded = np.arange(distrib_idx[0], distrib_idx[1], dtype=zone[1].dtype).reshape((1,-1), order='F') + first_id + n_face2d
+
+    # Note : Subset are created as EdgeCenter right now, because they calling function convert it to FaceCenter after
+    if kplan_type in ['GC', 'JN']:
+        # > Generate GridConnectivity between the two planes
+        # Remark: former NGon is the first GridConnectivity and the duplicated one the second one
+        zgc = PT.update_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
+        gc1_name = 'InitialSurface'
+        gc2_name = 'ExtrudedSurface'
+        gc1 = PT.new_GridConnectivity(name=gc1_name, donor_name=PT.get_name(zone),
+                                      type='Abutting1to1', loc='EdgeCenter',
+                                      point_list=pl_former,
+                                      point_list_donor=pl_extruded,
+                                      parent=zgc)
+        PT.new_GridConnectivityProperty({"translation": np.array(extrusion_vector, dtype=np.float64)}, parent=gc1)
+        MT.newDistribution({'Index' : distrib_idx}, parent=gc1)
+
+        gc2 = PT.new_GridConnectivity(name=gc2_name, donor_name=PT.get_name(zone),
+                                      type='Abutting1to1', loc='EdgeCenter',
+                                      point_list=pl_extruded,
+                                      point_list_donor=pl_former,
+                                      parent=zgc)
+        PT.new_GridConnectivityProperty({"translation": -np.array(extrusion_vector, dtype=np.float64)}, parent=gc2)
+        MT.newDistribution({'Index' : distrib_idx.copy()}, parent=gc2)
+
+        PT.new_Descriptor("GridConnectivityDonorName", gc2_name, parent=gc1)
+        PT.new_Descriptor("GridConnectivityDonorName", gc1_name, parent=gc2)
+
+    elif kplan_type == 'BC':
+        zbc = PT.update_child(zone, 'ZoneBC', 'ZoneBC_t')
+        bc1 = PT.new_BC(name='InitialSurface', type='FamilySpecified', point_list=pl_former,
+                        loc='EdgeCenter', family='InitialSurface', parent=zbc)
+        bc2 = PT.new_BC(name='ExtrudedSurface', type='FamilySpecified', point_list=pl_extruded,
+                        loc='EdgeCenter', family='ExtrudedSuface', parent=zbc)
+        MT.newDistribution({'Index' : distrib_idx}, parent=bc1)
+        MT.newDistribution({'Index' : distrib_idx.copy()}, parent=bc2)
+
+
 def _nodes_duplication(zone, extrusion_vector, comm):
     """
     Internal function used by _extrusion_2d_u_ngon and _extrusion_2d_u_elem to create 
@@ -204,7 +246,7 @@ def _merge_ngons(zone, comm):
     MT.newDistribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
     
 
-def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, kplan_type='perio'):
+def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, kplan_type):
     """
     Internal function used by extrusion_2d to extrude a 2D unstructured mesh describe by edges
     in the direction of the extrusion vector in cartesian and cylindrical coordinates.
@@ -233,55 +275,11 @@ def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, kplan_type='perio'):
     _merge_ngons(zone, comm)
     
     # 5/ Manage K-plans
-    # For now use PointList even if data is contiguous
-    # Note : Subset are created as EdgeCenter right now, because they calling function convert it to FaceCenter after
-    distrib_idx = par_utils.uniform_distribution(n_cell, comm)
-    pl_former   = np.arange(distrib_idx[0], distrib_idx[1], dtype=zone[1].dtype).reshape((1,-1), order='F') + n_edges + 1
-    pl_extruded = np.arange(distrib_idx[0], distrib_idx[1], dtype=zone[1].dtype).reshape((1,-1), order='F') + n_edges + 1 + n_cell
-
-    if kplan_type=='perio':
-        # > Generate GridConnectivity between the two planes
-        # Remark: former NGon is the first GridConnectivity and the duplicated one the second one
-        zgc = PT.update_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
-        # TO DO: GC names ok ???
-        gc1_name = '__maia_former_plan'
-        gc2_name = '__maia_extruded_plan'
-        gc1 = PT.new_GridConnectivity(name=gc1_name, donor_name=PT.get_name(zone),
-                                      type='Abutting1to1', loc='EdgeCenter',
-                                      # point_range=[n_edges+1, n_edges+1+n_cell], 
-                                      # point_range_donor=[n_edges+1+n_cell, n_edges+1+2*n_cell],
-                                      point_list=pl_former,
-                                      point_list_donor=pl_extruded,
-                                      parent=zgc)
-        PT.new_GridConnectivityProperty({"translation": np.array(extrusion_vector, dtype=np.float64)}, parent=gc1)
-        MT.newDistribution({'Index' : distrib_idx}, parent=gc1)
-
-        gc2 = PT.new_GridConnectivity(name=gc2_name, donor_name=PT.get_name(zone),
-                                      type='Abutting1to1', loc='EdgeCenter',
-                                      # point_range=[n_edges+1+n_cell, n_edges+1+2*n_cell],
-                                      # point_range_donor=[n_edges+1, n_edges+1+n_cell], 
-                                      point_list=pl_extruded,
-                                      point_list_donor=pl_former,
-                                      parent=zgc)
-        PT.new_GridConnectivityProperty({"translation": -np.array(extrusion_vector, dtype=np.float64)}, parent=gc2)
-        MT.newDistribution({'Index' : distrib_idx}, parent=gc2)
-
-        PT.new_Descriptor("GridConnectivityDonorName", gc2_name, parent=gc1)
-        PT.new_Descriptor("GridConnectivityDonorName", gc1_name, parent=gc2)
-
-    elif kplan_type=='fam_bc':
-        zbc = PT.update_child(zone, 'ZoneBC', 'ZoneBC_t')
-        bc1 = PT.new_BC(name='BC__maia_former_plan', type='FamilySpecified', point_list=pl_former,
-                        loc='EdgeCenter', family='__maia_former_plan', parent=zbc)
-        bc2 = PT.new_BC(name='BC__maia_extruded_plan', type='FamilySpecified', point_list=pl_extruded,
-                        loc='EdgeCenter', family='__maia_extruded_plan', parent=zbc)
-        MT.newDistribution({'Index' : distrib_idx}, parent=bc1)
-        MT.newDistribution({'Index' : distrib_idx}, parent=bc2)
-    else:
-        raise RuntimeError(f"'kplan_type' is {kplan_type} but only 'perio' and 'fam_bc' are allowed !")
+    _create_surfacic_bcs(zone, n_cell, n_edges+1, extrusion_vector, kplan_type, comm)
 
 
-def _extrude_tri_to_prism_and_tris(tri, num, n_vtx, er_max, align=True):
+
+def _extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align=True):
     """
     Internal function used by _extrusion_2d_u_elem to create face by extrusion of TRI elements
     
@@ -311,7 +309,7 @@ def _extrude_tri_to_prism_and_tris(tri, num, n_vtx, er_max, align=True):
         new_tri2_ec = np_utils.interweave_arrays([fourth_nodes, sixth_nodes, fifth_nodes])
     
     new_tri1_er = np.array([er_max+1, er_max+PT.Element.Size(tri)], new_tri1_ec.dtype)
-    new_tri2_er = new_tri1_er + PT.Element.Size(tri)
+    new_tri2_er = new_tri1_er + n_cell
 
     new_tri1 = PT.new_Elements(f'TRI_3.{num}a', 'TRI_3', erange=new_tri1_er, econn=new_tri1_ec)
     new_tri2 = PT.new_Elements(f'TRI_3.{num}b', 'TRI_3', erange=new_tri2_er, econn=new_tri2_ec)
@@ -320,7 +318,7 @@ def _extrude_tri_to_prism_and_tris(tri, num, n_vtx, er_max, align=True):
     return (new_tri1, new_tri2)
 
 
-def _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, er_max, align=True):
+def _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align=True):
     """
     Internal function used by _extrusion_2d_u_elem to create face by extrusion of QUAD elements
     
@@ -352,7 +350,7 @@ def _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, er_max, align=True):
         new_quad2_ec = np_utils.interweave_arrays([fifth_nodes, eighth_nodes, seventh_nodes, sixth_nodes])
 
     new_quad1_er = np.array([er_max+1, er_max+PT.Element.Size(quad)], new_quad1_ec.dtype)
-    new_quad2_er = new_quad1_er + PT.Element.Size(quad)
+    new_quad2_er = new_quad1_er + n_cell
 
     new_quad1 = PT.new_Elements(f'QUAD_4.{num}a', 'QUAD_4', erange=new_quad1_er, econn=new_quad1_ec)
     new_quad2 = PT.new_Elements(f'QUAD_4.{num}b', 'QUAD_4', erange=new_quad2_er, econn=new_quad2_ec)
@@ -383,7 +381,7 @@ def _extrude_bar_to_quad(bar, num, n_vtx, align=True):
     PT.set_value(ec_n, new_ec)
 
 
-def _extrusion_2d_u_elem(zone, extrusion_vector, comm, kplan_type='perio'):
+def _extrusion_2d_u_elem(zone, extrusion_vector, comm, kplan_type):
     """
     Internal function used by extrusion_2d to extrude a 2D unstructured mesh describe by elements
     in the direction of the extrusion vector in cartesian and cylindrical coordinates.
@@ -391,7 +389,9 @@ def _extrusion_2d_u_elem(zone, extrusion_vector, comm, kplan_type='perio'):
     
     # 0/ Global information
     n_vtx  = PT.Zone.n_vtx(zone)
+    n_cell = PT.Zone.n_cell(zone)
     er_max = max(PT.Element.Range(e)[1] for e in PT.get_children_from_label(zone, 'Elements_t'))
+    first_id = er_max + 1
 
     # 1/ Duplication of nodes to generate the second plan
     _nodes_duplication(zone, extrusion_vector, comm)
@@ -403,87 +403,31 @@ def _extrusion_2d_u_elem(zone, extrusion_vector, comm, kplan_type='perio'):
     is_tri  = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'TRI_3'
     is_quad = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'QUAD_4'
 
+    # Note : in step 2, we ensure to create all faces from initial plan, then all faces
+    # from extruded plan, because it makes generation of FaceCenter BC/GC easier
     # 2/ Extrude Tri to Prism
-    new_tris_l = []
+    new_face_elts = []
     for num, tri in enumerate(PT.get_children_from_predicate(zone, is_tri)):
-        new_tri1, new_tri2 = _extrude_tri_to_prism_and_tris(tri, num, n_vtx, er_max, align=align)
-        new_tris_l.extend([new_tri1, new_tri2])
-        er_max += 2*PT.Element.Size(tri)
-    for new_tri in new_tris_l:
-        PT.add_child(zone, new_tri)
+        new_tri1, new_tri2 = _extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align=align)
+        new_face_elts.extend([new_tri1, new_tri2])
+        er_max += PT.Element.Size(tri)
     
     # 3/ Extrude Quad to Hexa
-    new_quads_l = []
     for num, quad in enumerate(PT.get_children_from_predicate(zone, is_quad)):
-        new_quad1, new_quad2 = _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, er_max, align=align)
-        new_quads_l.extend([new_quad1, new_quad2])
-        er_max += 2*PT.Element.Size(quad)
-    for new_quad in new_quads_l:
-        PT.add_child(zone, new_quad)
+        new_quad1, new_quad2 = _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align=align)
+        new_face_elts.extend([new_quad1, new_quad2])
+        er_max += PT.Element.Size(quad)
+
+    for elt in sorted(new_face_elts, key=lambda e: PT.Element.Range(e)[0]):
+        PT.add_child(zone, elt)
     
     # 4/ Extrude Bar to Quad
     for num, bar in enumerate(PT.get_nodes_from_predicate(zone, is_bar)):
         _extrude_bar_to_quad(bar, num, n_vtx, align=align)
     
     # 5/ Manage K-plans
-    # Note : Subset are created as EdgeCenter right now, because they calling function convert it to FaceCenter after
-    # TODO : fusionner pour avoir un seul couple de plan, regroupant tt les elts 2D (comme en NGON)
-    if kplan_type=='perio':
-        # > Generate GridConnectivity between the two planes
-        # Remark: former NGon is the first GridConnectivity and the duplicated one the second one
-        # TO DO: GC names ok ???
-        #        PR or PL ???
-        zgc = PT.update_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
-        for n, new_elem2d in enumerate(new_tris_l+new_quads_l):
-            new_elem2d_range = PT.Element.Range(new_elem2d)
-            if n%2==0:
-                gc1_name = f'__maia_former_plan_{PT.get_name(new_elem2d)}'
-                distrib1 = MT.getDistribution(new_elem2d, 'Element')[1]
-                pl1 = np.arange(new_elem2d_range[0], new_elem2d_range[1]+1, dtype=pdm_dtype)[distrib1[0]:distrib1[1]]
-                # pr1=[new_elem2d_range[0], new_elem2d_range[1]+1, dtype=pdm_dtype],
-            else:
-                gc2_name = f'__maia_extruded_plan_{PT.get_name(new_elem2d)}'
-                distrib2 = MT.getDistribution(new_elem2d, 'Element')[1]
-                pl2 = np.arange(new_elem2d_range[0], new_elem2d_range[1]+1, dtype=pdm_dtype)[distrib2[0]:distrib2[1]]
-                # pr2=[new_elem2d_range[0], new_elem2d_range[1]+1, dtype=pdm_dtype],
-                gc1 = PT.new_GridConnectivity(name=gc1_name, donor_name=PT.get_name(zone),
-                                              type='Abutting1to1', loc='EdgeCenter',
-                                              # point_range      =pr1,
-                                              # point_range_donor=pr2,
-                                              point_list=[pl1],
-                                              point_list_donor=[pl2],
-                                              parent=zgc)
-                PT.new_GridConnectivityProperty({"translation": np.array(extrusion_vector, dtype=np.float64)}, parent=gc1)
-                MT.newDistribution({'Index' : distrib1}, parent=gc1)
-                gc2 = PT.new_GridConnectivity(name=gc2_name, donor_name=PT.get_name(zone),
-                                              type='Abutting1to1', loc='EdgeCenter',
-                                              # point_range      =pr2,
-                                              # point_range_donor=pr1,
-                                              point_list=[pl2],
-                                              point_list_donor=[pl1],
-                                              parent=zgc)
-                PT.new_GridConnectivityProperty({"translation": -np.array(extrusion_vector, dtype=np.float64)}, parent=gc2)
-                MT.newDistribution({'Index' : distrib2}, parent=gc2)
-                # TO DO: to keep ???
-                PT.new_child(gc1, "GridConnectivityDonorName", "Descriptor_t", gc2_name)
-                PT.new_child(gc2, "GridConnectivityDonorName", "Descriptor_t", gc1_name)
-    elif kplan_type=='fam_bc':
-        zbc = PT.update_child(zone, 'ZoneBC', 'ZoneBC_t')
-        for n, new_elem2d in enumerate(new_tris_l+new_quads_l):
-            if n%2==0:
-                bc_name = f'BC__maia_former_plan_{PT.get_name(new_elem2d)}'
-                fam_name = '__maia_former_plan'
-            else:
-                bc_name = f'BC__maia_extruded_plan{PT.get_name(new_elem2d)}'
-                fam_name = '__maia_extruded_plan'
-            distrib = MT.getDistribution(new_elem2d, 'Element')[1]
-            new_elem2d_range = PT.Element.Range(new_elem2d)
-            pl = np.arange(new_elem2d_range[0], new_elem2d_range[1]+1, dtype=pdm_dtype)[distrib[0]:distrib[1]]
-            bc = PT.new_BC(name=bc_name, type='FamilySpecified', point_list=[pl],
-                           loc='EdgeCenter', family=fam_name, parent=zbc)
-            MT.newDistribution({'Index' : distrib}, parent=bc)
-    else:
-        raise RuntimeError(f"'kplan_type' is {kplan_type} but only 'perio' and 'fam_bc' are allowed !")
+    _create_surfacic_bcs(zone, n_cell, first_id, extrusion_vector, kplan_type, comm)
+
 
 def _pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm):
     """
@@ -512,7 +456,7 @@ def _pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm):
     return new_distrib_idx, dist_pl, dist_data
     
 
-def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='perio', dupl_vtx_info=False):
+def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='GC', dupl_vtx_info=False):
     """
     Extrude a 2D mesh in the direction of the extrusion vector in cartesian and cylindrical coordinates.
 
@@ -522,8 +466,8 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='perio', dupl_vtx
       dist_tree (CGNSTree): Input distributed tree
       comm      (MPIComm) : MPI communicator
       extrusion_vector (array of 3 floats): List of the value of the extrusion in each direction
-      kplan_type (str): Option to define K plans as periodic GridConnectivity_t ('perio')
-                           or has FamilySpecified BC_t ('fam_bc'). Default value is 'perio'
+      kplan_type (str): Option to define K plans as periodic GridConnectivity_t ('GC')
+                           or has FamilySpecified BC_t ('BC'). Default value is 'GC'
       dupl_vtx_info (str): Option to define how to manage 'Vertex' information when extruded. Keep
                            information on initial vertices only (False) or duplicate it on extuded
                            plan (True). Default value is 'False'
@@ -533,6 +477,9 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='perio', dupl_vtx
     TO DO
     > ajouter exemple/snippet dans la doc ?
     """
+    kplan_type = kplan_type.upper()
+    if not kplan_type in ['BC', 'GC', 'JN']:
+        raise ValueError(f"'kplan_type' is {kplan_type} but only 'GC' and 'BC' are allowed !")
     
     zone_to_distrib_vtx = dict()
     for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
@@ -578,7 +525,7 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='perio', dupl_vtx
         if PT.Zone.has_ngon_elements(zone):
             cell_offset_3d = PT.Element.Range(PT.Zone.NGonNode(zone))[1] + 1
         else:
-            cell_offset_3d = PT.Zone.get_elt_range_per_dim(zone)[3][0]
+            cell_offset_3d = cell_offset_2d # For elt meshes, cell pl dont need to be updated
         
         # Update containers
         is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
@@ -703,6 +650,6 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='perio', dupl_vtx
     # Update base dimension
     for base in PT.get_all_CGNSBase_t(dist_tree):
         PT.set_value(base, [3, 3])
-        if kplan_type=='fam_bc':
-            PT.new_Family('__maia_former_plan',   family_bc='UserDefined', parent=base)
-            PT.new_Family('__maia_extruded_plan', family_bc='UserDefined', parent=base)
+        if kplan_type=='BC':
+            PT.new_Family('InitialSurface',  family_bc='UserDefined', parent=base)
+            PT.new_Family('ExtrudedSurface', family_bc='UserDefined', parent=base)
