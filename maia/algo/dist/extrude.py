@@ -84,22 +84,11 @@ def _reorder_ngon_ec(ngon_n):
     """
     Internal function used by _ngon_duplication to reorder the NGonNode connectivity
     to be exited normal
-    
-    TODO
-    Question: To be efficient, instead of reverse roll each face, we can reverse
-              all the EC, but we loose the initial numbering !
-    ---> Maybe we should implement roll_by_stride or something like that
     """
-    ec_n  = PT.get_child_from_name(ngon_n, 'ElementConnectivity')
-    eso_n = PT.get_child_from_name(ngon_n, 'ElementStartOffset')
+    ec  = PT.get_child_from_name(ngon_n, 'ElementConnectivity')[1]
+    eso = PT.get_child_from_name(ngon_n, 'ElementStartOffset')[1]
     
-    ec  = PT.get_value(ec_n)
-    eso = PT.get_value(eso_n)
-    eso = eso - eso[0]
-    
-    for i in range(len(eso)-1):
-        sub_ec = ec[eso[i]:eso[i+1]]
-        ec[eso[i]:eso[i+1]] = np_utils.roll_from(sub_ec, start_idx=0, reverse=True)
+    np_utils.reverse_by_stride(eso-eso[0], ec, inplace=True)
     
 
 def _ngon_duplication(zone, comm, align=True):

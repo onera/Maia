@@ -270,7 +270,31 @@ jagged_merge(py::array_t<int>& np_idx1,
   return std::make_tuple(np_idx, np_array);
 }
 
+template<typename I>
+void reverse_by_stride(py::array_t<I>& np_idx,
+                       py::array     &np_array) {
 
+  size_t item_size = np_array.itemsize();
+
+  auto idx = np_idx.data();
+  auto start_ptr = static_cast<std::byte*>(np_array.mutable_data());
+
+  // Loop to operate on each section of the array
+  for (size_t i=0; i < np_idx.size()-1; ++i) {
+    size_t n_elt = idx[i+1] - idx[i];
+    auto start = start_ptr + idx[i]*item_size;
+    auto end = start + n_elt*item_size;
+
+    // Inverse subsection
+    for (size_t j = 0; j < n_elt / 2; ++j) {
+      auto left  = start + j*item_size;
+      auto right = end - (j+1)*item_size;
+      for (size_t k = 0; k < item_size; ++k) {
+          std::swap(left[k], right[k]);
+      }
+    }
+  }
+}
 
 
 
@@ -361,4 +385,10 @@ void register_layouts_module(py::module_& parent) {
         py::arg("values").noconvert(),
         py::arg("indices").noconvert(),
         py::arg("out").noconvert());
+  m.def("reverse_by_stride", &reverse_by_stride<int32_t>,
+        py::arg("indices").noconvert(),
+        py::arg("array").noconvert());
+  m.def("reverse_by_stride", &reverse_by_stride<int64_t>,
+        py::arg("indices").noconvert(),
+        py::arg("array").noconvert());
 }

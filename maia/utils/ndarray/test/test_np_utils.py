@@ -255,6 +255,20 @@ def test_is_unique_strided():
   mask = np_utils.is_unique_strided(elt_ec, size_elt, method='sort')
   assert np.array_equal(mask, result)
 
+def test_reverse_by_stride():
+  idx = np.array([0, 3, 6, 10, 13, 13, 14], np.int32)
+  array = np.array([34,22,191,  29,32,53,  43,93,22,95, 633,92,5,   4], int)
+  expt  = np.array([191,22,34,  53,32,29,  95,22,93,43, 5,92,633,   4], int)
+  reversed = np_utils.reverse_by_stride(idx, array)
+  assert np.array_equal(reversed, expt)
+
+  np_utils.reverse_by_stride(idx, reversed, inplace=True)
+  assert np.array_equal(reversed, array)
+
+  np_utils.reverse_by_stride(np.array([0], int), np.empty(0, float), inplace=True)
+  np_utils.reverse_by_stride(np.array([0,0,0], int), np.empty(0, float), inplace=True)
+
+
 def test_sort_by_stride():
   idx   = np.array([0    ,  3 ,  4, 5, 5     , 8], np.int32)
   array = np.array([7,2,3,  11,  3,    10,1,1])

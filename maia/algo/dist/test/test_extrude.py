@@ -64,7 +64,7 @@ def test_reorder_ngon_ec():
     maia.algo.dist.extrude._reorder_ngon_ec(ngon_n)
 
     # Verification
-    assert (get_elt_ec(ngon_n) == [1, 4, 3, 2, 5, 7, 6]).all()
+    assert (get_elt_ec(ngon_n) == [4, 3, 2, 1, 7, 6, 5]).all()
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("align", [True, False])
