@@ -14,8 +14,6 @@ from .duplicate                  import duplicate_from_periodic_jns,\
                                         duplicate_family_from_periodic_jns,\
                                         duplicate_family_from_rotation_jns_to_360
 
-from .extract_surf_dmesh         import extract_surf_tree_from_bc
-
 from .extrusion                  import extrude
 
 from .merge                      import merge_all_zones_from_families,\
@@ -29,8 +27,7 @@ from .mesh_adaptation            import adapt_mesh_with_feflo
 
 from .mixed_to_std_elements      import convert_mixed_to_elements
 
-from .ngon_from_std_elements     import convert_elements_to_ngon,\
-                                        generate_ngon_from_std_elements
+from .ngon_from_std_elements     import convert_elements_to_ngon
 
 from .ngons_to_elements          import convert_ngon_to_elements
 
