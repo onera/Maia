@@ -16,7 +16,7 @@ from .duplicate                  import duplicate_from_periodic_jns,\
 
 from .extract_surf_dmesh         import extract_surf_tree_from_bc
 
-from .extrude                    import extrusion_2d
+from .extrusion                  import extrude
 
 from .merge                      import merge_all_zones_from_families,\
                                         merge_connected_zones,\

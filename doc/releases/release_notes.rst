@@ -15,6 +15,7 @@ Developpement version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``(de)concatenate_subsets_from_family`` functions to (un)gather BC nodes
+- Algo module: add ``extrude`` function to create 3D meshes from 2D surfacic meshes
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^

@@ -4,21 +4,22 @@ import numpy as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia          import npy_pdm_gnum_dtype  as pdm_dtype
-from maia.transfer import protocols           as EP
-from maia.utils    import np_utils, par_utils
-from maia.utils    import logging as mlog
+from maia           import npy_pdm_gnum_dtype  as pdm_dtype
+from maia.algo.dist import ngon_tools
+from maia.transfer  import protocols as EP
+from maia.utils     import np_utils, par_utils
+from maia.utils     import logging as mlog
 
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 
-def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, kplan_type, comm):
+def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as, comm):
 
   distrib_idx = par_utils.uniform_distribution(n_face2d, comm)
   pl_former   = np.arange(distrib_idx[0], distrib_idx[1], dtype=zone[1].dtype).reshape((1,-1), order='F') + first_id
   pl_extruded = np.arange(distrib_idx[0], distrib_idx[1], dtype=zone[1].dtype).reshape((1,-1), order='F') + first_id + n_face2d
 
   # Note : Subset are created as EdgeCenter right now, because they calling function convert it to FaceCenter after
-  if kplan_type in ['GC', 'JN']:
+  if ksubset_as in ['GC', 'JN']:
     # > Generate GridConnectivity between the two planes
     # Remark: former NGon is the first GridConnectivity and the duplicated one the second one
     zgc = PT.update_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
@@ -43,7 +44,7 @@ def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, kplan_type,
     PT.new_Descriptor("GridConnectivityDonorName", gc2_name, parent=gc1)
     PT.new_Descriptor("GridConnectivityDonorName", gc1_name, parent=gc2)
 
-  elif kplan_type == 'BC':
+  elif ksubset_as == 'BC':
     zbc = PT.update_child(zone, 'ZoneBC', 'ZoneBC_t')
     bc1 = PT.new_BC(name='InitialSurface', type='FamilySpecified', point_list=pl_former,
                     loc='EdgeCenter', family='InitialSurface', parent=zbc)
@@ -155,7 +156,6 @@ def _ngon_duplication(zone, comm, align=True):
   PT.set_name(ngon_bis_n, f'{PT.get_name(ngon_n)}_bis')
   # > Update ElementRange and ElementConnectivity
   # on suppose que l'on a deja tous les elements 1D et 2D de définis dans le CGNS
-  # TO DO: creer le NGon si on a que Bar + PE avant d'appliquer cette fonction
   er = PT.get_child_from_name(ngon_bis_n, 'ElementRange')[1]
   ec = PT.get_child_from_name(ngon_bis_n, 'ElementConnectivity')[1]
   er += n_cell_2d
@@ -246,7 +246,7 @@ def _merge_ngons(zone, comm):
   MT.newDistribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
     
 
-def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, kplan_type):
+def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as):
   """
   Internal function used by extrusion_2d to extrude a 2D unstructured mesh describe by edges
   in the direction of the extrusion vector in cartesian and cylindrical coordinates.
@@ -255,8 +255,13 @@ def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, kplan_type):
   # 0/ Global information
   n_vtx  = PT.Zone.n_vtx(zone)
   n_cell = PT.Zone.n_cell(zone)
-  # TO DO: create function in 'node_inspect.py' to obtain edges number of a mesh ?
   n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, is_bar))
+
+  # 0bis / Ensure we have both EdgeElements/ParentElements and NGonElements
+  if not PT.Zone.has_ngon_elements(zone):
+    ngon_tools.edge_pe_to_ngon(zone, comm)
+  if PT.get_node_from_predicates(zone, [is_bar, 'ParentElements']) is None:
+    ngon_tools.ngon_to_edge_pe(zone, comm)
   
   # 1/ Duplication of nodes to generate the second plan
   _nodes_duplication(zone, extrusion_vector, comm)
@@ -275,7 +280,7 @@ def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, kplan_type):
   _merge_ngons(zone, comm)
   
   # 5/ Manage K-plans
-  _create_surfacic_bcs(zone, n_cell, n_edges+1, extrusion_vector, kplan_type, comm)
+  _create_surfacic_bcs(zone, n_cell, n_edges+1, extrusion_vector, ksubset_as, comm)
 
 
 
@@ -381,7 +386,7 @@ def _extrude_bar_to_quad(bar, num, n_vtx, align=True):
   PT.set_value(ec_n, new_ec)
 
 
-def _extrusion_2d_u_elem(zone, extrusion_vector, comm, kplan_type):
+def _extrusion_2d_u_elem(zone, extrusion_vector, comm, ksubset_as):
   """
   Internal function used by extrusion_2d to extrude a 2D unstructured mesh describe by elements
   in the direction of the extrusion vector in cartesian and cylindrical coordinates.
@@ -426,7 +431,7 @@ def _extrusion_2d_u_elem(zone, extrusion_vector, comm, kplan_type):
     _extrude_bar_to_quad(bar, num, n_vtx, align=align)
   
   # 5/ Manage K-plans
-  _create_surfacic_bcs(zone, n_cell, first_id, extrusion_vector, kplan_type, comm)
+  _create_surfacic_bcs(zone, n_cell, first_id, extrusion_vector, ksubset_as, comm)
 
 
 def _pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm):
@@ -456,30 +461,44 @@ def _pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm):
   return new_distrib_idx, dist_pl, dist_data
     
 
-def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='GC', dupl_vtx_info=False):
-  """
-  Extrude a 2D mesh in the direction of the extrusion vector in cartesian and cylindrical coordinates.
+def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=False):
+  """ Extrude a 2D mesh in the provided direction.
+
+  The resulting mesh will be a 3D mesh with one layer of cells. Existing subsets and containers
+  such as ``BC_t``, ``FlowSolution_t``, ``ZoneSubRegion_t``, etc. are updated following these rules:
+
+  - EdgeCenter regions (lineic) become FaceCenter regions (surfacic),
+  - CellCenter regions (surfacic) become CellCenter regions (volumic),
+  - Vertex regions remain the same if ``dupl_vtx_data`` is False. Otherwise,
+    they are extended with the corresponding extruded vertices, the fields values beeing simply
+    duplicated. This choice does not apply to BC and GC vertex subsets, which are always extended.
+
+  In addition, new FaceCenter subsets are created for the initial surface and its
+  extruded counterpart. These subsets can be created as periodic ``GridConnectivity_t`` nodes
+  (using ``ksubset_as == 'GC'``) or as ``BC_t`` nodes (using ``ksubset_as == 'BC'``).
 
   Input tree is modified inplace.
 
+  Warning:
+    Only unstructured meshes are supported.
+
   Args:
-    dist_tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSTree): Input unstructured 2D distributed tree
+    extrusion_vector (array of 3 floats): extrusion axis, which can be any non zero vector
     comm      (MPIComm) : MPI communicator
-    extrusion_vector (array of 3 floats): List of the value of the extrusion in each direction
-    kplan_type (str): Option to define K plans as periodic GridConnectivity_t ('GC')
-                          or has FamilySpecified BC_t ('BC'). Default value is 'GC'
-    dupl_vtx_info (str): Option to define how to manage 'Vertex' information when extruded. Keep
-                          information on initial vertices only (False) or duplicate it on extuded
-                          plan (True). Default value is 'False'
-        
-  Warning: For now, meshes with only BAR elements with ParentElements are not managed
-  
-  TO DO
-  > ajouter exemple/snippet dans la doc ?
+    ksubset_as (str): Set kind of surfacic subset created for the initial and extruded planes.
+                          Default to ``GC``.
+    dupl_vtx_data (bool): Enable duplication of vertex located fields (see above). Default to ``False``.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #extrude@start
+        :end-before: #extrude@end
+        :dedent: 2
   """
-  kplan_type = kplan_type.upper()
-  if not kplan_type in ['BC', 'GC', 'JN']:
-    raise ValueError(f"'kplan_type' is {kplan_type} but only 'GC' and 'BC' are allowed !")
+  ksubset_as = ksubset_as.upper()
+  if not ksubset_as in ['BC', 'GC', 'JN']:
+    raise ValueError(f"'ksubset_as' is {ksubset_as} but only 'GC' and 'BC' are allowed !")
   
   zone_to_distrib_vtx = dict()
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
@@ -508,9 +527,9 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='GC', dupl_vtx_in
     elif PT.Zone.Type(zone) == 'Unstructured':
       all_element_types = set([PT.Element.CGNSName(e) for e in PT.get_children_from_label(zone, 'Elements_t')])
       if all_element_types <= {'NODE', 'BAR_2', 'NGON_n'}:
-        _extrusion_2d_u_ngon(zone, extrusion_vector, comm, kplan_type=kplan_type)
+        _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as=ksubset_as)
       elif all_element_types <= {'NODE', 'BAR_2', 'TRI_3', 'QUAD_4'}:
-        _extrusion_2d_u_elem(zone, extrusion_vector, comm, kplan_type=kplan_type)
+        _extrusion_2d_u_elem(zone, extrusion_vector, comm, ksubset_as=ksubset_as)
       else:
         raise ValueError(f'Zone {PT.get_name(zone)} is neither full NGON or composed only of TRI and QUAD elements !')
     else:
@@ -552,8 +571,8 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='GC', dupl_vtx_in
     # > Vertex
     is_vertex = lambda n : PT.Subset.GridLocation(n) == 'Vertex'
     
-    if dupl_vtx_info:
-      # dupl_vtx_info is True => we need to duplicate data in in Vertex containers
+    if dupl_vtx_data:
+      # dupl_vtx_data is True => we need to duplicate data in in Vertex containers
       for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n)):
         # BCDS are skipped because of get_children
         if has_pl(container):
@@ -589,7 +608,7 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='GC', dupl_vtx_in
           for path, value in new_data.items():
             PT.set_value(PT.get_node_from_path(bcds, path), value)
     else:
-      # dupl_vtx_info is False => do not add vertices in Vertex containers; consequently, we need to add a PointList if not already existing
+      # dupl_vtx_data is False => do not add vertices in Vertex containers; consequently, we need to add a PointList if not already existing
       for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and not has_pl(n)):
         # BCDS are skipped because of get_children
         if PT.get_label(container) == 'ZoneSubRegion_t':
@@ -649,6 +668,6 @@ def extrusion_2d(dist_tree, extrusion_vector, comm, kplan_type='GC', dupl_vtx_in
   # Update base dimension
   for base in PT.get_all_CGNSBase_t(dist_tree):
     PT.set_value(base, [3, 3])
-    if kplan_type=='BC':
+    if ksubset_as=='BC':
       PT.new_Family('InitialSurface',  family_bc='UserDefined', parent=base)
       PT.new_Family('ExtrudedSurface', family_bc='UserDefined', parent=base)

@@ -8,6 +8,8 @@ import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
+from maia.algo.dist import extrusion as EXT
+
 get_elt_ec = lambda n : PT.get_child_from_name(n, 'ElementConnectivity')[1]
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 is_subset = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']
@@ -26,7 +28,7 @@ def test_nodes_duplication(comm):
   dn_vtx_2d = distrib_vtx_2d[1] - distrib_vtx_2d[0]
 
   # Run test
-  maia.algo.dist.extrude._nodes_duplication(zone, extrusion_vector, comm)
+  EXT._nodes_duplication(zone, extrusion_vector, comm)
 
   # Verification
   assert MT.getDistribution(zone, 'Vertex')[1][2] == 2*distrib_vtx_2d[2]
@@ -51,8 +53,8 @@ def test_determine_mesh_orientation(comm):
   zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Run test and verification
-  assert     maia.algo.dist.extrude._determine_mesh_orientation(zone,  extrusion_vector, comm)
-  assert not maia.algo.dist.extrude._determine_mesh_orientation(zone, -extrusion_vector, comm)
+  assert     EXT._determine_mesh_orientation(zone,  extrusion_vector, comm)
+  assert not EXT._determine_mesh_orientation(zone, -extrusion_vector, comm)
 
 def test_reorder_ngon_ec():
 
@@ -61,7 +63,7 @@ def test_reorder_ngon_ec():
   MT.newDistribution({'ElementConnectivity': [7, 10, 25]}, parent=ngon_n)
 
   # Run test
-  maia.algo.dist.extrude._reorder_ngon_ec(ngon_n)
+  EXT._reorder_ngon_ec(ngon_n)
 
   # Verification
   assert (get_elt_ec(ngon_n) == [4, 3, 2, 1, 7, 6, 5]).all()
@@ -80,7 +82,7 @@ def test_ngon_duplication(align, comm):
   ngon_ec_ini = PT.get_child_from_name(PT.Zone.NGonNode(zone), "ElementConnectivity")[1].copy()
 
   # Run test
-  maia.algo.dist.extrude._ngon_duplication(zone, comm, align)
+  EXT._ngon_duplication(zone, comm, align)
 
   # Verification
   is_ngon = lambda n: PT.get_label(n) == "Elements_t" and PT.Element.CGNSName(n) == 'NGON_n'
@@ -107,7 +109,7 @@ def test_extrude_bar_to_ngon(align):
   MT.newDistribution({'Element': [5, 10, 17]}, parent=bar)
 
   # Run test
-  maia.algo.dist.extrude._extrude_bar_to_ngon(bar, n_vtx, n_cell, align)
+  EXT._extrude_bar_to_ngon(bar, n_vtx, n_cell, align)
 
   # Verification
   assert (bar[1] == [22, 0]).all()
@@ -141,7 +143,7 @@ def test_merge_ngons(comm):
   PT.add_child(zone, old_ngon2)
 
   # Run test
-  maia.algo.dist.extrude._merge_ngons(zone, comm)
+  EXT._merge_ngons(zone, comm)
 
   # Verification
   new_ngon = PT.Zone.NGonNode(zone) # Would fail if number of NGON != 1
@@ -173,7 +175,7 @@ def test_extrude_tri_to_prism_and_tris(align):
   old_tri = PT.deep_copy(tri)
 
   # Run test
-  new_tri1, new_tri2 = maia.algo.dist.extrude._extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align)
+  new_tri1, new_tri2 = EXT._extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align)
 
   # Verification
   penta = tri # Old tri is now penta
@@ -204,7 +206,7 @@ def test_extrude_quad_to_hexa_and_quads(align):
   old_quad = PT.deep_copy(quad)
 
   # Run test
-  new_quad1, new_quad2 = maia.algo.dist.extrude._extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align)
+  new_quad1, new_quad2 = EXT._extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align)
 
   # Verification
   hexa = quad # Old quad is now hexa
@@ -232,7 +234,7 @@ def test_extrude_bar_to_quad(align):
   old_bar = PT.deep_copy(bar)
 
   # Run test
-  maia.algo.dist.extrude._extrude_bar_to_quad(bar, num, n_vtx, align)
+  EXT._extrude_bar_to_quad(bar, num, n_vtx, align)
 
   # Verification
   quad = bar # Old bar is now quad
@@ -258,7 +260,7 @@ def test_pl_and_data_vtx_duplication(pl, data, comm):
   n_vtx_2d = 25
 
   # Run test
-  new_distrib_idx, new_pl, dist_data = maia.algo.dist.extrude._pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm)
+  new_distrib_idx, new_pl, dist_data = EXT._pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm)
 
   # Verification
   assert (pl is None) == (new_pl is None)
@@ -274,12 +276,18 @@ def test_pl_and_data_vtx_duplication(pl, data, comm):
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("coords_dim", [2, 3])
-@pytest.mark.parametrize("kplan_type", ['GC', 'BC'])
-def test_extrusion_2d_cart_ngon(coords_dim, kplan_type, comm):
+@pytest.mark.parametrize("ksubset_as", ['GC', 'BC'])
+def test_extrusion_2d_cart_ngon(coords_dim, ksubset_as, comm):
 
   # Prepare 2D case
   dist_tree = maia.factory.generate_dist_block(11, 'TRI_3', comm)
   maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+  
+  # Add some cases w/o NG or PE
+  if coords_dim == 2 and ksubset_as == 'GC':
+    PT.rm_nodes_from_name(dist_tree, 'ParentElements')
+  if coords_dim == 3 and ksubset_as == 'BC':
+    PT.rm_nodes_from_name(dist_tree, 'NGonElements')
 
   if coords_dim == 2:
     PT.rm_nodes_from_name(dist_tree, 'CoordinateZ')
@@ -293,7 +301,7 @@ def test_extrusion_2d_cart_ngon(coords_dim, kplan_type, comm):
   n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, is_bar))
 
   # Run test
-  maia.algo.dist.extrusion_2d(dist_tree, [0., 0., 1.], comm, kplan_type=kplan_type)
+  EXT.extrude(dist_tree, [0., 0., 1.], comm, ksubset_as=ksubset_as)
 
   # Verification
   assert np.all(PT.get_value(base) == [3, 3])
@@ -305,18 +313,18 @@ def test_extrusion_2d_cart_ngon(coords_dim, kplan_type, comm):
   assert PT.get_child_from_name(PT.Zone.NGonNode(zone), 'ParentElements') is not None
   assert len(PT.get_nodes_from_predicate(zone, is_edge_subset)) == 0
 
-  if kplan_type == 'GC':
+  if ksubset_as == 'GC':
     assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4 # 4 initial BC
     assert len(PT.get_nodes_from_label(zone, 'GridConnectivity_t')) == 2
     assert np.all(np.abs(PT.get_node_from_name(zone, 'Translation')[1]) == [0., 0., 1.])
-  elif kplan_type == 'BC':
+  elif ksubset_as == 'BC':
     assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4 + 2
     assert len(PT.get_children_from_label(base, 'Family_t')) == 2
 
 
 @pytest_parallel.mark.parallel([1])
-@pytest.mark.parametrize("dupl_vtx_info", [True, False])
-def test_extrusion_2d_cart_ngon_loc(dupl_vtx_info, comm):
+@pytest.mark.parametrize("dupl_vtx_data", [True, False])
+def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
 
   # Prepare test
   dist_tree = maia.factory.generate_dist_block(3, 'TRI_3', comm)
@@ -386,7 +394,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_info, comm):
   PT.new_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[ymin, ymax])
 
   # Run test
-  maia.algo.dist.extrusion_2d(dist_tree, [0., 0., 1.], comm, dupl_vtx_info=dupl_vtx_info)
+  EXT.extrude(dist_tree, [0., 0., 1.], comm, dupl_vtx_data=dupl_vtx_data)
 
   # Verification
   # CellCenter containers
@@ -400,23 +408,23 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_info, comm):
   assert (PT.get_child_from_name(container, 'PointList')[1] == [39,40]).all()
 
   # Vertex containers
-  tile_value = 2 if dupl_vtx_info else 1
+  tile_value = 2 if dupl_vtx_data else 1
   container = PT.get_node_from_name(zone, f'DD_woPL#Vertex')
   assert PT.Subset.GridLocation(container) == 'Vertex'
   assert (PT.get_child_from_name(container, 'Id')[1] == np.tile(np.arange(9)+1, tile_value)).all()
-  if dupl_vtx_info:
+  if dupl_vtx_data:
     assert PT.get_child_from_name(container, 'PointList') is None
   else:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == np.arange(9)+1).all()
   container = PT.get_node_from_name(zone, f'FS_wPL#Vertex')
   assert PT.Subset.GridLocation(container) == 'Vertex'
-  expected_pl = [1,2,3,10,11,12] if dupl_vtx_info else [1,2,3]
+  expected_pl = [1,2,3,10,11,12] if dupl_vtx_data else [1,2,3]
   assert (PT.get_child_from_name(container, 'Id')[1] == np.tile([1,2,3], tile_value)).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == expected_pl).all()
   container = PT.get_node_from_name(zone, f'ZSR_related#Vertex')
-  assert (PT.get_child_from_name(container, 'GridConnectivityRegionName') is not None) == dupl_vtx_info
+  assert (PT.get_child_from_name(container, 'GridConnectivityRegionName') is not None) == dupl_vtx_data
   assert (PT.get_child_from_name(container, 'Id')[1] == np.tile([7,8,9], tile_value)).all()
-  if dupl_vtx_info: # Ref node will be duplicated also -> no PL
+  if dupl_vtx_data: # Ref node will be duplicated also -> no PL
     assert PT.get_child_from_name(container, 'PointList') is None
   else:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == [1,2,3]).all()
@@ -438,7 +446,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_info, comm):
   container = PT.get_node_from_name(zone, 'BCDS_wpl#Vertex')
   assert PT.Subset.GridLocation(container) == 'Vertex'
   assert (PT.get_node_from_name(container, 'Id')[1] == np.tile([1,2,3], tile_value)).all()
-  if dupl_vtx_info:
+  if dupl_vtx_data:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == [1,2,3,10,11,12]).all()
   else:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == [1,2,3]).all()
@@ -472,7 +480,7 @@ def test_extrusion_2d_cart_elem(element_type, comm):
   zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Run test
-  maia.algo.dist.extrusion_2d(dist_tree, [0., 0., 2.], comm)
+  EXT.extrude(dist_tree, [0., 0., 2.], comm)
 
   # Verification
   assert np.all(PT.get_value(base) == [3, 3])
