@@ -141,7 +141,13 @@ def new_Zone(name:str='Zone', *, type:str='Null', size:ArrayLike=None, family:st
     new_FamilyName(family, parent=zone)
   return zone
 
-def new_Elements(name:str='Elements', type:str='Null', *, erange:ArrayLike=None, econn:ArrayLike=None, parent:CGNSTree=None):
+def new_Elements(name:str='Elements',
+                 type:str='Null',
+                 *,
+                 erange:ArrayLike=None,
+                 econn:ArrayLike=None,
+                 pe:ArrayLike = None,
+                 parent:CGNSTree=None):
   """ Create an Element_t node
 
   This function is designed to create standard elements.
@@ -156,6 +162,7 @@ def new_Elements(name:str='Elements', type:str='Null', *, erange:ArrayLike=None,
     type (str) : CGNSName of the element section, for example ``PYRA_5``
     erange (ArrayLike) : ElementRange array of the elements
     econn (ArrayLike) : ElementConnectivity array of the elements
+    pe (ArrayLike) : ParentElements array of the elements
     parent (CGNSTree): Node to which created elements should be attached
   Example:
     >>> node = PT.new_Elements('Edges', type='BAR_2', erange=[1,4],
@@ -176,8 +183,9 @@ def new_Elements(name:str='Elements', type:str='Null', *, erange:ArrayLike=None,
   _check_parent_label(elem, parent, ['Zone_t'])
   if erange is not None:
     new_node('ElementRange', 'IndexRange_t', erange, [], elem)
-  if econn is not None:
-    new_DataArray('ElementConnectivity', econn, parent=elem)
+  for name, val in zip(['ElementConnectivity', 'ParentElements'], [econn, pe]):
+    if val is not None:
+      new_DataArray(name, val, parent=elem)
   return elem
 
 def new_NGonElements(name:str = 'NGonElements',

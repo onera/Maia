@@ -220,6 +220,19 @@ def is_unique_strided(array, stride, method='hash'):
   else:
     raise ValueError(f"Method must be one of ['hash', 'sort']")
 
+def reverse_by_stride(array_idx, array, inplace=False):
+  """
+  Reverse each interval of an array.
+  NB : the values are only sorted within each interval, there is no reverse between intervals.
+  """
+  if inplace:
+    reversed_array = array
+  else:
+    reversed_array = array.copy()
+  layouts.reverse_by_stride(array_idx, reversed_array)
+
+  return reversed_array
+
 def sort_by_stride(array_idx, array, inplace=False):
   """
   Sort each stride of an array.

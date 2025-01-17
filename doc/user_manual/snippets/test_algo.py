@@ -89,6 +89,18 @@ def test_duplicate_family_from_periodic_jns():
   assert len(maia.pytree.get_all_Zone_t(dist_tree)) == 18
   #duplicate_family_from_periodic_jns@end
 
+def test_extrude_2d():
+  #extrude@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_block(11, 'TRI_3', MPI.COMM_WORLD)
+  maia.algo.dist.extrude(dist_tree, [0,0,0.5], MPI.COMM_WORLD)
+
+  assert PT.Zone.CellDimension(PT.get_node_from_label(dist_tree, 'Zone_t')) == 3
+  #extrude@end
+
 def test_merge_zones():
   #merge_zones@start
   from mpi4py import MPI
