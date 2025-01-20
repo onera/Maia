@@ -776,7 +776,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
       GI = EP.GlobalIndexer(face_distri_f, pld-1, comm)
       local_faces = GI.access_counts > 0
       assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
-      GI.Put_into(part_pe_gc, pe[:,1])
+      GI.Put(part_pe_gc, pe[:,1])
       pe_dom[local_faces, 1] = dom_id_send
 
   #PE are ready, collect data

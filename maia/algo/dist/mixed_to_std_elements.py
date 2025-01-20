@@ -258,5 +258,5 @@ def convert_mixed_to_elements(dist_tree, comm):
 
         for node in PT.get_children_from_predicates(zone, [is_fs_cc, 'DataArray_t']):
             data = PT.get_value(node)
-            GI_fs.Put_into(data, data) # Inplace
+            GI_fs.Put(data, data) # Inplace
 

@@ -34,7 +34,7 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   # 2. Put it in the right cell of the faces to keep
   GI = EP.GlobalIndexer(face_distri_f, ref_faces-1, comm)
   assert np.max(pe[GI.access_counts > 0, 1], initial=0) == 0 #Initial = trick to admit empty array
-  GI.Put_into(part_data, pe[:,1])
+  GI.Put(part_data, pe[:,1])
 
 def _update_ngon_remove_faces(ngon, del_faces, comm):
   """

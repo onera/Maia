@@ -76,7 +76,7 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
   # Update GridCoordinates
   GI = EP.GlobalIndexer(new_distri_f, vtx_gnum, comm)
   for key, node in coord_nodes.items():
-    GI.Put_into(node[1], node[1]) # Update inplace
+    GI.Put(node[1], node[1]) # Update inplace
 
 
   # Update FlowSolution
@@ -86,7 +86,7 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
 
     arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
     for array in arrays_n:
-      GI.Put_into(array[1], array[1]) # Update inplace
+      GI.Put(array[1], array[1]) # Update inplace
 
 def remove_specified_vtx(zone, vtx_pl, comm):
   """
@@ -139,7 +139,7 @@ def elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm):
   # > Get partitionned connectivity of elt_pl
   elt_ec   = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
   GI = EP.GlobalIndexer(elt_distri_f, elt_pl-elt_offset, comm)
-  pl_ec = GI.Take(elt_ec, PT.Element.NVtx(elt_n))
+  pl_ec = GI.Take(elt_ec, count=PT.Element.NVtx(elt_n))
 
   # > Get distributed vertices gnum referenced in pl_ec 
   GI = EP.GlobalIndexer(vtx_distri_f, pl_ec-1, comm)
@@ -401,7 +401,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   new_vtx_num    = [elt_vtx_pl,new_vtx_pl]
 
   old_to_new_vtx = np.arange(vtx_distri[0],vtx_distri[1], dtype=vtx_distri.dtype)+1
-  EP.GlobalIndexer(vtx_distri_f, elt_vtx_pl-1, comm).Put_into(new_vtx_pl, old_to_new_vtx)
+  EP.GlobalIndexer(vtx_distri_f, elt_vtx_pl-1, comm).Put(new_vtx_pl, old_to_new_vtx)
   
   # > Add duplicated elements
   n_elt      = PT.Element.Size(elt_n)
@@ -438,7 +438,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   elt_gnum = np.concatenate([old_gnum, new_gnum])
 
   GI = EP.GlobalIndexer(new_elt_distri_f, elt_gnum, comm)
-  new_ec = GI.Put(new_ec, elt_size)
+  new_ec = GI.Put(new_ec, count=elt_size)
 
   PT.set_value(ec_n, new_ec)
 
@@ -530,7 +530,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
 
     new_elt_distri_f = par_utils.partial_to_full_distribution(new_elt_distri, comm)
     GI = EP.GlobalIndexer(new_elt_distri_f, elt_gnum, comm)
-    new_ec = GI.Put(new_ec, elt_size)
+    new_ec = GI.Put(new_ec, count=elt_size)
     PT.set_value(ec_n, new_ec)
 
     # > Update ElementRange
@@ -588,7 +588,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   dn_elts  = vtx_distri[1] - vtx_distri[0]
   old_to_new_vtx = np.arange(dn_elts) + vtx_distri[0] + 1
   GI = EP.GlobalIndexer(vtx_distri_f, src_tgt_vtx[0]-1, comm)
-  GI.Put_into(src_tgt_vtx[1], old_to_new_vtx)
+  GI.Put(src_tgt_vtx[1], old_to_new_vtx)
 
   # > Find BCs described by element pls
   bc_nodes = [list(),list()]
@@ -836,7 +836,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   elt_gnum = np.concatenate([old_gnum, new_gnum])
 
   GI = EP.GlobalIndexer(new_elt_distri_f, elt_gnum, comm)
-  tgt_new_ec = GI.Put(tgt_new_ec, tgt_elt_size)
+  tgt_new_ec = GI.Put(tgt_new_ec, count=tgt_elt_size)
   PT.set_value(tgt_ec_n, tgt_new_ec)
 
   tgt_er = PT.Element.Range(tgt_elt_n)

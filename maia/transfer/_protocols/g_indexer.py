@@ -166,7 +166,7 @@ class GlobalMultiIndexer:
       r_start += size
     return out
 
-  def Take_into(self, dist_data: Buffer, local_data_l: List[Buffer] , count=1):
+  def _Take(self, dist_data: Buffer, local_data_l: List[Buffer], count=1):
     """ Generalization of :func:`GlobalIndexer.Take_into` for multi index access.
 
     Args:
@@ -206,7 +206,7 @@ class GlobalMultiIndexer:
         for j in range(count):
           data_out[j::count] = recv_buff[put_idx+j]
 
-  def Put_into(self, local_data_l: List[Buffer] , dist_data: Buffer, count=1):
+  def _Put(self, local_data_l: List[Buffer] , dist_data: Buffer, count=1):
     """ Generalization of :func:`GlobalIndexer.Put_into` for multi index access.
 
     Args:
@@ -244,37 +244,43 @@ class GlobalMultiIndexer:
       for j in range(count):
         dist_data[put_idx+j] = recv_buff[j::count]
 
-  def Take(self, dist_data: Buffer, count=1) -> List[NDArray] :
+  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, count=1) -> List[Buffer]:
     """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
     Args:
       dist_data (buffer of size :math:`c*dn`) : section of the distributed data
+      local_data_l (list of :math:`N` buffer, optionnal) : preallocated buffers to store extracted values
+        corresponding to each index list, or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       :math:`N` buffer of size :math:`c*pn_k`: for each index list,
       values extracted at the requested indices
     """
-    data_out_l = [np.empty(count*pn, dist_data.dtype) for pn in self.pn]
-    self.Take_into(dist_data, data_out_l, count)
-    return data_out_l
+    if local_data_l is None:
+      local_data_l = [np.empty(count*pn, dist_data.dtype) for pn in self.pn]
+    self._Take(dist_data, local_data_l, count)
+    return local_data_l
 
-  def Put(self, local_data_l: List[Buffer] , count=1) -> NDArray:
+  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, count=1) -> Buffer:
     """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
       local_data_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
         data to write at each accessed index
+      dist_data (buffer) : preallocated buffer to store distributed data
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
-      buffer of size :math:`c*pn`: output distributed data
+      buffer of size :math:`c*dn`: output distributed data
     """
     assert len(local_data_l) == len(self.pn)
-    dtype  = local_data_l[0].dtype.str if len(local_data_l) > 0 else ''
-    if self.empty_part:
-      dtype  = self.comm.allreduce(dtype,  MPI.MAX)
 
-    dist_data = np.empty(count*self.dn, dtype)
-    self.Put_into(local_data_l, dist_data, count)
+    if dist_data is None:
+      dtype  = local_data_l[0].dtype.str if len(local_data_l) > 0 else ''
+      if self.empty_part:
+        dtype  = self.comm.allreduce(dtype,  MPI.MAX)
+      dist_data = np.empty(count*self.dn, dtype)
+
+    self._Put(local_data_l, dist_data, count)
     return dist_data
 
   def Take_v_into(self, data_in, counts_in, data_out_l, counts_out_l):
@@ -531,76 +537,42 @@ class GlobalIndexer:
     """
     return self.GIndexer_m.put([local_data])
 
-  def Take_into(self, dist_data: Buffer, local_data: Buffer, count=1):
-    """ Inplace ``take`` implementation for buffer-like objects 
-
-    Input and output buffer must respectively be of size :math:`c*dn` and
-    :math:`c*pn`, where :math:`c` is a positive integer. The datatype
-    of the input and the ouput buffer must match.
-
-    The value of :math:`c` and the datatype must be the
-    same across all the processes. 
-    
-    Args:
-      dist_data  (buffer) : section of the distributed data
-      local_data (buffer) : preallocated buffer to store extracted values
-      count (int) : scalar value of :math:`c`. Defaults to 1.
-    """
-    self.GIndexer_m.Take_into(dist_data, [local_data], count)
-
-  def Put_into(self, local_data: Buffer, dist_data: Buffer, count=1):
-    """ Inplace ``put`` implementation for buffer-like objects 
-
-    Input and output buffer must respectively be of size :math:`c*pn` and
-    :math:`c*dn`, where :math:`c` is a positive integer. The datatype
-    of the input and the ouput buffer must match.
-
-    The value of :math:`c` and the datatype must be the
-    same across all the processes. 
-
-    Note that:
-
-    - if a global index does not appears in any idx list, its associated data in the output
-      buffer will be unchanged;
-    - if a global index appears more than once in the idx lists, the associated data in the output
-      buffer will be the last encoutered (in increasing processes order)
-    
-    Args:
-      local_data (buffer) : data to write at each accessed index
-      dist_data  (buffer) : preallocated buffer to store distributed data
-      count (int) : scalar value of :math:`c`. Defaults to 1.
-    """
-    self.GIndexer_m.Put_into([local_data], dist_data, count)
-    
-  def Take(self, dist_data:Buffer, count=1) -> NDArray:
+  def Take(self, dist_data:Buffer, local_data:Buffer=None, count=1) -> Buffer:
     """ ``take`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*dn`, where :math:`c` is a
     positive integer.
-    The value of :math:`c` and the datatype of the input buffer must be the
+    The value of :math:`c` and the datatype <T> of the input buffer must be the
     same across all the processes. 
 
-    The output buffer is allocated as a numpy array of size :math:`c*pn`
-    and of datatype equal to the one of the input data.
+    The output buffer is either:
+
+    - provided by the caller as a buffer of size :math:`c*pn` and of datatype <T>,
+    - or automatically allocated by the method as a new numpy array if ``local_data=None``.
     
     Args:
       dist_data (buffer of size :math:`c*dn`) : section of the distributed data
+      local_data (buffer of size :math:`c*pn`, optionnal) : preallocated buffer
+        to store extracted values or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*pn`: values extracted at the requested indices
     """
-    return self.GIndexer_m.Take(dist_data, count)[0]
+    local_data_l = [local_data] if local_data is not None else None
+    return self.GIndexer_m.Take(dist_data, local_data_l, count)[0]
 
-  def Put(self, local_data: Buffer, count=1) -> NDArray:
+  def Put(self, local_data: Buffer, dist_data:Buffer=None, count=1) -> Buffer:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
     positive integer.
-    The value of :math:`c` and the datatype of the input buffer must be the
+    The value of :math:`c` and the datatype <T> of the input buffer must be the
     same across all the processes. 
 
-    The output buffer is allocated as a numpy array of size :math:`c*dn`
-    and of datatype equal to the one of the input data.
+    The output buffer is either:
+
+    - provided by the caller as a buffer of size :math:`c*dn` and of datatype <T>,
+    - or automatically allocated by the method as a new numpy array if ``dist_data=None``.
 
     Note that:
 
@@ -611,12 +583,13 @@ class GlobalIndexer:
 
     Args:
       local_data (buffer of size :math:`c*pn`) : data to write at each accessed index
+      dist_data (buffer of size :math:`c*dn`, optionnal) : preallocated buffer
+        to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
-      buffer of size :math:`c*pn`: output distributed data
+      buffer of size :math:`c*dn`: output distributed data
     """
-
-    return self.GIndexer_m.Put([local_data], count)
+    return self.GIndexer_m.Put([local_data], dist_data, count)
 
   def Take_v(self, dist_data: VBuffer) -> VBuffer:
     """ ``take`` implementation for variable buffer-like objects 

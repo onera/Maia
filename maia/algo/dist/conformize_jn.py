@@ -43,8 +43,8 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
 
   for coord0, coord1 in zip(*dist_coords):
     # For each component X,Y,Z : extract vtx values on the two zones (Take),
-    # compute the average, and then put back the average in the two zones (Put_into)
+    # compute the average, and then put back the average in the two zones (Put)
     mean_coords = 0.5*(indexer0.Take(coord0) + indexer1.Take(coord1))
-    indexer0.Put_into(mean_coords, coord0)
-    indexer1.Put_into(mean_coords, coord1)
+    indexer0.Put(mean_coords, coord0)
+    indexer1.Put(mean_coords, coord1)
   

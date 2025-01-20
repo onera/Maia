@@ -183,17 +183,15 @@ unreferenced indices will remain unitialized when using
 
 **Buffer-like objects**:
 for buffer object of constant size, we offer two alternatives: the
-:func:`~maia.transfer.protocols.GlobalIndexer.Take_into` and :func:`~maia.transfer.protocols.GlobalIndexer.Put_into`
-methods, where the output buffer is provided by the user (as in mpi4py), and the
-:func:`~maia.transfer.protocols.GlobalIndexer.Take` and :func:`~maia.transfer.protocols.GlobalIndexer.Put`
-methods, where the output buffer is allocated as a numpy array::
+output buffer can either be provided to the function by the user, as in mpi4py,
+or be allocated by the function as a numpy array if ``None`` value is used::
 
   # Buffer of ints, with 2 values per index (c=2)
   if rank == 0:  dist_data = array([3,5,5,7],     dtype=int)  #glob idx 0..2
   if rank == 1:  dist_data = array([11,13,17,19], dtype=int)  #glob idx 2..4
   if rank == 2:  dist_data = array([29,31],       dtype=int)  #glob idx 4..5
 
-  extr = GI.Take(dist_data, count=2)
+  extr = GI.Take(dist_data, None, count=2)
   # We extract 2 values per requested index
   # P0 : extr = array([29,31,3,5], dtype=int)   #requested indices [4,0]
   # P1 : extr = array([5,7,17,19], dtype=int)   #requested indices [1,3]
@@ -203,7 +201,7 @@ methods, where the output buffer is allocated as a numpy array::
   dist_data_new = empty(2*dn, dtype=int)
   dist_data_new.fill(-1) # To track unitialized values
 
-  GI.Put_into(extr, dist_data_new, count=2)
+  GI.Put(extr, dist_data_new, count=2)
   # P0 : dist_data_new = array([3,5,5,7],     dtype=int)      #glob idx 0..2
   # P1 : dist_data_new = array([-1,-1,17,19], dtype=int)      #glob idx 2..4
   # P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5
@@ -211,10 +209,8 @@ methods, where the output buffer is allocated as a numpy array::
 
 Note that as explained above, data at position 2 in ``dist_data_new`` kept
 its original value, since no process provided data for this index.
-Also note that when using the ``_into`` methods, it is the user's responsibility to allocate
-the output buffer to the correct size.
-
-.. todo ? datatype
+Also note that when using the preallocated buffer mode, it is the user's responsibility to allocate
+the output buffer to the correct size and datatype.
 
 
 **Variable buffer objects**:
@@ -225,7 +221,7 @@ This is the most complex implementation, but it allows to work with sparse data
 since a count of 0 is allowed for any global index.
 
 Since it much more difficult to predict the output buffer size, the
-``_into`` (user allocated memory) alternatives are not yet implemented.
+user allocated memory mode is not yet implemented.
 
 Here is an exemple of the ``take`` implementation for a variable buffer::
 

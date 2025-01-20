@@ -156,7 +156,7 @@ def _ngon_to_elements_zone(zone, comm):
 
   for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t']):
     data = PT.get_node_from_path(zone, path)[1]
-    GI.Put_into(data, data) # Inplace update of node data
+    GI.Put(data, data) # Inplace update of node data
 
 
   # Remove NGON/NFACE elements

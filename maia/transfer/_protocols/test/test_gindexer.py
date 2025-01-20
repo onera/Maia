@@ -101,10 +101,10 @@ class Test_g_indexer:
                     ][comm.rank]
     assert np.allclose(data_out, expected_out)
 
-    # We can also put result in a pre allocated buffer with the _into variant ;
+    # We can also put result in a pre allocated buffer;
     # note that out buffer must have good size and datatype
     data_out = np.empty(self.g_idx.size, float)
-    GI.Take_into(data_in, data_out)
+    GI.Take(data_in, data_out)
     assert np.allclose(data_out, expected_out)
 
     # We can put values from a buffer object, using uppercase Put function :
@@ -121,7 +121,7 @@ class Test_g_indexer:
     # Again, we can put the result in a preallocated buffer:
     dn_size = self.distri[comm.rank+1] - self.distri[comm.rank]
     data_out = -1*np.ones(dn_size, float)
-    GI.Put_into(data_in, data_out)
+    GI.Put(data_in, data_out)
 
     expected_out = [np.array([10., 20, 30, -1, 50]),
                     np.array([], float),
@@ -138,7 +138,7 @@ class Test_g_indexer:
     GI = self.init_p(comm)
 
     # Input buffer is allowed to have more than  1 element per index : however, this number 
-    # must remain constant when using Take / Take_into :
+    # must remain constant:
 
     data_in = [
       np.array([10.,15, 20,25, 30,35, 40,45, 50,55]), # Indices 0...4, with 2 values per indices
@@ -148,7 +148,7 @@ class Test_g_indexer:
     ][comm.rank] #Indices 8...11, with 2 values per indices
 
     data_out = np.empty(2*self.g_idx.size, float)  # Out buffer will store 2 values per requested idx
-    GI.Take_into(data_in, data_out, count=2) 
+    GI.Take(data_in, data_out, count=2) 
 
     expected_out = [np.array([10.,15, 30,35, 50,55, 70,75, 90,95]),
                     np.array([120.,125, 100,105]),
@@ -171,7 +171,7 @@ class Test_g_indexer:
 
     dn_size = self.distri[comm.rank+1] - self.distri[comm.rank]
     data_out = -1*np.ones(2*dn_size, float)
-    GI.Put_into(data_in, data_out, count=2)
+    GI.Put(data_in, data_out, count=2)
     data_out2 = GI.Put(data_in, count=2) #Equivalent w/o preallocated buffer
 
     expected_out = [np.array([10.,15, 20,25, 30,35, -1,-1, 50,55]),
