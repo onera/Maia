@@ -20,16 +20,16 @@ Considering  a one-dimensional data array ``arr`` of size :math:`n`,
 a list of indices ``ind`` of size :math:`p` (where each index ``i`` satisfies :math:`0 \le i \lt n`),
 and a list of values ``val`` of size :math:`p` :
 
-- ``numpy.take(arr, ind)`` loops over each index ``i`` of ``ind``, extract the value ``arr[i]`` and returns a new array of size :math:`p`.
+- ``numpy.take(arr, ind)`` loops over each index ``i`` of ``ind``, extracts the value ``arr[i]`` and returns a new array of size :math:`p`.
   Note that this is also the operation performed by ``out = arr[ind]``;
-- ``numpy.put(arr, ind, val)`` loops over each index/value pair ``i,v``, and write the value ``v`` at the position ``i`` in ``arr``.
+- ``numpy.put(arr, ind, val)`` loops over each index/value pair ``i,v``, and writes the value ``v`` at the position ``i`` in ``arr``.
   Note that this is also the operation performed by ``arr[ind] = val``.
 
 The aim of the global indexer is to offer similar functionnalities on **distributed data**, in a parallel context. 
 
-Distributed data is the term used in maia to describe a *collection* (in general a data array)
+Distributed data is the term used to describe a *collection* (in general a data array)
 that is dispatched across several MPI processes. The way the global data is dispatched must fulfill
-some rules described in the :ref:`introduction <intro>`, but the main idea is just that each MPI process gets a section
+some rules described in the :ref:`introduction <intro>`, but the main idea is that each MPI process gets a section
 of the collection, function of its rank in the MPI communicator:
 
 .. image:: ./dist_array.png
@@ -47,7 +47,7 @@ Note also that the number of indices may be different on each process:
   :width: 75%
   :align: center
 
-Now, let give a glance on what the global collection can actually represent; different kind of data
+Now, let's give a glance on what the global collection can actually represent; different kind of data
 are supported, and we provide a different put/take implementation for each of them. Here
 following mpi4py conventions, the supported data kind are:
 
@@ -132,7 +132,7 @@ The creation of the object will fail if any requested index outpasses the bounds
 distribution. All other configurations are managed, including the following cases:
 
  - a process can request access to no indices, by providing an empty integer array;
- - two process can request access to the same index, and a given process can even
+ - two processes can request access to the same index, and a given process can even
    request access to the same index more than once;
  - it is not mandatory to have all the indices of the collection to be accessed.
 
@@ -140,8 +140,8 @@ distribution. All other configurations are managed, including the following case
 
 .. note:: The global indexer is a *protocol object*: once initialized, it allows to access
   multiple global arrays in the same specific manner. One of the main reason to use a
-  global indexer in the first place is that we can construct the protocol only once
-  (which is costly), and then exchange data over multiple arrays by using it.
+  global indexer in the first place is that we can construct the protocol
+  (which is costly) only once, and then exchange data over multiple arrays by using it.
   
 
 It is important to understand that thanks to the variable buffer mode, two distributed data
@@ -279,8 +279,8 @@ with its corresponding illustration (note that 0-length data does not *really* e
   :align: center
 
 We can check that, in each case, the size of the counting array is equal to
-the number of described data (ie the len of the distributed section, or
-the len of the requested indices list), and that the size of the data buffer
+the number of described data (ie the length of the distributed section, or
+the length of the requested indices list), and that the size of the data buffer
 is equal to the sum of the associated counting array.
 
 Once again, one can observe the resolution of writting conflicts:

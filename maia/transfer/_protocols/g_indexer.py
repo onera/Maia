@@ -43,7 +43,7 @@ def put_strided(a, a_count, indices, read_counts, read):
 class GlobalMultiIndexer:
   """
   This is a generalization of :class:`~maia.transfer.protocols.GlobalIndexer` where each
-  process can request access to several list of global indices.
+  process can request access to several lists of global indices.
 
   We thus need to introduce the additional notations, which are local for each rank:
 
@@ -112,7 +112,7 @@ class GlobalMultiIndexer:
     return self._empty_part
 
 
-  def take(self, dist_data: List) -> List[List]:
+  def take(self, dist_data: List, /) -> List[List]:
     """ Generalization of :func:`GlobalIndexer.take` for multi index access.
 
     Args:
@@ -138,7 +138,7 @@ class GlobalMultiIndexer:
       res.append(out)
     return res
 
-  def put(self, local_data_l: List[List]) -> List:
+  def put(self, local_data_l: List[List], /) -> List:
     """ Generalization of :func:`GlobalIndexer.put` for multi index access.
 
     Args:
@@ -244,7 +244,7 @@ class GlobalMultiIndexer:
       for j in range(count):
         dist_data[put_idx+j] = recv_buff[j::count]
 
-  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, count=1) -> List[Buffer]:
+  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
     """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
     Args:
@@ -261,7 +261,7 @@ class GlobalMultiIndexer:
     self._Take(dist_data, local_data_l, count)
     return local_data_l
 
-  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, count=1) -> Buffer:
+  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1) -> Buffer:
     """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
@@ -286,7 +286,7 @@ class GlobalMultiIndexer:
 
 
 
-  def Take_v(self, dist_data: VBuffer, local_data_l: List[VBuffer]=None) -> List[VBuffer]:
+  def Take_v(self, dist_data: VBuffer, local_data_l: List[VBuffer]=None, /) -> List[VBuffer]:
     """ Generalization of :func:`GlobalIndexer.Take_v` for multi index access.
 
     Args:
@@ -360,7 +360,7 @@ class GlobalMultiIndexer:
 
     return local_data_l
 
-  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None) -> VBuffer:
+  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /) -> VBuffer:
     """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
@@ -509,7 +509,7 @@ class GlobalIndexer:
     self.GIndexer_m = GlobalMultiIndexer(distri, [g_idx], comm)
     self.GIndexer_m._empty_part = False
 
-  def take(self, dist_data:List) -> List:
+  def take(self, dist_data:List, /) -> List:
     """ ``take`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -523,7 +523,7 @@ class GlobalIndexer:
     """
     return self.GIndexer_m.take(dist_data)[0]
 
-  def put(self, local_data: List) -> List:
+  def put(self, local_data: List, /) -> List:
     """ ``put`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -535,7 +535,7 @@ class GlobalIndexer:
     - if a global index does not appears in any idx list, its associated data in the output
       buffer will be ``None``;
     - if a global index appears more than once in the idx lists, the associated data in the output
-      buffer will be the last encoutered (in increasing processes order)
+      buffer will be the last appearing (in increasing processes order)
 
     Args:
       local_data (list of size :math:`pn`) : data to write at each accessed index
@@ -544,7 +544,7 @@ class GlobalIndexer:
     """
     return self.GIndexer_m.put([local_data])
 
-  def Take(self, dist_data:Buffer, local_data:Buffer=None, count=1) -> Buffer:
+  def Take(self, dist_data:Buffer, local_data:Buffer=None, /, count=1) -> Buffer:
     """ ``take`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*dn`, where :math:`c` is a
@@ -563,12 +563,13 @@ class GlobalIndexer:
         to store extracted values or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
-      buffer of size :math:`c*pn`: values extracted at the requested indices
+      buffer of size :math:`c*pn`: values extracted at the requested indices.
+      The return object is ``local_data`` if it was given by the user.
     """
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take(dist_data, local_data_l, count)[0]
 
-  def Put(self, local_data: Buffer, dist_data:Buffer=None, count=1) -> Buffer:
+  def Put(self, local_data: Buffer, dist_data:Buffer=None, /, count=1) -> Buffer:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
@@ -586,7 +587,7 @@ class GlobalIndexer:
     - if a global index does not appears in any idx list, its associated data in the output
       buffer will be uninitialized;
     - if a global index appears more than once in the idx lists, the associated data in the output
-      buffer will be the last encoutered (in increasing processes order)
+      buffer will be the last appearing (in increasing processes order)
 
     Args:
       local_data (buffer of size :math:`c*pn`) : data to write at each accessed index
@@ -594,14 +595,15 @@ class GlobalIndexer:
         to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
-      buffer of size :math:`c*dn`: output distributed data
+      buffer of size :math:`c*dn`: output distributed data.
+      The return object is ``dist_data`` if it was given by the user.
     """
     return self.GIndexer_m.Put([local_data], dist_data, count)
 
-  def Take_v(self, dist_data: VBuffer, local_data: VBuffer=None) -> VBuffer:
+  def Take_v(self, dist_data: VBuffer, local_data: VBuffer=None, /) -> VBuffer:
     """ ``take`` implementation for variable buffer-like objects 
 
-    The input variable buffer is described by a tuple of two objets:
+    The input variable buffer is described by a tuple of two objects:
 
     1. an integer array ``dist_counts`` of size :math:`dn`;
     2. a buffer object of size ``dist_counts.sum()``.
@@ -625,16 +627,17 @@ class GlobalIndexer:
         (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
       local_data (variable buffer, optional): preallocated buffer to store extracted values or None
     Returns:
-      variable buffer: data extracted at the requested indices, as a tuple of values \
-        (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
+      variable buffer: data extracted at the requested indices, as a tuple of values
+      (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*)).
+      The return object is ``local_data`` if it was given by the user.
     """
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take_v(dist_data, local_data_l)[0]
 
-  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None) -> VBuffer:
+  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
-    The variable input buffer is described by a tuple of two objets:
+    The variable input buffer is described by a tuple of two objects:
 
     1. an integer array ``local_counts`` of size :math:`pn`;
     2. a buffer object of size ``local_counts.sum()``.
@@ -657,8 +660,9 @@ class GlobalIndexer:
         (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
       dist_data (variable buffer, optional): preallocated buffer to store distributed data or None
     Returns:
-      variable buffer: output distributed data, returned as the tuple of values \
-        (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
+      variable buffer: output distributed data, returned as the tuple of values
+      (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*)).
+      The return object is ``dist_data`` if it was given by the user.
     """
     return self.GIndexer_m.Put_v([local_data], dist_data)
 

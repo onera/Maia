@@ -27,7 +27,7 @@ def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
   # Make unique
   vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
   GI = EP.GlobalIndexer(vtx_distri_f, nodes_pl-1, comm)
-  nodes_pl = np.flatnonzero(GI.access_counts > 0) + vtx_distri[0] + 1
+  nodes_pl = np.flatnonzero(GI.access_counts > 0).astype(nodes_pl.dtype, copy=False) + vtx_distri[0] + 1
 
   # Because result could be badly distributed, redistribute it
   distrib_nodes_pl_init   = par_utils.gather_and_shift(nodes_pl.size, comm, pdm_gnum_dtype)
