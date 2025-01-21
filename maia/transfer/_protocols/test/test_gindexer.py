@@ -210,6 +210,13 @@ class Test_g_indexer:
     # not data for this index (counts_out = 0)
     counts_out, data_out  = GI.Take_v((counts_in, data_in))
 
+    # As for Take method, we can use a preallocated buffer, in this 
+    # case the counts_out array must be already filled and data_out must have
+    # relevant size 
+    data_out2 = np.zeros_like(data_out)
+    GI.Take_v((counts_in, data_in), (counts_out, data_out2)) 
+    assert np.array_equal(data_out, data_out2)
+
     expected_out = [
       (np.array([0,0,2,0,0]), np.array([50.,55])),
       (np.array([1,2]), np.array([120., 100,105])),
@@ -248,6 +255,13 @@ class Test_g_indexer:
                     
     assert np.array_equal(counts_out, expected_out[0])
     assert np.allclose(data_out, expected_out[1])
+
+    # As for Put method, we can use a preallocated buffer, in this 
+    # case the counts_out array must be already filled and data_out must have
+    # relevant size 
+    data_out2 = np.zeros_like(data_out)
+    GI.Put_v((counts_in, data_in), (counts_out, data_out2)) 
+    assert np.array_equal(data_out, data_out2)
 
   def test_failures(self, comm):
     # Creating a GI with an 'out of bounds' index should raise :

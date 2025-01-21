@@ -249,7 +249,7 @@ class GlobalMultiIndexer:
 
     Args:
       dist_data (buffer of size :math:`c*dn`) : section of the distributed data
-      local_data_l (list of :math:`N` buffer, optionnal) : preallocated buffers to store extracted values
+      local_data_l (list of :math:`N` buffer, optional) : preallocated buffers to store extracted values
         corresponding to each index list, or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
@@ -267,7 +267,7 @@ class GlobalMultiIndexer:
     Args:
       local_data_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
         data to write at each accessed index
-      dist_data (buffer) : preallocated buffer to store distributed data
+      dist_data (buffer, optional) : preallocated buffer to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
       buffer of size :math:`c*dn`: output distributed data
@@ -283,58 +283,57 @@ class GlobalMultiIndexer:
     self._Put(local_data_l, dist_data, count)
     return dist_data
 
-  def Take_v_into(self, data_in, counts_in, data_out_l, counts_out_l):
-    # Retrive MPI order for counts
-    _counts_in  = counts_in[self.dist_select_idx]
-    _counts_out = np.empty(sum([c.size for c in counts_out_l]), counts_in.dtype)
-    for counts_out, part_write_pos in zip(counts_out_l, self.part_write_pos):
-      _counts_out[part_write_pos] = counts_out
-
-    # Count the actual number of items to send/recv, using stride array
-    # (this is the partial sum of portion of the stride array related to the given rank)
-    send_counts = np.empty(self.comm.Get_size(), int)
-    recv_counts = np.empty(self.comm.Get_size(), int)
-    idx_send = idx_recv = 0
-    for i in range(self.comm.Get_size()):
-      send_counts[i] = _counts_in [idx_send:idx_send+self.dist_counts[i]].sum()
-      recv_counts[i] = _counts_out[idx_recv:idx_recv+self.part_counts[i]].sum()
-      idx_send += self.dist_counts[i]
-      idx_recv += self.part_counts[i]
-    
-    send_buff = np.empty(send_counts.sum(), data_in.dtype)
-    take_strided(counts_in, data_in, self.dist_select_idx, send_buff)
-
-    # Exchange data buffer
-    recv_buff = np.empty(recv_counts.sum(), data_in.dtype)
-    self.comm.Alltoallv((send_buff, send_counts), (recv_buff, recv_counts))
-
-    # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    for data_out, part_write_pos in zip(data_out_l, self.part_write_pos):
-      take_strided(_counts_out, recv_buff, part_write_pos, data_out)
 
 
-  def Take_v(self, dist_data: VBuffer) -> List[VBuffer] :
+
+  def Take_v(self, dist_data: VBuffer, local_data_l: List[VBuffer]=None) -> List[VBuffer]:
     """ Generalization of :func:`GlobalIndexer.Take_v` for multi index access.
 
     Args:
       dist_data (variable buffer): section of the distributed data, ie pair of values
         (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
+      local_data_l (list of N variable buffer, optional): list of preallocated buffer to store
+        extracted values or None
     Returns:
       list of N variable buffer: for each index list, data extracted as tuple of values \
         (**local_counts** (*np array of* :math:`pn_k` *int*), **local_buff** (*buffer*))
     """
-    # Variable stride
+
 
     counts_in, buff_in = dist_data
-    assert isinstance(counts_in, np.ndarray)
-    assert np.issubdtype(counts_in.dtype, np.integer)
-    assert counts_in.size == self.dn
-    assert buff_in.size == counts_in.sum()
-    # Exchange counts_in
-    # _ : in all_to_all layout. Do not call Take because we need the intermediate layout
+
+    if not (isinstance(counts_in, np.ndarray) and np.issubdtype(counts_in.dtype, np.integer)):
+      raise ValueError(f"Invalid kind of counts input")
+    if counts_in.size != self.dn:
+      raise ValueError(f"Invalid size of input counts (expected {self.dn}, got {counts_in.size})")
+    if buff_in.size - counts_in.sum() != 0:
+      raise ValueError(f"Invalid size of input distributed buffer (expected {counts_in.sum()}, got {buff_in.size})")
+
     _counts_in  = counts_in[self.dist_select_idx]
-    _counts_out = np.empty(sum(self.pn), counts_in.dtype)
-    self.comm.Alltoallv((_counts_in, self.dist_counts), (_counts_out, self.part_counts))
+
+    if local_data_l is None:
+      # Case 1: allocate output (local) data
+      # Exchange counts_in. We do not call Take because we need the intermediate layout
+      _counts_out = np.empty(sum(self.pn), _counts_in.dtype)
+      self.comm.Alltoallv((_counts_in, self.dist_counts), (_counts_out, self.part_counts))
+      local_data_l = list()
+      for part_write_pos in self.part_write_pos:
+        counts_out = _counts_out[part_write_pos]
+        buff_out   = np.empty(counts_out.sum(), buff_in.dtype)
+        local_data_l.append((counts_out, buff_out))
+    else:
+      # Case 2: output (local) data already allocatated : do some checks and recompute _counts_out
+      _counts_out = np.empty(sum([data[0].size for data in local_data_l]), _counts_in.dtype)
+      for i, local_data in enumerate(local_data_l):
+        counts_out, buff_out = local_data
+        if not (isinstance(counts_out, np.ndarray) and np.issubdtype(counts_out.dtype, np.integer)):
+          raise ValueError(f"Invalid kind of counts input")
+        if counts_out.size != self.pn[i]:
+          raise ValueError(f"Invalid size of output counts (expected {self.pn[i]}, got {counts_out.size})")
+        if buff_out.size - counts_out.sum() != 0:
+          raise ValueError(f"Invalid size of input distributed buffer (expected {counts_out.sum()}, got {buff_out.size})")
+        _counts_out[self.part_write_pos[i]] = counts_out
+
 
     # Count the actual number of items to send/recv, using stride array
     # (this is the partial sum of portion of the stride array related to the given rank)
@@ -347,7 +346,6 @@ class GlobalMultiIndexer:
       recv_counts[i] = _counts_out[idx_recv:idx_recv+self.part_counts[i]].sum()
       idx_send += self.dist_counts[i]
       idx_recv += self.part_counts[i]
-
     
     send_buff = np.empty(send_counts.sum(), buff_in.dtype)
     take_strided(counts_in, buff_in, self.dist_select_idx, send_buff)
@@ -357,22 +355,18 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((send_buff, send_counts), (recv_buff, recv_counts))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    data_out_l = list()
-    for part_write_pos in self.part_write_pos:
-      counts_out = _counts_out[part_write_pos]
-      buff_out = np.empty(counts_out.sum(), recv_buff.dtype)
-      take_strided(_counts_out, recv_buff, part_write_pos, buff_out)
-      data_out_l.append((counts_out, buff_out))
+    for local_data, part_write_pos in zip(local_data_l, self.part_write_pos):
+      take_strided(_counts_out, recv_buff, part_write_pos, local_data[1])
 
-    return data_out_l
+    return local_data_l
 
-
-  def Put_v(self, local_data_l: List[VBuffer]) -> VBuffer:
+  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None) -> VBuffer:
     """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
       local_data_l (list of N var. buffer): for each index list, values to write as pair \
         (**local_counts** (*np array of* :math:`pn_k` *int*), **local_buff** (*buffer*))
+      dist_data (variable buffer, optional) : preallocated buffer to store distributed data or None
     Returns:
       variable buffer: output distributed data, returned as pair of values \
         (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
@@ -405,11 +399,21 @@ class GlobalMultiIndexer:
     assert all(np.issubdtype(counts_in.dtype, np.integer) for counts_in in counts_in_l)
     assert all(data_in.size == counts_in.sum() for data_in, counts_in in zip(buff_in_l, counts_in_l))
 
-    cnts_dtype = counts_in_l[0].dtype.str if len(self.pn) > 0 else ''
-    data_dtype = buff_in_l[0].dtype.str   if len(self.pn) > 0 else ''
-    if self.empty_part:
-      out_dtype = self.comm.allreduce(cnts_dtype+data_dtype,  MPI.MAX)
-      cnts_dtype, data_dtype = out_dtype[:3], out_dtype[3:]
+    if dist_data is None:
+      cnts_dtype = counts_in_l[0].dtype.str if len(self.pn) > 0 else ''
+      data_dtype = buff_in_l[0].dtype.str   if len(self.pn) > 0 else ''
+      if self.empty_part:
+        out_dtype = self.comm.allreduce(cnts_dtype+data_dtype,  MPI.MAX)
+        cnts_dtype, data_dtype = out_dtype[:3], out_dtype[3:]
+    else:
+      counts_out, buff_out = dist_data
+      if counts_out.size != self.dn:
+        raise ValueError(f"Invalid size of output counts (expected {self.dn}, got {counts_out.size})")
+      if buff_out.size - counts_out.sum() != 0:
+        raise ValueError(f"Invalid size of output distributed buffer (expected {counts_out.sum()}, got {buff_out.size})")
+      cnts_dtype = counts_out.dtype
+      data_dtype = buff_out.dtype
+      # Retrieve _counts_out from counts_out seems not possible because of data erasion, we will recompute it 
 
 
     # Exchange counts_in
@@ -421,8 +425,12 @@ class GlobalMultiIndexer:
 
     self.comm.Alltoallv((_counts_in, self.part_counts), 
                         (_counts_out, self.dist_counts))
-    counts_out  = np.zeros(self.dn, dtype=_counts_out.dtype)
-    counts_out[self.dist_select_idx] = _counts_out
+
+    if dist_data is None:
+      counts_out  = np.zeros(self.dn, dtype=_counts_out.dtype)
+      counts_out[self.dist_select_idx] = _counts_out
+      buff_out = np.empty(counts_out.sum(), data_dtype)
+    
 
     # Count the actual number of items to send/recv, using stride array
     # (this is the partial sum of portion of the stride array related to the given rank)
@@ -445,10 +453,9 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((send_buff, send_counts), (recv_buff, recv_counts))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    data_out = np.empty(counts_out.sum(), recv_buff.dtype)
-    put_strided(data_out, counts_out, self.dist_select_idx, _counts_out, recv_buff)
+    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff)
 
-    return counts_out, data_out
+    return counts_out, buff_out
   
   @property
   def access_counts(self) -> NDArrayInt:
@@ -552,7 +559,7 @@ class GlobalIndexer:
     
     Args:
       dist_data (buffer of size :math:`c*dn`) : section of the distributed data
-      local_data (buffer of size :math:`c*pn`, optionnal) : preallocated buffer
+      local_data (buffer of size :math:`c*pn`, optional) : preallocated buffer
         to store extracted values or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
@@ -583,7 +590,7 @@ class GlobalIndexer:
 
     Args:
       local_data (buffer of size :math:`c*pn`) : data to write at each accessed index
-      dist_data (buffer of size :math:`c*dn`, optionnal) : preallocated buffer
+      dist_data (buffer of size :math:`c*dn`, optional) : preallocated buffer
         to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
     Returns:
@@ -591,57 +598,69 @@ class GlobalIndexer:
     """
     return self.GIndexer_m.Put([local_data], dist_data, count)
 
-  def Take_v(self, dist_data: VBuffer) -> VBuffer:
+  def Take_v(self, dist_data: VBuffer, local_data: VBuffer=None) -> VBuffer:
     """ ``take`` implementation for variable buffer-like objects 
 
-    The variable input buffer is described by two objets:
+    The input variable buffer is described by a tuple of two objets:
 
-    - an integer array ``counts_in`` of size :math:`dn`;
-    - a buffer object of size ``counts_in.sum()``.
-      The datatype of this input buffer must be the same across all the processes.
+    1. an integer array ``dist_counts`` of size :math:`dn`;
+    2. a buffer object of size ``dist_counts.sum()``.
+       The datatype <T> of this input buffer must be the same across all the processes.
 
-    Similarly, the output data is returned as a pair of two newly allocated numpy arrays:
+    Similarly, the output variable buffer is described by the tuple of two objects:
 
-    - an integer array ``counts_out`` of size :math:`pn`;
-    - a buffer object of size ``counts_out.sum()``.
-      The datatype of this output buffer is set to be the same than the input buffer.
+    1. an integer array ``local_counts`` of size :math:`pn`;
+    2. a buffer object ``local_buff`` of size ``local_count.sum()`` and datatype <T>.
 
-    Those two arrays must be stored in a tuple ``(counts, buff)``.
+    This output data is either:
+
+    - provided by the caller, in which case ``local_counts`` must be already filled, *eg.*
+      with :obj:`Take(dist_counts, local_counts)`, and ``local_buff``
+      must be prellocated at relevant size and datatype;
+    - or automatically allocated by the method as a pair of new numpy array if ``local_data=None``.
+
     
     Args:
       dist_data (variable buffer): section of the distributed data, ie pair of values
         (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
+      local_data (variable buffer, optional): preallocated buffer to store extracted values or None
     Returns:
       variable buffer: data extracted at the requested indices, as a tuple of values \
         (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
     """
-    return self.GIndexer_m.Take_v(dist_data)[0]
-   
-  def Put_v(self, local_data: VBuffer) -> VBuffer:
+    local_data_l = [local_data] if local_data is not None else None
+    return self.GIndexer_m.Take_v(dist_data, local_data_l)[0]
+
+  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
-    The variable input buffer is described by two objets:
+    The variable input buffer is described by a tuple of two objets:
 
-    - an integer array ``counts_in`` of size :math:`pn`;
-    - a buffer object of size ``counts_in.sum()``.
-      The datatype of this input buffer must be the same across all the processes.
+    1. an integer array ``local_counts`` of size :math:`pn`;
+    2. a buffer object of size ``local_counts.sum()``.
+       The datatype <T> of this input buffer must be the same across all the processes.
 
-    Similarly, the output data is returned as a pair of two newly allocated numpy arrays:
+    Similarly, the output variable buffer is described by the tuple of two objects:
 
-    - an integer array ``counts_out`` of size :math:`dn`;
-    - a buffer object of size ``counts_out.sum()``.
-      The datatype of this output buffer is set to be the same than the input buffer.
+    1. an integer array ``dist_counts`` of size :math:`dn`;
+    2. a buffer object ``dist_buff`` of size ``dist_counts.sum()`` and datatype <T>.
 
-    Those two arrays must be stored in a tuple ``(counts, buff)``.
+    This output data is either:
+
+    - provided by the caller, in which case ``dist_counts`` must be already filled, *eg.*
+      with :obj:`Put(local_counts, dist_counts)`, and ``dist_buff``
+      must be prellocated at relevant size and datatype;
+    - or automatically allocated by the method as a pair of new numpy array if ``dist_data=None``.
 
     Args:
       local_data (variable buffer): data to write at each accessed index, ie tuple 
         (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
+      dist_data (variable buffer, optional): preallocated buffer to store distributed data or None
     Returns:
       variable buffer: output distributed data, returned as the tuple of values \
         (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
     """
-    return self.GIndexer_m.Put_v([local_data])
+    return self.GIndexer_m.Put_v([local_data], dist_data)
 
   @property
   def empty_dist(self) -> bool:

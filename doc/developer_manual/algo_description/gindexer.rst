@@ -220,8 +220,10 @@ can still be any object supporting the buffer protocol.
 This is the most complex implementation, but it allows to work with sparse data
 since a count of 0 is allowed for any global index.
 
-Since it much more difficult to predict the output buffer size, the
-user allocated memory mode is not yet implemented.
+Following what is done in the previous paragraph, the output variable buffer
+is allocated by the function as a pair of numpy array if ``None`` argument is used,
+or can be provided to the function by the user. In this case, the output array of counts
+is supposed to be by known; only the output data buffer is filled.
 
 Here is an exemple of the ``take`` implementation for a variable buffer::
 
@@ -236,7 +238,7 @@ Here is an exemple of the ``take`` implementation for a variable buffer::
     counts    = array([3])                   #nb of values for glob idx 4..5
     dist_data = array([11,12,21], dtype=int) #values (3)
 
-  extr, counts_o = GI.Take_v((dist_data, counts))
+  counts_o, extr = GI.Take_v((counts, dist_data))
   # P0 : counts_o = array([3,1])                   #nb of vals got for [4,0]
   #      extr     = array([11,12,21,1], dtype=int) #values (3, then 1)
   # P1 : counts_o = array([1,2])                   #nb of vals got for [1,3]
@@ -262,7 +264,7 @@ And here is an exemple of the ``put`` implementation for a variable buffer::
     counts = array([2])                        #nb of vals to write at [0]
     values = array([100.1,100.2],    dtype='f')#values (2)
 
-  dist_data_new, counts_new = GI.Put_v((values, counts))
+  counts_new, dist_data_new = GI.Put_v((counts, values))
   # P0 : counts_new    = array([2,0])                   #nb of vals for 0..2
   #      dist_data_new = array([100.1,100.2],dtype='f') #values (2, then 0)
   # P1 : counts_new    = array([0,1])                   #nb of vals for 2..4
