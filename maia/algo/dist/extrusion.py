@@ -72,14 +72,29 @@ def _nodes_duplication(zone, extrusion_vector, comm, as_first=False):
   new_distrib_vtx  = par_utils.uniform_distribution(2*distrib_vtx[2],  comm)
   # > Change value of Z or Theta coordinates in part_data
   coords = PT.Zone.coordinates(zone)
-  part_data = {name : [coord, coord+extru] for extru, (name, coord) in zip(extrusion_vector, coords._asdict().items())}
-  # > Compute ln_to_gn
-  ln_to_gn_l = [np.arange(distrib_vtx[0]+1, distrib_vtx[1]+1, dtype=pdm_dtype),
-                np.arange(distrib_vtx[0]+1, distrib_vtx[1]+1, dtype=pdm_dtype) + distrib_vtx[2]]
+  initial = coords._asdict()
+  extruded = {name: coord + extru for  extru, (name, coord) in zip(extrusion_vector, initial.items())}
+  
   if as_first: # For S meshes, change order depending of extrusion direction to keep i,j,k direct
-    ln_to_gn_l = reversed(ln_to_gn_l)
-  # > Part to block
-  dist_data = EP.part_to_block(part_data, new_distrib_vtx, ln_to_gn_l, comm)
+    initial, extruded = extruded, initial
+
+  # We can do two BlockToBlock, it is faster than a PartToBlock (we should do a function from this pattern)
+  dist_data = {key: np.empty(new_distrib_vtx[1]-new_distrib_vtx[0]) for key in initial}
+  distri_out = distrib_vtx.copy()
+  n_vtx = distrib_vtx[2]
+  distri_out[0] = max(min(new_distrib_vtx[0], n_vtx), 0) - 0
+  distri_out[1] = max(min(new_distrib_vtx[1], n_vtx), 0) - 0
+  stop = distri_out[1]-distri_out[0]
+  btb = EP.BlockToBlock(distrib_vtx, distri_out, comm)
+  for key in initial:
+    btb.exchange_inplace(initial[key], dist_data[key][:stop])
+  
+  distri_out[0] = max(min(new_distrib_vtx[0], 2*n_vtx), n_vtx) - n_vtx
+  distri_out[1] = max(min(new_distrib_vtx[1], 2*n_vtx), n_vtx) - n_vtx
+  btb = EP.BlockToBlock(distrib_vtx, distri_out, comm)
+  for key in initial:
+    btb.exchange_inplace(extruded[key], dist_data[key][stop:])
+
   # > Update coordinates values
   for name, new_val in dist_data.items():
     coord_n = PT.get_child_from_predicates(zone, f'GridCoordinates_t/{name}')
@@ -506,17 +521,25 @@ def _pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm):
   """
   new_distrib_idx  = par_utils.uniform_distribution(2*distrib_idx[2],  comm)
   # > Duplicate data in part_data
-  if pl is None:
-    part_data = {}
-  else:
-    part_data = {'PointList': [pl[0], pl[0]+n_vtx_2d]}
-  for name, value in data.items():
-    part_data[name] = [value, value]
-  # > Compute ln_to_gn
-  ln_to_gn_l = [np.arange(distrib_idx[0]+1, distrib_idx[1]+1, dtype=pdm_dtype),
-                np.arange(distrib_idx[0]+1, distrib_idx[1]+1, dtype=pdm_dtype)+distrib_idx[2]]
-  # > Part to block
-  dist_data = EP.part_to_block(part_data, new_distrib_idx, ln_to_gn_l, comm)
+  part_data = {name: [value,value] for name, value in data.items()}
+  if pl is not None:
+    part_data['PointList'] = [pl[0], pl[0]+n_vtx_2d]
+
+  dist_data = {key: np.empty(new_distrib_idx[1]-new_distrib_idx[0], val[0].dtype) for key,val in part_data.items()}
+  distri_out = distrib_idx.copy()
+  end = distrib_idx[2]
+  distri_out[0] = max(min(new_distrib_idx[0], end), 0) - 0
+  distri_out[1] = max(min(new_distrib_idx[1], end), 0) - 0
+  stop = distri_out[1]-distri_out[0]
+  btb = EP.BlockToBlock(distrib_idx, distri_out, comm)
+  for key in part_data:
+    btb.exchange_inplace(part_data[key][0], dist_data[key][:stop])
+
+  distri_out[0] = max(min(new_distrib_idx[0], 2*end), end) - end
+  distri_out[1] = max(min(new_distrib_idx[1], 2*end), end) - end
+  btb = EP.BlockToBlock(distrib_idx, distri_out, comm)
+  for key in part_data:
+    btb.exchange_inplace(part_data[key][1], dist_data[key][stop:])
   
   if pl is None:
     dist_pl = None

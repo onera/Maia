@@ -254,7 +254,7 @@ def test_extrude_bar_to_quad(align):
 def test_pl_and_data_vtx_duplication(pl, data, comm):
 
   # Prepare test
-  distrib_idx = [0,2,3] if comm.rank == 0 else [2,3,3]
+  distrib_idx = np.array([0,2,3]) if comm.rank == 0 else np.array([2,3,3])
   slice_me = lambda t: t[distrib_idx[0]:distrib_idx[1]]
   pl = slice_me(np.array([5,7,13])).reshape((1,-1),order='F') if pl else None
   data = {'data' : slice_me(np.array([5,7,13.]))}             if data else {}
