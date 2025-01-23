@@ -499,7 +499,8 @@ def test_extrusion_2d_cart_elem(element_type, comm):
   assert np.all(np.abs(PT.get_node_from_name(zone, 'Translation')[1]) == [0., 0., 2.])
 
 @pytest_parallel.mark.parallel(2)
-def test_extrusion_2d_S(comm):
+@pytest.mark.parametrize("subset_as", ['BC', 'GC'])
+def test_extrusion_2d_S(subset_as, comm):
 
   # Prepare 2D case : to test two different i,j, orientation, wanted setup is:
 
@@ -525,6 +526,11 @@ def test_extrusion_2d_S(comm):
   PT.update_child(ymin, 'GridLocation', value='JEdgeCenter')
   PT.update_child(ymin, 'PointRange', value=[[1,8],[1,1]])
   MT.new_distribution({'Index' : par_utils.uniform_distribution(8, comm)}, ymin)
+  # Add a BCDS in zoneB
+  ymin = PT.get_node_from_name(zoneB, 'Ymin')
+  bcds = PT.new_BCDataSet(loc='Vertex', parent=ymin)
+  distri = MT.get_distribution(ymin, 'Index')[1]
+  PT.new_BCData('DirichletData', fields={'field': np.arange(distri[2])[distri[0]:distri[1]]}, parent=bcds)
 
   # Create JN A -> B
   xmax = PT.get_node_from_name(zoneA, 'Xmax')
@@ -543,7 +549,8 @@ def test_extrusion_2d_S(comm):
   base = PT.get_all_CGNSBase_t(tree)[0]
 
   # Run test
-  EXT.extrude(tree, [0., 0., 2.], comm, ksubset_as='BC')
+  dupl_vtx = (subset_as == 'BC')
+  EXT.extrude(tree, [0., 0., 2.], comm, subset_as, dupl_vtx)
 
   # If volumes are > 0, i,j,k is direct
   for zone in PT.get_all_Zone_t(tree):
@@ -556,11 +563,18 @@ def test_extrusion_2d_S(comm):
   assert len(PT.get_nodes_from_predicate(tree, is_face_subset)) == 1
 
   gcs = PT.get_nodes_from_label(tree, 'GridConnectivity1to1_t')
-  assert len(gcs) == 2
+  assert len(gcs) == 2 + 4*(subset_as=='GC')
   for gc in gcs:
-    assert (PT.get_node_from_name(gc, 'Transform')[1] == [2,1,-3]).all()
+    if PT.get_name(gc) in ['InitialSurface', 'ExtrudedSurface']:
+      assert (PT.get_node_from_name(gc, 'Transform')[1] == [1,2,3]).all()
+    else:
+      assert (PT.get_node_from_name(gc, 'Transform')[1] == [2,1,-3]).all()
   
   for bc in PT.get_nodes_from_label(tree, 'BC_t'):
     if PT.Subset.GridLocation(bc) == 'Vertex' and PT.get_name(bc) not in ['InitialSurface', 'ExtrudedSurface']:
       assert (PT.get_child_from_name(bc, 'PointRange')[1][2,:] == [1,2]).all()
+
+  bcds = PT.get_node_from_path(tree, 'Base/Small/ZoneBC/Ymin/BCDataSet')
+  assert comm.allreduce(PT.get_node_from_name(bcds, 'field')[1].size) == 3*(dupl_vtx+1)
+  assert (PT.get_child_from_name(bcds, 'PointRange') is None) == dupl_vtx
   
