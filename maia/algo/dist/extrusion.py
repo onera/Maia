@@ -7,10 +7,17 @@ import maia.pytree.maia as MT
 from maia           import npy_pdm_gnum_dtype  as pdm_dtype
 from maia.algo.dist import ngon_tools
 from maia.transfer  import protocols as EP
-from maia.utils     import np_utils, par_utils
+from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import logging as mlog
 
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
+
+def _extend_pr(pr_node, val):
+  """ Add a dimension to PR-like arrays with the specified values"""
+  pr2d = PT.get_value(pr_node)
+  assert pr2d.shape[0] == 2
+  pr3d = np.append(pr2d, np.array(val, pr2d.dtype).reshape((1,-1), order='F'), axis=0)
+  PT.set_value(pr_node, pr3d)
 
 def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as, comm):
 
@@ -54,7 +61,7 @@ def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as,
     MT.newDistribution({'Index' : distrib_idx.copy()}, parent=bc2)
 
 
-def _nodes_duplication(zone, extrusion_vector, comm):
+def _nodes_duplication(zone, extrusion_vector, comm, as_first=False):
   """
   Internal function used by _extrusion_2d_u_ngon and _extrusion_2d_u_elem to create 
   the duplicated nodes needed to generate the second plan
@@ -69,6 +76,8 @@ def _nodes_duplication(zone, extrusion_vector, comm):
   # > Compute ln_to_gn
   ln_to_gn_l = [np.arange(distrib_vtx[0]+1, distrib_vtx[1]+1, dtype=pdm_dtype),
                 np.arange(distrib_vtx[0]+1, distrib_vtx[1]+1, dtype=pdm_dtype) + distrib_vtx[2]]
+  if as_first: # For S meshes, change order depending of extrusion direction to keep i,j,k direct
+    ln_to_gn_l = reversed(ln_to_gn_l)
   # > Part to block
   dist_data = EP.part_to_block(part_data, new_distrib_vtx, ln_to_gn_l, comm)
   # > Update coordinates values
@@ -84,15 +93,18 @@ def _determine_mesh_orientation(zone, extrusion_vector, comm):
   #         scalar product between extrusion vector and the first face in
   #         the current proc
   # > Get the third first nodes of the first face in current proc
-  if PT.Zone.has_ngon_elements(zone): #U-NGon zone
-    first_elem_2d = PT.Zone.NGonNode(zone)
-  else: #U-Elem zone
-    first_elem_2d = PT.Zone.get_ordered_elements_per_dim(zone)[2][0]
-  first_elem_2d_ec = PT.get_value(PT.get_child_from_name(first_elem_2d, 'ElementConnectivity'))
-  if len(first_elem_2d_ec) > 0:
-    nodes_of_first_face = first_elem_2d_ec[0:3]
+  if PT.Zone.Type(zone) == 'Structured':
+    nodes_of_first_face = s_numbering.ij_to_index(np.array([1, 2, 1]), np.array([1, 1, 2]), PT.Zone.VertexSize(zone))
   else:
-    nodes_of_first_face = np.empty(0, int)
+    if PT.Zone.has_ngon_elements(zone): #U-NGon zone
+      first_elem_2d = PT.Zone.NGonNode(zone)
+    else: #U-Elem zone
+      first_elem_2d = PT.Zone.get_ordered_elements_per_dim(zone)[2][0]
+    first_elem_2d_ec = PT.get_value(PT.get_child_from_name(first_elem_2d, 'ElementConnectivity'))
+    if len(first_elem_2d_ec) > 0:
+      nodes_of_first_face = first_elem_2d_ec[0:3]
+    else:
+      nodes_of_first_face = np.empty(0, int)
   # > Get coordinates of nodes of the first face
   coords = PT.Zone.coordinates(zone)
   dist_coords_data = coords._asdict()
@@ -245,6 +257,59 @@ def _merge_ngons(zone, comm):
   new_ngon_n = PT.new_NGonElements(erange=new_er, eso=new_eso, ec=new_ec, pe=new_pe, parent=zone)
   MT.newDistribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
     
+def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
+  """
+  Internal function used by extrusion_2d to extrude a 2D structured mesh
+  in the direction of the extrusion vector
+  """
+  
+  # 0/ Global information
+  n_vtx  = PT.Zone.n_vtx(zone)
+
+  # 1/ Duplication of nodes to generate the second plan
+  _nodes_duplication(zone, extrusion_vector, comm, not align)
+  
+  # 2/ Manage K-plans
+  pr_former = np.ones((3,2), order='F', dtype=zone[1].dtype)
+  pr_former[0:2,1] = PT.Zone.VertexSize(zone)
+  pr_extruded = pr_former.copy()
+  pr_extruded[2,:] = 2
+  if not align: # Swap former / extruded if needed
+    pr_former, pr_extruded = pr_extruded, pr_former
+  distrib_idx = par_utils.uniform_distribution(n_vtx, comm)
+  if ksubset_as in ['GC', 'JN']:
+    # > Generate GridConnectivity between the two planes
+    # Remark: former NGon is the first GridConnectivity and the duplicated one the second one
+    zgc = PT.update_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
+    gc1_name = 'InitialSurface'
+    gc2_name = 'ExtrudedSurface'
+    gc1 = PT.new_GridConnectivity1to1(name=gc1_name, donor_name=PT.get_name(zone),
+                                      point_range=pr_former,
+                                      point_range_donor=pr_extruded,
+                                      transform=[1,2,3],
+                                      parent=zgc)
+    PT.new_GridConnectivityProperty({"translation": np.array(extrusion_vector, dtype=np.float64)}, parent=gc1)
+    MT.newDistribution({'Index' : distrib_idx}, parent=gc1)
+
+    gc2 = PT.new_GridConnectivity1to1(name=gc2_name, donor_name=PT.get_name(zone),
+                                      point_range=pr_extruded,
+                                      point_range_donor=pr_former,
+                                      transform=[1,2,3],
+                                      parent=zgc)
+    PT.new_GridConnectivityProperty({"translation": -np.array(extrusion_vector, dtype=np.float64)}, parent=gc2)
+    MT.newDistribution({'Index' : distrib_idx.copy()}, parent=gc2)
+
+    PT.new_Descriptor("GridConnectivityDonorName", gc2_name, parent=gc1)
+    PT.new_Descriptor("GridConnectivityDonorName", gc1_name, parent=gc2)
+
+  elif ksubset_as == 'BC':
+    zbc = PT.update_child(zone, 'ZoneBC', 'ZoneBC_t')
+    bc1 = PT.new_BC(name='InitialSurface', type='FamilySpecified', point_range=pr_former, family='InitialSurface', parent=zbc)
+    bc2 = PT.new_BC(name='ExtrudedSurface', type='FamilySpecified', point_range=pr_extruded, family='ExtrudedSuface', parent=zbc)
+    MT.newDistribution({'Index' : distrib_idx}, parent=bc1)
+    MT.newDistribution({'Index' : distrib_idx.copy()}, parent=bc2)
+
+
 
 def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as):
   """
@@ -270,7 +335,7 @@ def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as):
   align = _determine_mesh_orientation(zone, extrusion_vector, comm)
   
   # 2/ Create faces of the second plan
-  align = _ngon_duplication(zone, comm, align)
+  _ngon_duplication(zone, comm, align)
   
   # 3/ Extrude Bar to NGon
   for bar in PT.get_nodes_from_predicate(zone, is_bar):
@@ -479,11 +544,8 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
 
   Input tree is modified inplace.
 
-  Warning:
-    Only unstructured meshes are supported.
-
   Args:
-    dist_tree (CGNSTree): Input unstructured 2D distributed tree
+    dist_tree (CGNSTree): Input 2D distributed tree
     extrusion_vector (array of 3 floats): extrusion axis, which can be any non zero vector
     comm      (MPIComm) : MPI communicator
     ksubset_as (str): Set kind of surfacic subset created for the initial and extruded planes.
@@ -501,6 +563,7 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
     raise ValueError(f"'ksubset_as' is {ksubset_as} but only 'GC' and 'BC' are allowed !")
   
   zone_to_distrib_vtx = dict()
+  zone_to_align = dict()
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     zone = PT.get_node_from_path(dist_tree, zone_path)
     if not PT.Zone.CellDimension(zone) == 2:
@@ -509,21 +572,25 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
     distrib_vtx_2d_n = MT.getDistribution(zone, 'Vertex')[1].copy()
     zone_to_distrib_vtx[zone_path] = distrib_vtx_2d_n
 
-  for base, zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
-      
-    distrib_vtx_2d = zone_to_distrib_vtx[f'{base[0]}/{zone[0]}']
-    cell_offset_2d = PT.Zone.get_elt_range_per_dim(zone)[2][0]
-    n_vtx_2d = distrib_vtx_2d[2]
-
     coord_n = PT.get_child_from_label(zone, 'GridCoordinates_t')
     coords = PT.Zone.coordinates(zone)
     for coord_name, coord_val in coords._asdict().items():
       if coord_val is None:
         PT.new_DataArray(coord_name, np.zeros_like(coords[0]), parent=coord_n)
+
+    if PT.Zone.Type(zone) == 'Structured':
+      zone_to_align[zone_path] = _determine_mesh_orientation(zone, extrusion_vector, comm)
+
+  for base, zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
+      
+    zone_path = f'{base[0]}/{zone[0]}'
+    distrib_vtx_2d = zone_to_distrib_vtx[zone_path]
+    cell_offset_2d = PT.Zone.get_elt_range_per_dim(zone)[2][0]
+    n_vtx_2d = distrib_vtx_2d[2]
     
     # Generate new vertices and Elements
     if PT.Zone.Type(zone) == 'Structured':
-      raise NotImplementedError('Extrusion of 2D structured meshes is not yet implemented !')
+      _extrusion_2d_s(zone, extrusion_vector, comm, zone_to_align[zone_path], ksubset_as=ksubset_as)
     elif PT.Zone.Type(zone) == 'Unstructured':
       all_element_types = set([PT.Element.CGNSName(e) for e in PT.get_children_from_label(zone, 'Elements_t')])
       if all_element_types <= {'NODE', 'BAR_2', 'NGON_n'}:
@@ -538,8 +605,12 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
     # Update zone dims
     # Remark: in extrusion, no need to change nb_cell because the new 3D cells are the 
     #         former 2D ones extruded
-    zone_dims = PT.get_value(zone)
-    zone_dims[0][0] *= 2
+    if PT.Zone.Type(zone) == 'Unstructured':
+      zone_dims = PT.get_value(zone)
+      zone_dims[0][0] *= 2
+    else:
+      _extend_pr(zone, [2,1,0])
+
     if PT.Zone.has_ngon_elements(zone):
       cell_offset_3d = PT.Element.Range(PT.Zone.NGonNode(zone))[1] + 1
     else:
@@ -548,25 +619,37 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
     # Update containers
     is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
     has_pl = lambda n : PT.get_child_from_name(n, 'PointList') is not None
+    has_pr = lambda n : PT.get_child_from_name(n, 'PointRange') is not None
+    is_partial = lambda n : has_pl(n) or has_pr(n)
     
     # > CellCenter -> Shift to refer cells ids
     is_container_cell = lambda n: is_container(n) and PT.Subset.GridLocation(n) == 'CellCenter'
     for container in PT.get_nodes_from_predicate(zone, lambda n : is_container_cell(n) and has_pl(n)):
-      PT.get_child_from_name(container, 'PointList')[1] += cell_offset_3d - cell_offset_2d
+      if PT.Zone.Type(zone) == 'Unstructured':
+        PT.get_child_from_name(container, 'PointList')[1] += cell_offset_3d - cell_offset_2d
+      else:
+        for pr in PT.get_children_from_label(container, 'IndexRange_t'):
+          _extend_pr(pr, [1,1])
     # > FaceCenter -> should not exist on 2d mesh, remove it
-    is_container_face = lambda n: is_container(n) and PT.Subset.GridLocation(n) == 'FaceCenter'
+    is_container_face = lambda n: is_container(n) and PT.Subset.GridLocation(n).endswith('FaceCenter')
     container_face_l = PT.get_nodes_from_predicate(zone, is_container_face, depth=3)
     if len(container_face_l) > 0:
       cnt_names = [PT.get_name(n) for n in container_face_l]
-      msg = f"The following containers have been removed from the input 2D mesh, because GridLocation == FaceCenter" \
+      msg = f"The following containers have been removed from the input 2D mesh, because GridLocation == *FaceCenter" \
             f" is not allowed by the CGNS norm on 2d meshes : {cnt_names}"
       mlog.error(msg)
       PT.rm_nodes_from_predicate(zone, is_container_face, depth=3)
 
     # > EdgeCenter -> becomes FaceCenter
-    is_container_edge = lambda n: is_container(n) and PT.Subset.GridLocation(n) == 'EdgeCenter'
+    is_container_edge = lambda n: is_container(n) and PT.Subset.GridLocation(n).endswith('EdgeCenter')
     for container in PT.get_nodes_from_predicate(zone, is_container_edge):
-      PT.update_child(container, 'GridLocation', value='FaceCenter')
+      if PT.Zone.Type(zone)  == 'Unstructured':
+        PT.update_child(container, 'GridLocation', value='FaceCenter')
+      else:
+        cur_dir = PT.Subset.GridLocation(subset)[0] 
+        PT.update_child(subset, 'GridLocation', value=f'{cur_dir}FaceCenter')
+        for pr in PT.get_children_from_label(subset, 'IndexRange_t'):
+          _extend_pr(pr, [1,1])
 
     # > Vertex
     is_vertex = lambda n : PT.Subset.GridLocation(n) == 'Vertex'
@@ -579,10 +662,10 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
           pl = PT.get_child_from_name(container, 'PointList')[1]
           distrib_idx = MT.getDistribution(container, 'Index')[1]
         elif PT.get_label(container) == 'ZoneSubRegion_t':
-          pl = None
           zsr_extent = PT.Subset.ZSRExtent(container, zone)
           extent_node = PT.get_node_from_path(zone, zsr_extent)
           distrib_idx = MT.getDistribution(extent_node, 'Index')[1]
+          pl = PT.get_child_from_name(extent_node, 'PointList')[1] if has_pl(extent_node) else None
         else:
           pl = None
           distrib_idx = distrib_vtx_2d
@@ -591,79 +674,134 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
         if has_pl(container): # Update PointList + Distribution
           PT.update_child(container, 'PointList', value=new_pl)
           MT.newDistribution({'Index' : new_distrib_idx}, container)
+        elif has_pr(container):
+          _extend_pr(PT.get_child_from_name(container, 'PointRange'), [1, 2])
+          MT.newDistribution({'Index' : new_distrib_idx}, container)
         for name, value in new_data.items():
           PT.set_value(PT.get_child_from_name(container, name), value)
       
       for _, bc, bcds in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t', ancestors=True):
         if PT.Subset.GridLocation(bcds) == 'Vertex':
-          pl_ower = bcds if has_pl(bcds) else bc
+          pl_ower = bcds if is_partial(bcds) else bc
           pl = PT.get_child_from_name(pl_ower, 'PointList')
+          assert (pl is None) ^ (PT.Zone.Type(zone) == 'Unstructured'), "Required S zone + PR or U zone + PL"
           distrib_idx = MT.getDistribution(pl_ower, 'Index')
 
           data = {path : PT.get_node_from_path(bcds, path)[1] for path in PT.predicates_to_paths(bcds, 'BCData_t/DataArray_t')}
-          new_distrib_idx, new_pl, new_data = _pl_and_data_vtx_duplication(pl[1], distrib_idx[1], n_vtx_2d, data, comm)
+          old_pl = pl[1] if pl is not None else None
+          new_distrib_idx, new_pl, new_data = _pl_and_data_vtx_duplication(old_pl, distrib_idx[1], n_vtx_2d, data, comm)
           if has_pl(bcds):
             PT.set_value(pl, new_pl)
+            PT.set_value(distrib_idx, new_distrib_idx)
+          elif has_pr(bcds):
+            _extend_pr(PT.get_child_from_name(bcds, 'PointRange'), [1,2])
             PT.set_value(distrib_idx, new_distrib_idx)
           for path, value in new_data.items():
             PT.set_value(PT.get_node_from_path(bcds, path), value)
     else:
       # dupl_vtx_data is False => do not add vertices in Vertex containers; consequently, we need to add a PointList if not already existing
-      for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and not has_pl(n)):
+      if PT.Zone.Type(zone) == 'Structured':
+        zval = 1 if zone_to_align[zone_path] else 2
+      for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and not is_partial(n)):
         # BCDS are skipped because of get_children
         if PT.get_label(container) == 'ZoneSubRegion_t':
           zsr_extent = PT.Subset.ZSRExtent(container, zone)
           extent_node = PT.get_node_from_path(zone, zsr_extent)
-          PT.add_child(container, PT.deep_copy(PT.get_child_from_name(extent_node, 'PointList')))
+          PT.add_child(container, PT.deep_copy(PT.Subset.getPatch(extent_node)))
           PT.add_child(container, PT.deep_copy(PT.get_child_from_name(extent_node, ':CGNS#Distribution')))
           PT.rm_children_from_name(container, '*RegionName')
+          if PT.Zone.Type(zone) == 'Structured':
+            # Because BC not yet updated. Maybe we should do BC before ?
+            pr = PT.get_child_from_name(container, 'PointRange')
+            _extend_pr(pr, [zval,zval])
         else:
-          pl = np.arange(distrib_vtx_2d[0]+1, distrib_vtx_2d[1]+1, dtype=zone[1].dtype).reshape((1,-1), order='F')
-          PT.new_IndexArray('PointList', value=pl, parent=container)
+          if PT.Zone.Type(zone) == 'Unstructured':
+            pl = np.arange(distrib_vtx_2d[0]+1, distrib_vtx_2d[1]+1, dtype=zone[1].dtype).reshape((1,-1), order='F')
+            PT.new_IndexArray('PointList', value=pl, parent=container)
+          else:
+            vertex_size = PT.Zone.VertexSize(zone)
+            pr = np.array([[1, vertex_size[0]], [1, vertex_size[1]], [zval, zval]], dtype=zone[1].dtype, order='F')
+            PT.new_IndexRange('PointRange', value=pr, parent=container)
           MT.newDistribution({'Index': distrib_vtx_2d}, parent=container)
+      for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and has_pr(n)):
+        assert PT.Zone.Type(zone) == 'Structured'
+        pr = PT.get_child_from_name(container, 'PointRange')
+        _extend_pr(pr, [zval,zval])
       for _, bc, bcds in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t', ancestors=True):
-        if is_vertex(bcds) and not has_pl(bcds):
+        if is_vertex(bcds) and not is_partial(bcds):
           assert is_vertex(bc)
-          PT.add_child(bcds, PT.deep_copy(PT.get_child_from_name(bc, 'PointList')))
+          PT.add_child(bcds, PT.deep_copy(PT.Subset.getPatch(bc)))
+          if PT.Zone.Type(zone) == 'Structured' and has_pr(bcds):
+            # Again, update here because BC not yet treated
+            _extend_pr(PT.Subset.getPatch(bcds), [zval,zval])
           PT.add_child(bcds, PT.deep_copy(PT.get_child_from_name(bc, ':CGNS#Distribution')))
     
     # Update subsets
-    is_subset = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity_1to1_t']
+    is_subset = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
     is_subset_cell = lambda n: is_subset(n) and PT.Subset.GridLocation(n) == 'CellCenter'
-    is_subset_face = lambda n: is_subset(n) and PT.Subset.GridLocation(n) == 'FaceCenter'
-    is_subset_edge = lambda n: is_subset(n) and PT.Subset.GridLocation(n) == 'EdgeCenter'
     is_subset_vtx  = lambda n: is_subset(n) and PT.Subset.GridLocation(n) == 'Vertex'
+    is_subset_face = lambda n: is_subset(n) and PT.Subset.GridLocation(n).endswith('FaceCenter')
+    is_subset_edge = lambda n: is_subset(n) and PT.Subset.GridLocation(n).endswith('EdgeCenter')
     # > CellCenter -> Shift to refer cells ids
     for container in PT.get_nodes_from_predicate(zone, is_subset_cell):
-      PT.get_child_from_name(container, 'PointList')[1] += cell_offset_3d - cell_offset_2d
+      if PT.Zone.Type(zone) == 'Unstructured':
+        PT.get_child_from_name(container, 'PointList')[1] += cell_offset_3d - cell_offset_2d
+      else:
+        for pr in PT.get_children_from_label(container, 'IndexRange_t'):
+          _extend_pr(pr, [1,1])
+
     # > FaceCenter -> should not exist
     subset_face_l = PT.get_nodes_from_predicate(zone, is_subset_face, depth=2)
     if len(subset_face_l) > 0:
       cnt_names = [PT.get_name(n) for n in subset_face_l]
-      msg = f"The following subsets have been removed from the input 2D mesh, because GridLocation == FaceCenter" \
+      msg = f"The following subsets have been removed from the input 2D mesh, because GridLocation == *FaceCenter" \
             f" is not allowed by the CGNS norm on 2d meshes : {cnt_names}"
       mlog.error(msg)
       PT.rm_nodes_from_predicate(zone, is_subset_face, depth=2)
 
-    # > EdgeCenter -> becomes FaceCenter (no need to change their PointList)
+    # > EdgeCenter -> becomes FaceCenter (no need to change their PointList, but PR must be extended)
     for subset in PT.get_nodes_from_predicate(zone, is_subset_edge, depth=2):
-      PT.update_child(subset, 'GridLocation', value='FaceCenter')
+      if PT.Zone.Type(zone) == 'Unstructured':
+        PT.update_child(subset, 'GridLocation', value='FaceCenter')
+      else:
+        cur_dir = PT.Subset.GridLocation(subset)[0] 
+        PT.update_child(subset, 'GridLocation', value=f'{cur_dir}FaceCenter')
+        for pr in PT.get_children_from_label(subset, 'IndexRange_t'):
+          _extend_pr(pr, [1,1])
+        
 
     # > Vertex : we have to add the duplicated nodes from PL vertices to PL
     for subset_vertex in PT.get_nodes_from_predicate(zone, is_subset_vtx):
-      pl = PT.get_child_from_name(subset_vertex, 'PointList')
-      distrib_idx = MT.getDistribution(subset_vertex, 'Index')
-      new_distrib_idx, new_pl, _ = _pl_and_data_vtx_duplication(pl[1], distrib_idx[1], n_vtx_2d, {}, comm)
-      # Manage PointListDonor
-      pld = PT.get_child_from_name(subset_vertex, 'PointListDonor')
-      if pld is not None:
-        opp_zone_path = PT.GridConnectivity.ZoneDonorPath(subset_vertex, base[0])
-        distrib_vtx_2d_opp = zone_to_distrib_vtx[opp_zone_path]
-        _, new_pld, _ = _pl_and_data_vtx_duplication(pld[1], distrib_idx[1], distrib_vtx_2d_opp[2], {}, comm)
-        PT.set_value(pld, new_pld)
-      # Update PointList and Distribution
-      PT.set_value(pl, new_pl)
-      PT.set_value(distrib_idx, new_distrib_idx)
+      if PT.Zone.Type(zone) == 'Structured' and PT.get_name(subset_vertex) not in ['InitialSurface', 'ExtrudedSurface'] :
+        for pr in PT.get_children_from_label(subset_vertex, 'IndexRange_t'):
+          _extend_pr(pr, [1,2])
+        transform  = PT.get_child_from_name(subset_vertex, 'Transform') 
+        if transform is not None:
+          donor_path = PT.GridConnectivity.ZoneDonorPath(subset_vertex, PT.get_name(base))
+          # Transform depend of align of zone and opp zone : -1 if different alignement
+          sign = -1 if zone_to_align[zone_path] ^ zone_to_align[donor_path] else 1
+          PT.set_value(transform, np.append(transform[1], np.array([sign*3], np.int32)))
+          # In addition we need to swap one of the two PointRange
+          if sign < 0:
+            pr = PT.get_child_from_name(subset_vertex, 'PointRange' + (zone_path > donor_path)*'Donor')
+            pr[1][2,:] = [2,1]
+        # Update distribution
+        MT.new_distribution({'Index' : par_utils.uniform_distribution(PT.PointRange.n_elem(pr), comm)}, subset_vertex)
+
+      elif PT.Zone.Type(zone) == 'Unstructured':
+        pl = PT.get_child_from_name(subset_vertex, 'PointList')
+        distrib_idx = MT.getDistribution(subset_vertex, 'Index')
+        new_distrib_idx, new_pl, _ = _pl_and_data_vtx_duplication(pl[1], distrib_idx[1], n_vtx_2d, {}, comm)
+        # Manage PointListDonor
+        pld = PT.get_child_from_name(subset_vertex, 'PointListDonor')
+        if pld is not None:
+          opp_zone_path = PT.GridConnectivity.ZoneDonorPath(subset_vertex, base[0])
+          distrib_vtx_2d_opp = zone_to_distrib_vtx[opp_zone_path]
+          _, new_pld, _ = _pl_and_data_vtx_duplication(pld[1], distrib_idx[1], distrib_vtx_2d_opp[2], {}, comm)
+          PT.set_value(pld, new_pld)
+        # Update PointList and Distribution
+        PT.set_value(pl, new_pl)
+        PT.set_value(distrib_idx, new_distrib_idx)
   
   # Update base dimension
   for base in PT.get_all_CGNSBase_t(dist_tree):

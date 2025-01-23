@@ -7,14 +7,15 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
+from maia.utils import par_utils
 
 from maia.algo.dist import extrusion as EXT
 
 get_elt_ec = lambda n : PT.get_child_from_name(n, 'ElementConnectivity')[1]
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 is_subset = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']
-is_edge_subset = lambda n: is_subset(n) and PT.Subset.GridLocation(n) == 'EdgeCenter'
-is_face_subset = lambda n: is_subset(n) and PT.Subset.GridLocation(n) == 'FaceCenter'
+is_edge_subset = lambda n: is_subset(n) and PT.Subset.GridLocation(n).endswith('EdgeCenter')
+is_face_subset = lambda n: is_subset(n) and PT.Subset.GridLocation(n).endswith('FaceCenter')
 
 @pytest_parallel.mark.parallel([1,2])
 def test_nodes_duplication(comm):
@@ -496,3 +497,70 @@ def test_extrusion_2d_cart_elem(element_type, comm):
   assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4
   assert len(PT.get_nodes_from_predicate(zone, 'GridConnectivity_t')) == 2
   assert np.all(np.abs(PT.get_node_from_name(zone, 'Translation')[1]) == [0., 0., 2.])
+
+@pytest_parallel.mark.parallel(2)
+def test_extrusion_2d_S(comm):
+
+  # Prepare 2D case : to test two different i,j, orientation, wanted setup is:
+
+  #    +----+----+----+----++----+----+
+  #    |    |    |    |    ||    |    |
+  #    +----+----+----+----+^i---+----+  
+  #    |    |    |    |    ||  j |    |
+  #    +----+----+----+----++-->-+----+
+  #    |    |    |    |    |
+  #   j^----+----+----+----+
+  #    |  i |    |    |    |
+  #    +-->-+----+----+----+ 
+  treeA = maia.factory.generate_dist_block((9,5), 'S', comm, origin=[0., 0.], length=[2., 1])
+  treeB = maia.factory.generate_dist_block((3,6), 'S', comm, origin=[0., 0.], length=[.5, 1])
+  maia.algo.scale_mesh(treeB, [-1., 1])
+  maia.algo.transform_affine(treeB, rotation_center=[0,.0], rotation_angle=-0.5*np.pi, translation=[2., 0.5])
+  zoneA = PT.get_node_from_label(treeA, 'Zone_t')
+  zoneB = PT.get_node_from_label(treeB, 'Zone_t')
+  PT.set_name(zoneA, 'Large')
+  PT.set_name(zoneB, 'Small')
+  # Change a  BC to EdgeCenter in zone A
+  ymin = PT.get_node_from_name(zoneA, 'Ymin')
+  PT.update_child(ymin, 'GridLocation', value='JEdgeCenter')
+  PT.update_child(ymin, 'PointRange', value=[[1,8],[1,1]])
+  MT.new_distribution({'Index' : par_utils.uniform_distribution(8, comm)}, ymin)
+
+  # Create JN A -> B
+  xmax = PT.get_node_from_name(zoneA, 'Xmax')
+  PT.get_child_from_name(xmax, 'PointRange')[1][1,1] = 3  
+  MT.new_distribution({'Index' : par_utils.uniform_distribution(3, comm)}, xmax)
+  zgc = PT.new_ZoneGridConnectivity(parent=zoneA)
+  gc = PT.new_GridConnectivity1to1('matchLeft', 'Small', point_range=[[9,9],[3,5]], point_range_donor=[[1,3], [1,1]], transform=[2,1], parent=zgc)
+  MT.new_distribution({'Index' : par_utils.uniform_distribution(3, comm)}, gc)
+  # Create JN B -> A
+  zgc = PT.new_ZoneGridConnectivity(parent=zoneB)
+  gc = PT.new_GridConnectivity1to1('matchRight', 'Large', point_range=[[1,3],[1,1]], point_range_donor=[[9,9], [3,5]], transform=[2,1], parent=zgc)
+  MT.new_distribution({'Index' : par_utils.uniform_distribution(3, comm)}, gc)
+  PT.rm_nodes_from_name(zoneB, 'Ymax')
+
+  tree = PT.union(treeA, treeB)
+  base = PT.get_all_CGNSBase_t(tree)[0]
+
+  # Run test
+  EXT.extrude(tree, [0., 0., 2.], comm, ksubset_as='BC')
+
+  # If volumes are > 0, i,j,k is direct
+  for zone in PT.get_all_Zone_t(tree):
+    assert maia.algo.geometry._compute_elements_measure(zone, 3, comm).min() > 0
+
+  # Verification
+  assert np.all(PT.get_value(base) == [3, 3])
+
+  assert len(PT.get_nodes_from_predicate(tree, is_edge_subset)) == 0
+  assert len(PT.get_nodes_from_predicate(tree, is_face_subset)) == 1
+
+  gcs = PT.get_nodes_from_label(tree, 'GridConnectivity1to1_t')
+  assert len(gcs) == 2
+  for gc in gcs:
+    assert (PT.get_node_from_name(gc, 'Transform')[1] == [2,1,-3]).all()
+  
+  for bc in PT.get_nodes_from_label(tree, 'BC_t'):
+    if PT.Subset.GridLocation(bc) == 'Vertex' and PT.get_name(bc) not in ['InitialSurface', 'ExtrudedSurface']:
+      assert (PT.get_child_from_name(bc, 'PointRange')[1][2,:] == [1,2]).all()
+  
