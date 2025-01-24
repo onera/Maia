@@ -468,7 +468,7 @@ class GIndexer_m:
 class GIndexer(GIndexer_m):
 
   """
-  A proxy object allowing to access distributed data in read or write mode.
+  A protocol object allowing to access distributed data in read or write mode.
 
   The documentation uses the following notations:
 
@@ -482,9 +482,9 @@ class GIndexer(GIndexer_m):
   """
 
   def __init__(self, distri, g_idx, comm):
-    """ Create a GIndexer proxy object
+    """ Create a GIndexer protocol object
 
-    The proxy object is described by two arrays of integer,
+    The protocol object is described by two arrays of integer,
     satisfying these rules:
     
     - **distri** (size :math:`s+1`):
@@ -507,7 +507,9 @@ class GIndexer(GIndexer_m):
   def take(self, data_in:list) -> list:
     """ ``take`` implementation for generic Python objects 
     
-    Exchanged data are serialized using ``pickle`` module. 
+    Exchanged data are serialized using ``pickle`` module, which has
+    a negative impact on performances; if data is a buffer object, it is
+    strongly advised to use :func:`GIndexer.Take` instead.
 
     Args:
       data_in (list of size :math:`dn`) : section of the distributed data
@@ -519,7 +521,9 @@ class GIndexer(GIndexer_m):
   def put(self, data_in:list) -> list:
     """ ``put`` implementation for generic Python objects 
     
-    Exchanged data are serialized using ``pickle`` module.
+    Exchanged data are serialized using ``pickle`` module, which has
+    a negative impact on performances; if data is a buffer object, it is
+    strongly advised to use :func:`GIndexer.Put` instead.
 
     Note that:
 

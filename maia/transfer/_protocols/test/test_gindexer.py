@@ -46,10 +46,10 @@ class Test_g_indexer:
     # Accessing python objects: each rank holds a part of a global list, 
     # depending of which indices its manages
 
-    data_in = [['a', 'b', 'letter c', 'd', 'e'], # Indices 1...5
+    data_in = [['a', 'b', 'letter c', 'd', 'e'], # Indices 0...4
               [], # Indices 0...0
-              ['f', ['a', 'list', 'of', 'g'], 'h'], #Indices 6...8
-              ['i', 42.0, 'k', 'l'] #Indices 9...12
+              ['f', ['a', 'list', 'of', 'g'], 'h'], #Indices 5...7
+              ['i', 42.0, 'k', 'l'] #Indices 8...11
               ][comm.rank]
 
     # We can access the desired indices of the global list with take function
@@ -63,11 +63,11 @@ class Test_g_indexer:
 
     # When using put function, we enter with data sized and organized as the requested indices
 
-    data_in = [['a', 'letter c', 'e', 'f', ['a', 'list', 'of', 'h']], # Values to put at indices 1,3,5,7,9
-              ['l', 42.0], # Values to put at indices 12,10
+    data_in = [['a', 'letter c', 'e', 'f', ['a', 'list', 'of', 'h']], # Values to put at indices 0,2,4,6,8
+              ['l', 42.0], # Values to put at indices 11,9
               [], # No data to put, since rank 2 access to no indices
               ['a', 'aaa', 42.0, 'aaaa', 'b']
-              ][comm.rank] # Values to put at indices 1,1,10,1,2
+              ][comm.rank] # Values to put at indices 0,0,9,0,1
 
     data_out = GI.put(data_in)
 
@@ -87,11 +87,11 @@ class Test_g_indexer:
     # Accessing buffer objects : following mpi4py convention, buffer objects
     # can be used with the uppercase counterpart of the functions :
 
-    data_in = [np.array([10., 20., 30., 40., 50]), # Indices 1...5
+    data_in = [np.array([10., 20., 30., 40., 50]), # Indices 0...4
               np.empty(0, float), # Indices 0...0
-              np.array([60., 70, 80]), #Indices 6...8
+              np.array([60., 70, 80]), #Indices 5...7
               np.array([90., 100, 110, 120])
-              ][comm.rank] #Indices 9...12
+              ][comm.rank] #Indices 8...11
 
     data_out = GI.Take(data_in) 
     expected_out = [np.array([10.,30,50,70,90]),
@@ -109,10 +109,10 @@ class Test_g_indexer:
 
     # We can put values from a buffer object, using uppercase Put function :
 
-    data_in = [np.array([10., 30, 50, 70, 90]), # Values to put at indices 1,3,5,7,9
-              np.array([120., 100]), # Values to put at indices 12,10
+    data_in = [np.array([10., 30, 50, 70, 90]), # Values to put at indices 0,2,4,6,8
+              np.array([120., 100]), # Values to put at indices 11,9
               np.array([], float), # No data to put, since rank 2 access to no indices
-              np.array([10.,10,100,10,20]) # Values to put at indices 1,1,10,1,2
+              np.array([10.,10,100,10,20]) # Values to put at indices 0,0,9,0,1
               ][comm.rank]
 
     data_out = GI.Put(data_in)
@@ -141,11 +141,11 @@ class Test_g_indexer:
     # must remain constant when using Take / Take_into :
 
     data_in = [
-      np.array([10.,15, 20,25, 30,35, 40,45, 50,55]), # Indices 1...5, with 2 values per indices
+      np.array([10.,15, 20,25, 30,35, 40,45, 50,55]), # Indices 0...4, with 2 values per indices
       np.array([], float), # Indices 0...0, with 2 values per indices
-      np.array([60.,65, 70,75, 80,85]), #Indices 6...8, with 2 values per indices
+      np.array([60.,65, 70,75, 80,85]), #Indices 5...7, with 2 values per indices
       np.array([90.,95, 100,105, 110,115, 120,125])
-    ][comm.rank] #Indices 9...12, with 2 values per indices
+    ][comm.rank] #Indices 8...11, with 2 values per indices
 
     data_out = np.empty(2*self.g_idx.size, float)  # Out buffer will store 2 values per requested idx
     GI.Take_into(data_in, data_out) 
@@ -163,10 +163,10 @@ class Test_g_indexer:
 
     # and write more than 1 element per index 
     data_in = [
-      np.array([10.,15, 30,35, 50,55, 70,75, 90,95]), # Values to put at indices 1,3,5,7,9, with 2 values per index
-      np.array([120.,125, 100,105]), # Values to put at indices 12,10, with 2 values per index
+      np.array([10.,15, 30,35, 50,55, 70,75, 90,95]), # Values to put at indices 0,2,4,6,8, with 2 values per index
+      np.array([120.,125, 100,105]), # Values to put at indices 11,9, with 2 values per index
       np.array([], float), # No data to put, since rank 2 access to no indices
-      np.array([10.,15, 10,15, 100,105, 10,15, 20,25]) # Values to put at indices 1,1,10,1,2, with 2 values per index
+      np.array([10.,15, 10,15, 100,105, 10,15, 20,25]) # Values to put at indices 0,0,9,0,1, with 2 values per index
     ][comm.rank]
 
     dn_size = self.distri[comm.rank+1] - self.distri[comm.rank]
@@ -190,16 +190,16 @@ class Test_g_indexer:
     # (of size #managed idx) + a buffer of size counts.sum()
 
     if rank == 0:
-      counts_in = np.array([0,1,0,1,2]) # Indices 1...5, with varibles values per indices
+      counts_in = np.array([0,1,0,1,2]) # Indices 0...4, with varibles values per indices
       data_in = np.array([20., 40, 50,55])  # 4 values in total
     elif rank == 1:
       counts_in = np.array([], int) # Indices 0...0, with variables values per indices
       data_in = np.empty(0, float) 
     elif rank == 2:
-      counts_in = np.array([1,0,1]) #Indices 6...8, with variables values per indices
+      counts_in = np.array([1,0,1]) #Indices 5...7, with variables values per indices
       data_in = np.array([60., 80])  # 2 values in total
     elif rank == 3:
-      counts_in = np.array([0,2,0,1]) #Indices 9...12, with variables values per indices
+      counts_in = np.array([0,2,0,1]) #Indices 8...11, with variables values per indices
       data_in = np.array([100.,105,  120])  # 3 values in total
 
 
@@ -224,16 +224,16 @@ class Test_g_indexer:
     # expects a counting array (of size #lngn) + a buffer of size counts.sum
 
     if rank == 0:
-      counts_in = np.array([0,0,2,0,0])  # Sizes of data to put at indices 1,3,5,7,9
+      counts_in = np.array([0,0,2,0,0])  # Sizes of data to put at indices 0,2,4,6,8
       data_in = np.array([50.,55]) 
     elif rank == 1:
-      counts_in = np.array([1,2]) # Sizes of data to put at indices 12,10
+      counts_in = np.array([1,2]) # Sizes of data to put at indices 11,9
       data_in = np.array([120., 100,105]) 
     elif rank == 2:
       counts_in = np.array([], int) # No data to put, since rank 2 access to no indices
       data_in = np.empty(0, float) 
     elif rank == 3:
-      counts_in = np.array([0,0,2,0,1]) # Size of data to put at indices 1,1,10,1,2
+      counts_in = np.array([0,0,2,0,1]) # Size of data to put at indices 0,0,9,0,1
       data_in =np.array([100.,105, 20]) 
 
 

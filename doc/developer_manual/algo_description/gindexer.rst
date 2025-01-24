@@ -1,18 +1,19 @@
 Global Indexer
 ==============
 
-The global indexer is a *proxy object* allowing to access distributed data in read or
+The global indexer is a *protocol object* allowing to access distributed data in read or
 write mode.
 
-It has been inspired by the ``BlockToPart`` and ``PartToBlock`` protocols implemented in ParaDiGM library,
-and has been also influenced by some conventions used in
+It has been inspired by the ``BlockToPart`` and ``PartToBlock`` protocols implemented in
+`ParaDiGM <https://github.com/onera/paradigm>`_
+library, and influenced by some conventions used in
 `numpy <https://numpy.org/doc/stable/user/basics.indexing.html#>`_ and
 `mpi4py <https://mpi4py.readthedocs.io/en/stable/tutorial.html>`_ packages.
 
 Purpose
 -------
 
-Since the global indexer can been see as an extension of numpy ``take`` and ``put``
+Since the global indexer can be seen as an extension of numpy ``take`` and ``put``
 functions, let's start by recalling what these functions do.
 
 Considering  a one-dimensional data array ``arr`` of size :math:`n`,
@@ -24,12 +25,12 @@ and a list of values ``val`` of size :math:`p` :
 - ``numpy.put(arr, ind, val)`` loops over each index/value pair ``i,v``, and write the value ``v`` at the position ``i`` in ``arr``.
   Note that this is also the operation performed by ``arr[ind] = val``.
 
-The aim of the global indexer is to offer similar functionnalities on **distributed data**. 
+The aim of the global indexer is to offer similar functionnalities on **distributed data**, in a parallel context. 
 
 Distributed data is the term used in maia to describe a *collection* (in general a data array)
-that is dispatched across several MPI processes. The way the global data is dispatched must fullfit
-some rules described in the :ref:`introduction <intro>`, but the main idea is just that each MPI process get a section
-of the collection, following its rank in the MPI communicator:
+that is dispatched across several MPI processes. The way the global data is dispatched must fulfill
+some rules described in the :ref:`introduction <intro>`, but the main idea is just that each MPI process gets a section
+of the collection, function of its rank in the MPI communicator:
 
 .. image:: ./dist_array.png
   :width: 75%
@@ -50,18 +51,19 @@ Now, let give a glance on what the global collection can actually represent; dif
 are supported, and we provide a different put/take implementation for each of them. Here
 following mpi4py conventions, the supported data kind are:
 
-- **Generic Python objects**: the global collection is a list of size :math:`n`, and each item of
-  it is an ordinary Python object::
+- **Generic Python objects**: the global collection is a list of size :math:`n`, and each of its items
+  is an ordinary Python object::
 
     #    0     1     2        3                      4   # Global Index
     d = [3.14, None, 'chars', ['even', 'a', 'list'], 42] # Sequence
 
   Methods to be used in this case start with a lowercase letter, such as
   :func:`~maia.transfer.protocols.GIndexer.take` or :func:`~maia.transfer.protocols.GIndexer.put`.
-  Objects are serialized during exchanges, using the ``pickle`` module.
+  Objects are serialized during exchanges, using the ``pickle`` module: this is all-purpose but slowest
+  way.
 
 - **Buffer-like objects**: the global collection is a buffer, *ie.* a flat and homogeneous array
-  (typically, a numpy array) of size :math:`cn` with :math:`c \in N^\star` : each item 
+  (typically, a numpy array) of size :math:`c*n` with :math:`c \in N^\star` : each item 
   of it is a group of :math:`c` values. Of course, it is common
   to have :math:`c=1`, meaning that each item of the collection is a single value::
 
@@ -75,7 +77,7 @@ following mpi4py conventions, the supported data kind are:
   :func:`~maia.transfer.protocols.GIndexer.Take` or :func:`~maia.transfer.protocols.GIndexer.Put`.
 
 - **Variable buffer objects**: the global collection is still an homogeneous buffer, but
-  the number of values differs from each item; consequently, two arrays are needed:
+  the number of values may differ from each item; consequently, two arrays are needed:
 
     - a counting array of :math:`n` integers, storing the number of data :math:`c_i` for each item :math:`i` 
     - the buffer array of size :math:`\sum_i c_i`, storing the data values:
@@ -102,14 +104,15 @@ The first step is to initialize the :class:`~maia.transfer._protocols.g_indexer.
 object by providing, in addition to the MPI communicator, two informations:
 
 - How the global collection is distributed: this is done through the ``distrib`` array,
-  an integer array of size :math:`s+1` where ``distrib[j]`` and ``distrib[j+1]`` represents
+  an integer array of size :math:`s+1` (:math:`s` beeing the number of processes)
+  where ``distrib[j]`` and ``distrib[j+1]`` represents
   respectively the lower (included) and upper (excluded) bounds held by process :math:`j`.
-  This data is the same for all calling processes.
+  This data must be the same for all calling processes.
 
 - The list of global indices to access: this is done through the ``idx`` array,
-  an integer array of size :math:`p_j` where each index :math:`i` statisfies
+  an integer array of size :math:`p_j` where each index :math:`i` satisfies
   :math:`0 \le i \lt n`.
-  This data is different on each calling process.
+  This data can be (and most of time, is) different on each calling process.
 
 ::
 
@@ -125,7 +128,7 @@ object by providing, in addition to the MPI communicator, two informations:
 
     GI = GIndexer(distri, idx, comm)
 
-The creation of the object will fail if any requested index outpass the bounds of the
+The creation of the object will fail if any requested index outpasses the bounds of the
 distribution. All other configurations are managed, including the following cases:
 
  - a process can request access to no indices, by providing an empty integer array;
@@ -135,11 +138,11 @@ distribution. All other configurations are managed, including the following case
 
 .. rubric:: Exchanges
 
-.. note:: The global indexer is a *proxy object* since once initialized, it can be used as many 
-  time as needed to do ``take`` or ``put`` operations on any collection sharing the distribution
-  and access indices.
-
-  This is because the construction of the object is more costly than its usage.
+.. note:: The global indexer is a *protocol object*: once initialized, it allows to access
+  multiple global arrays in the same specific manner. One of the main reason to use a
+  global indexer in the first place is that we can construct the protocol only once
+  (which is costly), and then exchange data over multiple arrays by using it.
+  
 
 It is important to understand that thanks to the variable buffer mode, two distributed data
 of different kind can share the same distribution and access indices: all
@@ -288,8 +291,8 @@ for global index 0, which is accessed twice, the written data
 (and thus its counts value) come from the process having the highest rank (P2).
 This is why we used a dashed arrow for P0 on the scheme: its value is not written
 in the distributed array, because of priority order.
-Note also than unaccessed indices (such as index 2) automatically get a 0 counts after
-the ``Put_v`` operation: on the other side, index 1 get a 0 counts because it was
+Note also than unaccessed indices (such as index 2) automatically get a 0 count after
+the ``Put_v`` operation: on the other side, index 1 get a 0 count because it was
 explicitly put by P1.
 
 API reference
