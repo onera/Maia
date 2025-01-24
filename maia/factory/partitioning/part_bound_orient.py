@@ -95,7 +95,7 @@ def preserve_orientation(part_zones, comm):
   dist_stride[PTB.getBlockGnumCopy()[mask] - distri[comm.rank] - 1] = 1
   dist_data = dist_data[mask]
 
-  out_stride, out_data = EP.block_to_part_strided(dist_stride, dist_data, distri, gnum_list, comm)
+  out_stride, out_data = EP.block_to_part_strided(dist_stride, dist_data, distri, [g-1 for g in gnum_list], comm, legacy=False)
 
   # Now treat partitions to swap faces 
   for izone, part_zone in enumerate(part_zones):

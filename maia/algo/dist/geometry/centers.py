@@ -110,11 +110,11 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
       ngon_node = zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
       if face_indices is not None:
         from maia.utils.numbering import s_numbering_funcs
-        _face_indices = s_numbering_funcs.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone))
+        _face_indices = s_numbering_funcs.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
     elif PT.Zone.Type(zone) == "Unstructured" and PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
       if face_indices is not None:
-        _face_indices = face_indices[0] - PT.Element.Range(ngon_node)[0] + 1
+        _face_indices = face_indices[0] - PT.Element.Range(ngon_node)[0]
 
     _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
     face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
@@ -123,9 +123,8 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
     if face_indices is not None:
       face_distri = PT.maia.getDistribution(ngon_node, 'Element')[1]
       face_vtx_n = np.diff(face_vtx_idx).astype(np.int32, copy=False)
-      face_vtx_n, face_vtx = EP.block_to_part_strided(face_vtx_n, face_vtx, face_distri, [_face_indices], comm)
-      face_vtx = face_vtx[0]
-      face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n[0], face_vtx_idx.dtype)
+      face_vtx_n, face_vtx = EP.block_to_part_strided(face_vtx_n, face_vtx, face_distri, _face_indices, comm, legacy=False)
+      face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n, face_vtx_idx.dtype)
   
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)

@@ -97,15 +97,15 @@ def _determine_mesh_orientation(zone, extrusion_vector, comm):
   coords = PT.Zone.coordinates(zone)
   dist_coords_data = coords._asdict()
   distrib_vtx = MT.getDistribution(zone, 'Vertex')[1]
-  part_coords_data = EP.block_to_part(dist_coords_data, distrib_vtx, [nodes_of_first_face], comm)
+  part_coords_data = EP.block_to_part(dist_coords_data, distrib_vtx, nodes_of_first_face-1, comm, legacy=False)
   align = 0
   # > Compute scalar product
   # **NB** Here we test only one face per rank. Maybe we should do it on all faces and check that is same everywhere ?
   #        We need compute_normals to be implemented for elts to do this
   if len(nodes_of_first_face) > 0:
-    n1 = np.array([part_coords_data[name][0][0] for name in coords._fields])
-    n2 = np.array([part_coords_data[name][0][1] for name in coords._fields])
-    n3 = np.array([part_coords_data[name][0][2] for name in coords._fields])
+    n1 = np.array([part_coords_data[name][0] for name in coords._fields])
+    n2 = np.array([part_coords_data[name][1] for name in coords._fields])
+    n3 = np.array([part_coords_data[name][2] for name in coords._fields])
     # normal vector = a^b with a = n1_n2 and b = n2_n3
     normal_vec = np.cross(n2-n1, n3-n2)
     # ps = c.extrusion_vector
@@ -201,7 +201,6 @@ def _extrude_bar_to_ngon(bar, n_vtx, n_cell, align=True):
     
 def _merge_ngons(zone, comm):
   """ Internal function used by _extrusion_2d_u_ngon to create the merged NGonNode """
-  part_diff_eso = []
   part_ec = []
   part_pe0 = []
   part_pe1 = []
@@ -214,11 +213,10 @@ def _merge_ngons(zone, comm):
     eso = PT.get_child_from_name(ngon_n, 'ElementStartOffset')[1]
     pe  = PT.get_child_from_name(ngon_n, 'ParentElements')[1]
     distrib_elem = MT.getDistribution(ngon_n, 'Element')[1]
-    part_diff_eso.append(np.diff(eso).astype(np.int32))
-    part_ec.append(ec)
+    part_ec.append((np.diff(eso).astype(np.int32), ec))
     part_pe0.append(pe[:,0])
     part_pe1.append(pe[:,1])
-    ln_to_gn_elem_l.append(np.arange(distrib_elem[0]+er[0], distrib_elem[1]+er[0], dtype=pdm_dtype))
+    ln_to_gn_elem_l.append(np.arange(distrib_elem[0]+er[0]-1, distrib_elem[1]+er[0]-1, dtype=pdm_dtype))
   # > Define new ElementRange
   # Warning : ne fonctionne pas si il y a des 'NODE' dans l'arbre !
   #           si tous les NODE sont avant, il faut faire démarrer l'ER au total des éléments de NODE
@@ -228,14 +226,14 @@ def _merge_ngons(zone, comm):
   new_er = np.array([1, n_faces], zone[1].dtype)
   # > Define new Element distribution
   new_distrib_elem = par_utils.uniform_distribution(n_faces,  comm)
+  new_distrib_elem_f = par_utils.partial_to_full_distribution(new_distrib_elem, comm)
   # > Exchange to define new ElementStartOffset, ElementConnectivity and ParentElements
-  ptb = EP.PartToBlock(new_distrib_elem, ln_to_gn_elem_l, comm)
-  new_diff_eso, new_ec = ptb.exchange_field(part_ec, part_diff_eso)
-  _, new_pe0 = ptb.exchange_field(part_pe0)
-  _, new_pe1 = ptb.exchange_field(part_pe1)
-  new_pe = np.empty((len(new_pe0), 2), order='F', dtype=zone[1].dtype)
-  new_pe[:,0]  = new_pe0
-  new_pe[:,1]  = new_pe1
+  GI = EP.GlobalMultiIndexer(new_distrib_elem_f, ln_to_gn_elem_l, comm)
+  new_diff_eso, new_ec = GI.Put_v(part_ec)
+  dn = new_distrib_elem[1] - new_distrib_elem[0]
+  new_pe = np.empty((dn, 2), order='F', dtype=zone[1].dtype)
+  GI.Put(part_pe0, new_pe[:,0])
+  GI.Put(part_pe1, new_pe[:,1])
   # > Define new ElementConnectivity distribution
   new_distrib_ec = par_utils.dn_to_distribution(new_diff_eso.sum(), comm)
   new_eso = np_utils.sizes_to_indices(new_diff_eso) + new_distrib_ec[0]

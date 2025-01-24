@@ -19,6 +19,11 @@ is_poly_2d = lambda z: PT.Zone.CellDimension(z) == 2 and \
                         PT.Zone.Type(z) == 'Unstructured' and \
                         all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
 
+is_cell_full_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and \
+                                    PT.get_child_from_name(n, 'PointList') is None and \
+                                    PT.get_child_from_name(n, 'PointRange') is None and \
+                                    PT.Subset.GridLocation(n) == 'CellCenter'
+
 def _collected_shifted_pl(zone, loc, shift):
   all_pl = []
   for subset in PT.iter_all_subsets(zone, loc):
@@ -65,8 +70,8 @@ def _ngon_to_elements_zone_2d(zone, comm):
   new_edge_id = -1*np.ones(edge_vtx.size // 2, zone[1].dtype)
   new_edge_id[is_bnd_edge] = np.arange(bar_distri[0]+1, bar_distri[1]+1)
 
-  old_pl = _collected_shifted_pl(zone, 'EdgeCenter', -PT.Element.Range(edge_n)[0]+1)
-  new_pl = EP.block_to_part(new_edge_id, edge_distri, old_pl, comm)
+  old_pl = _collected_shifted_pl(zone, 'EdgeCenter', -PT.Element.Range(edge_n)[0])
+  new_pl = EP.block_to_part(new_edge_id, edge_distri, old_pl, comm, legacy=False)
   _update_pl(zone, 'EdgeCenter', new_pl)
 
   # Now take care of the faces
@@ -112,28 +117,27 @@ def _ngon_to_elements_zone_2d(zone, comm):
 
 
   # Renumber PointList indexing faces (CellCenter)
-  all_pl = _collected_shifted_pl(zone, 'CellCenter', -PT.Element.Range(ngon_n)[0]+1)
+  all_pl = _collected_shifted_pl(zone, 'CellCenter', -PT.Element.Range(ngon_n)[0])
   # This last one is for fields supported by allCells (eg. FlowSolution)
-  _pl = np_utils.single_dim_pr_to_pl(np.array([[1, PT.Element.Size(ngon_n)]]), face_distri)[0]
+  _pl = np_utils.single_dim_pr_to_pl(np.array([[0, PT.Element.Size(ngon_n)-1]]), face_distri)[0]
   all_pl.append(_pl)
 
-  new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm)
+  new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm, legacy=False)
 
   # Update CellCentered PointList
   _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
-  is_cell_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and PT.Subset.GridLocation(n) == 'CellCenter'
-  cell_data = {path: [PT.get_node_from_path(zone, path)[1]] for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t'])}
-  elt_data  = EP.part_to_block(cell_data, face_distri, [new_pl[-1] - bar_range[1]], comm)
-  for path, data in elt_data.items():
-    field = PT.get_node_from_path(zone, path)
-    PT.set_value(field, data)
+  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
+  GI = EP.GlobalIndexer(face_distri_f, new_pl[-1]-bar_range[1]-1, comm)
+
+  for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
+    data = PT.get_node_from_path(zone, path)[1]
+    GI.Put(data, data) # Inplace update of node data
 
   # Remove NGON/Edge elements
   PT.rm_child(zone, edge_n)
   PT.rm_child(zone, ngon_n)
-
 
 
 
@@ -253,11 +257,10 @@ def _ngon_to_elements_zone_3d(zone, comm):
   _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
-  is_cell_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and PT.Subset.GridLocation(n) == 'CellCenter'
   cell_distri_f = par_utils.partial_to_full_distribution(cell_distri, comm)
   GI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
 
-  for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t']):
+  for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
     data = PT.get_node_from_path(zone, path)[1]
     GI.Put(data, data) # Inplace update of node data
 
