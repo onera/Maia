@@ -34,11 +34,11 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
 
   # Get the vertex associated to the faces in FaceList
   p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      distri_ngon, [face_ids], comm)
+      distri_ngon, face_ids-1, comm, legacy=False)
 
-  face_offset_l = np_utils.sizes_to_indices(p_stride[0])
+  face_offset_l = np_utils.sizes_to_indices(p_stride)
 
-  return face_offset_l, part_data[0]
+  return face_offset_l, part_data
 
 def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm):
   """
@@ -49,9 +49,9 @@ def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm
   for data in PT.iter_children_from_label(grid_coords_node, 'DataArray_t'):
     dist_data[PT.get_name(data)] = data[1]
 
-  part_data = EP.block_to_part(dist_data, distri_vtx, [requested_vtx_ids], comm)
+  part_data = EP.block_to_part(dist_data, distri_vtx, requested_vtx_ids-1, comm, legacy=False)
 
-  cx, cy, cz = part_data['CoordinateX'][0], part_data['CoordinateY'][0], part_data['CoordinateZ'][0]
+  cx, cy, cz = part_data['CoordinateX'], part_data['CoordinateY'], part_data['CoordinateZ']
 
   return np.array([cx,cy,cz], order='F').transpose()
 
@@ -91,10 +91,10 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
   b_stride[PTB.getBlockGnumCopy() - first - 1] = d_stride
 
   p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      PTB.getDistributionCopy(), [restricted_pl_vtx], comm)
+      PTB.getDistributionCopy(), restricted_pl_vtx-1, comm, legacy=False)
 
-  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"][0], return_index=True)
-  extended_pl_d = part_data["vtx_to_face_d"][0][unique_idx]
+  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"], return_index=True)
+  extended_pl_d = part_data["vtx_to_face_d"][unique_idx]
 
   return extended_pl, extended_pl_d
 
@@ -274,13 +274,12 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
 
   vtx_n_occur_full = np.zeros(vtx_distri[1] - vtx_distri[0], np.int32)
   vtx_n_occur_full[block_gnum-vtx_distri[0]-1] = vtx_n_occur
-  dist_data = {'n_occur' : vtx_n_occur_full}
-  part_data = EP.block_to_part(dist_data, vtx_distri, [pl_face_vtx], comm)
+  n_occur = EP.block_to_part(vtx_n_occur_full, vtx_distri, pl_face_vtx-1, comm, legacy=False)
 
   #This is the number of total occurence of all the vertices of each face. A face is isolated if each vertex appears
   # (globally) only once ie if this total equal the number of vertices of the face
-  n_vtx_per_face = np.add.reduceat(part_data['n_occur'][0], indices=pl_face_vtx_idx[:-1])
-  isolated_face     = np.where(n_vtx_per_face == np.diff(pl_face_vtx_idx))[0]
+  n_vtx_per_face = np.add.reduceat(n_occur, indices=pl_face_vtx_idx[:-1])
+  isolated_face  = np.where(n_vtx_per_face == np.diff(pl_face_vtx_idx))[0]
 
   return isolated_face
 

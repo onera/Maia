@@ -16,9 +16,9 @@ def get_local_coordinates(zone, vtx_ids, comm):
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
   dist_data = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
-  part_data = EP.block_to_part(dist_data, vtx_distri, [vtx_ids], comm)
+  part_data = EP.block_to_part(dist_data, vtx_distri, vtx_ids-1, comm, legacy=False)
   
-  return coords._make([part_data[key][0] if key in part_data else None for key in coords._fields])
+  return coords._make([part_data[key] if key in part_data else None for key in coords._fields])
 
 def place_in_container(zone, rq_dim, fields, comm):
   cell_dim = PT.Zone.CellDimension(zone)

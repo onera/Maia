@@ -126,7 +126,7 @@ def convert_mixed_to_elements(dist_tree, comm):
             old_to_new_cell_numbering    = np.zeros(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
             ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) + 1\
                              + elem_distrib[0] + nb_elem_prev_element_t_nodes
-            ln_to_gn_cell    = np.arange(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype) + 1
+            ln_to_gn_cell    = np.arange(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
             nb_elem_prev_element_t_nodes += elem_distrib[2]
             all_elem_previous_types = 0
             all_cell_previous_types = 0
@@ -150,7 +150,7 @@ def convert_mixed_to_elements(dist_tree, comm):
                 is_cell = MPSEU.element_dim(elem_type) == cell_dim
                 if is_cell:
                     indices_cell = all_cell_pos[elem_type]
-                    old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_eso.dtype) + 1
+                    old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_eso.dtype)
                     old_to_new_cell_numbering[indices_cell] += all_cell_previous_types
                 # Add total elements of others (previous) type
                 old_to_new_element_numbering[indices_elem] += all_elem_previous_types
@@ -195,9 +195,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         for elem_type in key_types:
             nb_elems_per_type = all_types[elem_type]
             part_data_ec = []
-            part_stride_ec = []
             ln_to_gn_list = []
-            label = MPSEU.element_name(elem_type)
             nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
             erange = [beg_erange, beg_erange+nb_elems_per_type-1]
             
@@ -205,9 +203,7 @@ def convert_mixed_to_elements(dist_tree, comm):
                 for p,pos in enumerate(elem_types[elem_type]):
                     nb_nodes_loc = elem_types[elem_type][pos]
                     part_data_ec.append(ec_per_elem_type_loc[elem_type][p])
-                    stride_ec = (nb_nodes_per_elem)*np.ones(nb_nodes_loc,dtype = np.int32)
-                    part_stride_ec.append(stride_ec)
-                    ln_to_gn = np.arange(nb_nodes_loc,dtype=elem_distrib.dtype) + 1
+                    ln_to_gn = np.arange(nb_nodes_loc,dtype=elem_distrib.dtype)
 
                     offset = 0
                     for r,elem_types_rank in enumerate(elem_types_all):
@@ -220,10 +216,13 @@ def convert_mixed_to_elements(dist_tree, comm):
                     ln_to_gn_list.append(ln_to_gn + offset)
             
             elem_distrib = MUPar.uniform_distribution(nb_elems_per_type,comm)
-            ptb_elem = MTP.PartToBlock(elem_distrib,ln_to_gn_list,comm)
-            _, econn = ptb_elem.exchange_field(part_data_ec,part_stride_ec)
+            elem_distrib_f = MUPar.partial_to_full_distribution(elem_distrib, comm)
+
+            GI_elem  = MTP.GlobalMultiIndexer(elem_distrib_f, ln_to_gn_list, comm)
+            econn = GI_elem.Put(part_data_ec, count=nb_nodes_per_elem)
             
             beg_erange += nb_elems_per_type
+            label = MPSEU.element_name(elem_type)
             elem_n = PT.new_Elements(label.capitalize(),label,erange=erange,econn=econn,parent=zone)
             PT.maia.newDistribution({'Element' : elem_distrib}, parent=elem_n)
 
@@ -245,22 +244,19 @@ def convert_mixed_to_elements(dist_tree, comm):
         # 7a. Redistribute old_to_new_cell_numbering to be coherent with
         #     cells distribution
         cells_distrib = MT.getDistribution(zone, 'Cell')[1]
-        ptb_cell = MTP.PartToBlock(cells_distrib,ln_to_gn_cell_list,comm)
+        cells_distrib_f = MUPar.partial_to_full_distribution(cells_distrib, comm)
 
-        _, dist_old_to_new_cell_numbering = ptb_cell.exchange_field(old_to_new_cell_numbering_list)
+        GI_cell = MTP.GlobalMultiIndexer(cells_distrib_f, ln_to_gn_cell_list, comm)
+        dist_old_to_new_cell_numbering = GI_cell.Put(old_to_new_cell_numbering_list)
         
         # 7b. Reorder FlowSolution DataArray
-        ptb_fs = MTP.PartToBlock(cells_distrib,[dist_old_to_new_cell_numbering],comm)
+        GI_fs = MTP.GlobalIndexer(cells_distrib_f, dist_old_to_new_cell_numbering, comm)
 
-        old_fs_data_dict = {}
-        for fs in PT.get_children_from_predicate(zone, lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t']):
-            if PT.get_value(PT.get_child_from_name(fs,'GridLocation')) == 'CellCenter' \
-               and PT.get_child_from_name(fs,'PointList') is None:
-                for data in PT.get_children_from_label(fs,'DataArray_t'):
-                    old_fs_data_dict[PT.get_name(fs)+"/"+PT.get_name(data)] = [PT.get_value(data)]
+        is_fs_cc = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] \
+                          and PT.Subset.GridLocation(n) == 'CellCenter' \
+                          and PT.get_child_from_name(n, 'PointList') is None
 
-        for fs_data_name, old_fs_data in old_fs_data_dict.items():
-            _, new_fs_data = ptb_fs.exchange_field(old_fs_data)
-            data_node = PT.get_node_from_path(zone,fs_data_name)
-            PT.set_value(data_node, new_fs_data)
-    
+        for node in PT.get_children_from_predicates(zone, [is_fs_cc, 'DataArray_t']):
+            data = PT.get_value(node)
+            GI_fs.Put(data, data) # Inplace
+

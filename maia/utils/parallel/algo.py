@@ -129,10 +129,12 @@ class DistSorter:
   arrays send to sort will be reorder to match key sorting order
   """
   def __init__(self, key, comm):
-    self.ptb = EP.PartToBlock(None, [key], comm, weight=[np.ones(key.size, np.int32)])
+    distri = par_utils.distribution_from_gnum([key], comm, True, True)
+    self.GI = EP.GlobalIndexer(distri, key-1, comm)
+    self.mask = self.GI.access_counts > 0
 
   def sort(self, array):
-    _, sorted = self.ptb.exchange_field([array])
+    sorted = self.GI.Put(array)[self.mask]
     return sorted
 
 
@@ -162,10 +164,10 @@ def is_unique_strided_serialized(array, stride, comm):
   dist_data = EP.part_to_block([count], distri, [unique_gnum], comm, reduce_func=EP.reduce_sum)
   is_unique = np.zeros(distri[1]-distri[0], dtype=bool)
   is_unique[dist_data==1] = True
-  part_data = EP.block_to_part(is_unique, distri, [unique_gnum], comm)
+  part_data = EP.block_to_part(is_unique, distri, unique_gnum-1, comm, legacy=False)
   
   mask = np.zeros(n_elt, dtype=bool)
-  ids  = idx[part_data[0]]
+  ids  = idx[part_data]
   mask[ids] = True
 
   return mask
@@ -193,7 +195,7 @@ def is_unique_strided(array, stride, comm):
   part_mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
 
   # Retrieve mask on initial distribution
-  mask = EP.part_to_block([part_mask], distri, [origin], comm)
+  mask = EP.part_to_block(part_mask, distri, origin-1, comm, legacy=False)
   
   return mask
 

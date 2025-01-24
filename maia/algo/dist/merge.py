@@ -639,12 +639,13 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
         else:
           _append_or_create(part_data, path, data)
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
-      ptb = EP.PartToBlock(distri_ptb, [pl], comm)
-      dist_data = {key: ptb.exchange_field(pdata)[1] for key, pdata in part_data.items()}
-      dist_data['PL'] = ptb.getBlockGnumCopy()
-
+      distri_ptb_f = par_utils.partial_to_full_distribution(distri_ptb, comm)
       stride = np.zeros(distri_ptb[1] - distri_ptb[0], np.int32)
-      stride[dist_data['PL'] - distri_ptb[0] - 1] = 1
+      GI = EP.GlobalIndexer(distri_ptb_f, pl-1, comm)
+      mask = GI.access_counts > 0
+      stride[mask] = 1
+      dist_data = {key: GI.Put(pdata[0])[mask] for key, pdata in part_data.items()}
+      dist_data['PL'] = np.flatnonzero(mask) + distri_ptb[0] + 1
 
       has_data.append(True)
       strides.append(stride)
@@ -758,32 +759,31 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     zone_send = PT.get_node_from_path(tree, zone_path_send)
     ngon_send = sids.Zone.NGonNode(zone_send)
     face_distri_send = MT.getDistribution(ngon_send, 'Element')[1]
-    pe_send          =  PT.get_child_from_name(ngon_send, 'UpdatedPE')[1]
-    dist_data_send = {'PE' : pe_send[:,0]}
+    pe_send          = PT.get_child_from_name(ngon_send, 'UpdatedPE')[1]
 
     gcs = PT.get_nodes_from_predicate(zone_send, query, depth=2)
-    all_pls = [PT.get_child_from_name(gc, 'PointList')[1][0] for gc in gcs]
-    part_data = EP.block_to_part(dist_data_send, face_distri_send, all_pls, comm)
+    all_pls = [PT.get_child_from_name(gc, 'PointList')[1][0]-1 for gc in gcs]
+    part_pe = EP.block_to_part(pe_send[:,0], face_distri_send, all_pls, comm, legacy=False)
     for i, gc in enumerate(gcs):
 
       pld = PT.get_child_from_name(gc, 'PointListDonor')[1][0]
 
       #This is the left cell of the join face present in PL. Send it to opposite zone
-      part_data_gc = {key : [data[i]] for key, data in part_data.items()}
-      part_data_gc['FaceId'] = [pld]
+      part_pe_gc = part_pe[i]
     
       # Get send data on the opposite zone and update PE
       zone_path = PT.GridConnectivity.ZoneDonorPath(gc, base_n)
       zone = PT.get_node_from_path(tree, zone_path)
       ngon_node = sids.Zone.NGonNode(zone)
-      face_distri = MT.getDistribution(ngon_node, 'Element')[1]
-      dist_data = EP.part_to_block(part_data_gc, face_distri, [pld], comm)
-
       pe      = PT.get_child_from_name(ngon_node, 'UpdatedPE')[1]
       pe_dom  = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
-      local_faces = dist_data['FaceId'] - face_distri[0] - 1
+      face_distri = MT.getDistribution(ngon_node, 'Element')[1]
+      face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
+
+      GI = EP.GlobalIndexer(face_distri_f, pld-1, comm)
+      local_faces = GI.access_counts > 0
       assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
-      pe[local_faces, 1] = dist_data['PE']
+      GI.Put(part_pe_gc, pe[:,1])
       pe_dom[local_faces, 1] = dom_id_send
 
   #PE are ready, collect data

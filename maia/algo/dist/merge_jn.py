@@ -26,27 +26,25 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   #TODO This method asserts that PE is CGNS compliant ie left_parent != 0 for bnd elements
   assert not np.any(pe[:,0] == 0)
 
+  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
+
   # 1. Get the left cell of the faces to delete
-  dist_data = {'PE' : pe[:,0]}
-  part_data = EP.block_to_part(dist_data, face_distri, [del_faces], comm)
+  part_data = EP.GlobalIndexer(face_distri_f, del_faces-1, comm).Take(pe[:,0])
   
   # 2. Put it in the right cell of the faces to keep
-  #TODO : exchange of ref_faces could be avoided using get gnum copy
-  part_data['FaceId'] = [ref_faces]
-  dist_data = EP.part_to_block(part_data, face_distri, [ref_faces], comm)
-
-  local_faces = dist_data['FaceId'] - face_distri[0] - 1
-  assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
-  pe[local_faces, 1] = dist_data['PE']
+  GI = EP.GlobalIndexer(face_distri_f, ref_faces-1, comm)
+  assert np.max(pe[GI.access_counts > 0, 1], initial=0) == 0 #Initial = trick to admit empty array
+  GI.Put(part_data, pe[:,1])
 
 def _update_ngon_remove_faces(ngon, del_faces, comm):
   """
   Remove faces from EC, PE and ESO and update distribution info in ngon
   """
   face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
-  part_data = [del_faces]
-  dist_data = EP.part_to_block(part_data, face_distri, [del_faces], comm)
-  local_faces = dist_data - face_distri[0] - 1
+  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
+  
+  GI = EP.GlobalIndexer(face_distri_f, del_faces-1, comm)
+  local_faces = np.nonzero(GI.access_counts > 0)[0]
   RME.remove_ngons(ngon, local_faces, comm)
   
 def _update_ngon_update_EC(ngon, vtx_distri_ini, old_to_new_vtx, comm):
@@ -55,9 +53,9 @@ def _update_ngon_update_EC(ngon, vtx_distri_ini, old_to_new_vtx, comm):
   """
   # C/ Update vertex ids in EC
   ngon_ec_n = PT.get_child_from_name(ngon, 'ElementConnectivity')
-  part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, [PT.get_value(ngon_ec_n)], comm)
-  assert len(ngon_ec_n[1]) == len(part_data[0])
-  PT.set_value(ngon_ec_n, part_data[0])
+  part_data = EP.block_to_part(old_to_new_vtx, vtx_distri_ini, PT.get_value(ngon_ec_n)-1, comm, legacy=False)
+  assert len(ngon_ec_n[1]) == len(part_data)
+  PT.set_value(ngon_ec_n, part_data)
 
 def _update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
   """
@@ -87,10 +85,10 @@ def _update_nface(nface, face_distri_ini, old_to_new_face, n_rmvd_face, comm):
 
   #Update list of faces
   nface_ec_n = PT.get_child_from_name(nface, 'ElementConnectivity')
-  part_data = EP.block_to_part(old_to_new_face, face_distri_ini, [np.abs(nface_ec_n[1])], comm)
-  assert len(nface_ec_n[1]) == len(part_data[0])
+  part_data = EP.block_to_part(old_to_new_face, face_distri_ini, np.abs(nface_ec_n[1])-1, comm, legacy=False)
+  assert len(nface_ec_n[1]) == len(part_data)
   #Get sign of nface_ec to preserve orientation
-  PT.set_value(nface_ec_n, np.sign(nface_ec_n[1]) * part_data[0])
+  PT.set_value(nface_ec_n, np.sign(nface_ec_n[1]) * part_data)
 
   #Update ElementRange
   er = PT.Element.Range(nface)
@@ -107,21 +105,22 @@ def _update_subset(node, pl_new, data_query, comm):
     path = "/".join([PT.get_name(n) for n in data_nodes])
     data_n = data_nodes[-1]
     if data_n[1].ndim == 1:
-      part_data[path] = [data_n[1]]
+      part_data[path] = data_n[1]
     else:
       assert data_n[1].ndim == 2 and data_n[1].shape[0] == 1
-      part_data[path] = [data_n[1][0]]
+      part_data[path] = data_n[1][0]
 
   #Add PL, needed for next blocktoblock
   pl_identifier = r'@\PointList/@' # just a string that is unlikely to clash
-  part_data[pl_identifier] = [pl_new]
+  part_data[pl_identifier] = pl_new
 
-  PTB = EP.PartToBlock(None, [pl_new], comm)
-  PTB.PartToBlock_Exchange(dist_data, part_data)
+  old_distri_f = par_utils.distribution_from_gnum(pl_new, comm, full=True)
 
-  d_pl_new = PTB.getBlockGnumCopy()
-
-  new_distri_full = par_utils.gather_and_shift(len(d_pl_new), comm, pdm_dtype)
+  GI = EP.GlobalIndexer(old_distri_f, pl_new-1, comm)
+  mask = (GI.access_counts > 0)
+  dist_data = {field: GI.Put(pdata)[mask] for field, pdata in part_data.items()}
+  
+  new_distri_full = par_utils.gather_and_shift(mask.sum(), comm, pdm_dtype)
   #Result is badly distributed, we can do a BlockToBlock to have a uniform distribution
   ideal_distri      = par_utils.uniform_distribution(new_distri_full[-1], comm)
   dist_data_ideal = EP.block_to_block(dist_data, new_distri_full, ideal_distri, comm)
@@ -183,8 +182,8 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
       PT.add_child(zsr, PT.deep_copy(pl_node))
 
   #Get new index for every PL at once
-  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0] for fs in all_nodes]
-  part_data_pl = EP.block_to_part(old_to_new_face, entity_distri, all_pl_list, comm)
+  all_pl_list = [PT.get_child_from_name(fs, 'PointList')[1][0]-1 for fs in all_nodes]
+  part_data_pl = EP.block_to_part(old_to_new_face, entity_distri, all_pl_list, comm, legacy=False)
 
   part_offset = 0
   for node_list, data_query in all_nodes_and_queries:
@@ -196,7 +195,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   # but do not apply old_to_new transformation.
   # Note that we will lost symmetry PL/PLD for internal jn, we need a rule to update it afterward
   all_pld = [PT.get_child_from_name(jn, 'PointListDonor') for jn in i_jn_list]
-  updated_pld = EP.block_to_part(old_to_new_face, entity_distri, [pld[1][0] for pld in all_pld], comm)
+  updated_pld = EP.block_to_part(old_to_new_face, entity_distri, [pld[1][0]-1 for pld in all_pld], comm, legacy=False)
   for i, pld in enumerate(all_pld):
     PT.set_value(pld, updated_pld[i].reshape((1,-1), order='F'))
 
@@ -238,23 +237,23 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
   pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
-  PTB = EP.PartToBlock(vtx_distri_ini, [vtx_to_remove], comm)
-  local_vtx_to_rmv = PTB.getBlockGnumCopy() - vtx_distri_ini[0] - 1
+  GI = EP.GlobalIndexer(pdm_distrib, vtx_to_remove-1, comm)
+  mask = GI.access_counts == 0
 
   #Update all vertex entities
   for coord_n in PT.iter_children_from_predicates(zone, ['GridCoordinates_t', 'DataArray_t']):
-    PT.set_value(coord_n, np.delete(coord_n[1], local_vtx_to_rmv))
+    PT.set_value(coord_n, coord_n[1][mask])
 
   is_all_vtx_sol = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] \
       and PT.Subset.GridLocation(n) == 'Vertex' and PT.get_node_from_path(n, 'PointList') is None
 
   for node in PT.iter_children_from_predicate(zone, is_all_vtx_sol):
     for data_n in PT.iter_children_from_label(node, 'DataArray_t'):
-      PT.set_value(data_n, np.delete(data_n[1], local_vtx_to_rmv))
+      PT.set_value(data_n, data_n[1][mask])
 
   # Update vertex distribution
   i_rank, n_rank = comm.Get_rank(), comm.Get_size()
-  n_rmvd   = len(local_vtx_to_rmv)
+  n_rmvd   = mask.size - mask.sum()
   n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm, pdm_dtype)
   vtx_distri = vtx_distri_ini - [n_rmvd_offset[i_rank], n_rmvd_offset[i_rank+1],  n_rmvd_offset[n_rank]]
   MT.newDistribution({'Vertex' : vtx_distri}, zone)

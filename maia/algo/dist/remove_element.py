@@ -176,8 +176,8 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
 
     # > Update numbering of PointList defined over other element nodes
     new_bc_pl  = bc_pl
-    bc_elt_ids = new_bc_pl[mask_in_elt]-elt_offset+1
-    new_gn = EP.block_to_part(old_to_new_elt, elt_distri, [bc_elt_ids], comm)[0]
+    bc_elt_ids = new_bc_pl[mask_in_elt]-elt_offset
+    new_gn = EP.block_to_part(old_to_new_elt, elt_distri, bc_elt_ids, comm, legacy=False)
     new_gn[new_gn>0] += elt_offset-1
     if mask_in_elt.any():
       new_bc_pl[mask_in_elt] = new_gn

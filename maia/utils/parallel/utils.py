@@ -6,6 +6,8 @@ import maia.pytree as PT
 from maia.utils import py_utils
 from maia       import npy_pdm_gnum_dtype
 
+from Pypdm.Pypdm import compute_weighted_distribution
+
 def gathering_distribution(i_rank, n_elt, comm):
   """
   """
@@ -33,6 +35,26 @@ def dn_to_distribution(dn_elt, comm):
   distri[1:] = distri[0] + dn_elt
   comm.Bcast(distri[2:], root=comm.Get_size()-1)
   return distri
+
+def distribution_from_gnum(gnum_list, comm, weights=False, full=False):
+  """
+  Create a distribution including all the provided gnums. 
+  If weights=True, the distribution try to put the same number of ids on each rank.
+  Otherwise, it is uniform.
+  If full=True, a full (size = comm.size+1) distribution is returned. Otherwise, a partial
+  distribution (size = 3)
+  """
+  if weights:
+    from maia.utils import as_pdm_gnum # Cyclic import ...
+    _gnum_list = [as_pdm_gnum(gn)  for gn in gnum_list]
+    _weights   = [np.ones(gn.size) for gn in gnum_list]
+    distri_f = compute_weighted_distribution(_gnum_list, _weights, comm)
+    return distri_f if full else full_to_partial_distribution(distri_f, comm)
+
+  else:
+    global_max = arrays_max(gnum_list, comm)
+    distri = uniform_distribution(global_max, comm)
+    return partial_to_full_distribution(distri, comm) if full else distri
 
 def partial_to_full_distribution(partial_distrib, comm):
   """

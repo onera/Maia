@@ -62,7 +62,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     dData[field_name] = d_field
 
   # Erase part stride & data
-  part_stride, part_data = EP.block_to_part_strided(d_stride, dData, distribution, shifted_lntogn, comm)
+  part_stride, part_data = EP.block_to_part_strided(d_stride, dData, distribution, [s-1 for s in shifted_lntogn], comm, legacy=False)
 
   #Post treat
   i_join = 0

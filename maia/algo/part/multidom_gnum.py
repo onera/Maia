@@ -13,7 +13,6 @@ from maia.factory   import dist_from_part     as DFP
 from maia.algo                  import dist             as MAD
 
 from maia.transfer              import protocols as EP
-from maia.transfer.part_to_dist import data_exchange    as  PTB
 from maia.transfer.dist_to_part import index_exchange   as IBTP
 
 def _get_shifted_arrays(arrays_per_dom, comm):
@@ -61,7 +60,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
       # Vtx gnum is needed for face->vtx conversion.
       # Connectivities should have been already added by _get_joins_dist_tree
       vtx_lngn_l  = [MT.getGlobalNumbering(part, 'Vertex')[1] for part in parts]
-      vtx_distri  = PTB._lngn_to_distri(vtx_lngn_l, comm)
+      vtx_distri  = par_utils.distribution_from_gnum(vtx_lngn_l, comm)
 
       MT.newDistribution({'Vertex' : vtx_distri}, parent=dist_zone)
       tree_has_face_gc = True

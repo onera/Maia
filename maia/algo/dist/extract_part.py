@@ -7,6 +7,7 @@ import maia.pytree as PT
 from   maia                              import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.algo.part.point_cloud_utils  import create_sub_numbering
 from   maia.transfer                     import protocols as EP
+import maia.transfer.protocols
 from   maia.utils                        import np_utils, par_utils
 
 
@@ -87,11 +88,10 @@ def extract_zone_edges(dist_zone, pl, comm):
 
   # > Compute vtx pl from extracted edge_vtx
   vtx_distri = PT.maia.get_distribution(dist_zone, 'Vertex')[1]
-  vtx_mask   = np.zeros(vtx_distri[1] - vtx_distri[0], bool)
+  vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
 
-  ptb = maia.transfer.protocols.PartToBlock(vtx_distri, [edge_vtx], comm)
-  gnum = ptb.getBlockGnumCopy()
-  vtx_mask[gnum-vtx_distri[0]-1] = True
+  GI = maia.transfer.protocols.GlobalIndexer(vtx_distri_f, edge_vtx-1, comm)
+  vtx_mask = (GI.access_counts > 0)
   coords =  PT.Zone.coordinates(dist_zone)._asdict()
   extract_coords = {key: coord[vtx_mask] for key,coord in coords.items()}
   distri_vtx = par_utils.dn_to_distribution(vtx_mask.sum(), comm)

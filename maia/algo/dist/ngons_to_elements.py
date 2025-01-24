@@ -175,8 +175,8 @@ def _ngon_to_elements_zone_3d(zone, comm):
   new_face_id[is_bnd_tri] = np.arange(tri_distri[0]+1, tri_distri[1]+1)
   new_face_id[is_bnd_quad] = np.arange(quad_distri[0]+tri_distri[-1]+1, quad_distri[1]+tri_distri[-1]+1)
 
-  old_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0]+1)
-  new_pl = EP.block_to_part(new_face_id, face_distri, old_pl, comm)
+  old_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0])
+  new_pl = EP.block_to_part(new_face_id, face_distri, old_pl, comm, legacy=False)
   _update_pl(zone, 'FaceCenter', new_pl)
 
   # Now take care of the cells 
@@ -190,7 +190,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   # Design choice : get the number of vertices (with reps) for **all** cells,
   # thus we can check if elements seems to be standard. Otherwise, we could
   # do it only for cells having 5 faces to resolve prism / pyra ambiguity
-  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, [cell_face], comm)[0]
+  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, np.abs(cell_face)-1, comm, legacy=False)
   cell_nvtx_tot = np.add.reduceat(cell_nvtx_per_face, _cell_face_idx[:-1])
 
   n_treated = 0
@@ -231,7 +231,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   # Now get for each cell section the corresponding vertices, which will be
   # gathered to make nodal connectivity
-  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx, face_distri, cell_face_section, comm)
+  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx, face_distri, [np.abs(p)-1 for p in cell_face_section], comm, legacy=False)
 
   combine_funcs = [combine_to_tetra, combine_to_pyra, combine_to_penta, combine_to_hexa]
 
@@ -242,23 +242,25 @@ def _ngon_to_elements_zone_3d(zone, comm):
       combine_funcs[i](sections_stride[i], sections_face_vtx[i], cell_face_section[i], ec) 
 
   # Renumber PointList indexing cells
-  all_pl = _collected_shifted_pl(zone, 'CellCenter', -PT.Element.Range(nface_n)[0]+1)
+  all_pl = _collected_shifted_pl(zone, 'CellCenter', -PT.Element.Range(nface_n)[0])
   # This last one is for fields supported by allCells (eg. FlowSolution)
-  _pl = np_utils.single_dim_pr_to_pl(np.array([[1, PT.Element.Size(nface_n)]]), cell_distri)[0]
+  _pl = np.arange(cell_distri[0], cell_distri[1])
   all_pl.append(_pl)
 
-  new_pl = EP.block_to_part(new_cell_id, cell_distri, all_pl, comm)
+  new_pl = EP.block_to_part(new_cell_id, cell_distri, all_pl, comm, legacy=False)
   
   # Update CellCentered PointList
   _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
   is_cell_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and PT.Subset.GridLocation(n) == 'CellCenter'
-  cell_data = {path: [PT.get_node_from_path(zone, path)[1]] for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t'])}
-  elt_data  = EP.part_to_block(cell_data, cell_distri, [new_pl[-1] - quad_range[1]], comm)
-  for path, data in elt_data.items():
-    field = PT.get_node_from_path(zone, path)
-    PT.set_value(field, data)
+  cell_distri_f = par_utils.partial_to_full_distribution(cell_distri, comm)
+  GI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
+
+  for path in PT.predicates_to_paths(zone, [is_cell_container, 'DataArray_t']):
+    data = PT.get_node_from_path(zone, path)[1]
+    GI.Put(data, data) # Inplace update of node data
+
 
   # Remove NGON/NFACE elements
   PT.rm_child(zone, ngon_n)

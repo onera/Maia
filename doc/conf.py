@@ -35,6 +35,7 @@ extensions = ["sphinx.ext.graphviz",
 
 add_module_names = False #Shorten function names
 autodoc_typehints = 'none' #Hide typehints in doc
+autodoc_class_signature = 'separated'
 
 # -- Napoleon extension settings
 napoleon_use_rtype = False  # Don't add a line for return type

@@ -8,6 +8,8 @@ from maia.utils import par_utils, np_utils
 
 from . import _protocols
 
+from ._protocols import GlobalIndexer, GlobalMultiIndexer
+
 def _check_dict_keys(data_dict, comm):
   if comm.Get_size() == 0:
     return
@@ -42,17 +44,23 @@ def BlockToBlock(distri_in, distri_out, comm):
   else:
     return _protocols.BlockToBlock(_full_distri_in, _full_distri_out, comm)
 
-def BlockToPart(distri, ln_to_gn_list, comm):
+def BlockToPart(distri, ln_to_gn_list, comm, legacy=True):
   """
   Create a PDM BlockToPart object, with auto gnum conversion
   and extended distribution
   """
   full_distri = auto_expand_distri(distri, comm)
-  _full_distri = maia.utils.as_pdm_gnum(full_distri)
-  _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
-  return PDM.BlockToPart(_full_distri, comm, _ln_to_gn_list, len(_ln_to_gn_list))
+  if legacy:
+    _full_distri = maia.utils.as_pdm_gnum(full_distri)
+    _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
+    return PDM.BlockToPart(_full_distri, comm, _ln_to_gn_list, len(_ln_to_gn_list))
+  else:
+    if isinstance(ln_to_gn_list, list):
+      return GlobalMultiIndexer(full_distri, ln_to_gn_list, comm)
+    else:
+      return GlobalIndexer(full_distri, ln_to_gn_list, comm)
 
-def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False):
+def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False, legacy=True):
   """
   Create a PDM PartToBlock object, with auto gnum conversion
   and extended distribution
@@ -61,14 +69,23 @@ def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=Fals
     full_distri = auto_expand_distri(distri, comm)
     _full_distri = maia.utils.as_pdm_gnum(full_distri)
   else:
+    assert legacy, "distri=None only supported for legacy version"
     _full_distri = None
-  _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
-  
-  t_post = 2 if keep_multiple else 1
-  pWeight = [np.ones(lngn.size) for lngn in ln_to_gn_list] if weight else None
 
-  return PDM.PartToBlock(comm, _ln_to_gn_list, pWeight=pWeight, partN=len(_ln_to_gn_list),
-                         t_distrib=0, t_post=t_post, userDistribution=_full_distri)
+  if legacy:
+    _ln_to_gn_list  = [maia.utils.as_pdm_gnum(ln_to_gn) for ln_to_gn in ln_to_gn_list]
+    
+    t_post = 2 if keep_multiple else 1
+    pWeight = [np.ones(lngn.size) for lngn in ln_to_gn_list] if weight else None
+
+    return PDM.PartToBlock(comm, _ln_to_gn_list, pWeight=pWeight, partN=len(_ln_to_gn_list),
+                          t_distrib=0, t_post=t_post, userDistribution=_full_distri)
+  else:
+    assert not keep_multiple, "keep_multiple only supported for legacy version"
+    if isinstance(ln_to_gn_list, list):
+      return GlobalMultiIndexer(_full_distri, ln_to_gn_list, comm)
+    else:
+      return GlobalIndexer(_full_distri, ln_to_gn_list, comm)
 
 def PartToPart(gnum1, gnum2, comm):
   """
@@ -100,38 +117,52 @@ def block_to_block(data_in, distri_in, distri_out, comm):
 
   return block_data_out
 
-def block_to_part(dist_data, distri, ln_to_gn_list, comm):
+def block_to_part(dist_data, distri, ln_to_gn_list, comm, legacy=True):
   """
   Create and exchange using a BlockToPart object.
   Allow single field or dict of fields
   """
-  BTP = BlockToPart(distri, ln_to_gn_list, comm)
+  BTP = BlockToPart(distri, ln_to_gn_list, comm, legacy)
+
+  exch_one = lambda d_field: BTP.exchange_field(d_field)[1] if legacy else BTP.Take(d_field)
 
   if isinstance(dist_data, dict):
     _check_dict_keys(dist_data, comm)
     part_data = dict()
     for name, d_field in dist_data.items():
-      part_data[name] = BTP.exchange_field(d_field)[1]
+      part_data[name] = exch_one(d_field)
   else:
-    _, part_data = BTP.exchange_field(dist_data)
+    part_data = exch_one(dist_data)
 
   return part_data
 
-def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm):
+def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm, legacy=True):
   """
   Create and exchange using a BlockToPart object with variable stride.
   Allow single field or dict of fields
   """
-  BTP = BlockToPart(distri, ln_to_gn_list, comm)
+  BTP = BlockToPart(distri, ln_to_gn_list, comm, legacy)
+
+  if legacy:
+    exch_one = lambda d_field, d_stride : BTP.exchange_field(d_field, d_stride)
+  else:
+    def exch_one(d_field, d_stride):
+      data_out = BTP.Take_v((d_stride, d_field)) #data_out is either (part_data, part_stride) (if GIndexer) or 
+      if not isinstance(ln_to_gn_list, list): # In this case, data_out is a tuple part_data, part_stride
+        return data_out 
+      else: # In this case, data_out is a list of tuple (part_data_i, part_stride_i) -> unzip it to get two lists
+        p_strid = [data[0] for data in data_out]
+        p_field = [data[1] for data in data_out]
+        return p_strid, p_field
 
   if isinstance(dist_data, dict):
     _check_dict_keys(dist_data, comm)
     part_data = dict()
     for name, d_field in dist_data.items():
-      part_stride, _part_data = BTP.exchange_field(d_field, dist_stride)
+      part_stride, _part_data = exch_one(d_field, dist_stride)
       part_data[name] = _part_data
   else:
-    part_stride, part_data = BTP.exchange_field(dist_data, dist_stride)
+    part_stride, part_data = exch_one(dist_data, dist_stride)
 
   return part_stride, part_data
 
@@ -141,6 +172,7 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
   Allow single field or dict of fields
   """
   if reduce_func is not None:
+    # Only legacy == True is supported in this case. PartToBlock will raise in other case
     PTB = PartToBlock(distri, ln_to_gn_list, comm, keep_multiple=True, **kwargs)
     def _exchange_one(part_fields):
       p_stride = [np.ones(p_f.size, dtype=np.int32) for p_f in part_fields]
@@ -149,9 +181,9 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
       return dist_data
   else:
     PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+    legacy = kwargs.get('legacy', True)
     def _exchange_one(part_fields):
-      _, dist_data = PTB.exchange_field(part_fields)
-      return dist_data
+      return PTB.exchange_field(part_fields)[1] if legacy else PTB.Put(part_fields)
 
   if isinstance(part_data, dict):
     _check_dict_keys(part_data, comm)

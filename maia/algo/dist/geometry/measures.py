@@ -142,7 +142,7 @@ def compute_cell_measure(zone, comm):
     face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
 
     # Assembly : for each cell, sum the quantities computed on each face
-    face_contrib_loc = EP.block_to_part(face_contrib, face_distri, [np.abs(cell_face)], comm)[0]
+    face_contrib_loc = EP.block_to_part(face_contrib, face_distri, np.abs(cell_face)-1, comm, legacy=False)
     measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib_loc, cell_face_idx[:-1])
 
   else:

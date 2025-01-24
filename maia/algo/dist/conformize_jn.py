@@ -1,8 +1,9 @@
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-import maia.algo.dist.vertex_list    as VL
-from maia.transfer import protocols as EP
+from maia.algo.dist import vertex_list as VL
+from maia.transfer  import protocols   as EP
+from maia.utils     import par_utils
 
 def conformize_jn_pair(dist_tree, jn_paths, comm):
   """
@@ -22,7 +23,6 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
     comm       (`MPIComm`) : MPI communicator
 
   """
-  coord_query = ['GridCoordinates_t', 'DataArray_t']
   
   # Get vtx ids and opposite vtx ids for this join
   location = PT.Subset.GridLocation(PT.get_node_from_path(dist_tree, jn_paths[0]))
@@ -33,34 +33,18 @@ def conformize_jn_pair(dist_tree, jn_paths, comm):
   else:
     raise RuntimeError(f"Unsupported grid location for jn {jn_paths[0]}")
 
-  # Collect data
-  mean_coords = {}
-  vtx_distris = []
-  for i, path in enumerate(jn_paths):
-    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 2))
-    vtx_distri = PT.get_value(MT.getDistribution(zone, 'Vertex'))
-    dist_coords = {}
-    for grid_co_n, coord_n in PT.iter_nodes_from_predicates(zone, coord_query, ancestors=True):
-      dist_coords[f"{PT.get_name(grid_co_n)}/{PT.get_name(coord_n)}"] = coord_n[1]
-  
-    part_coords = EP.block_to_part(dist_coords, vtx_distri, [pl_vtx_list[i]], comm)
-  
-    for path, value in part_coords.items():
-      try:
-        mean_coords[path][0] += 0.5*value[0]
-      except KeyError:
-        mean_coords[path] = [0.5*value[0]]
-    vtx_distris.append(vtx_distri)
-  
-  # Send back the mean value to the two zones, and update tree
-  for i, path in enumerate(jn_paths):
-    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 2))
-    mean_coords['NodeId'] = [pl_vtx_list[i]]
-    dist_data = EP.part_to_block(mean_coords, vtx_distris[i], [pl_vtx_list[i]], comm)
+  zones = [PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 2)) for path in jn_paths]
+  dist_coords = [PT.Zone.coordinates(zone)             for zone in zones]
+  vtx_distris = [MT.getDistribution(zone, 'Vertex')[1] for zone in zones]
+  vtx_distris = [par_utils.partial_to_full_distribution(di, comm) for di in vtx_distris]
 
-    loc_indices = dist_data.pop('NodeId') - vtx_distri[0] - 1 
+  indexer0 = EP.GlobalIndexer(vtx_distris[0], pl_vtx_list[0]-1, comm)
+  indexer1 = EP.GlobalIndexer(vtx_distris[1], pl_vtx_list[1]-1, comm)
 
-    # Update data
-    for coord_path, value in dist_data.items():
-      node = PT.get_node_from_path(zone, coord_path)
-      node[1][loc_indices] = value
+  for coord0, coord1 in zip(*dist_coords):
+    # For each component X,Y,Z : extract vtx values on the two zones (Take),
+    # compute the average, and then put back the average in the two zones (Put)
+    mean_coords = 0.5*(indexer0.Take(coord0) + indexer1.Take(coord1))
+    indexer0.Put(mean_coords, coord0)
+    indexer1.Put(mean_coords, coord1)
+  

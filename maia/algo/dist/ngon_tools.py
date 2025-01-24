@@ -133,7 +133,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   # EDGE Data
   edge_node  = MT.Zone.EdgeNode(zone)
   dedge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
-  key_from_edge = dedge_vtx[0::2] + dedge_vtx[1::2]
+  key_from_edge = dedge_vtx[0::2] + dedge_vtx[1::2] - 1 # (GlobalIndexer starts at 0)
 
   # NGON Data
   ngon_node = PT.Zone.NGonNode(zone)
@@ -163,10 +163,9 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   fstride[ptb.getBlockGnumCopy() - ptb_distri[comm.rank] - 1] = stride
 
   # Second : get data from block, for each edge
-  recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, [key_from_edge], comm)
-  recv_stride = recv_stride[0]
-  first_vtx  = recv_data['FirstVtx'][0]
-  face_gnum  = recv_data['FaceGnum'][0]
+  recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, key_from_edge, comm, legacy=False)
+  first_vtx  = recv_data['FirstVtx']
+  face_gnum  = recv_data['FaceGnum']
 
 
   # Third: post treat (solving conflits) for fill edge_face
