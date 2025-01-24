@@ -26,6 +26,22 @@ class BlockToBlock:
       self.exchange_field = self.exchange # Compatibility
 
 
+    def exchange_inplace(self, data_in, data_out, stride_in=1):
+      """
+      TODO : factorize exchange_inplace / exchange => to do after GlobalIndexer MR
+      """
+
+      # Constant stride
+      if isinstance(stride_in, int):
+        dtype = data_in.dtype.char
+        assert data_out.size == stride_in*self.recv_counts.sum() and data_out.dtype == data_in.dtype
+        #Really strange, without explicit datatype mpi4py can fail if dtype is float64
+        #File "mpi4py/MPI/msgbuffer.pxi", line 145, in mpi4py.MPI.message_basic
+        #KeyError: '<d'
+        self.comm.Alltoallv((data_in, stride_in * self.send_counts, dtype), (data_out, stride_in * self.recv_counts, dtype))
+      else:
+        raise NotImplementedError('Inplace variable buffer not yet implemented')
+
     def exchange(self, data_in, stride_in=1):
 
       # Constant stride
@@ -76,3 +92,10 @@ class SerialBlockToBlock():
       return np.copy(data_in)
     elif isinstance(stride_in, np.ndarray):
       return np.copy(stride_in), np.copy(data_in)
+
+  def exchange_inplace(self, data_in, data_out, stride_in=1):
+    if isinstance(stride_in, int):
+      assert data_out.size == data_in.size and data_out.dtype == data_in.dtype
+      data_out[:] = data_in[:]
+    else:
+      raise NotImplementedError('Inplace variable buffer not yet implemented')
