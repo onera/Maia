@@ -26,7 +26,7 @@ def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as,
   pl_extruded = np.arange(distrib_idx[0], distrib_idx[1], dtype=zone[1].dtype).reshape((1,-1), order='F') + first_id + n_face2d
 
   # Note : Subset are created as EdgeCenter right now, because they calling function convert it to FaceCenter after
-  if ksubset_as in ['GC', 'JN']:
+  if ksubset_as == 'GC':
     # > Generate GridConnectivity between the two planes
     # Remark: former NGon is the first GridConnectivity and the duplicated one the second one
     zgc = PT.update_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
@@ -61,10 +61,10 @@ def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as,
     MT.newDistribution({'Index' : distrib_idx.copy()}, parent=bc2)
 
 
-def _nodes_duplication(zone, extrusion_vector, comm, as_first=False):
+def _nodes_duplication(zone, extrusion_vector, comm, as_last=True):
   """
-  Internal function used by _extrusion_2d_u_ngon and _extrusion_2d_u_elem to create 
-  the duplicated nodes needed to generate the second plan
+  Internal function used by _extrusion_2d_u_ngon, _extrusion_2d_u_elem and _extrusion_2d_s
+  to create the duplicated nodes needed to generate the second plan
   """
   # > Define new distribution
   distrib_vtx_n    = MT.getDistribution(zone, 'Vertex')
@@ -75,7 +75,7 @@ def _nodes_duplication(zone, extrusion_vector, comm, as_first=False):
   initial = coords._asdict()
   extruded = {name: coord + extru for  extru, (name, coord) in zip(extrusion_vector, initial.items())}
   
-  if as_first: # For S meshes, change order depending of extrusion direction to keep i,j,k direct
+  if not as_last: # For S meshes, change order depending of extrusion direction to keep i,j,k direct
     initial, extruded = extruded, initial
 
   # We can do two BlockToBlock, it is faster than a PartToBlock (we should do a function from this pattern)
@@ -282,7 +282,7 @@ def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
   n_vtx  = PT.Zone.n_vtx(zone)
 
   # 1/ Duplication of nodes to generate the second plan
-  _nodes_duplication(zone, extrusion_vector, comm, not align)
+  _nodes_duplication(zone, extrusion_vector, comm, align)
   
   # 2/ Manage K-plans
   pr_former = np.ones((3,2), order='F', dtype=zone[1].dtype)
@@ -292,9 +292,8 @@ def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
   if not align: # Swap former / extruded if needed
     pr_former, pr_extruded = pr_extruded, pr_former
   distrib_idx = par_utils.uniform_distribution(n_vtx, comm)
-  if ksubset_as in ['GC', 'JN']:
+  if ksubset_as == 'GC':
     # > Generate GridConnectivity between the two planes
-    # Remark: former NGon is the first GridConnectivity and the duplicated one the second one
     zgc = PT.update_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
     gc1_name = 'InitialSurface'
     gc2_name = 'ExtrudedSurface'
@@ -582,7 +581,7 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
         :dedent: 2
   """
   ksubset_as = ksubset_as.upper()
-  if not ksubset_as in ['BC', 'GC', 'JN']:
+  if not ksubset_as in ['BC', 'GC']:
     raise ValueError(f"'ksubset_as' is {ksubset_as} but only 'GC' and 'BC' are allowed !")
   
   zone_to_distrib_vtx = dict()
@@ -659,7 +658,7 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
         for pr in PT.get_children_from_label(container, 'IndexRange_t'):
           _extend_pr(pr, [1,1])
 
-    # > FaceCenter -> should not exist on 2d mesh, remove it
+    # > *FaceCenter -> should not exist on 2d mesh, remove it
     is_container_face = lambda n: (is_container(n) or is_subset(n)) and PT.Subset.GridLocation(n).endswith('FaceCenter')
     container_face_l = PT.get_nodes_from_predicate(zone, is_container_face, depth=3, explore='deep')
     if len(container_face_l) > 0:
@@ -669,7 +668,7 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
       mlog.error(msg)
       PT.rm_nodes_from_predicate(zone, is_container_face, depth=3)
 
-    # > EdgeCenter -> becomes FaceCenter (no need to change their PointList, but PR must be extended)
+    # > *EdgeCenter -> becomes *FaceCenter (no need to change their PointList, but PR must be extended)
     is_container_edge = lambda n: (is_container(n) or is_subset(n)) and PT.Subset.GridLocation(n).endswith('EdgeCenter')
     for container in PT.get_nodes_from_predicate(zone, is_container_edge, depth=3, explore='deep'):
       if PT.Zone.Type(zone)  == 'Unstructured':
@@ -680,7 +679,7 @@ def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=Fa
         for pr in PT.get_children_from_label(container, 'IndexRange_t'):
           _extend_pr(pr, [1,1])
 
-    # > Vertex -> Subsets (BCs, GC) must be always extended, but containers deppends on dupl_vtx_data
+    # > Vertex -> Subsets (BCs, GC) must be always extended, but containers depends on dupl_vtx_data
     # It seems easier to treat data first, because data can require the initial PL or Distribution
     is_vertex = lambda n : PT.Subset.GridLocation(n) == 'Vertex'
     
