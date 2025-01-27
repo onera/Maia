@@ -80,12 +80,10 @@ CGNSTree CGNSTree_t
 
   def test_string_that_is_long_but_not_a_lot(self, capsys):
     y_desc = 'Descriptor Descriptor_t "My description node":' # 19 chars, but length is 20 in CGNS (to account for the ending \0)
-    desc = parse_yaml_cgns.to_cgns_tree(y_desc)
+    desc = parse_yaml_cgns.to_node(y_desc)
 
     expected_print_str = """\
-CGNSTree CGNSTree_t 
-├───Descriptor Descriptor_t "My descri[...]node"
-└───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
+Descriptor Descriptor_t "My descri[...]node"
 """
 
     # We have to reput sys.stdout otherwise pytest does not capture output

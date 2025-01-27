@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 import maia.pytree        as PT
 
@@ -34,6 +35,7 @@ Base0 CGNSBase_t [3,3]:
   assert PT.get_node_from_name(t, 'Zone1')[1].dtype == np.float64
 
   yt = """
+  ReferenceState ReferenceState_t:
   Zone0 Zone_t [[24],[6],[0]]:
 """
   t = parse_yaml_cgns.to_cgns_tree(yt)
@@ -41,6 +43,23 @@ Base0 CGNSBase_t [3,3]:
   assert len(bs) == 1
   assert PT.get_name(bs[0]) == "Base"
   assert PT.get_label(bs[0]) == "CGNSBase_t"
+  assert (PT.get_value(bs[0]) == [3,3]).all()
+
+  yt = """
+  CGNSTree CGNSTree_t:
+    Base CGNSBase_t [3,3]:
+      Zone0 Zone_t [[24],[6],[0]]:
+"""
+  t = parse_yaml_cgns.to_cgns_tree(yt)
+  assert len(PT.get_all_Zone_t(t)) == 1
+
+  yt = """
+  BC BC_t "BCWall":
+    GridLocation GridLocation_t "FaceCenter":
+"""
+  with pytest.raises(ValueError):
+    t = parse_yaml_cgns.to_cgns_tree(yt)
+
 
 
 def test_multi_line_value():

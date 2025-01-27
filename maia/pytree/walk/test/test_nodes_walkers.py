@@ -78,15 +78,16 @@ def test_kwargs():
 
 def test_nodes_walkers_pattern():
   yt = """
-FamilyBCDataSet FamilyBCDataSet_t:
-  RefStateFamilyBCDataSet ReferenceState_t:
-    Density DataArray_t [1.1]:
-    MomentumX DataArray_t [1.1]:
-    MomentumY DataArray_t [0.]:
-    MomentumZ DataArray_t [0.]:
-    EnergyStagnationDensity DataArray_t [2.51]:
+FamilyBC FamilyBC_t:
+  FamilyBCDataSet FamilyBCDataSet_t:
+    RefStateFamilyBCDataSet ReferenceState_t:
+      Density DataArray_t [1.1]:
+      MomentumX DataArray_t [1.1]:
+      MomentumY DataArray_t [0.]:
+      MomentumZ DataArray_t [0.]:
+      EnergyStagnationDensity DataArray_t [2.51]:
   """
-  tree = parse_yaml_cgns.to_cgns_tree(yt)
+  tree = parse_yaml_cgns.to_node(yt)
 
   names = ["Density", "MomentumX", "MomentumY", "MomentumZ", "EnergyStagnationDensity"]
   check_name = lambda name : [

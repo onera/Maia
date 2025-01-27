@@ -1,4 +1,5 @@
 import ast
+import warnings
 import numpy as np
 from ruamel.yaml import YAML
 
@@ -8,6 +9,11 @@ import maia.pytree.walk as W
 import maia.pytree.sids as S
 
 import maia.pytree.cgns_keywords as CGK
+
+TREE_CHILDREN = {'CGNSBase_t', 'CGNSLibraryVersion_t', 'UserDefinedData_t'}
+BASE_CHILDREN = {'Axisymmetry_t', 'BaseIterativeData_t', 'DataClass_t', 'Descriptor_t', 'DimensionalUnits_t', 'Family_t',
+                 'FlowEquationSet_t', 'ConvergenceHistory_t', 'Gravity_t', 'IntegralData_t', 'ReferenceState_t',
+                 'RotatingCoordinates_t', 'SimulationType_t', 'UserDefinedData_t', 'ParticleZone_t', 'Zone_t'}
 
 def parse_node(node):
   name,label_value = node.split(" ", 1)
@@ -146,21 +152,36 @@ def to_cgns_tree(yaml_stream) -> CGNSTree:
   """
   t = N.new_node('CGNSTree', 'CGNSTree_t')
   childs = to_nodes(yaml_stream)
-  if len(childs) > 0 and N.get_label(childs[0]) == 'Zone_t':
-    phy_dim = 3
-    gc_n = W.get_child_from_label(childs[0], 'GridCoordinates_t')
-    if gc_n:
-      coords_n = W.get_children_from_predicate(gc_n, lambda n: N.get_label(n) == 'DataArray_t' and N.get_name(n) != 'CoordinateTransform')
-      phy_dim = len(coords_n)
-    try:
-      cell_dim = S.Zone.CellDimension(childs[0])
-    except:
-      cell_dim = 3
-    cell_dim = min(cell_dim, phy_dim)
-    b = N.new_CGNSBase(cell_dim=cell_dim, phy_dim=phy_dim, parent=t)
-    N.set_children(b, childs)
-  else:
+  top_labels = [N.get_label(c) for c in childs]
+  if len(childs) == 0:
+    pass # yaml_stream is empty
+  # Detect if yaml is already a top level CGNSTree
+  elif 'CGNSTree_t' in top_labels:
+    if len(top_labels) > 1:
+      raise ValueError("Multiple top level CGNSTree_t nodes is not allowed")
+    t = childs[0]
+  elif set(top_labels) <= TREE_CHILDREN:
     N.set_children(t, childs)
+  elif set(top_labels) <= BASE_CHILDREN:
+    b = N.new_CGNSBase(parent=t)
+    N.set_children(b, childs)
+    zone_node, gc_n = W.get_child_from_labels(b, ['Zone_t', 'GridCoordinates_t'], ancestors=True)
+    if zone_node is not None:
+      phy_dim = 3
+      if gc_n is not None:
+        coords_n = W.get_children_from_predicate(gc_n, lambda n: N.get_label(n) == 'DataArray_t' and N.get_name(n) != 'CoordinateTransform')
+        phy_dim = len(coords_n)
+      try:
+        cell_dim = S.Zone.CellDimension(zone_node)
+      except:
+        cell_dim = 3
+      cell_dim = min(cell_dim, phy_dim)
+      N.set_value(b, [cell_dim, phy_dim])
+    else:
+      warnings.warn(f"Can not guess CGNSBase_t dimension, use default value [3,3]", RuntimeWarning, stacklevel=2)
+  else:
+    raise ValueError("Unvalid nodes label, Base level or Zone level nodes are expected")
+  
   if W.get_child_from_label(t, 'CGNSLibraryVersion_t') is None:
     N.add_child(t, N.new_node('CGNSLibraryVersion', 'CGNSLibraryVersion_t', value=4.2))
   return t

@@ -106,8 +106,7 @@ def test_extract_bcs_from_pl(comm):
       assert np.array_equal(bc_distri, expected_distri)
       assert bc_pl.dtype == expected_pl.dtype and bc_distri.dtype == pdm_dtype
 
-  tree = PT.yaml.to_cgns_tree(yt)
-  zone_bc_n = PT.get_child_from_label(tree, "ZoneBC_t")
+  zone_bc_n = PT.yaml.to_node(yt)
 
   pl = [np.array([12, 7], np.int32),
         np.array([10]  ,  np.int32)][comm.rank]
