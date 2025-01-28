@@ -116,10 +116,6 @@ set(std_e_ENABLE_MPI ON CACHE BOOL "Maia uses std_e with mpi" FORCE)
 project_add_subdir_or_package(std_e REQUIRED)
 project_add_subdir_or_package(cpp_cgns REQUIRED)
 
-## Check Python dependencies ##
-include(${PROJECT_UTILS_CMAKE_DIR}/check_python_module.cmake)
-check_python_module(ruamel REQUIRED)
-
 
 # ------------------------------------------------------------------------------
 # Code quality tools TODO

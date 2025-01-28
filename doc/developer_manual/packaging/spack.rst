@@ -7,7 +7,7 @@ Installation through Spack
 
 .. warning:: The procedure is not up-to-date
 
-Maia depends on quite a few libraries of different kinds, be it system libraries like MPI, third-party libraries like HDF5, ONERA libraries like ParaDiGM , git submodules (std_e...), or Python modules (mpi4py, ruamel). The prefered way of installing Maia in a coherent environment is by using the `Spack package manager <https://spack.readthedocs.io/>`_. A Spack recipe for Maia can be found on the `ONERA Spack repository <https://gitlab.onera.net/informatics/infra/onera_spack_repo>`_.
+Maia depends on quite a few libraries of different kinds, be it system libraries like MPI, third-party libraries like HDF5, ONERA libraries like ParaDiGM , git submodules (std_e...), or Python modules (mpi4py, pyyaml). The prefered way of installing Maia in a coherent environment is by using the `Spack package manager <https://spack.readthedocs.io/>`_. A Spack recipe for Maia can be found on the `ONERA Spack repository <https://gitlab.onera.net/informatics/infra/onera_spack_repo>`_.
 
 
 1. Source a Spack repository on your machine.

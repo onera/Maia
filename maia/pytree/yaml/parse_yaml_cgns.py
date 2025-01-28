@@ -1,7 +1,7 @@
 import ast
 import warnings
 import numpy as np
-from ruamel.yaml import YAML
+import yaml
 
 from maia.pytree.typing import *
 import maia.pytree.node as N
@@ -93,8 +93,7 @@ def to_nodes(yaml_stream) -> CGNSTree:
   if yaml_stream=="":
     return []
   else:
-    yaml = YAML(typ="safe")
-    yaml_dict = yaml.load(yaml_stream)
+    yaml_dict = yaml.safe_load(yaml_stream)
     return parse_yaml_dict(yaml_dict)
 
 def to_node(yaml_stream) -> CGNSTree:

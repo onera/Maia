@@ -1,5 +1,4 @@
-from ruamel.yaml import YAML
-from ruamel.yaml import parser
+import yaml
 
 def yaml_tree_to_string(yaml_dict,prefix="",first=True):
   res_str = ""
@@ -26,8 +25,7 @@ def pretty_tree(yaml_stream):
   if yaml_stream=="":
     return []
   else:
-    yaml = YAML(typ="safe")
-    yaml_dict = yaml.load(yaml_stream)
+    yaml_dict = yaml.safe_load(yaml_stream)
     return yaml_tree_to_string(yaml_dict)
 
 def pretty_print(yaml_stream):
