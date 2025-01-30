@@ -169,11 +169,12 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
     if not PT.Zone.has_ngon_elements(zone) and zone_ordering==1:
       apply_offset_to_elts(zone, distrib_ridge[-1], 0)
     else:
-      offset_new_bar = PT.get_value(PT.Zone.get_ordered_elements(zone)[-1])[1]
+      last_elt_n = PT.Zone.get_ordered_elements(zone)[-1]
+      offset_new_bar = PT.Element.Range(last_elt_n)[1]
     offset_new_bar+=1
       
     elt_range_edges = np.array([offset_new_bar,
-                                offset_new_bar+distrib_ridge[-1]], dtype=pdm_dtype)
+                                offset_new_bar+distrib_ridge[-1]-1], dtype=pdm_dtype)
     elt_n = PT.new_Elements(new_bar_name, 'BAR_2',
                             erange=elt_range_edges.astype(zone_dtype, copy=False),
                             econn=dridge_vtx.astype(zone_dtype, copy=False),
