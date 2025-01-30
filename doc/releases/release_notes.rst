@@ -37,6 +37,7 @@ Developpement version
 - connect_1to1_families: prevent a ``ZeroDivisionError`` when no connections are found
 - duplicate_from_rotation_jns_to_360: add a tolerance to manage close to zero rotation angles
 - part_tree_to_dist_tree_copy: manage data under GridConnectivity_t nodes
+- convert_ngon_to_elements: preserve internal edges (in 2D) or faces (in 3D) indexed by a subset
 
 🚧 API change
 ^^^^^^^^^^^^^

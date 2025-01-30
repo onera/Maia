@@ -53,7 +53,13 @@ def _ngon_to_elements_zone_2d(zone, comm):
   pe           = PT.get_child_from_name(edge_n, 'ParentElements')[1]
   edge_distri  = MT.getDistribution(edge_n, 'Element')[1]
 
-  is_bnd_edge = (pe[:,1] == 0)
+  edge_distri_f = par_utils.partial_to_full_distribution(edge_distri, comm)
+
+  old_edge_pl = _collected_shifted_pl(zone, 'EdgeCenter', -PT.Element.Range(edge_n)[0])
+  GI = EP.GlobalMultiIndexer(edge_distri_f, old_edge_pl, comm)
+  is_subset_edge = (GI.access_counts > 0)
+
+  is_bnd_edge = (pe[:,1] == 0)  | (is_subset_edge)
   bar_vtx = np.empty(2*is_bnd_edge.sum(), edge_vtx.dtype)
   bar_vtx[0::2] = edge_vtx[0::2][is_bnd_edge]
   bar_vtx[1::2] = edge_vtx[1::2][is_bnd_edge]
@@ -70,8 +76,7 @@ def _ngon_to_elements_zone_2d(zone, comm):
   new_edge_id = -1*np.ones(edge_vtx.size // 2, zone[1].dtype)
   new_edge_id[is_bnd_edge] = np.arange(bar_distri[0]+1, bar_distri[1]+1)
 
-  old_pl = _collected_shifted_pl(zone, 'EdgeCenter', -PT.Element.Range(edge_n)[0])
-  new_pl = EP.block_to_part(new_edge_id, edge_distri, old_pl, comm, legacy=False)
+  new_pl = GI.Take(new_edge_id)
   _update_pl(zone, 'EdgeCenter', new_pl)
 
   # Now take care of the faces
@@ -152,10 +157,19 @@ def _ngon_to_elements_zone_3d(zone, comm):
   face_vtx     = PT.get_child_from_name(ngon_n, 'ElementConnectivity')[1]
   pe           = PT.get_child_from_name(ngon_n, 'ParentElements')[1]
   face_distri  = MT.getDistribution(ngon_n, 'Element')[1]
+
+  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
   _face_vtx_idx = (face_vtx_idx - face_vtx_idx[0]).astype(np.int64, copy=False)
   face_n = np.diff(_face_vtx_idx).astype(np.int32, copy=False)
 
-  is_bnd_face = (pe[:,1] == 0)
+  old_face_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0])
+  
+  # This is to detect faces that are indexed by some PL, in addition to boundary faces
+  GI = EP.GlobalMultiIndexer(face_distri_f, old_face_pl, comm)
+  is_subset_face = (GI.access_counts > 0)
+  
+  is_bnd_face = (pe[:,1] == 0) | (is_subset_face)
+
   is_bnd_tri  = (is_bnd_face) & (face_n == 3)
   is_bnd_quad = (is_bnd_face) & (face_n == 4)
   tri_vtx  = np_utils.take_strided(_face_vtx_idx, face_vtx, np.where(is_bnd_tri)[0])
@@ -179,8 +193,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   new_face_id[is_bnd_tri] = np.arange(tri_distri[0]+1, tri_distri[1]+1)
   new_face_id[is_bnd_quad] = np.arange(quad_distri[0]+tri_distri[-1]+1, quad_distri[1]+tri_distri[-1]+1)
 
-  old_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0])
-  new_pl = EP.block_to_part(new_face_id, face_distri, old_pl, comm, legacy=False)
+  new_pl = GI.Take(new_face_id)
   _update_pl(zone, 'FaceCenter', new_pl)
 
   # Now take care of the cells 
