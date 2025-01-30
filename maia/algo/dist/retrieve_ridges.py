@@ -62,8 +62,8 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
   none_idx = np.array([i+1 for i in range(len(parents)) if parents[i] is     None], dtype=pdm_dtype)
   full_idx = np.array([i+1 for i in range(len(parents)) if parents[i] is not None], dtype=pdm_dtype)
 
-  data_stri = np.array(  [len(parents[k-1]) for k in full_idx], np.int32)
-  data      = np.concatenate([parents[k-1]  for k in full_idx])
+  data_stri = np.array([len(parents[k-1]) for k in full_idx], np.int32)
+  _, data   = np_utils.concatenate_np_arrays([parents[k-1] for k in full_idx], dtype=pdm_dtype)
 
   out_stri, out = maia.transfer.protocols.part_to_part_strided([data_stri], [data], [full_idx], [none_idx], comm)
 
