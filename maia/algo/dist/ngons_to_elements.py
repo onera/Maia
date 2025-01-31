@@ -96,7 +96,7 @@ def _ngon_to_elements_zone_2d(zone, comm):
     # Find corresponding faces
     np.equal(face_n, target_size, out=mask)
     face_ids = np.flatnonzero(mask)
-    elt_conn = np_utils.take_strided(_face_vtx_idx, face_vtx, face_ids)
+    _, elt_conn = np_utils.take_strided(_face_vtx_idx, face_vtx, face_ids)
 
     # Prepare elt node (ElementConnectivity will be computed later)
     n_elt_loc = face_ids.size
@@ -172,8 +172,8 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   is_bnd_tri  = (is_bnd_face) & (face_n == 3)
   is_bnd_quad = (is_bnd_face) & (face_n == 4)
-  tri_vtx  = np_utils.take_strided(_face_vtx_idx, face_vtx, np.where(is_bnd_tri)[0])
-  quad_vtx = np_utils.take_strided(_face_vtx_idx, face_vtx, np.where(is_bnd_quad)[0])
+  _, tri_vtx  = np_utils.take_strided(_face_vtx_idx, face_vtx, np.where(is_bnd_tri)[0])
+  _, quad_vtx = np_utils.take_strided(_face_vtx_idx, face_vtx, np.where(is_bnd_quad)[0])
 
 
   tri_distri  = par_utils.dn_to_distribution(tri_vtx.size  // 3, comm)
@@ -221,7 +221,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
     np.equal(cell_nvtx_tot, target_size, out=mask)
     # Extract cell_face for this section
     cell_ids = np.nonzero(mask)[0]
-    cell_face_section.append(np_utils.take_strided(_cell_face_idx, cell_face, cell_ids))
+    cell_face_section.append(np_utils.take_strided(_cell_face_idx, cell_face, cell_ids)[1])
     
     # Prepare elt node (ElementConnectivity will be computed later)
     n_elt_loc = cell_ids.size

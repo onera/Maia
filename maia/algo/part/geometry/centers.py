@@ -81,7 +81,7 @@ def compute_cell_center(zone, cell_indices=None):
     if cell_indices is not None: # Filtering is done afterward, which is less performant
       _cell_indices = s_numbering.ijk_to_index_from_loc(*cell_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
       center_cell_idx = np.arange(0, 3*(PT.Zone.n_cell(zone)+1), 3)
-      center_cell = np_utils.take_strided(center_cell_idx, center_cell, _cell_indices)
+      _, center_cell = np_utils.take_strided(center_cell_idx, center_cell, _cell_indices)
 
   return center_cell
 
@@ -150,7 +150,7 @@ def compute_face_center(zone, face_indices=None, face_indices_loc=None):
       else:
         _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
       center_idx = np.arange(0, 3*(centers.size//3 + 1), 3)
-      centers = np_utils.take_strided(center_idx, centers, _face_indices)
+      _, centers = np_utils.take_strided(center_idx, centers, _face_indices)
 
     return centers
 

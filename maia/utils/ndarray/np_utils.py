@@ -151,13 +151,6 @@ def repeated_arange(counts, start=0, stop=None, step=1, dtype=None):
     assert isinstance(counts, numbers.Integral) or stop-start == step*counts.size
   return np.repeat(np.arange(start, stop, step, dtype), counts)
 
-def jagged_extract(idx_array, array, ids):
-  extracted_array = array[multi_arange(idx_array[ids], idx_array[ids+1])]
-  sizes = np.diff(idx_array)
-  extracted_sizes = sizes[ids]
-  extracted_idx = sizes_to_indices(extracted_sizes)
-  return extracted_idx, extracted_array
-
 def jagged_merge(idx1, array1, idx2, array2):
   """
   Interwave two jagged arrays of same n_elt
@@ -265,18 +258,6 @@ def roll_once_by_stride(array_idx, array):
   rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
   return np.delete(extended, rm_idx)
 
-def take_strided2(array_idx, array, indices):
-  """ Same as take_strided, but also return the idx array
-  TODO : Other function should be removed
-  """
-
-  out_size = array_idx[indices+1] - array_idx[indices]
-  out_idx  = sizes_to_indices(out_size, array_idx.dtype)
-
-  out = np.empty(out_size.sum(), array.dtype)
-  layouts.take_strided(array_idx, array, indices, out)
-
-  return out_idx, out
 def take_strided(array_idx, array, indices):
   """
   An equivalent to numpy.take (a[ind]), but with strided values in array
@@ -290,14 +271,16 @@ def take_strided(array_idx, array, indices):
   We gather a_val according to a_idx: [[10,11,12], [100], [1000, 1001]]
   Then we return the groups at indices [2,0]
   So in the end, we have:
-    take_strided(a_idx, a_val, indices) = [1000, 1001,  10,11,12]
-
+    take_strided(a_idx, a_val, indices) = [0, 2, 5], [1000, 1001,  10,11,12]
   """
-  out_size = (array_idx[indices+1] - array_idx[indices]).sum()
-  out = np.empty(out_size, array.dtype)
+
+  out_size = array_idx[indices+1] - array_idx[indices]
+  out_idx  = sizes_to_indices(out_size, array_idx.dtype)
+
+  out = np.empty(out_size.sum(), array.dtype)
   layouts.take_strided(array_idx, array, indices, out)
 
-  return out
+  return out_idx, out
 
 def any_in_range(array, start, end, strict=False):
   """

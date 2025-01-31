@@ -136,8 +136,8 @@ def ngon_to_edge_pe(zone, remove_NGon=False):
   select_idx = np.searchsorted(key_from_face_unique, key_from_edge)
 
   counts_for_edge = key_from_face_counts[select_idx] # get the number collisions by edge (count==1 <=> no collision)
-  parent_id_for_edge = np_utils.take_strided(key_from_face_idx, edge_parent_id, select_idx)
-  first_vtx_for_edge = np_utils.take_strided(key_from_face_idx, face_first_vtx, select_idx)
+  _, parent_id_for_edge = np_utils.take_strided(key_from_face_idx, edge_parent_id, select_idx)
+  _, first_vtx_for_edge = np_utils.take_strided(key_from_face_idx, face_first_vtx, select_idx)
 
 
   # Third: post treat (solving conflicts) for fill edge_face

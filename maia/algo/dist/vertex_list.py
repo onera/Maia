@@ -329,8 +329,8 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
     _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
 
     pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
-    pl_face_vtx_idx_e, pl_face_vtx_e  = np_utils.jagged_extract(pl_face_vtx_idx, pl_face_vtx,  isolated_face_loc)
-    pl_face_vtx_idx_e, pld_face_vtx_e = np_utils.jagged_extract(pl_face_vtx_idx, pld_face_vtx, isolated_face_loc)
+    pl_face_vtx_idx_e, pl_face_vtx_e  = np_utils.take_strided(pl_face_vtx_idx, pl_face_vtx,  isolated_face_loc)
+    pl_face_vtx_idx_e, pld_face_vtx_e = np_utils.take_strided(pl_face_vtx_idx, pld_face_vtx, isolated_face_loc)
     pl_vtx_local, pl_vtx_local_opp = \
         _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx_e, pl_face_vtx_e, pld_face_vtx_e, comm)
     pl_vtx_l.append(pl_vtx_local)

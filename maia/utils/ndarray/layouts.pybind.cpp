@@ -175,9 +175,10 @@ extract_from_indices(py::array_t<T>& np_array,
 }
 
 
-void take_strided(py::array_t<int64_t> displs, 
+template<typename I1, typename I2>
+void take_strided(py::array_t<I1>      displs, 
                   py::buffer           read_buff,
-                  py::array_t<int64_t> ind, 
+                  py::array_t<I2>      ind, 
                   py::buffer           write_buff)
 
 {
@@ -185,8 +186,8 @@ void take_strided(py::array_t<int64_t> displs,
   std::byte* _read_buff  = static_cast<std::byte*> ( read_buff.request().ptr);
   std::byte* _write_buff = static_cast<std::byte*> (write_buff.request().ptr);
 
-  auto _displs = displs.unchecked<1>();
-  auto _ind    = ind.unchecked<1>();
+  auto _displs = displs.data();
+  auto _ind    = ind.data();
 
   for (size_t i=0; i < ind.size(); ++i) {
     auto cur_idx = _ind[i];
@@ -554,7 +555,22 @@ void register_layouts_module(py::module_& parent) {
         py::arg("write_idx").noconvert(),
         py::arg("read_counts").noconvert(),
         py::arg("read_buff").noconvert());
-  m.def("take_strided", &take_strided,
+  m.def("take_strided", &take_strided<int32_t, int32_t>,
+        py::arg("displs").noconvert(),
+        py::arg("values").noconvert(),
+        py::arg("indices").noconvert(),
+        py::arg("out").noconvert());
+  m.def("take_strided", &take_strided<int32_t, int64_t>,
+        py::arg("displs").noconvert(),
+        py::arg("values").noconvert(),
+        py::arg("indices").noconvert(),
+        py::arg("out").noconvert());
+  m.def("take_strided", &take_strided<int64_t, int32_t>,
+        py::arg("displs").noconvert(),
+        py::arg("values").noconvert(),
+        py::arg("indices").noconvert(),
+        py::arg("out").noconvert());
+  m.def("take_strided", &take_strided<int64_t, int64_t>,
         py::arg("displs").noconvert(),
         py::arg("values").noconvert(),
         py::arg("indices").noconvert(),

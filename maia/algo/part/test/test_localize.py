@@ -75,7 +75,7 @@ def test_mesh_location(reverse, comm):
     points_gnum_full = np.array([1,2,3])
     for i_part, zone in enumerate(PT.get_all_Zone_t(tree)):
       cell_gnum = PT.maia.get_global_numbering(zone, 'Cell')[1].astype(np.int64)
-      expected_idx, expected_gnum = np_utils.take_strided2(elt_pts_inside_idx_full, points_gnum_full , cell_gnum-1)
+      expected_idx, expected_gnum = np_utils.take_strided(elt_pts_inside_idx_full, points_gnum_full , cell_gnum-1)
       assert np.array_equal(src_data[i_part]['elt_pts_inside_idx'], expected_idx)
       assert np.array_equal(src_data[i_part]['points_gnum']       , expected_gnum)
 

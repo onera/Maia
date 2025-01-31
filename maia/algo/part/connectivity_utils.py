@@ -102,7 +102,7 @@ def cell_vtx_connectivity(zone, dim=3, elts_subset=None):
   if elts_subset is not None:
     assert PT.Zone.Type(zone) == 'Unstructured'
     offset = PT.Zone.get_elt_range_per_dim(zone)[dim][0]
-    _elts_ids = elts_subset[0].astype(int, copy=False) - offset
-    cell_vtx_idx, cell_vtx = np_utils.take_strided2(cell_vtx_idx.astype(int, copy=False), cell_vtx, _elts_ids)
+    _elts_ids = elts_subset[0] - offset
+    cell_vtx_idx, cell_vtx = np_utils.take_strided(cell_vtx_idx, cell_vtx, _elts_ids)
 
   return cell_vtx_idx, cell_vtx

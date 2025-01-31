@@ -116,25 +116,6 @@ def test_repeated_arange():
   expected             = np.array([0,  2,  4,4,4,  6,  8,8,  10])
   assert (np_utils.repeated_arange(counts, 0, 12, step=2) == expected).all()
 
-def test_jagged_extract():
-  idx_array = np.array([0,2,6,10,10])
-  array = np.array([0,1, 2,3,4,5, 6,7,8,9  ])
-
-  idx_e, array_e = np_utils.jagged_extract(idx_array, array, np.array([0,2]))
-  assert (idx_e == [0,2,6]).all()
-  assert (array_e == [0,1,  6,7,8,9]).all()
-  idx_e, array_e = np_utils.jagged_extract(idx_array, array, np.array([0,2,3]))
-  assert (idx_e == [0,2,6,6]).all()
-  assert (array_e == [0,1, 6,7,8,9]).all()
-  idx_e, array_e = np_utils.jagged_extract(idx_array, array, np.array([0,3]))
-  assert (idx_e == [0,2,2]).all()
-  assert (array_e == [0,1]).all()
-  idx_e, array_e = np_utils.jagged_extract(idx_array, array, np.array([0,1,2,3]))
-  assert (idx_e == idx_array).all()
-  assert (array_e == array).all()
-  idx_e, array_e = np_utils.jagged_extract(idx_array, array, np.array([], int))
-  assert (idx_e == [0]).all()
-  assert (array_e.size == 0)
 
 def test_jagged_merge():
   idx1   = np.array([0, 1, 4], np.int32)
@@ -292,24 +273,20 @@ def test_roll_once_by_stride():
   assert np.array_equal(rolled, [65, 33, 1, 34,   54, 2, 53, 3, 39,  8])
 
 def test_take_strided():
-  assert np.array_equal(
-    np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,0])),
-    [1000, 1001, 10,11,12]
-  )
-  assert np.array_equal(
-    np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,2,2,0])),
-    [1000, 1001, 1000, 1001, 1000, 1001, 10,11,12]
-  )
-  assert np.array_equal(
-    np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([1,2])),
-    []
-  )
-  assert np.array_equal(
-    np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,4,0])),
-    [1000, 1001, 10,11,12]
-  )
-  out = np_utils.take_strided(np.array([0]), np.empty(0, float), np.empty(0, int))
-  assert out.size == 0 and out.dtype == float
+  idx, val = np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,0]))
+  assert np.array_equal(idx, [0, 2, 5]) and np.array_equal(val, [1000, 1001, 10,11,12])
+  
+  idx, val = np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,2,2,0]))
+  assert np.array_equal(val, [1000, 1001, 1000, 1001, 1000, 1001, 10,11,12])
+
+  idx, val = np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([1,2]))
+  assert np.array_equal(idx, [0, 0, 0]) and np.array_equal(val, [])
+
+  idx, val = np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,4,0]))
+  assert np.array_equal(idx, [0, 0, 2, 5]) and np.array_equal(val, [1000, 1001, 10,11,12])
+
+  idx, val = np_utils.take_strided(np.array([0]), np.empty(0, float), np.empty(0, int))
+  assert np.array_equal(idx, [0]) and val.size == 0 and val.dtype == float
 
 
 def test_unique_sorted():
