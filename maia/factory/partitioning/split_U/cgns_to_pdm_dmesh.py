@@ -241,6 +241,10 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
       if PT.Element.Dimension(elt) > 0:
         n_elt_per_dim[PT.Element.Dimension(elt)-1] += PT.Element.Size(elt)
 
+  if PT.Zone.elt_ordering_by_dim(dist_zone) == 0:
+    raise ValueError(f"Sections of unstructured zone '{PT.get_name(dist_zone)}' are not ordered by dimension," \
+                     f" which is not supported. Please reorder the sections using maia.algo.dist.reorder_elt_sections_from_dim.")
+
   #Create DMeshNodal
   mesh_dimension = 3
   for n_elt_dim in n_elt_per_dim[::-1]:

@@ -615,11 +615,14 @@ class Zone:
       -1
     """
     status = 0
-    sect_start = [r[0] for r in Zone.get_elt_range_per_dim(zone_node) if r[0] > 0]
+    try:
+      sect_start = [r[0] for r in Zone.get_elt_range_per_dim(zone_node) if r[0] > 0]
+    except RuntimeError: # Dimensions are interlaced
+      return status
     if len(sect_start) >= 2:
-      if sect_start[0] < sect_start[-1]:
+      if sect_start == sorted(sect_start):
         status = 1
-      elif sect_start[0] > sect_start[-1]:
+      elif sect_start == sorted(sect_start)[::-1]:
         status = -1
     else:
       status = 1

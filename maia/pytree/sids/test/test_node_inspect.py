@@ -323,6 +323,12 @@ def test_elt_ordering_by_dim():
   N.new_Elements('ElemC', type='TRI_3',  erange=[1,7],  parent=zone)
   assert SIDS.Zone.elt_ordering_by_dim(zone) == 1
 
+  zone = N.new_Zone()
+  N.new_Elements('ElemA', type='HEXA_8', erange=[601, 1600], parent=zone)
+  N.new_Elements('ElemB', type='QUAD_4', erange=[1, 600],  parent=zone)
+  N.new_Elements('ElemC', type='BAR_2',  erange=[1601, 1720],  parent=zone)
+  assert SIDS.Zone.elt_ordering_by_dim(zone) == 0
+
 def test_zone_dim():
   zone = N.new_Zone()
   with pytest.raises(ValueError):

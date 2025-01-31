@@ -73,6 +73,9 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
 
   See reference documentation for the description of the keyword arguments.
 
+  **Note:** unstructured zones described by standard elements must have their ``Element_t`` nodes ordered according
+  to their dimension (either increasing or decreasing).
+
   Args:
     dist_tree (CGNSTree): Distributed tree
     comm      (MPIComm) : MPI communicator
