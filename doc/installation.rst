@@ -70,21 +70,11 @@ Here are some useful CMake flags:
 * If you want to use an installation of ParaDiGM already present in your environment, use :code:`maia_BUILD_EMBEDDED_PDM=OFF`.
   For that, you need the versions of ParaDiGM and Maia to be compatible:
 
-  +-------+----------+
-  | Maia  | ParaDiGM |
-  +=======+==========+
-  | v1.5  | v2.5.0   |
-  +-------+----------+
-  | v1.4  | v2.5.0   |
-  +-------+----------+
-  | v1.3  | v2.4.1   |
-  +-------+----------+
-  | v1.2  | v2.3.3   |
-  +-------+----------+
-  | v1.1  | v2.3.0   |
-  +-------+----------+
-  | v1.0  | v2.2.0   |
-  +-------+----------+
+  +--------------+--------+--------+--------+--------+--------+--------+--------+
+  | **Maia**     | v1.0   | v1.1   | v1.2   | v1.3   | v1.4   | v1.5   | v1.6   |
+  +--------------+--------+--------+--------+--------+--------+--------+--------+
+  | **ParaDiGM** | v2.2.0 | v2.3.0 | v2.3.3 | v2.4.1 | v2.5.0 | v2.5.0 | v2.6.0 |
+  +--------------+--------+--------+--------+--------+--------+--------+--------+
 
   If you are using a development version of Maia, then you can't use :code:`maia_BUILD_EMBEDDED_PDM=OFF`.
 
