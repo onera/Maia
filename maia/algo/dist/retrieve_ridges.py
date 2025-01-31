@@ -63,7 +63,7 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
   full_idx = np.array([i+1 for i in range(len(parents)) if parents[i] is not None], dtype=pdm_dtype)
 
   data_stri = np.array([len(parents[k-1]) for k in full_idx], np.int32)
-  _, data   = np_utils.concatenate_np_arrays([parents[k-1] for k in full_idx], dtype=pdm_dtype)
+  _, data   = np_utils.concatenate_np_arrays([parents[k-1] for k in full_idx], dtype=np.int32)
 
   out_stri, out = maia.transfer.protocols.part_to_part_strided([data_stri], [data], [full_idx], [none_idx], comm)
 
@@ -149,8 +149,8 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
 
     # > Create BAR elements in entry tree
     #   If already BAR node -> create new one and no check (but warning)
-    #   If ngon  entry -> add BAR after all other elements
-    #   If nodal entry -> add BAR before or after previous elements (depending on entry order) -> may need to offset PL and element_range
+    #   We put BAR elts after already existing elts, because we can not safely place it before since we would need
+    #     to renumber GC_t nodes, and this function can be called on a single zone
     # > Create element node name
     bar_nodes    = PT.get_children_from_predicate(zone, PT.predicate.is_elmt_of_type("BAR_2"))
     bar_names    = [PT.get_name(bar_n) for bar_n in bar_nodes]
@@ -164,14 +164,11 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
     if len(PT.Zone.get_ordered_elements_per_dim(zone)[0])>0:
       raise NotImplementedError("Meshes with 0d elements aren't managed.")
     
-    zone_ordering = PT.Zone.elt_ordering_by_dim(zone)
-    offset_new_bar = 0
-    if not PT.Zone.has_ngon_elements(zone) and zone_ordering==1:
-      apply_offset_to_elts(zone, distrib_ridge[-1], 0)
-    else:
-      last_elt_n = PT.Zone.get_ordered_elements(zone)[-1]
-      offset_new_bar = PT.Element.Range(last_elt_n)[1]
-    offset_new_bar+=1
+    if PT.Zone.has_ngon_elements(zone) and not PT.Zone.has_nface_elements(zone):
+      maia.algo.pe_to_nface(zone, comm)
+
+    last_elt_n = PT.Zone.get_ordered_elements(zone)[-1]
+    offset_new_bar = PT.Element.Range(last_elt_n)[1] + 1
       
     elt_range_edges = np.array([offset_new_bar,
                                 offset_new_bar+distrib_ridge[-1]-1], dtype=pdm_dtype)

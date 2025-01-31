@@ -94,12 +94,15 @@ def test_find_ridges(comm, elmt_t):
   new_edge_path = 'Base/zone/topo_edge'
   bar_n = PT.get_node_from_path(dist_tree, new_edge_path)
   bar_elmt_range = PT.Element.Range(bar_n)
-  expected_elmt_range = np.array([37, 36+16]) if elmt_t=="Poly" else np.array([33 , 32+16])
+  expected_elmt_range = np.array([36+8+1, 36+8+16]) if elmt_t=="Poly" else np.array([32+1 , 32+16])
   assert np.array_equal(bar_elmt_range, expected_elmt_range)
 
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
   edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
   assert len(edge_bcs)==3
+  for bc in edge_bcs:
+    pl = PT.get_child_from_name(bc, 'PointList')[1][0]
+    assert (bar_elmt_range[0] <= pl).all() and (pl <= bar_elmt_range[1]).all()
 
 
 @pytest_parallel.mark.parallel(2)
@@ -112,7 +115,7 @@ def test_find_ridges_all_bcs(comm):
   new_edge_path = 'Base/zone/topo_edge'
   bar_n = PT.get_node_from_path(dist_tree, new_edge_path)
   bar_elmt_range = PT.Element.Range(bar_n)
-  expected_elmt_range = np.array([37, 36+24])
+  expected_elmt_range = np.array([36+8+1, 36+8+24])
   assert np.array_equal(bar_elmt_range, expected_elmt_range)
 
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
