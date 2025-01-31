@@ -10,7 +10,7 @@ Loggers
 A **logger** is a global object where an application or a library can log to.
 It can be declared with
 
-.. literalinclude:: snippets/test_logging.py
+.. literalinclude:: ../snippets/test_logging.py
   :start-after: #add_logger@start
   :end-before: #add_logger@end
   :dedent: 2
@@ -29,7 +29,7 @@ A logger declared in Python is available in C++ and vice-versa: we do not need t
 
 It can then be referred to by its name. If we want to log a string to ``my_logger``, we will do it like so:
 
-.. literalinclude:: snippets/test_logging.py
+.. literalinclude:: ../snippets/test_logging.py
   :start-after: #log@start
   :end-before: #log@end
   :dedent: 2
@@ -56,7 +56,7 @@ By itself, a logger does not do anything with the messages it receives. For that
 
 For instance, we can attach a printer that will output the message to the console:
 
-.. literalinclude:: snippets/test_logging.py
+.. literalinclude:: ../snippets/test_logging.py
   :start-after: #add_printer@start
   :end-before: #add_printer@end
   :dedent: 2
@@ -89,7 +89,7 @@ Create your own printer
 
 Any Python type can be used as a printer as long as it provides a ``log`` method that accepts a string argument.
 
-.. literalinclude:: snippets/test_logging.py
+.. literalinclude:: ../snippets/test_logging.py
   :start-after: #create_printer@start
   :end-before: #create_printer@end
   :dedent: 2

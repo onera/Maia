@@ -18,7 +18,7 @@ If you need to modify one of the submodule library, e.g. :code:`std_e`, go to :c
 
 The graph dependency of Maia with respect to its submodules is the following:
 
-.. image:: ./maia_deps.svg
+.. image:: ./images/maia_deps.svg
   :width: 50%
   :align: center
 

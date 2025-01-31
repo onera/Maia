@@ -4,11 +4,12 @@
 Developer Manual
 ################
 
+This manual is under construction 🔨
+
 .. toctree::
   :maxdepth: 1
 
-  logging
-  maia_dev/conventions
-  maia_dev/development_workflow
-  packaging/spack
-  algo_description
+  development_workflow
+  spack
+  tools/tools
+  algo_description/algo_description
