@@ -123,7 +123,8 @@ As an example, here is a dummy comparison method definition:
 
 Comparison reports are named tuple made of 3 values: 
 
-.. autoclass:: maia.pytree.compare.DiffReport
+.. autodata:: maia.pytree.compare.DiffReport
+  :annotation:  (NamedTuple)
 
 The choice to write in errors or warning report is let to the comparison object.
 To illustrate the content of a ``DiffReport``, consider the following example:
