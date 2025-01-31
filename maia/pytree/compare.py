@@ -7,12 +7,13 @@ import maia.pytree as PT
 from maia.pytree.graph.cgns import step, zip_depth_first_search
 
 class DiffReport(NamedTuple):
-  """ Stores the output of :func:`diff_tree`
+  """ A NamedTuple storing the output of :func:`~maia.pytree.diff_tree`
   
-  Parameters:
-    status (bool): ``True`` if trees are identical
-    errors (str): differences between the two trees
-    warnings (str) : minor differences between the two trees
+  **Fields**
+
+    0. **status** (*bool*): ``True`` if trees are identical
+    1. **errors** (*str*): differences between the two trees
+    2. **warnings** (*str*) : minor differences between the two trees
   """
   status:bool
   errors:str
@@ -136,7 +137,7 @@ def _report_diff(x, ref, is_equal):
 
 class EqualArray:
   """
-  A callable object generating a report for :func:`diff_tree`, using an exact point-to-point
+  A callable object generating a report for :func:`~maia.pytree.diff_tree`, using an exact point-to-point
   comparison.
 
   Example:
@@ -159,7 +160,7 @@ class EqualArray:
 
 class CloseArray:
   """
-  A callable object generating a report for :func:`diff_tree`, using a point-to-point with
+  A callable object generating a report for :func:`~maia.pytree.diff_tree`, using a point-to-point with
   tolerance comparison
   (see `np.isclose
   <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html#numpy.isclose>`_
@@ -292,7 +293,7 @@ def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunct
       Otherwise, nodes are considered to differ.
     comp: comparison function to check the value of nodes (see above)
   Returns:
-    (:class:`~maia.pytree.compare.DiffReport`) : Difference report. First value indicates if trees are identical, second and
+    (:obj:`~maia.pytree.compare.DiffReport`) : Difference report. First value indicates if trees are identical, second and
     third store the differences between trees, encoded as strings (respectivly errors and warnings).
   
   Example:

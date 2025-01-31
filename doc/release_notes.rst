@@ -9,8 +9,8 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Developpement version
----------------------
+v1.6 (January 2025)
+-------------------
 
 💡 New Features
 ^^^^^^^^^^^^^^^
@@ -25,6 +25,7 @@ Developpement version
 - extract_part: also expose extractor object in ``bc_name`` and ``family`` APIs
 - extract_part: preserve BC kind and metadata in 3D extraction
 - convert_ngon_to_elements: manage 2D cases
+- Better management of hybrid meshes in NGon<->Element conversions
 
 🐞 Fixes
 ^^^^^^^^
@@ -42,7 +43,7 @@ Developpement version
 🚧 API change
 ^^^^^^^^^^^^^
 - generate_dist_block: rename parameter ``edge_length`` into ``length``
-- Flag ``legacy=True`` for io functions is now ignored, and will be removed in next release
+- Flag ``legacy=True`` for IO functions is now ignored, and will be removed in next release
 
 v1.5 (September 2024)
 ---------------------

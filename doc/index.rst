@@ -46,6 +46,6 @@ Associated source repository and issue tracking are hosted on `Gitlab <https://g
   :maxdepth: 1
   :caption: Appendix
 
-  releases/release_notes
+  release_notes
   related_projects
   license
