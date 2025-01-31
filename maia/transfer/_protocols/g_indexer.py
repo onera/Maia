@@ -194,8 +194,8 @@ class GlobalMultiIndexer:
       for j in range(count):
         send_buff[j::count] = dist_data[pull_idx+j]
 
-    self.comm.Alltoallv((send_buff, count*self.dist_counts),
-                        (recv_buff, count*self.part_counts))
+    self.comm.Alltoallv((send_buff, count*self.dist_counts, dist_data.dtype.char),
+                        (recv_buff, count*self.part_counts, dist_data.dtype.char))
 
     # Data has been received in owning proc order : 'unsort' it to recover lngn ordering
     for data_out, part_write_pos in zip(local_data_l, self.part_write_pos):
@@ -234,8 +234,8 @@ class GlobalMultiIndexer:
         for j in range(count):
           send_buff[pull_idx+j] = data_in[j::count]
 
-    self.comm.Alltoallv((send_buff, count*self.part_counts), 
-                        (recv_buff, count*self.dist_counts))
+    self.comm.Alltoallv((send_buff, count*self.part_counts, dist_data.dtype.char), 
+                        (recv_buff, count*self.dist_counts, dist_data.dtype.char))
 
     if count == 1:
       dist_data[self.dist_select_idx] = recv_buff
@@ -352,7 +352,7 @@ class GlobalMultiIndexer:
 
     # Exchange data buffer
     recv_buff = np.empty(recv_counts.sum(), buff_in.dtype)
-    self.comm.Alltoallv((send_buff, send_counts), (recv_buff, recv_counts))
+    self.comm.Alltoallv((send_buff, send_counts, buff_in.dtype.char), (recv_buff, recv_counts, buff_in.dtype.char))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
     for local_data, part_write_pos in zip(local_data_l, self.part_write_pos):
@@ -450,7 +450,7 @@ class GlobalMultiIndexer:
 
     # Exchange data buffer
     recv_buff = np.empty(recv_counts.sum(), send_buff.dtype)
-    self.comm.Alltoallv((send_buff, send_counts), (recv_buff, recv_counts))
+    self.comm.Alltoallv((send_buff, send_counts, send_buff.dtype.char), (recv_buff, recv_counts, send_buff.dtype.char))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
     put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff)
