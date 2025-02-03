@@ -1,5 +1,3 @@
-from packaging.version import Version
-
 import numpy              as np
 import itertools
 
@@ -234,12 +232,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
         # Corresponding face in the array of all faces described by a section,
         # after face renumbering
         lnum_node = PT.new_node(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=elt_n)
-        if Version("2.6") <= Version(maia.PDM_VERSION.base_version):
-          # NEW PDM (key has changed for lower dim elts)
-          key = 'np_element_to_entity' if section['np_element_to_entity'] is not None else 'np_parent_num'
-        else:
-          # OLD PDM
-          key = 'np_parent_num'
+        key = 'np_element_to_entity' if section['np_element_to_entity'] is not None else 'np_parent_num'
         PT.new_DataArray('Entity', section[key], parent=lnum_node)
 
         MT.newGlobalNumbering(numberings, elt_n)

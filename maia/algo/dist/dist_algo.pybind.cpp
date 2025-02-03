@@ -1,5 +1,4 @@
 #include "maia/algo/dist/dist_algo.pybind.hpp"
-#include "maia/factory/dcube_gen/dcube_gen.pybind.hpp"
 #if __cplusplus > 201703L
 #include "cpp_cgns/interop/pycgns_converter.hpp"
 #include "maia/utils/parallel/mpi4py.hpp"
@@ -46,15 +45,6 @@ void register_dist_algo_module(py::module_& parent) {
   m.def("put_boundary_first"                      , put_boundary_first                      , "ngon sorted with boundary faces first");
   m.def("split_boundary_subzones_according_to_bcs", split_boundary_subzones_according_to_bcs, "Split a ZoneSubRegion node with a PointRange spaning all boundary faces into multiple ZoneSubRegion with a BCRegionName");
 
-  m.def("generate_dcube", &generate_dcube, 
-      py::arg("n_vtx_seg").noconvert(),
-      py::arg("length").noconvert(),
-      py::arg("zero_x").noconvert(),
-      py::arg("zero_x").noconvert(),
-      py::arg("zero_z").noconvert(),
-      py::arg("i_rank").noconvert(),
-      py::arg("n_rank").noconvert());
-  
 }
 #else //C++==17
 
@@ -62,16 +52,6 @@ namespace py = pybind11;
 void register_dist_algo_module(py::module_& parent) {
 
   py::module_ m = parent.def_submodule("dist_algo");
-
-  m.def("generate_dcube", &generate_dcube, 
-      py::arg("n_vtx_seg").noconvert(),
-      py::arg("length").noconvert(),
-      py::arg("zero_x").noconvert(),
-      py::arg("zero_x").noconvert(),
-      py::arg("zero_z").noconvert(),
-      py::arg("i_rank").noconvert(),
-      py::arg("n_rank").noconvert());
-
   
 }
 #endif //C++>17

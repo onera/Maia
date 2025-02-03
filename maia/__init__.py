@@ -1,9 +1,8 @@
 """
 Maia: Distributed algorithms and manipulations over CGNS meshes
 """
-from packaging.version import Version, InvalidVersion
 
-__version__ = '1.6'
+__version__ = '1.7.dev'
 
 import Pypdm.Pypdm as PDM
 
@@ -11,12 +10,6 @@ pdm_has_parmetis = PDM.pdm_has_parmetis
 pdm_has_ptscotch = PDM.pdm_has_ptscotch
 npy_pdm_gnum_dtype = PDM.npy_pdm_gnum_dtype
 pdma_enabled = PDM.pdm_has_pdma
-
-_PDM_VERSION = PDM.__version__.replace('.untagged', '')
-try:
-  PDM_VERSION = Version(_PDM_VERSION)
-except InvalidVersion:
-  PDM_VERSION = Version(_PDM_VERSION[:5])
 
 from maia import algo
 from maia import factory

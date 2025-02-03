@@ -1,4 +1,3 @@
-from packaging.version import Version
 import numpy              as np
 import Pypdm.Pypdm        as PDM
 
@@ -92,31 +91,22 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
   else:
     cacheblocking_props = None
 
-  if Version("2.6") <= Version(maia.PDM_VERSION.base_version):
-    multipart.renum_method_set(-1, 
-                               PDM._PDM_MESH_ENTITY_CELL,
-                               renum_cell_method.encode('utf-8'),
-                               cacheblocking_props)
-    multipart.renum_method_set(-1, 
-                              PDM._PDM_MESH_ENTITY_FACE,
-                              renum_face_method.encode('utf-8'),
+  multipart.renum_method_set(-1, 
+                              PDM._PDM_MESH_ENTITY_CELL,
+                              renum_cell_method.encode('utf-8'),
                               cacheblocking_props)
-    multipart.renum_method_set(-1, 
-                              PDM._PDM_MESH_ENTITY_EDGE,
-                              renum_edge_method.encode('utf-8'),
-                              None)
-    multipart.renum_method_set(-1, 
-                              PDM._PDM_MESH_ENTITY_VTX,
-                              renum_vtx_method.encode('utf-8'),
-                              cacheblocking_props)
-
-  else:
-    multipart.reordering_set(-1,
-                            renum_cell_method.encode('utf-8'),
-                            cacheblocking_props,
-                            renum_face_method.encode('utf-8'))
-    multipart.reordering_vtx_set(-1,
-                                renum_vtx_method.encode('utf-8'))
+  multipart.renum_method_set(-1, 
+                            PDM._PDM_MESH_ENTITY_FACE,
+                            renum_face_method.encode('utf-8'),
+                            cacheblocking_props)
+  multipart.renum_method_set(-1, 
+                            PDM._PDM_MESH_ENTITY_EDGE,
+                            renum_edge_method.encode('utf-8'),
+                            None)
+  multipart.renum_method_set(-1, 
+                            PDM._PDM_MESH_ENTITY_VTX,
+                            renum_vtx_method.encode('utf-8'),
+                            cacheblocking_props)
 
   keep_alive.append(cacheblocking_props)
 

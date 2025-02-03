@@ -1,4 +1,3 @@
-from packaging.version import Version
 import numpy as np
 import Pypdm.Pypdm as PDM
 
@@ -67,15 +66,9 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   if not isinstance(n_vtx, int):
     raise NotImplementedError("Poly/NFACE_n generation does not supports variable number of vertices")
 
-  if Version("2.6") <= Version(maia.PDM_VERSION.base_version):
-    dcube = PDM.DCubeGenerator(n_vtx, edge_length, *origin, comm)
-    dcube_dims = dcube.dcube_dim_get()
-    dcube_val  = dcube.dcube_val_get()
-  else:
-    # PDM dcube generation has a bug in normal orientation up to version 2.5, so we generate it ourself
-    from cmaia.dist_algo import generate_dcube
-    _origin = [float(elt) for elt in origin]
-    dcube_dims, dcube_val = generate_dcube(n_vtx, float(edge_length), *_origin, comm.Get_rank(), comm.Get_size())
+  dcube = PDM.DCubeGenerator(n_vtx, edge_length, *origin, comm)
+  dcube_dims = dcube.dcube_dim_get()
+  dcube_val  = dcube.dcube_val_get()
 
   distrib_cell    = par_utils.dn_to_distribution(dcube_dims['dn_cell'],   comm)
   distrib_vtx     = par_utils.dn_to_distribution(dcube_dims['dn_vtx'],    comm)
