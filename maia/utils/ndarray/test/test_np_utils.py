@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from maia.utils.ndarray import np_utils
+from maia.utils.ndarray import np_utils, vstride
 
 def test_interweave_arrays():
   first  = np.array([1,2,3], dtype=np.int32)
@@ -79,12 +79,13 @@ def test_reverse_connectivity():
   array = np.array([7,29,32, 32,11,13, 4,32,29,61, 32,4,13, 44,11,32,7])
 
   r_ids, r_idx, r_array = np_utils.reverse_connectivity(ids, idx, array)
+  r_cnt = vstride.from_displs(r_idx, r_array)
 
   assert (r_ids == [4,7,11,13,29,32,44,61]).all()
   assert (r_idx == [0,2,4,6,8,10,15,16,17]).all()
   # The order inside a connectivity does not matter and is not specified by the algorithm,
   # so whatever we get, we can order it before checking it
-  assert (np_utils.sort_by_stride(r_idx, r_array) == [6,30,  8,29,  29,51,  30,51,  6,8,  6,8,29,30,51,  29,  6]).all()
+  assert (vstride.sort(r_cnt, vstride.INNER_AXIS).values == [6,30,  8,29,  29,51,  30,51,  6,8,  6,8,29,30,51,  29,  6]).all()
 
 def test_multi_arange():
   # With only one start/stop, same as np.arange
@@ -236,58 +237,10 @@ def test_is_unique_strided():
   mask = np_utils.is_unique_strided(elt_ec, size_elt, method='sort')
   assert np.array_equal(mask, result)
 
-def test_reverse_by_stride():
-  idx = np.array([0, 3, 6, 10, 13, 13, 14], np.int32)
-  array = np.array([34,22,191,  29,32,53,  43,93,22,95, 633,92,5,   4], int)
-  expt  = np.array([191,22,34,  53,32,29,  95,22,93,43, 5,92,633,   4], int)
-  reversed = np_utils.reverse_by_stride(idx, array)
-  assert np.array_equal(reversed, expt)
-
-  np_utils.reverse_by_stride(idx, reversed, inplace=True)
-  assert np.array_equal(reversed, array)
-
-  np_utils.reverse_by_stride(np.array([0], int), np.empty(0, float), inplace=True)
-  np_utils.reverse_by_stride(np.array([0,0,0], int), np.empty(0, float), inplace=True)
-
-
-def test_sort_by_stride():
-  idx   = np.array([0    ,  3 ,  4, 5, 5     , 8], np.int32)
-  array = np.array([7,2,3,  11,  3,    10,1,1])
-  assert (np_utils.sort_by_stride(idx, array) == [2,3,7,  11,  3,  1,1,10]).all()
-  assert (array == [7,2,3,  11,  3,  10,1,1]).all() # the original array has not been changed
-
-  np_utils.sort_by_stride(idx, array, inplace=True)
-  assert (array == [2,3,7, 11,  3,    1,1,10]).all()
-
-def test_make_unique_by_stride():
-  idx, arr = np_utils.make_unique_by_stride(np.array([0], np.int32), np.empty(0, np.int32))
-  assert np.array_equal(idx, [0]) and arr.size == 0
-  idx, arr = np_utils.make_unique_by_stride(np.array([0, 3, 5, 8, 8, 11], np.int32), 
-                                            np.array([4,3,2, 2,2, 8,7,8, 5,3,8]))
-  assert np.array_equal(idx, [0,3,4,6,6,9])
-  assert np.array_equal(arr, [4,3,2, 2, 8,7, 5,3,8])
-
 def test_roll_once_by_stride():
   assert np_utils.roll_once_by_stride(np.array([0]), np.empty(0)).size == 0
   rolled = np_utils.roll_once_by_stride(np.array([0, 4, 4, 9, 10]), np.array([34, 65, 33, 1,   39, 54, 2, 53, 3, 8]))
   assert np.array_equal(rolled, [65, 33, 1, 34,   54, 2, 53, 3, 39,  8])
-
-def test_take_strided():
-  idx, val = np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,0]))
-  assert np.array_equal(idx, [0, 2, 5]) and np.array_equal(val, [1000, 1001, 10,11,12])
-  
-  idx, val = np_utils.take_strided(np.array([0,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,2,2,0]))
-  assert np.array_equal(val, [1000, 1001, 1000, 1001, 1000, 1001, 10,11,12])
-
-  idx, val = np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([1,2]))
-  assert np.array_equal(idx, [0, 0, 0]) and np.array_equal(val, [])
-
-  idx, val = np_utils.take_strided(np.array([0,3,3,3,4,6]), np.array([10,11,12,  100,  1000,1001]), np.array([2,4,0]))
-  assert np.array_equal(idx, [0, 0, 2, 5]) and np.array_equal(val, [1000, 1001, 10,11,12])
-
-  idx, val = np_utils.take_strided(np.array([0]), np.empty(0, float), np.empty(0, int))
-  assert np.array_equal(idx, [0]) and val.size == 0 and val.dtype == float
-
 
 def test_unique_sorted():
   t = np.sort(np.random.randint(1, 50, 100))

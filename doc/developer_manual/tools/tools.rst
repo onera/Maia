@@ -10,5 +10,6 @@ who would like to build their own functions.
   :maxdepth: 1
 
   logging
+  vstride
   gindexer
 
