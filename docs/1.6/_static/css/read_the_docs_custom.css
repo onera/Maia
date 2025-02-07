@@ -1,0 +1,42 @@
+@import 'theme.css'; /* for the Read the Docs theme */
+
+.rst-content div[class^="highlight"] pre {
+  font-size: 95%;
+}
+
+/*
+div.indexpage p {
+  font-size: 5.0em;
+}
+*/
+
+/* override table no-wrap */
+.wy-table-responsive table td, .wy-table-responsive table th {
+    white-space: normal;
+}
+
+.def {
+  color: #e41a1c;
+  font-weight: bold;
+}
+
+.mono {
+  font-family: 'Courier New', monospace;
+}
+
+.cgns {
+  color: #08306b;
+  font-family: 'Courier New', monospace;
+}
+
+.center {
+  text-align: center;
+}
+
+/*To have title font, without toc entry -- TODO implement it as directive ? */
+.titlelike {
+  margin-top: 0;
+  font-weight: 700;
+  font-size: 125%;
+  font-family:Roboto Slab,ff-tisa-web-pro,Georgia,Arial,sans-serif;
+}
