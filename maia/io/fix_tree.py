@@ -29,6 +29,16 @@ def fix_zone_datatype(size_tree, size_data):
       zone = PT.get_node_from_path(size_tree, zone_path)
       zone[1] = zone[1].astype(np.int64)
 
+def force_periodic_as_R4(tree):
+  """
+  Maia allows R4 and R8 for DataArray_t in Periodic_t but only R4 is supported in the CGNS SIDS
+  """
+  for zone in PT.iter_all_Zone_t(tree):
+    for data in PT.get_nodes_from_predicates(tree, "ZoneGridConnectivity_t/GridConnectivity_t/GridConnectivityProperty_t/Periodic_t/DataArray_t"):
+      data[1] = data[1].astype(np.float32, copy=False)
+    for data in PT.get_nodes_from_predicates(tree, "ZoneGridConnectivity_t/GridConnectivity1to1_t/GridConnectivityProperty_t/Periodic_t/DataArray_t"):
+      data[1] = data[1].astype(np.float32, copy=False)
+
 def fix_point_ranges(size_tree):
   """
   Permute start and end of PointRange or PointRangeDonor nodes found in GridConnectivity1to1_t

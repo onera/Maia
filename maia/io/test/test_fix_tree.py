@@ -50,6 +50,29 @@ def test_fix_zone_datatype():
   assert PT.get_node_from_name(size_tree, "ZoneA")[1].dtype == np.int32
   assert PT.get_node_from_name(size_tree, "ZoneB")[1].dtype == np.int64
 
+def test_force_periodic_dataarray_as_R4():
+  yt = """
+  Base CGNSBase_t [3,3]:
+    ZoneA Zone_t I4 [[11,10,0]]:
+      ZoneGridConnectivity ZoneGridConnectivity_t:
+        GC1 GridConnectivity_t "Base/ZoneA":
+          GridConnectivityProperty GridConnectivityProperty_t:
+            Periodic Periodic_t:
+              RotationAngle  DataArray_t R8 [0., 0. ,0.]:
+              RotationCenter DataArray_t R4 [0., 0. ,0.]:
+              Translation    DataArray_t R4 [1., 0. ,0.]:
+        GC2 GridConnectivity1to1_t "Base/ZoneA":
+          GridConnectivityProperty GridConnectivityProperty_t:
+            Periodic Periodic_t:
+              RotationAngle  DataArray_t R4 [0., 0. ,0.]:
+              RotationCenter DataArray_t R8 [0., 0. ,0.]:
+              Translation    DataArray_t R8 [-1., 0. ,0.]:
+  """
+  tree = PT.yaml.to_cgns_tree(yt)
+  fix_tree.force_periodic_as_R4(tree)
+  for data in PT.get_nodes_from_label(tree, "DataArray_t"):
+    assert PT.get_value(data).dtype == np.float32
+
 def test_fix_point_ranges():
   yt = """
 Base0 CGNSBase_t [3,3]:
