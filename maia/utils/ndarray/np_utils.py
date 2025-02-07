@@ -262,10 +262,11 @@ def roll_once_by_stride(array_idx, array):
   numpy.roll (with shift := -1) within each interval
   [34, 65, 33, 1,     39, 54, 2, 53, 3] --> [65, 33, 1, 34,     54, 2, 53, 3, 39]
   """
-  values = array[array_idx[:-1]].copy()
-  extended = np.insert(array, array_idx[1:], values)
-  rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
-  return np.delete(extended, rm_idx)
+  # TODO: DEPRECATED
+  from maia.utils import vstride as vs
+  arr_in = vs.from_displs(array_idx, array)
+  arr_out = vs.roll(arr_in, -1, vs.INNER_AXIS)
+  return arr_out.values
 
 def take_strided(array_idx, array, indices):
   """

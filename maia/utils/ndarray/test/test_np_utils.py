@@ -237,11 +237,6 @@ def test_is_unique_strided():
   mask = np_utils.is_unique_strided(elt_ec, size_elt, method='sort')
   assert np.array_equal(mask, result)
 
-def test_roll_once_by_stride():
-  assert np_utils.roll_once_by_stride(np.array([0]), np.empty(0)).size == 0
-  rolled = np_utils.roll_once_by_stride(np.array([0, 4, 4, 9, 10]), np.array([34, 65, 33, 1,   39, 54, 2, 53, 3, 8]))
-  assert np.array_equal(rolled, [65, 33, 1, 34,   54, 2, 53, 3, 39,  8])
-
 def test_unique_sorted():
   t = np.sort(np.random.randint(1, 50, 100))
   unique, counts = np_utils.unique_sorted(t, return_counts=True)

@@ -1026,6 +1026,70 @@ def unique(array: VStrideArray, axis:Axis):
   else:
     raise NotImplemented
 
+def roll(array: VStrideArray, shift:int, axis:Axis):
+  """ Roll the values of the input array.
+
+  Positive values of ``shift`` moves the elements to the right, while negative values
+  move them to the left.
+  Values leaving the array are reintroduced on the opposite side. 
+
+  Depending on the ``axis`` argument, the operation apply to:
+
+  - the elements if ``axis==OUTER_AXIS``, which is roughly equivalent to ::
+
+      vs.array(array[-shift:] + array[:shift+1]) # for positive shift
+
+  - each block if ``axis==INNER_AXIS``, which is roughly equivalent to ::
+
+      vs.array([roll(blk, shift) for blk in array)]
+  
+  In both cases, a copy is done and a new VStrideArray is returned.
+
+  Args:
+    array (:class:`VStrideArray`): input array
+    shift (int): number of places by which the elements are shifted
+    axis (:class:`Axis`): direction used to roll
+  Returns:
+    :class:`VStrideArray` : rolled array
+  Example:
+    >>> a = vs.from_counts([2, 3, 5, 4], [1,2, 3,1,1, 2,7,2,5,9, 6,4,4,2])
+    >>> vs.roll(a, 2, vs.OUTER_AXIS)
+    vsarray([
+      [2, 7, 2, 5, 9],
+      [6, 4, 4, 2],
+      [1, 2],
+      [3, 1, 1],
+    ], dtype=int64)
+    >>> vs.roll(a, -1, vs.INNER_AXIS)
+    vsarray([
+      [2, 1],
+      [1, 1, 3],
+      [7, 2, 5, 9, 2],
+      [4, 4, 2, 6],
+    ], dtype=int64)
+  """
+
+  if len(array) == 0: # Corner case -> avoid ZeroDivisionError
+    return VStrideArray(None, np.empty(0, array.counts.dtype), np.empty(0, array.dtype))
+
+  if axis == INNER_AXIS:
+    displs = array.displs.copy()
+    values = array.values.copy()
+    _vstride.roll_by_stride(displs, values, shift)
+    return VStrideArray(displs, None, values)
+
+  elif axis == OUTER_AXIS:
+
+    if shift < 0:
+      shift = -(-shift % len(array))
+      vshift = -array.counts[:-shift].sum()
+    else:
+      shift = shift % len(array)
+      vshift = array.counts[len(array) - shift:].sum()
+
+    counts = np.roll(array.counts,  shift)
+    values = np.roll(array.values, vshift)
+    return VStrideArray(None, counts, values)
 
 
 

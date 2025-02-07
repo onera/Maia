@@ -44,6 +44,54 @@ flip_by_stride(py::array_t<I>& np_displs,
   }
 }
 
+template<typename I, typename T>
+void
+roll_by_stride(py::array_t<I>& np_displs,
+               py::array_t<T>& np_values,
+               int             shift) {
+
+  if (shift == 0) return;
+
+ //std::vector<T> tmp(shift); // need abs
+
+  int n_elt   = np_displs.size() - 1;
+  auto displs = np_displs.data();
+  auto values = np_values.mutable_data();
+  
+  for (size_t i=0; i < n_elt; ++i) {
+    auto count = displs[i+1] - displs[i];
+    if (count > 0) {
+      int loc_shift = shift % count;
+      if (loc_shift < 0)
+        loc_shift += count; // Always work with positive shift
+      if (loc_shift == 0)
+        continue;
+      auto start = values + displs[i];
+      auto middle = start + count - loc_shift;
+      auto end = start + count;
+
+      std::reverse(start, middle);
+      std::reverse(middle, end);
+      std::reverse(start, end);
+
+      // Copy end of array in tmp
+      //for (int j = 0; j < loc_shift; ++j)
+          //tmp[j] = *(end - loc_shift + j);
+      // Shift array
+      //for (int j = 0; j < count-loc_shift; ++j)
+          //*(start + j + loc_shift) = *(start + j);
+      // Replace end of array at beg.
+      //for (int j = 0; j < loc_shift; ++j)
+          //*(start + j) = tmp[j];
+      //std::copy_n(end - loc_shift, loc_shift, tmp.begin());
+      //std::copy_n(start, count-loc_shift, start+loc_shift);
+      //std::copy_n(tmp.begin(), loc_shift, start);
+
+//      auto start = values + displs[i];
+    }
+  }
+ 
+}
 
 
 template<typename I, typename T>
@@ -154,6 +202,28 @@ void register_vstride_module(py::module_& parent) {
         py::arg("displs").noconvert(), py::arg("values").noconvert());
   m.def("make_unique_by_stride", &make_unique_by_stride<int64_t, double>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert());
+
+  m.def("roll_by_stride", &roll_by_stride<int32_t, int32_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int32_t, int64_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int32_t, float>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int32_t, double>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int32_t, bool>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+
+  m.def("roll_by_stride", &roll_by_stride<int64_t, int32_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int64_t, int64_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int64_t, float>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int64_t, double>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+  m.def("roll_by_stride", &roll_by_stride<int64_t, bool>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
 
 
   m.def("flip_by_stride", &flip_by_stride<int32_t>,

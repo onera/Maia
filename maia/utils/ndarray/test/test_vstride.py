@@ -4,6 +4,7 @@ import numpy as np
 
 from maia.utils.ndarray import vstride as vs
 
+###############################################################################
 # "Consummers methods"
 
 def test_to_array_list():
@@ -23,9 +24,8 @@ def test_to_masked_array():
   assert np.array_equal(ma.mask, [[1,1,1,1,1], [0,0,1,1,1], [0,0,0,0,0]])
   assert np.array_equal(ma.data[~ma.mask], [0.3, 0.5, 0.1, 0.7, 0.2, 0.6, 0.9])
 
-
+###############################################################################
 # Constructeurs
-
 
 def test_from_counts():
   a = vs.from_counts([0, 2, 5], [0.3, 0.5, 0.1, 0.7, 0.2, 0.6, 0.9])
@@ -121,6 +121,8 @@ def test_array():
     vs.array('will fail')
 
 
+###############################################################################
+# Indexing methods
 
 def test_insert():
   a = vs.from_counts([0, 2, 5], [.3, .5, .1, .7, .2, .6, .9])
@@ -194,6 +196,7 @@ def test_unique():
   a = vs.unique(a, vs.INNER_AXIS)
   assert len(a) == 0 and a.dtype == np.int64
 
+
 def test_sort():
   a = vs.from_counts([0, 3, 5], [.3, .1, .1,  .2, .7, .2, .5, .9])
   b = vs.sort(a, vs.INNER_AXIS)
@@ -215,6 +218,31 @@ def test_sort():
   a = vs.sort(a, vs.INNER_AXIS)
   assert len(a) == 0 and a.dtype == np.int64
 
+def test_roll():
+  a = vs.from_counts([2, 3, 5, 4], [1,2,   3,1,1,    2,7,2,5,9,   6,4,4,2])
+
+  assert np.array_equal(vs.roll(a, 0, vs.OUTER_AXIS).values, a.values)
+  assert np.array_equal(vs.roll(a, 20, vs.OUTER_AXIS).values, a.values)
+  assert np.array_equal(vs.roll(a, 0, vs.INNER_AXIS).values, a.values)
+
+  b = vs.roll(a, 2, vs.OUTER_AXIS)
+  assert np.array_equal(b.counts, [5,4,2,3]) and np.array_equal(b.values, [2,7,2,5,9,  6,4,4,2,  1,2,  3,1,1])
+
+  b = vs.roll(a, -5, vs.OUTER_AXIS)
+  assert np.array_equal(b.counts, [3,5,4,2]) and np.array_equal(b.values, [3,1,1,   2,7,2,5,9,   6,4,4,2,  1,2])
+
+  b = vs.roll(a, 2, vs.INNER_AXIS)
+  assert np.array_equal(b.counts, [2,3,5,4]) and np.array_equal(b.values, [1,2,  1,1,3,  5,9,2,7,2,  4,2,6,4])
+
+  b = vs.roll(a, -1, vs.INNER_AXIS)
+  assert np.array_equal(b.counts, [2,3,5,4]) and np.array_equal(b.values, [2,1,  1,1,3,  7,2,5,9,2,  4,4,2,6])
+
+  b = vs.roll(vs.from_counts([0,0], values=np.empty(0, float)), 2, vs.OUTER_AXIS)
+  assert np.array_equal(b.counts, [0,0]) and b.dsize == 0 and b.dtype == float
+  b = vs.roll(vs.from_counts([0,0], values=np.empty(0, float)), 2, vs.INNER_AXIS)
+  assert np.array_equal(b.counts, [0,0]) and b.dsize == 0 and b.dtype == float
+  b = vs.roll(vs.from_counts([], values=np.empty(0, float)), -2, vs.OUTER_AXIS)
+  assert len(b) == 0 and b.dsize == 0 and b.dtype == float
 
 ## SPECS
 ##

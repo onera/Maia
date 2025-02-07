@@ -124,11 +124,12 @@ All these functions take a parameter ``axis`` to indicate if the algorithm is ap
   flip
   sort
   unique
+  roll
 
 --------------------------------------------------------
 
 .. automodule:: maia.utils.ndarray.vstride
-  :members: array, from_counts, from_displs, take, delete, insert, flip, sort, unique
+  :members: array, from_counts, from_displs, take, delete, insert, flip, sort, unique, roll
   :member-order: bysource
 
 
