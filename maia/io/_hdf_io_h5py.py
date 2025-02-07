@@ -74,6 +74,12 @@ def load_partial(filename, dist_tree, hdf_filter):
 
 def write_partial(filename, dist_tree, hdf_filter, links, comm):
 
+  if not h5py.get_config().mpi:
+    msg = f"This h5py module ({h5py.__file__}) has been installed without MPI support. " \
+          f"Perhaps you are using the wrong module ? " \
+          f"Otherwise, see the documentation to build it against MPI: https://docs.h5py.org/en/latest/mpi.html."
+    raise OSError(msg)
+
   if comm.Get_rank() == 0:
     def write_data(N,L,s):
       if L[-1] in ['DataArray_t', 'IndexArray_t']:
