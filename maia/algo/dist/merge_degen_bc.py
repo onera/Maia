@@ -204,9 +204,9 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   old_to_new_face_to_remove = (nb_faces_ini+1)*np.ones_like(face_to_remove)
   old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, old_to_new_face_to_remove, comm)
   
-  #> update nface node
-  nface_n = PT.Zone.NFaceNode(zone_n)
-  if nface_n:
+  #> update nface node if existes
+  if PT.Zone.has_nface_elements(zone_n):
+    nface_n = PT.Zone.NFaceNode(zone_n)
     PT.rm_child(zone_n, nface_n)
     maia.algo.pe_to_nface(zone_n, comm)
   
