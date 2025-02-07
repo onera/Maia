@@ -7,6 +7,7 @@ workflow:
 
 variables:
   GIT_STRATEGY: none # don't do anything by default
+  PYTHONNOUSERSITE: 1
 #Common to all stages
 default:
   tags:
