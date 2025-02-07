@@ -528,3 +528,15 @@ def test_recover_poly3d_nface_validity(comm):
 
   out_sign = EP.part_to_block([np.sign(ec)], None, [np.abs(ec)], comm, reduce_func=EP.reduce_sum)
   assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)
+
+@pytest_parallel.mark.parallel(3)
+def test_recover_failure(comm):
+  ptree = PT.yaml.to_cgns_tree(f"""
+  WALL Family_t:
+  WALL.P{comm.rank}.N0 Zone_t:
+  """)
+  if comm.rank == 1:
+    PT.rm_nodes_from_predicate(ptree, lambda n : PT.get_label(n) in ['Family_t', 'Zone_t'])
+
+  with pytest.raises(RuntimeError):
+    maia.factory.recover_dist_tree(ptree, comm)
