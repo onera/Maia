@@ -196,10 +196,9 @@ void take(py::array_t<I1>      displs,
   for (size_t i=0; i < ind.size(); ++i) {
     auto cur_idx = _ind[i];
     auto cur_cnt = _displs[cur_idx+1] - _displs[cur_idx];
-    std::copy_n(_read_buff + s_data*_displs[cur_idx], 
-                cur_cnt*s_data,
-                _write_buff);
-    _write_buff += s_data*cur_cnt;
+    _write_buff = std::copy_n(_read_buff + s_data*_displs[cur_idx], 
+                              cur_cnt*s_data,
+                              _write_buff);
   }
 }
 
