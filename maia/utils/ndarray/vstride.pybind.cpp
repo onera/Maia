@@ -44,6 +44,49 @@ flip_by_stride(py::array_t<I>& np_displs,
   }
 }
 
+template<typename I>
+void
+concatenate_by_stride(py::list       np_displs_l,
+                      py::list       np_values_l,
+                      py::array_t<I> np_displs_out, 
+                      py::array      np_values_out) {
+
+
+  int     n_input = np_values_l.size();
+  int64_t n_elem  = np_displs_out.size() - 1;
+
+  std::vector<const I*>          displs_ptrs(n_input);
+  std::vector<const std::byte*>  values_ptrs(n_input);
+
+  for (int j=0; j < n_input; ++j) {
+    py::array_t<I> np_displs = np_displs_l[j].cast<py::array_t<I>>();
+    py::array      np_values = np_values_l[j].cast<py::array>();
+    displs_ptrs[j] = np_displs.data();
+    values_ptrs[j] = static_cast<const std::byte*> (np_values.data());
+  }
+
+  auto displs_out = np_displs_out.mutable_data();
+  auto write_buff = static_cast<std::byte*> (np_values_out.mutable_data());
+  size_t s_data = np_values_out.request().itemsize;
+
+
+  displs_out[0] = 0;
+  for (int64_t i=0; i < n_elem; ++i) {
+
+    displs_out[i+1] = 0;
+    for (int j=0; j < n_input; ++j) {
+      
+      int count = displs_ptrs[j][i+1] - displs_ptrs[j][i];
+      write_buff = std::copy_n(values_ptrs[j] + s_data*displs_ptrs[j][i],
+                               count*s_data,
+                               write_buff);
+
+      displs_out[i+1] += displs_ptrs[j][i+1];
+    }
+  }
+  
+}
+
 template<typename I, typename T>
 void
 roll_by_stride(py::array_t<I>& np_displs,
@@ -243,5 +286,12 @@ void register_vstride_module(py::module_& parent) {
   m.def("take", &take<int64_t, int64_t>,
         py::arg("displs").noconvert(), py::arg("values").noconvert(),
         py::arg("indices").noconvert(), py::arg("out").noconvert());
+
+  m.def("concatenate_by_stride", &concatenate_by_stride<int32_t>,
+        py::arg("displs_l").noconvert(), py::arg("values_l").noconvert(),
+        py::arg("displs_out").noconvert(), py::arg("values_out").noconvert());
+  m.def("concatenate_by_stride", &concatenate_by_stride<int64_t>,
+        py::arg("displs_l").noconvert(), py::arg("values_l").noconvert(),
+        py::arg("displs_out").noconvert(), py::arg("values_out").noconvert());
 
 }

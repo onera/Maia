@@ -244,6 +244,35 @@ def test_roll():
   b = vs.roll(vs.from_counts([], values=np.empty(0, float)), -2, vs.OUTER_AXIS)
   assert len(b) == 0 and b.dsize == 0 and b.dtype == float
 
+def test_concatenate():
+  a = vs.from_counts([2, 3, 0, 4], [1,2,      3,1,1,       6,4,4,2])
+  b = vs.from_counts([0, 5, 0, 1], [          2,7,2,5,9,   15])
+  c = vs.from_counts([4, 2, 0, 3], [6,4,4,2,  13,17,       1,1,4])
+
+  d = vs.concatenate([a], vs.INNER_AXIS)
+  assert np.array_equal(d.counts, a.counts) and np.array_equal(d.values, a.values)
+  d = vs.concatenate([a], vs.OUTER_AXIS)
+  assert np.array_equal(d.counts, a.counts) and np.array_equal(d.values, a.values)
+
+  d = vs.concatenate([a,b,c], vs.INNER_AXIS)
+  assert len(d) == 4 and d.dtype == int and d.displs.dtype == int
+  assert np.array_equal(d.counts, [6, 10, 0, 8])
+  assert np.array_equal(d.values, [1,2,6,4,4,2,  3,1,1,2,7,2,5,9,13,17,  6,4,4,2,15,1,1,4])
+
+  d = vs.concatenate([a,b,c], vs.OUTER_AXIS)
+  assert len(d) == 3*4 and d.dtype == int and d.displs.dtype == int
+  assert np.array_equal(d.counts, [2,3,0,4,0,5,0,1,4,2,0,3])
+  assert np.array_equal(d.values, [1,2,      3,1,1,       6,4,4,2,           
+                                             2,7,2,5,9,   15,
+                                   6,4,4,2,  13,17,       1,1,4])
+
+  with pytest.raises(ValueError):
+    vs.concatenate([], vs.OUTER_AXIS)
+  with pytest.raises(ValueError):
+    a = vs.from_counts([2, 3, 1], np.empty(6))
+    b = vs.from_counts([0, 5  ],  np.empty(5))
+    vs.concatenate([a,b], vs.INNER_AXIS)
+
 ## SPECS
 ##
 ## Class name is VStrideArray

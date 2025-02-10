@@ -156,7 +156,12 @@ def jagged_merge(idx1, array1, idx2, array2):
   Interwave two jagged arrays of same n_elt
   """
   assert array1.dtype == array2.dtype
-  return layouts.jagged_merge(idx1, array1, idx2, array2)
+  # TODO : DEPRECATED
+  from maia.utils import vstride as vs
+  a1 = vs.from_displs(idx1, array1)
+  a2 = vs.from_displs(idx2, array2)
+  merged = vs.concatenate([a1, a2], axis=vs.INNER_AXIS)
+  return merged.displs, merged.values
 
 def roll_from(array, start_idx = None, start_value = None, reverse = False):
   """

@@ -740,28 +740,6 @@ def from_displs(displs, values, *, dtype=None) -> VStrideArray:
 
 
 
-def concatenate(array_l):
-  """ Join a sequence of arrays.
-
-  Args:
-    array_l (sequence of :class:`VStrideArray`): arrays to concatenate
-  Returns:
-    :class:`VStrideArray` : concatenated array
-  Example:
-    >>> a1 = vs.from_displs([0, 2, 5], np.arange(5))
-    >>> a2 = vs.from_counts([0, 7, 0], np.arange(7))
-    >>> vs.concatenate([a1, a2])
-    vsarray([
-      [0, 1],
-      [2, 3, 4],
-      [],
-      [0, 1, 2, 3, 4, 5, 6],
-      [],
-    ], dtype=int64)
-  """
-  counts = np.concatenate([a.counts for a in array_l])
-  values = np.concatenate([a.values for a in array_l])
-  return VStrideArray(None, counts, values)
 
 #### Indexing
 
@@ -1091,6 +1069,73 @@ def roll(array: VStrideArray, shift:int, axis:Axis):
     values = np.roll(array.values, vshift)
     return VStrideArray(None, counts, values)
 
+def concatenate(array_l, axis:Axis):
+  """ Join a sequence of arrays.
+
+  Depending on the ``axis`` argument, the concatenation is applied to:
+
+  - the elements if ``axis==OUTER_AXIS``, which is roughly equivalent to ::
+
+      vs.array([blk for arr in array_l for blk in arr])
+
+    In this case, the input arrays can have a different length; the
+    number of elements of the output array is the sum of the input lenghts.
+
+  - each block if ``axis==INNER_AXIS``, which is roughly equivalent to ::
+
+      vs.array([concatenate(blks) for blks in zip(*array_l)])
+
+    In this case, all the input arrays must have the same number of elements :math:`N`,
+    which is the number of elements of the output array.
+  
+  Args:
+    array_l (sequence of :class:`VStrideArray`): arrays to concatenate
+    axis (:class:`Axis`): direction used to concatenate
+  Returns:
+    :class:`VStrideArray` : concatenated array
+  Example:
+    >>> a1 = vs.array([[0,1],  [2,3,4], [5,6]],  dtype=int)
+    >>> a2 = vs.array([[],  [0,1,2,3], [4,6,7]], dtype=int)
+    >>> vs.concatenate([a1, a2], vs.OUTER_AXIS)
+    vsarray([
+      [0, 1],
+      [2, 3, 4],
+      [5,6],
+      [],
+      [0, 1, 2, 3],
+      [4, 5, 6],
+    ], dtype=int64)
+    >>> vs.concatenate([a1, a2], vs.INNER_AXIS)
+    vsarray([
+      [0, 1],
+      [2, 3, 4, 0, 1, 2, 3],
+      [5, 6, 4, 6, 7],
+    ], dtype=int64)
+  """
+  if len(array_l) == 0:
+    raise ValueError("need at least one array to concatenate") 
+
+  if axis == INNER_AXIS:
+    length_l = [len(arr) for arr in array_l]
+    if len(set(length_l)) > 1:
+      raise ValueError(f"lenght of all input arrays ({length_l}) must match for INNER_AXIS concatenation")
+    int_dtype = np.result_type(*(arr.displs for arr in array_l))
+    val_dtype = np.result_type(*(arr.values for arr in array_l))
+    displs_l = [arr.displs.astype(int_dtype, copy=False) for arr in array_l]
+    values_l = [arr.values.astype(val_dtype, copy=False) for arr in array_l]
+    displs_out = np.empty(len(array_l[0])+1,                     int_dtype)
+    values_out = np.empty(sum(array.dsize for array in array_l), val_dtype)
+    _vstride.concatenate_by_stride(displs_l, values_l, displs_out, values_out)
+    return VStrideArray(displs_out, None, values_out)
+
+
+  elif axis == OUTER_AXIS:
+    counts = np.concatenate([a.counts for a in array_l])
+    values = np.concatenate([a.values for a in array_l])
+    return VStrideArray(None, counts, values)
+
+  else:
+    raise ValueError("Unvalid value for axis")
 
 
 if __name__ == '__main__':
