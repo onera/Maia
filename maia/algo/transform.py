@@ -284,7 +284,7 @@ def shrink_to_subset(array, zone, subset, comm):
       distri = par_utils.dn_to_distribution(array.size, comm)
       return EP.block_to_part(array, distri, idx-1, comm, legacy=False)
       
-def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
+def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields, abs_tol=1.e-8):
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.
 
   Transformation is defined by
@@ -300,13 +300,19 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm,
   revolution_axis = np.asarray(revolution_axis)
   if np.array_equal(revolution_axis, [1, 0, 0]):
     idx_order = [1,2,0]
+    axis_idx = 0
   elif np.array_equal(revolution_axis, [0, 1, 0]):  
     idx_order = [0,2,1]
+    axis_idx = 1
   elif np.array_equal(revolution_axis, [0, 0, 1]):
     idx_order = [0,1,2]
+    axis_idx = 2
   else:
     raise AssertionError("Revolution axis is not unitary")
   cyl_suffix = ['R', 'Theta', 'Z']
+  
+  non_axis_idx=[0,1,2]
+  non_axis_idx.pop(axis_idx)
 
   for zone in zones_iterator(t):
 
@@ -342,8 +348,33 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm,
             cyl_values = _to_rthetaz_vectors(*[PT.get_value(n) for n in ordered_fields], theta)
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
+
+    is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+      if PT.GridConnectivity.isperiodic(gc):
+        gc_angle  = PT.get_node_from_name(gc, 'RotationAngle')
+        gc_trans  = PT.get_node_from_name(gc, 'Translation')
+        gc_angle_value = PT.get_value(gc_angle)
+        gc_trans_value = PT.get_value(gc_trans)
+        
+        # Only allowed transformations are managed
+        # > only rotation around axis in cartesian system
+        # > only translation around axis in cartesian system
+        if not (np.abs(gc_angle_value[non_axis_idx]) < abs_tol).all():
+          raise AssertionError(f"A mesh with only periodicities by rotation around revolution axis is allowed to convert from cartesian to cylindrical system !")
+        if not (np.abs(gc_trans_value[non_axis_idx]) < abs_tol).all():
+          raise AssertionError(f"A mesh with only periodicities by translation in revolution axis direction is allowed to convert from cartesian to cylindrical system !")
+        
+        gc_angle_new = np.zeros((3), dtype=gc_angle_value.dtype)
+        gc_trans_new = np.zeros((3), dtype=gc_trans_value.dtype)
+        # Rotation around axis (cart) becomes translation in theta (cyl)
+        # Translation in axis (cart) becomes translation in Z (cyl)
+        gc_trans_new[1] = gc_angle_value[axis_idx]
+        gc_trans_new[2] = gc_trans_value[axis_idx]
+        PT.set_value(gc_angle, gc_angle_new)
+        PT.set_value(gc_trans, gc_trans_new)
      
-def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields):
+def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields, abs_tol=1.e-8):
   """Compute the cartesian coordinates from a unit revolution axis.
 
   Transformation is defined by
@@ -359,12 +390,18 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm,
   revolution_axis = np.asarray(revolution_axis)
   if np.array_equal(revolution_axis,[1, 0, 0]):
     idx_order = [2,0,1]
+    axis_idx = 0
   elif np.array_equal(revolution_axis, [0, 1, 0]):
     idx_order = [0,2,1]
+    axis_idx = 1
   elif np.array_equal(revolution_axis, [0, 0, 1]):
     idx_order = [0,1,2]
+    axis_idx = 2
   else:
     raise AssertionError("Revolution axis is not unitary")
+  
+  non_axis_idx=[0,1,2]
+  non_axis_idx.pop(axis_idx)
 
   for zone in zones_iterator(t):
 
@@ -402,6 +439,31 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm,
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
 
+    is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+      if PT.GridConnectivity.isperiodic(gc):
+        gc_angle  = PT.get_node_from_name(gc, 'RotationAngle')
+        gc_trans  = PT.get_node_from_name(gc, 'Translation')
+        gc_angle_value = PT.get_value(gc_angle)
+        gc_trans_value = PT.get_value(gc_trans)
+        
+        # Only allowed transformations are managed
+        # > no periodic by rotation in cylindrical system
+        # > only translation on theta or z in cylindrical system
+        if not np.allclose(gc_angle_value, [0., 0., 0.], atol=abs_tol):
+          raise AssertionError(f"A mesh with periodicities by rotation is not allowed to convert from cylindrical to cartesian system !")
+        if not abs(gc_trans_value[0]) < abs_tol:
+          raise AssertionError(f"A mesh with periodicities by translation in R direction is not allowed to convert from cylindrical to cartesian system !")
+        
+        gc_angle_new = np.zeros((3), dtype=gc_angle_value.dtype)
+        gc_trans_new = np.zeros((3), dtype=gc_trans_value.dtype)
+        # Translation in theta (cyl) becomes rotation around axis (cart)
+        # Translation in Z (cyl) becomes translation in axis (cart)
+        gc_angle_new[axis_idx] = gc_trans_value[1]
+        gc_trans_new[axis_idx] = gc_trans_value[2]
+        PT.set_value(gc_angle, gc_angle_new)
+        PT.set_value(gc_trans, gc_trans_new)
+
 def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
   """Convert the input tree from or to an auxiliary coordinate system.
 
@@ -430,7 +492,7 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
         :dedent: 2
   """
 
-  for zone in zones_iterator(t): 
+  for zone in zones_iterator(t):
 
     # Assert that CoordinateTransform is the same for all GridCoordinates_t nodes
     coord_transform_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
@@ -464,6 +526,40 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
           tr_fields = np_utils.matmul_cart_vectors([PT.get_value(n) for n in vectors_n], transition_matrix)
           for node, s, new_val in zip(vectors_n, out_suffix, tr_fields):
             PT.update_node(node, f'{basename}{s}', value=new_val)
+            
+    # Transform GC/Periodic data
+    # To update Periodic values of GCs, it is simpler to use homogeneous matrices
+    # For a given GC, we have v_opp = M_gc * v_cur
+    # and we apply to the whole mesh M_tr transformation v' = M_tr * v
+    # We search M_gcnew such that v_opp' = M_gcnew * v_cur'
+    # --> This leads to M_gcnew = M_tr * M_gc * (M_tr)^-1
+    transf_mat           = np.zeros((4,4))
+    transf_mat[0:3, 0:3] = transition_matrix
+    transf_mat[3,3]      = 1
+    transf_mat_inv       = np.linalg.inv(transf_mat)
+    
+    coords_n = PT.Zone.coordinates(zone)
+    phy_dim = 2 if coords_n[2] is None else 3
+    
+    is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+      if PT.GridConnectivity.isperiodic(gc):
+        gc_center = PT.get_node_from_name(gc, 'RotationCenter')
+        gc_angle  = PT.get_node_from_name(gc, 'RotationAngle')
+        gc_trans  = PT.get_node_from_name(gc, 'Translation')
+      
+        gc_angle_value = gc_angle[1]
+        if phy_dim == 2: # 2D : angle may be in slot 0 or 1
+          gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
+  
+        perio_mat  = np_utils._transform_to_homogeneous_matrix(gc_trans[1], gc_center[1], gc_angle_value)
+        perio_mat_new = np.dot(transf_mat, np.dot(perio_mat, transf_mat_inv))
+        gc_trans_new, gc_center_new, gc_angle_new = np_utils._homogeneous_matrix_to_transform(perio_mat_new)
+        if phy_dim == 2:
+          gc_angle_new = np.array([gc_angle_new, 0])
+        PT.set_value(gc_center, gc_center_new)
+        PT.set_value(gc_angle, gc_angle_new)
+        PT.set_value(gc_trans, gc_trans_new)
     
 
 def cartesian_to_cylindrical(t, axis, comm=None, apply_to_fields=True):
