@@ -398,22 +398,27 @@ def recover_dist_tree(part_tree, comm, data_transfer=[]):
 
   dist_tree = PT.new_CGNSTree()
   # > Discover partitioned zones to build dist_tree structure
-  discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=['Family_t'])
+  base_child_list = ['Family_t', 'ReferenceState_t', 'FlowEquationSet_t', 
+                     'Descriptor_t', 'ConvergenceHistory_t', 'IntegralData_t']
+  zone_child_list = ['ZoneType_t', 'FamilyName_t', 'AdditionalFamilyName_t', 
+                     'ReferenceState_t', 'FlowEquationSet_t', 'Descriptor_t', 
+                     'ConvergenceHistory_t', 'IntegralData_t']
+  discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=base_child_list)
   
   # Check that dist zone name will not clash with Family_t nodes
   for dbase in PT.iter_all_CGNSBase_t(dist_tree):
     basename = PT.get_name(dbase)
     pbase = PT.get_child_from_name(part_tree, basename)
-    family_names = set(PT.get_name(n) for n in PT.iter_children_from_label(dbase, 'Family_t'))
+    meta_names = set(PT.get_name(n) for n in PT.get_children(dbase))
     zone_names   = set(MT.conv.get_part_prefix(PT.get_name(z)) for z in PT.iter_all_Zone_t(pbase)) if pbase is not None else set()
-    if not comm.allreduce(family_names.isdisjoint(zone_names), MPI.LAND):
+    if not comm.allreduce(meta_names.isdisjoint(zone_names), MPI.LAND):
       all_zone_names = comm.allreduce(zone_names, op=lambda s1,s2 : s1 | s2)
       msg = f"Two children of the same CGNSBase_t node can not have the same name. " \
-            f"Clash detected between Zone and Family {family_names & all_zone_names} under parent '{basename}'."
+            f"Clash detected between Zone and Metadata nodes {meta_names & all_zone_names} under parent '{basename}'."
       raise RuntimeError(msg)
     
   discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
-                               child_list = ['ZoneType_t', 'FamilyName_t', 'AdditionalFamilyName_t'],
+                               child_list = zone_child_list,
                                merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
 
   _recover_base_iterative_data(dist_tree, part_tree, comm)

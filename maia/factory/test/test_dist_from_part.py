@@ -428,6 +428,10 @@ def test_recover_dist_tree_elt(void_part, comm):
   mesh_file = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
   dist_tree_bck = maia.io.file_to_dist_tree(mesh_file, comm)
 
+  # Create a metadatanode for test
+  for zone in PT.get_all_Zone_t(dist_tree_bck):
+    PT.new_Descriptor('MyDescr', 'Some descr', parent=zone)
+
   if void_part:
     weights = [1.] if comm.rank == 1 else []
   else:
@@ -448,6 +452,7 @@ def test_recover_dist_tree_elt(void_part, comm):
   assert (PT.get_node_from_path(dist_zone, 'Tets/ElementRange')[1] == [16,16]).all()
   assert len(PT.get_nodes_from_label(dist_zone, 'BC_t')) == 6
   assert len(PT.get_nodes_from_label(dist_zone, 'ZoneGridConnectivity_t')) == 0
+  assert PT.get_value(PT.get_child_from_name(dist_zone, 'MyDescr')) == 'Some descr'
 
   # Update dist_tree for comparison
   for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
