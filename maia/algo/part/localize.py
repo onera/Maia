@@ -12,7 +12,7 @@ from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils  import get_point_cloud
-from .connectivity_utils import cell_vtx_connectivity_elts
+from .connectivity_utils import cell_vtx_connectivity
 
 def _get_part_data_ngon(part_zone):
   dim = PT.Zone.CellDimension(part_zone)
@@ -57,11 +57,12 @@ def _get_part_data_ngon(part_zone):
 
 
 def _get_part_data_elts(part_zone):
-  cx, cy, cz = PT.Zone.coordinates(part_zone)
-  vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
+  # Actually works for elt of S meshes, for which we rebuild cell_vtx connectivity
+  coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(part_zone)]
+  vtx_coords = np_utils.interweave_arrays(coords)
 
   dim = PT.Zone.CellDimension(part_zone)
-  cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(part_zone, dim)
+  cell_vtx_idx, cell_vtx = cell_vtx_connectivity(part_zone, dim)
 
   vtx_ln_to_gn, _, _, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
@@ -243,15 +244,15 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
   search the cell of the source tree in which it is enclosed.
   The result, i.e. the gnum & domain number of the source cell (or -1 if the point is not localized),
   are stored in a ``DiscreteData_t`` container called "Localization" on the target zones.
-
-  Source tree must be unstructured.
+  Note that if the source tree is structured, the output gnum is still a scalar index
+  and not a (i,j,k) triplet.
 
   Localization can be parametred thought the options kwargs:
 
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for the method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only unstructured connectivities are managed.
+    src_tree (CGNSTree): Source tree, partitionned.
     tgt_tree (CGNSTree): Target tree, partitionned.
     location ({'CellCenter', 'Vertex'}) : Target points to localize
     comm       (MPIComm): MPI communicator
@@ -280,7 +281,18 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
       src_dom  = -np.ones(n_tgts, dtype=np.int32)
       src_gnum[data['located_ids']] = data['location']
       src_dom [data['located_ids']] = data['domain']
+      # For structured meshes, reshape result
+      if PT.Zone.Type(tgt_part) == 'Structured':
+        if n_tgts == PT.Zone.n_vtx(tgt_part):
+          shape = PT.Zone.VertexSize(tgt_part)
+        elif n_tgts == PT.Zone.n_cell(tgt_part):
+          shape = PT.Zone.CellSize(tgt_part)
+        else:
+          raise RuntimeError("Unable to detect target location")
+        src_gnum = src_gnum.reshape(shape, order='F')
+        src_dom  = src_dom.reshape(shape, order='F')
+
       PT.new_DataArray("SrcId", src_gnum, parent=sol)
       PT.new_DataArray("DomId", src_dom,  parent=sol)
-      PT.new_node("DomainList", "Descriptor_t", dom_list, parent=sol)
+      PT.new_Descriptor("DomainList", dom_list, parent=sol)
 

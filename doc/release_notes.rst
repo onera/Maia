@@ -9,6 +9,13 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Developpement version
+---------------------
+
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- localize_points: allow source mesh to be structured
+
 v1.6 (January 2025)
 -------------------
 
