@@ -121,3 +121,26 @@ def test_find_ridges_all_bcs(comm):
   is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
   edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
   assert len(edge_bcs)==12
+
+
+@pytest_parallel.mark.parallel(2)
+def test_find_ridges_unique_bc(comm):
+  dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+
+  zone_bc_n = PT.get_node_from_label(dist_tree, 'ZoneBC_t')
+  bc_nodes = PT.get_children_from_label(zone_bc_n, 'BC_t')
+  concat_pl = [PT.get_child_from_name(n, 'PointList')[1][0] for n in bc_nodes]
+  concat_pl = np.concatenate(concat_pl).reshape((1,-1), order='F')
+  PT.rm_children_from_label(zone_bc_n, 'BC_t')
+  bc_n = PT.new_BC('merged_bc',
+                   point_list=concat_pl,
+                   loc='FaceCenter',
+                   parent=zone_bc_n)
+  PT.maia.newDistribution({'Index':par_utils.dn_to_distribution(concat_pl.size, comm)}, parent=bc_n)
+
+  dist_tree_ref = PT.deep_copy(dist_tree)
+
+  bcs_identifiers = 'ALL_BCS'
+  RR.find_ridges(dist_tree,  bcs_identifiers, comm)
+  
+  assert PT.is_same_tree(dist_tree, dist_tree_ref)

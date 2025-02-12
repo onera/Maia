@@ -9,6 +9,7 @@ from   maia.algo.apply_function_to_nodes import zones_iterator
 from   maia.algo.dist.adaptation_utils   import apply_offset_to_elts
 from   maia.algo.dist.extract_part       import extract_elmt_connectivity_from_pl
 from   maia.utils                        import np_utils, par_utils, as_pdm_gnum
+from   maia.utils                        import logging as mlog
 
 def replace_bc_identifiers(zone, bc_identifiers):
   """
@@ -146,6 +147,9 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
                                                                            as_pdm_gnum(face_vtx),
                                                                            dgrp_face_idx, 
                                                                            dgrp_face)
+    if distrib_ridge[comm.size]==0:
+      mlog.warning(f"no topological ridge found on given tree by find_ridges service.")
+      return
 
     # > Create BAR elements in entry tree
     #   If already BAR node -> create new one and no check (but warning)
