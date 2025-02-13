@@ -55,21 +55,21 @@ Zone Zone_t [[27,8,0]]:
   ZBC ZoneBC_t:
     bc1 BC_t "Farfield":
       PointList IndexArray_t None:
-      PointList#Size IndexArray_t [1,4]:
+      PointList#Size DataArray_t [1,4]:
       bcds BCDataSet_t:
         PointList IndexArray_t None:
-        PointList#Size IndexArray_t [1,2]:
+        PointList#Size DataArray_t [1,2]:
   ZGC ZoneGridConnectivity_t:
     match GridConnectivity_t "otherzone":
       PointList IndexArray_t None:
       PointListDonor IndexArray_t None:
-      PointList#Size IndexArray_t [1,4]:
+      PointList#Size DataArray_t [1,4]:
   ZSR ZoneSubRegion_t:
     PointList IndexArray_t None:
-    PointList#Size IndexArray_t [1,12]:
+    PointList#Size DataArray_t [1,12]:
   FS FlowSolution_t:
     PointList IndexArray_t None:
-    PointList#Size IndexArray [1,10]:
+    PointList#Size DataArray_t [1,10]:
   """
     zone = PT.yaml.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
@@ -106,18 +106,18 @@ Base CGNSBase_t [3,3]:
     ZBC ZoneBC_t:
       bc1 BC_t "Farfield":
         PointList IndexArray_t None:
-        PointList#Size IndexArray_t [1,4]:
+        PointList#Size DataArray_t [1,4]:
         bcds BCDataSet_t:
           PointList IndexArray_t None:
-          PointList#Size IndexArray_t [1,2]:
+          PointList#Size DataArray_t [1,2]:
     ZGC ZoneGridConnectivity_t:
       match GridConnectivity_t "otherzone":
         PointList IndexArray_t None:
         PointListDonor IndexArray_t None:
-        PointList#Size IndexArray_t [1,4]:
+        PointList#Size DataArray_t [1,4]:
     ZSR ZoneSubRegion_t:
       PointList IndexArray_t None:
-      PointList#Size IndexArray_t [1,12]:
+      PointList#Size DataArray_t [1,12]:
   ZoneS Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     ZoneType ZoneType_t "Structured":
     ZBC ZoneBC_t:

@@ -93,7 +93,7 @@ Zone Zone_t:
         Periodic Periodic_t:
           Translation DataArray_t [1,1,1]:
   ZoneIterativeData ZoneIterativeData_t:
-    FlowSolutionPointers DataArray_y ["FS#1", "FS#2", "FS#3"]:
+    FlowSolutionPointers DataArray_t ["FS#1", "FS#2", "FS#3"]:
 """
   pt = """
 Zone.P2.N3 Zone_t:

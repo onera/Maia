@@ -14,10 +14,24 @@ TREE_CHILDREN = {'CGNSBase_t', 'CGNSLibraryVersion_t', 'UserDefinedData_t'}
 BASE_CHILDREN = {'Axisymmetry_t', 'BaseIterativeData_t', 'DataClass_t', 'Descriptor_t', 'DimensionalUnits_t', 'Family_t',
                  'FlowEquationSet_t', 'ConvergenceHistory_t', 'Gravity_t', 'IntegralData_t', 'ReferenceState_t',
                  'RotatingCoordinates_t', 'SimulationType_t', 'UserDefinedData_t', 'ParticleZone_t', 'Zone_t'}
+# Node start / end by space -> KO
 
 def parse_node(node):
   name,label_value = node.split(" ", 1)
-  name = name.strip()
+  name = name + ' ' # Space is cut by split -> read it
+
+  next_token = label_value.strip().split(" ", 1)[0]
+  try:
+    while not N.check.is_valid_label(next_token, only_sids=False):
+      pre, token, post = label_value.partition(next_token)
+      name = name + pre + token
+      label_value = post
+      next_token = label_value.strip().split(" ", 1)[0]
+  except ValueError:
+    raise ValueError(f"Unable to parse line {node} : unrecognized label")
+    
+  name = name.rstrip() # Remove trailing space, especially if we did not enter while loop
+
   label_value = label_value.strip().split(" ", 1)
   label = label_value[0].strip()
   if len(label_value)==1:

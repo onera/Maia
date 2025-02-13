@@ -99,7 +99,7 @@ Small.P1.N0 Zone_t:
   ZBC ZoneBC_t:
     match2 BC_t "Big":
       GridConnectivityDonorName Descriptor_t "match1":
-      Transform int[IndexDimension] [-2,-1,-3]:
+      Transform "int[IndexDimension]" [-2,-1,-3]:
       PointRange IndexRange_t [[4,1],[4,4],[5,1]]:
       distPR IndexRange_t [[7,1],[9,9],[5,1]]:
       distPRDonor IndexRange_t [[17,17],[3,9],[1,5]]:
@@ -111,7 +111,7 @@ Big.P2.N0 Zone_t:
   ZBC ZoneBC_t:
     match1 BC_t "Small":
       GridConnectivityDonorName Descriptor_t "match2":
-      Transform int[IndexDimension] [-2,-1,-3]:
+      Transform "int[IndexDimension]" [-2,-1,-3]:
       PointRange IndexRange_t [[6,6],[3,5],[1,5]]:
       distPR IndexRange_t [[17,17],[3,9],[1,5]]:
       distPRDonor IndexRange_t [[7,1],[9,9],[5,1]]:
@@ -120,7 +120,7 @@ Big.P2.N1 Zone_t:
   ZBC ZoneBC_t:
     match1 BC_t "Small":
       GridConnectivityDonorName Descriptor_t "match2":
-      Transform int[IndexDimension] [-2,-1,-3]:
+      Transform "int[IndexDimension]" [-2,-1,-3]:
       PointRange IndexRange_t [[6,6],[1,5],[1,5]]:
       distPR IndexRange_t [[17,17],[3,9],[1,5]]:
       distPRDonor IndexRange_t [[7,1],[9,9],[5,1]]:
@@ -129,7 +129,7 @@ Small.P2.N1 Zone_t:
   ZBC ZoneBC_t:
     match2 BC_t "Big":
       GridConnectivityDonorName Descriptor_t "match1":
-      Transform int[IndexDimension] [-2,-1,-3]:
+      Transform "int[IndexDimension]" [-2,-1,-3]:
       PointRange IndexRange_t [[4,1],[4,4],[5,1]]:
       distPR IndexRange_t [[7,1],[9,9],[5,1]]:
       distPRDonor IndexRange_t [[17,17],[3,9],[1,5]]:

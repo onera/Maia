@@ -31,17 +31,18 @@ def test_concretize_paths():
   assert PU.concretize_paths(tree, ["Nope/Zone/*"], ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t']) == []
 
 def test_paths_to_tree():
+    # Nodes are not really BC, but the yaml loader required an existing label
     yt = """
-    Ro0t None:
-      first None:
-        B None:
-          1 None:
-          4 None:
-        A None:
-          1 None:
-      second None:
-        B None:
-          2 None:
+    Ro0t BC_t:
+      first BC_t:
+        B BC_t:
+          1 BC_t:
+          4 BC_t:
+        A BC_t:
+          1 BC_t:
+      second BC_t:
+        B BC_t:
+          2 BC_t:
     """
     expected = PT.yaml.to_node(yt)
     #Fix None

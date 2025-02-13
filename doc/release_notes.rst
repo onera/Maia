@@ -9,6 +9,13 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Developpement version
+---------------------
+
+🐞 Fixes
+^^^^^^^^
+- Pytree / YAML loader: allow spaces in nodes name
+
 v1.6 (January 2025)
 -------------------
 

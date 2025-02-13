@@ -20,7 +20,7 @@ def test_simple_tree():
   yt = """
 Base0 CGNSBase_t [3,3]:
   Zone0 Zone_t [[24],[6],[0]]:
-  Zone1 Zone_t R8 [[4,3,2],[3,2,1],[0,0,0]]:
+  Zone with  spaces in name     Zone_t R8 [[4,3,2],[3,2,1],[0,0,0]]:
 """
   t = parse_yaml_cgns.to_cgns_tree(yt)
   bs = PT.get_children_from_label(t,"CGNSBase_t")
@@ -32,7 +32,7 @@ Base0 CGNSBase_t [3,3]:
   zs = PT.get_children_from_label(bs[0],"Zone_t")
   assert np.all(PT.get_value(zs[0]) == [[24],[6],[0]])
   assert PT.get_children(zs[0]) == []
-  assert PT.get_node_from_name(t, 'Zone1')[1].dtype == np.float64
+  assert PT.get_node_from_name(t, 'Zone with  spaces in name')[1].dtype == np.float64
 
   yt = """
   ReferenceState ReferenceState_t:
@@ -60,6 +60,12 @@ Base0 CGNSBase_t [3,3]:
   with pytest.raises(ValueError):
     t = parse_yaml_cgns.to_cgns_tree(yt)
 
+  yt = """
+  BC BC_t "BCWall":
+    GridLocation Wronglabel "FaceCenter":
+"""
+  with pytest.raises(ValueError):
+    t = parse_yaml_cgns.to_node(yt)
 
 
 def test_multi_line_value():
