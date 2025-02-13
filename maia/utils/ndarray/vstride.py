@@ -53,9 +53,9 @@ class VStrideArray:
   following attributes:
 
   +----------------+---------------------------------------------+
-  | :attr:`displs` | displs array                                |
+  | :attr:`displs` | view on displs array                        |
   +----------------+---------------------------------------------+
-  | :attr:`counts` | counts array                                |
+  | :attr:`counts` | view on counts array                        |
   +----------------+---------------------------------------------+
   | :attr:`values` | values array                                |
   +----------------+---------------------------------------------+
@@ -173,13 +173,18 @@ class VStrideArray:
       self._displs = np.empty(self._counts.size+1, self._counts.dtype)
       self._displs[0] = 0
       np.cumsum(self._counts, out=self._displs[1:])
-    return self._displs
+    view = self._displs.view()
+    view.flags.writeable = False
+    return view
 
   @property
   def counts(self):
     if self._counts is None:
       self._counts = self._displs[1:] - self._displs[:-1]
-    return self._counts
+
+    view = self._counts.view()
+    view.flags.writeable = False
+    return view
 
   @property
   def values(self):
@@ -245,8 +250,8 @@ class VStrideArray:
 
     # Trick to avoid checks at creation time
     out = super().__new__(VStrideArray)
-    out._displs = self._displs.copy() if self._displs is not None else None
-    out._counts = self._counts.copy() if self._counts is not None else None
+    out._displs = self._displs
+    out._counts = self._counts
 
     if isinstance(other, VStrideArray):
       if len(self) != len(other):
@@ -271,7 +276,9 @@ class VStrideArray:
     return out
 
   def __unary_op__(self, op):
-    out = self.copy()
+    out = super().__new__(VStrideArray)
+    out._counts = self._counts
+    out._displs = self._displs
     out._values = op(out._values)
     return out
 
@@ -977,10 +984,10 @@ def flip(array: VStrideArray, axis:Axis):
   """
 
   if axis == INNER_AXIS:
-    displs = array.displs.copy()
+    displs = array.displs
     values = array.values.copy()
     _vstride.flip_by_stride(displs, values)
-    return VStrideArray(displs, None, values)
+    return VStrideArray(array._displs, array._counts, values)
 
   elif axis == OUTER_AXIS:
     indices = np.arange(len(array)-1, -1, -1)
@@ -1027,10 +1034,10 @@ def sort(array: VStrideArray, axis:Axis):
     ], dtype=int64)
   """
   if axis == INNER_AXIS:
-    displs = array.displs.copy()
+    displs = array.displs
     values = array.values.copy()
     _vstride.sort_by_stride(displs, values)
-    return VStrideArray(displs, None, values)
+    return VStrideArray(array._displs, array._counts, values)
 
   elif axis == OUTER_AXIS:
     # TODO : unoptimized version. uses lexicographic order
@@ -1126,10 +1133,10 @@ def roll(array: VStrideArray, shift:int, axis:Axis):
     return VStrideArray(None, np.empty(0, array.counts.dtype), np.empty(0, array.dtype))
 
   if axis == INNER_AXIS:
-    displs = array.displs.copy()
+    displs = array.displs
     values = array.values.copy()
     _vstride.roll_by_stride(displs, values, shift)
-    return VStrideArray(displs, None, values)
+    return VStrideArray(array._displs, array._counts, values)
 
   elif axis == OUTER_AXIS:
 
