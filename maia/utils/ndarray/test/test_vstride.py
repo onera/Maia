@@ -134,15 +134,15 @@ def test_insert():
   with pytest.raises(IndexError):
     vs.insert(a, 19, [.8])
 
-  assert vs.insert(a, [0,2], [[.8, .9], [.2,.7,.4]]) == \
+  assert vs.insert(a, [0,2], vs.array([[.8, .9], [.2,.7,.4]])) == \
     vs.from_counts([2, 0, 2, 3, 5], [.8, .9, .3, .5, .2, .7, .4, .1, .7, .2, .6, .9])
 
 
-  assert vs.insert(a, [], []) == a
-  assert vs.insert(a, [0,2], [[], []]) == vs.from_counts([0,0,2,0,5], a.values)
+  assert vs.insert(a, [], vs.array([], dtype=float)) == a
+  assert vs.insert(a, [0,2], vs.array([[], []], dtype=float)) == vs.from_counts([0,0,2,0,5], a.values)
 
   with pytest.raises(IndexError):
-    vs.insert(a, [0,2,8], [[], [], []])
+    vs.insert(a, [0,2,8], vs.array([[], [], []], dtype=float))
 
 
 def test_take():
@@ -161,6 +161,31 @@ def test_take():
   a = vs.take(vs.from_counts([], np.empty(0, float)), [])
   assert len(a) == 0 and a.dsize == 0 and a.dtype == float
 
+def test_put():
+  a = vs.from_counts([3,1,2,2,3], [10,11,12,  100,  1000,1001, 2,4, 5,6,5], dtype=int)
+
+  vals = vs.array([[-5,-5], [-10, -6], []], dtype=int)
+  b = vs.put(a, [0,4, 2], vals)
+  assert b.dtype == a.dtype and len(b) == len(a)
+  assert np.array_equal(b.counts, [2,1,0,2,2]) and np.array_equal(b.values, [-5,-5,  100,  2,4,  -10,-6])
+
+  vals = vs.array([[-5,-5,-5], [-4,-4], [-3,-3,-3]], dtype=int)
+  b = vs.put(a, [0,0,0], vals)
+  assert b.dtype == a.dtype and len(b) == len(a)
+  assert np.array_equal(b.counts, [3,1,2,2,3])
+  assert np.array_equal(b.values, [-3,-3,-3,  100,  1000,1001, 2,4, 5,6,5])
+  
+  b = vs.put(a, 1, [88,99])
+  assert b.dtype == a.dtype and len(b) == len(a)
+  assert np.array_equal(b.counts, [3,2,2,2,3])
+  assert np.array_equal(b.values, [10,11,12,  88,99,  1000,1001, 2,4, 5,6,5])
+
+  with pytest.raises(IndexError):
+    b = vs.put(a, [23], vs.array([[6,5,4]]))
+  with pytest.raises(IndexError):
+    b = vs.put(a, 23, [6,5,4])
+  with pytest.raises(TypeError):
+    b = vs.put(a, [2], vs.array([[6.5,4]]))
 
 
 ###############################################################################

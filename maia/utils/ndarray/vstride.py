@@ -782,6 +782,78 @@ def take(array, indices):
 
   return VStrideArray(None, counts, values)
 
+def put(array:VStrideArray, indices, values:VStrideArray):
+  """ Update the specified elements of input array with provided values.
+  
+  Indices to update directly refer to elements number,
+  and must thus be included in ``[0, len(array)[``.
+  A given index can be provided more than once; in this case, only the last
+  corresponding value is used.
+
+  The new ``values`` must be provided as a :class:`VStrideArray` of lenght ``len(indices)``.
+  Its datatype will be converted if needed to match :attr:`array.dtype`.
+
+  If ``indices`` is a scalar value, then a single 1d array_like object is allowed for
+  ``values``.
+
+  Note:
+    Contrary to np.put, this function does not operate inplace,
+    since the *strides* of the input array can be modified. A new
+    object is returned.
+
+  Args:
+    array (:class:`VStrideArray`): input array
+    indices (int or array of int) : indices of the elements to update
+    values (array_like or :class:`VStrideArray`) : *block(s)* to write
+  Returns:
+    :class:`VStrideArray` : updated array
+
+  Example:
+    >>> a = vs.from_counts([2, 3, 1, 3], np.arange(9))
+    >>> vals = vs.array([[-1,-2,-3,-4], [99]])
+    >>> vs.put(a, [2,0], vals)
+    vsarray([
+      [99],
+      [ 2,  3,  4],
+      [-1, -2, -3, -4],
+      [ 6,  7,  8],
+    ], dtype=int64)
+  """
+  if isinstance(indices, (int, np.integer)):
+    i = indices
+    if not (0 <= i and i < len(array)):
+      raise IndexError(f"Index {i} is out of bounds for array of size {len(array)}")
+    if not np.can_cast(np.asarray(values).dtype, array.dtype):
+      raise TypeError(f"Casting {np.asarray(values).dtype} into {array.dtype} is not safe")
+    new_counts = array.counts.copy()
+    new_counts[i] = len(values)
+    displs = array.displs
+    new_values = np.concatenate([array.values[:displs[i]], values, array.values[displs[i+1]:]])
+
+    return VStrideArray(None, new_counts, new_values) 
+
+  else:
+
+    if len(indices) != len(values):
+      msg = f"indices and values must have the same length ({len(indices)} vs {len(values)})"
+      raise ValueError(msg)
+    if not np.can_cast(values.dtype, array.dtype):
+      raise TypeError(f"Casting {values.dtype} into {array.dtype} is not safe")
+    
+    # First compute the new counts arrays and allocate empty new values
+    new_counts = array.counts.copy()
+    np.put(new_counts, indices, values.counts)
+    new_values = np.empty(new_counts.sum(), array.dtype)
+
+    # Values to write are preexisting values + new values ; concat. indices as well
+    to_write = concatenate([array, values], OUTER_AXIS)
+    indices = np.concatenate([np.arange(len(array)), np.asarray(indices, dtype=int)])
+    
+    # Write data
+    _vstride.put(new_counts, new_values, indices, to_write.counts, to_write.values)
+
+    return VStrideArray(None, new_counts, new_values)
+
 def delete(array, indices):
   """ Remove elements from the input array.
 
@@ -813,23 +885,23 @@ def delete(array, indices):
   values = array.values[extended_mask]
   return VStrideArray(None, counts, values)
 
-def insert(array:VStrideArray, indices:int, values):
+def insert(array:VStrideArray, indices, values:VStrideArray):
   """ Insert new elements in the input array.
 
   The indices where the new block(s) are insered must be
   included in ``[0, len(array)]``. The insered ``values``
-  must be given as a list of 1d array_like object; the datatype will be converted
-  if needed to match :attr:`array.dtype`.
+  must be provided as a :class:`VStrideArray` of length ``len(indices)``. 
+  Its datatype will be converted if needed to match :attr:`array.dtype`.
 
-  If ``indices`` is a scalar value, then a single 1d array_like object is expected for
+  If ``indices`` is a scalar value, then a single 1d array_like object is allowed for
   ``values``.
 
   A new object array is returned.
 
   Args:
     array (:class:`VStrideArray`): input array
-    index (int of list of int) : position where the *block(s)* should be insered
-    values (array_like or list of array_like) : *block(s)* to insert
+    index (int of array of int) : position where the *block(s)* should be insered
+    values (array_like or :class:`VStrideArray`) : *block(s)* to insert
   Returns:
     :class:`VStrideArray` : new array
   Example:
@@ -850,14 +922,17 @@ def insert(array:VStrideArray, indices:int, values):
     return VStrideArray(None, counts, values) 
 
   else:
-    assert isinstance(values, list)
-    assert len(indices) == len(values)
+    assert isinstance(values, VStrideArray)
+    if len(indices) != len(values):
+      msg = f"indices and values must have the same length ({len(indices)} vs {len(values)})"
+      raise ValueError(msg)
+    if not np.can_cast(values.dtype, array.dtype):
+      raise TypeError(f"Casting {values.dtype} into {array.dtype} is not safe")
     
     values_len     = np.array([len(v) for v in values], array.counts.dtype)
     extented_pos   = np.repeat(array.displs[indices], values_len)
-    flatten_values = np.concatenate(values) if len(values) > 0 else np.empty(0, array.dtype)
     counts = np.insert(array.counts, indices, values_len)
-    values = np.insert(array.values, extented_pos, flatten_values)
+    values = np.insert(array.values, extented_pos, values.values)
     return VStrideArray(None, counts, values)
 
 

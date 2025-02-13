@@ -109,6 +109,7 @@ manipulate :class:`VStrideArray` instances:
   :nosignatures:
 
   take
+  put
   insert
   delete
 
@@ -130,7 +131,7 @@ All these functions take a parameter ``axis`` to indicate if the algorithm is ap
 --------------------------------------------------------
 
 .. automodule:: maia.utils.ndarray.vstride
-  :members: array, from_counts, from_displs, take, delete, insert, flip, sort, unique, roll, concatenate
+  :members: array, from_counts, from_displs, take, put, insert, delete, flip, sort, unique, roll, concatenate
   :member-order: bysource
 
 
