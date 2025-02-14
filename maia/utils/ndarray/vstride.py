@@ -1,17 +1,4 @@
-##
-## SPECS
-##
-## Class name is VStrideArray
-## repr displays vsarray
-## constructeur is array
-## module name vstride, aliased as vs in maia / doc
-##  keep axis = vs.INNER / vs.OUTER 
-## 
-## enlever les valeurs non initialisés dans le reduce
-
-
 import sys
-import re
 import itertools
 import operator
 import numpy as np
@@ -19,8 +6,6 @@ import numpy as np
 from cmaia.utils import vstride as _vstride
 
 from enum import Enum
-
-_DTYPE_RGX = re.compile(r", dtype=.*\)")
 
 ReduceOp = Enum('ReduceOp', 'SUM PROD MIN MAX LAND LOR BAND BOR')
 Axis     = Enum('Axis',     'INNER OUTER')
@@ -37,15 +22,8 @@ Enumeration to indicate the axis on which a function should operate. Members are
 INNER_AXIS = Axis.INNER #: A shortcut to :data:`Axis.INNER`
 OUTER_AXIS = Axis.OUTER #: A shortcut to :data:`Axis.OUTER`
 
-def _is_iterable(obj):
-  try:
-    iter(obj)
-    return True
-  except TypeError:
-    return False
+_UNVALID_AXIS_MSG = "Unvalid value for axis"
 
-#.. note:: Basic slicing such as ``JA[0:i]`` is also supported, but only if ``step == 1``
-  #(``JA[0:i:2]`` is **not** supported). A contiguous view on the subarrays is returned.
 class VStrideArray:
   """ A class representing a variable stride array.
 
@@ -200,11 +178,11 @@ class VStrideArray:
 
   #Emulate container methods
   def __len__(self):
-    """ Return the number of subarrays in the structure """
-    return self.displs.size - 1
+    """ Return the number of blocks in the structure """
+    return self._counts.size if self._counts is not None else self._displs.size - 1
 
   def __getitem__(self, key):
-    """ Return a view to the requested sub array"""
+    """ Return a view to the requested block"""
     if isinstance(key, int):
       try:
         return self._values[self.displs[key - int(key<0)]:self.displs[key - int(key<0)+1]]
@@ -214,13 +192,9 @@ class VStrideArray:
     raise TypeError
 
   def __setitem__(self, key, val):
-    """ Modify the requested sub array; size and dtype of val should be consistant"""
+    """ Modify the requested block; size and dtype of val should be consistant"""
     #assert val.dtype == self.dtype
     self.__getitem__(key)[:] = val
-
-
-
-
 
   # BOILERPLATE part to overload classical operators
   def __numeric_iop__(self, other, op):
@@ -256,7 +230,7 @@ class VStrideArray:
     if isinstance(other, VStrideArray):
       if len(self) != len(other):
         raise ValueError(f"the two VStrideArray instances does not have same len ({len(self)} vs {len(other)})")
-      if not np.array_equal(self.counts, other.counts):
+      if not strides_equal(self, other):
         diff = sum(self.counts != other.counts)
         raise ValueError(f"the two VStrideArray instances does not have same counts ({diff} indices differ)")
       out._values = op(self._values, other._values)
@@ -279,7 +253,7 @@ class VStrideArray:
     out = super().__new__(VStrideArray)
     out._counts = self._counts
     out._displs = self._displs
-    out._values = op(out._values)
+    out._values = op(self.values)
     return out
 
 
@@ -333,7 +307,6 @@ class VStrideArray:
   def __or__(self, other):
     return self.__numeric_op__(other, operator.or_)
 
-  # How to defined comparaison ? 
   def __lt__(self, other):
     return self.__numeric_op__(other, operator.lt)
   def __le__(self, other):
@@ -356,50 +329,81 @@ class VStrideArray:
   def __invert__(self):
     return self.__unary_op__(operator.invert)
 
-
+  # For compatibility
 
   def _inner_sort(self):
     _vstride.sort_by_stride(self.displs, self.values)
   def _inner_flip(self):
     _vstride.flip_by_stride(self.displs, self.values)
 
+  # Methods
 
   def reduce(self, op:ReduceOp):
-    # """ Apply a reduction operation within each subarray
+    """ Apply a reduction operation within each *block*.
 
-    # The avalaible operations are the members of the enumeration :class:`ReduceOp`.
+    The avalaible operations are the members of the enumeration :class:`ReduceOp`.
 
-    # This function returns an array of size :math:`N` (one value per subarray).
-    # The datatype of the output array depends on the underlying operation, which
-    # is executed by numpy.
+    This function returns an array of size :math:`N` (one value per *block*).
+    The datatype of the output array depends on the underlying operation, which
+    is executed by numpy.
 
-    # Important:
-    #   For empty subarrays (*ie* for the set of ``i`` such that ``counts[i] == 0``), the corresponding
-    #   result ``out[i]`` will be **uninitialized**. 
+    Note:
+      For empty *blocks* (*ie* for the set of ``i`` such that ``counts[i] == 0``), the corresponding
+      result ``out[i]`` will be initialized with the neutral value of the corresponding operation.
 
-    #   It is possible to filter the result afterward, *eg* with ``out[self.counts > 0]``
+      It is still possible to filter the result afterward, *eg* with ``out[self.counts > 0]``.
     
-    # Returns:
-    #   flat ndarray of size N : result of the reduction for each subarray
+    Args:
+      op (:class:`ReduceOp`): operation performed to reduce the *blocks*
+    Returns:
+      flat ndarray of size N : result of the reduction
 
-    # Example: 
-    #   >>> j = ja.from_counts([3,5,2], np.arange(10))
-    #   >>> j.reduce(JA.ReduceOP.SUM)
-    #   array([ 3, 23, 17])
-    # """
+    Example: 
+      >>> a = vs.from_counts([3,5,2], np.arange(10))
+      >>> a.reduce(vs.ReduceOp.SUM)
+      array([ 3, 23, 17])
+    """
+    # For information : output type depending on input/op
+    #
+    #       add/mul   max/min land/lor  band/bor
+    #  b      i8         b        b         b
+    # i4      i8        i4        b        i4
+    # i8      i8        i8        b        i8
+    # f4      f4        f4        b         x
+    # f8      f8        f8        b         x
+    # 
+    # Neutral 0/1                T/F      -1/0
     
     op_to_ufunc = {ReduceOp.SUM  : np.add,
                    ReduceOp.PROD : np.multiply,
                    ReduceOp.MIN  : np.minimum,
                    ReduceOp.MAX  : np.maximum,
                    ReduceOp.LAND : np.logical_and,
-                   ReduceOp.LOR  : np.logical_or, 
+                   ReduceOp.LOR  : np.logical_or,
                    ReduceOp.BAND : np.bitwise_and,
                    ReduceOp.BOR  : np.bitwise_or}
+    
+    ufunc = op_to_ufunc[op]
+    out = ufunc.reduceat(self._values, self.displs[:-1])
+    
+    if op == ReduceOp.MIN:
+      if out.dtype.kind == 'i':
+        val = np.iinfo(out.dtype).min
+      elif out.dtype.kind == 'f':
+        val = -np.inf
+      elif out.dtype.kind == 'b':
+        val = False
+    elif op == ReduceOp.MAX:
+      if out.dtype.kind == 'i':
+        val = np.iinfo(out.dtype).max
+      elif out.dtype.kind == 'f':
+        val = np.inf
+      elif out.dtype.kind == 'b':
+        val = True
+    else:
+      val = ufunc.identity
 
-    out = op_to_ufunc[op].reduceat(self._values, self.displs[:-1])
-    # zero = np.zeros_like(1, out.dtype)
-    # out[self.counts == 0] = zero
+    out[self.counts == 0] = val
     return out
 
   def restride(self, displs=None, counts=None):
@@ -434,12 +438,6 @@ class VStrideArray:
       self._counts = counts
       self._displs = None
 
-  
-  def copy(self):
-    counts_cp = self._counts.copy() if self._counts is not None else None
-    displs_cp = self._displs.copy() if self._displs is not None else None
-    values_cp = self._values.copy()
-    return VStrideArray(displs_cp, counts_cp, values_cp)
 
   def to_array_list(self):
     """ Return the ``values`` as a list of NumPy 1d arrays.
@@ -454,7 +452,7 @@ class VStrideArray:
       >>> a.to_array_list()
       [array([], dtype=float64), array([0.3, 0.5]), array([0.1, 0.7, 0.2, 0.6, 0.9])]
     """
-    return [sub.copy() for sub in self]
+    return [blk.copy() for blk in self]
 
   def to_masked_array(self):
     """ Return the ``values`` as a NumPy `masked ndarray <https://numpy.org/doc/stable/reference/maskedarray.html>`_.
@@ -476,13 +474,10 @@ class VStrideArray:
     """
     shape = (len(self), self.counts.max(initial=0))
     ma = np.ma.empty(shape, self.dtype, order='F') 
-    for i,sub in enumerate(self):
-      ma[i,0:self.counts[i]] = sub
+    for i,blk in enumerate(self):
+      ma[i,0:self.counts[i]] = blk
       ma[i,self.counts[i]:] = np.ma.masked
     return ma
-
-
-
 
   # Representation
   def __repr__(self):
@@ -515,7 +510,7 @@ class VStrideArray:
         is_visible[i][hedgeitems : -hedgeitems] = False
 
     # Delegate repr to numpy but without any linebreak
-    # Then the idea is to split this repr for each subarray
+    # Then the idea is to split this repr for each block
     with np.printoptions(threshold=sys.maxsize):
       full_repr = np.array_repr(self.values[is_visible.values], max_line_width=sys.maxsize)
 
@@ -526,7 +521,7 @@ class VStrideArray:
     if len(elements) > 0:
       elements[0] = ' ' + elements[0]    # Nupy remove first space -> add it for uniform treatment
       e_len = len(elements[0])
-      elt_per_line = (np.get_printoptions()['linewidth'] - 4) // e_len
+      elt_per_line = (np.get_printoptions()['linewidth'] - 4) // (e_len+1)
 
     lines = ["vsarray(["]
     read_idx = 0
@@ -547,58 +542,6 @@ class VStrideArray:
     lines.append(f'], dtype={self.dtype})')   # Finalize repr with dtype
 
     return '\n'.join(lines)
-
-
-
-  def __reprOLD__(self):
-    # Old repr implem : internal arrays are coherent, but the overhall is not (only for int)
-    vthreshold = 50
-    vedgeitems = 3
-
-    hthreshold = 50
-    hedgeitems = 3
-
-    # Ranges to iterate before and after vertical threshold
-    if len(self) > vthreshold:
-      range1, range2 = range(0, vedgeitems), range(len(self)-vedgeitems, len(self))
-    else:
-      range1, range2 = range(0, len(self)), iter(())
-
-    # This tell use which elements will be displayed, to compute number of digits
-    # based on them
-    is_visible = VStrideArray(self.displs, self.counts, np.zeros(self.dsize, bool))
-    for i in itertools.chain(range1, range2):
-      is_visible[i] = True
-      if is_visible[i].size > hthreshold:
-        is_visible[i][hedgeitems : -hedgeitems] = False
-    visible_values = self.values[is_visible.values]
-
-    if np.issubdtype(self.dtype, np.integer):
-      n_digit = max(len(str(x)) for x in visible_values)
-      formatter = {'int' : lambda x : str(x).rjust(n_digit)}
-    else:
-      formatter = {}
-
-    def repr_one(data):
-      array_repr = data.__repr__()[6:]                  # Remove left space on first line
-      array_repr = array_repr.replace('\n    ', '\n')   # Remove left space + indent on other lines
-      array_repr = _DTYPE_RGX.sub(')', array_repr)      # Remove dtype of each subarray
-      array_repr = array_repr[:-1]                      # Remove trailing parenthesis
-      return array_repr
-
-    repr = "vsarray([\n"                                   # Init repr with obj identifier
-    with np.printoptions(threshold=hthreshold, edgeitems=hedgeitems, formatter=formatter):
-      for i in range1:
-        repr += 2*' ' + repr_one(self[i]) + ',\n'
-      if len(self) > vthreshold:
-        repr += 2*' ' + '...,\n'
-      for i in range2:
-        repr += 2*' ' + repr_one(self[i]) + ',\n'
-      repr += 0*' ' + f'], dtype={self.dtype})'           # Finalize repr with dtype
-
-    return repr
-
-
 
 
 
@@ -712,6 +655,10 @@ def from_counts(counts, values, *, dtype=None) -> VStrideArray:
       [0.1, 0.7, 0.2, 0.6, 0.9],
     ], dtype=float64)
   """
+  if isinstance (counts, (int, np.integer)):
+    assert len(values) % counts == 0
+    counts = np.full(len(values) // counts, counts)
+
   if len(counts) == 0 and not isinstance(counts, np.ndarray):
     counts = np.empty(0, int)
 
@@ -744,7 +691,6 @@ def from_displs(displs, values, *, dtype=None) -> VStrideArray:
   return VStrideArray(np.asarray(displs),
                       None,
                       np.asarray(values, dtype=dtype))
-
 
 
 
@@ -994,7 +940,7 @@ def flip(array: VStrideArray, axis:Axis):
     return take(array, indices)
 
   else:
-    raise ValueError("Unvalid value for axis")
+    raise ValueError(_UNVALID_AXIS_MSG)
 
 def sort(array: VStrideArray, axis:Axis):
   """ Sort the values of the input array.
@@ -1041,10 +987,10 @@ def sort(array: VStrideArray, axis:Axis):
 
   elif axis == OUTER_AXIS:
     # TODO : unoptimized version. uses lexicographic order
-    return globals()['array'](sorted([sub.tolist() for sub in array]), dtype=array.dtype)
+    return globals()['array'](sorted([blk.tolist() for blk in array]), dtype=array.dtype)
 
   else:
-    raise ValueError("Unvalid value for axis")
+    raise ValueError(_UNVALID_AXIS_MSG)
 
 
 def unique(array: VStrideArray, axis:Axis):
@@ -1083,8 +1029,11 @@ def unique(array: VStrideArray, axis:Axis):
   if axis == INNER_AXIS:
     displs, values = _vstride.make_unique_by_stride(array.displs, array.values)
     return VStrideArray(displs, None, values)
-  else:
+  elif axis == OUTER_AXIS:
     raise NotImplemented
+
+  else:
+    raise ValueError(_UNVALID_AXIS_MSG)
 
 def roll(array: VStrideArray, shift:int, axis:Axis):
   """ Roll the values of the input array.
@@ -1150,6 +1099,9 @@ def roll(array: VStrideArray, shift:int, axis:Axis):
     counts = np.roll(array.counts,  shift)
     values = np.roll(array.values, vshift)
     return VStrideArray(None, counts, values)
+
+  else:
+    raise ValueError(_UNVALID_AXIS_MSG)
 
 def concatenate(array_l, axis:Axis):
   """ Join a sequence of arrays.
@@ -1217,7 +1169,7 @@ def concatenate(array_l, axis:Axis):
     return VStrideArray(None, counts, values)
 
   else:
-    raise ValueError("Unvalid value for axis")
+    raise ValueError(_UNVALID_AXIS_MSG)
 
 #### Additional operators
 
@@ -1280,92 +1232,27 @@ def array_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
   return strides_equal(a1, a2) and np.array_equal(a1.values, a2.values)
 
 
+def array_close(a1:VStrideArray, a2:VStrideArray, rtol=1e-5, atol=1e-8) -> bool:
+  """ ``True`` if the two input arrays have the same *strides* and close values, ``False`` otherwise.
 
-if __name__ == '__main__':
-  t2 = VStrideArray(np.array([0, 3, 6, 6, 8, 9]), None,  np.array([1,3,3, 4,5,6, 7,8 ,10]))
+  Value comparison is performed by 
+  `np.isclose <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html>`_. See the
+  related documentation for description of ``rtol`` and ``atol`` parameters.
 
-  
-  # t3 = Jagged.from_interlaced(np.array([4,10,11,12,13,5,60,70,80,90,100, 3, -1,-2,-3, 1, 1000]))
-  # print(len(t3))
-  # for i, sub in enumerate(t3):
-    # if i == 1:
-      # sub += 1000
-  # print(t3)
-
-  # print(np.sum(t3.values))
-  # print(t3.reduce(np.add))
-
-  print(t2)
-  print(t2.to_masked_array())
-  quit()
-
+  Args:
+    a1 (:class:`VStrideArray`): first input
+    a2 (:class:`VStrideArray`): second input
+    rtol (float, optional) : relative tolerance for comparison
+    atol (float, optional) : absolute tolerance for comparison
+  Returns:
+    bool  : comparison result
+  Example:
+    >>> vs.array_close(vs.from_counts([2,3,1], [1.,2,3,4,5,6]),
+    ...                vs.from_counts([2,3,1], [1.,2,3,4,5,6+1e-9]))
+    True
+    >>> vs.array_close(vs.from_counts([2,3,1], [1.,2,3,4,5,6]),
+    ...                vs.from_counts([2,3,1], [1.,2,3,4,5,6.2]))
+    False
   """
-array([10000, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008,
-array([1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010,
-array([100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
-array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-  """
-  print("NUMPY")
-  print(np.arange(30, dtype=np.int32).reshape(2,-1).__repr__())
-  print(np.arange(30, dtype=np.int32).reshape(2,-1))
-  print(np.arange(11, dtype=np.float32).__repr__())
-  print(np.array([4,9,2,23,4,5,6,4,9,2,23,4,5,6,4,9,2,23,4,5,6]).__repr__())
-  print(repr(np.array([4,9,2,23,4,5,6,4,9,2,23,4,5,6,4,9,2,23,4,5,6]).__repr__())[1:-1])
+  return strides_equal(a1, a2) and np.allclose(a1.values, a2.values, rtol=rtol, atol=atol)
 
-  print("US")
-  t2 = VStrideArray(None, np.array([3, 3,2,1,1,4,2,1,5,2, 0, 3, 1]),  np.array([1,3,3, 4,9,2,20,4,5,6,4,9,2,23,4,5,6,4,9,2,23,4,5,6, 7,8,9 ,10]))
-  t2 = VStrideArray(None, np.array([3, 21, 0, 3, 1]),  np.array([-183,3,32, 4,9,2,-20,4,5,6,4,9,-2.45,23,0,5,6,4,9,2,23,4,5,6, 7,8,9 ,10], float))
-  #with np.printoptions(threshold=4, edgeitems=1):
-
-
-
-  with np.printoptions(linewidth=50):
-    print(t2.__repr__())
-  quit()
-  
-  t3 = t2.copy()
-  t3[1] = np.array([True, False, True], bool)
-  print(t3)
-  quit()
-  t3.reverse()
-  t4 = unique(t3)
-
-  t5 = t4.copy()
-  #t5._displs = np.array([0, 2,6,6,9,10])
-  tnp = np.ones(5, int)
-  print("T5 ini")
-  print(t5)
-  
-  t9 = t5 + 7
-
-  print("T5 NOW")
-  print(t5)
-  print(t9 > t5)
-
-
-  quit()
-  t3.append(np.array([6,21,1]))
-  print("t3")
-  t3[3] = np.array([1])
-
-  t4 = VStrideArray(t3.offset.copy(), np.copy(t3.values))
-  #print('reduced', t4.reduce(np.logical_and))
-  #print('\n\n', t4[-6]) #IndexError: index -7 is out of bounds for axis 0 with size 6
-  # print(t3==t4)
-  t4.partial_sort()
-  print(t4.counts())
-  # print(len(t4))
-  # for p in t4:
-    # print (p)
-  l = [np.array([2., 3.]), np.array([1.]), np.empty(0, float), np.array([1., 100., 2., 1.])]
-  print(VStrideArray.from_array_list(l))
-
-  """
-  Jagged([[ 1,  3,  3],
-          [ 4,  9,  2, 23,  4,  5,  6,  4,  9,  2, 23,  4,  5,  6,  4,  9,  2,
-           23,  4,  5,  6],
-          [],
-          [ 7,  8,  9],
-          [10],
-         ], dtype=int64)
-  """

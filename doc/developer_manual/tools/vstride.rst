@@ -9,7 +9,7 @@ and an utility class to manipulate it.
 Rationale
 ---------
 
-A variable stride array (hereafter *VS array* ) is conceptually an array of :math:`N` arrays,
+A variable stride array (hereafter *VS array*) is conceptually an array of :math:`N` arrays,
 where each subarray have a different size but the same datatype. This differs from multidimensional arrays
 (such as numpy `ndarray <https://numpy.org/doc/stable/reference/arrays.ndarray.html>`_)
 which have a rectangular shape.
@@ -138,6 +138,7 @@ or additional comparison functions.
   sign
   strides_equal
   array_equal
+  array_close
 
 --------------------------------------------------------
 
@@ -145,7 +146,7 @@ or additional comparison functions.
   :members: array, from_counts, from_displs,
             take, put, insert, delete,
             flip, sort, unique, roll, concatenate,
-            sign, strides_equal, array_equal
+            sign, strides_equal, array_equal, array_close
   :member-order: bysource
 
 

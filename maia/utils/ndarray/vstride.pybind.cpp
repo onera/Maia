@@ -95,8 +95,6 @@ roll_by_stride(py::array_t<I>& np_displs,
 
   if (shift == 0) return;
 
- //std::vector<T> tmp(shift); // need abs
-
   int n_elt   = np_displs.size() - 1;
   auto displs = np_displs.data();
   auto values = np_values.mutable_data();
@@ -113,24 +111,8 @@ roll_by_stride(py::array_t<I>& np_displs,
       auto middle = start + count - loc_shift;
       auto end = start + count;
 
-      std::reverse(start, middle);
-      std::reverse(middle, end);
-      std::reverse(start, end);
-
-      // Copy end of array in tmp
-      //for (int j = 0; j < loc_shift; ++j)
-          //tmp[j] = *(end - loc_shift + j);
-      // Shift array
-      //for (int j = 0; j < count-loc_shift; ++j)
-          //*(start + j + loc_shift) = *(start + j);
-      // Replace end of array at beg.
-      //for (int j = 0; j < loc_shift; ++j)
-          //*(start + j) = tmp[j];
-      //std::copy_n(end - loc_shift, loc_shift, tmp.begin());
-      //std::copy_n(start, count-loc_shift, start+loc_shift);
-      //std::copy_n(tmp.begin(), loc_shift, start);
-
-//      auto start = values + displs[i];
+      std::rotate(start, middle, end);
+    
     }
   }
  
