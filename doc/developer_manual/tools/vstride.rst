@@ -94,7 +94,7 @@ Arrays routines
 The ``vstride`` module provides the following routines in order to create or
 manipulate :class:`VStrideArray` instances:
 
-**Creation routines** : these routines offer shortcuts to create a new :class:`VStrideArray` from other input data
+**Creation routines** : these routines offer shortcuts to create a new :class:`VStrideArray` from other input data.
 
 .. autosummary::
   :nosignatures:
@@ -103,7 +103,8 @@ manipulate :class:`VStrideArray` instances:
   from_counts
   from_displs
 
-**Indexing routines** : describe here (TODO)
+**Indexing routines** : these routines create a new :class:`VStrideArray` by acting on the
+specified indices of the input array.
 
 .. autosummary::
   :nosignatures:
@@ -116,8 +117,8 @@ manipulate :class:`VStrideArray` instances:
 **Algorithms** : these routines apply an algorithm to :class:`VStrideArray` object.
 All these functions take a parameter ``axis`` to indicate if the algorithm is applied:
   
--  independantly on each block of the array (using :data:`INNER_AXIS`)
--  globally over the elements of the array (using :data:`OUTER_AXIS`)
+-  independantly on each block of the array (using :data:`INNER_AXIS`);
+-  globally over the elements of the array (using :data:`OUTER_AXIS`).
 
 .. autosummary::
   :nosignatures:
@@ -128,10 +129,23 @@ All these functions take a parameter ``axis`` to indicate if the algorithm is ap
   roll
   concatenate
 
+**Additional operators** : few operators that are not part of language keywords,
+or additional comparison functions.
+
+.. autosummary::
+  :nosignatures:
+
+  sign
+  strides_equal
+  array_equal
+
 --------------------------------------------------------
 
 .. automodule:: maia.utils.ndarray.vstride
-  :members: array, from_counts, from_displs, take, put, insert, delete, flip, sort, unique, roll, concatenate
+  :members: array, from_counts, from_displs,
+            take, put, insert, delete,
+            flip, sort, unique, roll, concatenate,
+            sign, strides_equal, array_equal
   :member-order: bysource
 
 

@@ -1219,6 +1219,67 @@ def concatenate(array_l, axis:Axis):
   else:
     raise ValueError("Unvalid value for axis")
 
+#### Additional operators
+
+def sign(array:VStrideArray, dtype=None):
+  """ Create a new array storing the sign of :attr:`array.values`.
+  The *strides* of the output array are identical to ones of the input.
+
+  Args:
+    array (:class:`VStrideArray`): input array
+    dtype (data-type, optional): desired datatype for the output
+  Returns:
+    :class:`VStrideArray` : sign array
+  Example:
+    >>> vs.sign(vs.from_counts([2,3,1], [1,2,-3,4,0,-6]))
+    vsarray([
+      [ 1,  1],
+      [-1,  1,  0],
+      [-1],
+    ], dtype=int64)
+  """
+  return VStrideArray(array._displs, array._counts, np.sign(array.values).astype(dtype=dtype, copy=False))
+
+def strides_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
+  """ ``True`` if the two input arrays have the same *strides*, ``False`` otherwise.
+
+  Args:
+    a1 (:class:`VStrideArray`): first input
+    a2 (:class:`VStrideArray`): second input
+  Returns:
+    bool  : comparison result
+  Example:
+    >>> vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+    ...                vs.from_counts([2,3,1], [6,5,4,3,2,1]))
+    True
+    >>> vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+    ...                vs.from_counts([3,2,1], [1,2,3,4,5,6]))
+    False
+  """
+  if a1._counts is not None and a2._counts is not None:
+    return np.array_equal(a1._counts, a2._counts)
+  else:
+    return np.array_equal(a1.displs, a2.displs)
+
+def array_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
+  """ ``True`` if the two input arrays have the same *strides* and values, ``False`` otherwise.
+
+  Args:
+    a1 (:class:`VStrideArray`): first input
+    a2 (:class:`VStrideArray`): second input
+  Returns:
+    bool  : comparison result
+  Example:
+    >>> vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+    ...                vs.from_counts([2,3,1], [1,2,3,4,5,6]))
+    True
+    >>> vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+    ...                vs.from_counts([2,3,1], [6,5,4,3,2,1]))
+    False
+  """
+  return strides_equal(a1, a2) and np.array_equal(a1.values, a2.values)
+
+
 
 if __name__ == '__main__':
   t2 = VStrideArray(np.array([0, 3, 6, 6, 8, 9]), None,  np.array([1,3,3, 4,5,6, 7,8 ,10]))

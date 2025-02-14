@@ -298,6 +298,42 @@ def test_concatenate():
     b = vs.from_counts([0, 5  ],  np.empty(5))
     vs.concatenate([a,b], vs.INNER_AXIS)
 
+
+# Additional operators
+
+def test_sign():
+  a = vs.from_counts([2,3,1], [1,2,-3,4,0,-6])
+  assert vs.array_equal(vs.sign(a), vs.from_counts([2,3,1], [1,1,-1,1,0,-1]))
+
+  a = vs.from_counts([2,3,1], [1,2,-3,4,0,-6], dtype=float)
+  b = vs.sign(a)
+  assert vs.array_equal(b, vs.from_counts([2,3,1], [1,1,-1,1,0,-1])) and b.dtype == float
+  b = vs.sign(a, dtype=np.int32)
+  assert vs.array_equal(b, vs.from_counts([2,3,1], [1,1,-1,1,0,-1])) and b.dtype == np.int32
+
+  b = vs.sign(vs.array([np.array([4.4, -6.53e18, 0])]), dtype=np.int16)
+  assert np.array_equal(b.values, [1,-1,0]) and b.dtype == np.int16
+
+def test_strides_equal():
+  assert     vs.strides_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+                              vs.from_counts([2,3,1], [6,5,4,3,2,1]))
+  assert not vs.strides_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+                              vs.from_counts([3,2,1], [1,2,3,4,5,6]))
+  assert not vs.strides_equal(vs.from_counts([2,3],   [1,2,3,4,5]),
+                              vs.from_counts([2,3,1], [1,2,3,4,6,5]))
+
+def test_array_equal():
+  assert     vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+                            vs.from_counts([2,3,1], [1,2,3,4,5,6]))
+  assert not vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+                            vs.from_counts([3,2,1], [1,2,3,4,5,6]))
+  assert not vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+                            vs.from_counts([2,3,1], [1,2,3,4,6,5]))
+  assert not vs.array_equal(vs.from_counts([2,3],   [1,2,3,4,5]),
+                            vs.from_counts([2,3,1], [1,2,3,4,6,5]))
+
+
+
 ## SPECS
 ##
 ## Class name is VStrideArray
