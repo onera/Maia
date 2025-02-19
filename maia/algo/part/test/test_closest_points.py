@@ -12,6 +12,7 @@ from maia.factory      import dcube_generator as DCG
 from maia.factory      import partition_dist_tree
 
 from maia.utils     import test_utils as TU
+from maia.utils     import vstride as vs
 from maia.algo.part import closest_points as CLO
 
 @pytest_parallel.mark.parallel(2)
@@ -43,11 +44,12 @@ class Test_closest_points:
     if comm.Get_rank() == 0:
       expected_tgt_data = [{'closest_src_gnum' : [4], 'closest_src_distance' : [0.1075]},
                            {'closest_src_gnum' : [4], 'closest_src_distance' : [0.8075]}]
-      expected_src_data = [{'tgt_in_src_idx' : [0,0,0,0,1], 'tgt_in_src' : [3], 'tgt_in_src_dist2' : [0.0475]}]
+      expected_src_data = [{'tgt_in_src' : vs.from_counts([0,0,0,1], [3]), 
+                            'tgt_in_src_dist2' : vs.from_counts([0,0,0,1], [0.0475])}]
     elif comm.Get_rank() == 1:
       expected_tgt_data = [{'closest_src_gnum' : [4,8,2], 'closest_src_distance' : [0.1075, 0.0475, 0.2475]}]
-      expected_src_data = [{'tgt_in_src_idx' : [0,0,0], 'tgt_in_src' : [], 'tgt_in_src_dist2' : []},
-                           {'tgt_in_src_idx' : [0,1,4], 'tgt_in_src' : [5,1,2,4], 'tgt_in_src_dist2' : [0.2475, 0.1075, 0.1075, 0.8075]}]
+      expected_src_data = [{'tgt_in_src' : vs.from_counts([0,0], []), 'tgt_in_src_dist2' : vs.from_counts([0,0],[])},
+                           {'tgt_in_src' : vs.from_counts([1,3], [5,1,2,4]), 'tgt_in_src_dist2' : vs.from_counts([1,3], [0.2475, 0.1075, 0.1075, 0.8075])}]
 
     for i_part, expct_data in enumerate(expected_tgt_data):
       for key in expct_data:
@@ -55,7 +57,7 @@ class Test_closest_points:
     if reverse:
       for i_part, expct_data in enumerate(expected_src_data):
         for key in expct_data:
-          assert np.allclose(src_data[i_part][key], expct_data[key])
+          assert vs.array_close(src_data[i_part][key], expct_data[key])
 
   def test_mult_pts(self, comm):
     src_clouds = self.src_clouds_per_rank[comm.Get_rank()]

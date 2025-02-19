@@ -3,6 +3,7 @@ import numpy as np
 import maia.pytree as PT
 
 from maia.utils import np_utils
+from maia.utils import vstride as vs
 
 # For each cell_dimension, list of output GridLocation depending of requested dim argument
 DIM_TO_LOC = {3: ['Vertex', 'EdgeCenter', 'FaceCenter', 'CellCenter'],
@@ -31,7 +32,7 @@ def compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n):
   # Filter void coords if phy_dim == 2
   local_coords = [c for c in local_coords if c is not None]
 
-  local_coords_next = [np_utils.roll_once_by_stride(face_vtx_idx, coords) for coords in local_coords]
+  local_coords_next = [vs.roll(vs.from_displs(face_vtx_idx, coords), -1, vs.INNER_AXIS).values for coords in local_coords]
 
   if len(local_coords) == 2 : # Complete with 0 if phy_dim == 2
     local_coords.append(np.zeros_like(local_coords[0]))

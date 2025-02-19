@@ -155,10 +155,7 @@ def _reorder_ngon_ec(ngon_n):
   Internal function used by _ngon_duplication to reorder the NGonNode connectivity
   to be exited normal
   """
-  ec  = PT.get_child_from_name(ngon_n, 'ElementConnectivity')[1]
-  eso = PT.get_child_from_name(ngon_n, 'ElementStartOffset')[1]
-  
-  np_utils.reverse_by_stride(eso-eso[0], ec, inplace=True)
+  MT.Element.connectivity(ngon_n)._inner_flip()
     
 
 def _ngon_duplication(zone, comm, align=True):

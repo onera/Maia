@@ -12,7 +12,7 @@ from maia.factory      import dcube_generator as DCG
 from maia.factory      import partition_dist_tree
 
 from maia.utils     import test_utils as TU
-from maia.utils     import np_utils
+from maia.utils     import np_utils, vstride
 from maia.algo.part import localize as LOC
 
 @pytest_parallel.mark.parallel(1)
@@ -49,9 +49,8 @@ def test_mesh_location(reverse, comm):
 
   if reverse:
     tgt_data, src_data =  LOC._mesh_location(src_parts, [], comm, reverse)
-    assert all([data['elt_pts_inside_idx'].sum() == 0 for data in src_data])
-    assert all([data['elt_pts_inside_idx'].size-1 == PT.Zone.n_cell(part) for data,part in zip(src_data, PT.get_all_Zone_t(tree))])
-    assert all([data['points_gnum'].size == 0 for data in src_data])
+    assert all([len(data['points_gnum']) == PT.Zone.n_cell(part) for data,part in zip(src_data, PT.get_all_Zone_t(tree))])
+    assert all([data['points_gnum'].dsize == 0 for data in src_data])
   else:
     tgt_data = LOC._mesh_location(src_parts, [], comm, reverse)
   assert tgt_data == []
@@ -71,13 +70,11 @@ def test_mesh_location(reverse, comm):
     for key in expct_data:
       assert (tgt_data[i_part][key] == expct_data[key]).all()
   if reverse:
-    elt_pts_inside_idx_full = np.array([0,0,0,0,2,2,2,2,3])
-    points_gnum_full = np.array([1,2,3])
+    gnum_full = vstride.from_displs([0,0,0,0,2,2,2,2,3], [1,2,3])
     for i_part, zone in enumerate(PT.get_all_Zone_t(tree)):
       cell_gnum = PT.maia.get_global_numbering(zone, 'Cell')[1].astype(np.int64)
-      expected_idx, expected_gnum = np_utils.take_strided(elt_pts_inside_idx_full, points_gnum_full , cell_gnum-1)
-      assert np.array_equal(src_data[i_part]['elt_pts_inside_idx'], expected_idx)
-      assert np.array_equal(src_data[i_part]['points_gnum']       , expected_gnum)
+      expected_gnum = vstride.take(gnum_full, cell_gnum-1)
+      assert vstride.array_equal(expected_gnum, src_data[i_part]['points_gnum'])
 
 @pytest_parallel.mark.parallel(1)
 def test_mesh_location_mdom(comm):
@@ -96,13 +93,13 @@ def test_mesh_location_mdom(comm):
       src_parts_per_dom, tgt_parts_per_dom, 'CellCenter', comm, reverse=True)
   # We should get all the cells of Large + 4*4*6 cells of Small
   _result_inv = result_inv[0][0]
-  dom1_idx = np.where(_result_inv['domain'] == 1)[0]
-  dom2_idx = np.where(_result_inv['domain'] == 2)[0]
+  dom1_idx = np.where(_result_inv['domain'].values == 1)[0]
+  dom2_idx = np.where(_result_inv['domain'].values == 2)[0]
   assert dom1_idx.size == PT.Zone.n_cell(tgt_parts_per_dom[0][0])
   assert dom2_idx.size == 4*4*6
   # Gnum should have been reshifted
-  assert _result_inv['points_gnum'][dom1_idx].max() <= PT.Zone.n_cell(tgt_parts_per_dom[0][0])
-  assert _result_inv['points_gnum'][dom2_idx].max() <= PT.Zone.n_cell(tgt_parts_per_dom[1][0])
+  assert _result_inv['points_gnum'].values[dom1_idx].max() <= PT.Zone.n_cell(tgt_parts_per_dom[0][0])
+  assert _result_inv['points_gnum'].values[dom2_idx].max() <= PT.Zone.n_cell(tgt_parts_per_dom[1][0])
   
 
 @pytest_parallel.mark.parallel(3)

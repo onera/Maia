@@ -19,11 +19,11 @@ def compute_edge_measure(zone):
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
   if PT.Zone.Type(zone) == "Unstructured":
-    edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
+    edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
 
     # Compute length : |L| = ||x2 - x1||
-    first_vtx  = edge_vtx[0::2] - 1
-    second_vtx = edge_vtx[1::2] - 1
+    first_vtx  = edge_vtx.values[0::2] - 1
+    second_vtx = edge_vtx.values[1::2] - 1
     length = (coords[0][second_vtx] - coords[0][first_vtx])**2
     if (cy := coords[1]) is not None:
       length += (cy[second_vtx] - cy[first_vtx])**2
@@ -46,14 +46,12 @@ def compute_face_measure(zone):
 
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+      face_vtx = PT.maia.Element.connectivity(ngon_node)
     else:
-      face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
+      face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
 
-    local_coords = get_local_coordinates(zone, face_vtx)
-    face_vtx_n = np.diff(face_vtx_idx)
-    _, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+    local_coords = get_local_coordinates(zone, face_vtx.values)
+    _, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
     measure = np.linalg.norm(normalflux, axis=1)
 
   else:

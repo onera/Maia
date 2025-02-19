@@ -10,6 +10,7 @@ from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.algo      import indexing
 from maia.transfer  import protocols  as EP
 from maia.utils     import np_utils, par_utils, s_numbering, as_pdm_gnum
+from maia.utils     import vstride as vs
 
 from .ngon_tools    import PDM_dfacecell_to_dcellface
 
@@ -90,7 +91,29 @@ def cell_vtx_connectivity_S(zone_S, dim, cell_subset=None):
     cell_vtx[6::8] = s_numbering.ijk_to_index(cell_i+1, cell_j+1, cell_k+1, vertex_size).flatten()
     cell_vtx[7::8] = s_numbering.ijk_to_index(cell_i,   cell_j+1, cell_k+1, vertex_size).flatten()
 
-  return cell_vtx_idx, cell_vtx
+  return vs.from_displs(cell_vtx_idx, cell_vtx)
+
+def combine_dconnectivity(distri1, distri2, cnt1, cnt2, keep_sign, comm):
+  """
+  Compute strided connectivity A->C from A->B + B->C
+  If keep sign is True, sign of A->B is reported on output
+  """
+  # 1. For values of A->B, get corresponding values in B->C
+  #    so we have A->C but with reps. and without sign
+  GI = EP.GlobalIndexer(distri2, np.abs(cnt1.values)-1, comm)
+  cnt3 = vs.from_counts(*GI.Take_v((cnt2.counts, cnt2.values)))
+
+  # 2. Report sign of A->C if needed. The sign extends to all the 
+  #   'C' elements coming from a same 'B' elt
+  if keep_sign:
+    cnt3 *= np.sign(cnt1.values)
+
+  # 3. Compute new index of A->C by summing the counts of items coming from each B
+  idx = vs.from_displs(cnt1.displs, cnt3.counts).reduce(vs.ReduceOp.SUM)
+  # 4. Make A->C elts unique
+  out = vs.unique(vs.from_counts(idx, cnt3.values), vs.INNER_AXIS)
+  return out
+
 
 def cell_vtx_connectivity_ngon(zone, comm, cell_subset=None):
   """
@@ -99,47 +122,32 @@ def cell_vtx_connectivity_ngon(zone, comm, cell_subset=None):
   assert PT.Zone.Type(zone) == "Unstructured" and PT.Zone.CellDimension(zone) == 3
   if PT.Zone.has_ngon_elements(zone):
     ngon_node = PT.Zone.NGonNode(zone)
-    face_vtx      = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-    face_vtx_idx  = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
     face_distri   = MT.get_distribution(ngon_node, 'Element')[1]
     _face_distri  = par_utils.partial_to_full_distribution(face_distri, comm)
-    _face_vtx_idx = np.empty(face_vtx_idx.size, np.int32)
-    np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
+    face_vtx = MT.Element.connectivity(ngon_node)
     if PT.Zone.has_nface_elements(zone):
       nface_node = PT.Zone.NFaceNode(zone)
-      cell_face      = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
+      cell_face = MT.Element.connectivity(nface_node)
       cell_distri    = MT.get_distribution(nface_node, 'Element')[1]
       _cell_distri   = par_utils.partial_to_full_distribution(cell_distri, comm)
-      cell_face_idx  = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
-      _cell_face_idx = np.empty(cell_face_idx.size, np.int32)
-      np.subtract(cell_face_idx, cell_face_idx[0], out=_cell_face_idx)
 
     else:
       assert PT.Element.Range(ngon_node)[0] == 1
       local_pe = indexing.get_pe_local(ngon_node).reshape(-1, order='C')
       cell_distri   = MT.get_distribution(zone, 'Cell')[1]
       _cell_distri  = par_utils.partial_to_full_distribution(cell_distri, comm)
-      _cell_face_idx, cell_face = PDM_dfacecell_to_dcellface(comm, _face_distri, _cell_distri, local_pe)
-      _cell_face_idx = np_utils.safe_int_cast(_cell_face_idx, np.int32)
+      cell_face = PDM_dfacecell_to_dcellface(comm, _face_distri, _cell_distri, local_pe)
 
-    cell_vtx_idx, cell_vtx = PDM.dconnectivity_combine(comm, 
-                                                      as_pdm_gnum(_cell_distri),
-                                                      as_pdm_gnum(_face_distri),
-                                                      _cell_face_idx,
-                                                      as_pdm_gnum(cell_face),
-                                                      _face_vtx_idx,
-                                                      as_pdm_gnum(face_vtx),
-                                                      False)
+    cell_vtx = combine_dconnectivity(_cell_distri, _face_distri, cell_face, face_vtx, False, comm)
 
     if cell_subset is not None:
       _cell_subset = cell_subset - PT.Zone.get_elt_range_per_dim(zone)[3][0]
-      cell_vtx_n = np.diff(cell_vtx_idx).astype(np.int32, copy=False)
-      cell_vtx_n, cell_vtx = EP.block_to_part_strided(cell_vtx_n, cell_vtx, _cell_distri, _cell_subset, comm, legacy=False)
-      cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n, cell_vtx_idx.dtype)
+      cell_vtx_n, cell_vtx_v = EP.block_to_part_strided(cell_vtx.counts, cell_vtx.values, _cell_distri, _cell_subset, comm, legacy=False)
+      cell_vtx = vs.from_counts(cell_vtx_n, cell_vtx_v)
   else:
     raise NotImplementedError("Only NGON zones are managed")
 
-  return cell_vtx_idx, cell_vtx
+  return cell_vtx
 
 
 def entity_vtx_connectivity_elt(zone, comm, dim, distri_global, elts_subset=None):
@@ -153,8 +161,7 @@ def entity_vtx_connectivity_elt(zone, comm, dim, distri_global, elts_subset=None
   with local mode rank 0 get 5 tetra and 3 prism, rank 1 get 4 tetra and 4 prism
   with global mode rank 0 get 8 tetra and rank 1 get 1 tetra and 7 prism
   """
-  all_cell_vtx_n = []
-  all_cell_vtx = []
+  all_cell_vtx_vs = []
   all_elt_gnum = []
 
   if elts_subset is not None:
@@ -178,25 +185,18 @@ def entity_vtx_connectivity_elt(zone, comm, dim, distri_global, elts_subset=None
       distri_out[1] = max(min(distri_cell[1], end), start) - start
       btb = EP.BlockToBlock(distri, distri_out, comm)
       ec = btb.exchange(ec, PT.Element.NVtx(elt))
-      ec_idx = PT.Element.NVtx(elt) * np.ones(distri_out[1] - distri_out[0], np.int32)
       start = end
-    else:
-      ec_idx = PT.Element.NVtx(elt) * np.ones(distri[1] - distri[0], np.int32)
 
-    all_cell_vtx.append(ec)
-    all_cell_vtx_n.append(ec_idx)
+    all_cell_vtx_vs.append(vs.from_counts(np.int32(PT.Element.NVtx(elt)), ec))
     if elts_subset is not None:
       all_elt_gnum.append(np.arange(distri[0], distri[1], dtype=pdm_dtype) + PT.Element.Range(elt)[0])
 
   if elts_subset is not None:
-    cell_vtx_n, cell_vtx = EP.part_to_part_strided(all_cell_vtx_n, all_cell_vtx, all_elt_gnum, [elts_subset], comm)
-    cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n[0])
-    cell_vtx = cell_vtx[0]
-  elif len(all_cell_vtx_n):
-    cell_vtx_n = np.concatenate(all_cell_vtx_n, dtype=np.int32)
-    cell_vtx = np.concatenate(all_cell_vtx)
-    cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n)
+    cell_vtx_n, cell_vtx = EP.part_to_part_strided([a.counts for a in all_cell_vtx_vs], [a.values for a in all_cell_vtx_vs], all_elt_gnum, [elts_subset], comm)
+    cell_vtx = vs.from_counts(cell_vtx_n[0], cell_vtx[0])
+  elif len(all_cell_vtx_vs):
+    cell_vtx = vs.concatenate(all_cell_vtx_vs, vs.OUTER_AXIS)
   else: 
-    cell_vtx_idx, cell_vtx = np.array([],dtype=np.int32), np.array([],np.int32)
+    cell_vtx = vs.from_displs(np.array([0],dtype=np.int32), np.array([],np.int32))
 
-  return cell_vtx_idx, cell_vtx
+  return cell_vtx

@@ -5,6 +5,7 @@ import maia.pytree      as PT
 from maia.algo.part import connectivity_utils as CU
 from maia.utils     import np_utils, s_numbering
 from maia.utils     import logging as mlog
+from maia.utils     import vstride as vs
 
 from .utils         import place_in_container
 
@@ -15,25 +16,29 @@ def _to_xyz(r, theta, z):
 def _to_rthetaz(x, y, z):
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
 
-def _mean_coords_from_connectivity(vtx_id_idx, vtx_id, cx, cy, cz):
+def _mean_coords_from_connectivity(vtx_id: vs.VStrideArray, cx, cy, cz):
 
-  vtx_id_n = np.diff(vtx_id_idx)
+  vtx_id_val = vtx_id.values
+  vtx_id_idx = vtx_id.displs
+  vtx_id_n    = vtx_id.counts
 
-  mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_x = np.add.reduceat(cx[vtx_id_val-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_y = np.add.reduceat(cy[vtx_id_val-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_z = np.add.reduceat(cz[vtx_id_val-1], vtx_id_idx[:-1]) / vtx_id_n
 
   return np_utils.interweave_arrays([mean_x, mean_y, mean_z])
 
-def _mean_coords_from_connectivity_cyl(vtx_id_idx, vtx_id, cr, ctheta, cz):
+def _mean_coords_from_connectivity_cyl(vtx_id: vs.VStrideArray, cr, ctheta, cz):
 
-  vtx_id_n = np.diff(vtx_id_idx)
+  vtx_id_val = vtx_id.values
+  vtx_id_idx = vtx_id.displs
+  vtx_id_n    = vtx_id.counts
 
   cx,cy,cz = _to_xyz(cr, ctheta, cz)
 
-  mean_x = np.add.reduceat(cx[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_y = np.add.reduceat(cy[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
-  mean_z = np.add.reduceat(cz[vtx_id-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_x = np.add.reduceat(cx[vtx_id_val-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_y = np.add.reduceat(cy[vtx_id_val-1], vtx_id_idx[:-1]) / vtx_id_n
+  mean_z = np.add.reduceat(cz[vtx_id_val-1], vtx_id_idx[:-1]) / vtx_id_n
   
   return np_utils.interweave_arrays(_to_rthetaz(mean_x, mean_y, mean_z))
 
@@ -66,12 +71,12 @@ def compute_cell_center(zone, cell_indices=None):
       return np.empty(0, dtype=np.float64)
 
   if PT.Zone.Type(zone) == "Unstructured":
-    cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity(zone, dim=3, elts_subset=cell_indices)
+    cell_vtx = CU.cell_vtx_connectivity(zone, dim=3, elts_subset=cell_indices)
 
     if isinstance(coords, PT.CylindricalCoordinates):
-      center_cell = _mean_coords_from_connectivity_cyl(cell_vtx_idx, cell_vtx, *coords)
+      center_cell = _mean_coords_from_connectivity_cyl(cell_vtx, *coords)
     elif isinstance(coords, PT.CartesianCoordinates):
-      center_cell = _mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, *coords)
+      center_cell = _mean_coords_from_connectivity(cell_vtx, *coords)
         
   else:
     if isinstance(coords, PT.CylindricalCoordinates):
@@ -80,8 +85,8 @@ def compute_cell_center(zone, cell_indices=None):
       center_cell = cpart_algo.compute_center_cell_s(*PT.Zone.CellSize(zone), *coords)
     if cell_indices is not None: # Filtering is done afterward, which is less performant
       _cell_indices = s_numbering.ijk_to_index_from_loc(*cell_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
-      center_cell_idx = np.arange(0, 3*(PT.Zone.n_cell(zone)+1), 3)
-      _, center_cell = np_utils.take_strided(center_cell_idx, center_cell, _cell_indices)
+      center_cell_vs = vs.from_counts(3, center_cell)
+      center_cell = vs.take(center_cell_vs, _cell_indices).values
 
   return center_cell
 
@@ -124,12 +129,12 @@ def compute_face_center(zone, face_indices=None, face_indices_loc=None):
       return np.empty(0, dtype=np.float64)
 
   if PT.Zone.Type(zone) == "Unstructured":
-    face_vtx_idx, face_vtx = CU.cell_vtx_connectivity(zone, dim=2, elts_subset=face_indices)
+    face_vtx = CU.cell_vtx_connectivity(zone, dim=2, elts_subset=face_indices)
     _coords = coords if coords[2] is not None else [coords[0], coords[1], np.zeros_like(coords[0])]
     if isinstance(coords, PT.CartesianCoordinates):
-      return _mean_coords_from_connectivity(face_vtx_idx, face_vtx, *_coords)
+      return _mean_coords_from_connectivity(face_vtx, *_coords)
     elif isinstance(coords, PT.CylindricalCoordinates):
-      return _mean_coords_from_connectivity_cyl(face_vtx_idx, face_vtx, *_coords)
+      return _mean_coords_from_connectivity_cyl(face_vtx, *_coords)
   else:
     vtx_size = [1,1,1]
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
@@ -149,8 +154,8 @@ def compute_face_center(zone, face_indices=None, face_indices_loc=None):
         _face_indices = s_numbering.ij_to_index_from_loc(*face_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
       else:
         _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
-      center_idx = np.arange(0, 3*(centers.size//3 + 1), 3)
-      _, centers = np_utils.take_strided(center_idx, centers, _face_indices)
+      centers_vs = vs.from_counts(3, centers)
+      centers = vs.take(centers_vs, _face_indices).values
 
     return centers
 
@@ -191,11 +196,11 @@ def compute_edge_center(zone,edge_indices=None):
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
       raise NotImplementedError("Only U-elts zones are managed")
-    edge_vtx_idx, edge_vtx = CU.cell_vtx_connectivity(zone, dim=1, elts_subset=edge_indices)
+    edge_vtx = CU.cell_vtx_connectivity(zone, dim=1, elts_subset=edge_indices)
     if isinstance(coords, PT.CartesianCoordinates):
-      return _mean_coords_from_connectivity(edge_vtx_idx, edge_vtx, *_coords)
+      return _mean_coords_from_connectivity(edge_vtx, *_coords)
     elif isinstance(coords, PT.CylindricalCoordinates):
-      return _mean_coords_from_connectivity_cyl(edge_vtx_idx, edge_vtx, *_coords)
+      return _mean_coords_from_connectivity_cyl(edge_vtx, *_coords)
   else:
     raise NotImplementedError("Only U-elts zones are managed")
 

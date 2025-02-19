@@ -5,6 +5,7 @@ import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 
 from maia.utils                  import py_utils, np_utils
+from maia.utils import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils import get_shifted_point_clouds
@@ -33,7 +34,13 @@ def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
   all_closest = [closest_point.points_get(i_part_tgt) for i_part_tgt in range(len(tgt_clouds))]
 
   if reverse:
-    all_closest_inv = [closest_point.tgt_in_src_get(i_src_part) for i_src_part in range(len(src_clouds))]
+    all_closest_inv = []
+    for i_src_part in range(len(src_clouds)):
+      _result = closest_point.tgt_in_src_get(i_src_part)
+      all_closest_inv.append({
+        'tgt_in_src'       : vs.from_displs(_result['tgt_in_src_idx'], _result['tgt_in_src']),
+        'tgt_in_src_dist2' : vs.from_displs(_result['tgt_in_src_idx'], _result['tgt_in_src_dist2'])
+      })
     return all_closest, all_closest_inv
   else:
     return all_closest

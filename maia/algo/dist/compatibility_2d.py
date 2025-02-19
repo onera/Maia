@@ -72,16 +72,16 @@ def _bar_pe_to_nface2d(zone, comm):
   
   full_edge_distrib = par_utils.partial_to_full_distribution(edge_distrib, comm)
   full_face_distrib = par_utils.partial_to_full_distribution(face_distrib, comm)
-  face_edge_idx, face_edge = PDM_dfacecell_to_dcellface(comm,
-                                                        full_edge_distrib,
-                                                        full_face_distrib,
-                                                        edge_face)
+  face_edge = PDM_dfacecell_to_dcellface(comm,
+                                         full_edge_distrib,
+                                         full_face_distrib,
+                                         edge_face)
 
-  face_edge_distri = par_utils.dn_to_distribution(face_edge_idx[-1], comm)
-  face_edge_idx += face_edge_distri[0]
+  face_edge_distri = par_utils.dn_to_distribution(face_edge.dsize, comm)
+  eso = face_edge.displs + face_edge_distri[0]
 
   nface_er = np.array([1, face_distrib[-1]], face_edge.dtype) + PT.Element.Range(bar_n)[1]
-  nface_n = PT.new_NFaceElements(erange=nface_er, ec=face_edge, eso=face_edge_idx, parent=zone)
+  nface_n = PT.new_NFaceElements(erange=nface_er, ec=face_edge.values, eso=eso, parent=zone)
 
   MT.newDistribution({'Element': face_distrib, 'ElementConnectivity': face_edge_distri},
                      parent = nface_n)

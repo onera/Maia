@@ -16,10 +16,9 @@ class CenterToNode:
 
   def __init__(self, tree, comm, idw_power=1, cross_domain=True):
 
-    self.parts        = []
-    self.weights      = []
-    self.vtx_cell     = []
-    self.vtx_cell_idx = []
+    self.parts    = []
+    self.weights  = []
+    self.vtx_cell = []
 
     parts_per_dom = get_parts_per_blocks(tree, comm)
     vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
@@ -30,8 +29,8 @@ class CenterToNode:
       for i_part, zone in enumerate(parts_per_dom[zone_path]):
 
           n_vtx = PT.Zone.n_vtx(zone)
-          cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(zone, dim)
-          vtx_cell_idx, vtx_cell = PDM.connectivity_transpose(int(n_vtx), cell_vtx_idx, cell_vtx)
+          cell_vtx = connectivity_utils.cell_vtx_connectivity(zone, dim)
+          vtx_cell = connectivity_utils.PDM_connectivity_transpose(int(n_vtx), cell_vtx)
           
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
@@ -40,17 +39,17 @@ class CenterToNode:
             cy = cy.flatten()
             cz = cz.flatten()
           # Use direct api since cell_vtx is already computed
-          cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx,cy,cz)
+          cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx, cx,cy,cz)
 
           # This one is just the local index of each vertices, repeated for
           # each cell the vertex touches. Eg [0, 1, 1, 2,2,2,2] if vtx 0,
           # 1 and 2 belongs to 1, 2 and 4 cells. It it used to
           # compute vtx -> cell center distance for each connected cell
-          vtx_idx_rep = np_utils.repeated_arange(np.diff(vtx_cell_idx))
+          vtx_idx_rep = np_utils.repeated_arange(vtx_cell.counts)
 
-          diff_x = cx[vtx_idx_rep] - cell_center[0::3][vtx_cell-1]
-          diff_y = cy[vtx_idx_rep] - cell_center[1::3][vtx_cell-1]
-          diff_z = cz[vtx_idx_rep] - cell_center[2::3][vtx_cell-1]
+          diff_x = cx[vtx_idx_rep] - cell_center[0::3][vtx_cell.values-1]
+          diff_y = cy[vtx_idx_rep] - cell_center[1::3][vtx_cell.values-1]
+          diff_z = cz[vtx_idx_rep] - cell_center[2::3][vtx_cell.values-1]
           norm_rep = (diff_x**2 + diff_y**2 + diff_z**2)**(0.5*idw_power)
           
           gnum_rep = vtx_gnum_shifted[i_dom][i_part][vtx_idx_rep]
@@ -61,7 +60,6 @@ class CenterToNode:
           self.parts.append(zone)
           self.weights.append(1./norm_rep)
           self.vtx_cell.append(vtx_cell)
-          self.vtx_cell_idx.append(vtx_cell_idx) # This one will be usefull to go back to unique vtx value
 
     self.gmean = PDM.GlobalMean(gnum_list, comm)
 
@@ -82,7 +80,7 @@ class CenterToNode:
     asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      cell_fields[field_name] = [asflat(PT.get_node_from_path(part, field_path)[1], part)[vtx_cell-1].astype(float, copy=False) \
+      cell_fields[field_name] = [asflat(PT.get_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
@@ -96,7 +94,7 @@ class CenterToNode:
       is_struct = PT.Zone.Type(part) == 'Structured'
       PT.rm_children_from_name(part, f'{container_name}#Vtx')
       fs = PT.new_FlowSolution(f'{container_name}#Vtx', loc='Vertex', parent=part)
-      vtx_cell_idx = self.vtx_cell_idx[i_part]
+      vtx_cell_idx = self.vtx_cell[i_part].displs
       for field_name, field_values in node_fields.items():
         data_out = field_values[i_part][vtx_cell_idx[:-1]]
         if is_struct:
@@ -110,7 +108,6 @@ class NodeToCenter:
     self.weights      = []
     self.weightssum   = []
     self.cell_vtx     = []
-    self.cell_vtx_idx = []
 
     for base in PT.get_all_CGNSBase_t(tree):
       dim = PT.get_value(base)[0]
@@ -120,30 +117,29 @@ class NodeToCenter:
            cx = cx.flatten()
            cy = cy.flatten()
            cz = cz.flatten() 
-        cell_vtx_idx, cell_vtx = connectivity_utils.cell_vtx_connectivity(p_zone, dim)
-        cell_vtx_n = np.diff(cell_vtx_idx)
+        cell_vtx = connectivity_utils.cell_vtx_connectivity(p_zone, dim)
+        cell_vtx_n = cell_vtx.counts
 
         # Use direct api since cell_vtx is already computed
-        cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx_idx, cell_vtx, cx,cy,cz)
+        cell_center = geometry.centers._mean_coords_from_connectivity(cell_vtx, cx,cy,cz)
 
-        diff_x = cx[cell_vtx-1] - np.repeat(cell_center[0::3], cell_vtx_n)
-        diff_y = cy[cell_vtx-1] - np.repeat(cell_center[1::3], cell_vtx_n)
-        diff_z = cz[cell_vtx-1] - np.repeat(cell_center[2::3], cell_vtx_n)
+        diff_x = cx[cell_vtx.values-1] - np.repeat(cell_center[0::3], cell_vtx_n)
+        diff_y = cy[cell_vtx.values-1] - np.repeat(cell_center[1::3], cell_vtx_n)
+        diff_z = cz[cell_vtx.values-1] - np.repeat(cell_center[2::3], cell_vtx_n)
         norm = (diff_x**2 + diff_y**2 + diff_z**2)**(0.5*idw_power)
         weights = 1./norm
 
         self.parts.append(p_zone)
         self.weights.append(weights)
-        self.weightssum.append(np.add.reduceat(weights, cell_vtx_idx[:-1]))
+        self.weightssum.append(np.add.reduceat(weights, cell_vtx.displs[:-1]))
         self.cell_vtx.append(cell_vtx)
-        self.cell_vtx_idx.append(cell_vtx_idx)
           
 
   def move_fields(self, container_name):
 
     for i_part, part in enumerate(self.parts):
-      cell_vtx_idx = self.cell_vtx_idx[i_part]
-      cell_vtx     = self.cell_vtx  [i_part]
+      cell_vtx_idx = self.cell_vtx  [i_part].displs
+      cell_vtx     = self.cell_vtx  [i_part].values
       weights      = self.weights   [i_part]
       weightssum   = self.weightssum[i_part]
 

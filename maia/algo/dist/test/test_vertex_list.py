@@ -18,13 +18,13 @@ def test_face_ids_to_vtx_ids(comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], comm)
   ngon = PT.get_node_from_name(tree, "NGonElements")
 
-  offset, face_vtx   = VL.face_ids_to_vtx_ids(np.array([3,6,2]), ngon, comm)
-  assert (offset == np.arange(0,(3+1)*4,4)).all()
-  assert (face_vtx == [4,7,8,5, 11,14,15,12, 2,5,6,3]).all()
+  vtx_ids = VL.face_ids_to_vtx_ids(np.array([3,6,2]), ngon, comm)
+  assert (vtx_ids.displs == np.arange(0,(3+1)*4,4)).all()
+  assert (vtx_ids.values == [4,7,8,5, 11,14,15,12, 2,5,6,3]).all()
 
-  offset, face_vtx_d = VL.face_ids_to_vtx_ids(np.array([1,4,5]), ngon, comm)
-  assert (offset == np.arange(0,(3+1)*4,4)).all()
-  assert (face_vtx_d == [1,4,5,2, 5,8,9,6, 10,13,14,11]).all()
+  vtx_ids = VL.face_ids_to_vtx_ids(np.array([1,4,5]), ngon, comm)
+  assert (vtx_ids.displs == np.arange(0,(3+1)*4,4)).all()
+  assert (vtx_ids.values == [1,4,5,2, 5,8,9,6, 10,13,14,11]).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_filter_vtx_coordinates(comm):

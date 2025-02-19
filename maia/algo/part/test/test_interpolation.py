@@ -6,7 +6,7 @@ import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.utils.ndarray import np_utils
+from maia.utils import vstride as vs
 
 import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -19,25 +19,25 @@ dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
 def test_cell_tgt_to_vtx_tgt():
   n_vtx = 12
-  cell_vtx_idx = np.array([0,    4,     7,      11,     14,     17], dtype=np.int32)
-  cell_vtx     = np.array([5,7,1,6, 3,9,5, 3,5,2,1, 10,4,8, 10,2,3], dtype=np.int32)
-  cell_tgt_idx = np.array([0,    0,     2,       3,      3,      6], dtype=np.int32)
-  cell_tgt     = np.array([          11,9,     101,         6, 2,1], dtype=pdm_gnum_dtype)
+  cell_vtx = vs.array([[5,7,1,6], [3,9,5], [3,5,2,1], [10,4,8], [10,2,3]], dtype=np.int32)
+  cell_tgt = vs.array([[],        [11,9],  [101],     [],       [6,2,1]], dtype=pdm_gnum_dtype)
   cell_vtx_wgt = np.array([3,9,5, 3,9,5, 3,5,2,1, 10,2,3, 10,2,3, 10,2,3], dtype=np.float64)*0.1
 
-  expctd_vtx_to_tgt_idx = np.array([0,1,         5,             11, 11,   14, 14, 14, 14, 16,     19, 19, 19], dtype=np.int32)
-  expctd_vtx_to_tgt     = np.array([101, 1,2,6,101, 1,2,6,9,11,101, 9,11,101,           9,11,  1,2,6], dtype=pdm_gnum_dtype)
-  expctd_vtx_to_tgt_wgt = np.array([1, 2,2,2,2, 3,3,3,3,3,3, 5,5,5, 9,9, 10,10,10], dtype=np.float64)*0.1
+  expctd_vtx_to_tgt = vs.array([[101], [1,2,6,101], [1,2,6,9,11,101], [], [9,11,101], [], 
+                                [], [], [9,11], [1,2,6], [],[]], dtype=pdm_gnum_dtype)
+  expctd_vtx_to_tgt_wgt = vs.from_displs(expctd_vtx_to_tgt.displs,
+    np.array([1, 2,2,2,2, 3,3,3,3,3,3, 5,5,5, 9,9, 10,10,10], dtype=np.float64)*0.1)
+  # Vtx 2 appears in cells 3 & 5. Thoses cells have localized tgt ids 101,6,2,1 in them, so we
+  # expect to get tgt 101,6,2 and 1 for vtx2
 
-  vtx_to_tgt_idx, vtx_to_tgt, vtx_to_tgt_wgt = ITP._cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vtx_wgt, n_vtx)
+  vtx_to_tgt, vtx_to_tgt_wgt = ITP._cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_wgt, n_vtx)
 
   # The order of `vtx_to_tgt` does not matter and is not specified by the algorithm,
   # so whatever we get, we can order it before checking it
-  np_utils.sort_by_stride(vtx_to_tgt_idx,vtx_to_tgt, inplace=True)
+  vtx_to_tgt = vs.sort(vtx_to_tgt, vs.INNER_AXIS)
 
-  assert np.array_equal(vtx_to_tgt_idx, expctd_vtx_to_tgt_idx)
-  assert np.array_equal(vtx_to_tgt    , expctd_vtx_to_tgt    )
-  assert np.array_equal(vtx_to_tgt_wgt, expctd_vtx_to_tgt_wgt)
+  assert vs.array_equal(vtx_to_tgt, expctd_vtx_to_tgt)
+  assert vs.array_equal(vtx_to_tgt_wgt, expctd_vtx_to_tgt_wgt)
 
 src_part_0 = f"""
 ZoneU Zone_t [[18,4,0]]:
@@ -197,11 +197,11 @@ def test_create_src_to_tgt(comm):
   tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in zones]]
   excp_target = np.array([1,2,3,4]) if comm.Get_rank() == 0 else np.array([5,6,7,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm)
-  assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
-  assert (src_to_tgt[0]['target'] == excp_target).all()
+  assert (src_to_tgt[0]['target_gnum'].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Closest')
-  assert (src_to_tgt[0]['target_idx'] == [0,1,2,3,4]).all()
-  assert (src_to_tgt[0]['target'] == excp_target).all()
+  assert (src_to_tgt[0]['target_gnum'].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
@@ -209,11 +209,11 @@ def test_create_src_to_tgt(comm):
       cx[1] += .5
   excp_target = np.array([2,1,3,4]) if comm.Get_rank() == 0 else np.array([6,5,8,7])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='LocationAndClosest')
-  assert (src_to_tgt[0]['target'] == excp_target).all()
+  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
 
   excp_target = np.array([2,3]) if comm.Get_rank() == 0 else np.array([6,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Location')
-  assert (src_to_tgt[0]['target'] == excp_target).all()
+  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
 
 def test_interpolator_reductions():
   class Empty: #Used to create a interpolator like object
