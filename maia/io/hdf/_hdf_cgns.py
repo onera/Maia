@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 import h5py
 from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 
@@ -10,6 +11,7 @@ C33_t.set_size(33)
 C3_t = h5t.C_S1.copy()
 C3_t.set_size(3)
 
+MPIIO_CHUNK_SIZE = 2_000_000_000
 DTYPE_TO_CGNSTYPE = {'int8'    : 'B1',
                      'int32'   : 'I4',
                      'int64'   : 'I8',
@@ -146,14 +148,29 @@ def _select_file_slabs(hdf_space, filter):
     src_start, src_stride, src_count, src_block = [tuple(filter[i][::-1]) for i in range(4,8)]
     hdf_space.select_hyperslab(src_start, src_count, src_stride, src_block)
 
-def _create_mmry_slabs(filter):
-  """ Create and return a memory dataspace from a filter object.
+def _select_mmry_slabs(hdf_space, filter):
+  """ Performs the 'select_hyperslab' operation on a open hdf_dataset space, using input filter
   Filter must be a list of 4 elements (start, stride, count, block).
   Filter can no be combinated.  """
   dst_start, dst_stride, dst_count, dst_block = [tuple(filter[i][::-1]) for i in range(0,4)]
-  m_dspace = h5s.create_simple(dst_count)
-  m_dspace.select_hyperslab(dst_start, dst_count, dst_stride, dst_block)
-  return m_dspace
+  hdf_space.select_hyperslab(dst_start, dst_count, dst_stride, dst_block)
+
+def _chunk_filter(filter, chk_size):
+  """ Split the input filter into a list of filter having less than chk_size elts """
+  assert not is_combinated(filter) and len(filter[0]) == 1, "Can not chunk dimensional dataspace"
+  chunked = list()
+  filter = copy.deepcopy(filter) # Work on copy
+  remaining = filter[2][0]
+  while remaining > 0:
+    to_add = min(remaining, chk_size)
+    cur = copy.deepcopy(filter)
+    cur[2][0]  = to_add    # Nb to write
+    cur[6][0]  = to_add    # Nb to write
+    filter[0][0] += to_add # Move offset
+    filter[4][0] += to_add # Move offset
+    remaining -= to_add    # Update remaining
+    chunked.append(cur)
+  return chunked
 
 def load_data(gid):
   """ Create a numpy array from the dataset stored in the hdf node gid,
@@ -178,13 +195,14 @@ def load_data_partial(gid, filter):
   hdf_dataset = h5d.open(gid, b' data')
 
   # Prepare dataspaces
-  hdf_space = hdf_dataset.get_space()
-  _select_file_slabs(hdf_space, filter)
-  m_dspace = _create_mmry_slabs(filter)
+  file_space = hdf_dataset.get_space()
+  mmry_space = h5s.create_simple(tuple(filter[2][::-1]))
+  _select_file_slabs(file_space, filter)
+  _select_mmry_slabs(mmry_space, filter)
 
-  array = np.empty(m_dspace.shape[::-1], hdf_dataset.dtype, order='F')
+  array = np.empty(mmry_space.shape[::-1], hdf_dataset.dtype, order='F')
   array_view = array.T
-  hdf_dataset.read(m_dspace, hdf_space, array_view)
+  hdf_dataset.read(mmry_space, file_space, array_view)
 
   return array
 
@@ -206,17 +224,25 @@ def write_data_partial(gid, array, filter):
   glob_dims = tuple(filter[-2][::-1])
 
   # Prepare dataspaces
-  hdf_space = h5s.create_simple(glob_dims)
-  _select_file_slabs(hdf_space, filter)
-  m_dspace = _create_mmry_slabs(filter)
-
+  file_space = h5s.create_simple(glob_dims)
+  mmry_space  = h5s.create_simple(array.shape[::-1])
+  # MPIIO will crash if we try to write more than max(int32) bytes, so we write
+  # by chunks in this case (see #179)
+  if array.nbytes > MPIIO_CHUNK_SIZE:
+    chunked_filter = _chunk_filter(filter, MPIIO_CHUNK_SIZE // array.itemsize)
+  else:
+    chunked_filter = [filter]
+  
   array_view = array.T
   if array_view.dtype == 'S1':
     array_view.dtype = np.int8
-  data = h5d.create(gid, b' data', h5t.py_create(array_view.dtype), hdf_space)
+  data = h5d.create(gid, b' data', h5t.py_create(array_view.dtype), file_space)
   xfer_plist = h5p.create(h5p.DATASET_XFER)
   xfer_plist.set_dxpl_mpio(h5py.h5fd.MPIO_INDEPENDENT)
-  data.write(m_dspace, hdf_space, array_view, dxpl=xfer_plist)
+  for c_filter in chunked_filter:
+    _select_mmry_slabs(mmry_space, c_filter)
+    _select_file_slabs(file_space, c_filter)
+    data.write(mmry_space, file_space, array_view, dxpl=xfer_plist)
 
 def write_link(gid, node_name, target_file, target_node):
   """ Create a linked child named node_name under the open parent node gid

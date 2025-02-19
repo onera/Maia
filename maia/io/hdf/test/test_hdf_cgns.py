@@ -105,6 +105,22 @@ def test_is_combinated():
   assert HCG.is_combinated([[0,0], [1,1], [1,10], [1,1], [0,0], [1,1], [1,10], [1,1], [1,100], [0]]) == False
   assert HCG.is_combinated([[0], [1], [10], [1], [[0, 0, 0], [1, 1, 1], [10, 1, 1], [1, 1, 1]], [10, 2, 5], [0]]) == True
 
+def test_chunk_dataset():
+  # Write 14038 elts starting from 489, tot size is 25049
+  filter = [[489], [1], [14038], [1], [489], [1], [14038], [1], [25049], [0]]
+  chunked = HCG._chunk_filter(filter, 5000)
+  assert len(chunked) == 3
+  assert chunked[0] == [[489], [1], [5000], [1], [489], [1], [5000], [1], [25049], [0]]
+  assert chunked[1] == [[5489], [1], [5000], [1], [5489], [1], [5000], [1], [25049], [0]]
+  assert chunked[2] == [[10489], [1], [4038], [1], [10489], [1], [4038], [1], [25049], [0]]
+
+  chunked = HCG._chunk_filter(filter, 50000)
+  assert len(chunked) == 1 and chunked[0] == filter
+
+  filter = [[489], [1], [14000], [1], [489], [1], [14000], [1], [25049], [0]]
+  assert len(HCG._chunk_filter(filter, 7000)) == 2
+  
+
 def test_group_by():
   for i, elts in enumerate(HCG.group_by(['a','b','c', 'd','e','f'], 3)):
     if i == 0:
