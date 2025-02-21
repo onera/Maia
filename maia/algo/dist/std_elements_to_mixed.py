@@ -37,23 +37,37 @@ def convert_elements_to_mixed(dist_tree, comm):
         # 1/ Create local mixed connectivity and element start offeset tab for each element node
         #    and deduce the local number of each element type        
         for element in PT.Zone.get_ordered_elements(zone):
-            assert PT.Element.CGNSName(element) not in ['MIXED', 'NGON_n', 'NFACE_n']
+            assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']
+            
             elem_type = PT.get_value(element)[0]
             elem_er = PT.Element.Range(element)
-            elem_ec = PT.get_node_from_name(element,'ElementConnectivity',depth=1)[1]
+            elem_ec = PT.get_child_from_name(element,'ElementConnectivity')[1]
             elem_distrib = PT.maia.getDistribution(element, 'Element')[1]
-            
-            nb_nodes_per_elem = PT.Element.NVtx(element)
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
+
+            if PT.Element.CGNSName(element) == 'MIXED':
+                eso = PT.get_child_from_name(element, 'ElementStartOffset')[1]
+                mixed_partial_ec = elem_ec
+                mixed_partial_eso = eso[:-1] + nb_nodes_prev
+                stride_ec = np.diff(eso).astype(int, copy=False)
+                #nb_nodes_prev += elem_ec.size
+                nb_nodes_prev += PT.maia.getDistribution(element, 'ElementConnectivity')[1][2]
+                
+            else: 
+                nb_nodes_per_elem = PT.Element.NVtx(element)
+                
+                mixed_partial_ec = np.zeros(nb_elem_loc*(nb_nodes_per_elem+1),dtype = elem_ec.dtype)
+                mixed_partial_ec[::nb_nodes_per_elem+1] = elem_type
+                for i in range(nb_nodes_per_elem):
+                    mixed_partial_ec[i+1::nb_nodes_per_elem+1] = elem_ec[i::nb_nodes_per_elem]
+                stride_ec = (nb_nodes_per_elem+1)*np.ones(nb_elem_loc, dtype=int)
+                
+                mixed_partial_eso = (nb_nodes_per_elem+1)*np.arange(nb_elem_loc,dtype = elem_ec.dtype) + \
+                                    nb_nodes_prev + (nb_nodes_per_elem+1)*elem_distrib[0]
+
+                nb_nodes_prev += (nb_nodes_per_elem+1)*PT.Element.Size(element)
+
             
-            mixed_partial_ec = np.zeros(nb_elem_loc*(nb_nodes_per_elem+1),dtype = elem_ec.dtype)
-            mixed_partial_ec[::nb_nodes_per_elem+1] = elem_type
-            for i in range(nb_nodes_per_elem):
-                mixed_partial_ec[i+1::nb_nodes_per_elem+1] = elem_ec[i::nb_nodes_per_elem]
-            stride_ec = (nb_nodes_per_elem+1)*np.ones(nb_elem_loc, dtype=int)
-            
-            mixed_partial_eso = (nb_nodes_per_elem+1)*np.arange(nb_elem_loc,dtype = elem_ec.dtype) + \
-                                nb_nodes_prev + (nb_nodes_per_elem+1)*elem_distrib[0]
             part_data_eso.append(mixed_partial_eso)
             part_data_ec.append((stride_ec, mixed_partial_ec))
     
@@ -61,7 +75,6 @@ def convert_elements_to_mixed(dist_tree, comm):
                        nb_elem_prev + elem_distrib[0]
             ln_to_gn_list.append(ln_to_gn)
             
-            nb_nodes_prev += (nb_nodes_per_elem+1)*PT.Element.Size(element)
             nb_elem_prev += (elem_er[1]-elem_er[0]+1)
         
         

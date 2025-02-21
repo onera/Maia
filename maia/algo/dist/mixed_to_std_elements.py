@@ -62,27 +62,40 @@ def convert_mixed_to_elements(dist_tree, comm):
         # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
-            assert PT.Element.CGNSName(element) == 'MIXED'
-            elem_er = PT.Element.Range(element)
-            elem_ec  = PT.get_child_from_name(element,'ElementConnectivity')[1]
-            elem_eso = PT.get_child_from_name(element,'ElementStartOffset')[1]
-            elem_eso_loc = elem_eso[:-1]-elem_eso[0]
-            elem_types_tab = elem_ec[elem_eso_loc]
-            elem_types_loc, nb_elems_per_types_loc = np.unique(elem_types_tab,return_counts=True)
-            for e, elem_type in enumerate(elem_types_loc):
+            assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']  
+            if PT.Element.CGNSName(element) != 'MIXED':                       
+                elem_ec  = PT.get_child_from_name(element,'ElementConnectivity')[1]
+                elem_distri = MT.get_distribution(element, 'Element')[1]
+                elem_type = PT.Element.Type(element)
+                elem_size = elem_distri[1] - elem_distri[0]
                 if elem_type not in elem_types.keys():
                     elem_types[elem_type] = {}
-                elem_types[elem_type][elem_pos] = nb_elems_per_types_loc[e]
-                nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
-                ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_ec.dtype)
-                # Retrive start idx of mixed elements having this type
-                indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso_loc, assume_unique=True)
-                for n in range(nb_nodes_per_elem):
-                    ec_per_type[n::nb_nodes_per_elem] = elem_ec[indices+n+1]
+                elem_types[elem_type][elem_pos] = elem_size
                 try:
-                    ec_per_elem_type_loc[elem_type].append(ec_per_type)
+                    ec_per_elem_type_loc[elem_type].append(elem_ec)
                 except KeyError:
-                    ec_per_elem_type_loc[elem_type] = [ec_per_type]
+                    ec_per_elem_type_loc[elem_type] = [elem_ec]
+
+            else:
+                elem_ec  = PT.get_child_from_name(element,'ElementConnectivity')[1]
+                elem_eso = PT.get_child_from_name(element,'ElementStartOffset')[1]
+                elem_eso_loc = elem_eso[:-1]-elem_eso[0]
+                elem_types_tab = elem_ec[elem_eso_loc]
+                elem_types_loc, nb_elems_per_types_loc = np.unique(elem_types_tab,return_counts=True)
+                for e, elem_type in enumerate(elem_types_loc):
+                    if elem_type not in elem_types.keys():
+                        elem_types[elem_type] = {}
+                    elem_types[elem_type][elem_pos] = nb_elems_per_types_loc[e]
+                    nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
+                    ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_ec.dtype)
+                    # Retrive start idx of mixed elements having this type
+                    indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso_loc, assume_unique=True)
+                    for n in range(nb_nodes_per_elem):
+                        ec_per_type[n::nb_nodes_per_elem] = elem_ec[indices+n+1]
+                    try:
+                        ec_per_elem_type_loc[elem_type].append(ec_per_type)
+                    except KeyError:
+                        ec_per_elem_type_loc[elem_type] = [ec_per_type]
         
         # 2/ Find all element types described in the mesh and the number of each
         elem_types_all = comm.allgather(elem_types)
@@ -111,8 +124,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         old_to_new_cell_numbering_list = []
         nb_elem_prev_element_t_nodes = 0
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
-            elem_ec  = PT.get_child_from_name(element, 'ElementConnectivity')[1]
-            elem_eso = PT.get_child_from_name(element, 'ElementStartOffset')[1]
+            is_std_elt = PT.Element.CGNSName(element) != 'MIXED'
             elem_distrib = MT.getDistribution(element, 'Element')[1]
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             nb_cell_loc = 0
@@ -122,7 +134,9 @@ def convert_mixed_to_elements(dist_tree, comm):
                         nb_cell_loc += elem_types[et][elem_pos]
                     except KeyError:
                         pass
-            old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_eso.dtype)
+            elem_ec  = PT.get_child_from_name(element, 'ElementConnectivity')[1]
+            elem_eso = PT.get_child_from_name(element, 'ElementStartOffset')
+            old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_ec.dtype)
             old_to_new_cell_numbering    = np.zeros(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
             ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) + 1\
                              + elem_distrib[0] + nb_elem_prev_element_t_nodes
@@ -131,26 +145,35 @@ def convert_mixed_to_elements(dist_tree, comm):
             all_elem_previous_types = 0
             all_cell_previous_types = 0
             
-            elem_ec_type_pos = elem_ec[elem_eso[:-1]-elem_eso[0]] # Type of each element
-            all_elem_pos = {}
-            all_non_cell_pos = []
-            for elem_type in key_types:
-                all_elem_pos[elem_type] = np.where(elem_ec_type_pos==elem_type)[0]
-                if MPSEU.element_dim(elem_type) != cell_dim:
-                    all_non_cell_pos += list(all_elem_pos[elem_type])
-            all_non_cell_pos = sorted(all_non_cell_pos)
-            all_cell_pos = {}
-            for elem_type in key_types:
-                if MPSEU.element_dim(elem_type) == cell_dim:
-                    all_cell_pos[elem_type] = all_elem_pos[elem_type] - np.searchsorted(all_non_cell_pos,all_elem_pos[elem_type])
+            if is_std_elt:
+                all_elem_pos = {elt_type : np.empty(0, int) for elt_type in key_types}
+                all_elem_pos[PT.Element.Type(element)] = np.arange(nb_elem_loc)
+                all_cell_pos = {}
+                for elem_type in key_types:
+                    if MPSEU.element_dim(elem_type) == cell_dim:
+                        all_cell_pos[elem_type] = np.arange(nb_elem_loc) if PT.Element.Type(element) == elem_type else np.empty(0, int)
+                        
+            else:
+                elem_ec_type_pos = elem_ec[elem_eso[1][:-1]-elem_eso[1][0]] # Type of each element
+                all_elem_pos = {}
+                all_non_cell_pos = []
+                for elem_type in key_types:
+                    all_elem_pos[elem_type] = np.where(elem_ec_type_pos==elem_type)[0]
+                    if MPSEU.element_dim(elem_type) != cell_dim:
+                        all_non_cell_pos += list(all_elem_pos[elem_type])
+                all_non_cell_pos = sorted(all_non_cell_pos)
+                all_cell_pos = {}
+                for elem_type in key_types:
+                    if MPSEU.element_dim(elem_type) == cell_dim:
+                        all_cell_pos[elem_type] = all_elem_pos[elem_type] - np.searchsorted(all_non_cell_pos,all_elem_pos[elem_type])
             for elem_type in key_types:
                 nb_elems_per_type = all_types[elem_type]
                 indices_elem = all_elem_pos[elem_type]
-                old_to_new_element_numbering[indices_elem] = np.arange(len(indices_elem),dtype=elem_eso.dtype) + 1
+                old_to_new_element_numbering[indices_elem] = np.arange(len(indices_elem),dtype=elem_ec.dtype) + 1
                 is_cell = MPSEU.element_dim(elem_type) == cell_dim
                 if is_cell:
                     indices_cell = all_cell_pos[elem_type]
-                    old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_eso.dtype)
+                    old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_ec.dtype)
                     old_to_new_cell_numbering[indices_cell] += all_cell_previous_types
                 # Add total elements of others (previous) type
                 old_to_new_element_numbering[indices_elem] += all_elem_previous_types

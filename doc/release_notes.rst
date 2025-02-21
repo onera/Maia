@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- Manage preexisting std / mixed Elements_t nodes in std<->mixed conversion
+
 🐞 Fixes
 ^^^^^^^^
 - Pytree / YAML loader: allow spaces in nodes name

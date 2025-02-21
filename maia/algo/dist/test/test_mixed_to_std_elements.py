@@ -5,6 +5,7 @@ import os
 
 import maia.pytree        as PT
 
+import maia
 from maia.io          import file_to_dist_tree
 from maia.utils       import test_utils as TU
 
@@ -12,6 +13,38 @@ from maia.algo.dist   import convert_elements_to_mixed
 
 from maia.algo.dist.mixed_to_std_elements   import convert_mixed_to_elements, \
                                                    collect_pl_nodes
+
+def prepare_mixed_and_elt(dist_tree, comm):
+    # Do transformation on rank 0 : extract some elts from mixed node to declare
+    # them a std elements
+    tree = maia.factory.dist_to_full_tree(dist_tree, comm)
+    if comm.rank == 0:
+        zone = PT.get_all_Zone_t(tree)[0]
+        PT.rm_nodes_from_label(zone, 'Elements_t')
+
+        tri_val = [7, 8, 11, 2, 5, 3]
+        mixed1_eso = [0, 5, 10, 15, 20, 25, 30, 34, 38, 42]
+        mixed1_val = [7,1,6,9,4,  7,3,5,10,8,  7,1,2,7,6,  7,2,3,8,7,
+                      7,4,9,10,5,  7,1,4,5,2,  5,6,11,9,  5,8,10,11,  5,6,7,11]
+        mixed2_eso = [0, 4, 13, 20]
+        mixed2_val = [5,9,11,10,  17,1,2,5,4,6,7,10,9,  14,2,3,5,7,8,10]
+        mixed3_eso = [0, 5]
+        mixed3_val = [10, 7, 8, 10, 11]
+        pyra_val = [6,7,10,9,11]
+
+        e = PT.new_Elements('TRI', 'TRI_3', erange=[10,11], econn=tri_val, parent=zone)
+        e = PT.new_Elements('Mixed1', 'MIXED', erange=[1,9], econn=mixed1_val, parent=zone)
+        PT.new_DataArray('ElementStartOffset', mixed1_eso, parent=e)
+        e = PT.new_Elements('Mixed2', 'MIXED', erange=[12,14], econn=mixed2_val, parent=zone)
+        PT.new_DataArray('ElementStartOffset', mixed2_eso, parent=e)
+        e = PT.new_Elements('Mixed3', 'MIXED', erange=[16,16], econn=mixed3_val, parent=zone)
+        PT.new_DataArray('ElementStartOffset', mixed3_eso, parent=e)
+        e = PT.new_Elements('PYRA', 'PYRA_5', erange=[15,15], econn=pyra_val, parent=zone)
+
+    dist_tree = maia.factory.full_to_dist_tree(tree, comm, 0)
+    return dist_tree
+
+
 
 @pytest_parallel.mark.parallel([1,2,3])
 def test_collect_pl_nodes(comm):
@@ -56,6 +89,10 @@ def test_convert_mixed_to_elements(comm):
     
     # Assume this function is already tested
     convert_elements_to_mixed(dist_tree, comm)
+
+    # Add some already converted Elements_t
+    if comm.size == 2:
+        prepare_mixed_and_elt(dist_tree, comm)
     
     convert_mixed_to_elements(dist_tree, comm)
     
