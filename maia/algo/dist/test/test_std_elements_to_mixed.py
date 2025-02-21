@@ -10,6 +10,8 @@ from maia.utils       import test_utils as TU
 
 from maia.algo.dist   import convert_elements_to_mixed
 
+from maia.algo.dist.test.test_mixed_to_std_elements import prepare_mixed_and_elt
+
 @pytest_parallel.mark.parallel([1,2,3])
 def test_convert_mixed_to_elements(comm):
     rank = comm.Get_rank()
@@ -19,6 +21,9 @@ def test_convert_mixed_to_elements(comm):
     dist_tree = file_to_dist_tree(yaml_path, comm)
     
     ref_dist_tree = PT.deep_copy(dist_tree)
+    # Add some already Mixed Elements_t
+    if comm.size == 2:
+        dist_tree = prepare_mixed_and_elt(dist_tree, comm)
     
     convert_elements_to_mixed(dist_tree, comm)
     
