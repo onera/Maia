@@ -442,19 +442,23 @@ Zone.P2.N1 Zone_t:
   assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()
 
 @pytest_parallel.mark.parallel(3)
-def test_part_nface_to_dist_nface(comm):
+@pytest.mark.parametrize("nface_first", [False, True])
+def test_part_nface_to_dist_nface(nface_first, comm):
   rank = comm.Get_rank()
   size = comm.Get_size()
 
   dist_zone = PT.new_Zone('Zone')
   if rank == 0:
     yt = """
-Zone.P0.N0 Zone_t:
+Zone.P0.N0 Zone_t [[18,4,0]]:
+  ZoneType ZoneType_t "Unstructured":
   Ngon Elements_t [22,0]:
+    ElementRange IndexRange_t [1, 20]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t:
         {0} : [5,6,7,8,9,10,11,12,15,16,19,20,23,24,26,28,30,32,34,36]
   NFace Elements_t [23,0]:
+    ElementRange IndexRange_t [21, 24]:
     ElementConnectivity DataArray_t:
       I4 : [1,5,9,11,15,17,2,6,-11,13,16,18,3,7,10,12,-17,19,4,8,-12,14,-18,20]
     ElementStartOffset DataArray_t [0,6,12,18,24]:
@@ -472,11 +476,14 @@ Zone.P0.N0 Zone_t:
     expected_eso = [18,24,30,36]
   elif rank == 2:
     yt = """
-Zone.P2.N0 Zone_t:
+Zone.P2.N0 Zone_t [[12,2,0]]:
+  ZoneType ZoneType_t "Unstructured":
   Ngon Elements_t [22,0]:
+    ElementRange IndexRange_t [1, 11]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t {0} [1,3,5,7,13,14,17,18,25,29,33]:
   NFace Elements_t [23,0]:
+    ElementRange IndexRange_t [12, 13]:
     ElementConnectivity DataArray_t I4 [1,3,5,7,9,10,2,4,6,8,-10,11]:
     ElementStartOffset DataArray_t [0,6,12]:
     :CGNS#GlobalNumbering UserDefinedData_t:
@@ -484,11 +491,14 @@ Zone.P2.N0 Zone_t:
   :CGNS#GlobalNumbering UserDefinedData_t:
     Vertex DataArray_t {0} [1,4,7,2,5,8,11,14,16,10,13,17]:
     Cell DataArray_t {0} [1,3]:
-Zone.P2.N1 Zone_t:
+Zone.P2.N1 Zone_t [[12,2,0]]:
+  ZoneType ZoneType_t "Unstructured":
   Ngon Elements_t [22,0]:
+    ElementRange IndexRange_t [1, 11]:
     :CGNS#GlobalNumbering UserDefinedData_t:
       Element DataArray_t {0} [2,4,6,8,17,18,21,22,27,31,35]:
   NFace Elements_t [23,0]:
+    ElementRange IndexRange_t [12, 13]:
     ElementConnectivity DataArray_t I4 [1,3,5,7,9,10,2,4,6,8,-10,11]:
     ElementStartOffset DataArray_t [0,6,12]:
     :CGNS#GlobalNumbering UserDefinedData_t:
@@ -504,6 +514,19 @@ Zone.P2.N1 Zone_t:
   expected_eltc_distri_full = np.array([0,18,36,48])
 
   pT = PT.yaml.to_cgns_tree(yt)
+
+  if nface_first:
+    # Put NFACE before NGON in ElementRange ordering
+    for zone in PT.get_all_Zone_t(pT):
+      ng = PT.Zone.NGonNode(zone)
+      nf = PT.Zone.NFaceNode(zone)
+      ng_er = PT.Element.Range(ng)
+      ng_er += PT.Zone.n_cell(zone)
+      nf_er = PT.Element.Range(nf)
+      nf_er -= PT.Zone.n_face(zone)
+      ec = PT.get_child_from_name(nf, 'ElementConnectivity')
+      ec[1] = np.sign(ec[1]) * (np.abs(ec[1]) + PT.Zone.n_cell(zone))
+
 
   IPTB.part_nface_to_dist_nface(dist_zone, PT.get_all_Zone_t(pT), 'NFace', 'Ngon', comm)
 
