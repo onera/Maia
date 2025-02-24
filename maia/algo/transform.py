@@ -361,12 +361,12 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm,
         # > only rotation around axis in cartesian system
         # > only translation around axis in cartesian system
         if not (np.abs(gc_angle_value[non_axis_idx]) < abs_tol).all():
-          raise AssertionError(f"A mesh with only periodicities by rotation around revolution axis is allowed to convert from cartesian to cylindrical system !")
+          raise AssertionError(f"Rotation axis of periodic interface {PT.get_name(gc)} is not aligned with revolution axis")
         if not (np.abs(gc_trans_value[non_axis_idx]) < abs_tol).all():
-          raise AssertionError(f"A mesh with only periodicities by translation in revolution axis direction is allowed to convert from cartesian to cylindrical system !")
+          raise AssertionError(f"Translation axis of periodic interface {PT.get_name(gc)} is not aligned with revolution axis")
         
-        gc_angle_new = np.zeros((3), dtype=gc_angle_value.dtype)
-        gc_trans_new = np.zeros((3), dtype=gc_trans_value.dtype)
+        gc_angle_new = np.zeros_like(gc_angle_value)
+        gc_trans_new = np.zeros_like(gc_trans_value)
         # Rotation around axis (cart) becomes translation in theta (cyl)
         # Translation in axis (cart) becomes translation in Z (cyl)
         gc_trans_new[1] = gc_angle_value[axis_idx]
@@ -451,13 +451,13 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm,
         # > no periodic by rotation in cylindrical system
         # > only translation on theta or z in cylindrical system
         if not np.allclose(gc_angle_value, [0., 0., 0.], atol=abs_tol):
-          raise AssertionError(f"A mesh with periodicities by rotation is not allowed to convert from cylindrical to cartesian system !")
+          raise AssertionError(f"Rotation of periodic interface {PT.get_name(gc)} is not empty")
         if not abs(gc_trans_value[0]) < abs_tol:
-          raise AssertionError(f"A mesh with periodicities by translation in R direction is not allowed to convert from cylindrical to cartesian system !")
+          raise AssertionError(f"Translation axis of periodic interface {PT.get_name(gc)} is not orthogonal to er vector")
         
-        gc_angle_new = np.zeros((3), dtype=gc_angle_value.dtype)
-        gc_trans_new = np.zeros((3), dtype=gc_trans_value.dtype)
         # Translation in theta (cyl) becomes rotation around axis (cart)
+        gc_angle_new = np.zeros_like(gc_angle_value)
+        gc_trans_new = np.zeros_like(gc_trans_value)
         # Translation in Z (cyl) becomes translation in axis (cart)
         gc_angle_new[axis_idx] = gc_trans_value[1]
         gc_trans_new[axis_idx] = gc_trans_value[2]

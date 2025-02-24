@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- Update Periodic_t values in cartesian ↔ cylindrical conversions
+
 🐞 Fixes
 ^^^^^^^^
 - Pytree / YAML loader: allow spaces in nodes name

@@ -498,22 +498,23 @@ def test_cart_to_cyl_to_cart_perio(comm, axis):
                                         point_range_donor=xmin_pr,
                                         transform=[1,2,3],
                                         parent=zgc)
-  PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,np.pi/4,0.], dtype=np.float64)}, parent=gc_xmin)
-  PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,-np.pi/4,0.], dtype=np.float64)}, parent=gc_zmin)
+  PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,np.pi/4,0.])}, parent=gc_xmin)
+  PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,-np.pi/4,0.])}, parent=gc_zmin)
   
   PT.rm_node_from_path(zone, 'ZoneBC/Xmin')
   PT.rm_node_from_path(zone, 'ZoneBC/Zmin')
   
   if axis[0] == 1.:
-    maia.algo.transform_affine(zone, rotation_angle=np.array([0.,0., -np.pi/4], dtype=np.float64))
+    maia.algo.transform_affine(zone, rotation_angle=np.array([0.,0., -np.pi/4]))
   
   dist_tree_ref = PT.deep_copy(dist_tree)
   
   maia.algo.transform.cartesian_to_cylindrical(dist_tree, axis, comm)
   
-  for data in PT.get_nodes_from_predicates(dist_tree, "CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t/GridConnectivityProperty_t/Periodic_t/DataArray_t"):
-    assert abs(PT.get_value(data)[0]) < abs_tol
-    assert abs(PT.get_value(data)[2]) < abs_tol
+  for perio in PT.get_nodes_from_label(dist_tree, "Periodic_t"):
+    for data in PT.get_children_from_label(perio, "DataArray_t"):
+      assert abs(PT.get_value(data)[0]) < abs_tol
+      assert abs(PT.get_value(data)[2]) < abs_tol
   
   maia.algo.transform.cylindrical_to_cartesian(dist_tree, axis, comm)
   
