@@ -474,3 +474,48 @@ class Test_cart_to_cyl:
     dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
     with pytest.raises(AssertionError):
       transform.cartesian_to_cylindrical(dist_tree, (0, 0, 0))
+
+@pytest.mark.parametrize('axis', [[0., 1., 0.], [1., 1., 0.]])
+@pytest_parallel.mark.parallel(1)
+def test_cart_to_cyl_to_cart_perio(comm, axis):
+  abs_tol = 1.e-7
+  axis = np.asarray(axis)
+  
+  dist_tree = maia.factory.generate_dist_block((5,4,5), 'S', comm)
+  zone = PT.get_node_from_path(dist_tree, 'Base/zone')
+  
+  # Creation du raccord périodique par rotation autour de x
+  zgc = PT.new_ZoneGridConnectivity(parent=zone)
+  xmin_pr = PT.get_value(PT.get_node_from_path(zone, 'ZoneBC/Xmin/PointRange'))
+  zmin_pr = PT.get_value(PT.get_node_from_path(zone, 'ZoneBC/Zmin/PointRange'))
+  gc_xmin = PT.new_GridConnectivity1to1('Xmin', 'Base/zone', 
+                                        point_range=xmin_pr,
+                                        point_range_donor=zmin_pr,
+                                        transform=[1,2,3],
+                                        parent=zgc)
+  gc_zmin = PT.new_GridConnectivity1to1('Zmin', 'Base/zone', 
+                                        point_range=zmin_pr,
+                                        point_range_donor=xmin_pr,
+                                        transform=[1,2,3],
+                                        parent=zgc)
+  PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,np.pi/4,0.])}, parent=gc_xmin)
+  PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,-np.pi/4,0.])}, parent=gc_zmin)
+  
+  PT.rm_node_from_path(zone, 'ZoneBC/Xmin')
+  PT.rm_node_from_path(zone, 'ZoneBC/Zmin')
+  
+  if axis[0] == 1.:
+    maia.algo.transform_affine(zone, rotation_angle=np.array([0.,0., -np.pi/4]))
+  
+  dist_tree_ref = PT.deep_copy(dist_tree)
+  
+  maia.algo.transform.cartesian_to_cylindrical(dist_tree, axis, comm)
+  
+  for perio in PT.get_nodes_from_label(dist_tree, "Periodic_t"):
+    for data in PT.get_children_from_label(perio, "DataArray_t"):
+      assert abs(PT.get_value(data)[0]) < abs_tol
+      assert abs(PT.get_value(data)[2]) < abs_tol
+  
+  maia.algo.transform.cylindrical_to_cartesian(dist_tree, axis, comm)
+  
+  assert PT.is_same_tree(dist_tree, dist_tree_ref, abs_tol=abs_tol)

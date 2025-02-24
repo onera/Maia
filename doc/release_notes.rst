@@ -15,6 +15,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - Manage preexisting std / mixed Elements_t nodes in std<->mixed conversion
+- Update Periodic_t values in cartesian ↔ cylindrical conversions
 
 🐞 Fixes
 ^^^^^^^^
