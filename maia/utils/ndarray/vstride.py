@@ -45,9 +45,9 @@ class VStrideArray:
   In addition, the following operations are supported:
 
   - Length: ``len(arr)`` returns the number of elements N.
-  - Basic indexing: ``arr[i]`` returns the ith *block*, ie a view on the ``values`` array.
+  - Basic indexing: ``arr[i]`` returns the i-th *block*, ie a view on the ``values`` array.
 
-  - Basic assignement: ``arr[i] = val`` replace the :math:`m_i` values of the ith *block*
+  - Basic assignement: ``arr[i] = val`` replace the :math:`m_i` values of the i-th *block*
     using the provided input ``val``, which must be an array of relevant size :math:`m_i` or a scalar
     (it will be broadcasted).
 
@@ -61,7 +61,7 @@ class VStrideArray:
     and comparison operation (such as ``==``, ``!=``, ``<``, ``>=``, etc.)
     also apply element wise on the ``values`` array. The right operand can be:
 
-    - an other :class:`VStrideArray` object. In this case, the *strides* of the two operand must be equal:
+    - another :class:`VStrideArray` object. In this case, the *strides* of the two operand must be equal:
         
         >>> a = vs.from_counts([2,2,1], [0.2, 1.4, 2.6, 0.5, 1.0])
         >>> b = vs.from_counts([2,2,1], [0.1, 2.3, 1.4, 0.6, 0.9])
@@ -90,7 +90,7 @@ class VStrideArray:
           [8],
         ], dtype=int64)
 
-    These operations return a new :class:`VStrideArray` instance. The output dtype of its values array is
+    These operations return a new :class:`VStrideArray` instance. The output dtype of its ``values`` array is
     determined by numpy, to which the operation itself is delegated.
 
   - Inplace arithmetic operations (such as ``+=``, ``-=``, ``*=``, etc.) are also supported
@@ -101,7 +101,7 @@ class VStrideArray:
 
   # Constructors
   def __init__(self, displs, counts, values):
-    """ Create a new VStrideArray object
+    """ Create a new :class:`VStrideArray` object.
 
     At least one of ``displs`` or ``counts`` argument must not be ``None``.
     The argument ``values`` must never be ``None``.
@@ -559,7 +559,7 @@ def array(data, *, dtype=None):
       of arrays, but not list of scalars;
     - a 2d `masked ndarray <https://numpy.org/doc/stable/reference/maskedarray.html>`_, in which case
       only *visible* values are selected;
-    - an other :class:`VStrideArray` instance.
+    - another :class:`VStrideArray` instance.
 
   Input data is always copied to create the new array.
 
@@ -643,7 +643,7 @@ def from_counts(counts, values, *, dtype=None) -> VStrideArray:
   Args:
     counts (array_like): an object convertible to a 1d integer ndarray
     values (array_like): an object convertible to a 1d ndarray
-    dtype (data-type, optional): overide datatype of the ``values`` array.
+    dtype (data-type, optional): override datatype of the ``values`` array.
       If ``None``, datatype is inferred from the input data.
   Returns:
     :class:`VStrideArray` : new array
@@ -677,7 +677,7 @@ def from_displs(displs, values, *, dtype=None) -> VStrideArray:
   Args:
     displs (array_like): an object convertible to a 1d integer ndarray
     values (array_like): an object convertible to a 1d ndarray
-    dtype (data-type, optional): overide datatype of the ``values`` array.
+    dtype (data-type, optional): override datatype of the ``values`` array.
       If ``None``, datatype is inferred from the input data.
   Returns:
     :class:`VStrideArray` : new array
@@ -849,7 +849,7 @@ def insert(array:VStrideArray, indices, values:VStrideArray):
   If ``indices`` is a scalar value, then a single 1d array_like object is allowed for
   ``values``.
 
-  A new object array is returned.
+  A new object is returned.
 
   Args:
     array (:class:`VStrideArray`): input array
@@ -906,7 +906,7 @@ def flip(array: VStrideArray, axis:Axis):
 
       vs.array([blk[::-1] for blk in array)]
   
-  In both cases, a copy is done and a new VStrideArray is returned.
+  In both cases, a copy is done and a new object is returned.
 
   Args:
     array (:class:`VStrideArray`): input array
@@ -998,12 +998,10 @@ def unique(array: VStrideArray, axis:Axis):
 
   Depending on the ``axis`` argument, the operation applies to:
 
-  - the elements if ``axis==OUTER_AXIS``, which is roughly equivalent to ::
+  - the elements if ``axis==OUTER_AXIS`` (**not yet implemented**), which is roughly equivalent to ::
 
       vs.array(unique([blk for blk in array]))
     
-    **Not yet implemented**
-
   - each block if ``axis==INNER_AXIS``, which is roughly equivalent to ::
 
       vs.array([unique(blk) for blk in array)]
@@ -1038,7 +1036,7 @@ def unique(array: VStrideArray, axis:Axis):
 def roll(array: VStrideArray, shift:int, axis:Axis):
   """ Roll the values of the input array.
 
-  Positive values of ``shift`` moves the elements to the right, while negative values
+  Positive values of ``shift`` move the elements to the right, while negative values
   move them to the left.
   Values leaving the array are reintroduced on the opposite side. 
 
@@ -1175,7 +1173,7 @@ def concatenate(array_l, axis:Axis):
 
 def sign(array:VStrideArray, dtype=None):
   """ Create a new array storing the sign of :attr:`array.values`.
-  The *strides* of the output array are identical to ones of the input.
+  The *strides* of the output array are identical to the input strides.
 
   Args:
     array (:class:`VStrideArray`): input array

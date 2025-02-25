@@ -16,7 +16,7 @@ which have a rectangular shape.
 
 A typical usage of *VS array* is the representation of mesh connectivities,
 since the number of neighbor is not the same for each entity of the mesh. For exemple,
-if we want to exprime the vertex-to-cell connectivity of the following mesh,
+if we want to describe the vertex-to-cell connectivity of the following mesh,
 
 .. image:: ./mesh_vstride.svg
   :width: 25%
@@ -31,8 +31,8 @@ but for performance issues, it is often preferable to store the data in a single
 We call it the ``values`` of the *VS array*.  Therefore, an additional information is needed
 to know where starts and ends each subarray: we can use either 
 
-- a ``counts`` array of size :math:`N`, where ``counts[i]`` store the lenght of the *ith* subarray,
-- or a ``displs`` array of size :math:`N+1`, where ``displs[i]`` store the starting position of the *ith*
+- a counting array ``counts`` of size :math:`N`, where ``counts[i]`` store the lenght of the *i-th* subarray,
+- or a displacements array ``displs`` of size :math:`N+1`, where ``displs[i]`` store the starting position of the *i-th*
   subarray in the ``values`` array.
 
   ::
@@ -43,7 +43,7 @@ to know where starts and ends each subarray: we can use either
     values = [1, 1, 2, 2, 3, 1, 4, 1, 2, 3, 4, 5, 3, 5, 4, 4, 5, 5]
 
 
-Note that ``counts`` and ``displs`` are redondant: in this data structure, it is not permitted
+Note that ``counts`` and ``displs`` are redondant: in the data structure described here, it is not permitted
 to use the ``displs`` array to jump over some parts of ``values`` or to change the order of elements.
 Thus, the following properties holds:
 
@@ -57,11 +57,11 @@ of the *VS array* is a whole *block*.
 
 .. note:: 
   - The CGNS standard uses the ``displs`` option to describe polyedric elements;
-    this is the so called ``ElementStartOffset`` node.
+    this is the purpose of the ``ElementStartOffset`` node.
   - In sparse linear algebra, the `CSR data structure <https://en.wikipedia.org/wiki/Sparse_matrix>`_
     is quite similar to a *VS array*,
     with the difference that CSR stores an additional array containing the column
-    index its elements.
+    index of its elements.
 
 Python module
 -------------
@@ -117,7 +117,7 @@ specified indices of the input array.
 **Algorithms** : these routines apply an algorithm to :class:`VStrideArray` object.
 All these functions take a parameter ``axis`` to indicate if the algorithm is applied:
   
--  independantly on each block of the array (using :data:`INNER_AXIS`);
+-  independantly on each *block* of the array (using :data:`INNER_AXIS`);
 -  globally over the elements of the array (using :data:`OUTER_AXIS`).
 
 .. autosummary::
