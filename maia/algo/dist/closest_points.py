@@ -30,7 +30,7 @@ def _find_closest_points(src_dom, tgt_dom, src_location, tgt_location, comm, rev
 
 def find_closest_points(src_tree, tgt_tree, location, comm):
   """
-  Distributed counterpart of maia.algo.part.find_closest_points
+  Distributed implementation of maia.algo.find_closest_points
   """
 
   src_dom = PT.get_children_from_predicates(src_tree, 'CGNSBase_t/Zone_t')

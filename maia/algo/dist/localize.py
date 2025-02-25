@@ -235,7 +235,7 @@ def _localize_points(src_dom, tgt_dom, location, comm, \
 
 def localize_points(src_tree, tgt_tree, location, comm, **options):
   """
-  Distributed counterpart of maia.algo.part.localize_points
+  Distributed implementation of maia.algo.localize_points
   """
   src_path = PT.predicates_to_paths(src_tree, 'CGNSBase_t/Zone_t')
   src_dom = [PT.get_node_from_path(src_tree, path) for path in src_path]

@@ -56,7 +56,7 @@ def test_closest_points(comm):
   tree_src = maia.factory.generate_dist_block(5, 'Poly', comm, origin=[0.,0.,0.])
   tree_tgt = maia.factory.generate_dist_block(4, 'Poly', comm, origin=[.4,-0.01,-0.01])
 
-  CLO.find_closest_points(tree_src, tree_tgt, 'CellCenter', comm)
+  maia.algo.find_closest_points(tree_src, tree_tgt, 'CellCenter', comm)
 
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')

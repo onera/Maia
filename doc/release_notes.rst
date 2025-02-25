@@ -15,6 +15,7 @@ Developpement version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - localize_points: allow source mesh to be structured
+- Allow distributed meshes in localize_points and find_closest_points
 
 v1.6 (January 2025)
 -------------------

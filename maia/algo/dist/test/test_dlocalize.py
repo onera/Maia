@@ -95,7 +95,7 @@ def test_localize_2d(src_kind, tgt_kind, comm):
   if src_kind == 'Poly':
     maia.algo.dist.convert_elements_to_ngon(src_tree, comm)
   
-  LOC.localize_points(src_tree, tgt_tree, 'CellCenter', comm)
+  maia.algo.localize_points(src_tree, tgt_tree, 'CellCenter', comm)
   
   zone = PT.get_node_from_label(tgt_tree, 'Zone_t')
   cell_distri = MT.get_distribution(zone, 'Cell')[1]

@@ -238,31 +238,8 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
 
 
 def localize_points(src_tree, tgt_tree, location, comm, **options):
-  """Localize points between two partitioned trees.
-
-  For all the points of the target tree matching the given location,
-  search the cell of the source tree in which it is enclosed.
-  The result, i.e. the gnum & domain number of the source cell (or -1 if the point is not localized),
-  are stored in a ``DiscreteData_t`` container called "Localization" on the target zones.
-  Note that if the source tree is structured, the output gnum is still a scalar index
-  and not a (i,j,k) triplet.
-
-  Localization can be parametred thought the options kwargs:
-
-  - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for the method.
-
-  Args:
-    src_tree (CGNSTree): Source tree, partitionned.
-    tgt_tree (CGNSTree): Target tree, partitionned.
-    location ({'CellCenter', 'Vertex'}) : Target points to localize
-    comm       (MPIComm): MPI communicator
-    **options: Additional options related to location strategy
-
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #localize_points@start
-        :end-before: #localize_points@end
-        :dedent: 2
+  """
+  Partitionned implementation of maia.algo.localize_points
   """
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())

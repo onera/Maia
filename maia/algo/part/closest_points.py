@@ -94,25 +94,8 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
 
 
 def find_closest_points(src_tree, tgt_tree, location, comm):
-  """Find the closest points between two partitioned trees.
-
-  For all points of the target tree matching the given location,
-  search the closest point of same location in the source tree.
-  The result, i.e. the gnum & domain number of the source point, are stored in a ``DiscreteData_t``
-  container called "ClosestPoint" on the target zones.
-  The ids of source points refers to cells or vertices depending on the chosen location.
-
-  Args:
-    src_tree (CGNSTree): Source tree, partitionned
-    tgt_tree (CGNSTree): Target tree, partitionned
-    location ({'CellCenter', 'Vertex'}) : Entity to use to compute closest points
-    comm       (MPIComm): MPI communicator
-
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #find_closest_points@start
-        :end-before: #find_closest_points@end
-        :dedent: 2
+  """
+  Partitionned implementation of maia.algo.find_closest_points
   """
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())

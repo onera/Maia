@@ -73,8 +73,6 @@ Geometric calculations
 ^^^^^^^^^^^^^^^^^^^^^^
 
 .. autofunction:: maia.algo.part.compute_wall_distance
-.. autofunction:: maia.algo.part.localize_points
-.. autofunction:: maia.algo.part.find_closest_points
 
 Mesh extractions
 ^^^^^^^^^^^^^^^^
@@ -101,12 +99,22 @@ Generic algorithms
 
 The following algorithms applies on maia distributed or partitioned trees
 
+Geometry transformations
+^^^^^^^^^^^^^^^^^^^^^^^^
 .. autofunction:: maia.algo.transform_affine
 .. autofunction:: maia.algo.scale_mesh
-.. autofunction:: maia.algo.compute_elements_center
-.. autofunction:: maia.algo.compute_elements_measure
 .. autofunction:: maia.algo.cartesian_to_cylindrical
 .. autofunction:: maia.algo.cylindrical_to_cartesian
+
+Geometric calculations
+^^^^^^^^^^^^^^^^^^^^^^
+.. autofunction:: maia.algo.localize_points
+.. autofunction:: maia.algo.find_closest_points
+.. autofunction:: maia.algo.compute_elements_center
+.. autofunction:: maia.algo.compute_elements_measure
+
+Connectivities conversions
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 .. autofunction:: maia.algo.pe_to_nface
 .. autofunction:: maia.algo.nface_to_pe
 .. autofunction:: maia.algo.edge_pe_to_ngon

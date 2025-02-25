@@ -104,7 +104,7 @@ def test_closest_points_lowdim(comm):
   tree_src = partition_dist_tree(dtree_src, comm)
   tree_tgt = partition_dist_tree(dtree_tgt, comm)
 
-  CLO.find_closest_points(tree_src, tree_tgt, 'CellCenter', comm)
+  maia.algo.find_closest_points(tree_src, tree_tgt, 'CellCenter', comm)
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
   assert clo_node is not None and PT.Subset.GridLocation(clo_node) == 'CellCenter'

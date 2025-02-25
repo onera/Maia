@@ -113,7 +113,7 @@ def test_localize_points(input_kind, comm):
   tree_tgt = partition_dist_tree(dtree_tgt, comm)
 
   tree_src_back = PT.deep_copy(tree_src)
-  LOC.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
+  maia.algo.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
   assert PT.is_same_tree(tree_src_back, tree_src)
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
