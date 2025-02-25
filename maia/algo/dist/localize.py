@@ -60,6 +60,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     else:
       pcell_face_n, pcell_face = EP.block_to_part_strided(dcell_face_n, dcell_face, nface_distri, cell_gnum-1, comm, legacy=False)
     face_gnum, inverse = np.unique(abs(pcell_face), return_inverse=True)
+    face_gnum = face_gnum.astype(cell_gnum.dtype, copy=False)
     pcell_face_idx = np_utils.sizes_to_indices(pcell_face_n, dtype=np.int32)
     pcell_face     = np.sign(pcell_face, dtype=np.int32) * np.arange(1, len(face_gnum)+1, dtype=np.int32)[inverse]
     
@@ -67,6 +68,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     ngon_distri = MT.get_distribution(ngon, 'Element')[1]
     pface_vtx_n, pface_vtx = EP.block_to_part_strided(dface_vtx_n, dface_vtx, ngon_distri, face_gnum-1, comm, legacy=False) 
     vtx_gnum, inverse = np.unique(pface_vtx, return_inverse=True) # Unique preserve dtype
+    vtx_gnum = vtx_gnum.astype(cell_gnum.dtype, copy=False)
     pface_vtx_idx = np_utils.sizes_to_indices(pface_vtx_n, dtype=np.int32)
     pface_vtx     = np.arange(1, len(vtx_gnum)+1, dtype=np.int32)[inverse]
 
@@ -103,6 +105,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     GI = EP.GlobalIndexer(_edge_distri, edge_gnum-1, comm)
     pedge_vtx = GI.Take(dedge_vtx, count=2)
     vtx_gnum, inverse = np.unique(pedge_vtx, return_inverse=True) # Unique preserve dtype
+    vtx_gnum = vtx_gnum.astype(cell_gnum.dtype, copy=False)
     pedge_vtx     = np.arange(1, len(vtx_gnum)+1, dtype=np.int32)[inverse]
 
     part_data = [pface_edge_idx, pface_edge, pedge_vtx, cell_gnum, vtx_gnum]
@@ -122,6 +125,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     else:
       pcell_vtx_n, pcell_vtx = EP.block_to_part_strided(dcell_vtx_n, dcell_vtx, cell_distri, cell_gnum-1, comm, legacy=False)
     vtx_gnum, inverse = np.unique(pcell_vtx, return_inverse=True)
+    vtx_gnum = vtx_gnum.astype(cell_gnum.dtype, copy=False)
     pcell_vtx_idx  = np_utils.sizes_to_indices(pcell_vtx_n, dtype=np.int32)
     pcell_vtx      = np.arange(1, len(vtx_gnum)+1, dtype=np.int32)[inverse]
 
