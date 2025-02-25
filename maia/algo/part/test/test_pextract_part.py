@@ -198,13 +198,15 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
   extractor = EP.Extractor(part_tree, [[bc_pl]], "FaceCenter", comm)
   extractor.exchange_fields([f'ZSR_{bc_name}'])
   extr_tree = extractor.get_extract_part_tree()
+  extr_zone = PT.get_all_Zone_t(extr_tree)[0]
+  ngon = PT.Zone.NGonNode(extr_zone)
 
   extr_sol = PT.get_node_from_name(extr_tree, f'ZSR_{bc_name}')
   assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
   assert PT.Subset.GridLocation(extr_sol) == 'CellCenter'
   pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
   data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
-  assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][pl-1], data)
+  assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][pl-PT.Element.Range(ngon)[0]], data)
 
 
 @pytest_parallel.mark.parallel(3)

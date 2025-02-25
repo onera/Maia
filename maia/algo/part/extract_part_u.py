@@ -246,17 +246,9 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   # > NGON
   if dim >= 2:
     ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
-    ngon_n = PT.new_NGonElements( 'NGonElements',
-                                  erange  = [1, n_extract_face],
-                                  ec      = ep_face_vtx,
-                                  eso     = ep_face_vtx_idx,
-                                  parent  = extract_zone)
-
     ep_face_ln_to_gn = pdm_ep.ln_to_gn_get(0, PDM._PDM_MESH_ENTITY_FACE)
-    PT.maia.newGlobalNumbering({'Element' : ep_face_ln_to_gn}, parent=ngon_n)
-    if dim == 2:
-      PT.maia.newGlobalNumbering({'Cell' : ep_face_ln_to_gn}, parent=extract_zone)
 
+    nb_bar = 0
     if dim == 2:
       # Retrieve edges on 2D mesh
       edge_data = PDM.compute_face_edge_from_face_vtx(comm, 
@@ -269,10 +261,21 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
       nb_bar = edge_data['np_edge_ln_to_gn'].size
       bar_n = PT.new_Elements('EdgeElements', 'BAR_2', 
-                              erange=[n_extract_face+1, n_extract_face+nb_bar], 
+                              erange=[1, nb_bar], 
                               econn=edge_data['np_edge_vtx'], 
                               parent=extract_zone)
       PT.maia.newGlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+
+    ngon_n = PT.new_NGonElements('NGonElements',
+                                 erange  = [nb_bar+1, nb_bar+n_extract_face],
+                                 ec      = ep_face_vtx,
+                                 eso     = ep_face_vtx_idx,
+                                 parent  = extract_zone)
+
+    PT.maia.newGlobalNumbering({'Element' : ep_face_ln_to_gn}, parent=ngon_n)
+    if dim == 2:
+      PT.maia.newGlobalNumbering({'Cell' : ep_face_ln_to_gn}, parent=extract_zone)
+
 
 
   # > NFACES
@@ -304,6 +307,8 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
           bc_name = bc_path.split('/')[-1]
           bc_val = PT.get_value(dist_bc) if PT.get_value(dist_bc) is not None else 'Null'
           bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) else dim_name
+          if bc_loc == 'CellCenter' and dim == 2: # Offset BCs, because we put Edge elts first
+            bc_pl += nb_bar
           bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
           for child in PT.get_children_from_predicate(dist_bc, lambda n : PT.get_name(n) != 'GridLocation'):
             PT.add_child(bc_n, child)
