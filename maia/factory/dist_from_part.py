@@ -10,7 +10,7 @@ from maia.transfer              import utils              as tr_utils
 from maia.transfer.part_to_dist import data_exchange      as PTB
 from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.transfer.part_to_dist import tree_api           as part_to_dist
-from maia.utils                 import py_utils, par_utils
+from maia.utils                 import py_utils, par_utils, np_utils
 from maia                       import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.pytree.graph.algo import step
@@ -201,6 +201,8 @@ def _recover_elements(dist_zone, part_zones, comm):
   if is_poly:
     cell_dim = PT.Zone.CellDimension(fake_zone)
     assert all([kind in ['NGON_n', 'NFACE_n', 'BAR_2'] for kind in elt_kinds])
+    lordering = PT.Zone.elt_ordering_by_dim(part_zones[0]) if len(part_zones) > 0 else -99
+    ordering = comm.allreduce(lordering, MPI.MAX)
     if cell_dim == 2:
       n_edge_tot = 0
       if has_edge: #2D with Edge + NGON or Edge only or NGON only
@@ -218,14 +220,23 @@ def _recover_elements(dist_zone, part_zones, comm):
         dist_edge_elt[1][0] = 3
         PT.rm_node_from_path(dist_edge_elt, 'ElementStartOffset')
         PT.rm_node_from_path(dist_edge_elt, ':CGNS#Distribution/ElementConnectivity')
-        n_edge_tot = PT.Element.Range(dist_edge_elt)[1]
       if has_ngon:
         # Now treat true 2D NGON node
         ngon_name = elt_names[elt_kinds.index('NGON_n')]
         IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, ngon_name, comm)
         # > Shift ngon element_range and create all cell distri
-        ngon_range = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1]
-        ngon_range += n_edge_tot
+        if has_edge: # Because for now some poly2d meshes have only faces. To be removed later ??
+          dist_edge = MT.Zone.EdgeNode(dist_zone)
+          dist_ngon = PT.Zone.NGonNode(dist_zone)
+          edge_range = PT.Element.Range(dist_edge)
+          ngon_range = PT.Element.Range(dist_ngon)
+          if ordering == 1:
+            ngon_range += edge_range[1]
+          elif ordering == -1:
+            edge_range += ngon_range[1]
+            edge_pe = PT.get_child_from_name(dist_edge, 'ParentElements')
+            if edge_pe is not None:
+              np_utils.shift_nonzeros(edge_pe[1], -PT.Element.Size(dist_edge))
 
     elif cell_dim == 3: #3D with NGON + NFACE or NGON only
       from maia.algo                  import pe_to_nface, nface_to_pe
@@ -248,10 +259,17 @@ def _recover_elements(dist_zone, part_zones, comm):
       nface_name = elt_names[elt_kinds.index('NFACE_n')] if has_nface else 'NFaceElements'
       IPTB.part_ngon_to_dist_ngon(dist_zone, _part_zones, ngon_name, comm)
       IPTB.part_nface_to_dist_nface(dist_zone, _part_zones, nface_name, ngon_name, comm)
-      # > Shift nface element_range
-      n_face_tot  = PT.get_node_from_path(dist_zone, f'{ngon_name}/ElementRange')[1][1]
-      nface_range = PT.get_node_from_path(dist_zone, f'{nface_name}/ElementRange')[1]
-      nface_range += n_face_tot
+      # > Shift one of the two nodes, preserving part order (important for BCs recovering)
+      dist_ng = PT.Zone.NGonNode(dist_zone)
+      dist_nf = PT.Zone.NFaceNode(dist_zone)
+      dist_ng_range = PT.Element.Range(dist_ng)
+      dist_nf_range = PT.Element.Range(dist_nf)
+      if ordering == 1: # NGON first
+        dist_nf_range += dist_ng_range[1]
+      elif ordering == -1: # NFACE first
+        dist_ng_range += dist_nf_range[1]
+        nface_ec = PT.get_child_from_name(dist_nf, 'ElementConnectivity')[1]
+        np_utils.shift_absvalue(nface_ec, dist_nf_range[1])
       if has_pe:
         nface_to_pe(dist_zone, comm)
       if not has_nface:
