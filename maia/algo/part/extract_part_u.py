@@ -257,6 +257,24 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     if dim == 2:
       PT.maia.newGlobalNumbering({'Cell' : ep_face_ln_to_gn}, parent=extract_zone)
 
+    if dim == 2:
+      # Retrieve edges on 2D mesh
+      edge_data = PDM.compute_face_edge_from_face_vtx(comm, 
+                                                      [n_extract_face], 
+                                                      [ep_vtx_ln_to_gn.size], 
+                                                      [ep_face_vtx_idx], 
+                                                      [ep_face_vtx], 
+                                                      [ep_face_ln_to_gn], 
+                                                      [ep_vtx_ln_to_gn])[0]
+
+      nb_bar = edge_data['np_edge_ln_to_gn'].size
+      bar_n = PT.new_Elements('EdgeElements', 'BAR_2', 
+                              erange=[n_extract_face+1, n_extract_face+nb_bar], 
+                              econn=edge_data['np_edge_vtx'], 
+                              parent=extract_zone)
+      PT.maia.newGlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+
+
   # > NFACES
   if dim == 3:
     ep_cell_face_idx, ep_cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
