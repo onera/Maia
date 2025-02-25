@@ -4,10 +4,12 @@ import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 
-from maia.utils                  import py_utils, np_utils
+from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
+
+from maia.utils                  import py_utils, np_utils, par_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
-from .point_cloud_utils import get_shifted_point_clouds
+from .point_cloud_utils import get_point_cloud
 
 
 def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
@@ -38,22 +40,29 @@ def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
   else:
     return all_closest
 
-def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt_location, comm, reverse=False):
-  n_dom_src = len(src_parts_per_dom)
-  n_dom_tgt = len(tgt_parts_per_dom)
+def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
 
-  n_part_per_dom_src = [len(parts) for parts in src_parts_per_dom]
-  n_part_per_dom_tgt = [len(parts) for parts in tgt_parts_per_dom]
-  n_part_src = sum(n_part_per_dom_src)
-  n_part_tgt = sum(n_part_per_dom_tgt)
+  n_clouds_per_dom_src = [len(parts) for parts in src_clouds_per_dom]
+  n_clouds_per_dom_tgt = [len(parts) for parts in tgt_clouds_per_dom]
 
-  # > Setup source
-  src_offset, src_clouds = get_shifted_point_clouds(src_parts_per_dom, src_location, comm)
-  src_clouds = py_utils.to_flat_list(src_clouds)
+  # Shift data; we dont do it inplace since src and target data may share the same memory
+  src_offset = np.zeros(len(src_clouds_per_dom)+1, dtype=pdm_gnum_dtype)
+  tgt_offset = np.zeros(len(tgt_clouds_per_dom)+1, dtype=pdm_gnum_dtype)
+  for i_domain, clouds in enumerate(src_clouds_per_dom):
+    # Compute global offsets for this domain
+    dom_max = par_utils.arrays_max([cloud[1] for cloud in clouds], comm)
+    src_offset[i_domain+1] = src_offset[i_domain] + dom_max
+    # Shift source arrays (copy)
+    src_clouds_per_dom[i_domain] = [(c[0], c[1] + src_offset[i_domain]) for c in clouds]
+  for i_domain, clouds in enumerate(tgt_clouds_per_dom):
+    # Compute global offsets for this domain
+    dom_max = par_utils.arrays_max([cloud[1] for cloud in clouds], comm)
+    tgt_offset[i_domain+1] = tgt_offset[i_domain] + dom_max
+    # Shift source arrays (copy)
+    tgt_clouds_per_dom[i_domain] = [(c[0], c[1] + tgt_offset[i_domain]) for c in clouds]
 
-  # > Setup target
-  tgt_offset, tgt_clouds = get_shifted_point_clouds(tgt_parts_per_dom, tgt_location, comm)
-  tgt_clouds = py_utils.to_flat_list(tgt_clouds)
+  tgt_clouds = py_utils.to_flat_list(tgt_clouds_per_dom)
+  src_clouds = py_utils.to_flat_list(src_clouds_per_dom)
 
   result = _closest_points(src_clouds, tgt_clouds, comm, 1, reverse)
 
@@ -66,12 +75,23 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
     for src_result in result[1]:
       gnum_shifted = src_result.pop('tgt_in_src')
       src_result['tgt_in_src'], src_result['domain'] = np_utils.shifted_to_local(gnum_shifted, tgt_offset)
+
   # Reshape output to list of lists (as input domains)
   if reverse:
-    return py_utils.to_nested_list(result[0], n_part_per_dom_tgt),\
-           py_utils.to_nested_list(result[1], n_part_per_dom_src) 
+    return py_utils.to_nested_list(result[0], n_clouds_per_dom_tgt),\
+           py_utils.to_nested_list(result[1], n_clouds_per_dom_src) 
   else:
-    return py_utils.to_nested_list(result, n_part_per_dom_tgt)
+    return py_utils.to_nested_list(result, n_clouds_per_dom_tgt)
+
+def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt_location, comm, reverse=False):
+
+  src_clouds = [[get_point_cloud(part, src_location) for part in src_parts] \
+          for src_parts in src_parts_per_dom]
+  tgt_clouds = [[get_point_cloud(part, tgt_location) for part in tgt_parts] \
+          for tgt_parts in tgt_parts_per_dom]
+
+  return _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse)
+
 
 def find_closest_points(src_tree, tgt_tree, location, comm):
   """Find the closest points between two partitioned trees.

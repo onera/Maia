@@ -4,11 +4,9 @@ import pytest_parallel
 import numpy as np
 
 import maia.pytree        as PT
-import maia.pytree.maia   as MT
 
 import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.factory      import dcube_generator as DCG
 from maia.factory      import partition_dist_tree
 
 from maia.utils     import test_utils as TU
@@ -78,7 +76,7 @@ class Test_closest_points:
 def test_closestpoint_mdom(comm):
   yaml_path = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
   dtree_src = maia.io.file_to_dist_tree(yaml_path, comm)
-  dtree_tgt = DCG.dcube_generate(5, 4., [0.,0.,0.], comm)
+  dtree_tgt = maia.factory.generate_dist_block(5, 'Poly', comm, length=4.)
   maia.algo.transform_affine(dtree_tgt, translation=np.array([13.25, 2.25, 0.25]))
 
   tree_src = partition_dist_tree(dtree_src, comm)
@@ -101,17 +99,7 @@ def test_closestpoint_mdom(comm):
 @pytest_parallel.mark.parallel(2)
 def test_closest_points_lowdim(comm):
   dtree_src = maia.factory.generate_dist_sphere(5, 'TRI_3', comm)
-
-  # Line generation by hand
-  cx = np.array([1.,1,1,1,1,1])
-  cy = np.array([0.,0,0,0,0,0])
-  cz = np.array([-0.5, -0.3, -0.1, 0.1, 0.3, 0.5])
-  dtree_tgt = PT.new_CGNSTree()
-  dbase_tgt = PT.new_CGNSBase(cell_dim=1, parent=dtree_tgt)
-  zone = PT.new_Zone(type='Unstructured', size=[[6,5,0]], parent=dbase_tgt)
-  PT.new_GridCoordinates(fields={f'Coordinate{dir}' : f for dir,f in zip('XYZ', [cx,cy,cz])}, parent=zone)
-  PT.new_Elements('BAR', 'BAR_2', erange=[1,5], econn=[1,2,2,3,3,4,4,5,5,6], parent=zone)
-  dtree_tgt = maia.factory.full_to_dist_tree(dtree_tgt, comm)
+  dtree_tgt = maia.factory.generate_dist_block(6, 'BAR_2', comm, origin=[1.,0,-0.5], length=[0., 0., 1.])
 
   tree_src = partition_dist_tree(dtree_src, comm)
   tree_tgt = partition_dist_tree(dtree_tgt, comm)
@@ -133,8 +121,8 @@ def test_closest_points_lowdim(comm):
   
 @pytest_parallel.mark.parallel(3)
 def test_closest_points(comm):
-  dtree_src = DCG.dcube_generate(5, 1., [0.,0.,0.], comm)
-  dtree_tgt = DCG.dcube_generate(4, 1., [.4,-0.01,-0.01], comm)
+  dtree_src = maia.factory.generate_dist_block(5, 'Poly', comm, origin=[0.,0.,0.])
+  dtree_tgt = maia.factory.generate_dist_block(4, 'Poly', comm, origin=[.4,-0.01,-0.01])
   tree_src = partition_dist_tree(dtree_src, comm)
   tree_tgt = partition_dist_tree(dtree_tgt, comm)
 
