@@ -7,7 +7,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia       import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum
+from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, vstride
 
 from maia.algo.dist             import matching_jns_tools as MJT
 
@@ -28,17 +28,13 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   """
   distri_ngon  = PT.get_value(MT.getDistribution(ngon, 'Element'))
 
-  dist_data = PT.get_child_from_name(ngon, 'ElementConnectivity')[1]
-  b_stride = np.diff(PT.get_child_from_name(ngon, 'ElementStartOffset')[1])
-  b_stride = np_utils.safe_int_cast(b_stride, np.int32)
+  face_vtx = MT.Element.connectivity(ngon)
 
   # Get the vertex associated to the faces in FaceList
-  p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
+  p_stride, part_data = EP.block_to_part_strided(face_vtx.counts, face_vtx.values, \
       distri_ngon, face_ids-1, comm)
 
-  face_offset_l = np_utils.sizes_to_indices(p_stride)
-
-  return face_offset_l, part_data
+  return vstride.from_counts(p_stride, part_data)
 
 def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm):
   """
@@ -267,19 +263,18 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
   edge or vertices with the other faces of the pointlist
   Return the array indices of theses faces
   """
-  pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
-  PTB = EP.PartToBlock(vtx_distri, [pl_face_vtx], comm, keep_multiple=True, legacy=True)
-  block_gnum  = PTB.getBlockGnumCopy()
-  vtx_n_occur = PTB.getBlockGnumCountCopy()
+  pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
+  vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
+  
+  GI = EP.GlobalIndexer(vtx_distri_f, pl_face_vtx.values-1, comm)
+  vtx_n_occur_full = GI.access_counts
 
-  vtx_n_occur_full = np.zeros(vtx_distri[1] - vtx_distri[0], np.int32)
-  vtx_n_occur_full[block_gnum-vtx_distri[0]-1] = vtx_n_occur
-  n_occur = EP.block_to_part(vtx_n_occur_full, vtx_distri, pl_face_vtx-1, comm)
+  n_occur = GI.Take(vtx_n_occur_full)
 
   #This is the number of total occurence of all the vertices of each face. A face is isolated if each vertex appears
   # (globally) only once ie if this total equal the number of vertices of the face
-  n_vtx_per_face = np.add.reduceat(n_occur, indices=pl_face_vtx_idx[:-1])
-  isolated_face  = np.where(n_vtx_per_face == np.diff(pl_face_vtx_idx))[0]
+  pl_face_vtx._values = n_occur # Replace the values of VStride array by number of occurences
+  isolated_face = np.where(pl_face_vtx.reduce(vstride.ReduceOp.SUM) == pl_face_vtx.counts)[0]
 
   return isolated_face
 
@@ -326,13 +321,13 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   pld_vtx_l = []
 
   if solo_face:
-    _, pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
+    pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
+    pl_face_vtx  = face_ids_to_vtx_ids(pl, ngon_node, comm)
 
-    pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
-    pl_face_vtx_idx_e, pl_face_vtx_e  = np_utils.take_strided(pl_face_vtx_idx, pl_face_vtx,  isolated_face_loc)
-    pl_face_vtx_idx_e, pld_face_vtx_e = np_utils.take_strided(pl_face_vtx_idx, pld_face_vtx, isolated_face_loc)
+    pl_face_vtx_e  = vstride.take(pl_face_vtx,  isolated_face_loc)
+    pld_face_vtx_e = vstride.take(pld_face_vtx, isolated_face_loc)
     pl_vtx_local, pl_vtx_local_opp = \
-        _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx_e, pl_face_vtx_e, pld_face_vtx_e, comm)
+        _search_with_geometry(zone, zone_d, jn, pl_face_vtx_e.displs, pl_face_vtx_e.values, pld_face_vtx_e.values, comm)
     pl_vtx_l.append(pl_vtx_local)
     pld_vtx_l.append(pl_vtx_local_opp)
 

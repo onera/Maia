@@ -7,7 +7,7 @@ import maia.pytree.maia                 as MT
 
 from maia                     import npy_pdm_gnum_dtype    as pdm_gnum_dtype
 from maia.transfer            import protocols             as EP
-from maia.utils               import par_utils, np_utils
+from maia.utils               import par_utils, np_utils, vstride
 from maia.utils.parallel      import algo as par_algo
 
 from .merge_ids      import merge_distributed_ids
@@ -23,7 +23,7 @@ def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
   Get only unique nodes of faces in list and distribute it over all procs uniformly
   """
   # Get the nodes ids of all faces in pl_faces
-  _, nodes_pl = face_ids_to_vtx_ids(pl_faces, ngon_n, comm)
+  nodes_pl = face_ids_to_vtx_ids(pl_faces, ngon_n, comm).values
   # Make unique
   vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
   GI = EP.GlobalIndexer(vtx_distri_f, nodes_pl-1, comm)
@@ -41,19 +41,14 @@ def _remove_dup_ids_in_ESO(poly, comm):
   """
   poly_eso_n = PT.get_child_from_name(poly, 'ElementStartOffset')
   poly_ec_n  = PT.get_child_from_name(poly, 'ElementConnectivity')
-  poly_eso   = PT.get_value(poly_eso_n)
-  poly_ec    = PT.get_value(poly_ec_n)
   
-  _poly_eso = np.empty_like(poly_eso, dtype=np.int32)
-  np.add(poly_eso, -poly_eso[0], out=_poly_eso)
-  _new_poly_eso, new_poly_ec = np_utils.make_unique_by_stride(_poly_eso, poly_ec)
+  new_poly = vstride.unique(MT.Element.connectivity(poly), vstride.INNER_AXIS)
   
-  ec_distri = par_utils.dn_to_distribution(new_poly_ec.size, comm)
-  new_poly_eso = np.empty_like(poly_eso)
-  np.add(_new_poly_eso, ec_distri[0], out=new_poly_eso)
+  ec_distri = par_utils.dn_to_distribution(new_poly.dsize, comm)
+
   # Update arrays and distribution
-  PT.set_value(poly_eso_n, new_poly_eso)
-  PT.set_value(poly_ec_n, new_poly_ec)
+  PT.set_value(poly_eso_n, new_poly.displs + ec_distri[0])
+  PT.set_value(poly_ec_n,  new_poly.values)
   MT.newDistribution({'ElementConnectivity': ec_distri}, poly)
 
 # ------------------------------------------------------------------------------------------

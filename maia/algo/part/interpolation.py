@@ -8,6 +8,7 @@ import maia.pytree.maia   as MT
 
 from maia.utils                  import py_utils, np_utils
 from maia.utils                  import logging as mlog
+from maia.utils                  import vstride as vs
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
@@ -37,8 +38,8 @@ class Interpolator:
     _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, self.output_loc, comm)
     all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
 
-    self.src_to_tgt_idx = [data['target_idx'] for data in src_to_tgt]
-    _src_to_tgt = [data['target'] for data in src_to_tgt]
+    self.src_to_tgt_idx = [data['target_gnum'].displs for data in src_to_tgt]
+    _src_to_tgt = [data['target_gnum'].values for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
                               all_src_lngn,
                               all_tgt_lngn,
@@ -50,7 +51,7 @@ class Interpolator:
 
     # Send weight to targets partitions (if available)
     try:
-      _weight = [data['target_weight'] for data in src_to_tgt]
+      _weight = [data['target_weight'].values for data in src_to_tgt]
       request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
                                _weight)
@@ -136,32 +137,32 @@ class Interpolator:
           PT.update_child(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
 
 
-def _cell_tgt_to_vtx_tgt(cell_vtx_idx, cell_vtx, cell_tgt_idx, cell_tgt, cell_vtx_weight, n_vtx):
+def _cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_weight, n_vtx):
   """
   Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
   onto vtx->tgt information.
   """
-  # > Generate cell_vtx_idx + cell_vtx of cell which have tgt (duplicated if multiple tgt)
-  cell_id     = np.arange(0, cell_vtx_idx.size-1, dtype=np.int32)
-  cell_n_tgt  = np.diff(cell_tgt_idx) # number of tgt in cell
-  active_cell = np.repeat(cell_id, cell_n_tgt) # id of cell having some tgt (duplicated if multiple tgt)
-  active_cell_vtx_ids = np_utils.multi_arange(cell_vtx_idx[active_cell], cell_vtx_idx[active_cell+1]) # id of vtx in cell_vtx connectivity
-  
-  cell_n_vtx = np.diff(cell_vtx_idx) # number of vtx in cell
-  active_cell_n_vtx = cell_n_vtx[active_cell]
-  active_cell_vtx_idx = np_utils.sizes_to_indices(active_cell_n_vtx) # cell_vtx_idx of cells with tgt
-  active_cell_vtx     = cell_vtx[active_cell_vtx_ids] # cell_vtx of cells with tgt
+  # Id of cell having some tgt, duplicated if multiple tgt
+  active_cell = np_utils.repeated_arange(cell_tgt.counts, dtype=np.int32)
+  # Cell vtx only for these cells, still duplicated
+  # len of active_cell_vtx is == len(active_cell) == cell_tgt.dsize (because of reps)
+  active_cell_vtx = vs.take(cell_vtx, active_cell)
 
-  cell_tgt_extended = np.repeat(cell_tgt, np.diff(active_cell_vtx_idx)) # cell_vtx->tgt
-  sort_idx = np.argsort(active_cell_vtx)
+  # Number of vertex counted with reps
   vtx_to_tgt_n = np.zeros(n_vtx, dtype=np.int32)
-  np.add.at(vtx_to_tgt_n, active_cell_vtx-1, 1)
+  np.add.at(vtx_to_tgt_n, active_cell_vtx.values-1, 1)
 
-  vtx_to_tgt_idx = np_utils.sizes_to_indices(vtx_to_tgt_n) 
+  # Cell_tgt -> id points shifté ; on les etend 
+  cell_tgt_extended = np.repeat(cell_tgt.values, active_cell_vtx.counts) # cell_vtx->tgt
+
+  sort_idx = np.argsort(active_cell_vtx.values)
   vtx_to_tgt     = cell_tgt_extended[sort_idx] # vtx->tgt
   vtx_to_tgt_wgt = cell_vtx_weight[sort_idx]
 
-  return vtx_to_tgt_idx, vtx_to_tgt, vtx_to_tgt_wgt
+  vtx_to_tgt_vs = vs.from_counts(vtx_to_tgt_n, vtx_to_tgt)
+  vtx_to_weight = vs.from_counts(vtx_to_tgt_n, vtx_to_tgt_wgt)
+
+  return vtx_to_tgt_vs, vtx_to_weight
 
 
 def create_src_to_tgt(src_parts_per_dom,
@@ -220,56 +221,51 @@ def create_src_to_tgt(src_parts_per_dom,
 
     #If we worked on sub gnum, we must go back to original numbering
     if strategy != 'Closest':
-      gnum_to_transform = [results["tgt_in_src"] for results in all_closest_inv]
+      gnum_to_transform = [results["tgt_in_src"].values for results in all_closest_inv]
       PDM.transform_to_parent_gnum(gnum_to_transform, all_sub_lngn, all_extracted_lngn, comm)
 
-  dist2weight = lambda D : 1. / np.maximum(D, 1E-20)
+  dist2weight = lambda V : vs.from_displs(V.displs, 1. / np.maximum(V.values, 1E-20))
   # Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
     if src_loc=="CellCenter":
-      src_to_tgt = [{'target_idx' : data['elt_pts_inside_idx'],
-                     'target'     : data['points_gnum_shifted']} for data in all_located_inv]
+      
+      src_to_tgt = [{'target_gnum' : data['points_gnum_shifted']} 
+                    for data in all_located_inv]
     elif src_loc=="Vertex":
       src_to_tgt = list()
       for data, n_vtx in zip(all_located_inv, all_n_vtx):
 
-        vtx_to_tgt_idx, vtx_to_tgt, vtx_to_weight = _cell_tgt_to_vtx_tgt(data['cell_vtx_idx'],
-                                                                         data['cell_vtx'], 
-                                                                         data['elt_pts_inside_idx'],  #cell_tgt_idx 
-                                                                         data['points_gnum_shifted'], #cell_tgt
-                                                                         data['points_weights'],      #cell_vtx_weight
-                                                                         n_vtx)
-        src_to_tgt.append({'target_idx'   : vtx_to_tgt_idx,
-                           'target'       : vtx_to_tgt,
-                           'target_weight': vtx_to_weight})
+        vtx_to_tgt, vtx_to_weight = _cell_tgt_to_vtx_tgt(data['cell_vtx'],
+                                                         data['points_gnum_shifted'],
+                                                         data['points_weights'].values,      
+                                                         n_vtx)
+        src_to_tgt.append({'target_gnum' :vtx_to_tgt, 'target_weight' : vtx_to_weight})
+        
   elif strategy == 'Closest':
-    src_to_tgt = [{'target_idx'   :    data['tgt_in_src_idx'],
-                   'target'       :    data['tgt_in_src'],
-                   'target_weight': dist2weight(data['tgt_in_src_dist2'])} for data in all_closest_inv]
+    src_to_tgt = [{'target_gnum' : data['tgt_in_src'],
+                   'target_weight' : dist2weight(data['tgt_in_src_dist2'])}
+                   for data in all_closest_inv]
   else:
     src_to_tgt = []
 
     for res_loc, n_vtx, res_clo in zip(all_located_inv, all_n_vtx, all_closest_inv):
-      clo_src_weight = dist2weight(res_clo['tgt_in_src_dist2'])
+      clo_tgt_in_src = res_clo['tgt_in_src']
+      clo_weight     = dist2weight(res_clo['tgt_in_src_dist2'])
 
       if src_loc=="CellCenter":
-        loc_src_weight = np.ones(res_loc['points_gnum_shifted'].size, dtype=np.float64)
-        loc_src_to_tgt_idx = res_loc['elt_pts_inside_idx']
-        loc_src_to_tgt     = res_loc['points_gnum_shifted']
+        loc_src_to_tgt = res_loc['points_gnum_shifted']
+        loc_weight     = vs.from_displs(loc_src_to_tgt.displs, np.ones(loc_src_to_tgt.dsize))
       elif src_loc=="Vertex": # Move results of mesh location from cell to vtx
-        loc_src_to_tgt_idx, loc_src_to_tgt, loc_src_weight = _cell_tgt_to_vtx_tgt(res_loc['cell_vtx_idx'], 
-                                                                                  res_loc['cell_vtx'],
-                                                                                  res_loc['elt_pts_inside_idx'],  #cell_tgt_idx
-                                                                                  res_loc['points_gnum_shifted'], #cell_tgt
-                                                                                  res_loc['points_weights'],      #cell_vtx_weight
-                                                                                  n_vtx)
-        
-      tgt_in_src_idx, tgt_in_src = np_utils.jagged_merge(loc_src_to_tgt_idx, loc_src_to_tgt, \
-                                                          res_clo['tgt_in_src_idx'], res_clo['tgt_in_src'])
-      tgt_in_src_idx, tgt_weight = np_utils.jagged_merge(loc_src_to_tgt_idx, loc_src_weight, \
-                                                          res_clo['tgt_in_src_idx'], clo_src_weight)
+        loc_src_to_tgt, loc_weight = _cell_tgt_to_vtx_tgt(res_loc['cell_vtx'],
+                                                          res_loc['points_gnum_shifted'],
+                                                          res_loc['points_weights'].values,      #cell_vtx_weight
+                                                          n_vtx)
 
-      src_to_tgt.append({'target_idx' :tgt_in_src_idx, 'target' :tgt_in_src, 'target_weight':tgt_weight})
+        
+      tgt_in_src_vs = vs.concatenate([loc_src_to_tgt, clo_tgt_in_src], vs.INNER_AXIS)
+      tgt_weight_vs = vs.concatenate([loc_weight, clo_weight],         vs.INNER_AXIS)
+
+      src_to_tgt.append({'target_gnum' :tgt_in_src_vs, 'target_weight':tgt_weight_vs})
 
   return src_to_tgt
 

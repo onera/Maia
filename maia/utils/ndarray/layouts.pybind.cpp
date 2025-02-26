@@ -4,77 +4,6 @@
 
 namespace py = pybind11;
 
-
-template<typename I>
-void put_strided(py::buffer            write_buff,
-                 py::array_t<I>        write_counts,
-                 py::array_t<int64_t>  write_idx,
-                 py::array_t<I>        read_counts,
-                 py::buffer            read_buff)                
-{
-  auto _write_idx    = write_idx.data();
-  auto _write_counts = write_counts.data();
-  auto _read_counts  = read_counts.data();
-
-  py::buffer_info in_buff_info  = read_buff.request();
-  py::buffer_info out_buff_info = write_buff.request();
-  char* _read_buff  = static_cast<char *> (in_buff_info.ptr);
-  char* _write_buff = static_cast<char *> (out_buff_info.ptr);
-
-  assert (out_buff_info.itemsize == in_buff_info.itemsize);
-  size_t s_data = out_buff_info.itemsize;
-  
-  std::vector<int64_t> write_displs;
-  write_displs.reserve(write_counts.size()+1);
-  write_displs[0] = 0;
-
-  std::partial_sum(_write_counts, _write_counts+write_counts.size(), &write_displs[1]);
-
-  int r_idx = 0;
-  for (int i=0; i < write_idx.size(); ++i) {
-    int idx = _write_idx[i];
-    int w_start = write_displs[idx];
-    int w_end   = write_displs[idx+1];
-    if (_read_counts[i] > 0 && (_read_counts[i] == w_end - w_start)) {
-      std::memcpy(_write_buff + s_data*w_start, 
-                  _read_buff  + s_data*r_idx, 
-                  _read_counts[i]*s_data); 
-    }
-    r_idx += _read_counts[i];
-  }
-}
-
-template<typename I>
-void take_stridedDI(py::array_t<I>       counts, 
-                    py::buffer           read_buff,
-                    py::array_t<int64_t> ind, 
-                    py::array            write_buff)
-
-{
-  size_t s_data = read_buff.request().itemsize;
-  std::byte* _read_buff  = static_cast<std::byte*> ( read_buff.request().ptr);
-  std::byte* _write_buff = static_cast<std::byte*> (write_buff.request().ptr);
-
-  std::vector<int64_t> _displs;
-  _displs.reserve(counts.size()+1);
-  _displs[0] = 0;
-  std::partial_sum(counts.data(), counts.data()+counts.size(), &_displs[1]);
-
-  auto _counts = counts.data();
-  auto _ind = ind.data();
-
-  int w_start = 0;
-  for (size_t i=0; i < ind.size(); ++i) {
-    auto cur_idx = _ind[i];
-    auto cur_cnt = _counts[cur_idx];
-    std::copy_n(_read_buff + s_data*_displs[cur_idx],
-                cur_cnt*s_data,
-                _write_buff);
-    _write_buff += s_data*cur_cnt;
-  }
-} 
-
-
 std::tuple<py::array_t<int64_t>, py::array_t<int64_t>>
 counting_sort(py::array_t<int64_t>& np_array, int n_bins) {
   size_t size = np_array.size();
@@ -174,30 +103,6 @@ extract_from_indices(py::array_t<T>& np_array,
   return np_extract_array;
 }
 
-
-template<typename I1, typename I2>
-void take_strided(py::array_t<I1>      displs, 
-                  py::buffer           read_buff,
-                  py::array_t<I2>      ind, 
-                  py::buffer           write_buff)
-
-{
-  size_t s_data = read_buff.request().itemsize;
-  std::byte* _read_buff  = static_cast<std::byte*> ( read_buff.request().ptr);
-  std::byte* _write_buff = static_cast<std::byte*> (write_buff.request().ptr);
-
-  auto _displs = displs.data();
-  auto _ind    = ind.data();
-
-  for (size_t i=0; i < ind.size(); ++i) {
-    auto cur_idx = _ind[i];
-    auto cur_cnt = _displs[cur_idx+1] - _displs[cur_idx];
-    std::copy_n(_read_buff + s_data*_displs[cur_idx], 
-                cur_cnt*s_data,
-                _write_buff);
-    _write_buff += s_data*cur_cnt;
-  }
-}
 
 
 
@@ -379,69 +284,6 @@ interlaced_to_tuple_coords(py::array_t<fld_type>& np_xyz){
   return std::make_tuple(np_coord_x, np_coord_y, np_coord_z);
 }
 
-template<typename T>
-std::tuple<py::array_t<int>, py::array_t<T>>
-jagged_merge(py::array_t<int>& np_idx1,
-             py::array_t<T>&   np_array1,
-             py::array_t<int>& np_idx2,
-             py::array_t<T>&   np_array2) {
-
-  assert(np_idx1.size() == np_idx2.size());
-
-  int r_n_elt = np_idx1.size() - 1;
-  int r_size  = np_array1.size() + np_array2.size();
-  py::array_t<int> np_idx(r_n_elt + 1);
-  py::array_t<T> np_array(r_size);
-
-  auto idx1   = np_idx1.unchecked<1>();
-  auto array1 = np_array1.template unchecked<1>();
-  auto idx2   = np_idx2.unchecked<1>();
-  auto array2 = np_array2.template unchecked<1>();
-
-  auto idx   = np_idx.mutable_unchecked<1>();
-  auto array = np_array.template mutable_unchecked<1>();
-  
-  idx[0] = 0;
-  int w_idx(0);
-  for (int i = 0; i < r_n_elt; ++i) {
-    for (int j = idx1[i]; j < idx1[i+1]; ++j) {
-      array[w_idx++] = array1[j];
-    }
-    for (int j = idx2[i]; j < idx2[i+1]; ++j) {
-      array[w_idx++] = array2[j];
-    }
-    idx[i+1] = idx[i] + (idx1[i+1]-idx1[i]) + (idx2[i+1]-idx2[i]);
-  }
-  assert (w_idx == r_size);
-
-  return std::make_tuple(np_idx, np_array);
-}
-
-template<typename I>
-void reverse_by_stride(py::array_t<I>& np_idx,
-                       py::array     &np_array) {
-
-  size_t item_size = np_array.itemsize();
-
-  auto idx = np_idx.data();
-  auto start_ptr = static_cast<std::byte*>(np_array.mutable_data());
-
-  // Loop to operate on each section of the array
-  for (size_t i=0; i < np_idx.size()-1; ++i) {
-    size_t n_elt = idx[i+1] - idx[i];
-    auto start = start_ptr + idx[i]*item_size;
-    auto end = start + n_elt*item_size;
-
-    // Inverse subsection
-    for (size_t j = 0; j < n_elt / 2; ++j) {
-      auto left  = start + j*item_size;
-      auto right = end - (j+1)*item_size;
-      for (size_t k = 0; k < item_size; ++k) {
-          std::swap(left[k], right[k]);
-      }
-    }
-  }
-}
 
 
 
@@ -512,73 +354,11 @@ void register_layouts_module(py::module_& parent) {
   m.def("interlaced_to_tuple_coords", &interlaced_to_tuple_coords<double>,
         py::arg("np_xyz").noconvert());
 
-  m.def("jagged_merge", &jagged_merge<int32_t>,
-        py::arg("idx1"  ).noconvert(),
-        py::arg("array1").noconvert(),
-        py::arg("idx2"  ).noconvert(),
-        py::arg("array2").noconvert());
-  m.def("jagged_merge", &jagged_merge<int64_t>,
-        py::arg("idx1"  ).noconvert(),
-        py::arg("array1").noconvert(),
-        py::arg("idx2"  ).noconvert(),
-        py::arg("array2").noconvert());
-  m.def("jagged_merge", &jagged_merge<double>,
-        py::arg("idx1"  ).noconvert(),
-        py::arg("array1").noconvert(),
-        py::arg("idx2"  ).noconvert(),
-        py::arg("array2").noconvert());
   m.def("counting_sort", &counting_sort,
         py::arg("array").noconvert(),
         py::arg("n_bins").noconvert());
   m.def("counting_sort_mult", &counting_sort_mult,
         py::arg("arrays").noconvert(),
         py::arg("n_bins").noconvert());
-  m.def("take_stridedDI", &take_stridedDI<int32_t>,
-        py::arg("counts").noconvert(),
-        py::arg("values").noconvert(),
-        py::arg("indices").noconvert(),
-        py::arg("out").noconvert());
-  m.def("take_stridedDI", &take_stridedDI<int64_t>,
-        py::arg("counts").noconvert(),
-        py::arg("values").noconvert(),
-        py::arg("indices").noconvert(),
-        py::arg("out").noconvert());
-  m.def("put_strided", &put_strided<int32_t>, 
-        py::arg("write_buff").noconvert(),
-        py::arg("write_counts").noconvert(),
-        py::arg("write_idx").noconvert(),
-        py::arg("read_counts").noconvert(),
-        py::arg("read_buff").noconvert());
-  m.def("put_strided", &put_strided<int64_t>, 
-        py::arg("write_buff").noconvert(),
-        py::arg("write_counts").noconvert(),
-        py::arg("write_idx").noconvert(),
-        py::arg("read_counts").noconvert(),
-        py::arg("read_buff").noconvert());
-  m.def("take_strided", &take_strided<int32_t, int32_t>,
-        py::arg("displs").noconvert(),
-        py::arg("values").noconvert(),
-        py::arg("indices").noconvert(),
-        py::arg("out").noconvert());
-  m.def("take_strided", &take_strided<int32_t, int64_t>,
-        py::arg("displs").noconvert(),
-        py::arg("values").noconvert(),
-        py::arg("indices").noconvert(),
-        py::arg("out").noconvert());
-  m.def("take_strided", &take_strided<int64_t, int32_t>,
-        py::arg("displs").noconvert(),
-        py::arg("values").noconvert(),
-        py::arg("indices").noconvert(),
-        py::arg("out").noconvert());
-  m.def("take_strided", &take_strided<int64_t, int64_t>,
-        py::arg("displs").noconvert(),
-        py::arg("values").noconvert(),
-        py::arg("indices").noconvert(),
-        py::arg("out").noconvert());
-  m.def("reverse_by_stride", &reverse_by_stride<int32_t>,
-        py::arg("indices").noconvert(),
-        py::arg("array").noconvert());
-  m.def("reverse_by_stride", &reverse_by_stride<int64_t>,
-        py::arg("indices").noconvert(),
-        py::arg("array").noconvert());
+  
 }

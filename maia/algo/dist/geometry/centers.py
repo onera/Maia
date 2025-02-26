@@ -11,26 +11,26 @@ from maia.transfer  import protocols as EP
 from ..s_to_u       import zonedims_to_ngon
 
 from .utils import place_in_container
+from maia.utils import vstride as vs
 
 def _to_xyz(r, theta, z):
   return r*np.cos(theta), r*np.sin(theta), z
 def _to_rthetaz(x, y, z):
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
 
-def _reduce_mean(vtx_id_idx, *arrays):
-  vtx_id_n = np.diff(vtx_id_idx)
-  return [np.add.reduceat(array, vtx_id_idx[:-1]) / vtx_id_n for array in arrays]
+def _reduce_mean(vtx_id:vs.VStrideArray, *arrays):
+  return [np.add.reduceat(array, vtx_id.displs[:-1]) / vtx_id.counts for array in arrays]
 
 
-def _mean_coords_from_connectivity(vtx_id_idx, cx_expd, cy_expd, cz_expd):
+def _mean_coords_from_connectivity(vtx_id:vs.VStrideArray, cx_expd, cy_expd, cz_expd):
   """ Coordinates should be repeted to match the size of vtx_id_idx """
-  coords_mean = _reduce_mean(vtx_id_idx, cx_expd, cy_expd, cz_expd)
+  coords_mean = _reduce_mean(vtx_id, cx_expd, cy_expd, cz_expd)
   return np_utils.interweave_arrays(coords_mean)
 
-def _mean_coords_from_connectivity_cyl(vtx_id_idx, cr_expd, ctheta_expd, cz_expd):
+def _mean_coords_from_connectivity_cyl(vtx_id:vs.VStrideArray, cr_expd, ctheta_expd, cz_expd):
   """ Coordinates should be repeted to match the size of vtx_id_idx """
   cx,cy,cz = _to_xyz(cr_expd, ctheta_expd, cz_expd)
-  coords_mean = _reduce_mean(vtx_id_idx, cx, cy, cz)
+  coords_mean = _reduce_mean(vtx_id, cx, cy, cz)
   return np_utils.interweave_arrays(_to_rthetaz(*coords_mean))
 
 def compute_edge_center(zone, comm, edge_indices=None):
@@ -51,7 +51,7 @@ def compute_edge_center(zone, comm, edge_indices=None):
       raise NotImplementedError("Only U-elts zones are managed")
     global_distri = PT.Zone.CellDimension == 1
     _edge_indices = edge_indices[0] if edge_indices is not None else None
-    edge_vtx_idx, edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri, _edge_indices)
+    edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri, _edge_indices)
   else:
     raise NotImplementedError("Only U zones are managed")
 
@@ -60,16 +60,16 @@ def compute_edge_center(zone, comm, edge_indices=None):
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, edge_vtx-1, comm)
+  part_data = EP.block_to_part(dist_coords, vtx_distri, edge_vtx.values-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
 
   while len(local_coords) < 3 : #We are in phydim < 3 case, add Y and/or Z array
     local_coords.append(np.zeros_like(local_coords[0]))
 
   if isinstance(coords, PT.CartesianCoordinates):
-    return _mean_coords_from_connectivity(edge_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity(edge_vtx, *local_coords)
   elif isinstance(coords, PT.CylindricalCoordinates):
-    return _mean_coords_from_connectivity_cyl(edge_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity_cyl(edge_vtx, *local_coords)
 
 def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
   """Compute the face center of a distributed zone.
@@ -98,11 +98,11 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
         "Indices location must be specified when filtering faces center on 3D structured meshes"
 
   if PT.Zone.Type(zone) == "Structured" and zone_dim == 2:
-    face_vtx_idx, face_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim, face_indices)
+    face_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim, face_indices)
   elif PT.Zone.Type(zone) == "Unstructured" and not PT.Zone.has_ngon_elements(zone): # unstructured elements
     global_distri = PT.Zone.CellDimension(zone) == 2
     _face_indices = face_indices[0] if face_indices is not None else None
-    face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri, _face_indices)
+    face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri, _face_indices)
 
   # Other cases (Structured 3D or NGON) does not manage idx filtering : we do it manually
   else:
@@ -116,30 +116,26 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
       if face_indices is not None:
         _face_indices = face_indices[0] - PT.Element.Range(ngon_node)[0]
 
-    _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-    face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
-    np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
-    face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+    face_vtx = MT.Element.connectivity(ngon_node)
     if face_indices is not None:
       face_distri = PT.maia.getDistribution(ngon_node, 'Element')[1]
-      face_vtx_n = np.diff(face_vtx_idx).astype(np.int32, copy=False)
-      face_vtx_n, face_vtx = EP.block_to_part_strided(face_vtx_n, face_vtx, face_distri, _face_indices, comm)
-      face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n, face_vtx_idx.dtype)
+      face_vtx_n, face_vtx_v = EP.block_to_part_strided(face_vtx.counts, face_vtx.values, face_distri, _face_indices, comm)
+      face_vtx = vs.from_counts(face_vtx_n, face_vtx_v)
   
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx-1, comm)
+  part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx.values-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
 
   if len(local_coords) == 2 : #We are in phydim==2, Add Z array
     local_coords.append(np.zeros_like(local_coords[0]))
 
   if isinstance(coords, PT.CartesianCoordinates):
-    return _mean_coords_from_connectivity(face_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity(face_vtx, *local_coords)
   elif isinstance(coords, PT.CylindricalCoordinates):
-    return _mean_coords_from_connectivity_cyl(face_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity_cyl(face_vtx, *local_coords)
 
 def compute_cell_center(zone, comm, cell_indices=None):
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
@@ -148,25 +144,25 @@ def compute_cell_center(zone, comm, cell_indices=None):
     assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
 
   if PT.Zone.Type(zone) == "Structured":
-    cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone), cell_indices)
+    cell_vtx = CU.cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone), cell_indices)
   else:
     _cell_indices = cell_indices[0] if cell_indices is not None else None
     if PT.Zone.has_ngon_elements(zone):
-      cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_ngon(zone, comm, _cell_indices)
+      cell_vtx = CU.cell_vtx_connectivity_ngon(zone, comm, _cell_indices)
     else:
-      cell_vtx_idx, cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 3, True, _cell_indices)
+      cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 3, True, _cell_indices)
 
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, cell_vtx-1, comm)
+  part_data = EP.block_to_part(dist_coords, vtx_distri, cell_vtx.values-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
 
   if isinstance(coords, PT.CartesianCoordinates):
-    return _mean_coords_from_connectivity(cell_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity(cell_vtx, *local_coords)
   elif isinstance(coords, PT.CylindricalCoordinates):
-    return _mean_coords_from_connectivity_cyl(cell_vtx_idx, *local_coords)
+    return _mean_coords_from_connectivity_cyl(cell_vtx, *local_coords)
 
 
 def _compute_elements_center(zone, dim, comm, element_indices=None, element_loc=None):

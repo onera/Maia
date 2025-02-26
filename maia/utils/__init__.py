@@ -9,6 +9,7 @@ from .numbering import pr_utils
 from .          import py_utils
 from .parallel  import utils    as par_utils
 from .ndarray   import np_utils as np_utils
+from .ndarray   import vstride
 
 def require_cpp20(f):
   """ A decorator checking if Maia has been compiled with CXX20 """

@@ -8,10 +8,12 @@ import maia.pytree.maia   as MT
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.transfer               import utils as te_utils
+from maia.utils                  import vstride as vs
+
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils  import get_shifted_point_clouds
-from .connectivity_utils import cell_vtx_connectivity_elts
+from .connectivity_utils import cell_vtx_connectivity_elts, PDM_connectivity_transpose
 
 def _get_part_data_ngon(part_zone):
   dim = PT.Zone.CellDimension(part_zone)
@@ -25,15 +27,13 @@ def _get_part_data_ngon(part_zone):
     ngon  = PT.Zone.NGonNode(part_zone)
     nface = PT.Zone.NFaceNode(part_zone)
 
-    cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset")[1]
-    cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
-    face_vtx_idx  = PT.get_child_from_name(ngon,  "ElementStartOffset")[1]
-    face_vtx      = PT.get_child_from_name(ngon,  "ElementConnectivity")[1]
+    face_vtx  = MT.Element.connectivity(ngon)
+    cell_face = MT.Element.connectivity(nface)
 
     face_ln_to_gn = MT.getGlobalNumbering(ngon, 'Element')[1]
 
-    return [cell_face_idx, cell_face, cell_ln_to_gn, \
-        face_vtx_idx, face_vtx, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
+    return [cell_face.displs, cell_face.values, cell_ln_to_gn, \
+        face_vtx.displs, face_vtx.values, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
 
   elif dim == 2:
     edge  = MT.Zone.EdgeNode(part_zone)
@@ -47,11 +47,12 @@ def _get_part_data_ngon(part_zone):
       np_utils.shift_nonzeros(edge_pe, -PT.Element.Range(ngon)[0] + 1)
     edge_pe[1::2] *= -1 # Put sign on right edges
     is_internal = edge_pe != 0
-    edge_face_idx = np_utils.sizes_to_indices(1*is_internal[0::2] + 1*is_internal[1::2], np.int32)
     edge_face = edge_pe[is_internal]
-    face_edge_idx, face_edge = PDM.connectivity_transpose(int(PT.Element.Size(ngon)), edge_face_idx, edge_face)
+    edge_counts = is_internal[0::2].astype(np.int32) + is_internal[1::2].astype(np.int32)
+    edge_face = vs.from_counts(edge_counts, edge_face)
+    face_edge = PDM_connectivity_transpose(PT.Element.Size(ngon), edge_face)
 
-    return [face_edge_idx, face_edge, cell_ln_to_gn, edge_vtx, vtx_coords, vtx_ln_to_gn]
+    return [face_edge.displs, face_edge.values, cell_ln_to_gn, edge_vtx, vtx_coords, vtx_ln_to_gn]
                 
 
 
@@ -60,11 +61,11 @@ def _get_part_data_elts(part_zone):
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
   dim = PT.Zone.CellDimension(part_zone)
-  cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(part_zone, dim)
+  cell_vtx = cell_vtx_connectivity_elts(part_zone, dim)
 
   vtx_ln_to_gn, _, _, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
 
-  return [cell_vtx_idx, cell_vtx, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
+  return [cell_vtx.displs, cell_vtx.values, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
     
 
 def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
@@ -114,8 +115,19 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
 
   #This is result from the source perspective (api : ((i_pt_cloud, i_part))
   if reverse:
-    all_located_inv = [{**mesh_loc.points_in_elt_get(0, i_src_part), **mesh_loc.cell_vertex_get(i_src_part)} \
-                       for i_src_part in range(n_part_src)]
+    all_located_inv = []
+    for i_src_part in range(n_part_src):
+      _cell_vtx_result = mesh_loc.cell_vertex_get(i_src_part)
+      _loc_result      = mesh_loc.points_in_elt_get(0, i_src_part)
+      # Select only usefull results, and convert into vs array
+      # Convert some result into vsarray
+      loc_result = {
+        'points_weights' : vs.from_displs(_loc_result['points_weights_idx'], _loc_result['points_weights']),
+        'points_gnum'    : vs.from_displs(_loc_result['elt_pts_inside_idx'], _loc_result['points_gnum']),
+        'cell_vtx'       : vs.from_displs(_cell_vtx_result['cell_vtx_idx'], _cell_vtx_result['cell_vtx'])
+      }
+      all_located_inv.append(loc_result)
+    
     return all_target_data, all_located_inv
   else:
     return all_target_data
@@ -190,8 +202,9 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   if reverse:
     for src_result in result[1]:
       src_result['points_gnum_shifted'] = src_result.pop('points_gnum') #Rename key
-      src_result['points_gnum'], src_result['domain'] = np_utils.shifted_to_local(
-          src_result['points_gnum_shifted'], tgt_offset)
+      ini_gnum, domain = np_utils.shifted_to_local(src_result['points_gnum_shifted'].values, tgt_offset)
+      src_result['points_gnum'] = vs.from_displs(src_result['points_gnum_shifted'].displs, ini_gnum)
+      src_result['domain']      = vs.from_displs(src_result['points_gnum_shifted'].displs, domain)
   
   # Reshape output to list of lists (as input domains)
   if reverse:

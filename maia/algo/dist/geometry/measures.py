@@ -9,6 +9,7 @@ from maia.transfer  import protocols as EP
 
 from maia.utils import np_utils
 from maia.utils import logging as mlog
+from maia.utils import vstride as vs
 
 from ..s_to_u import zonedims_to_ngon, convert_s_to_ngon
 from  .utils  import get_local_coordinates, place_in_container
@@ -23,14 +24,14 @@ def compute_edge_measure(zone, comm):
 
   if PT.Zone.Type(zone) == "Unstructured":
     global_distri = PT.Zone.CellDimension == 1
-    edge_vtx_idx, edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
+    edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
   else:
     raise NotImplementedError("Structured zones are not managed")
 
-  local_coords = get_local_coordinates(zone, edge_vtx, comm)
+  local_coords = get_local_coordinates(zone, edge_vtx.values, comm)
 
   # Compute length : |L| = ||x2 - x1||
-  length = np.zeros(edge_vtx_idx.size-1)
+  length = np.zeros(len(edge_vtx))
   for dircoord in local_coords:
     if dircoord is not None:
       length += (dircoord[1::2] - dircoord[0::2])**2
@@ -48,26 +49,19 @@ def compute_face_measure(zone, comm):
     vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
     ngon_node = zonedims_to_ngon(vtx_size, comm)
-    _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-    face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
-    np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
-    face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+    face_vtx = MT.Element.connectivity(ngon_node)
   else:
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
-      _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
-      np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
-      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+      face_vtx = MT.Element.connectivity(ngon_node)
     else:
       global_distri = PT.Zone.CellDimension(zone) == 2
-      face_vtx_idx, face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
-  face_vtx_n = np.diff(face_vtx_idx)
+      face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
 
   # Get local coordinates
-  local_coords = get_local_coordinates(zone, face_vtx, comm)
+  local_coords = get_local_coordinates(zone, face_vtx.values, comm)
 
-  _, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+  _, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
   measure = np.linalg.norm(normalflux, axis=1)
   return measure
 
@@ -76,9 +70,9 @@ def _decompose_sections_to_face_vtx(zone):
   Create a ngon like connectivity from 3D elements of a zone, but without face unification
   (face appears duplicated and cell_face connectivity is implicit)
   """
-  all_face_vtx = []
-  all_face_vtx_n = []
+  
   all_cell_face_n = []
+  all_face_vtx = []
   for elt in PT.Zone.get_ordered_elements_per_dim(zone)[3]:
     ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
     elt_distri = MT.getDistribution(elt, 'Element')[1]
@@ -92,15 +86,12 @@ def _decompose_sections_to_face_vtx(zone):
     read_idx = np.tile(base_seq, n_elt) + np.repeat(PT.Element.NVtx(elt)*np.arange(n_elt), base_seq.size)
     face_vtx = ec[read_idx]
 
-    all_face_vtx_n.append(face_vtx_n)
-    all_face_vtx.append(face_vtx)
+    all_face_vtx.append(vs.from_counts(face_vtx_n, face_vtx))
     all_cell_face_n.append(base_n.size*np.ones(n_elt, np.int32))
 
-  face_vtx_n = np.concatenate(all_face_vtx_n)
-  face_vtx   = np.concatenate(all_face_vtx)
-  face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n)
+  face_vtx = vs.concatenate(all_face_vtx, vs.OUTER_AXIS)
   cell_face_idx = np_utils.sizes_to_indices(np.concatenate(all_cell_face_n))
-  return face_vtx_idx, face_vtx_n, face_vtx, cell_face_idx
+  return face_vtx, cell_face_idx
 
 def compute_cell_measure(zone, comm):
   """ Compute the volume of all cells of a 3D distributed zone and return a raw array"""
@@ -122,37 +113,33 @@ def compute_cell_measure(zone, comm):
   if PT.Zone.has_ngon_elements(zone):
 
     ngon_node = PT.Zone.NGonNode(zone)
-    face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-    _face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-    face_vtx_idx = np.empty(_face_vtx_idx.size, np.int32)
-    np.subtract(_face_vtx_idx, _face_vtx_idx[0], out=face_vtx_idx)
-    face_vtx_n   = np.diff(face_vtx_idx)
+    face_vtx = MT.Element.connectivity(ngon_node)
     face_distri = MT.getDistribution(ngon_node, 'Element')[1]
 
     if not PT.Zone.has_nface_elements(zone):
       maia.algo.pe_to_nface(zone, comm)
     nface_node = PT.Zone.NFaceNode(zone)
-    cell_face     = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
-    _cell_face_idx = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
-    cell_face_idx = np.empty(_cell_face_idx.size, np.int32)
-    np.subtract(_cell_face_idx, _cell_face_idx[0], out=cell_face_idx)
+    cell_face = MT.Element.connectivity(nface_node)
 
-    local_coords = get_local_coordinates(zone, face_vtx, comm)
-    center, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+    local_coords = get_local_coordinates(zone, face_vtx.values, comm)
+    center, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
     face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
 
     # Assembly : for each cell, sum the quantities computed on each face
-    face_contrib_loc = EP.block_to_part(face_contrib, face_distri, np.abs(cell_face)-1, comm)
-    measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib_loc, cell_face_idx[:-1])
+    face_contrib_loc = EP.block_to_part(face_contrib, face_distri, np.abs(cell_face.values)-1, comm)
+    face_contrib_loc = vs.from_displs(cell_face.displs, face_contrib_loc)
+    measure = (1/3.) * (vs.sign(cell_face) * face_contrib_loc).reduce(vs.ReduceOp.SUM)
 
   else:
     # Compute center in current layout (section by section), then we will exchange to match 
     # cell distribution (we could probably do the opposite as well)
-    face_vtx_idx, face_vtx_n, face_vtx, cell_face_idx = _decompose_sections_to_face_vtx(zone)
-    local_coords = get_local_coordinates(zone, face_vtx, comm)
-    center, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+    face_vtx, cell_face_idx = _decompose_sections_to_face_vtx(zone)
+    local_coords = get_local_coordinates(zone, face_vtx.values, comm)
+    center, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
     face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
-    measure_elt = (1/3.) * np.add.reduceat(face_contrib, cell_face_idx[:-1])
+    face_contrib = vs.from_displs(cell_face_idx, face_contrib)
+    measure_elt = (1/3.) * face_contrib.reduce(vs.ReduceOp.SUM)
+
 
     # Finally, move measure to allCell distribution (same method than _entity_vtx_connectivity_elt)
     distri_cell = MT.get_distribution(zone, 'Cell')[1]

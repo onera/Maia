@@ -1,8 +1,12 @@
+import warnings
 import numbers
 import numpy as np
 
 import cmaia.utils as cutils
 from cmaia.utils import layouts
+
+_VS_MSG = "This function is deprecated in favor of the VStrideArray class " \
+          "(https://numerics.gitlab-pages.onera.net/mesh/maia/dev/developer_manual/tools/vstride.html)"
 
 def interweave_arrays(array_list):
   #https://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
@@ -155,8 +159,13 @@ def jagged_merge(idx1, array1, idx2, array2):
   """
   Interwave two jagged arrays of same n_elt
   """
+  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
   assert array1.dtype == array2.dtype
-  return layouts.jagged_merge(idx1, array1, idx2, array2)
+  from maia.utils import vstride as vs
+  a1 = vs.from_displs(idx1, array1)
+  a2 = vs.from_displs(idx2, array2)
+  merged = vs.concatenate([a1, a2], axis=vs.INNER_AXIS)
+  return merged.displs, merged.values
 
 def roll_from(array, start_idx = None, start_value = None, reverse = False):
   """
@@ -218,27 +227,32 @@ def reverse_by_stride(array_idx, array, inplace=False):
   Reverse each interval of an array.
   NB : the values are only sorted within each interval, there is no reverse between intervals.
   """
-  if inplace:
-    reversed_array = array
-  else:
-    reversed_array = array.copy()
-  layouts.reverse_by_stride(array_idx, reversed_array)
+  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
+  from maia.utils import vstride as vs
+  arr_in = vs.from_displs(array_idx, array)
 
-  return reversed_array
+  if inplace:
+    arr_in._inner_flip()
+    return arr_in.values
+  else:
+    arr_out = vs.flip(arr_in, vs.INNER_AXIS)
+    return arr_out.values
 
 def sort_by_stride(array_idx, array, inplace=False):
   """
   Sort each stride of an array.
   NB : the values are only sorted within each interval, there is no sorting between intervals.
   """
+  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
+  from maia.utils import vstride as vs
+  arr_in = vs.from_displs(array_idx, array)
+
   if inplace:
-    sorted_array = array
+    arr_in._inner_sort()
+    return arr_in.values
   else:
-    sorted_array = array.copy()
-  cutils.sort_by_stride(array_idx, sorted_array)
-  #for i in range(idx.size-1):
-  #  sorted_array[idx[i]:idx[i+1]].sort()
-  return sorted_array
+    arr_out = vs.sort(arr_in, vs.INNER_AXIS)
+    return arr_out.values
 
 def make_unique_by_stride(array_idx, array):
   """
@@ -246,17 +260,22 @@ def make_unique_by_stride(array_idx, array):
   within each interval.
   NB : the subintervals are not sorted ; input order is preserved
   """
-  return cutils.make_unique_by_stride(array_idx, array)
+  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
+  from maia.utils import vstride as vs
+  arr_in  = vs.from_displs(array_idx, array)
+  arr_out = vs.unique(arr_in, vs.INNER_AXIS)
+  return arr_out.displs, arr_out.values
 
 def roll_once_by_stride(array_idx, array):
   """
   numpy.roll (with shift := -1) within each interval
   [34, 65, 33, 1,     39, 54, 2, 53, 3] --> [65, 33, 1, 34,     54, 2, 53, 3, 39]
   """
-  values = array[array_idx[:-1]].copy()
-  extended = np.insert(array, array_idx[1:], values)
-  rm_idx = array_idx[:-1] + np.arange(array_idx.size-1)
-  return np.delete(extended, rm_idx)
+  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
+  from maia.utils import vstride as vs
+  arr_in = vs.from_displs(array_idx, array)
+  arr_out = vs.roll(arr_in, -1, vs.INNER_AXIS)
+  return arr_out.values
 
 def take_strided(array_idx, array, indices):
   """
@@ -273,14 +292,11 @@ def take_strided(array_idx, array, indices):
   So in the end, we have:
     take_strided(a_idx, a_val, indices) = [0, 2, 5], [1000, 1001,  10,11,12]
   """
-
-  out_size = array_idx[indices+1] - array_idx[indices]
-  out_idx  = sizes_to_indices(out_size, array_idx.dtype)
-
-  out = np.empty(out_size.sum(), array.dtype)
-  layouts.take_strided(array_idx, array, indices, out)
-
-  return out_idx, out
+  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
+  from maia.utils import vstride as vs
+  arr_in = vs.from_displs(array_idx, array)
+  arr_out = vs.take(arr_in, indices)
+  return arr_out.displs, arr_out.values
 
 def any_in_range(array, start, end, strict=False):
   """

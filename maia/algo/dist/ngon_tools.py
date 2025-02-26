@@ -8,6 +8,7 @@ import maia.pytree.maia as MT
 from maia.algo     import indexing
 from maia.transfer import protocols as EP
 from maia.utils    import par_utils, np_utils
+from maia.utils    import vstride as vs
 
 def PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, face_cell):
   _face_distri = np_utils.safe_int_cast(face_distri, PDM.npy_pdm_gnum_dtype)
@@ -16,25 +17,25 @@ def PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, face_cell):
   _cell_face_idx, _cell_face = PDM.dfacecell_to_dcellface(comm, _face_distri, _cell_distri, _dface_cell)
   cell_face_idx = np_utils.safe_int_cast(_cell_face_idx, face_cell.dtype)
   cell_face     = np_utils.safe_int_cast(_cell_face, face_cell.dtype)
-  return cell_face_idx, cell_face
+  return vs.from_displs(cell_face_idx, cell_face)
 
-def PDM_dcellface_to_dfacecell(comm, face_distri, cell_distri, cell_face_idx, cell_face):
+def PDM_dcellface_to_dfacecell(comm, face_distri, cell_distri, cell_face:vs.VStrideArray):
   _face_distri   = np_utils.safe_int_cast(face_distri, PDM.npy_pdm_gnum_dtype)
   _cell_distri   = np_utils.safe_int_cast(cell_distri, PDM.npy_pdm_gnum_dtype)
-  _cell_face_idx = np_utils.safe_int_cast(cell_face_idx, np.int32)
-  _cell_face     = np_utils.safe_int_cast(cell_face, PDM.npy_pdm_gnum_dtype)
+  _cell_face_idx = np_utils.safe_int_cast(cell_face.displs, np.int32)
+  _cell_face     = np_utils.safe_int_cast(cell_face.values, PDM.npy_pdm_gnum_dtype)
   _face_cell = PDM.dcellface_to_dfacecell(comm, _face_distri, _cell_distri, _cell_face_idx, _cell_face)
   return np_utils.safe_int_cast(_face_cell, cell_face.dtype)
 
-def PDM_dfacevtx_from_face_and_edge(comm, face_distri, edge_distri, face_edge_idx, face_edge, edge_vtx):
+def PDM_dfacevtx_from_face_and_edge(comm, face_distri, edge_distri, face_edge:vs.VStrideArray, edge_vtx):
   _face_distri   = np_utils.safe_int_cast(face_distri, PDM.npy_pdm_gnum_dtype)
   _edge_distri   = np_utils.safe_int_cast(edge_distri, PDM.npy_pdm_gnum_dtype)
-  _face_edge_idx = np_utils.safe_int_cast(face_edge_idx, np.int32)
-  _face_edge     = np_utils.safe_int_cast(face_edge, PDM.npy_pdm_gnum_dtype)
+  _face_edge_idx = np_utils.safe_int_cast(face_edge.displs, np.int32)
+  _face_edge     = np_utils.safe_int_cast(face_edge.values, PDM.npy_pdm_gnum_dtype)
   _edge_vtx      = np_utils.safe_int_cast(edge_vtx, PDM.npy_pdm_gnum_dtype)
   _face_vtx = PDM.compute_dfacevtx_from_face_and_edge(comm, _face_distri, _edge_distri, _face_edge_idx, _face_edge, _edge_vtx)
   face_vtx  = np_utils.safe_int_cast(_face_vtx, face_edge.dtype)
-  return face_vtx
+  return vs.from_displs(face_edge.displs, face_vtx) # Same displs
 
 
 def pe_to_nface(zone, comm, remove_PE=False):
@@ -57,14 +58,14 @@ def pe_to_nface(zone, comm, remove_PE=False):
   assert PT.Element.Range(ngon_node)[0] == 1
   local_pe = indexing.get_pe_local(ngon_node).reshape(-1, order='C')
 
-  cell_face_idx, cell_face = PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, local_pe)
+  cell_face = PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, local_pe)
   cell_face_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Zone.n_face(zone)
-  nface_ec_distr_f = par_utils.gather_and_shift(cell_face_idx[-1], comm)
+  nface_ec_distr_f = par_utils.gather_and_shift(cell_face.dsize, comm)
   nface_ec_distri  = par_utils.full_to_partial_distribution(nface_ec_distr_f, comm)
   nface_ec_distri  = np_utils.safe_int_cast(nface_ec_distri, nface_distri.dtype)
-  eso = cell_face_idx + nface_ec_distri[0]
+  eso = cell_face.displs + nface_ec_distri[0]
 
-  nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=cell_face, parent=zone)
+  nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=cell_face.values, parent=zone)
   MT.newDistribution({"Element" : nface_distri, "ElementConnectivity" : nface_ec_distri}, nface)
 
   if remove_PE:
@@ -85,23 +86,21 @@ def nface_to_pe(zone, comm, remove_NFace=False):
   nface_node = PT.Zone.NFaceNode(zone)
   ngon_distri    = MT.getDistribution(ngon_node , 'Element')[1]
   nface_distri   = MT.getDistribution(nface_node, 'Element')[1]
-  nface_distri_c = MT.getDistribution(nface_node, 'ElementConnectivity')[1]
 
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
-  cell_face_idx = PT.get_child_from_name(nface_node, "ElementStartOffset")[1]
-  cell_face     = PT.get_child_from_name(nface_node, "ElementConnectivity")[1]
+  
+  cell_face = MT.Element.connectivity(nface_node)
 
   # If NFace are before NGon, then face ids must be shifted
   if PT.Element.Range(ngon_node)[0] == 1:
-    _cell_face = cell_face
+    pass
   else:
-    _cell_face_sign = np.sign(cell_face)
-    _cell_face = np.abs(cell_face) - PT.Element.Size(nface_node)
-    _cell_face = _cell_face * _cell_face_sign
-  _cell_face_idx = cell_face_idx - nface_distri_c[0] #Go to local idx
+    _cell_face_sign = vs.sign(cell_face)
+    _cell_face = abs(cell_face) - PT.Element.Size(nface_node)
+    cell_face = _cell_face * _cell_face_sign
 
-  face_cell = PDM_dcellface_to_dfacecell(comm, face_distri, cell_distri, _cell_face_idx, _cell_face)
+  face_cell = PDM_dcellface_to_dfacecell(comm, face_distri, cell_distri, cell_face)
   # Strangely PDM can return negative indices if face has only a right parent
   face_cell = abs(face_cell)
   np_utils.shift_nonzeros(face_cell, PT.Element.Range(nface_node)[0]-1) # Refer to NFace global ids
@@ -138,23 +137,21 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   # NGON Data
   ngon_node = PT.Zone.NGonNode(zone)
   distri_face = MT.getDistribution(ngon_node, 'Element')[1]
-  face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-  face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-  face_vtx_idx = face_vtx_idx - face_vtx_idx[0]
+  face_vtx = MT.Element.connectivity(ngon_node)
 
   first_vtx  = face_vtx
-  second_vtx = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
-  key_from_face = first_vtx + second_vtx
+  second_vtx = vs.roll(first_vtx, -1, vs.INNER_AXIS)
+  key_from_face = first_vtx.values + second_vtx.values
   start_gnum = distri_face[0] + PT.Element.Range(ngon_node)[0]
-  face_gnum = np_utils.repeated_arange(np.diff(face_vtx_idx), start_gnum, dtype=face_vtx.dtype)
+  face_gnum = np_utils.repeated_arange(face_vtx.counts, start_gnum, dtype=face_vtx.dtype)
 
   # Now do the search in // using key
   # First : gather data from face into a block vision
   ptb = EP.PartToBlock(None, [key_from_face], comm, keep_multiple=True, legacy=True)
   stride_one = np.ones(key_from_face.size, np.int32)
 
-  stride, data1 = ptb.exchange_field([face_gnum], [stride_one])
-  stride, data2 = ptb.exchange_field([first_vtx], [stride_one])
+  stride, data1 = ptb.exchange_field([face_gnum],        [stride_one])
+  stride, data2 = ptb.exchange_field([first_vtx.values], [stride_one])
   # We don't need to exchange second vertex because we know key and vtx1 (vtx1 + vtx2 == key)
   dist_data = {'FaceGnum' : data1, 'FirstVtx' : data2}
   ptb_distri = ptb.getDistributionCopy()
@@ -210,15 +207,15 @@ def edge_pe_to_ngon(zone, comm, remove_PE=False):
   local_pe = indexing.get_pe_local(edge_node).reshape(-1, order='C')
   edge_vtx = PT.get_child_from_name(edge_node, 'ElementConnectivity')[1]
 
-  face_edge_idx, face_edge = PDM_dfacecell_to_dcellface(comm, edge_distri, face_distri, local_pe)
-  face_vtx = PDM_dfacevtx_from_face_and_edge(comm, face_distri, edge_distri, face_edge_idx, face_edge, edge_vtx)
+  face_edge = PDM_dfacecell_to_dcellface(comm, edge_distri, face_distri, local_pe)
+  face_vtx = PDM_dfacevtx_from_face_and_edge(comm, face_distri, edge_distri, face_edge, edge_vtx)
   face_vtx_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Element.Range(edge_node)[1] #n_cell = n_face
-  ngon_ec_distr_f = par_utils.gather_and_shift(face_edge_idx[-1], comm)
+  ngon_ec_distr_f = par_utils.gather_and_shift(face_edge.dsize, comm)
   ngon_ec_distri  = par_utils.full_to_partial_distribution(ngon_ec_distr_f, comm)
   ngon_ec_distri  = np_utils.safe_int_cast(ngon_ec_distri, ngon_distri.dtype)
-  eso = face_edge_idx + ngon_ec_distri[0]
+  eso = face_edge.displs + ngon_ec_distri[0]
 
-  ngon = PT.new_NGonElements(erange=face_vtx_range, eso=eso, ec=face_vtx, parent=zone)
+  ngon = PT.new_NGonElements(erange=face_vtx_range, eso=eso, ec=face_vtx.values, parent=zone)
   MT.newDistribution({"Element" : ngon_distri, "ElementConnectivity" : ngon_ec_distri}, ngon)
 
   if remove_PE:

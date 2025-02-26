@@ -17,13 +17,13 @@ def test_decompose_sections_to_face_vtx(comm):
   # HEXA EC  : [1, 2, 5, 4, 6, 7, 10, 9,   6, 7, 10, 9, 11, 12, 15, 14]
   # PENTA EC : [2, 3, 5, 7, 8, 10,   7, 8, 10, 12, 13, 15]
   zone = PT.get_all_Zone_t(tree)[0]
-  face_vtx_idx, face_vtx_n, face_vtx, cell_face_idx = GEO._decompose_sections_to_face_vtx(zone)
-  assert (face_vtx_n == [4,4,4,4,4,4, 4,4,4,4,4,4, 4,4,4,3,3, 4,4,4,3,3]).all()
-  assert (face_vtx_idx == [0,4,8,12,16,20,24,28,32,36,40,44,48, 52,56,60,63,66,70,74,78,81,84]).all()
-  assert (face_vtx[ 0:24]  == [1,4,5,2, 1,2,7,6, 2,5,10,7, 5,4,9,10, 1,6,9,4, 6,7,10,9]).all()
-  assert (face_vtx[24:48]  == [6,9,10,7, 6,7,12,11, 7,10,15,12, 10,9,14,15, 6,11,14,9, 11,12,15,14]).all()
-  assert (face_vtx[48:66]  == [2,3,8,7, 3,5,10,8, 5,2,7,10, 2,5,3, 7,8,10]).all()
-  assert (face_vtx[66:84]  == [7,8,13,12, 8,10,15,13, 10,7,12,15, 7,10,8, 12,13,15]).all()
+  face_vtx, cell_face_idx = GEO._decompose_sections_to_face_vtx(zone)
+  assert (face_vtx.counts == [4,4,4,4,4,4, 4,4,4,4,4,4, 4,4,4,3,3, 4,4,4,3,3]).all()
+  assert (face_vtx.displs == [0,4,8,12,16,20,24,28,32,36,40,44,48, 52,56,60,63,66,70,74,78,81,84]).all()
+  assert (face_vtx.values[ 0:24]  == [1,4,5,2, 1,2,7,6, 2,5,10,7, 5,4,9,10, 1,6,9,4, 6,7,10,9]).all()
+  assert (face_vtx.values[24:48]  == [6,9,10,7, 6,7,12,11, 7,10,15,12, 10,9,14,15, 6,11,14,9, 11,12,15,14]).all()
+  assert (face_vtx.values[48:66]  == [2,3,8,7, 3,5,10,8, 5,2,7,10, 2,5,3, 7,8,10]).all()
+  assert (face_vtx.values[66:84]  == [7,8,13,12, 8,10,15,13, 10,7,12,15, 7,10,8, 12,13,15]).all()
   assert (cell_face_idx == [0,6,12,17,22]).all()
 
 @pytest_parallel.mark.parallel(2)

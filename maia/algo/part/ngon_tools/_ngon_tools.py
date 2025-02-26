@@ -7,6 +7,7 @@ import maia.pytree.maia as MT
 
 from maia.algo import indexing
 from maia.utils import np_utils
+from maia.utils import vstride as vs
 
 import cmaia.part_algo as cpart_algo
 
@@ -108,14 +109,14 @@ def ngon_to_edge_pe(zone, remove_NGon=False):
 
   # NGON Data
   ngon_node = PT.Zone.NGonNode(zone)
-  face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-  face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
+  face_vtx  = MT.Element.connectivity(ngon_node)
 
   first_vtx  = face_vtx
-  second_vtx = np_utils.roll_once_by_stride(face_vtx_idx, face_vtx)
-  key_from_face = first_vtx + second_vtx # hash by vtx-vtx sum as above
+  second_vtx = vs.roll(first_vtx, -1, vs.INNER_AXIS)
+
+  key_from_face = first_vtx.values + second_vtx.values # hash by vtx-vtx sum as above
   start_face_id = PT.Element.Range(ngon_node)[0]
-  edge_parent_id = np_utils.repeated_arange(np.diff(face_vtx_idx), start_face_id, dtype=face_vtx.dtype)
+  edge_parent_id = np_utils.repeated_arange(face_vtx.counts, start_face_id, dtype=face_vtx.dtype)
 
 
   # Now do the search using key
@@ -124,7 +125,7 @@ def ngon_to_edge_pe(zone, remove_NGon=False):
   sort_idx = np.argsort(key_from_face)
   key_from_face  = key_from_face[sort_idx]
   edge_parent_id = edge_parent_id[sort_idx]
-  face_first_vtx = first_vtx[sort_idx]
+  face_first_vtx = first_vtx.values[sort_idx]
 
   key_from_face_unique, key_from_face_counts = np_utils.unique_sorted(key_from_face, return_counts=True)
   key_from_face_idx = np_utils.sizes_to_indices(key_from_face_counts)
@@ -136,8 +137,8 @@ def ngon_to_edge_pe(zone, remove_NGon=False):
   select_idx = np.searchsorted(key_from_face_unique, key_from_edge)
 
   counts_for_edge = key_from_face_counts[select_idx] # get the number collisions by edge (count==1 <=> no collision)
-  _, parent_id_for_edge = np_utils.take_strided(key_from_face_idx, edge_parent_id, select_idx)
-  _, first_vtx_for_edge = np_utils.take_strided(key_from_face_idx, face_first_vtx, select_idx)
+  parent_id_for_edge = vs.take(vs.from_displs(key_from_face_idx, edge_parent_id), select_idx).values
+  first_vtx_for_edge = vs.take(vs.from_displs(key_from_face_idx, face_first_vtx), select_idx).values
 
 
   # Third: post treat (solving conflicts) for fill edge_face

@@ -7,6 +7,8 @@ import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
+from maia.utils import vstride as vs
+
 from maia.algo.dist import connectivity_utils as CU
 
 @pytest_parallel.mark.parallel(2)
@@ -28,31 +30,50 @@ def test_combine_face_edge_and_edge_vtx(comm):
 
   assert np.array_equal(face_vtx, expected_face_vtx)
 
+@pytest_parallel.mark.parallel(2)
+def test_combine_dconnectivity(comm):
+  if comm.rank == 0:
+    cell_face = vs.array([[1, 2, 7, 8, 13, 14], [-14, 3, 4, 9, 10, 15]])
+    face_vtx = vs.array([[1,5,7,3], [2,4,8,6], [5,9,11,7], [6,8,12,10], 
+                         [9,13,15,11], [10,12,16,14], [1,2,6,5], [3,7,8,4]])
 
+    expected_cell_vtx = vs.array([[1,5,7,3,2,4,8,6], [5,6,8,7,9,11,12,10]])
+  elif comm.rank == 1:
+    cell_face = vs.array([[-15, 5, 6, 11, 12, 16]])
+    face_vtx = vs.array([[5,6,10,9], [7,11,12,8], [9,10,14,13], [11,15,16,12],
+                         [1,3,4,2], [5,6,8,7], [9,10,12,11], [13,14,16,15]])
+
+    expected_cell_vtx = vs.array([[9,10,12,11,13,15,16,14]])
+
+  cell_distri = np.array([0,2,3])
+  face_distri = np.array([0,8,16])
+
+  cell_vtx = CU.combine_dconnectivity(cell_distri, face_distri, cell_face, face_vtx, False, comm)
+  assert vs.array_equal(cell_vtx, expected_cell_vtx)
 
 def test_cell_vtx_connectivity_S():
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0]])
   MT.new_distribution({'Cell': [2,6,8]}, zone)
-  cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, 2)
-  assert (cell_vtx_idx ==[0,4,8,12,16]).all() 
-  assert (cell_vtx == [3,4,9,8,  4,5,10,9,  6,7,12,11,  7,8,13,12]).all()
+  cell_vtx = CU.cell_vtx_connectivity_S(zone, 2)
+  assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 2),
+                        vs.array([[3,4,9,8],  [4,5,10,9],  [6,7,12,11],  [7,8,13,12]]))
 
   MT.new_distribution({'Cell': [7,7,8]}, zone)
-  cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, 2)
-  assert cell_vtx_idx == np.zeros(1, np.int32)
-  assert cell_vtx.size == 0 and cell_vtx.dtype == zone[1].dtype
+  cell_vtx = CU.cell_vtx_connectivity_S(zone, 2)
+  assert len(cell_vtx) == 0 and cell_vtx.dtype == zone[1].dtype
 
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0],[2,1,0]])
   MT.new_distribution({'Cell': [2,6,8]}, zone)
-  cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, 3)
-  assert (cell_vtx_idx ==[0,8,16,24,32]).all() 
-  assert (cell_vtx == [3,4,9,8,18,19,24,23,  4,5,10,9,19,20,25,24,  6,7,12,11,21,22,27,26,  7,8,13,12,22,23,28,27]).all()
+  assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 3),
+                        vs.array([[3,4,9,8,18,19,24,23],  
+                                  [4,5,10,9,19,20,25,24],  
+                                  [6,7,12,11,21,22,27,26], 
+                                  [7,8,13,12,22,23,28,27]]))
 
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0],[4,3,0]])
   MT.new_distribution({'Cell': [15,17,24]}, zone)
-  cell_vtx_idx, cell_vtx = CU.cell_vtx_connectivity_S(zone, 3)
-  assert (cell_vtx_idx ==[0,8,16]).all() 
-  assert (cell_vtx == [24,25,30,29,39,40,45,44,  31,32,37,36,46,47,52,51]).all()
+  assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 3),
+                        vs.array([[24,25,30,29,39,40,45,44], [31,32,37,36,46,47,52,51]]))
 
 
 @pytest_parallel.mark.parallel(3)
@@ -93,10 +114,8 @@ def test_entity_vtx_connectivity_elt(distri_global, comm):
                          [113,114,115,116,    216,217,218,219,220]
                         ][comm.rank]
 
-  cell_vtx_idx, cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 3, distri_global)
-
-  assert np.array_equal(cell_vtx_idx, expected_cell_vtx_idx)
-  assert np.array_equal(cell_vtx, expected_cell_vtx)
+  cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 3, distri_global)
+  assert vs.array_equal(cell_vtx, vs.from_displs(expected_cell_vtx_idx, expected_cell_vtx))
 
 
   if not distri_global:
@@ -105,6 +124,5 @@ def test_entity_vtx_connectivity_elt(distri_global, comm):
                          [4,5,6],
                          [7,8,9]
                         ][comm.rank]
-    cell_vtx_idx, cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, False)
-    assert np.array_equal(cell_vtx_idx, expected_cell_vtx_idx)
-    assert np.array_equal(cell_vtx, expected_cell_vtx)
+    cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, False)
+    assert vs.array_equal(cell_vtx, vs.from_displs(expected_cell_vtx_idx, expected_cell_vtx))

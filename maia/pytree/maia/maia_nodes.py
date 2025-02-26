@@ -3,6 +3,9 @@ from maia.pytree.meta   import begin_api_export, end_api_export
 
 from maia.pytree import walk as W
 from maia.pytree import node as N
+from maia.pytree import sids as S
+
+from maia.utils import vstride as vs
 
 begin_api_export()
 
@@ -68,5 +71,23 @@ class Zone:
     edge_elts_nodes = W.get_children_from_predicate(zone_node, is_edge)
     assert len(edge_elts_nodes) == 1, "Exactly one EdgeElements_t node must be defined"
     return edge_elts_nodes[0]
+
+class Element:
+
+    @staticmethod
+    def connectivity(elt_node:CGNSTree) -> vs.VStrideArray:  
+      eso = W.get_child_from_name(elt_node, 'ElementStartOffset')
+      ec  = W.get_child_from_name(elt_node, 'ElementConnectivity')
+
+      is_distri = W.get_child_from_name(elt_node, ':CGNS#Distribution') is not None
+
+      if eso is not None:
+        eso_val = eso[1] - eso[1][0] if is_distri else eso[1]
+        return vs.from_displs(eso_val, ec[1])
+      else:
+        assert S.Element.CGNSName(elt_node) not in ['NGON_n', 'NFACE_n', 'MIXED']
+        counts = S.Element.NVtx(elt_node)
+        return vs.from_counts(ec[1].dtype.type(counts), ec[1])
+      
 
 end_api_export()

@@ -2,7 +2,7 @@ from mpi4py import MPI
 import numpy as np
 import pickle
 
-from cmaia.utils import layouts
+from cmaia.utils import layouts, vstride
 
 # Typing
 from typing       import List, Tuple, Any
@@ -20,25 +20,21 @@ def counting_sort_mult(arrays, n_bins):
 
 def take_strided(a_counts, a_val, indices, out):
   """
-  An equivalent to numpy.take (a[ind]), but with strided values in a.
-  a is described by strides + values, eg
-  a_counts = [3,1,2]
-  a_val    = [10,11,12, 100, 1000, 1001] (3 values, then 1 value, then 2 values)
-
-  indices is the list of idx to extract; for each indices, the whole "grap" of strided
-  values will be extracted
-  take_strided(a_counts, a_val, [2,0]) = [1000, 1001,  10,11,12]
+  A special case of VStrideArray.take() where out
+  is preallocated and where we don't require extracted displs
   """
-  layouts.take_stridedDI(a_counts, a_val, indices, out)
+  a_displs = np.empty(len(a_counts)+1, dtype=a_counts.dtype)
+  a_displs[0] = 0
+  np.cumsum(a_counts, out=a_displs[1:])
+  vstride.take(a_displs, a_val, indices, out)
+
 
 def put_strided(a, a_count, indices, read_counts, read):
   """
-  Write in an array strided array (a, a_count) at provided indices
-  from an input data (read, read_count).
-  If an index occurs multiple times in indices array, it erase the previously written
-  value. A check is performed on counts to write only compatible data
+  A special case of VStrideArray.put() where out (a) is preallocated
+  and all indices will be visited
   """
-  layouts.put_strided(a, a_count, indices, read_counts, read)
+  vstride.put(a_count, a, indices, read_counts, read)
 
 class GlobalMultiIndexer:
   """

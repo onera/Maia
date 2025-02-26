@@ -1,12 +1,21 @@
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
-from maia.utils                import np_utils
+from maia.utils                import vstride as vs
 from maia.algo.part.ngon_tools import pe_to_nface
 from maia.utils import s_numbering
 
 import Pypdm.Pypdm as PDM
+
+def PDM_combine_connectivity(first:vs.VStrideArray, second:vs.VStrideArray):
+  return vs.from_displs(*PDM.combine_connectivity(first.displs, first.values,
+                                                  second.displs, second.values))
+
+def PDM_connectivity_transpose(n_opp:int, connec:vs.VStrideArray):                                             
+  return vs.from_displs(*PDM.connectivity_transpose(int(n_opp), connec.displs, connec.values))
+
 
 def cell_vtx_connectivity_S(zone_S, dim) :
     n_cell = PT.Zone.n_cell(zone_S)
@@ -38,33 +47,31 @@ def cell_vtx_connectivity_S(zone_S, dim) :
     else:
       raise NotImplementedError("Unsupported dimension")
 
-    return cell_vtx_idx, cell_vtx
+    return vs.from_displs(cell_vtx_idx, cell_vtx)
 
 def cell_vtx_connectivity_ngon(zone, dim):
   if dim==1:
     raise NotImplementedError("U-NGON meshes doesn't support dimension 1 elements")
 
   ngon_node = PT.Zone.NGonNode(zone)
-  ngon_eso = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-  ngon_ec = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+  face_vtx = MT.Element.connectivity(ngon_node)
   
   if dim==2:
-    return ngon_eso, ngon_ec
+    return face_vtx
 
   if not PT.Zone.has_nface_elements(zone):
     pe_to_nface(zone)
 
   nface_node = PT.Zone.NFaceNode(zone)
-  nface_eso = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
-  nface_ec = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
+  cell_face = MT.Element.connectivity(nface_node)
 
-  return PDM.combine_connectivity(nface_eso, nface_ec, ngon_eso, ngon_ec)
+  return PDM_combine_connectivity(cell_face, face_vtx)
 
 def cell_vtx_connectivity_elts(zone, dim):
   ordered_elts = PT.Zone.get_ordered_elements_per_dim(zone)
   connectivities = [PT.get_child_from_name(e, 'ElementConnectivity')[1] for e in ordered_elts[dim]]
   n_elts = sum([PT.Element.Size(e) for e in ordered_elts[dim]])
-  _, cell_vtx = np_utils.concatenate_np_arrays(connectivities, dtype=np.int32)
+  cell_vtx = vs.array(connectivities, dtype=np.int32) # For now, strides are the size of sections
   cell_vtx_idx = np.empty(n_elts+1, np.int32)
   cell_vtx_idx[0] = 0
 
@@ -75,7 +82,9 @@ def cell_vtx_connectivity_elts(zone, dim):
     cur += PT.Element.Size(elt)
   assert cur == n_elts +1
 
-  return cell_vtx_idx, cell_vtx
+  cell_vtx.restride(displs=cell_vtx_idx) # Registrer true cell_vtx_idx
+
+  return cell_vtx
 
 def cell_vtx_connectivity(zone, dim=3, elts_subset=None):
   """
@@ -89,20 +98,20 @@ def cell_vtx_connectivity(zone, dim=3, elts_subset=None):
   assert PT.Zone.Type(zone) in ['Structured', 'Unstructured']
   
   if PT.Zone.Type(zone) == 'Structured':
-    cell_vtx_idx, cell_vtx = cell_vtx_connectivity_S(zone, dim)
+    cell_vtx = cell_vtx_connectivity_S(zone, dim)
   else:
     if PT.Zone.has_ngon_elements(zone):
       if dim == 1:
-        cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(zone, dim)
+        cell_vtx = cell_vtx_connectivity_elts(zone, dim)
       else:
-        cell_vtx_idx, cell_vtx = cell_vtx_connectivity_ngon(zone, dim)
+        cell_vtx = cell_vtx_connectivity_ngon(zone, dim)
     else: # zone has standard elements
-      cell_vtx_idx, cell_vtx = cell_vtx_connectivity_elts(zone, dim)
+      cell_vtx = cell_vtx_connectivity_elts(zone, dim)
   
   if elts_subset is not None:
     assert PT.Zone.Type(zone) == 'Unstructured'
     offset = PT.Zone.get_elt_range_per_dim(zone)[dim][0]
     _elts_ids = elts_subset[0] - offset
-    cell_vtx_idx, cell_vtx = np_utils.take_strided(cell_vtx_idx, cell_vtx, _elts_ids)
+    cell_vtx = vs.take(cell_vtx, _elts_ids)
 
-  return cell_vtx_idx, cell_vtx
+  return cell_vtx

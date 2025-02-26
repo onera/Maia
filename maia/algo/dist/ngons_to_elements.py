@@ -6,7 +6,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 from maia.pytree.sids import elements_utils as EU
 
-from maia.utils     import np_utils, par_utils
+from maia.utils     import np_utils, par_utils, vstride
 from maia.transfer  import protocols as EP
 from maia.algo.dist import matching_jns_tools as MJT
 
@@ -82,21 +82,19 @@ def _ngon_to_elements_zone_2d(zone, comm):
   # Now take care of the faces
   ngon_n = PT.Zone.NGonNode(zone)
 
-  face_vtx_idx = PT.get_child_from_name(ngon_n, 'ElementStartOffset')[1]
-  face_vtx     = PT.get_child_from_name(ngon_n, 'ElementConnectivity')[1]
-  face_distri  = MT.getDistribution(ngon_n, 'Element')[1]
-  _face_vtx_idx = (face_vtx_idx - face_vtx_idx[0]).astype(np.int64, copy=False)
-  face_n = np.diff(_face_vtx_idx).astype(np.int32, copy=False)
+  face_distri = MT.getDistribution(ngon_n, 'Element')[1]
+  face_vtx    = MT.Element.connectivity(ngon_n)
+  n_face_loc  = len(face_vtx)
 
   n_treated = 0
   elt_shift = bar_range[1]
-  mask = np.empty(face_n.size, bool)
-  new_face_id = np.empty(face_n.size, zone[1].dtype) # For subset renumbering
+  mask = np.empty(n_face_loc, bool)
+  new_face_id = np.empty(n_face_loc, zone[1].dtype) # For subset renumbering
   for elt_kind, target_size in zip(['TRI_3', 'QUAD_4'], [3,4]):
     # Find corresponding faces
-    np.equal(face_n, target_size, out=mask)
+    np.equal(face_vtx.counts, target_size, out=mask)
     face_ids = np.flatnonzero(mask)
-    _, elt_conn = np_utils.take_strided(_face_vtx_idx, face_vtx, face_ids)
+    elt_conn = vstride.take(face_vtx, face_ids).values
 
     # Prepare elt node (ElementConnectivity will be computed later)
     n_elt_loc = face_ids.size
@@ -114,7 +112,7 @@ def _ngon_to_elements_zone_2d(zone, comm):
     n_treated += n_elt_loc
     elt_shift += distri[-1]
 
-  remaining_faces = comm.allreduce(face_n.size - n_treated)
+  remaining_faces = comm.allreduce(n_face_loc - n_treated)
   if remaining_faces != 0:
     msg = f"Input 2d polyedric mesh can not be converted to standard elements, because some faces differs from TRI_3 or QUAD_4" \
           f" standard elements ({remaining_faces} faces detected on zone {PT.get_name(zone)})"
@@ -153,14 +151,13 @@ def _ngon_to_elements_zone_3d(zone, comm):
   # Start by constructing boundary faces
   ngon_n = PT.Zone.NGonNode(zone)
   
-  face_vtx_idx = PT.get_child_from_name(ngon_n, 'ElementStartOffset')[1]
-  face_vtx     = PT.get_child_from_name(ngon_n, 'ElementConnectivity')[1]
+  face_vtx     = MT.Element.connectivity(ngon_n)
   pe           = PT.get_child_from_name(ngon_n, 'ParentElements')[1]
   face_distri  = MT.getDistribution(ngon_n, 'Element')[1]
+  dn_face   = len(face_vtx)
 
   face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
-  _face_vtx_idx = (face_vtx_idx - face_vtx_idx[0]).astype(np.int64, copy=False)
-  face_n = np.diff(_face_vtx_idx).astype(np.int32, copy=False)
+  face_n = face_vtx.counts
 
   old_face_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0])
   
@@ -172,8 +169,8 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   is_bnd_tri  = (is_bnd_face) & (face_n == 3)
   is_bnd_quad = (is_bnd_face) & (face_n == 4)
-  _, tri_vtx  = np_utils.take_strided(_face_vtx_idx, face_vtx, np.where(is_bnd_tri)[0])
-  _, quad_vtx = np_utils.take_strided(_face_vtx_idx, face_vtx, np.where(is_bnd_quad)[0])
+  tri_vtx = vstride.take(face_vtx, np.where(is_bnd_tri)[0]).values
+  quad_vtx = vstride.take(face_vtx, np.where(is_bnd_quad)[0]).values
 
 
   tri_distri  = par_utils.dn_to_distribution(tri_vtx.size  // 3, comm)
@@ -189,7 +186,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
     MT.newDistribution({'Element' : quad_distri}, quad_n)
   
   # Renumber PointList indexing Faces
-  new_face_id = -1*np.ones(face_n.size, zone[1].dtype)
+  new_face_id = -1*np.ones(dn_face, zone[1].dtype)
   new_face_id[is_bnd_tri] = np.arange(tri_distri[0]+1, tri_distri[1]+1)
   new_face_id[is_bnd_quad] = np.arange(quad_distri[0]+tri_distri[-1]+1, quad_distri[1]+tri_distri[-1]+1)
 
@@ -198,30 +195,28 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   # Now take care of the cells 
   nface_n = PT.Zone.NFaceNode(zone)
-  cell_face_idx = PT.get_child_from_name(nface_n, 'ElementStartOffset')[1]
-  cell_face     = PT.get_child_from_name(nface_n, 'ElementConnectivity')[1]
+  cell_face     = MT.Element.connectivity(nface_n)
   cell_distri   = MT.getDistribution(nface_n, 'Element')[1]
-  _cell_face_idx = (cell_face_idx - cell_face_idx[0]).astype(np.int64, copy=False)
-  cell_n = np.diff(cell_face_idx)
+  dn_cell = len(cell_face)
 
   # Design choice : get the number of vertices (with reps) for **all** cells,
   # thus we can check if elements seems to be standard. Otherwise, we could
   # do it only for cells having 5 faces to resolve prism / pyra ambiguity
-  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, np.abs(cell_face)-1, comm)
-  cell_nvtx_tot = np.add.reduceat(cell_nvtx_per_face, _cell_face_idx[:-1])
+  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, np.abs(cell_face.values)-1, comm)
+  cell_nvtx_tot = np.add.reduceat(cell_nvtx_per_face, cell_face.displs[:-1])
 
   n_treated = 0
   elt_shift = quad_range[1]
   cell_face_section = []
-  mask = np.empty(cell_n.size, bool)
-  new_cell_id = np.empty(cell_n.size, zone[1].dtype) # For subset renumbering
+  mask = np.empty(dn_cell, bool)
+  new_cell_id = np.empty(dn_cell, zone[1].dtype) # For subset renumbering
   # Gather (locally) the element per kind. In addition we prepare the renumbering table for cells
   for elt_kind, target_size in zip(['TETRA_4', 'PYRA_5', 'PENTA_6', 'HEXA_8'], [12, 16, 18, 24]):
     # Find corresponding cells
     np.equal(cell_nvtx_tot, target_size, out=mask)
     # Extract cell_face for this section
     cell_ids = np.nonzero(mask)[0]
-    cell_face_section.append(np_utils.take_strided(_cell_face_idx, cell_face, cell_ids)[1])
+    cell_face_section.append(vstride.take(cell_face, cell_ids).values)
     
     # Prepare elt node (ElementConnectivity will be computed later)
     n_elt_loc = cell_ids.size
@@ -240,7 +235,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
     n_treated += n_elt_loc
     elt_shift += distri[-1]
 
-  remaining_cells = comm.allreduce(cell_n.size - n_treated)
+  remaining_cells = comm.allreduce(dn_cell - n_treated)
   if remaining_cells != 0:
     msg = f"Input polyedric mesh can not be converted to standard elements, because some cells differs from standard elements" \
           f" TETRA_4, PYRA_5, PENTA_6 or HEXA_8 ({remaining_cells} cells detected on zone {PT.get_name(zone)})"
@@ -248,7 +243,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   # Now get for each cell section the corresponding vertices, which will be
   # gathered to make nodal connectivity
-  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx, face_distri, [np.abs(p)-1 for p in cell_face_section], comm)
+  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx.values, face_distri, [np.abs(p)-1 for p in cell_face_section], comm)
 
   combine_funcs = [combine_to_tetra, combine_to_pyra, combine_to_penta, combine_to_hexa]
 
