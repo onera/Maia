@@ -561,14 +561,14 @@ def array(data, *, dtype=None):
       only *visible* values are selected;
     - another :class:`VStrideArray` instance.
 
-  Input data is always copied to create the new array.
+  Input data is always copied to create the new *VS array*.
 
   Args:
     data (object): see above
     dtype (data-type, optional): expected datatype of the ``values`` array.
       If ``None``, datatype is inferred by NumPy from the input data.
   Returns:
-    :class:`VStrideArray` : new array
+    :class:`VStrideArray` : new *VS array*
   Examples:
     
     >>> vs.array([[1,2], [3,4,5], [], [6]]) # From nested lists
@@ -646,7 +646,7 @@ def from_counts(counts, values, *, dtype=None) -> VStrideArray:
     dtype (data-type, optional): override datatype of the ``values`` array.
       If ``None``, datatype is inferred from the input data.
   Returns:
-    :class:`VStrideArray` : new array
+    :class:`VStrideArray` : new *VS array*
   Example:
     >>> vs.from_counts([0, 2, 5], [0.3, 0.5, 0.1, 0.7, 0.2, 0.6, 0.9])
     vsarray([
@@ -680,7 +680,7 @@ def from_displs(displs, values, *, dtype=None) -> VStrideArray:
     dtype (data-type, optional): override datatype of the ``values`` array.
       If ``None``, datatype is inferred from the input data.
   Returns:
-    :class:`VStrideArray` : new array
+    :class:`VStrideArray` : new *VS array*
   Example:
     >>> vs.from_displs([0, 2, 5], [0.3, 0.5, 0.1, 0.7, 0.2], dtype='f4')
     vsarray([
@@ -697,7 +697,7 @@ def from_displs(displs, values, *, dtype=None) -> VStrideArray:
 #### Indexing
 
 def take(array, indices):
-  """ Take elements from the input array.
+  """ Take elements from the input *VS array*.
   
   Indices to extract directly refer to elements number,
   and must thus be included in ``[0, len(array)[``.
@@ -706,10 +706,10 @@ def take(array, indices):
   A new object is returned.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     indices (array of int) : indices of the elements to extract
   Returns:
-    :class:`VStrideArray` : extracted array
+    :class:`VStrideArray` : extracted *VS array*
 
   Example:
     >>> a = vs.from_displs([0, 2, 4, 6, 9, 10], values=np.arange(10))
@@ -736,7 +736,7 @@ def take(array, indices):
   return VStrideArray(None, counts, values)
 
 def put(array:VStrideArray, indices, values:VStrideArray):
-  """ Update the specified elements of input array with provided values.
+  """ Update the specified elements of input *VS array* with provided values.
   
   Indices to update directly refer to elements number,
   and must thus be included in ``[0, len(array)[``.
@@ -751,15 +751,15 @@ def put(array:VStrideArray, indices, values:VStrideArray):
 
   Note:
     Contrary to np.put, this function does not operate inplace,
-    since the *strides* of the input array can be modified. A new
+    since the *strides* of the input *VS array* can be modified. A new
     object is returned.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     indices (int or array of int) : indices of the elements to update
     values (array_like or :class:`VStrideArray`) : *block(s)* to write
   Returns:
-    :class:`VStrideArray` : updated array
+    :class:`VStrideArray` : updated *VS array*
 
   Example:
     >>> a = vs.from_counts([2, 3, 1, 3], np.arange(9))
@@ -808,7 +808,7 @@ def put(array:VStrideArray, indices, values:VStrideArray):
     return VStrideArray(None, new_counts, new_values)
 
 def delete(array, indices):
-  """ Remove elements from the input array.
+  """ Remove elements from the input *VS array*.
 
   Indices to delete directly refer to elements number,
   and must thus be included in ``[0, len(array)[``.
@@ -816,10 +816,10 @@ def delete(array, indices):
   A new object is returned.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     indices (array of int) : indices of the elements to remove
   Returns:
-    :class:`VStrideArray` : filtered array
+    :class:`VStrideArray` : filtered *VS array*
 
   Example:
     >>> a = vs.from_displs([0, 2, 4, 6, 9, 10], np.arange(10))
@@ -839,7 +839,7 @@ def delete(array, indices):
   return VStrideArray(None, counts, values)
 
 def insert(array:VStrideArray, indices, values:VStrideArray):
-  """ Insert new elements in the input array.
+  """ Insert new elements in the input *VS array*.
 
   The indices where the new block(s) are insered must be
   included in ``[0, len(array)]``. The insered ``values``
@@ -852,11 +852,11 @@ def insert(array:VStrideArray, indices, values:VStrideArray):
   A new object is returned.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     index (int of array of int) : position where the *block(s)* should be insered
     values (array_like or :class:`VStrideArray`) : *block(s)* to insert
   Returns:
-    :class:`VStrideArray` : new array
+    :class:`VStrideArray` : new *VS array*
   Example:
     >>> a = vs.from_counts([2, 4, 3], np.arange(9))
     >>> vs.insert(a, 1, [9,10,11])
@@ -894,7 +894,7 @@ def insert(array:VStrideArray, indices, values:VStrideArray):
 
 
 def flip(array: VStrideArray, axis:Axis):
-  """ Reverse the order of values of the input array.
+  """ Reverse the order of values of the input *VS array*.
 
   Depending on the ``axis`` argument, the operation reverse:
 
@@ -909,10 +909,10 @@ def flip(array: VStrideArray, axis:Axis):
   In both cases, a copy is done and a new object is returned.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     axis (:class:`Axis`): direction used to reverse
   Returns:
-    :class:`VStrideArray` : flipped array
+    :class:`VStrideArray` : flipped *VS array*
   Example:
     >>> a = vs.from_counts([2, 4, 3], np.arange(9))
     >>> vs.flip(a, vs.OUTER_AXIS)
@@ -943,7 +943,7 @@ def flip(array: VStrideArray, axis:Axis):
     raise ValueError(_UNVALID_AXIS_MSG)
 
 def sort(array: VStrideArray, axis:Axis):
-  """ Sort the values of the input array.
+  """ Sort the values of the input *VS array*.
 
   Depending on the ``axis`` argument, the operation sort:
 
@@ -960,10 +960,10 @@ def sort(array: VStrideArray, axis:Axis):
   In both cases, a copy is done and a new VStrideArray is returned.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     axis (:class:`Axis`): direction used to sort
   Returns:
-    :class:`VStrideArray` : sorted array
+    :class:`VStrideArray` : sorted *VS array*
   Example:
     >>> a = vs.from_counts([2, 4, 3], [3,2, 3,1,5,2, 9,5,8])
     >>> vs.sort(a, vs.OUTER_AXIS)
@@ -994,7 +994,7 @@ def sort(array: VStrideArray, axis:Axis):
 
 
 def unique(array: VStrideArray, axis:Axis):
-  """ Find the unique values of the input array.
+  """ Find the unique values of the input *VS array*.
 
   Depending on the ``axis`` argument, the operation applies to:
 
@@ -1010,10 +1010,10 @@ def unique(array: VStrideArray, axis:Axis):
     but a different ``counts`` array.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     axis (:class:`Axis`): direction in which algorithm is applied
   Returns:
-    :class:`VStrideArray` : unique array
+    :class:`VStrideArray` : unique *VS array*
   Example:
     >>> a = vs.from_counts([2, 4, 3], [2,2, 3,1,3,2, 9,5,5])
     >>> vs.unique(a, vs.INNER_AXIS)
@@ -1034,7 +1034,7 @@ def unique(array: VStrideArray, axis:Axis):
     raise ValueError(_UNVALID_AXIS_MSG)
 
 def roll(array: VStrideArray, shift:int, axis:Axis):
-  """ Roll the values of the input array.
+  """ Roll the values of the input *VS array*.
 
   Positive values of ``shift`` move the elements to the right, while negative values
   move them to the left.
@@ -1053,11 +1053,11 @@ def roll(array: VStrideArray, shift:int, axis:Axis):
   In both cases, a copy is done and a new VStrideArray is returned.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     shift (int): number of places by which the elements are shifted
     axis (:class:`Axis`): direction used to roll
   Returns:
-    :class:`VStrideArray` : rolled array
+    :class:`VStrideArray` : rolled *VS array*
   Example:
     >>> a = vs.from_counts([2, 3, 5, 4], [1,2, 3,1,1, 2,7,2,5,9, 6,4,4,2])
     >>> vs.roll(a, 2, vs.OUTER_AXIS)
@@ -1102,7 +1102,7 @@ def roll(array: VStrideArray, shift:int, axis:Axis):
     raise ValueError(_UNVALID_AXIS_MSG)
 
 def concatenate(array_l, axis:Axis):
-  """ Join a sequence of arrays.
+  """ Join a sequence of *VS arrays*.
 
   Depending on the ``axis`` argument, the concatenation is applied to:
 
@@ -1121,10 +1121,10 @@ def concatenate(array_l, axis:Axis):
     which is the number of elements of the output array.
   
   Args:
-    array_l (sequence of :class:`VStrideArray`): arrays to concatenate
+    array_l (sequence of :class:`VStrideArray`): *VS arrays* to concatenate
     axis (:class:`Axis`): direction used to concatenate
   Returns:
-    :class:`VStrideArray` : concatenated array
+    :class:`VStrideArray` : concatenated *VS array*
   Example:
     >>> a1 = vs.array([[0,1],  [2,3,4], [5,6]],  dtype=int)
     >>> a2 = vs.array([[],  [0,1,2,3], [4,6,7]], dtype=int)
@@ -1172,14 +1172,14 @@ def concatenate(array_l, axis:Axis):
 #### Additional operators
 
 def sign(array:VStrideArray, dtype=None):
-  """ Create a new array storing the sign of :attr:`array.values`.
+  """ Create a new *VS array* storing the sign of :attr:`array.values`.
   The *strides* of the output array are identical to the input strides.
 
   Args:
-    array (:class:`VStrideArray`): input array
+    array (:class:`VStrideArray`): input *VS array*
     dtype (data-type, optional): desired datatype for the output
   Returns:
-    :class:`VStrideArray` : sign array
+    :class:`VStrideArray` : sign *VS array*
   Example:
     >>> vs.sign(vs.from_counts([2,3,1], [1,2,-3,4,0,-6]))
     vsarray([
@@ -1191,7 +1191,7 @@ def sign(array:VStrideArray, dtype=None):
   return VStrideArray(array._displs, array._counts, np.sign(array.values).astype(dtype=dtype, copy=False))
 
 def strides_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
-  """ ``True`` if the two input arrays have the same *strides*, ``False`` otherwise.
+  """ ``True`` if the two input *VS arrays* have the same *strides*, ``False`` otherwise.
 
   Args:
     a1 (:class:`VStrideArray`): first input
@@ -1212,7 +1212,7 @@ def strides_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
     return np.array_equal(a1.displs, a2.displs)
 
 def array_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
-  """ ``True`` if the two input arrays have the same *strides* and values, ``False`` otherwise.
+  """ ``True`` if the two input *VS arrays* have the same *strides* and values, ``False`` otherwise.
 
   Args:
     a1 (:class:`VStrideArray`): first input
@@ -1231,7 +1231,7 @@ def array_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
 
 
 def array_close(a1:VStrideArray, a2:VStrideArray, rtol=1e-5, atol=1e-8) -> bool:
-  """ ``True`` if the two input arrays have the same *strides* and close values, ``False`` otherwise.
+  """ ``True`` if the two input *VS arrays* have the same *strides* and close values, ``False`` otherwise.
 
   Value comparison is performed by 
   `np.isclose <https://numpy.org/doc/stable/reference/generated/numpy.isclose.html>`_. See the
