@@ -202,7 +202,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
   if reverse:
     for src_result in result[1]:
       src_result['points_gnum_shifted'] = src_result.pop('points_gnum') #Rename key
-      ini_gnum, domain = np_utils.shifted_to_local( src_result['points_gnum_shifted'].values, tgt_offset)
+      ini_gnum, domain = np_utils.shifted_to_local(src_result['points_gnum_shifted'].values, tgt_offset)
       src_result['points_gnum'] = vs.from_displs(src_result['points_gnum_shifted'].displs, ini_gnum)
       src_result['domain']      = vs.from_displs(src_result['points_gnum_shifted'].displs, domain)
   

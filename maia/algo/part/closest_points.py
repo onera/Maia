@@ -72,7 +72,9 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
   if reverse:
     for src_result in result[1]:
       gnum_shifted = src_result.pop('tgt_in_src')
-      src_result['tgt_in_src'], src_result['domain'] = np_utils.shifted_to_local(gnum_shifted, tgt_offset)
+      ini_gnum, domain =  np_utils.shifted_to_local(gnum_shifted.values, tgt_offset)
+      src_result['tgt_in_src'] = vs.from_displs(gnum_shifted.displs, ini_gnum)
+      src_result['domain'] = vs.from_displs(gnum_shifted.displs, domain)
   # Reshape output to list of lists (as input domains)
   if reverse:
     return py_utils.to_nested_list(result[0], n_part_per_dom_tgt),\
