@@ -124,7 +124,7 @@ def _determine_mesh_orientation(zone, extrusion_vector, comm):
   coords = PT.Zone.coordinates(zone)
   dist_coords_data = coords._asdict()
   distrib_vtx = MT.getDistribution(zone, 'Vertex')[1]
-  part_coords_data = EP.block_to_part(dist_coords_data, distrib_vtx, nodes_of_first_face-1, comm, legacy=False)
+  part_coords_data = EP.block_to_part(dist_coords_data, distrib_vtx, nodes_of_first_face-1, comm)
   align = 0
   # > Compute scalar product
   # **NB** Here we test only one face per rank. Maybe we should do it on all faces and check that is same everywhere ?

@@ -256,7 +256,7 @@ def shrink_to_subset(array, zone, subset, comm):
       return array[pl[1][0]-shift] 
     else:
       distri = par_utils.dn_to_distribution(array.size, comm)
-      return EP.block_to_part(array, distri, pl[1][0]-shift, comm, legacy=False)
+      return EP.block_to_part(array, distri, pl[1][0]-shift, comm)
   else: # Structured zones
     assert pl is None, "PointList are not managed for unstructured meshes"
     if PT.get_label(subset) in ["FlowSolution_t", "DiscreteData_t"]:
@@ -282,7 +282,7 @@ def shrink_to_subset(array, zone, subset, comm):
       return array.reshape(-1, order='F')[idx-1]
     else:
       distri = par_utils.dn_to_distribution(array.size, comm)
-      return EP.block_to_part(array, distri, idx-1, comm, legacy=False)
+      return EP.block_to_part(array, distri, idx-1, comm)
       
 def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields, abs_tol=1.e-8):
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.

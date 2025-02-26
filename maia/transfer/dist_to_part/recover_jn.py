@@ -53,7 +53,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     part_data['ijoin'].append( gc_id*np.ones(pl.size, dtype=pl.dtype))
     part_stride.append(np.ones(pl.size, np.int32))
 
-  PTB = EP.PartToBlock(None, shifted_lntogn, comm, keep_multiple=True)
+  PTB = EP.PartToBlock(None, shifted_lntogn, comm, keep_multiple=True, legacy=True)
   distribution = PTB.getDistributionCopy()
 
   dData = dict()
@@ -62,7 +62,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     dData[field_name] = d_field
 
   # Erase part stride & data
-  part_stride, part_data = EP.block_to_part_strided(d_stride, dData, distribution, [s-1 for s in shifted_lntogn], comm, legacy=False)
+  part_stride, part_data = EP.block_to_part_strided(d_stride, dData, distribution, [s-1 for s in shifted_lntogn], comm)
 
   #Post treat
   i_join = 0

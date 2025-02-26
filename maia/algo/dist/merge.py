@@ -763,7 +763,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
 
     gcs = PT.get_nodes_from_predicate(zone_send, query, depth=2)
     all_pls = [PT.get_child_from_name(gc, 'PointList')[1][0]-1 for gc in gcs]
-    part_pe = EP.block_to_part(pe_send[:,0], face_distri_send, all_pls, comm, legacy=False)
+    part_pe = EP.block_to_part(pe_send[:,0], face_distri_send, all_pls, comm)
     for i, gc in enumerate(gcs):
 
       pld = PT.get_child_from_name(gc, 'PointListDonor')[1][0]

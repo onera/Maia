@@ -34,7 +34,7 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
 
   # Get the vertex associated to the faces in FaceList
   p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      distri_ngon, face_ids-1, comm, legacy=False)
+      distri_ngon, face_ids-1, comm)
 
   face_offset_l = np_utils.sizes_to_indices(p_stride)
 
@@ -49,7 +49,7 @@ def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm
   for data in PT.iter_children_from_label(grid_coords_node, 'DataArray_t'):
     dist_data[PT.get_name(data)] = data[1]
 
-  part_data = EP.block_to_part(dist_data, distri_vtx, requested_vtx_ids-1, comm, legacy=False)
+  part_data = EP.block_to_part(dist_data, distri_vtx, requested_vtx_ids-1, comm)
 
   cx, cy, cz = part_data['CoordinateX'], part_data['CoordinateY'], part_data['CoordinateZ']
 
@@ -78,7 +78,7 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
   part_data = {'vtx_to_face'   : [pl_vtx_face],
                'vtx_to_face_d' : [pl_vtx_face_d]}
 
-  PTB = EP.PartToBlock(None, [pl_vtx], comm, keep_multiple=True)
+  PTB = EP.PartToBlock(None, [pl_vtx], comm, keep_multiple=True, legacy=True)
   dist_data = dict()
   for field_name, p_field in part_data.items():
     d_stride, d_field = PTB.exchange_field(p_field, p_stride)
@@ -91,7 +91,7 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
   b_stride[PTB.getBlockGnumCopy() - first - 1] = d_stride
 
   p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      PTB.getDistributionCopy(), restricted_pl_vtx-1, comm, legacy=False)
+      PTB.getDistributionCopy(), restricted_pl_vtx-1, comm)
 
   extended_pl, unique_idx = np.unique(part_data["vtx_to_face"], return_index=True)
   extended_pl_d = part_data["vtx_to_face_d"][unique_idx]
@@ -268,13 +268,13 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
   Return the array indices of theses faces
   """
   pl_face_vtx_idx, pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
-  PTB = EP.PartToBlock(vtx_distri, [pl_face_vtx], comm, keep_multiple=True)
+  PTB = EP.PartToBlock(vtx_distri, [pl_face_vtx], comm, keep_multiple=True, legacy=True)
   block_gnum  = PTB.getBlockGnumCopy()
   vtx_n_occur = PTB.getBlockGnumCountCopy()
 
   vtx_n_occur_full = np.zeros(vtx_distri[1] - vtx_distri[0], np.int32)
   vtx_n_occur_full[block_gnum-vtx_distri[0]-1] = vtx_n_occur
-  n_occur = EP.block_to_part(vtx_n_occur_full, vtx_distri, pl_face_vtx-1, comm, legacy=False)
+  n_occur = EP.block_to_part(vtx_n_occur_full, vtx_distri, pl_face_vtx-1, comm)
 
   #This is the number of total occurence of all the vertices of each face. A face is isolated if each vertex appears
   # (globally) only once ie if this total equal the number of vertices of the face
@@ -367,7 +367,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
     pld_vtx_l.append(pld_vtx_local)
 
   #Final part_to_block will merge gnum from two method and reequilibrate
-  PTB = EP.PartToBlock(None, pl_vtx_l, comm, weight=True, keep_multiple=True)
+  PTB = EP.PartToBlock(None, pl_vtx_l, comm, weight=True, keep_multiple=True, legacy=True)
   pl_vtx = PTB.getBlockGnumCopy()
   _, pld_vtx = PTB.exchange_field(pld_vtx_l, [np.ones(pl.size, np.int32) for pl in pl_vtx_l])
   assert pld_vtx.size == pl_vtx.size

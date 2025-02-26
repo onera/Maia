@@ -44,7 +44,7 @@ def BlockToBlock(distri_in, distri_out, comm):
   else:
     return _protocols.BlockToBlock(_full_distri_in, _full_distri_out, comm)
 
-def BlockToPart(distri, ln_to_gn_list, comm, legacy=True):
+def BlockToPart(distri, ln_to_gn_list, comm, legacy=False):
   """
   Create a PDM BlockToPart object, with auto gnum conversion
   and extended distribution
@@ -60,7 +60,7 @@ def BlockToPart(distri, ln_to_gn_list, comm, legacy=True):
     else:
       return GlobalIndexer(full_distri, ln_to_gn_list, comm)
 
-def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False, legacy=True):
+def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=False, legacy=False):
   """
   Create a PDM PartToBlock object, with auto gnum conversion
   and extended distribution
@@ -117,7 +117,7 @@ def block_to_block(data_in, distri_in, distri_out, comm):
 
   return block_data_out
 
-def block_to_part(dist_data, distri, ln_to_gn_list, comm, legacy=True):
+def block_to_part(dist_data, distri, ln_to_gn_list, comm, legacy=False):
   """
   Create and exchange using a BlockToPart object.
   Allow single field or dict of fields
@@ -136,7 +136,7 @@ def block_to_part(dist_data, distri, ln_to_gn_list, comm, legacy=True):
 
   return part_data
 
-def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm, legacy=True):
+def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm, legacy=False):
   """
   Create and exchange using a BlockToPart object with variable stride.
   Allow single field or dict of fields
@@ -181,7 +181,7 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
       return dist_data
   else:
     PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
-    legacy = kwargs.get('legacy', True)
+    legacy = kwargs.get('legacy', False)
     def _exchange_one(part_fields):
       return PTB.exchange_field(part_fields)[1] if legacy else PTB.Put(part_fields)
 

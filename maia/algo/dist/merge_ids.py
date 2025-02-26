@@ -60,7 +60,7 @@ def merge_distributed_ids(distri, ids, targets, comm, sign_rmvd=False):
   # Now we need to update old_to_new for ids to indicate new indices of targets.
   # Since the new index of target can be on another proc, we do a (fake) BTP to
   # get the data using target numbering
-  part_data2 = EP.block_to_part(old_to_new, distri, dist_targets-1, comm, legacy=False)
+  part_data2 = EP.block_to_part(old_to_new, distri, dist_targets-1, comm)
 
   marker = -1 if sign_rmvd else 1
   old_to_new[ids_local] = marker * part_data2

@@ -73,7 +73,7 @@ def test_block_to_part(comm):
     dist_data["field"] = np.array([6., 7., 8., 9., 1000.])
     expected_part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
 
-  part_data = EP.block_to_part(dist_data, partial_distri, ln_to_gn_list, comm)
+  part_data = EP.block_to_part(dist_data, partial_distri, ln_to_gn_list, comm, legacy=True)
   assert len(part_data["field"]) == len(ln_to_gn_list)
   for i_part in range(len(ln_to_gn_list)):
     assert part_data["field"][i_part].dtype == np.float64
@@ -94,7 +94,7 @@ def test_block_to_part_with_void(comm):
     dist_data["field"] = np.array([6., 7., 8., 9., 1000.])
     expected_part_data["field"] = list()
 
-  part_data = EP.block_to_part(dist_data, partial_distri, ln_to_gn_list, comm)
+  part_data = EP.block_to_part(dist_data, partial_distri, ln_to_gn_list, comm, legacy=True)
   assert len(part_data["field"]) == len(ln_to_gn_list)
   for i_part in range(len(ln_to_gn_list)):
     assert part_data["field"][i_part].dtype == np.float64
@@ -117,7 +117,7 @@ def test_part_to_block(comm):
     part_data["field"] = [np.array([9., 7., 5., 3., 1.]), np.array([8.]), np.array([1.])]
     expected_dist_data["field"] = np.array([6., 7., 8., 9., 1000.])
 
-  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, comm)
+  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, comm, legacy=True)
   assert dist_data["field"].dtype == np.float64
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
@@ -158,7 +158,7 @@ def test_part_to_block_with_reduce(reduce_func, comm):
                   "max" : EP.reduce_max, 
                   "mean": EP.reduce_mean}[reduce_func]
 
-  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, comm, reduce_func=_reduce_func)
+  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, comm, reduce_func=_reduce_func, legacy=True)
   assert dist_data["field"].dtype == np.float64
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 

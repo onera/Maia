@@ -60,7 +60,7 @@ def compute_edge_center(zone, comm, edge_indices=None):
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, edge_vtx-1, comm, legacy=False)
+  part_data = EP.block_to_part(dist_coords, vtx_distri, edge_vtx-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
 
   while len(local_coords) < 3 : #We are in phydim < 3 case, add Y and/or Z array
@@ -123,14 +123,14 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
     if face_indices is not None:
       face_distri = PT.maia.getDistribution(ngon_node, 'Element')[1]
       face_vtx_n = np.diff(face_vtx_idx).astype(np.int32, copy=False)
-      face_vtx_n, face_vtx = EP.block_to_part_strided(face_vtx_n, face_vtx, face_distri, _face_indices, comm, legacy=False)
+      face_vtx_n, face_vtx = EP.block_to_part_strided(face_vtx_n, face_vtx, face_distri, _face_indices, comm)
       face_vtx_idx = np_utils.sizes_to_indices(face_vtx_n, face_vtx_idx.dtype)
   
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx-1, comm, legacy=False)
+  part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
 
   if len(local_coords) == 2 : #We are in phydim==2, Add Z array
@@ -160,7 +160,7 @@ def compute_cell_center(zone, comm, cell_indices=None):
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
-  part_data = EP.block_to_part(dist_coords, vtx_distri, cell_vtx-1, comm, legacy=False)
+  part_data = EP.block_to_part(dist_coords, vtx_distri, cell_vtx-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
 
   if isinstance(coords, PT.CartesianCoordinates):

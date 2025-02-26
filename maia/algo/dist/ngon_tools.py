@@ -150,7 +150,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
 
   # Now do the search in // using key
   # First : gather data from face into a block vision
-  ptb = EP.PartToBlock(None, [key_from_face], comm, keep_multiple=True)
+  ptb = EP.PartToBlock(None, [key_from_face], comm, keep_multiple=True, legacy=True)
   stride_one = np.ones(key_from_face.size, np.int32)
 
   stride, data1 = ptb.exchange_field([face_gnum], [stride_one])
@@ -163,7 +163,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   fstride[ptb.getBlockGnumCopy() - ptb_distri[comm.rank] - 1] = stride
 
   # Second : get data from block, for each edge
-  recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, key_from_edge, comm, legacy=False)
+  recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, key_from_edge, comm)
   first_vtx  = recv_data['FirstVtx']
   face_gnum  = recv_data['FaceGnum']
 

@@ -127,7 +127,7 @@ def _ngon_to_elements_zone_2d(zone, comm):
   _pl = np_utils.single_dim_pr_to_pl(np.array([[0, PT.Element.Size(ngon_n)-1]]), face_distri)[0]
   all_pl.append(_pl)
 
-  new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm, legacy=False)
+  new_pl = EP.block_to_part(new_face_id, face_distri, all_pl, comm)
 
   # Update CellCentered PointList
   _update_pl(zone, 'CellCenter', new_pl[:-1])
@@ -207,7 +207,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   # Design choice : get the number of vertices (with reps) for **all** cells,
   # thus we can check if elements seems to be standard. Otherwise, we could
   # do it only for cells having 5 faces to resolve prism / pyra ambiguity
-  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, np.abs(cell_face)-1, comm, legacy=False)
+  cell_nvtx_per_face = EP.block_to_part(face_n, face_distri, np.abs(cell_face)-1, comm)
   cell_nvtx_tot = np.add.reduceat(cell_nvtx_per_face, _cell_face_idx[:-1])
 
   n_treated = 0
@@ -248,7 +248,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   # Now get for each cell section the corresponding vertices, which will be
   # gathered to make nodal connectivity
-  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx, face_distri, [np.abs(p)-1 for p in cell_face_section], comm, legacy=False)
+  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx, face_distri, [np.abs(p)-1 for p in cell_face_section], comm)
 
   combine_funcs = [combine_to_tetra, combine_to_pyra, combine_to_penta, combine_to_hexa]
 
@@ -264,7 +264,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   _pl = np.arange(cell_distri[0], cell_distri[1])
   all_pl.append(_pl)
 
-  new_pl = EP.block_to_part(new_cell_id, cell_distri, all_pl, comm, legacy=False)
+  new_pl = EP.block_to_part(new_cell_id, cell_distri, all_pl, comm)
   
   # Update CellCentered PointList
   _update_pl(zone, 'CellCenter', new_pl[:-1])

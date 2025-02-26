@@ -23,7 +23,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
     dist_data[PT.get_name(grid_co)] = grid_co[1] #Prevent np->scalar conversion
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
-  part_data = EP.block_to_part(dist_data, distribution_vtx, [lngn-1 for lngn in vtx_lntogn_list], comm, legacy=False)
+  part_data = EP.block_to_part(dist_data, distribution_vtx, [lngn-1 for lngn in vtx_lntogn_list], comm)
 
   for ipart, part_zone in enumerate(part_zones):
     part_gc = PT.new_node('GridCoordinates', 'GridCoordinates_t', parent=part_zone)
@@ -107,7 +107,7 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
     dist_data = {field : PT.get_child_from_name(d_sol, field)[1] for field in fields}
 
     #Exchange
-    part_data = EP.block_to_part(dist_data, distribution, [lngn-1 for lngn in lntogn_list], comm, legacy=False)
+    part_data = EP.block_to_part(dist_data, distribution, [lngn-1 for lngn in lntogn_list], comm)
 
     for ipart, part_zone in enumerate(part_zones):
       #Skip void flow solution (can occur with point lists)
@@ -187,7 +187,7 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
 
         #Exchange (local data)
         distribution = PT.get_child_from_name(distri_node, 'Index')[1]
-        part_data = EP.block_to_part(dist_data_loc, distribution, [lngn-1 for lngn in lngn_list], comm, legacy=False)
+        part_data = EP.block_to_part(dist_data_loc, distribution, [lngn-1 for lngn in lngn_list], comm)
 
         #Put part data in tree
         for ipart, part_zone in enumerate(part_zones):
@@ -239,7 +239,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
       lngn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
 
     #Exchange
-    part_data = EP.block_to_part(dist_data, distribution, [lngn-1 for lngn in lngn_list], comm, legacy=False)
+    part_data = EP.block_to_part(dist_data, distribution, [lngn-1 for lngn in lngn_list], comm)
 
     #Put part data in tree
     if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:

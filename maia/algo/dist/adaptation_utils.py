@@ -56,7 +56,7 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
 
     arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
     arrays = {PT.get_name(array_n) : PT.get_value(array_n) for array_n in arrays_n}
-    new_arrays = EP.block_to_part(arrays, distri, vtx_pl-1, comm, legacy=False)
+    new_arrays = EP.block_to_part(arrays, distri, vtx_pl-1, comm)
     for array_n in arrays_n:
       key = PT.get_name(array_n)
       PT.set_value(array_n, np.concatenate([arrays[key], new_arrays[key]]))
@@ -209,7 +209,7 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
   tetra_key = np.add.reduceat(tgt_face_vtx, tgt_face_vtx_idx[:-1])
 
   weights = [np.ones(t.size, float) for t in [tri_key, tetra_key]]
-  ptb = EP.PartToBlock(None, [tri_key, tetra_key], comm, weight=weights, keep_multiple=True)
+  ptb = EP.PartToBlock(None, [tri_key, tetra_key], comm, weight=weights, keep_multiple=True, legacy=True)
   cst_stride = [np.ones(t.size-1, np.int32) for t in [src_face_vtx_idx, tgt_face_vtx_idx]]
 
   # Origin is not mandatory for TETRA because we just want the TRI ids at the end
@@ -233,7 +233,7 @@ def update_elt_vtx_numbering(zone, elt_n, old_to_new_vtx, comm, elt_pl=None):
     vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
 
     if elt_pl is None:
-      ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec-1, comm, legacy=False)
+      ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec-1, comm)
     else:
       elt_size   = PT.Element.NVtx(elt_n)
       elt_offset = PT.Element.Range(elt_n)[0]
@@ -243,7 +243,7 @@ def update_elt_vtx_numbering(zone, elt_n, old_to_new_vtx, comm, elt_pl=None):
       GI = EP.GlobalIndexer(elt_distri_f, elt_pl - elt_offset, comm)
       ids  = np.flatnonzero(GI.access_counts > 0)
       ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-      new_num_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm, legacy=False)
+      new_num_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm)
       ec[ec_ids] = new_num_ec
 
     PT.set_value(ec_n, ec)
@@ -357,7 +357,7 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
     for bc_n in PT.get_children_from_predicate(zone_bc_n, is_vtx_bc):
       bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
       bc_pl   = PT.get_value(bc_pl_n)[0]
-      bc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, bc_pl-1, comm, legacy=False)
+      bc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, bc_pl-1, comm)
       assert (bc_pl!=-1).all()
       PT.set_value(bc_pl_n, bc_pl.reshape((1,-1), order='F'))
 
@@ -368,13 +368,13 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
     for gc_n in PT.get_children_from_predicate(zone_gc_n, is_vtx_gc):
       gc_pl_n = PT.get_child_from_name(gc_n, 'PointList')
       gc_pl   = PT.get_value(gc_pl_n)[0]
-      gc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, gc_pl-1, comm, legacy=False)
+      gc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, gc_pl-1, comm)
       assert (gc_pl!=-1).all()
       PT.set_value(gc_pl_n, gc_pl.reshape((1,-1), order='F'))
 
       gc_pld_n = PT.get_child_from_name(gc_n, 'PointListDonor')
       gc_pld   = PT.get_value(gc_pld_n)[0]
-      gc_pld   = EP.block_to_part(old_to_new_vtx, vtx_distri, gc_pld-1, comm, legacy=False)
+      gc_pld   = EP.block_to_part(old_to_new_vtx, vtx_distri, gc_pld-1, comm)
       assert (gc_pld!=-1).all()
       PT.set_value(gc_pld_n, gc_pld.reshape((1,-1), order='F'))
 
@@ -422,7 +422,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   n_elt_to_add = ids.size
 
   ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-  duplicated_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm, legacy=False)
+  duplicated_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm)
   new_ec = np.concatenate([ec, duplicated_ec])
   
   # > Update element distribution
@@ -496,7 +496,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
       ids = np.nonzero(GI.access_counts > 0)[0] 
       n_elt_to_add_l = ids.size
       ec_ids = np_utils.interweave_arrays([elt_size*ids+i_size for i_size in range(elt_size)])
-      new_bc_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm, legacy=False)
+      new_bc_ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec[ec_ids]-1, comm)
       new_ec.append(new_bc_ec)
 
       # > Compute element distribution
@@ -621,7 +621,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
       # > Set BC connectivity in vtx shared numbering
       GI = EP.GlobalIndexer(vtx_distri_f, this_bc_vtx-1, comm)
       vtx_ids = np.flatnonzero(GI.access_counts > 0) + vtx_distri[0]
-      bc_vtx_renum = EP.block_to_part(old_to_new_vtx, vtx_distri, vtx_ids, comm, legacy=False) # Numbering of these vertices in shared numerotation
+      bc_vtx_renum = EP.block_to_part(old_to_new_vtx, vtx_distri, vtx_ids, comm) # Numbering of these vertices in shared numerotation
       
       bc_vtx[i_side].append(bc_vtx_renum)
 
@@ -710,7 +710,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
                                            zones_face_vtx,
                                            comm)
   constraint_pl = np.absolute(_out_face[0]['np_interface_ids_face'][0::2])
-  constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], constraint_pl-1, comm, legacy=False)
+  constraint_pl = EP.block_to_part(zones_face_gn[0], zones_face_distri[0], constraint_pl-1, comm)
 
   # > Update free BC
   bc_n        = PT.get_child_from_name_and_label(zone_bc_n, bc_names[1], 'BC_t')
@@ -1010,10 +1010,10 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     
     fake_vtx_distri = par_utils.dn_to_distribution(old_to_new_vtx.size, comm)
     for i_previous_per in range(0, i_per):
-      part_data = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_nums[i_previous_per][k]-1 for k in range(2)], comm, legacy=False)
+      part_data = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_nums[i_previous_per][k]-1 for k in range(2)], comm)
       new_vtx_nums[i_previous_per][0], new_vtx_nums[i_previous_per][1] = part_data
     
-    part_data = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_num[k]-1 for k in range(2)], comm, legacy=False)
+    part_data = EP.block_to_part(old_to_new_vtx, fake_vtx_distri, [new_vtx_num[k]-1 for k in range(2)], comm)
     new_vtx_num[0], new_vtx_num[1] = part_data
     new_vtx_nums.append(new_vtx_num)
 

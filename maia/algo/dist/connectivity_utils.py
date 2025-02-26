@@ -134,7 +134,7 @@ def cell_vtx_connectivity_ngon(zone, comm, cell_subset=None):
     if cell_subset is not None:
       _cell_subset = cell_subset - PT.Zone.get_elt_range_per_dim(zone)[3][0]
       cell_vtx_n = np.diff(cell_vtx_idx).astype(np.int32, copy=False)
-      cell_vtx_n, cell_vtx = EP.block_to_part_strided(cell_vtx_n, cell_vtx, _cell_distri, _cell_subset, comm, legacy=False)
+      cell_vtx_n, cell_vtx = EP.block_to_part_strided(cell_vtx_n, cell_vtx, _cell_distri, _cell_subset, comm)
       cell_vtx_idx = np_utils.sizes_to_indices(cell_vtx_n, cell_vtx_idx.dtype)
   else:
     raise NotImplementedError("Only NGON zones are managed")

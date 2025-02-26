@@ -402,7 +402,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   # Note: If 3D ngon mesh without ParentElement, mesh must be coherent
   #       at partition interface (like preserve_orientation=True)
   #       Thats why we can merge face connectivity without problem
-  PTB = EP.PartToBlock(None, elt_gnum_l, comm, keep_multiple=has_pe)
+  PTB = EP.PartToBlock(None, elt_gnum_l, comm, keep_multiple=has_pe, legacy=True)
   PTBDistribution = PTB.getDistributionCopy()
   n_faceTot = PTBDistribution[n_rank]
 

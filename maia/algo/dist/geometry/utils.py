@@ -16,7 +16,7 @@ def get_local_coordinates(zone, vtx_ids, comm):
   vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
 
   dist_data = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
-  part_data = EP.block_to_part(dist_data, vtx_distri, vtx_ids-1, comm, legacy=False)
+  part_data = EP.block_to_part(dist_data, vtx_distri, vtx_ids-1, comm)
   
   return coords._make([part_data[key] if key in part_data else None for key in coords._fields])
 

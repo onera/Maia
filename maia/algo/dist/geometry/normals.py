@@ -32,7 +32,7 @@ def compute_face_normal(zone, comm):
       _face_vtx_idx = np.empty(face_vtx_idx.size, np.int32)
       np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
       face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-      part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx-1, comm, legacy=False)
+      part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx-1, comm)
       coords = [part_data[key] for key in part_data.keys()]
 
       return cpart_algo.compute_face_normal_u(_face_vtx_idx, *coords)

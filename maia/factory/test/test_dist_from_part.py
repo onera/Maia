@@ -531,7 +531,7 @@ def test_recover_poly3d_nface_validity(comm):
   nface = PT.Zone.NFaceNode(PT.get_all_Zone_t(tree)[0])
   ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
 
-  out_sign = EP.part_to_block([np.sign(ec)], None, [np.abs(ec)], comm, reduce_func=EP.reduce_sum)
+  out_sign = EP.part_to_block([np.sign(ec)], None, [np.abs(ec)], comm, reduce_func=EP.reduce_sum, legacy=True)
   assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)
 
 @pytest_parallel.mark.parallel(3)

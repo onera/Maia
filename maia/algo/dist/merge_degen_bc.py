@@ -173,8 +173,8 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   # In each group, choose any and map others to it
   distri   = par_utils.uniform_distribution(comm.allreduce(merged_id.max(initial=0), MPI.MAX), comm)
   distri_f = par_utils.partial_to_full_distribution(distri, comm)
-  selected_vtx_id = EP.part_to_block([pl_degen_vtx], distri_f, [merged_id], comm, EP.reduce_max)
-  old_to_new_degen_faces_nodes = EP.block_to_part(selected_vtx_id, distri_f, merged_id-1, comm, legacy=False)
+  selected_vtx_id = EP.part_to_block([pl_degen_vtx], distri_f, [merged_id], comm, EP.reduce_max, legacy=True)
+  old_to_new_degen_faces_nodes = EP.block_to_part(selected_vtx_id, distri_f, merged_id-1, comm)
   
   # Identify nodes to remove (nodes of degen face not beloging to old_to_new)
   remove_mask = par_algo.gnum_isin(pl_degen_vtx, np.unique(old_to_new_degen_faces_nodes), comm, invert=True)

@@ -17,7 +17,7 @@ def dist_set_difference(ids, others, comm):
   """
   ln_to_gn = [ids] + others
   
-  PTB = EP.PartToBlock(None, ln_to_gn, comm, keep_multiple=True)
+  PTB = EP.PartToBlock(None, ln_to_gn, comm, keep_multiple=True, legacy=True)
 
   part_data   = [np.ones(ids.size, dtype=bool)] + [np.zeros(other.size, dtype=bool) for other in others]
   part_stride = [np.ones(pdata.size, dtype=np.int32) for pdata in part_data]
@@ -39,7 +39,7 @@ def dist_set_difference(ids, others, comm):
 
   # ts, tt = BTP.exchange_field(dist_data, d_stride)
 
-  # dist_data = EP.part_to_block(part_data, None, ln_to_gn, comm, reduce_func=reduce_prod)
+  # dist_data = EP.part_to_block(part_data, None, ln_to_gn, comm, reduce_func=reduce_prod, legacy=True)
 
   # Sur chaque rank, on a une liste d'id (qui étaient sur ids ou pas) et un flag valant 1
   # si faut les garder
@@ -161,10 +161,10 @@ def is_unique_strided_serialized(array, stride, comm):
   max_gnum = comm.allreduce(np.max(unique_gnum), op=MPI.MAX)
   distri = par_utils.uniform_distribution(max_gnum, comm)
 
-  dist_data = EP.part_to_block([count], distri, [unique_gnum], comm, reduce_func=EP.reduce_sum)
+  dist_data = EP.part_to_block([count], distri, [unique_gnum], comm, reduce_func=EP.reduce_sum, legacy=True)
   is_unique = np.zeros(distri[1]-distri[0], dtype=bool)
   is_unique[dist_data==1] = True
-  part_data = EP.block_to_part(is_unique, distri, unique_gnum-1, comm, legacy=False)
+  part_data = EP.block_to_part(is_unique, distri, unique_gnum-1, comm)
   
   mask = np.zeros(n_elt, dtype=bool)
   ids  = idx[part_data]
@@ -186,7 +186,7 @@ def is_unique_strided(array, stride, comm):
   array_key = np.add.reduceat(array, array_idx[:-1])
 
   weights = np.ones(n_elt, float)
-  ptb = EP.PartToBlock(None, [array_key], comm, weight=[weights], keep_multiple=True)
+  ptb = EP.PartToBlock(None, [array_key], comm, weight=[weights], keep_multiple=True, legacy=True)
   cst_stride = np.ones(n_elt, np.int32)
 
   # Origin is not mandatory for TETRA because we just want the TRI ids at the end
@@ -195,7 +195,7 @@ def is_unique_strided(array, stride, comm):
   part_mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
 
   # Retrieve mask on initial distribution
-  mask = EP.part_to_block(part_mask, distri, origin-1, comm, legacy=False)
+  mask = EP.part_to_block(part_mask, distri, origin-1, comm)
   
   return mask
 
