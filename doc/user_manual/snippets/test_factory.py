@@ -50,7 +50,7 @@ def test_full_to_dist_tree():
   comm = MPI.COMM_WORLD
 
   if comm.Get_rank() == 0:
-    tree = maia.io.read_tree(mesh_dir/'S_twoblocks.yaml', comm)
+    tree = maia.io.read_tree(mesh_dir/'S_twoblocks.yaml')
   else:
     tree = None
   dist_tree = maia.factory.full_to_dist_tree(tree, comm, owner=0)

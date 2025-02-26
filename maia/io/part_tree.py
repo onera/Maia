@@ -1,4 +1,3 @@
-import warnings
 import os
 import maia
 import maia.pytree        as PT
@@ -9,7 +8,7 @@ import maia.utils.logging as mlog
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from maia.factory.partitioning import compute_nosplit_weights
 
-from .cgns_io_tree import _LEGACY_IO, _LEGACY_MSG
+from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
 
 if _LEGACY_IO:
@@ -74,7 +73,7 @@ def _read_part_from_size(tree, filename, comm):
   return [path for path in compute_nosplit_weights(tree, comm)]
 
 
-def file_to_part_tree(filename, comm, redispatch=False, legacy=False):
+def file_to_part_tree(filename, comm, redispatch=False):
   """file_to_part_tree(filename, comm, redispatch=False)
   
   Read the partitioned zones from a hdf container and affect them
@@ -101,9 +100,6 @@ def file_to_part_tree(filename, comm, redispatch=False, legacy=False):
     CGNSTree: Partitioned CGNS tree
 
   """
-  if legacy:
-    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
-
   # Skeleton
   filename = str(filename)
   if _LEGACY_IO:
@@ -166,7 +162,7 @@ def file_to_part_tree(filename, comm, redispatch=False, legacy=False):
   return tree
 
 
-def part_tree_to_file(part_tree, filename, comm, single_file=False, links=[], legacy=False):
+def part_tree_to_file(part_tree, filename, comm, single_file=False, links=[]):
   """part_tree_to_file(part_tree, filename, comm, single_file=False, links=[])
   
   Gather the partitioned zones managed by all the processes and write it in a unique
@@ -194,9 +190,6 @@ def part_tree_to_file(part_tree, filename, comm, single_file=False, links=[], le
   filename = str(filename)
   base_name, extension = os.path.splitext(filename)
   subfilename = base_name + f'_sub_{rank}' + extension
-
-  if legacy:
-    warnings.warn(_LEGACY_MSG, DeprecationWarning, stacklevel=2)
 
   # Get meta data nodes, this allows custom nodes located at tree top level (see #108)
   glob_nodes = PT.get_children_from_predicate(part_tree, lambda n : PT.get_label(n) != 'CGNSBase_t')
