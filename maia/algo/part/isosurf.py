@@ -338,10 +338,28 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_par
     PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
                                 'Sections': results['np_elt_ln_to_gn']}, parent=elt_n)
   else:
+    ng_eso = results['np_elt_vtx_idx']
+    ng_ec  = results['np_elt_vtx']
+    # Retrieve edges on 2D mesh
+    edge_data = PDM.compute_face_edge_from_face_vtx(comm, 
+                                                    [n_iso_elt], 
+                                                    [n_iso_vtx], 
+                                                    [ng_eso], 
+                                                    [ng_ec], 
+                                                    [results['np_elt_ln_to_gn']], 
+                                                    [results['np_vtx_ln_to_gn']])[0]
+    nb_bar = edge_data['np_edge_ln_to_gn'].size
+
+    bar_n = PT.new_Elements('EdgeElements', 'BAR_2', 
+                    erange=[1, nb_bar], 
+                    econn=edge_data['np_edge_vtx'], 
+                    parent=iso_part_zone)
+    PT.maia.newGlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+
     elt_n = PT.new_NGonElements('NGonElements',
-                                 erange = [1, n_iso_elt],
-                                 ec=results['np_elt_vtx'],
-                                 eso=results['np_elt_vtx_idx'],
+                                 erange = [nb_bar+1, nb_bar+n_iso_elt],
+                                 ec=ng_ec,
+                                 eso=ng_eso,
                                  parent=iso_part_zone)
     PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=elt_n)
   

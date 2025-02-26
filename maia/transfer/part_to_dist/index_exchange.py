@@ -493,6 +493,8 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
 
   # Collect partitioned data
   for ipart, part_zone in enumerate(part_zones):
+    ngon_n  = PT.get_child_from_name(part_zone, ngon_name)
+    ng_offset = PT.Element.Range(ngon_n)[0]
     nface_n = PT.get_child_from_name(part_zone, elem_name)
     EC     = PT.get_child_from_name(nface_n, 'ElementConnectivity')[1]
     ECIdx  = PT.get_child_from_name(nface_n, 'ElementStartOffset')[1]
@@ -500,7 +502,7 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
     # Move to global and add in part_data
     EC_sign = np.sign(EC)
     part_data.append((np.diff(ECIdx),
-                      EC_sign*ngon_gnum_l[ipart][np.abs(EC)-1]))
+                      EC_sign*ngon_gnum_l[ipart][np.abs(EC)-ng_offset]))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
   distri_cell   = par_utils.distribution_from_gnum(cell_gnum_l, comm)

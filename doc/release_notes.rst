@@ -14,12 +14,13 @@ Developpement version
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
-- Manage preexisting std / mixed Elements_t nodes in std<->mixed conversion
+- Manage preexisting std / mixed Elements_t nodes in std ↔ mixed conversion
 - Update Periodic_t values in cartesian ↔ cylindrical conversions
 
 🐞 Fixes
 ^^^^^^^^
 - Pytree / YAML loader: allow spaces in nodes name
+- Create internal edges in isosurface and extract_part functionnalities
 
 v1.6 (January 2025)
 -------------------
@@ -37,7 +38,7 @@ v1.6 (January 2025)
 - extract_part: also expose extractor object in ``bc_name`` and ``family`` APIs
 - extract_part: preserve BC kind and metadata in 3D extraction
 - convert_ngon_to_elements: manage 2D cases
-- Better management of hybrid meshes in NGon<->Element conversions
+- Better management of hybrid meshes in NGon ↔ Element conversions
 
 🐞 Fixes
 ^^^^^^^^
