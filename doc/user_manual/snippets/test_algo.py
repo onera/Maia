@@ -305,15 +305,13 @@ def test_localize_points():
   from   maia.utils.test_utils import mesh_dir
   comm = mpi4py.MPI.COMM_WORLD
 
-  dist_tree_src = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
-  dist_tree_tgt = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
-  for tgt_zone in maia.pytree.get_all_Zone_t(dist_tree_tgt):
+  tree_src = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
+  tree_tgt = maia.io.file_to_dist_tree(mesh_dir/'U_ATB_45.yaml', comm)
+  for tgt_zone in maia.pytree.get_all_Zone_t(tree_tgt):
     maia.algo.transform_affine(tgt_zone, rotation_angle=[170*3.14/180,0,0], translation=[0,0,3])
-  part_tree_src = maia.factory.partition_dist_tree(dist_tree_src, comm)
-  part_tree_tgt = maia.factory.partition_dist_tree(dist_tree_tgt, comm)
 
-  maia.algo.part.localize_points(part_tree_src, part_tree_tgt, 'CellCenter', comm)
-  for tgt_zone in maia.pytree.get_all_Zone_t(part_tree_tgt):
+  maia.algo.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
+  for tgt_zone in maia.pytree.get_all_Zone_t(tree_tgt):
     loc_container = PT.get_child_from_name(tgt_zone, 'Localization')
     assert PT.Subset.GridLocation(loc_container) == 'CellCenter'
   #localize_points@end
@@ -333,7 +331,7 @@ def test_find_closest_points():
   part_tree_src = maia.factory.partition_dist_tree(dist_tree_src, comm)
   part_tree_tgt = maia.factory.partition_dist_tree(dist_tree_tgt, comm)
 
-  maia.algo.part.find_closest_points(part_tree_src, part_tree_tgt, 'Vertex', comm)
+  maia.algo.find_closest_points(part_tree_src, part_tree_tgt, 'Vertex', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(part_tree_tgt):
     loc_container = PT.get_child_from_name(tgt_zone, 'ClosestPoint')
     assert PT.Subset.GridLocation(loc_container) == 'Vertex'

@@ -8,7 +8,6 @@ import maia.pytree.maia   as MT
 
 import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.factory      import dcube_generator as DCG
 from maia.factory      import partition_dist_tree
 
 from maia.utils     import test_utils as TU
@@ -37,7 +36,7 @@ def test_get_part_data(elt_kind, comm):
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("reverse", [False, True])
 def test_mesh_location(reverse, comm):
-  dtree = DCG.dcube_generate(3, 1., [0.,0.,0.], comm)
+  dtree = maia.factory.generate_dist_block(3, 'Poly', comm)
   if comm.Get_rank() == 0:
     zone_to_parts = {'Base/zone' : [.5]}
     tgt_clouds = [(np.array([.6,.9,0]), np.array([2], pdm_gnum_dtype)), (np.array([1.6,.9,0]), np.array([4], pdm_gnum_dtype))]
@@ -79,7 +78,7 @@ def test_mesh_location(reverse, comm):
 @pytest_parallel.mark.parallel(1)
 def test_mesh_location_mdom(comm):
   yaml_path = os.path.join(TU.mesh_dir, 'S_twoblocks.yaml')
-  dtree_src = DCG.dcube_generate(11, 20., [0.,0.,0.], comm)
+  dtree_src = maia.factory.generate_dist_block(11, 'Poly', comm, length=20.)
   dtree_tgt = maia.io.file_to_dist_tree(yaml_path, comm)
 
   tree_src = partition_dist_tree(dtree_src, comm)
@@ -103,14 +102,15 @@ def test_mesh_location_mdom(comm):
   
 
 @pytest_parallel.mark.parallel(3)
-def test_localize_points(comm):
-  dtree_src = DCG.dcube_generate(5, 1., [0.,0.,0.], comm)
-  dtree_tgt = DCG.dcube_generate(4, 1., [.4,.05,.05], comm)
+@pytest.mark.parametrize("input_kind", ['HEXA_8', 'S'])
+def test_localize_points(input_kind, comm):
+  dtree_src = maia.factory.generate_dist_block(5, input_kind, comm, origin=[0.,0.,0.])
+  dtree_tgt = maia.factory.generate_dist_block(4, 'Poly', comm, origin=[.4,.05,.05])
   tree_src = partition_dist_tree(dtree_src, comm)
   tree_tgt = partition_dist_tree(dtree_tgt, comm)
 
   tree_src_back = PT.deep_copy(tree_src)
-  LOC.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
+  maia.algo.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
   assert PT.is_same_tree(tree_src_back, tree_src)
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
@@ -132,11 +132,10 @@ def test_localize_points(comm):
 @pytest.mark.parametrize("cnt_kind", ['Element', 'Poly'])
 def test_localize_2d(cnt_kind, comm):
   dtree_src = maia.factory.generate_dist_block(5, 'QUAD_4', comm, origin=[0.,0.,0.])
-  dtree_tgt = maia.factory.generate_dist_block(4, 'QUAD_4', comm, origin=[.4,.05,0])
+  dtree_tgt = maia.factory.generate_dist_block([4,4],  'S', comm, origin=[.4,.05,0])
 
   if cnt_kind == 'Poly':
     maia.algo.dist.convert_elements_to_ngon(dtree_src, comm)
-    maia.algo.dist.convert_elements_to_ngon(dtree_tgt, comm)
   
   tree_src = partition_dist_tree(dtree_src, comm)
   tree_tgt = partition_dist_tree(dtree_tgt, comm)

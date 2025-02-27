@@ -16,6 +16,8 @@ Developpement version
 ^^^^^^^^^^^^^^^^^^^^^^^
 - Manage preexisting std / mixed Elements_t nodes in std ↔ mixed conversion
 - Update Periodic_t values in cartesian ↔ cylindrical conversions
+- localize_points: allow source mesh to be structured
+- Allow distributed meshes in localize_points and find_closest_points
 
 🐞 Fixes
 ^^^^^^^^
