@@ -1,7 +1,91 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
+#include "std_e/base/msg_exception.hpp"
+
 namespace py = pybind11;
+
+// Define accumulator functions for accumulate_by_stride
+template<class T>
+struct Reduce_Sum {
+      static constexpr auto op = std::plus<>{};
+      using rtype = T; // Return type of op
+      static constexpr rtype neutral = 0;
+};
+template <>
+struct Reduce_Sum<bool> {
+      static constexpr auto op = [] (const auto& x, const auto& y) {return int64_t(x) + int64_t(y);};
+      using rtype = int64_t;
+      static constexpr rtype neutral = 0;
+};
+
+template<class T>
+struct Reduce_Prod {
+      static constexpr auto op = std::multiplies<>{};
+      using rtype = T; // Return type of op
+      static constexpr rtype neutral = 1;
+};
+template<class T>
+struct Reduce_Max {
+      static constexpr auto op = [](const T& x, const T& y) {return std::max(x, y);};
+      using rtype = T; // Return type of op
+      static constexpr rtype neutral = std::numeric_limits<T>::has_infinity ? -std::numeric_limits<T>::infinity() : std::numeric_limits<T>::lowest();
+};
+template<class T>
+struct Reduce_Min {
+      static constexpr auto op = [](const T& x, const T& y) {return std::min(x, y);};
+      using rtype = T; // Return type of op
+      static constexpr rtype neutral = std::numeric_limits<T>::has_infinity ? std::numeric_limits<T>::infinity() : std::numeric_limits<T>::max();
+};
+template<class T>
+struct Reduce_Land {
+      static constexpr auto op = [](const T& x, const T& y) {return bool(x) && bool(y);};
+      using rtype = bool; // Return type of op
+      static constexpr rtype neutral = true;
+};
+template<class T>
+struct Reduce_Lor {
+      static constexpr auto op = [](const T& x, const T& y) {return bool(x) ||  bool(y);};
+      using rtype = bool; // Return type of op
+      static constexpr rtype neutral = false;
+};
+template<class T>
+struct Reduce_Band {
+      static constexpr auto op = [](const T& x, const T& y) {return x & y;};
+      using rtype = T; // Return type of op
+      static constexpr rtype neutral = -1;
+};
+template <>
+struct Reduce_Band<float> {
+      static constexpr auto op = [] (float x, float y) {return 0.;}; // Fake OP
+      using rtype = float;
+      static constexpr rtype neutral = 0;
+};
+template <>
+struct Reduce_Band<double> {
+      static constexpr auto op = [] (double x, double y) {return 0.;}; // Fake OK
+      using rtype = double;
+      static constexpr rtype neutral = 0;
+};
+
+template<class T>
+struct Reduce_Bor {
+      static constexpr auto op = [](const T& x, const T& y) {return x | y;};
+      using rtype = T; // Return type of op
+      static constexpr rtype neutral = 0;
+};
+template <>
+struct Reduce_Bor<float> {
+      static constexpr auto op = [] (float x, float y) {return 0.;}; // Fake OP
+      using rtype = float;
+      static constexpr rtype neutral = 0;
+};
+template <>
+struct Reduce_Bor<double> {
+      static constexpr auto op = [] (double x, double y) {return 0.;}; // Fake OP
+      using rtype = double;
+      static constexpr rtype neutral = 0;
+};
 
 template<typename I, typename T>
 void
@@ -161,6 +245,55 @@ make_unique_by_stride(py::array_t<I>&   np_displs,
 }
 
 
+
+template<typename I, typename T, typename ReducOp>
+py::array
+_accumulate_by_stride(py::array_t<I>&   np_displs,
+                      py::array_t<T>&   np_values,
+                      ReducOp red) {
+
+  int n_elt   = np_displs.size() - 1;
+  auto displs = np_displs.data();
+  auto values = np_values.data();
+
+  using U = typename ReducOp::rtype;
+  auto np_out = py::array_t<U>(n_elt);
+  auto out    = np_out.mutable_data();
+  
+  for (size_t i=0; i < n_elt; ++i) {
+    out[i] = std::accumulate(values+displs[i], values+displs[i+1], red.neutral, red.op);
+  }
+
+  return np_out;
+}
+template<typename I, typename T>
+py::array
+accumulate_by_stride(py::array_t<I>&   np_displs,
+                     py::array_t<T>&   np_values,
+                     const std::string& op)
+{
+
+  if (op == "SUM") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Sum<T>{});
+  } else if (op == "PROD") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Prod<T>{});
+  } else if (op == "MIN") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Min<T>{});
+  } else if (op == "MAX") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Max<T>{});
+  } else if (op == "LAND") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Land<T>{});
+  } else if (op == "LOR") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Lor<T>{});
+  } else if (op == "BAND") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Band<T>{});
+  } else if (op == "BOR") {
+      return _accumulate_by_stride(np_displs, np_values, Reduce_Bor<T>{});
+  } else {
+    throw std_e::msg_exception("Unvalid operation");
+  }
+}
+
 template<typename I1, typename I2>
 void take(py::array_t<I1>      displs, 
           py::buffer           read_buff,
@@ -286,6 +419,28 @@ void register_vstride_module(py::module_& parent) {
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
   m.def("roll_by_stride", &roll_by_stride<int64_t, bool>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("shift").noconvert());
+
+  m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, bool>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, int32_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, int64_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, float>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, double>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, bool>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, int32_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, int64_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, float>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, double>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+
 
 
   m.def("flip_by_stride", &flip_by_stride<int32_t>,

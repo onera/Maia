@@ -344,8 +344,10 @@ class VStrideArray:
     The avalaible operations are the members of the enumeration :class:`ReduceOp`.
 
     This function returns an array of size :math:`N` (one value per *block*).
-    The datatype of the output array depends on the underlying operation, which
-    is executed by numpy.
+    The datatype of the output array depends on the input datatype and the requested operation:
+    it is generally the same than the input datatype, excepted for logical operations that always
+    return boolean arrays and for :attr:`ReduceOp.SUM` that return ``int64`` when applied to a boolean
+    input.
 
     Note:
       For empty *blocks* (*ie* for the set of ``i`` such that ``counts[i] == 0``), the corresponding
@@ -366,45 +368,21 @@ class VStrideArray:
     # For information : output type depending on input/op
     #
     #       add/mul   max/min land/lor  band/bor
-    #  b      i8         b        b         b
-    # i4      i8        i4        b        i4
+    #  b     i8/x        b        b         b
+    # i4      i4        i4        b        i4
     # i8      i8        i8        b        i8
     # f4      f4        f4        b         x
     # f8      f8        f8        b         x
     # 
     # Neutral 0/1                T/F      -1/0
     
-    op_to_ufunc = {ReduceOp.SUM  : np.add,
-                   ReduceOp.PROD : np.multiply,
-                   ReduceOp.MIN  : np.minimum,
-                   ReduceOp.MAX  : np.maximum,
-                   ReduceOp.LAND : np.logical_and,
-                   ReduceOp.LOR  : np.logical_or,
-                   ReduceOp.BAND : np.bitwise_and,
-                   ReduceOp.BOR  : np.bitwise_or}
-    
-    ufunc = op_to_ufunc[op]
-    out = ufunc.reduceat(self._values, self.displs[:-1])
-    
-    if op == ReduceOp.MIN:
-      if out.dtype.kind == 'i':
-        val = np.iinfo(out.dtype).min
-      elif out.dtype.kind == 'f':
-        val = -np.inf
-      elif out.dtype.kind == 'b':
-        val = False
-    elif op == ReduceOp.MAX:
-      if out.dtype.kind == 'i':
-        val = np.iinfo(out.dtype).max
-      elif out.dtype.kind == 'f':
-        val = np.inf
-      elif out.dtype.kind == 'b':
-        val = True
-    else:
-      val = ufunc.identity
+    if self.dtype.kind == 'f' and op in [ReduceOp.BAND, ReduceOp.BOR]:
+      raise ValueError(f"Unsupported reduction {op} for input dtype {self.dtype}")
+    if self.dtype == bool and op in [ReduceOp.PROD]:
+      raise ValueError(f"Unsupported reduction {op} for input dtype {self.dtype}")
 
-    out[self.counts == 0] = val
-    return out
+    return _vstride.accumulate_by_stride(self.displs, self.values, op.name)
+
 
   def restride(self, displs=None, counts=None):
     """

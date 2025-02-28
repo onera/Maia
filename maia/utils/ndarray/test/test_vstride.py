@@ -174,30 +174,39 @@ def test_reduce():
   red = arr.reduce(vs.ReduceOp.SUM)
   assert np.array_equal([0, .8, 2.5], red) and red.dtype == float
 
+  # This case failed with numpy reduceat
+  arr = vs.from_counts([0, 2, 5, 0, 0], [0.3, 0.5, 0.1, 0.7, 0.2, 0.6, 0.9])
+  red = arr.reduce(vs.ReduceOp.SUM)
+  assert np.array_equal([0, .8, 2.5, 0., 0.], red) and red.dtype == float
+
   arr = vs.from_counts([2, 3, 2], [3, 5, 1, 7, 2, 6, 9], dtype=np.int32)
   red = arr.reduce(vs.ReduceOp.MAX)
   assert np.array_equal([5, 7, 9], red) and red.dtype == np.int32
-  red = arr.reduce(vs.ReduceOp.PROD) # i4 + PROD reduces to i8
-  assert np.array_equal([3*5, 1*7*2, 6*9], red) and red.dtype == np.int64
+  red = arr.reduce(vs.ReduceOp.PROD)
+  assert np.array_equal([3*5, 1*7*2, 6*9], red) and red.dtype == np.int32
   
   # Test with empty vals
   arr = vs.from_counts([0, 2, 5], [0.3, 0.5, 0.1, 0.7, 0.2, 0.6, 0.9])
   red = arr.reduce(vs.ReduceOp.MIN)
-  assert np.array_equal([-np.inf, .3, .1], red) and red.dtype == float
+  assert np.array_equal([+np.inf, .3, .1], red) and red.dtype == float
   red = arr.reduce(vs.ReduceOp.MAX)
-  assert np.array_equal([+np.inf, .5, .9], red) and red.dtype == float
+  assert np.array_equal([-np.inf, .5, .9], red) and red.dtype == float
 
   arr = vs.from_counts([0, 2, 5], [3, 5, 1, 7, 2, 6, 9], dtype=np.int32)
   red = arr.reduce(vs.ReduceOp.MIN)
-  assert np.array_equal([np.iinfo(np.int32).min, 3, 1], red) and red.dtype == np.int32
+  assert np.array_equal([np.iinfo(np.int32).max, 3, 1], red) and red.dtype == np.int32
   red = arr.reduce(vs.ReduceOp.MAX)
-  assert np.array_equal([np.iinfo(np.int32).max, 5, 9], red) and red.dtype == np.int32
+  assert np.array_equal([np.iinfo(np.int32).min, 5, 9], red) and red.dtype == np.int32
 
   arr = vs.from_counts([0, 2, 4], [True, True, False, True, True, False])
   red = arr.reduce(vs.ReduceOp.MIN)
-  assert np.array_equal([False, True, False], red) and red.dtype == bool
+  assert np.array_equal([True, True, False], red) and red.dtype == bool
   red = arr.reduce(vs.ReduceOp.MAX)
-  assert np.array_equal([True, True, True], red) and red.dtype == bool
+  assert np.array_equal([False, True, True], red) and red.dtype == bool
+
+  with pytest.raises(ValueError):
+    arr = vs.from_counts([0, 2, 5], [0.3, 0.5, 0.1, 0.7, 0.2, 0.6, 0.9])
+    red = arr.reduce(vs.ReduceOp.BAND)
 
 
 
