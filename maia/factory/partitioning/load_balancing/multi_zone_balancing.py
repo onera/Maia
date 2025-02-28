@@ -148,24 +148,34 @@ def balance_with_uniform_weights(n_elem_per_zone, n_rank):
     # LOG.debug(' '*8 + " Some zone have no proc affected and all ranks are assigned : {0}/{1} ".format(d_remain_zones, n_rank_remain))
     n_elem_mpi_tmp = np.zeros(n_rank, dtype=np.float64)
     for i_zone, lprocs in dproc_to_zone.items():
-      n_elem_mpi_tmp[lprocs] += n_elem_per_zone[i_zone]/len(lprocs)
+      # add this section to avoid diviosn per 0 
+      if len(lprocs) > 0:  # check if the zone is assigned to process
+        n_elem_mpi_tmp[lprocs] += n_elem_per_zone[i_zone] / len(lprocs)
+      else:
+        # if the zone has no process pass
+        pass
 
     while d_remain_zones:
       # *******************************************
+      # search the process which is not full charged
       min_loaded_proc = np.argmin(n_elem_mpi_tmp)
       min_load        = n_elem_mpi_tmp[min_loaded_proc]
-      # *******************************************
 
       # *******************************************
+      
+      # *******************************************
+      #select the first zone remaining
       cur_zone_to_add, cur_zone_to_add_n_elem = next(iter(d_remain_zones.items()))
       # *******************************************
 
       # *******************************************
+      # add the zone to the process 
       dproc_to_zone[cur_zone_to_add].append(min_loaded_proc)
       n_elem_mpi_tmp[min_loaded_proc] += cur_zone_to_add_n_elem
       # *******************************************
 
       # *******************************************
+      # updates
       d_remain_zones = {zone : j_elem for zone,j_elem in d_remain_zones.items() if dproc_to_zone[zone] == []}
       # *******************************************
 
@@ -175,7 +185,10 @@ def balance_with_uniform_weights(n_elem_per_zone, n_rank):
     # > Some rank are steal not assigned
     # LOG.debug(' '*8 + " ~> Some rank are steal not assigned / cur_rank : {0} ".format(cur_rank))
     while(cur_rank != n_rank):
-      zone_to_delem = {zone : n_elem_per_zone[zone]/len(lprocs) for zone, lprocs in dproc_to_zone.items()}
+      #zone_to_delem = {zone : n_elem_per_zone[zone]/len(lprocs) for zone, lprocs in dproc_to_zone.items()}
+      #changed to test
+      zone_to_delem = {zone: n_elem_per_zone[zone] / len(lprocs) if len(lprocs) > 0 else 0
+                    for zone, lprocs in dproc_to_zone.items()}
       maxZone = max(zone_to_delem.items(), key=lambda item:item[1])[0]
 
       # > Fill maxZone

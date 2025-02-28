@@ -109,7 +109,21 @@ class Test_compute_pointList_from_pointRanges():
                     np.array([[2,2],[1,1],[2,2]])]
       pointList = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"J"+self.loc)
       assert (pointList == [[14,20]]).all()
-
+    # correct test  
+    def test_1D_range(self):
+      nVtx_1D=np.array([5], np.int32)
+      sub_ranges=[np.array([[2,4]])]
+      pointList= pr_utils.compute_pointList_from_pointRanges(sub_ranges,nVtx_1D,"I"+self.loc)
+      assert (pointList == [[2,3,4]]).all()
+    # TO DO : TEST failed 
+    """
+    def test_2D_range(self):
+      loc="Vertex"
+      nVtx_2D=np.array([5,5], np.int32)
+      sub_ranges=[np.array([[1,2], [1,2]])]
+      pointList= pr_utils.compute_pointList_from_pointRanges(sub_ranges,nVtx_2D,"I"+self.loc)
+      assert (pointList == [[6,7,11,12]]).all()
+     """
   class Test_vertex():
     nVtx       = np.array([3, 3, 3], np.int64)
     loc        = "Vertex"

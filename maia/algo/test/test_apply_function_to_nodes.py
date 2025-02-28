@@ -2,7 +2,7 @@ import pytest
 
 import maia.pytree as PT
 
-from maia.algo.apply_function_to_nodes import apply_to_zones, zones_iterator
+from maia.algo.apply_function_to_nodes import apply_to_zones, zones_iterator, apply_to_bases
 
 def test_apply_to_zones():
 
@@ -63,4 +63,9 @@ def test_zones_iterator():
     for z in zones_iterator(PT.get_node_from_label(tree, 'ZoneBC_t')):
       pass
 
-  
+# TO DO : add pytest to the function apply_to_bases  
+def mock_function(node, *args):
+    node["processed"] = True
+    if args:
+        node["args"] = args
+

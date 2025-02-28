@@ -75,6 +75,10 @@ def test_generate_points_dims(zone_type, comm):
 
   check_dims(dcloud_generator.generate_dist_points([6]    , "S", comm, origin=[0.], max_coords=[1.]), 1, 1)
   check_dims(dcloud_generator.generate_dist_points(6      , "S", comm, origin=[0.], max_coords=[1.]), 1, 1)
+  # correct test
+  with pytest.raises(ValueError, match="Unexpected value for zone_type parameter"):
+    dcloud_generator.generate_dist_points(10, "Null", comm, origin=[0.], max_coords=[2.])
+       
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("dim", [3,1])
