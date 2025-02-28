@@ -183,13 +183,15 @@ class VStrideArray:
 
   def __getitem__(self, key):
     """ Return a view to the requested block"""
-    if isinstance(key, int):
-      try:
-        return self._values[self.displs[key - int(key<0)]:self.displs[key - int(key<0)+1]]
-      except IndexError:
-        raise IndexError(f"Tried to access index {key}, but len is {len(self)}")
+    try:
+      key = int(key)
+    except:
+      raise TypeError
+    try:
+      return self._values[self.displs[key - int(key<0)]:self.displs[key - int(key<0)+1]]
+    except IndexError:
+      raise IndexError(f"Tried to access index {key}, but len is {len(self)}")
 
-    raise TypeError
 
   def __setitem__(self, key, val):
     """ Modify the requested block; size and dtype of val should be consistant"""
