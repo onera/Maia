@@ -176,7 +176,7 @@ There is nothing surprising for the ``take`` case. For the ``put`` case, notice 
   (with inscreasing ranks order) was kept;
 - no process provided data for global index 2 : the value ``None`` has been used.
 
-The first rule applies also to buffers implementations; for the second rule,
+The first rule is also the default behavious of buffers implementations; for the second rule,
 unreferenced indices will remain unitialized when using
 :func:`~maia.transfer.protocols.GlobalIndexer.Put`, and will get a zero counts when using
 :func:`~maia.transfer.protocols.GlobalIndexer.Put_v`.
@@ -283,14 +283,33 @@ the number of described data (ie the length of the distributed section, or
 the length of the requested indices list), and that the size of the data buffer
 is equal to the sum of the associated counting array.
 
+Note than unaccessed indices (such as index 2) automatically get a 0 count after
+the ``Put_v`` operation: on the other side, index 1 get a 0 count because it was
+explicitly put by P1.
 Once again, one can observe the resolution of writting conflicts:
 for global index 0, which is accessed twice, the written data
 (and thus its counts value) come from the process having the highest rank (P2).
 This is why we used a dashed arrow for P0 on the scheme: its value is not written
 in the distributed array, because of priority order.
-Note also than unaccessed indices (such as index 2) automatically get a 0 count after
-the ``Put_v`` operation: on the other side, index 1 get a 0 count because it was
-explicitly put by P1.
+
+This rule can be disabled with the parameter ``append=True``: when used, all the data
+written at a same global index are concatenated according to their apparition order
+(in increasing rank order)::
+
+  counts_new, dist_data_new = GI.Put_v((counts, values), append=True)
+  #P0 : counts_new    = array([5,0])                    #nb of vals for 0..2
+  #     dist_data_new = array([0.1,0.2,0.3,100.1,100.2])#values (5, then 0)
+  #P1 : counts_new    = array([0,1])                    #nb of vals for 2..4
+  #     dist_data_new = array([30.1],                  )#values (0, then 1)
+  #P2 : counts_new    = array([1])                      #nb of vals for 4..5
+  #     dist_data_new = array([4.1],                   )#values (1)
+
+On the above example, we can see that with ``append=True``, global index 0 get a counts
+of 5 because 3 values has been written by P0, then 2 values by P2.
+
+.. image:: ./put_v_ext.png
+  :width: 60%
+  :align: center
 
 API reference
 -------------

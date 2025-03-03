@@ -25,7 +25,6 @@ def test_put_strided():
     g_indexer.put_strided(data_out, counts_out, idx, counts_in, data_in)
     assert (data_out == np.array([-1,-1.,-1.,  1.1,1.2,  3.1])).all()
 
-
     counts_in = np.array([2,3,1,2], int) # => Two compatible stride for idx 1 (last is keep)
     data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3,   3.1,   4.1, 4.2]) 
     data_out.fill(-1)
@@ -33,6 +32,13 @@ def test_put_strided():
     g_indexer.put_strided(data_out, counts_out, idx, counts_in, data_in)
     assert (data_out == np.array([2.1,2.2,2.3,  4.1,4.2,  3.1])).all()
 
+    # In extend mode
+    counts_out = np.array([3,4,1], int)
+    data_out   = np.empty(8, float)
+    counts_in = np.array([2,3,1,2], int) 
+    data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3,   3.1,   4.1, 4.2])
+    g_indexer.put_strided(data_out, counts_out, idx, counts_in, data_in, extend=True)
+    assert (data_out == np.array([2.1,2.2,2.3,  1.1,1.2,4.1,4.2,  3.1])).all()
 @pytest_parallel.mark.parallel(4)
 class Test_g_indexer:
 
@@ -283,6 +289,17 @@ class Test_g_indexer:
                     
     assert np.array_equal(counts_out, expected_out[0])
     assert np.allclose(data_out, expected_out[1])
+
+    # The flag append allows to keep all the data coming from a given gnum, in appartion order
+    counts_out_app, data_out_app = GI.Put_v((counts_in, data_in), append=True)
+    expected_out_app = [
+      (np.array([0,1,0,0,2]), np.array([20., 50.,55])),
+      (np.array([], int), np.array([], float)),
+      (np.array([0,0,0]), np.array([], float)),
+      (np.array([0,4,0,1]), np.array([100.,105, 100.,105,  120])),
+    ][rank]
+    assert np.array_equal(counts_out_app, expected_out_app[0])
+    assert np.allclose(data_out_app, expected_out_app[1])
 
     # As for Put method, we can use a preallocated buffer, in this 
     # case the counts_out array must be already filled and data_out must have

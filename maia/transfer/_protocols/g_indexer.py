@@ -29,12 +29,15 @@ def take_strided(a_counts, a_val, indices, out):
   vstride.take(a_displs, a_val, indices, out)
 
 
-def put_strided(a, a_count, indices, read_counts, read):
+def put_strided(a, a_count, indices, read_counts, read, extend=False):
   """
   A special case of VStrideArray.put() where out (a) is preallocated
   and all indices will be visited
   """
-  vstride.put(a_count, a, indices, read_counts, read)
+  if extend:
+    vstride.put_extend(a_count, a, indices, read_counts, read)
+  else:
+    vstride.put(a_count, a, indices, read_counts, read)
 
 class GlobalMultiIndexer:
   """
@@ -356,36 +359,19 @@ class GlobalMultiIndexer:
 
     return local_data_l
 
-  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /) -> VBuffer:
+  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /, *, append=False) -> VBuffer:
     """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
       local_data_l (list of N var. buffer): for each index list, values to write as pair \
         (**local_counts** (*np array of* :math:`pn_k` *int*), **local_buff** (*buffer*))
       dist_data (variable buffer, optional) : preallocated buffer to store distributed data or None
+      append  (bool, optional) : If ``True``, gather the values written at a same global index.
+        Otherwise, keep only the last one. Defaults to ``False``.
     Returns:
       variable buffer: output distributed data, returned as pair of values \
         (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
     """
-    # Note for later: extension to keep_multiple is not so complicated : 
-    # compute counts_out with np.add.at(counts_out, self.dist_select_idx, _counts_out) instead of np.put
-    # (because np.put is responsible of 'keeping last value')
-    # Then update last put_strided to remove the check on the size : loop becomes
-    # 
-    # std::vector<int> offset(write_counts.size(), 0);
-    # for (int i=0; i < write_idx.size(); ++i) {
-    #   int idx = _write_idx[i];
-    #   int w_start = write_displs[idx] + offset[idx];
-    #   int w_end   = write_displs[idx+1];
-    #
-    #   std::copy_n(_read_buff + s_data*r_idx,
-    #               _read_counts[i]*s_data,
-    #               _write_buff + s_data*w_start);
-    #
-    #   offset[idx] += _read_counts[i];
-    #   r_idx       += _read_counts[i];
-    # } 
-
     # Variable stride
 
     counts_in_l = [data_in[0] for data_in in local_data_l]
@@ -424,9 +410,11 @@ class GlobalMultiIndexer:
 
     if dist_data is None:
       counts_out  = np.zeros(self.dn, dtype=_counts_out.dtype)
-      counts_out[self.dist_select_idx] = _counts_out
+      if append:
+        np.add.at(counts_out, self.dist_select_idx, _counts_out)
+      else:
+        counts_out[self.dist_select_idx] = _counts_out
       buff_out = np.empty(counts_out.sum(), data_dtype)
-    
 
     # Count the actual number of items to send/recv, using stride array
     # (this is the partial sum of portion of the stride array related to the given rank)
@@ -449,7 +437,7 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((send_buff, send_counts, send_buff.dtype.char), (recv_buff, recv_counts, send_buff.dtype.char))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff)
+    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, extend=append)
 
     return counts_out, buff_out
   
@@ -630,7 +618,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take_v(dist_data, local_data_l)[0]
 
-  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /) -> VBuffer:
+  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /, *, append=False) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by a tuple of two objects:
@@ -655,12 +643,14 @@ class GlobalIndexer:
       local_data (variable buffer): data to write at each accessed index, ie tuple 
         (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
       dist_data (variable buffer, optional): preallocated buffer to store distributed data or None
+      append  (bool, optional) : If ``True``, gather the values written at a same global index.
+        Otherwise, keep only the last one. Defaults to ``False``.
     Returns:
       variable buffer: output distributed data, returned as the tuple of values
       (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*)).
       The return object is ``dist_data`` if it was given by the user.
     """
-    return self.GIndexer_m.Put_v([local_data], dist_data)
+    return self.GIndexer_m.Put_v([local_data], dist_data, append=append)
 
   @property
   def empty_dist(self) -> bool:
