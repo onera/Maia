@@ -8,6 +8,7 @@ import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT
 
 from maia.utils     import np_utils, par_utils, s_numbering
+from maia.utils     import vstride as vs
 from maia.transfer  import utils     as te_utils
 from maia.transfer  import protocols as EP
 
@@ -364,8 +365,6 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   # Init dicts
   p_data_pe = list()
   p_data_ec = list()
-  p_strid_ec = list()
-  p_strid_pe = list()
 
   has_pe = True
 
@@ -379,8 +378,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
     # Deal ElementConnectivity
     EC = vtx_gnum_l[ipart][EC-1]
-    p_strid_ec.append(np.diff(ECIdx).astype(np.int32))
-    p_data_ec.append(EC)
+    p_data_ec.append(vs.from_displs(ECIdx, EC))
 
     # Deal PE if present
     if pe_n is not None:
@@ -392,28 +390,28 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
         internal_cells_lids -= (PT.Element.Size(elem_n))
       PE[internal_cells] = cell_gnum_l[ipart][internal_cells_lids-1]
 
-      p_strid_pe.append(2*np.ones(PE.shape[0]//2, dtype=np.int32))
-      p_data_pe.append(PE)
+      p_data_pe.append(vs.from_counts(2, PE))
     else:
       has_pe = False
 
   has_pe = comm.allreduce(has_pe, op=MPI.LAND)
-  # Init PTB protocol
+  # Init protocol
   # Note: If 3D ngon mesh without ParentElement, mesh must be coherent
   #       at partition interface (like preserve_orientation=True)
   #       Thats why we can merge face connectivity without problem
-  PTB = EP.PartToBlock(None, elt_gnum_l, comm, keep_multiple=has_pe, legacy=True)
-  PTBDistribution = PTB.getDistributionCopy()
-  n_faceTot = PTBDistribution[n_rank]
+  distri = par_utils.distribution_from_gnum(elt_gnum_l, comm, full=True)
+  GI = EP.GlobalMultiIndexer(distri, [e-1 for e in elt_gnum_l], comm)
+  n_faceTot = distri[-1]
+
 
   # Two echanges are needed, one for PE (with stride == 2), one for connectivity
-  d_strid_ec, d_data_ec = PTB.exchange_field(p_data_ec, p_strid_ec)
+  d_strid_ec, d_data_ec = GI.Put_v([(a.counts, a.values) for a in p_data_ec], append=has_pe)
 
   d_elt_n = d_strid_ec
   dist_ec = d_data_ec
 
   if has_pe:
-    d_strid_pe, d_data_pe = PTB.exchange_field(p_data_pe, p_strid_pe)
+    d_strid_pe, d_data_pe = GI.Put_v([(a.counts, a.values) for a in p_data_pe], append=True)
 
     # Post treat : delete duplicated faces.
     dn_elt = d_strid_pe.shape[0]
@@ -434,9 +432,9 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
           if d_data_pe[offset+3] != 0: #Orientation was presered and first cell was left
             dist_pe[iFace,0] = d_data_pe[offset+0]
             dist_pe[iFace,1] = d_data_pe[offset+3]
-          else: #Orientation was not preserved : take first coming
-            dist_pe[iFace,0] = d_data_pe[offset+0]
-            dist_pe[iFace,1] = d_data_pe[offset+2]
+          else: #Orientation was not preserved : take last coming
+            dist_pe[iFace,0] = d_data_pe[offset+2]
+            dist_pe[iFace,1] = d_data_pe[offset+0]
       else:
         raise RuntimeError("Something went wrong with face", iFace)
       offset += d_strid_pe[iFace]
@@ -447,8 +445,8 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
     # Array of bool (1d) indicating which indices of connectivity must be keeped
     # Then we just have to extract the good indices
     duplicated_ec = np.zeros(unfiltered_eso[dn_elt], dtype=bool)
-    wrong_idx = np_utils.multi_arange(unfiltered_eso[duplicated_idx] + (d_elt_n[duplicated_idx] // 2),
-                                      unfiltered_eso[duplicated_idx+1])
+    wrong_idx = np_utils.multi_arange(unfiltered_eso[duplicated_idx],
+                                      unfiltered_eso[duplicated_idx] + (d_elt_n[duplicated_idx] // 2))
     duplicated_ec[wrong_idx] = 1
     dist_ec = d_data_ec[~duplicated_ec]
 
@@ -471,7 +469,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
   DistriFaceVtx = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
   distri_ud = MT.newDistribution(parent=elt_node)
-  PT.new_DataArray('Element',           PTBDistribution[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
+  PT.new_DataArray('Element',                    distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
   PT.new_DataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
 def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):

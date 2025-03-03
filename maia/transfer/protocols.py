@@ -8,7 +8,7 @@ from maia.utils import par_utils, np_utils
 
 from . import _protocols
 
-from ._protocols import GlobalIndexer, GlobalMultiIndexer
+from ._protocols import GlobalIndexer, GlobalMultiIndexer, ReduceOp
 
 def _check_dict_keys(data_dict, comm):
   if comm.Get_size() == 0:
@@ -171,17 +171,26 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
   Create and exchange using a PartToBlock object.
   Allow single field or dict of fields
   """
+  legacy = kwargs.get('legacy', False)
   if reduce_func is not None:
-    # Only legacy == True is supported in this case. PartToBlock will raise in other case
-    PTB = PartToBlock(distri, ln_to_gn_list, comm, keep_multiple=True, **kwargs)
-    def _exchange_one(part_fields):
-      p_stride = [np.ones(p_f.size, dtype=np.int32) for p_f in part_fields]
-      dist_stride, dist_data = PTB.exchange_field(part_fields, p_stride)
-      dist_data = reduce_func(dist_data, dist_stride)
-      return dist_data
+    if legacy:
+      PTB = PartToBlock(distri, ln_to_gn_list, comm, keep_multiple=True, **kwargs)
+      def _exchange_one(part_fields):
+        p_stride = [np.ones(p_f.size, dtype=np.int32) for p_f in part_fields]
+        dist_stride, dist_data = PTB.exchange_field(part_fields, p_stride)
+        dist_data = reduce_func(dist_data, dist_stride)
+        return dist_data
+    else:
+      PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+      def _exchange_one(part_fields):
+        func_to_op = {reduce_sum: ReduceOp.SUM, reduce_min: ReduceOp.MIN, reduce_max: ReduceOp.MAX, reduce_mean:ReduceOp.SUM}
+        dist_data = PTB.Put(part_fields, reduce=func_to_op[reduce_func])
+        if reduce_func == reduce_mean:
+          dist_data /= PTB.access_counts
+        return dist_data
+
   else:
     PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
-    legacy = kwargs.get('legacy', False)
     def _exchange_one(part_fields):
       return PTB.exchange_field(part_fields)[1] if legacy else PTB.Put(part_fields)
 

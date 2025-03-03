@@ -525,13 +525,16 @@ def test_recover_poly3d_nface_validity(comm):
   ptree = maia.factory.partition_dist_tree(tree, comm)
  
   tree = maia.factory.recover_dist_tree(ptree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
   # Check that we do not have duplicate positive faces indices detected in NFace_n Elements connectivity.
   # This can happen in case preserve_orientatioin=False if partitions are not properly reoriented
   # before calling part_nface_to_dist_nface
-  nface = PT.Zone.NFaceNode(PT.get_all_Zone_t(tree)[0])
+  nface = PT.Zone.NFaceNode(zone)
   ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
 
-  out_sign = EP.part_to_block([np.sign(ec)], None, [np.abs(ec)], comm, reduce_func=EP.reduce_sum, legacy=True)
+  distri = MT.getDistribution(PT.Zone.NGonNode(zone), 'Element')[1]
+
+  out_sign = EP.part_to_block(np.sign(ec), distri, np.abs(ec)-1, comm, reduce_func=EP.reduce_sum)
   assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)
 
 @pytest_parallel.mark.parallel(3)

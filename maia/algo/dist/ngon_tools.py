@@ -147,20 +147,17 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
 
   # Now do the search in // using key
   # First : gather data from face into a block vision
-  ptb = EP.PartToBlock(None, [key_from_face], comm, keep_multiple=True, legacy=True)
+  distri = par_utils.distribution_from_gnum([key_from_face], comm, full=True)
+  GI = EP.GlobalIndexer(distri, key_from_face-1, comm)
   stride_one = np.ones(key_from_face.size, np.int32)
 
-  stride, data1 = ptb.exchange_field([face_gnum],        [stride_one])
-  stride, data2 = ptb.exchange_field([first_vtx.values], [stride_one])
+  stride, data1 = GI.Put_v((stride_one, face_gnum), append=True)
+  stride, data2 = GI.Put_v((stride_one, first_vtx.values), append=True)
   # We don't need to exchange second vertex because we know key and vtx1 (vtx1 + vtx2 == key)
   dist_data = {'FaceGnum' : data1, 'FirstVtx' : data2}
-  ptb_distri = ptb.getDistributionCopy()
-  # Adapt to full block, since some gnum does not appear
-  fstride = np.zeros(ptb_distri[comm.rank+1] - ptb_distri[comm.rank], np.int32)
-  fstride[ptb.getBlockGnumCopy() - ptb_distri[comm.rank] - 1] = stride
 
   # Second : get data from block, for each edge
-  recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, key_from_edge, comm)
+  recv_stride, recv_data = EP.block_to_part_strided(stride, dist_data, distri, key_from_edge, comm)
   first_vtx  = recv_data['FirstVtx']
   face_gnum  = recv_data['FaceGnum']
 

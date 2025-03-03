@@ -4,6 +4,7 @@ import numpy as np
 
 from maia.transfer import protocols as EP
 from maia.utils    import np_utils, par_utils, py_utils
+from maia.utils    import vstride as vs
 
 import Pypdm.Pypdm as PDM
 
@@ -17,15 +18,17 @@ def dist_set_difference(ids, others, comm):
   """
   ln_to_gn = [ids] + others
   
-  PTB = EP.PartToBlock(None, ln_to_gn, comm, keep_multiple=True, legacy=True)
+  distri = par_utils.distribution_from_gnum(ln_to_gn, comm, full=True)
+  GI = EP.GlobalMultiIndexer(distri, [g-1 for g in ln_to_gn], comm)
 
   part_data   = [np.ones(ids.size, dtype=bool)] + [np.zeros(other.size, dtype=bool) for other in others]
-  part_stride = [np.ones(pdata.size, dtype=np.int32) for pdata in part_data]
 
-  dist_stride, dist_data = PTB.exchange_field(part_data, part_stride)
-  dist_data = np.logical_and.reduceat(dist_data, np_utils.sizes_to_indices(dist_stride)[:-1])
+  appears_once = GI.Put(part_data, reduce=EP.ReduceOp.LAND)
+  # Appears once contains False if a gnum is in "other",
+  # but contains True for non appearing gnum (initial value) --> filter it
+  appears_once &= (GI.access_counts > 0)
+  selected = np.arange(distri[comm.rank]+1, distri[comm.rank+1]+1, dtype=ids.dtype)[appears_once]
 
-  selected = PTB.getBlockGnumCopy()[dist_data]
   distri_in  = par_utils.gather_and_shift(selected.size, comm, dtype=np.int32)  
   distri_out = par_utils.uniform_distribution(distri_in[-1], comm)
 
@@ -39,7 +42,7 @@ def dist_set_difference(ids, others, comm):
 
   # ts, tt = BTP.exchange_field(dist_data, d_stride)
 
-  # dist_data = EP.part_to_block(part_data, None, ln_to_gn, comm, reduce_func=reduce_prod, legacy=True)
+  # dist_data = EP.part_to_block(part_data, None, ln_to_gn-1, comm, reduce_func=reduce_prod)
 
   # Sur chaque rank, on a une liste d'id (qui étaient sur ids ou pas) et un flag valant 1
   # si faut les garder
@@ -160,11 +163,14 @@ def is_unique_strided_serialized(array, stride, comm):
   unique_gnum, idx, count = np.unique(gnum, return_index=True, return_counts=True)
   max_gnum = comm.allreduce(np.max(unique_gnum), op=MPI.MAX)
   distri = par_utils.uniform_distribution(max_gnum, comm)
+  distri_f = par_utils.partial_to_full_distribution(distri, comm)
 
-  dist_data = EP.part_to_block([count], distri, [unique_gnum], comm, reduce_func=EP.reduce_sum, legacy=True)
+  GI = EP.GlobalIndexer(distri_f, unique_gnum-1, comm)
+  dist_data = GI.Put(count, reduce=EP.ReduceOp.SUM)
+  
   is_unique = np.zeros(distri[1]-distri[0], dtype=bool)
   is_unique[dist_data==1] = True
-  part_data = EP.block_to_part(is_unique, distri, unique_gnum-1, comm)
+  part_data = GI.Take(is_unique)
   
   mask = np.zeros(n_elt, dtype=bool)
   ids  = idx[part_data]
@@ -178,20 +184,20 @@ def is_unique_strided(array, stride, comm):
   For a distributed cst strided array (eg. a connectivity), return a local bool array indicating
   for each element if it appears only once (w/ considering ordering).
   """
-  n_elt = array.size//stride
-  distri = par_utils.dn_to_distribution(n_elt, comm)
-  src_dist_gnum = np.arange(distri[0], distri[1], dtype=PDM.npy_pdm_gnum_dtype)+1
-  
-  array_idx = stride*np.arange(n_elt+1, dtype=np.int32)
-  array_key = np.add.reduceat(array, array_idx[:-1])
+  vsarray = vs.from_counts(stride, array, dtype=PDM.npy_pdm_gnum_dtype)
 
-  weights = np.ones(n_elt, float)
-  ptb = EP.PartToBlock(None, [array_key], comm, weight=[weights], keep_multiple=True, legacy=True)
-  cst_stride = np.ones(n_elt, np.int32)
+  distri = par_utils.dn_to_distribution(len(vsarray), comm)
+  src_dist_gnum = np.arange(distri[0], distri[1], dtype=PDM.npy_pdm_gnum_dtype)+1
+
+  array_key = vsarray.reduce(vs.ReduceOp.SUM)
+  ddistri = par_utils.distribution_from_gnum([array_key], comm, False, True)
+  GI = EP.GlobalIndexer(ddistri, array_key-1, comm)
+
+  cst_stride = np.ones(len(vsarray), np.int32)
 
   # Origin is not mandatory for TETRA because we just want the TRI ids at the end
-  _, origin = ptb.exchange_field([src_dist_gnum], part_stride=[  cst_stride])
-  _, tmp_ec = ptb.exchange_field([array]        , part_stride=[3*cst_stride])
+  _, origin = GI.Put_v((cst_stride, src_dist_gnum), append=True)
+  _, tmp_ec = GI.Put_v((3*cst_stride, array), append=True)
   part_mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
 
   # Retrieve mask on initial distribution

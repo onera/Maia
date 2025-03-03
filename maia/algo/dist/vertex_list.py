@@ -69,25 +69,20 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
     restricted_pl_vtx = pl_vtx
 
   # Exchange to locally have the list of *all* jn faces related to vertex
-  p_stride = [np.diff(pl_vtx_face_idx).astype(np.int32, copy=False)]
+  p_stride = np.diff(pl_vtx_face_idx).astype(np.int32, copy=False)
 
-  part_data = {'vtx_to_face'   : [pl_vtx_face],
-               'vtx_to_face_d' : [pl_vtx_face_d]}
+  part_data = {'vtx_to_face'   : pl_vtx_face,
+               'vtx_to_face_d' : pl_vtx_face_d}
 
-  PTB = EP.PartToBlock(None, [pl_vtx], comm, keep_multiple=True, legacy=True)
+  distri = par_utils.distribution_from_gnum([pl_vtx], comm, True, True)
+  GI = EP.GlobalIndexer(distri, pl_vtx-1, comm)
   dist_data = dict()
   for field_name, p_field in part_data.items():
-    d_stride, d_field = PTB.exchange_field(p_field, p_stride)
+    d_stride, d_field = GI.Put_v((p_stride, p_field), append=True)
     dist_data[field_name] = d_field
 
-
-  #Recreate stride for all vertex
-  first, count, total = PTB.getBeginNbEntryAndGlob()
-  b_stride = np.zeros(count, np.int32)
-  b_stride[PTB.getBlockGnumCopy() - first - 1] = d_stride
-
-  p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      PTB.getDistributionCopy(), restricted_pl_vtx-1, comm)
+  p_stride, part_data = EP.block_to_part_strided(d_stride, dist_data, \
+      distri, restricted_pl_vtx-1, comm)
 
   extended_pl, unique_idx = np.unique(part_data["vtx_to_face"], return_index=True)
   extended_pl_d = part_data["vtx_to_face_d"][unique_idx]
@@ -362,9 +357,10 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
     pld_vtx_l.append(pld_vtx_local)
 
   #Final part_to_block will merge gnum from two method and reequilibrate
-  PTB = EP.PartToBlock(None, pl_vtx_l, comm, weight=True, keep_multiple=True, legacy=True)
-  pl_vtx = PTB.getBlockGnumCopy()
-  _, pld_vtx = PTB.exchange_field(pld_vtx_l, [np.ones(pl.size, np.int32) for pl in pl_vtx_l])
+  distri = par_utils.distribution_from_gnum(pl_vtx_l, comm, True, True)
+  GI = EP.GlobalMultiIndexer(distri, [pl-1 for pl in pl_vtx_l], comm)
+  pl_vtx = np.flatnonzero(GI.access_counts > 0) + distri[comm.rank] + 1
+  _, pld_vtx = GI.Put_v([(np.ones(pld.size, np.int32), pld) for pld in pld_vtx_l], append=True)
   assert pld_vtx.size == pl_vtx.size
   dn_vtx_jn = pld_vtx.size
   distri = par_utils.gather_and_shift(dn_vtx_jn, comm)
