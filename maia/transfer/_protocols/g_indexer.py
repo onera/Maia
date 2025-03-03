@@ -1,6 +1,7 @@
 from mpi4py import MPI
 import numpy as np
 import pickle
+from enum import Enum
 
 from cmaia.utils import layouts, vstride
 
@@ -11,6 +12,23 @@ NDArrayInt = NDArray[np.integer]
 Buffer = NDArray[Any] 
 VBuffer = Tuple[NDArrayInt, Buffer]  
 
+ReduceOp = Enum('ReduceOp', 'SUM PROD MIN MAX LAND LOR BAND BOR')
+ReduceOp.__doc__ = """
+Enumeration storing the available operations. Members are :attr:`SUM`, :attr:`PROD`, :attr:`MIN`, :attr:`MAX`, 
+:attr:`LAND`, :attr:`LOR`, :attr:`BAND` and :attr:`BOR`,
+where 'L' stands for logical operations and 'B' for bitwise operations.
+"""
+
+
+OP_TO_UFUNC = {ReduceOp.SUM  : np.add,
+               ReduceOp.PROD : np.multiply,
+               ReduceOp.MIN  : np.minimum,
+               ReduceOp.MAX  : np.maximum,
+               ReduceOp.LAND : np.logical_and,
+               ReduceOp.LOR  : np.logical_or,
+               ReduceOp.BAND : np.bitwise_and,
+               ReduceOp.BOR  : np.bitwise_or}
+    
 
 def counting_sort(array, n_bins):
   return layouts.counting_sort(array, n_bins)
@@ -28,6 +46,43 @@ def take_strided(a_counts, a_val, indices, out):
   np.cumsum(a_counts, out=a_displs[1:])
   vstride.take(a_displs, a_val, indices, out)
 
+def _guess_reduce_dt_and_identity(dt_in, op):
+  """
+  Utilitary function to properly initialize the output array when a
+  Put with reduction is done, depending of input datatype and reduction function
+
+  This function return the output datatype and the initial value
+  of the output array.
+
+  Output dtype table is (x stands for unsupported): 
+         add       mul    max/min land/lor  band/bor
+   b      i8         x       x        b         x
+  i4      i4        i4      i4        b        i4
+  i8      i8        i8      i8        b        i8
+  f4      f4        f4      f4        b         x
+  f8      f8        f8      f8        b         x
+   
+  """
+  if dt_in == '?' and op not in [ReduceOp.SUM, ReduceOp.LAND, ReduceOp.LOR]:
+    raise ValueError(f"Unsupported reduction {op} for input dtype {np.dtype(dt_in)}")
+  elif dt_in in 'fd' and op in [ReduceOp.BAND, ReduceOp.BOR]:
+    raise ValueError(f"Unsupported reduction {op} for input dtype {np.dtype(dt_in)}")
+
+  if dt_in == '?' and op == ReduceOp.SUM:
+    dt_out = 'l'
+  elif op in [ReduceOp.LAND, ReduceOp.LOR]:
+    dt_out = '?'
+  else:
+    dt_out = dt_in
+
+  if op == ReduceOp.MIN:
+    val =  np.inf if dt_in in 'fd' else np.iinfo(np.dtype(dt_in)).max
+  elif op == ReduceOp.MAX:
+    val = -np.inf if dt_in in 'fd' else np.iinfo(np.dtype(dt_in)).min
+  else:
+    val = OP_TO_UFUNC[op].identity
+
+  return dt_out, val
 
 def put_strided(a, a_count, indices, read_counts, read, extend=False):
   """
@@ -205,44 +260,6 @@ class GlobalMultiIndexer:
         for j in range(count):
           data_out[j::count] = recv_buff[put_idx+j]
 
-  def _Put(self, local_data_l: List[Buffer] , dist_data: Buffer, count=1):
-    """ Generalization of :func:`GlobalIndexer.Put_into` for multi index access.
-
-    Args:
-      local_data_l (list of :math:`N` buffer) : for each index list, data to write at each accessed index
-      dist_data  (buffer) : preallocated buffer to store distributed data
-      count (int) : scalar value of :math:`c`. Defaults to 1.
-    """
-    assert len(local_data_l) == len(self.pn)
-
-    if dist_data.size - count*self.dn != 0:
-      raise ValueError(f"Invalid size of output distributed buffer (expected {count*self.dn}, got {dist_data.size})")
-    for ipart, (data_in, pn) in enumerate(zip(local_data_l, self.pn)):
-      if data_in.size - count*pn != 0:
-        raise ValueError(f"Invalid size of input local buffer n°{ipart} (expected {count*pn}, got {data_in.size})")
-
-
-    send_buff = np.empty(count*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=dist_data.dtype)
-    recv_buff = np.empty(count*self.dist_counts.sum(),  dtype=dist_data.dtype)
-
-    for data_in, part_write_pos in zip(local_data_l, self.part_write_pos):
-      if count == 1:
-        send_buff[part_write_pos] = data_in
-      else:
-        pull_idx = count*part_write_pos
-        for j in range(count):
-          send_buff[pull_idx+j] = data_in[j::count]
-
-    self.comm.Alltoallv((send_buff, count*self.part_counts, dist_data.dtype.char), 
-                        (recv_buff, count*self.dist_counts, dist_data.dtype.char))
-
-    if count == 1:
-      dist_data[self.dist_select_idx] = recv_buff
-    else:
-      put_idx = count*self.dist_select_idx
-      for j in range(count):
-        dist_data[put_idx+j] = recv_buff[j::count]
-
   def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
     """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
@@ -260,7 +277,7 @@ class GlobalMultiIndexer:
     self._Take(dist_data, local_data_l, count)
     return local_data_l
 
-  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1) -> Buffer:
+  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1, *, reduce:ReduceOp=None) -> Buffer:
     """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
@@ -268,21 +285,59 @@ class GlobalMultiIndexer:
         data to write at each accessed index
       dist_data (buffer, optional) : preallocated buffer to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
+      reduce (:class:`ReduceOp`, optional) : Binary operation applied to the data written
+        at the same global index. Defaults to ``None``.
     Returns:
       buffer of size :math:`c*dn`: output distributed data
     """
     assert len(local_data_l) == len(self.pn)
 
+    dtype_loc = max(data.dtype.char for data in local_data_l) if len(local_data_l) > 0 else ''
+    dtype = self.comm.allreduce(dtype_loc, MPI.MAX)
+
     if dist_data is None:
-      dtype  = local_data_l[0].dtype.str if len(local_data_l) > 0 else ''
-      if self.empty_part:
-        dtype  = self.comm.allreduce(dtype,  MPI.MAX)
-      dist_data = np.empty(count*self.dn, dtype)
+      if reduce is None:
+        dist_data = np.empty(count*self.dn, dtype)
+      else:
+        out_dtype, val = _guess_reduce_dt_and_identity(dtype, reduce)
+        dist_data = np.full(count*self.dn, val, out_dtype)
 
-    self._Put(local_data_l, dist_data, count)
+    if dist_data.size - count*self.dn != 0:
+      raise ValueError(f"Invalid size of output distributed buffer (expected {count*self.dn}, got {dist_data.size})")
+    for ipart, (data_in, pn) in enumerate(zip(local_data_l, self.pn)):
+      if data_in.size - count*pn != 0:
+        raise ValueError(f"Invalid size of input local buffer n°{ipart} (expected {count*pn}, got {data_in.size})")
+      if data_in.dtype.char != dtype:
+        raise TypeError(f"Invalid dtype of input local buffer n°{ipart} (expected {dtype}, got {data_in.dtype.char})")
+
+    send_buff = np.empty(count*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=dtype)
+    recv_buff = np.empty(count*self.dist_counts.sum(),  dtype=dtype)
+
+    for data_in, part_write_pos in zip(local_data_l, self.part_write_pos):
+      if count == 1:
+        send_buff[part_write_pos] = data_in
+      else:
+        pull_idx = count*part_write_pos
+        for j in range(count):
+          send_buff[pull_idx+j] = data_in[j::count]
+
+    self.comm.Alltoallv((send_buff, count*self.part_counts, dtype), 
+                        (recv_buff, count*self.dist_counts, dtype))
+
+    def _put_one(idx, values):
+      if reduce is None:
+        dist_data[idx] = values
+      else:
+        OP_TO_UFUNC[reduce].at(dist_data, idx, values)
+
+    if count == 1:
+      _put_one(self.dist_select_idx, recv_buff)
+    else:
+      put_idx = count*self.dist_select_idx
+      for j in range(count):
+        _put_one(put_idx+j, recv_buff[j::count])
+
     return dist_data
-
-
 
 
   def Take_v(self, dist_data: VBuffer, local_data_l: List[VBuffer]=None, /) -> List[VBuffer]:
@@ -553,7 +608,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take(dist_data, local_data_l, count)[0]
 
-  def Put(self, local_data: Buffer, dist_data:Buffer=None, /, count=1) -> Buffer:
+  def Put(self, local_data: Buffer, dist_data:Buffer=None, /, count=1, *, reduce=None) -> Buffer:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
@@ -568,21 +623,31 @@ class GlobalIndexer:
 
     Note that:
 
-    - if a global index does not appears in any idx list, its associated data in the output
-      buffer will be uninitialized;
     - if a global index appears more than once in the idx lists, the associated data in the output
-      buffer will be the last appearing (in increasing processes order)
+      buffer will be
+
+      - the last appearing (in increasing processes order) if ``reduce=None``;
+      - the result of the reduction function, applied to the input candidates otherwise.
+
+    - if a global index does not appears in any idx list, its associated data in the output
+      buffer will be 
+      
+      - the user provided value if ``dist_data`` is preallocated;
+      - an uninitialized value if ``reduce=None`` and if ``dist_data`` is not preallocated;
+      - the neutral element of the reduction function otherwise.
 
     Args:
       local_data (buffer of size :math:`c*pn`) : data to write at each accessed index
       dist_data (buffer of size :math:`c*dn`, optional) : preallocated buffer
         to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
+      reduce (:class:`ReduceOp`, optional) : Binary operation applied to the data written
+        at the same global index. Defaults to ``None``.
     Returns:
       buffer of size :math:`c*dn`: output distributed data.
       The return object is ``dist_data`` if it was given by the user.
     """
-    return self.GIndexer_m.Put([local_data], dist_data, count)
+    return self.GIndexer_m.Put([local_data], dist_data, count, reduce=reduce)
 
   def Take_v(self, dist_data: VBuffer, local_data: VBuffer=None, /) -> VBuffer:
     """ ``take`` implementation for variable buffer-like objects 

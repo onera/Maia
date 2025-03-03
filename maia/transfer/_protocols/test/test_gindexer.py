@@ -4,7 +4,7 @@ import pytest_parallel
 import numpy as np
 
 from maia.transfer._protocols           import g_indexer
-from maia.transfer._protocols.g_indexer import GlobalIndexer, GlobalMultiIndexer
+from maia.transfer._protocols.g_indexer import GlobalIndexer, GlobalMultiIndexer, ReduceOp
 
 def test_put_strided():
     idx = np.array([1,0,2,1])
@@ -39,6 +39,19 @@ def test_put_strided():
     data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3,   3.1,   4.1, 4.2])
     g_indexer.put_strided(data_out, counts_out, idx, counts_in, data_in, extend=True)
     assert (data_out == np.array([2.1,2.2,2.3,  1.1,1.2,4.1,4.2,  3.1])).all()
+
+def test_guess_reduce_dt_and_identity():
+  assert g_indexer._guess_reduce_dt_and_identity('f', g_indexer.ReduceOp.LAND) == ('?', True)
+  assert g_indexer._guess_reduce_dt_and_identity('i', g_indexer.ReduceOp.SUM)  == ('i', 0)
+  assert g_indexer._guess_reduce_dt_and_identity('?', g_indexer.ReduceOp.SUM)  == ('l', 0)
+  assert g_indexer._guess_reduce_dt_and_identity('d', g_indexer.ReduceOp.MIN)  == ('d', np.inf)
+  assert g_indexer._guess_reduce_dt_and_identity('f', g_indexer.ReduceOp.MAX)  == ('f', -np.inf)
+  assert g_indexer._guess_reduce_dt_and_identity('i', g_indexer.ReduceOp.MAX)  == ('i', np.iinfo(np.int32).min)
+  with pytest.raises(ValueError):
+    assert g_indexer._guess_reduce_dt_and_identity('?', g_indexer.ReduceOp.PROD)
+  with pytest.raises(ValueError):
+    assert g_indexer._guess_reduce_dt_and_identity('d', g_indexer.ReduceOp.BAND)
+
 @pytest_parallel.mark.parallel(4)
 class Test_g_indexer:
 
@@ -307,6 +320,13 @@ class Test_g_indexer:
     data_out2 = np.zeros_like(data_out)
     GI.Put_v((counts_in, data_in), (counts_out, data_out2)) 
     assert np.array_equal(data_out, data_out2)
+
+    # If we use append + preallocated mode, counts_out can be compute with ReduceOp = SUM
+    counts_out = GI.Put(counts_in, reduce=ReduceOp.SUM)
+    data_out2 = np.zeros(counts_out.sum(), data_in.dtype)
+    GI.Put_v((counts_in, data_in), (counts_out, data_out2), append=True) 
+    assert np.array_equal(data_out2, data_out_app)
+
 
   def test_failures(self, comm):
     # Creating a GI with an 'out of bounds' index should raise :

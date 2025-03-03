@@ -198,19 +198,38 @@ or be allocated by the function as a numpy array if ``None`` value is used::
   # P2 : extr = array([3,5],       dtype=int)   #requested indices [0]
 
   dn = distri[rank+1] - distri[rank]
-  dist_data_new = empty(2*dn, dtype=int)
-  dist_data_new.fill(-1) # To track unitialized values
+  dist_data_new = zeros(2*dn, dtype=int) # To track unitialized values
+  if rank == 2: # To illustrate write priority
+    extr *= -1  # Now P2 has extr = array([-3,-5], dtype=int)
 
   GI.Put(extr, dist_data_new, count=2)
-  # P0 : dist_data_new = array([3,5,5,7],     dtype=int)      #glob idx 0..2
-  # P1 : dist_data_new = array([-1,-1,17,19], dtype=int)      #glob idx 2..4
+  # P0 : dist_data_new = array([-3,-5,5,7],   dtype=int)      #glob idx 0..2
+  # P1 : dist_data_new = array([0,0,17,19],   dtype=int)      #glob idx 2..4
   # P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5
 
 
 Note that as explained above, data at position 2 in ``dist_data_new`` kept
 its original value, since no process provided data for this index.
-Also note that when using the preallocated buffer mode, it is the user's responsibility to allocate
-the output buffer to the correct size and datatype.
+On the other side, the value written at position 0 is the one coming from rank 2,
+since this is the last encountered.
+
+An alternative is to use one of the available :ref:`reduction function <reduceop>` to accumulate the data
+coming from the different processes::
+
+  GI.Put(extr, dist_data_new, count=2, reduce=ReduceOp.MAX)
+  # P0 : dist_data_new = array([3,5,5,7],     dtype=int)      #glob idx 0..2
+  # P1 : dist_data_new = array([0,0,17,19],   dtype=int)      #glob idx 2..4
+  # P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5
+
+In this case, the size of the output data remains the same, but the reduction fonction is
+applied to the data written at the same index to compute the result.
+
+.. note:: 
+  - The reduction also include the initial value of the output array. In preallocated mode,
+    it is the user's responsibility to choose this initial value. In allocating mode, we use
+    the neutral element of the requested operation.
+  - If :math:`c \neq 1`, the reduction is applied to each item independently.
+
 
 
 **Variable buffer objects**:
@@ -321,3 +340,8 @@ API reference
 .. autoclass:: maia.transfer.protocols.GlobalMultiIndexer
     :members:
     :member-order: bysource
+
+.. _reduceop:
+
+.. autodata:: maia.transfer.protocols.ReduceOp
+  :annotation: : Enum class
