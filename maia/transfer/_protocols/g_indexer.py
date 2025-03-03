@@ -29,10 +29,6 @@ OP_TO_UFUNC = {ReduceOp.SUM  : np.add,
                ReduceOp.BAND : np.bitwise_and,
                ReduceOp.BOR  : np.bitwise_or}
     
-
-def counting_sort(array, n_bins):
-  return layouts.counting_sort(array, n_bins)
-
 def counting_sort_mult(arrays, n_bins):
   return layouts.counting_sort_mult(arrays, n_bins)
 
@@ -220,15 +216,21 @@ class GlobalMultiIndexer:
       r_start += size
     return out
 
-  def _Take(self, dist_data: Buffer, local_data_l: List[Buffer], count=1):
-    """ Generalization of :func:`GlobalIndexer.Take_into` for multi index access.
+  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
+    """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
     Args:
-      dist_data  (buffer) : section of the distributed data
-      local_data_l (list of :math:`N` buffer) : preallocated buffers to store extracted values
-        corresponding to each index list
+      dist_data (buffer of size :math:`c*dn`) : section of the distributed data
+      local_data_l (list of :math:`N` buffer, optional) : preallocated buffers to store extracted values
+        corresponding to each index list, or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
+    Returns:
+      :math:`N` buffer of size :math:`c*pn_k`: for each index list,
+      values extracted at the requested indices
     """
+    if local_data_l is None:
+      local_data_l = [np.empty(count*pn, dist_data.dtype) for pn in self.pn]
+
     assert len(local_data_l) == len(self.pn)
 
     if dist_data.size - count*self.dn != 0:
@@ -236,6 +238,8 @@ class GlobalMultiIndexer:
     for ipart, (data_out, pn) in enumerate(zip(local_data_l, self.pn)):
       if data_out.size - count*pn != 0:
         raise ValueError(f"Invalid size of output local buffer n°{ipart} (expected {count*pn}, got {data_out.size})")
+      if data_out.dtype != dist_data.dtype:
+        raise TypeError(f"Invalid dtype of output local buffer n°{ipart} (expected {dist_data.dtype.char}, got {data_out.dtype.char})")
 
 
     send_buff = np.empty(count*self.dist_select_idx.size, dist_data.dtype)
@@ -260,21 +264,7 @@ class GlobalMultiIndexer:
         for j in range(count):
           data_out[j::count] = recv_buff[put_idx+j]
 
-  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
-    """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
-    Args:
-      dist_data (buffer of size :math:`c*dn`) : section of the distributed data
-      local_data_l (list of :math:`N` buffer, optional) : preallocated buffers to store extracted values
-        corresponding to each index list, or None
-      count (int) : scalar value of :math:`c`. Defaults to 1.
-    Returns:
-      :math:`N` buffer of size :math:`c*pn_k`: for each index list,
-      values extracted at the requested indices
-    """
-    if local_data_l is None:
-      local_data_l = [np.empty(count*pn, dist_data.dtype) for pn in self.pn]
-    self._Take(dist_data, local_data_l, count)
     return local_data_l
 
   def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1, *, reduce:ReduceOp=None) -> Buffer:
