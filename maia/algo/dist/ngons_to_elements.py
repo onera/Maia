@@ -243,15 +243,16 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   # Now get for each cell section the corresponding vertices, which will be
   # gathered to make nodal connectivity
-  sections_stride, sections_face_vtx = EP.block_to_part_strided(face_n, face_vtx.values, face_distri, [np.abs(p)-1 for p in cell_face_section], comm)
+  sections_face_vtx = EP.block_to_part(face_vtx, face_distri, [np.abs(p)-1 for p in cell_face_section], comm)
 
   combine_funcs = [combine_to_tetra, combine_to_pyra, combine_to_penta, combine_to_hexa]
 
   for i, elt_kind in enumerate(['TETRA_4', 'PYRA_5', 'PENTA_6', 'HEXA_8']):
     elt = PT.get_child_from_name_and_label(zone, elt_kind, 'Elements_t')
     if elt is not None:
+      _section_face_vtx = sections_face_vtx[i]
       ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
-      combine_funcs[i](sections_stride[i], sections_face_vtx[i], cell_face_section[i], ec) 
+      combine_funcs[i](_section_face_vtx.counts, _section_face_vtx.values, cell_face_section[i], ec) 
 
   # Renumber PointList indexing cells
   all_pl = _collected_shifted_pl(zone, 'CellCenter', -PT.Element.Range(nface_n)[0])

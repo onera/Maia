@@ -5,6 +5,7 @@ import Pypdm.Pypdm        as PDM
 
 import maia
 from maia.utils import par_utils, np_utils
+from maia.utils import vstride as vs
 
 from . import _protocols
 
@@ -81,7 +82,6 @@ def PartToBlock(distri, ln_to_gn_list, comm, *, weight=False, keep_multiple=Fals
     return PDM.PartToBlock(comm, _ln_to_gn_list, pWeight=pWeight, partN=len(_ln_to_gn_list),
                           t_distrib=0, t_post=t_post, userDistribution=_full_distri)
   else:
-    assert not keep_multiple, "keep_multiple only supported for legacy version"
     if isinstance(ln_to_gn_list, list):
       return GlobalMultiIndexer(_full_distri, ln_to_gn_list, comm)
     else:
@@ -124,7 +124,18 @@ def block_to_part(dist_data, distri, ln_to_gn_list, comm, legacy=False):
   """
   BTP = BlockToPart(distri, ln_to_gn_list, comm, legacy)
 
-  exch_one = lambda d_field: BTP.exchange_field(d_field)[1] if legacy else BTP.Take(d_field)
+  if legacy:
+    exch_one = lambda d_field: BTP.exchange_field(d_field)[1]
+  else:
+    def exch_one(d_field):
+      if isinstance(d_field, vs.VStrideArray):
+        out = BTP.Take_v((d_field.counts, d_field.values))
+        if isinstance(BTP, GlobalIndexer): # out is a single VBuffer
+          return vs.from_counts(*out)
+        elif isinstance(BTP, GlobalMultiIndexer): # out is a list of VBuffer
+          return [vs.from_counts(*vbuff) for vbuff in out]
+      else: # Return a Buffer or a list of Buffer
+        return BTP.Take(d_field)
 
   if isinstance(dist_data, dict):
     _check_dict_keys(dist_data, comm)
@@ -136,35 +147,7 @@ def block_to_part(dist_data, distri, ln_to_gn_list, comm, legacy=False):
 
   return part_data
 
-def block_to_part_strided(dist_stride, dist_data, distri, ln_to_gn_list, comm, legacy=False):
-  """
-  Create and exchange using a BlockToPart object with variable stride.
-  Allow single field or dict of fields
-  """
-  BTP = BlockToPart(distri, ln_to_gn_list, comm, legacy)
 
-  if legacy:
-    exch_one = lambda d_field, d_stride : BTP.exchange_field(d_field, d_stride)
-  else:
-    def exch_one(d_field, d_stride):
-      data_out = BTP.Take_v((d_stride, d_field)) #data_out is either (part_data, part_stride) (if GIndexer) or 
-      if not isinstance(ln_to_gn_list, list): # In this case, data_out is a tuple part_data, part_stride
-        return data_out 
-      else: # In this case, data_out is a list of tuple (part_data_i, part_stride_i) -> unzip it to get two lists
-        p_strid = [data[0] for data in data_out]
-        p_field = [data[1] for data in data_out]
-        return p_strid, p_field
-
-  if isinstance(dist_data, dict):
-    _check_dict_keys(dist_data, comm)
-    part_data = dict()
-    for name, d_field in dist_data.items():
-      part_stride, _part_data = exch_one(d_field, dist_stride)
-      part_data[name] = _part_data
-  else:
-    part_stride, part_data = exch_one(dist_data, dist_stride)
-
-  return part_stride, part_data
 
 def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kwargs):
   """
@@ -172,27 +155,47 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
   Allow single field or dict of fields
   """
   legacy = kwargs.get('legacy', False)
-  if reduce_func is not None:
-    if legacy:
-      PTB = PartToBlock(distri, ln_to_gn_list, comm, keep_multiple=True, **kwargs)
+
+  if legacy: # Legacy mode allow only fixed buff (with reduction)
+    kwargs['keep_multiple'] = bool(reduce_func is not None)
+    PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+    if reduce_func is not None:
       def _exchange_one(part_fields):
         p_stride = [np.ones(p_f.size, dtype=np.int32) for p_f in part_fields]
         dist_stride, dist_data = PTB.exchange_field(part_fields, p_stride)
         dist_data = reduce_func(dist_data, dist_stride)
         return dist_data
     else:
-      PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
+      def _exchange_one(part_fields):
+        return PTB.exchange_field(part_fields)[1]
+
+  else:
+    PTB = PartToBlock(distri, ln_to_gn_list, comm)
+    if reduce_func is not None: # Reduce func => fixed buff
       def _exchange_one(part_fields):
         func_to_op = {reduce_sum: ReduceOp.SUM, reduce_min: ReduceOp.MIN, reduce_max: ReduceOp.MAX, reduce_mean:ReduceOp.SUM}
         dist_data = PTB.Put(part_fields, reduce=func_to_op[reduce_func])
         if reduce_func == reduce_mean:
           dist_data /= PTB.access_counts
         return dist_data
+    else:
+      append = kwargs.get('append', False) or kwargs.get('keep_multiple', False)
+      if append: # Append mode => vbuffer
+        def _exchange_one(part_fields):
+          if isinstance(PTB, GlobalIndexer):
+            assert isinstance(part_fields, vs.VStrideArray)
+            return vs.from_counts(*PTB.Put_v((part_fields.counts, part_fields.values), append=True))
+          elif isinstance(PTB, GlobalMultiIndexer):
+            assert all(isinstance(pf, vs.VStrideArray) for pf in part_fields)
+            return vs.from_counts(*PTB.Put_v([(pf.counts, pf.values) for pf in part_fields], append=True))
+      elif isinstance(PTB, GlobalIndexer): # We can guess from input arg
+        def _exchange_one(part_fields):
+          return PTB.Put_v((part_fields.counts, part_fields.values)) if isinstance(part_fields, vs.VStrideArray) \
+            else PTB.Put(part_fields)
+      else: # We can not be sure => default to fixed buff
+        _exchange_one = lambda part_fields : PTB.Put(part_fields)
 
-  else:
-    PTB = PartToBlock(distri, ln_to_gn_list, comm, **kwargs)
-    def _exchange_one(part_fields):
-      return PTB.exchange_field(part_fields)[1] if legacy else PTB.Put(part_fields)
+  
 
   if isinstance(part_data, dict):
     _check_dict_keys(part_data, comm)

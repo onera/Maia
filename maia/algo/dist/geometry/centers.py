@@ -119,8 +119,7 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
     face_vtx = MT.Element.connectivity(ngon_node)
     if face_indices is not None:
       face_distri = PT.maia.getDistribution(ngon_node, 'Element')[1]
-      face_vtx_n, face_vtx_v = EP.block_to_part_strided(face_vtx.counts, face_vtx.values, face_distri, _face_indices, comm)
-      face_vtx = vs.from_counts(face_vtx_n, face_vtx_v)
+      face_vtx = EP.block_to_part(face_vtx, face_distri, _face_indices, comm)
   
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)

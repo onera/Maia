@@ -31,10 +31,8 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   face_vtx = MT.Element.connectivity(ngon)
 
   # Get the vertex associated to the faces in FaceList
-  p_stride, part_data = EP.block_to_part_strided(face_vtx.counts, face_vtx.values, \
-      distri_ngon, face_ids-1, comm)
+  return EP.block_to_part(face_vtx, distri_ngon, face_ids-1, comm)
 
-  return vstride.from_counts(p_stride, part_data)
 
 def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm):
   """
@@ -69,23 +67,16 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
     restricted_pl_vtx = pl_vtx
 
   # Exchange to locally have the list of *all* jn faces related to vertex
-  p_stride = np.diff(pl_vtx_face_idx).astype(np.int32, copy=False)
-
-  part_data = {'vtx_to_face'   : pl_vtx_face,
-               'vtx_to_face_d' : pl_vtx_face_d}
+  part_data = {'vtx_to_face'   : vstride.from_displs(pl_vtx_face_idx, pl_vtx_face),
+               'vtx_to_face_d' : vstride.from_displs(pl_vtx_face_idx, pl_vtx_face_d)}
 
   distri = par_utils.distribution_from_gnum([pl_vtx], comm, True, True)
-  GI = EP.GlobalIndexer(distri, pl_vtx-1, comm)
-  dist_data = dict()
-  for field_name, p_field in part_data.items():
-    d_stride, d_field = GI.Put_v((p_stride, p_field), append=True)
-    dist_data[field_name] = d_field
 
-  p_stride, part_data = EP.block_to_part_strided(d_stride, dist_data, \
-      distri, restricted_pl_vtx-1, comm)
+  dist_data = EP.part_to_block(part_data, distri, pl_vtx-1, comm, append=True)
+  part_data = EP.block_to_part(dist_data, distri, restricted_pl_vtx-1, comm)
 
-  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"], return_index=True)
-  extended_pl_d = part_data["vtx_to_face_d"][unique_idx]
+  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"].values, return_index=True)
+  extended_pl_d = part_data["vtx_to_face_d"].values[unique_idx]
 
   return extended_pl, extended_pl_d
 

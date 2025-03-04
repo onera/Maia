@@ -92,12 +92,12 @@ def preserve_orientation(part_zones, comm):
   # In addition, exchange partition id and reduce with min to choose a master
   dist_data_f = vs.from_counts(*GI.Put_v(data_list, append=True))
 
-  dist_data = dist_data_f.reduce(vs.ReduceOp.MIN)[GI.access_counts >= 2]
+  dist_data = dist_data_f.reduce(vs.ReduceOp.MIN)[mask]
   
   # Send back master part. id to partitions (we do it only for duplicated faces)
-  dist_stride = mask.astype(np.int32)
+  send_data = vs.from_counts(mask.astype(np.int32), dist_data)
 
-  out_stride, out_data = EP.block_to_part_strided(dist_stride, dist_data, distri, [g-1 for g in gnum_list], comm)
+  out_data = EP.block_to_part(send_data, distri, [g-1 for g in gnum_list], comm)
 
   # Now treat partitions to swap faces 
   for izone, part_zone in enumerate(part_zones):
@@ -106,7 +106,7 @@ def preserve_orientation(part_zones, comm):
     # Only faces having out_stride == 1 should be considered, and in addition
     # we need to retrieve their local num in all face (because we extracted bnd faces)
     ext_faces_left_pe = bnd_list[izone]
-    todeal = ext_faces_left_pe[out_stride[izone]==1]
+    todeal = ext_faces_left_pe[out_data[izone].counts==1]
 
     ngon_node  = PT.Zone.NGonNode(part_zone)
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')[1]
@@ -117,7 +117,7 @@ def preserve_orientation(part_zones, comm):
       nface_node  = PT.Zone.NFaceNode(part_zone)
       cell_face = MT.Element.connectivity(nface_node)
 
-    for iface, master in zip(todeal, out_data[izone]):
+    for iface, master in zip(todeal, out_data[izone].values):
       if master != cur_zone_glob:
         pe[iface, 1] = pe[iface, 0] # Swap PE
         pe[iface, 0] = 0
