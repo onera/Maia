@@ -243,6 +243,7 @@ def concatenate_subsets_from_families(dist_tree, comm, families='*'):
         for zsr_bc_n in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
           pl_n = PT.get_child_from_name(bc_n, 'PointList')
           PT.new_IndexArray(value=PT.get_value(pl_n), parent=zsr_bc_n)
+          PT.new_GridLocation(PT.Subset.GridLocation(bc_n), zsr_bc_n)
           PT.rm_children_from_name(zsr_bc_n, 'BCRegionName')
 
         bc_nodes.append(bc_n)

@@ -178,6 +178,7 @@ def test_concatenate_patch(specified, comm):
 
   zsr_n = PT.get_node_from_name(dist_zone, 'zsr_surface.3')
   assert PT.get_child_from_name(zsr_n, 'BCRegionName') is None
+  assert PT.Subset.GridLocation(zsr_n) == 'FaceCenter'
   zsr_pl_n = PT.get_child_from_name(zsr_n, 'PointList')
   zsr_fld_n = PT.get_child_from_name(zsr_n, 'fld')
   assert zsr_pl_n is not None

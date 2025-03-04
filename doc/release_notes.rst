@@ -23,6 +23,7 @@ Developpement version
 ^^^^^^^^
 - Pytree / YAML loader: allow spaces in nodes name
 - Create internal edges in isosurface and extract_part functionnalities
+- concatenate_subsets_from_families: fix GridLocation value of updated ZoneSubRegion nodes
 
 v1.6 (January 2025)
 -------------------
