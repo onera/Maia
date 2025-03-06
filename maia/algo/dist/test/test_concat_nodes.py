@@ -135,10 +135,12 @@ def test_concatenate_patch(specified, comm):
     for bc_name in bc_names:
       bc_n = PT.get_node_from_name_and_label(dist_tree, bc_name, 'BC_t')
       PT.new_FamilyName(family_name, parent=bc_n)
-  
-  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(0, 5)], 'WALL')
-  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(5, 9)], 'SYM')
-  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(9,10)], 'FARFIELD')
+
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [3]        ], 'WALL')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [0,1,6,8,9]], 'SYM')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [4,7]      ], 'FARFIELD')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [5]        ], 'INLET')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [2]        ], 'OUTLET')
   tag_fam_in_bcs(dist_tree, [f'ridge.{i}'   for i in range(0,20)], 'RIDGE')
 
   # > Create ZSR with BCRegionName
@@ -152,7 +154,7 @@ def test_concatenate_patch(specified, comm):
     families = ['WALL','FARFIELD','RIDGE']
     GN.concatenate_subsets_from_families(dist_tree, comm, families)
   else:
-    families = ['WALL', 'SYM', 'FARFIELD','RIDGE']
+    families = ['SYM','OUTLET','WALL','FARFIELD','INLET','RIDGE']
     GN.concatenate_subsets_from_families(dist_tree, comm)
 
   is_merged_bc = lambda n: PT.get_label(n)=='BC_t' and PT.get_name(n) in families
@@ -174,7 +176,7 @@ def test_concatenate_patch(specified, comm):
     is_sym = lambda n: PT.get_label(n) in ['BC_t'] and\
                        PT.predicate.belongs_to_family(n, 'SYM', True)
 
-    assert len(PT.get_nodes_from_predicate(dist_tree, is_sym))==4
+    assert len(PT.get_nodes_from_predicate(dist_tree, is_sym))==5
 
   zsr_n = PT.get_node_from_name(dist_zone, 'zsr_surface.3')
   assert PT.get_child_from_name(zsr_n, 'BCRegionName') is None
@@ -196,10 +198,12 @@ def test_deconcatenate_patch(specified, comm):
     for bc_name in bc_names:
       bc_n = PT.get_node_from_name_and_label(dist_tree, bc_name, 'BC_t')
       PT.new_FamilyName(family_name, parent=bc_n)
-  
-  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(0, 5)], 'WALL')
-  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(5, 9)], 'SYM')
-  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(9,10)], 'FARFIELD')
+
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [3]        ], 'WALL')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [0,1,6,8,9]], 'SYM')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [4,7]      ], 'FARFIELD')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [5]        ], 'INLET')
+  tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in [2]        ], 'OUTLET')
   tag_fam_in_bcs(dist_tree, [f'ridge.{i}'   for i in range(0,20)], 'RIDGE')
 
   dist_tree_cp = PT.deep_copy(dist_tree)
@@ -208,7 +212,7 @@ def test_deconcatenate_patch(specified, comm):
     families = ['WALL','FARFIELD','RIDGE']
     GN.concatenate_subsets_from_families(dist_tree, comm, families)
   else:
-    families = ['WALL', 'SYM', 'FARFIELD','RIDGE']
+    families = ['WALL','SYM','FARFIELD','INLET','OUTLET','RIDGE']
     GN.concatenate_subsets_from_families(dist_tree, comm)
 
   GN.deconcatenate_subsets_from_families(dist_tree, comm, families)
