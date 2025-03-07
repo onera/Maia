@@ -1,4 +1,7 @@
 import pytest
+import numpy as np
+import os
+#mport Converter 
 
 know_cassiopee = True
 try:
@@ -91,3 +94,41 @@ BaseA CGNSBase_t:
                    }
   LC.add_sizes_to_tree(tree, size_data_tree)
   assert len(PT.get_nodes_from_name(tree, '*#Size')) == 6
+
+
+
+
+# # Fixture pour simuler un fichier HDF de test
+# @pytest.fixture
+# def sample_hdf_file(tmpdir):
+#     # Crée un arbre CGNS simple
+#     root = PT.new_node("ParentNode", "UserDefinedData_t", 3.14)
+#     zone = PT.new_node('Zone1','Zone_t', value=np.array([1, 2, 3]))
+#     base = PT.new_node('Base1')
+#     PT.add_child(base, zone)
+#     PT.add_child(root,base)
+    
+#     # Sauvegarde l'arbre dans un fichier HDF temporaire
+#     filename = os.path.join(tmpdir, 'test.hdf')
+#     Converter.PyTree.convertPytree2File (tree, filename, format='bin_hdf')
+#     return filename
+  
+# #pytest_parallel.mark.parallel(3)
+# def test_load_size_tree(sample_hdf_file):
+#     from maia.io import _hdf_io_cass as LC
+#     comm= MPI.COMM_WORLD  # Communicateur MPI
+
+#     # Appel de la fonction à tester
+#     size_tree = load_size_tree(sample_hdf_file, comm)
+
+#     # Vérifications
+#     if comm.Get_rank() == 0:
+#         # Sur le rang 0, l'arbre doit être chargé et traité
+#         assert size_tree is not None
+#         assert PT.get_node_from_name(size_tree, 'Base1') is not None
+#         assert PT.get_node_from_name(size_tree, 'Zone1') is not None
+#     else:
+#         # Sur les autres rangs, l'arbre doit être diffusé depuis le rang 0
+#         assert size_tree is not None
+#         assert PT.get_node_from_name(size_tree, 'Base1') is not None
+#         assert PT.get_node_from_name(size_tree, 'Zone1') is not None

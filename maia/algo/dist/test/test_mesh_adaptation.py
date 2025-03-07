@@ -51,7 +51,34 @@ def test_unpack_metric():
   metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, "FlowSol/Tensor")]
   assert metrics_names==[ "TensorXX","TensorXY","TensorXZ",
                           "TensorYY","TensorYZ","TensorZZ" ]
+  
+  # > Wrong because metric path is integer (not str and not list)
+  with pytest.raises(ValueError):
+    MA.unpack_metric(tree, 10)
+  # > Wrong because leads to scalar and tensor fields (7 nodes)
+ 
+  yz_extra= """
+  Base CGNSBase_t [3, 3]:
+    Zone Zone_t [[3,1,0]]:
+      ZoneType ZoneType_t "Unstructured":
+      FlowSol FlowSolution_t:
+        Mach     DataArray_t R8 [1., 1., 1.]:
+        TensorXX DataArray_t R8 [1., 1., 1.]:
+        TensorZZ DataArray_t R8 [1., 1., 1.]:
+        TensorXY DataArray_t R8 [1., 1., 1.]:
+        TensorYY DataArray_t R8 [1., 1., 1.]:
+        TensorXZ DataArray_t R8 [1., 1., 1.]:
+        TensorYZ DataArray_t R8 [1., 1., 1.]:
+        Tensor   DataArray_t R8 [1.]:  # Scalar field with prefix 'Tensor'
+        WrongA   DataArray_t R8 [1., 1., 1.]:
+        WrongB   DataArray_t R8 [1., 1., 1.]:
+        WrongC   DataArray_t R8 [1., 1., 1.]:
+  """
+  tree_extra = PT.yaml.to_cgns_tree(yz_extra)  # Ajouter un champ scalaire "Tensor"
 
+  with pytest.raises(ValueError):
+    MA.unpack_metric(tree_extra, "FlowSol/Tensor")
+       
   # > Paths to multiple fields (order matters)
   metric = ["FlowSol/TensorXX", "FlowSol/TensorZZ",
             "FlowSol/TensorXZ", "FlowSol/TensorXY",
@@ -59,6 +86,20 @@ def test_unpack_metric():
   metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, metric)]
   assert metrics_names==[ "TensorXX","TensorZZ","TensorXZ",
                           "TensorXY","TensorYZ","TensorYY" ]
+yz_extra2 = """
+Base CGNSBase_t [3, 3]:
+  Zone Zone_t [[3,1,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    FlowSol FlowSolution_t:
+      TensorXY DataArray_t R8 [1., 1., 1.]:
+      TensorYZ DataArray_t R8 [1., 1., 1.]:
+"""
+tree_extra2 = PT.yaml.to_cgns_tree(yz_extra2)
+
+with pytest.raises(ValueError):
+    MA.unpack_metric(tree_extra2, "FlowSol/Tensor")
+
+
 
 @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
 @pytest_parallel.mark.parallel(2)

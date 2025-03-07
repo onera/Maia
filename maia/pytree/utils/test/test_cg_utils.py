@@ -20,3 +20,20 @@ def test_gc_transform():
 
   assert (utils.gc_transform_point(gc, np.array([17,6,3])) == [4,9,3]).all()
   assert (utils.gc_transform_window(gc, np.array([[17,17], [4,8], [1,5]])) == [[6,2],[9,9],[5,1]]).all()
+  
+def test_flatten_cgns():
+    # Cas simple : liste plate
+    assert list(utils.flatten_cgns([1, 2, 3])) == [1, 2, 3]
+
+    # Cas avec des listes imbriquées
+    assert list(utils.flatten_cgns([1, [2, 3], [4, [5, 6]]])) == [1, 2, 3, 4, 5, 6]
+
+    # Cas avec des types non itérables (str, bytes)
+    assert list(utils.flatten_cgns([1, "test", b"bytes", [2, 3]])) == [1, "test", b"bytes", 2, 3]
+
+   # Cas avec un élément qui est un nœud valide
+    node = ["MyNode", None, [], "UserDefinedData_t"]
+    assert list(utils.flatten_cgns([1, node, [2, 3]])) == [1, node, 2, 3]
+
+    # Cas avec un mélange de types
+    assert list(utils.flatten_cgns([[1, 2], (3, 4), {5, 6}, [7, [8, 9]]])) == [1, 2, 3, 4, 5, 6, 7, 8, 9]

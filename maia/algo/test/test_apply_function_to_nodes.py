@@ -63,9 +63,26 @@ def test_zones_iterator():
     for z in zones_iterator(PT.get_node_from_label(tree, 'ZoneBC_t')):
       pass
 
-# TO DO : add pytest to the function apply_to_bases  
-def mock_function(node, *args):
-    node["processed"] = True
-    if args:
-        node["args"] = args
+# TO DO : add pytest to the function apply_to_bases 
+def test_apply_to_bases():
+    def add_child(base):
+        # add a new child to base, the child is an unstructured zone
+        PT.new_child(base, 'ZoneType', 'ZoneType_t', "Unstructured")
 
+    yt = """
+    BaseA CGNSBase_t:
+      zoneI Zone_t:
+    BaseB CGNSBase_t:
+      zoneII Zone_t:
+    """
+    # yam to cgns tree
+    tree = PT.yaml.to_cgns_tree(yt)
+    # extract a node from a tree
+    base1= PT.get_node_from_name(tree, 'BaseA')
+    base2= PT.get_node_from_name(tree, 'BaseB')
+
+    apply_to_bases(add_child, tree)
+    assert PT.get_node_from_name(base1,'ZoneType') is not None
+    # check if the fucntion is applied to others zones
+    with pytest.raises(Exception):
+      apply_to_bases(add_child, PT.get_node_from_name(tree, "zoneI"))
