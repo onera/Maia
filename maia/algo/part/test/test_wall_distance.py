@@ -280,3 +280,17 @@ def test_walldistance_2d_S(is_perio, comm):
 
   assert np.allclose   (PT.get_node_from_name(tree, 'TurbulentDistance')[1], expected_wd)
   assert np.array_equal(PT.get_node_from_name(tree, 'ClosestEltGnum')[1], expected_gnum)
+
+@pytest_parallel.mark.parallel(2)
+def test_wall_distance_no_wall(comm):
+  dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  WD.compute_wall_distance(part_tree, comm)
+
+  for zone in PT.get_all_Zone_t(part_tree):
+    fs_node = PT.get_child_from_name(zone, 'WallDistance')
+    assert PT.Subset.GridLocation(fs_node) == 'CellCenter'
+    assert (PT.get_child_from_name(fs_node, 'TurbulentDistance')[1] == np.inf).all()
+    assert (PT.get_child_from_name(fs_node, 'ClosestEltGnum')[1] == -1).all()
+    assert (PT.get_child_from_name(fs_node, 'ClosestEltDomId')[1] == -1).all()
+    

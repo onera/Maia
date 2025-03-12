@@ -24,6 +24,7 @@ Developpement version
 - Pytree / YAML loader: allow spaces in nodes name
 - Create internal edges in isosurface and extract_part functionnalities
 - concatenate_subsets_from_families: fix GridLocation value of updated ZoneSubRegion nodes
+- compute_wall_distance: write output (using huge value) even if no BCWall are found in mesh
 
 v1.6 (January 2025)
 -------------------

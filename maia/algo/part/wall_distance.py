@@ -8,6 +8,8 @@ import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+
 from maia.utils                      import np_utils
 from maia.utils                      import logging as mlog
 from maia.transfer                   import protocols as EP
@@ -31,6 +33,31 @@ def _are_same_perio_abs(first, second):
     if np.allclose(first_angle, -second_angle) and np.allclose(first_trans, -second_trans):
       return True
   return False
+      
+def _create_output_container(zone, point_cloud, out_fs_name):
+
+  if point_cloud in ['Vertex', 'CellCenter']:
+    output_loc = point_cloud
+  else:
+    output_loc = PT.Subset.GridLocation(PT.get_child_from_name(zone, point_cloud))
+  
+  # Test if FlowSolution already exists or create it
+  fs_node = PT.get_child_from_name(zone, out_fs_name)
+  if fs_node is None:
+    fs_node = PT.new_DiscreteData(name=out_fs_name, loc=output_loc, parent=zone)
+  assert PT.Subset.GridLocation(fs_node) == output_loc
+
+  return fs_node
+
+def _get_output_shape(zone, out_container):
+  output_loc = PT.Subset.GridLocation(out_container)
+  if output_loc == "CellCenter":
+    shape = PT.Zone.CellSize(zone)
+  elif output_loc == "Vertex":
+    shape = PT.Zone.VertexSize(zone)
+  else:
+    raise RuntimeError("Unmanaged output location")
+  return shape
 
 def detect_wall_families(tree, bcwalls=BC_WALLS):
   """
@@ -236,21 +263,8 @@ class WallDistance:
       fields = self._walldist.get(i_domain, i_part) if self.method == "cloud" else self._walldist.get(i_part)
 
       # Retrieve location
-      if self.point_cloud in ['Vertex', 'CellCenter']:
-        output_loc = self.point_cloud
-      else:
-        output_loc = PT.Subset.GridLocation(PT.get_child_from_name(part_zone, self.point_clouds))
-      # Test if FlowSolution already exists or create it
-      fs_node = PT.get_child_from_name(part_zone, self.out_fs_n)
-      if fs_node is None:
-        fs_node = PT.new_DiscreteData(name=self.out_fs_n, loc=output_loc, parent=part_zone)
-      assert PT.Subset.GridLocation(fs_node) == output_loc
-      if output_loc == "CellCenter":
-        shape = PT.Zone.CellSize(part_zone)
-      elif output_loc == "Vertex":
-        shape = PT.Zone.VertexSize(part_zone)
-      else:
-        raise RuntimeError("Unmanaged output location")
+      fs_node = _create_output_container(part_zone, self.point_cloud, self.out_fs_n)
+      shape = _get_output_shape(part_zone, fs_node)
 
       # Wall distance
       wall_dist = np.sqrt(fields['ClosestEltDistance'])
@@ -467,7 +481,20 @@ def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name
   out = walldist.compute()
   end = time.time()
   if out == -1:
-    mlog.error(f"Wall distance computing failed because no wall-like BC_t have been found in tree")
+    mlog.warning(f"Wall distance computing skipped because no wall-like BC_t have been found in tree." \
+                  " Default values used for output arrays.")
+
+    for part_zone in PT.get_all_Zone_t(part_tree):
+      fs_node = _create_output_container(part_zone, point_cloud, out_fs_name)
+      shape = _get_output_shape(part_zone, fs_node)
+
+      PT.new_DataArray("ClosestEltGnum",       np.full(shape, -1, dtype=pdm_dtype, order='F'), parent=fs_node)
+      PT.new_DataArray("ClosestEltDomId",      np.full(shape, -1, dtype=pdm_dtype, order='F'), parent=fs_node)
+      PT.new_DataArray('TurbulentDistance',    np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
+      PT.new_DataArray('ClosestEltProjectedX', np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
+      PT.new_DataArray('ClosestEltProjectedY', np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
+      PT.new_DataArray('ClosestEltProjectedZ', np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
+      
   else:
     mlog.info(f"Wall distance computed ({end-start:.2f} s)")
     for zone in PT.iter_all_Zone_t(part_tree): #Rename Distance -> TurbulentDistance
