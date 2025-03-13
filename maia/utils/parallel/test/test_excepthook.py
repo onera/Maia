@@ -2,72 +2,62 @@ import sys
 import pytest
 import pytest_parallel
 from mpi4py import MPI
-from maia.utils.parallel.excepthook import (
-    mpi_excepthook, 
-    enable_mpi_excepthook, 
-    disable_mpi_excepthook, 
-    sys_excepthook)
 
-def dummy_abort(code):
-    raise RuntimeError(f"Abort called with code {code}")
+from maia.utils.parallel import excepthook
 
-
+# We dont want the call to MPI_Abort to destroy the MPI environnemnt,
+# so we replace Abort method by a dummy function storing the abort code
 class DummyComm:
     def __init__(self, real_comm):
         self._real = real_comm
+        self._aborted = None
     def __getattr__(self, attr):
         if attr == "Abort":
-            return dummy_abort
+            return self.dummy_abort
         return getattr(self._real, attr)
 
+    def dummy_abort(self, code):
+        self._aborted = code
 
-def dummy_excepthook(etype, evalue, tb):
-    dummy_excepthook.called = (etype, evalue, tb)
-dummy_excepthook.called = None
 
-@pytest.fixture(autouse=True)
-def restore_excepthook(monkeypatch):
-
-    original_hook = sys.excepthook
-    yield
-    monkeypatch.setattr(sys, "excepthook", original_hook)
-
-@pytest_parallel.mark.parallel(1)
+@pytest_parallel.mark.parallel(2)
 def test_mpi_excepthook(monkeypatch, comm, capsys):
 
-    original_comm = comm
-    dummy_comm = DummyComm(original_comm)
+    dummy_comm = DummyComm(comm)
 
+    # For this test, replace COMM_WORLD by the dummy communicator to avoid
+    # the call to Abort method
     monkeypatch.setattr(MPI, "COMM_WORLD", dummy_comm)
+    
+    # We can not raise exception directly, because pytest will catch it
+    # We call mpi_excepthook with an exception object instead
+    if comm.rank == 1:
+        excepthook.mpi_excepthook(ValueError, ValueError("error msg"), None)
 
-    monkeypatch.setattr(sys.modules['maia.utils.parallel.excepthook'], "sys_excepthook", dummy_excepthook)
-    
-    with pytest.raises(RuntimeError, match="Abort called with code 1"):
-        mpi_excepthook(ValueError, ValueError("error"), None)
-    
-    assert dummy_excepthook.called is not None, "Dummy excepthook was not called."
-    etype, evalue, tb = dummy_excepthook.called
-    assert etype is ValueError
-    assert isinstance(evalue, ValueError)
-    assert str(evalue) == "error"
-    
     captured = capsys.readouterr().err
-    rank = dummy_comm.Get_rank()
-    expected_message = f"Your application aborted because of an uncaught exception on rank {rank}:\n\n"
-    assert expected_message in captured
 
-def test_enable_mpi_excepthook(monkeypatch):
+    if comm.rank == 0:
+        assert captured == ''
+        # Abort is not called on rank 0, but in true conditions MPI would have finalize
+        assert dummy_comm._aborted == None
+    elif comm.rank == 1:
+        # Check that except hook added the abort line
+        assert captured.startswith("Your application aborted because of an uncaught exception on rank 1:\n\n")
+        # Check that exception is printed by sys_excepthook
+        assert "ValueError" in captured
+        assert "error msg" in captured
+        # Check that MPI_Abort has been called
+        assert dummy_comm._aborted == 1
 
-    original_hook = sys.excepthook
-    enable_mpi_excepthook()
-    assert sys.excepthook == mpi_excepthook, "sys.excepthook must be set to mpi_excepthook after enabling."
-    monkeypatch.setattr(sys, "excepthook", original_hook)
 
-def test_disable_mpi_excepthook(monkeypatch):
-    original_hook = sys.excepthook
-    enable_mpi_excepthook()
-    disable_mpi_excepthook()
+def test_enable_mpi_excepthook():
+
+    excepthook.enable_mpi_excepthook()
+    assert sys.excepthook == excepthook.mpi_excepthook, "sys.excepthook must be set to mpi_excepthook after enabling."
+
+def test_disable_mpi_excepthook():
+    excepthook.enable_mpi_excepthook()
+    excepthook.disable_mpi_excepthook()
     
-    assert sys.excepthook == sys_excepthook, "sys.excepthook should be reset to the original after disabling."
+    assert sys.excepthook == excepthook.sys_excepthook, "sys.excepthook should be reset to the original after disabling."
 
-    monkeypatch.setattr(sys, "excepthook", original_hook)
