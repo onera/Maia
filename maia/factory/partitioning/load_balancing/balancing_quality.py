@@ -13,11 +13,9 @@ def compute_balance_and_splits_seq(repart_per_zone, display=False):
   assert repart_per_zone.ndim == 2
   n_zone, n_rank = repart_per_zone.shape
 
+  mask = np.ma.masked_equal(repart_per_zone, 0, copy=False)
   max_part_size = np.max(repart_per_zone)
-  #min_part_size = np.min(np.ma.masked_equal(repart_per_zone, 0, copy=False)) #min, ignoring 0
-  # CHANGED TO AVOID DIVISON PER 0
-  masked_repart = np.ma.masked_equal(repart_per_zone, 0, copy=False)
-  min_part_size = np.min(masked_repart) if masked_repart.count() > 0 else 0  # manage the case where to is masked
+  min_part_size = np.min(mask) if mask.count() > 0 else 0 # Set min to 0 if all array is masked
   n_cuts        = np.count_nonzero(repart_per_zone)
 
   proc_load = np.sum(repart_per_zone, axis=0)
@@ -60,10 +58,9 @@ def compute_balance_and_splits(repart_per_zone, comm, display=False):
   
   n_rank = comm.Get_size()
 
+  mask = np.ma.masked_equal(repart_per_zone, 0, copy=False)
   max_part_size = comm.allreduce(np.max(repart_per_zone), MPI.MAX)
-  # CHANGED TO TEST THE CASE WHERE if masked_repart.count() == 0
-  masked_repart = np.ma.masked_equal(repart_per_zone, 0, copy=False)
-  min_part_size = comm.allreduce(np.min(masked_repart) if masked_repart.count() > 0 else 0, MPI.MIN) #min, ignoring 0
+  min_part_size = comm.allreduce(np.min(mask) if mask.count() > 0 else 0, MPI.MIN) #min, ignoring 0
   n_cuts        = comm.allreduce(np.count_nonzero(repart_per_zone), MPI.SUM)
 
   proc_load = np.empty(n_rank, dtype=int)
