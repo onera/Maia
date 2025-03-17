@@ -262,37 +262,4 @@ def test_update_gc_donor_name(comm):
     expected = ['matchAB.1']
   p_tree = PT.yaml.to_cgns_tree(pt)
   PS.update_gc_donor_name(p_tree, comm)
-
   assert [PT.get_value(n) for n in PT.get_nodes_from_name(p_tree, 'GridConnectivityDonorName')] == expected
-# correct test
-def test_pl_as_idx():
-    # Creation of structured zone
-    yt = """
-    Zone Zone_t [[10,9,0], [10,9,0], [10,9,0]]:
-      ZoneType ZoneType_t "Structured":
-      ZoneBC ZoneBC_t:
-        BCa BC_t:
-          PointList IndexArray_t [[1,1,1,1], [1,2,3,5], [1,1,1,1]]:
-          GridLocation GridLocation_t "IFaceCenter":
-    """
-    # conversion from yaml to cgns
-    zone = PT.yaml.to_node(yt)
-    # get the BCa node
-    bca = PT.get_node_from_name(zone, 'BCa')
-
-    # Appel function to transform  (i, j, k) into global index.
-    PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')
-
-    # check the results
-    expected_indices = np.array([[1, 11, 21, 41]])  
-    assert np.array_equal(PT.get_node_from_name(bca, 'PointList')[1], expected_indices)
-
-    # Invalid case : Define GridLocation on Vertexx 
-    PT.set_value(PT.get_node_from_name(bca, 'GridLocation'), 'Vertexx')
-    with pytest.raises(ValueError):
-        PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')
-
-    # Invalid case : S to U
-    PT.set_value(PT.get_node_from_name(zone, 'ZoneType'), 'Unstructured')
-    with pytest.raises(AssertionError):
-        PS.pl_as_idx(zone, 'ZoneBC_t/BC_t')

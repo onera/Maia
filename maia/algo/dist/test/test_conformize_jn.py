@@ -40,7 +40,6 @@ def test_conformize_jn_pair(comm, from_loc):
     PointList IndexArray_t {isize} {pld}:
     PointListDonor IndexArray_t {isize} {pl}:
   """
-  #jn1 = PT.GridConnectivity('matchA', value="zone")
   #PT.new_GridLocation(value=loc, parent=jn1)
   #...
   

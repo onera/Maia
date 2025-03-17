@@ -29,6 +29,7 @@ def pl_as_idx(zone, subset_predicate):
       # CHANGE CODE TO EXTRACT INDEX (i,j,k) AND AVOID ERROR
       i, j, k = pl_node[1]  
       pl = s_numbering.ijk_to_index_from_loc(i, j, k, loc, PT.Zone.VertexSize(zone))
+      #pl = s_numbering.ijk_to_index_from_loc(*pl_node[1], loc, PT.Zone.VertexSize(zone))
       pl_node[1] = pl.reshape((1,-1), order='F')
 
 def pl_as_ijk(zone, subset_predicate):

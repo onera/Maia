@@ -1,12 +1,9 @@
 import pytest
 import pytest_parallel
 import numpy as np
-
 import maia
 import maia.pytree        as PT
-
 from maia.algo.part import isosurf as ISO
-
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
@@ -148,7 +145,7 @@ def test_exchange_field_one_domain(from_api, comm):
 @pytest_parallel.mark.parallel(2)
 def test_isosurf_one_domain(comm):
   dist_tree = maia.factory.generate_dist_block(3, "Poly", comm)
-  print(dist_tree)
+  #print(dist_tree)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
   #print(part_tree)
   part_zones = PT.get_all_Zone_t(part_tree)
@@ -158,68 +155,74 @@ def test_isosurf_one_domain(comm):
   assert (PT.get_node_from_name(iso_zone, 'CoordinateX')[1] == 0.25).all()
   assert (PT.get_child_from_predicates(iso_zone, 'TRI_3/ElementRange')[1] == np.array([ 1, 16], dtype=np.int32)).all()
   assert (PT.get_child_from_predicates(iso_zone, 'BAR_2/ElementRange')[1] == np.array([17, 24], dtype=np.int32)).all()
-
   assert PT.get_label(PT.get_child_from_name(iso_zone, "maia#surface_data")) == 'UserDefinedData_t'
 
-# @pytest_parallel.mark.parallel(2)
-# def test_surface_from_equation(comm):
-#   elt_type        = ["elt_type", "TRI_3"] 
-#   graph_part_tool = ["graph_part_tool", "ptscotch"] 
-#   dist_tree = maia.factory.generate_dist_block(3, "TRI_3", comm)
-#   print(dist_tree)
-#   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-#   ellipse_eq = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0]  # (x^2 + y^2 + z^2 = 1)
-#   iso_part_tree =  ISO._surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, graph_part_tool, comm) 
-#   assert iso_part_tree is not None
-  #assert PT.get_label(iso_part_tree) == 'CGNSTree'
-
-  # Vérification de la structure de l'arbre résultant
-  # iso_bases = PT.get_nodes_from_label(iso_part_tree, 'CGNSBase_t')
-  # assert len(iso_bases) == 1
-  # iso_base = iso_bases[0]
-  # assert PT.get_name(iso_base) == 'Base'
-  # iso_zones = PT.get_nodes_from_label(iso_base, 'Zone_t')
-  # assert len(iso_zones) == 1
-  # iso_zone = iso_zones[0]
-  # assert PT.get_name(iso_zone).startswith('Zone_part')
-  # # Vérification que la zone contient des cellules
-  # assert PT.Zone.n_cell(iso_zone) > 0
-  # # Vérification des conteneurs de champs transférés
-  # iso_fs_nodes = PT.get_nodes_from_label(iso_zone, 'FlowSolution_t')
-  # assert len(iso_fs_nodes) == 1
-  # iso_field_nodes = PT.get_nodes_from_label(iso_fs_nodes[0], 'DataArray_t')
-  # assert len(iso_field_nodes) > 0
-
-# # Fonction pour simuler l'extraction de surface à partir d'une équation
-# def _surface_from_equation(part_tree, eq_type, eq_params, elt_type, graph_part_tool, comm):
-#     # Simuler la création d'une zone iso
-#     iso_zone = PT.new_Zone('Zone_part', [[3, 2, 0]], 'Unstructured')
-#     fs_node = PT.new_FlowSolution('FlowSolution', loc='Vertex', parent=iso_zone)
-#     field_node = PT.new_DataArray('Field', np.array([1.0, 2.0, 3.0])), parent=fs_node)
-#     iso_tree = PT.new_CGNSTree()
-#     base = PT.new_CGNSBase('Base', 3, 3, parent=iso_tree)
-#     PT.add_child(base, iso_zone)
-#     return iso_tree
-
-# # Fonction pour simuler l'échange de champs
-# def _exchange_field(src_tree, tgt_tree, containers_name, comm):
-#     # Simuler le transfert des champs
-#     src_zones = PT.get_nodes_from_label(src_tree, 'Zone_t')
-#     tgt_zones = PT.get_nodes_from_label(tgt_tree, 'Zone_t')
-#     for src_zone, tgt_zone in zip(src_zones, tgt_zones):
-#         for name in containers_name:
-#             src_fs_node = PT.get_child_from_name(src_zone, name)
-#             tgt_fs_node = PT.get_child_from_name(tgt_zone, name)
-#             if src_fs_node is not None and tgt_fs_node is not None:
-#                 for src_field_node in PT.get_children_from_label(src_fs_node, 'DataArray_t'):
-#                     tgt_field_node = PT.copy_tree(src_field_node)
-#                     PT.add_child(tgt_fs_node, tgt_field_node)
-
-# # Remplacement des fonctions externes pour le test
-# PT.get_parts_per_blocks = get_parts_per_blocks
-# PT.maia.conv.add_part_suffix = lambda name, rank, _: f'{name}_part{rank}'
-#   #print(part_tree)
+@pytest_parallel.mark.parallel(1)
+def test_compute_elliptical_slice(comm):
+  from   maia.algo.part import isosurf
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  slice_tree = isosurf.elliptical_slice(part_tree, [0.5,0.5,0.5,.5,1.,1.,.25**2], \
+      comm, elt_type='NGON_n')
+  assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is None
+  iso_zone = PT.get_all_Zone_t(slice_tree)[0]
+  assert PT.Zone.n_vtx(iso_zone) == 86 and  PT.Zone.n_cell(iso_zone) == 88
+  #vol_rank  = comm.Get_rank() *np.ones(PT.Zone.n_cell(iso_zone))
+  #print("############################################")
+  #print(vol_rank)
+  #print(iso_zone)
+  # src_sol   = PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'i_rank' : vol_rank}, parent=zone)
+  # slice_tree = maia.algo.part.spherical_slice(part_tree, [0.5,0.5,0.5,0.25], comm, \
+  #      ["FlowSolution"], elt_type="NGON_n")
+  # assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is not None
   
+  # add solution
+  
+@pytest_parallel.mark.parallel(1)  
+def test_compute_spherical_slice(comm):
+  import numpy as np
+  #compute_spherical_slice@start
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  for zone in maia.pytree.get_all_Zone_t(part_tree):
+    assert maia.pytree.Zone.Type(zone) == "Unstructured"
+  assert PT.Zone.n_vtx(PT.get_all_Zone_t(part_tree)[0]) == 1331
+  assert PT.Zone.n_cell(PT.get_all_Zone_t(part_tree)[0]) == 1000
+  zone      = PT.get_node_from_label(part_tree, "Zone_t")
+  vol_rank  = comm.Get_rank() *np.ones(PT.Zone.n_cell(zone))
+  src_sol   = PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'i_rank' : vol_rank}, parent=zone)
+  slice_tree = maia.algo.part.spherical_slice(part_tree, [0.5,0.5,0.5,0.25], comm, \
+      ["FlowSolution"], elt_type="NGON_n")
+  assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is not None
+
+# assert added
+@pytest_parallel.mark.parallel(2) 
+def test_compute_plane_slice(comm):
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.factory.generate_dist_block(5, 'Poly', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.1], comm, elt_type='QUAD_4')
+  #PT.print_tree(slice_tree)
+  #print("hello", PT.Zone.n_vtx(PT.get_all_Zone_t(slice_tree)[0]))
+  iso_zone = PT.get_all_Zone_t(slice_tree)[0]
+  assert PT.Zone.n_cell(iso_zone) == 32 and PT.Zone.n_vtx(iso_zone) == 45
+
+
+@pytest_parallel.mark.parallel(1) 
+def test_compute_iso_surface(comm):
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  node = PT.get_node_from_name(dist_tree, 'Zmin')
+  PT.set_value(node, 'BCWall')
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  maia.algo.part.compute_wall_distance(part_tree, comm, point_cloud='Vertex')
+  part_tree_iso = maia.algo.part.iso_surface(part_tree, "WallDistance/TurbulentDistance", iso_val=0.25,\
+       containers_name=['WallDistance'], comm=comm)
+  assert maia.pytree.get_node_from_name(part_tree_iso, "WallDistance") is not None
+
+  
+  
+
 
   
   

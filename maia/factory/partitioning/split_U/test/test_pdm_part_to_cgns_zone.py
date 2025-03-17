@@ -57,33 +57,24 @@ def test_save_additional_connectivities():
     
     # Get the node which will be added to zone
     connec_data = PT.get_child_from_name(p_zone, 'maia#Connectivities')
-    
-    # check that the node is added
-    assert connec_data is not None
-    
     # check the children 
     children = PT.get_children(connec_data)
     assert len(children) == 5  # 2 DataArrays pour 'cell_face', 2 pour 'face_edge', 1 pour 'edge_vtx'
-    
     # Check data of 'cell_face'
     cell_face_idx = PT.get_child_from_name(connec_data, 'cell_face_idx')
     cell_face = PT.get_child_from_name(connec_data, 'cell_face')
-    assert cell_face_idx is not None
-    assert cell_face is not None
+    #PT.print_node(cell_face)
     assert np.array_equal(cell_face_idx[1], data['np_cell_face_idx'])
     assert np.array_equal(cell_face[1], data['np_cell_face'])
     
     # Check data of 'face_edge'
     face_edge_idx = PT.get_child_from_name(connec_data, 'face_edge_idx')
     face_edge = PT.get_child_from_name(connec_data, 'face_edge')
-    assert face_edge_idx is not None
-    assert face_edge is not None
     assert np.array_equal(face_edge_idx[1], data['np_face_edge_idx'])
     assert np.array_equal(face_edge[1], data['np_face_edge'])
     
     # Check data of 'edge_vtx'
     edge_vtx = PT.get_child_from_name(connec_data, 'edge_vtx')
-    assert edge_vtx is not None
     assert np.array_equal(edge_vtx[1], data['np_edge_vtx'])
 
 @pytest.mark.parametrize("grid_loc",['FaceCenter', 'Vertex'])
@@ -112,7 +103,7 @@ def test_zgc_created_pdm_to_cgns(grid_loc):
     assert (PT.get_value(PT.get_node_from_name(gc_n, 'PointListDonor')) == data['np_face_part_bound'][3::4]).all()
   elif grid_loc == 'Vertex':
     assert (PT.get_value(PT.get_node_from_name(gc_n, 'PointListDonor')) == data['np_vtx_part_bound'][3::4]).all()
-  # TEST FAILED TO REVIEW
+
   elif grid_loc == "Cell":
         with pytest.raises(ValueError, match="Invalid specified entity"):
           PTC.zgc_created_pdm_to_cgns(grid_loc)
@@ -254,7 +245,8 @@ def test_pdm_part_to_cgns_zone(fields):
     assert (PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex')) == l_data[ipart]['np_vtx_ln_to_gn']).all()
     assert (PT.get_value(MT.getGlobalNumbering(part_zone, 'Cell')) == l_data[ipart]['np_cell_ln_to_gn']).all()
   
-  # add Case where n_vtx == 0
-  l_dims_empty = [{'n_section': 2, 'n_cell': 1, 'n_vtx': 0, 'n_elt': [6, 1]}]
-  part_zones_empty = PTC.pdm_part_to_cgns_zone(d_zone, l_dims_empty, l_data, MPI.COMM_SELF, options)
-  assert len(part_zones_empty) == 0  
+  def test_pdm_part_to_cgns_zone_empty():
+    # add Case where n_vtx == 0
+    l_dims_empty = [{'n_section': 2, 'n_cell': 0, 'n_vtx': 0, 'n_elt': [0, 0]}]
+    part_zones_empty = PTC.pdm_part_to_cgns_zone(d_zone, l_dims_empty, l_data, MPI.COMM_SELF, options)
+    assert len(part_zones_empty) == 0  

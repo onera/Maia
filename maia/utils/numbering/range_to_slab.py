@@ -1,9 +1,9 @@
 def cell_to_indexes(i_cell, plan_size, line_size):
- #Compute the (i,j,k) indices of a cell or a node
-  #from its global index.
-  #Numbering convention is increasing i,j,k. Here global index
-  #and i,j,k start at 0.
-  
+  """compute the (i,j,k) indices of a cell or a node
+  from its global index.
+  Numbering convention is increasing i,j,k. Here global index
+  and i,j,k start at 0.
+  """  
   k = i_cell // plan_size
   j = (i_cell - k*plan_size) // line_size
   i = i_cell - k*plan_size - j*line_size

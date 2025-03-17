@@ -14,12 +14,10 @@ def test_generate_line(phy_dim, comm):
 
   start = np.array([0.,0.,0.][:phy_dim])
   end   = np.array([1.,2.,0.][:phy_dim])
-  #correct test
   n_point=[1,2,3,4]
   if not isinstance(n_point, int):
      if len(n_point) != 1:
       n_point = n_point[0]
-  #correct test
   n_point=5
   if isinstance(n_point, int):
     assert n_point==5

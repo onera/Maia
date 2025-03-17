@@ -56,7 +56,7 @@ def test_unpack_metric():
   with pytest.raises(ValueError):
     MA.unpack_metric(tree, 10)
   # > Wrong because leads to scalar and tensor fields (7 nodes)
- 
+
   yz_extra= """
   Base CGNSBase_t [3, 3]:
     Zone Zone_t [[3,1,0]]:
