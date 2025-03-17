@@ -63,7 +63,6 @@ def test_save_additional_connectivities():
     # Check data of 'cell_face'
     cell_face_idx = PT.get_child_from_name(connec_data, 'cell_face_idx')
     cell_face = PT.get_child_from_name(connec_data, 'cell_face')
-    #PT.print_node(cell_face)
     assert np.array_equal(cell_face_idx[1], data['np_cell_face_idx'])
     assert np.array_equal(cell_face[1], data['np_cell_face'])
     

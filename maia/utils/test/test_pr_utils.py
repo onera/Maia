@@ -109,10 +109,8 @@ class Test_compute_pointList_from_pointRanges():
                     np.array([[2,2],[1,1],[2,2]])]
       pointList = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"J"+self.loc)
       assert (pointList == [[14,20]]).all()  
-    # TO DO : TEST failed 
-    """
+    
 
-     """
   class Test_vertex():
     nVtx       = np.array([3, 3, 3], np.int64)
     loc        = "Vertex"

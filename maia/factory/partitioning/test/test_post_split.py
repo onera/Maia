@@ -3,6 +3,7 @@ import pytest_parallel
 
 import numpy as np
 import maia.pytree        as PT
+
 from maia.factory.partitioning import post_split as PS
 
 def test_pl_idx_ijk():
@@ -262,4 +263,5 @@ def test_update_gc_donor_name(comm):
     expected = ['matchAB.1']
   p_tree = PT.yaml.to_cgns_tree(pt)
   PS.update_gc_donor_name(p_tree, comm)
+
   assert [PT.get_value(n) for n in PT.get_nodes_from_name(p_tree, 'GridConnectivityDonorName')] == expected

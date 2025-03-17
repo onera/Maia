@@ -26,10 +26,7 @@ def pl_as_idx(zone, subset_predicate):
     pl_node = PT.get_node_from_name(subset, 'PointList')
     if pl_node is not None:
       loc = PT.Subset.GridLocation(subset)
-      # CHANGE CODE TO EXTRACT INDEX (i,j,k) AND AVOID ERROR
-      i, j, k = pl_node[1]  
-      pl = s_numbering.ijk_to_index_from_loc(i, j, k, loc, PT.Zone.VertexSize(zone))
-      #pl = s_numbering.ijk_to_index_from_loc(*pl_node[1], loc, PT.Zone.VertexSize(zone))
+      pl = s_numbering.ijk_to_index_from_loc(*pl_node[1], loc, PT.Zone.VertexSize(zone))
       pl_node[1] = pl.reshape((1,-1), order='F')
 
 def pl_as_ijk(zone, subset_predicate):

@@ -66,8 +66,6 @@ def test_zones_iterator():
 
 def test_apply_to_bases():
     def add_child(base):
-        # add a new child to base, the child is an unstructured zone
-        #PT.new_child(base, 'ZoneType', 'ZoneType_t', "Unstructured")
         PT.new_child(base, 'Family', 'Family_t', 'WALL')
 
     yt = """

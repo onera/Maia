@@ -28,7 +28,7 @@ def slog(comm, *args):
   rk = comm.Get_rank()
   n_rk = comm.Get_size()
   msg = ''.join([str(arg) for arg in args])
-  msg = color_str(f'Rank {rk}: ',colors.blue) + msg;
+  msg = color_str(colors.blue, f'Rank {rk}: ') + msg
 
   comm.Barrier()
   if rk == 0:

@@ -2,14 +2,12 @@ import os
 import pytest
 from maia.utils.script_utils import determine_output_file_path
 
-#when output_path is None,
 def test_determine_output_path_none():
   input_path = "/some/path/data.hdf"
   output_default_extension = ".txt"
   result = determine_output_file_path(input_path, None, output_default_extension)
-  assert result == "data" + output_default_extension
+  assert result == "data.txt"
 
-#when output_path is an existing directory
 def test_determine_output_path_directory(tmp_path):
   input_path = "data.hdf"
   output_default_extension = ".txt"
@@ -19,7 +17,6 @@ def test_determine_output_path_directory(tmp_path):
   expected = os.path.join(str(output_dir), "data" + output_default_extension)
   assert result == expected
 
-#when output_path is provided and is not a directory
 def test_determine_output_path_file():
   input_path = "data.hdf"
   output_default_extension = ".txt"

@@ -40,8 +40,6 @@ def test_conformize_jn_pair(comm, from_loc):
     PointList IndexArray_t {isize} {pld}:
     PointListDonor IndexArray_t {isize} {pl}:
   """
-  #PT.new_GridLocation(value=loc, parent=jn1)
-  #...
   
   gcs = [F2D.distribute_pl_node(gc, comm) for gc in PT.yaml.to_nodes(yt)]
   zone = PT.get_all_Zone_t(dist_tree)[0]
