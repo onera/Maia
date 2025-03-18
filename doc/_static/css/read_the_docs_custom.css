@@ -1,5 +1,9 @@
 @import 'theme.css'; /* for the Read the Docs theme */
 
+.wy-nav-content {
+  max-width: 1000px !important;
+}
+
 .rst-content div[class^="highlight"] pre {
   font-size: 95%;
 }
@@ -39,4 +43,22 @@ div.indexpage p {
   font-weight: 700;
   font-size: 125%;
   font-family:Roboto Slab,ff-tisa-web-pro,Georgia,Arial,sans-serif;
+}
+
+/* --------------------------------------------------------------------------- */
+
+dl.class{
+  border-left: 1px solid #002266;
+}
+
+dl.function {
+  border-left: 1px solid #b32d00;
+}
+
+dl.method {
+  border-left: 1px solid #1f7a1f;
+}
+
+dl.attribute{
+  border-left: 1px solid #6ab0de;
 }

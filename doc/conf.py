@@ -31,7 +31,8 @@ extensions = ["sphinx.ext.graphviz",
               "sphinx.ext.autodoc", 
               "sphinx.ext.autosummary",
               "sphinx_tabs.tabs",
-              "sphinx.ext.napoleon"]
+              "sphinx.ext.napoleon",
+              'sphinx_copybutton',]
 
 add_module_names = False #Shorten function names
 autodoc_typehints = 'none' #Hide typehints in doc
@@ -68,6 +69,7 @@ html_static_path = ['_static']
 #]
 
 html_style = 'css/read_the_docs_custom.css'
+html_favicon = "_static/logo_maia.svg"
 
 # The name of the Pygments (syntax highlighting) style to use.
 # list with >>> from pygments.styles import STYLE_MAP; STYLE_MAP.keys()
