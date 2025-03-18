@@ -36,8 +36,6 @@ Base CGNSBase_t I4 [3, 3]:
   assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
   maia.io.dist_tree_to_file(dist_tree, out_file, comm, legacy=True)
   TU.rm_collective_dir(tmp_dir, comm)
-  
-
 
 @pytest.mark.parametrize("user_links", [False, True])
 @pytest_parallel.mark.parallel(2)
@@ -101,7 +99,7 @@ def test_read_wrong_file(comm):
       f.write('print(maia.__version__)')
 
   with pytest.raises(ValueError):
-    maia.io.file_to_dist_tree(tmp_file, comm)
+    maia.io.file_to_dist_tree(tmp_file, comm, legacy=True)
   TU.rm_collective_dir(tmp_dir, comm)
 
 @pytest_parallel.mark.parallel(3)
@@ -121,8 +119,6 @@ def test_write_trees(comm):
     maia.io.write_trees(trees[rank], legacy_file, comm, legacy=True)
   expected_legacy_filename = f"{legacy_file.rstrip('.cgns')}_{rank}.cgns"
   assert os.path.exists(expected_legacy_filename), f"The file legacy {expected_legacy_filename} is not created"
-  
-
 
 @pytest_parallel.mark.parallel(2)
 def test_fill_size_tree(comm): 
@@ -154,35 +150,12 @@ def test_load_size_tree(comm):
 def test_load_partial(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
   dist_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm, False)
-  #PT.print_tree(dist_tree)
   add_distribution_info(dist_tree, comm)
   hdf_filter = create_tree_hdf_filter(dist_tree) 
   hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
-  #print(hdf_filter)
   assert hdf_filter is not None
-  #maia.io.cgns_io_tree.load_partial(filename, dist_tree, hdf_filter,comm)
- 
-@pytest_parallel.mark.parallel(2)  
-def test_load_size_tree(comm):
-  filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  first_dist_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm, False)
-  second_dist_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm, True)
+  maia.io.cgns_io_tree.load_partial(filename, dist_tree, hdf_filter,comm)
 
-# @pytest_parallel.mark.parallel(3)
-# def test_write_trees(comm):
-#   tree = maia.factory.generate_dist_block(4, "TRI_3", comm)
-#   tmp_dir = TU.create_collective_tmp_dir(comm)
-#   tmp_file = os.path.join(tmp_dir, f'write_tree.cgns')
-#   links=[]
-#   for zone_path in maia.pytree.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
-#     print(zone_path)
-#     _links = [link for link in links if link[:].startswith(zone_path)]
-#     PT.print_tree(tree)
-  # print('#####################LINKS##############################')
-  # print(_links)
-  # maia.io.write_tree(tree, tmp_file, _links)
-  # maia.io.write_tree(tree, tmp_file, links=[], legacy=True)
-        
 @pytest.mark.parallel(2)
 def test_load_from_filter(comm):
     filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
@@ -190,9 +163,5 @@ def test_load_from_filter(comm):
     add_distribution_info(dist_tree, comm)
     hdf_filter = create_tree_hdf_filter(dist_tree)
     hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
-    hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() if not isinstance(value, (list, tuple))} 
-    if hdf_filter_with_func:
-      maia.io.cgns_io_tree.load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
-      assert dist_tree is not None
-    print("###################")
-    print(hdf_filter)
+    maia.io.cgns_io_tree.load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+      

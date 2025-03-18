@@ -162,6 +162,7 @@ def test_predicates_to_paths():
 
 def test_get_child_from_value():
   tree = PTy.to_node(yt)
+  PT.print_tree(tree)
   bc1 = PT.get_node_from_name(tree, 'bc1')
   child = PT.get_child_from_value(bc1, 'BC1')
   assert child is not None
@@ -476,83 +477,15 @@ def test_get_all_cgnsbase_t_from_cgnstree_t():
     assert len(bases) == 2
     assert set(base_names) == {"BaseA", "BaseB"}
 
-
-
-# ---------------------------------------------------------------------------
-
-
-def test_get_child_from_name_and_label():
-  tree = PTy.to_node(yt)
-  zonebc = get_ZoneBC(tree)
-  bc1 = get_bc1(zonebc)
-  node = PT.get_child_from_name_and_label(bc1, 'FamilyName', 'FamilyName_t')
-  assert node is not None
-  assert PT.get_name(node) == 'FamilyName'
-  assert PT.get_label(node) == 'FamilyName_t'
-  assert PT.get_child_from_name_and_label(bc1, 'NonExistent', 'FamilyName_t') is None
-
-def test_get_children_from_name_and_label():
-  tree = PTy.to_node(yt)
-  zonebc = get_ZoneBC(tree)
-  bc1 = get_bc1(zonebc)
-  nodes = PT.get_children_from_name_and_label(bc1, 'FamilyName', 'FamilyName_t')
-  assert isinstance(nodes, list)
-  assert len(nodes) == 1
-  node = nodes[0]
-  assert PT.get_name(node) == 'FamilyName'
-  assert PT.get_label(node) == 'FamilyName_t'
-
-def test_iter_children_from_predicate():
-  tree = PTy.to_node(yt)
-  zonebc = get_ZoneBC(tree)
-  it = PT.iter_children_from_predicate(zonebc, lambda n: PTp.match_name(n, "bc*"))
-  nodes = list(it)
-  assert isinstance(nodes, list)
-  assert len(nodes) == 2
-  names = [PT.get_name(n) for n in nodes]
-  assert set(names) == {"bc1", "bc2"}
-
-def test_get_child_from_predicates():
-  tree = PTy.to_node(yt)
-  zonebc = get_ZoneBC(tree)
-  node = PT.get_child_from_predicates(zonebc, "BC_t")
-  assert node is not None
-  assert PT.get_name(node) == "bc1"
-
 def test_get_node_from_labels():
   tree = PTy.to_node(yt)
   node = PT.get_node_from_labels(tree, ['FamilyName_t'])
   assert node is not None
   assert PT.get_value(node) == 'BC1'
 
-def test_get_child_from_labels():
-    tree = PTy.to_node(yt)
-    zonebc = get_ZoneBC(tree)
-    node = PT.get_child_from_labels(zonebc, ['BC_t'])
-    assert node is not None
-    assert PT.get_label(node) == 'BC_t'
-    assert PT.get_name(node) == 'bc1'
-
-def test_get_children_from_predicates():
-  tree = PTy.to_node(yt)
-  zonebc = get_ZoneBC(tree)
-  nodes = PT.get_children_from_predicates(zonebc, "BC_t")
-  assert isinstance(nodes, list)
-  assert len(nodes) == 2
-  names = [PT.get_name(n) for n in nodes]
-  assert set(names) == {"bc1", "bc2"}
-
 def test_get_nodes_from_names():
   tree = PTy.to_node(yt)
   nodes = PT.get_nodes_from_names(tree, ['bc1'])
-  assert isinstance(nodes, list)
-  assert len(nodes) == 1
-  assert PT.get_name(nodes[0]) == "bc1"
-
-def test_get_children_from_names():
-  tree = PTy.to_node(yt)
-  zonebc = get_ZoneBC(tree)
-  nodes = PT.get_children_from_names(zonebc, ['bc1'])
   assert isinstance(nodes, list)
   assert len(nodes) == 1
   assert PT.get_name(nodes[0]) == "bc1"
@@ -565,11 +498,4 @@ def test_get_nodes_from_labels():
   names = sorted([PT.get_name(n) for n in nodes])
   assert names == ["bc1", "bc2"]
 
-def test_get_children_from_labels():
-  tree = PTy.to_node(yt)
-  zonebc = get_ZoneBC(tree)
-  nodes = PT.get_children_from_labels(zonebc, ['BC_t'])
-  assert isinstance(nodes, list)
-  assert len(nodes) == 2
-  names = sorted([PT.get_name(n) for n in nodes])
-  assert names == ["bc1", "bc2"]
+

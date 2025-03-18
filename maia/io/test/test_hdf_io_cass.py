@@ -115,18 +115,36 @@ def test_load_size_tree(comm):
     assert PT.Zone.Type(iso_zone)=="Structured"
     assert PT.Zone.n_cell(iso_zone) == 1 and PT.Zone.n_vtx(iso_zone) == 4
  
+def create_tree_with_perio_jn(comm):
+    tree = maia.factory.generate_dist_block(4, 'Poly', comm)
+    zone = PT.get_node_from_label(tree, 'Zone_t')
+
+    xmax = PT.pop_node_from_path(zone, 'ZoneBC/Xmax')
+    xmin = PT.pop_node_from_path(zone, 'ZoneBC/Xmin')
+
+    PT.update_node(xmax, label='GridConnectivity_t', value='zone')
+    PT.update_node(xmin, label='GridConnectivity_t', value='zone')
+    PT.new_IndexArray('PointListDonor', PT.get_child_from_name(xmax, 'PointList')[1].copy(), parent=xmin)
+    PT.new_IndexArray('PointListDonor', PT.get_child_from_name(xmin, 'PointList')[1].copy(), parent=xmax)
+    PT.new_GridConnectivityProperty(periodic={'translation':[1.,0,0]}, parent=xmin)
+    PT.new_GridConnectivityProperty(periodic={'translation':[-1.,0,0]}, parent=xmax)
+
+    PT.new_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[xmin, xmax])
+
+    return tree
   
-# IT IS NOT COVERED YET
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(1)
 def test_load_grid_connectivity_property(comm):
-  filename = os.path.join(TU.sample_mesh_dir, 'quarter_crown_square_8.yaml')
-  dist_tree = maia.io.file_to_dist_tree(filename, comm)
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+  out_file = os.path.join(tmp_dir, 'yt.cgns')
+  dist_tree=create_tree_with_perio_jn(comm)
+  maia.io.dist_tree_to_file(dist_tree, out_file, comm)
+  dist_tree= LC.load_size_tree(out_file, comm)
   PT.print_tree(dist_tree)
-  print(">>>>", PT.iter_children_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t', ancestors=True))
-  filename = "/stck/amehri/dev-Maia/maia/share/meshes/axisym_mesh.yaml"
-  #LC.load_grid_connectivity_property(filename,dist_tree)
- 
+  LC.load_grid_connectivity_property(out_file, dist_tree)
+  PT.print_tree(dist_tree)
+
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(2)  
@@ -149,26 +167,27 @@ def test_read_full():
 def test_write_full(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
   dist_tree = LC.load_size_tree(filename, comm)
-  #PT.print_tree(dist_tree)
   links = [['.', 'this/hdf/file.hdf', 'this/node', 'Base/ZoneA/GridCoordinates/CoordinateX'],
            ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneB/GridCoordinates/CoordinateY']] 
   filename_to_write = "write_tree.hdf"
   LC.write_full(filename_to_write, dist_tree, links)
   
+ # TEST NOT CORRECT  
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(1)
 def test_write_partial(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
   dist_tree = LC.load_size_tree(filename, comm)
-  print("###########################################")
+  filename_to_write = "write_tree.hdf"
   PT.print_tree(dist_tree)
   links = [['.', 'this/hdf/file.hdf', 'this/node', 'Base/ZoneA/GridCoordinates/CoordinateX'],
            ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneB/GridCoordinates/CoordinateY']] 
   add_distribution_info(dist_tree, comm)
   hdf_filter = create_tree_hdf_filter(dist_tree) 
-  print("###########################################")
   print(hdf_filter)
   hdf_filter = {f'/{key}' : data for key, data in hdf_filter.items()} 
-  #LC.write_partial(filename, dist_tree, hdf_filter, links, comm)
+  #LC.write_partial(filename_to_write, dist_tree, hdf_filter, links, comm)
   
+
+
   
