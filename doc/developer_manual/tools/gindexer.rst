@@ -221,7 +221,7 @@ coming from the different processes::
   # P1 : dist_data_new = array([0,0,17,19],   dtype=int)      #glob idx 2..4
   # P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5
 
-In this case, the size of the output data remains the same, but the reduction fonction is
+In this case, the size of the output data remains the same, but the reduction function is
 applied to the data written at the same index to compute the result.
 
 .. note:: 
@@ -274,22 +274,22 @@ which can be illustrated as follow:
 And here is an exemple of the ``put`` implementation for a variable buffer::
 
   if rank == 0:
-    counts = array([1,3])                      #nb of vals to write at [4,0]
-    values = array([4.1,0.1,0.2,0.3],dtype='f')#values (1, then 3)
+    counts = array([1,3])                       #nb of vals to write at [4,0]
+    values = array([4.1,0.1,0.2,0.3],dtype='f') #values (1, then 3)
   if rank == 1:
-    counts = array([0,1])                      #nb of vals to write at [1,3]
-    values = array([30.1],           dtype='f')#values (0, then 1)
+    counts = array([0,1])                       #nb of vals to write at [1,3]
+    values = array([13.1],           dtype='f') #values (0, then 1)
   if rank == 2:
-    counts = array([2])                        #nb of vals to write at [0]
-    values = array([100.1,100.2],    dtype='f')#values (2)
+    counts = array([2])                         #nb of vals to write at [0]
+    values = array([20.1,20.2],      dtype='f') #values (2)
 
   counts_new, dist_data_new = GI.Put_v((counts, values))
-  # P0 : counts_new    = array([2,0])                   #nb of vals for 0..2
-  #      dist_data_new = array([100.1,100.2],dtype='f') #values (2, then 0)
-  # P1 : counts_new    = array([0,1])                   #nb of vals for 2..4
-  #      dist_data_new = array([30.1],       dtype='f') #values (0, then 1)
-  # P2 : counts_new    = array([1])                     #nb of vals for 4..5
-  #      dist_data_new = array([4.1],        dtype='f') #values (1)
+  # P0 : counts_new    = array([2,0])                  #nb of vals for 0..2
+  #      dist_data_new = array([20.1,20.2], dtype='f') #values (2, then 0)
+  # P1 : counts_new    = array([0,1])                  #nb of vals for 2..4
+  #      dist_data_new = array([13.1],      dtype='f') #values (0, then 1)
+  # P2 : counts_new    = array([1])                    #nb of vals for 4..5
+  #      dist_data_new = array([4.1],       dtype='f') #values (1)
 
 with its corresponding illustration (note that 0-length data does not *really* exist in memory):
 
@@ -316,12 +316,12 @@ written at a same global index are concatenated according to their apparition or
 (in increasing rank order)::
 
   counts_new, dist_data_new = GI.Put_v((counts, values), append=True)
-  #P0 : counts_new    = array([5,0])                    #nb of vals for 0..2
-  #     dist_data_new = array([0.1,0.2,0.3,100.1,100.2])#values (5, then 0)
-  #P1 : counts_new    = array([0,1])                    #nb of vals for 2..4
-  #     dist_data_new = array([30.1],                  )#values (0, then 1)
-  #P2 : counts_new    = array([1])                      #nb of vals for 4..5
-  #     dist_data_new = array([4.1],                   )#values (1)
+  #P0 : counts_new    = array([5,0])                   #nb of vals for 0..2
+  #     dist_data_new = array([0.1,0.2,0.3,20.1,20.2]) #values (5, then 0)
+  #P1 : counts_new    = array([0,1])                   #nb of vals for 2..4
+  #     dist_data_new = array([30.1],                ) #values (0, then 1)
+  #P2 : counts_new    = array([1])                     #nb of vals for 4..5
+  #     dist_data_new = array([4.1],                 ) #values (1)
 
 On the above example, we can see that with ``append=True``, global index 0 get a counts
 of 5 because 3 values has been written by P0, then 2 values by P2.

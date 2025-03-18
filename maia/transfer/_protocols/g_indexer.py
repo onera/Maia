@@ -80,12 +80,12 @@ def _guess_reduce_dt_and_identity(dt_in, op):
 
   return dt_out, val
 
-def put_strided(a, a_count, indices, read_counts, read, extend=False):
+def put_strided(a, a_count, indices, read_counts, read, append=False):
   """
   A special case of VStrideArray.put() where out (a) is preallocated
   and all indices will be visited
   """
-  if extend:
+  if append:
     vstride.put_extend(a_count, a, indices, read_counts, read)
   else:
     vstride.put(a_count, a, indices, read_counts, read)
@@ -482,7 +482,7 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((send_buff, send_counts, send_buff.dtype.char), (recv_buff, recv_counts, send_buff.dtype.char))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, extend=append)
+    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, append)
 
     return counts_out, buff_out
   
