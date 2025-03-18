@@ -26,6 +26,13 @@ def test_part_deconcatenate_patch(specified, comm):
   tag_fam_in_bcs(dist_tree, [f'surface.{i}' for i in range(9,10)], 'FARFIELD')
   tag_fam_in_bcs(dist_tree, [f'ridge.{i}'   for i in range(0,20)], 'RIDGE')
 
+  for bc_n in PT.get_nodes_from_label(dist_tree, 'BC_t'):
+    pl = PT.get_child_from_name(bc_n, 'PointList')[1]
+    bcds_n = PT.new_BCDataSet('BCDS',
+                              type='UserDefined',
+                              # loc=PT.Subset.GridLocation(bc_n),
+                              parent=bc_n)
+    bcd_n  = PT.new_BCData('DirichletData', fields={'fld':pl[0]}, parent=bcds_n)
   dist_tree_cp = PT.deep_copy(dist_tree)
 
   if specified:

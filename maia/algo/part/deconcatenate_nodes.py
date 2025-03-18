@@ -83,9 +83,10 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
             bcds_type  = PT.get_value(bcds_n)
             bcds_loc_n = PT.get_child_from_label(bcds_n, 'GridLocation_t')
             bcds_loc   = PT.BCDataSet.GridLocation(bcds_n, concat_bc_n) if bcds_loc_n is not None else None
+            bcds_pl    = PT.get_node_from_name(bcds_n, 'PointList')
 
             bcds_path = '/'.join([PT.get_name(zone_bc_n), PT.get_name(bc_n), PT.get_name(bcds_n)])
-            if bcds_path not in bcds_paths:
+            if bcds_path not in bcds_paths and bcds_pl is not None:
               bcds_paths.append(bcds_path)
 
             bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
