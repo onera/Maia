@@ -1,6 +1,11 @@
 from mpi4py import MPI
-from h5py   import h5p, h5f, h5fd
-import h5py
+import warnings
+
+# Don't display h5py spurious warning about numpy.float128
+with warnings.catch_warnings():
+  warnings.simplefilter("ignore", UserWarning, lineno=493)
+  import h5py
+from h5py import h5p, h5f, h5fd
 
 import maia.pytree as PT
 
