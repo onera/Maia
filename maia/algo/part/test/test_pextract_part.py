@@ -6,8 +6,17 @@ import numpy as np
 import maia
 import maia.pytree as PT
 from   maia.utils import s_numbering
+from   maia.utils import logging as mlog
 
 from maia.algo.part import extract_part as EP
+
+class LogCapture():
+  def __init__(self):
+    self.logs = ''
+  def log(self, msg):
+      self.logs += msg
+  def reset(self):
+    self.logs = ''
 
 def sample_part_tree(cgns_name, comm, bc_loc='Vertex'):
   if cgns_name=='Structured':
@@ -305,6 +314,12 @@ def test_from_fam_api(dim_zsr, comm):
     with pytest.raises(ValueError):
       extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
 
+  # Family API is not available for Structured meshes
+  dist_tree = maia.factory.generate_dist_block(4, "S", comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  with pytest.raises(RuntimeError):
+    extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
+
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("valid", [False, True])
@@ -332,3 +347,28 @@ def test_from_fam_zsr_api(valid, comm):
     with pytest.raises(ValueError):
       extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
 
+
+@pytest_parallel.mark.parallel(1)
+def test_void_extraction(comm):
+  is_empty_tree = lambda t: PT.get_node_from_label(t, 'CGNSBase_t') is None
+
+  dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  maia.algo.compute_elements_measure(part_tree, 3, comm)  # Create field
+
+  mlog.add_printer_to_logger('maia-warnings', log_collector := LogCapture())
+
+  extracted_tree = EP.extract_part_from_zsr(part_tree, 'EXTRACT', comm, containers_name=['Geometry_3d'])
+  assert is_empty_tree(extracted_tree)
+  assert 'ZoneSubRegion "EXTRACT" does not exist in input tree' in log_collector.logs
+
+  log_collector.reset()
+  extracted_tree = EP.extract_part_from_bc_name(part_tree, 'EXTRACT', comm, containers_name=['Geometry_3d'])
+  assert is_empty_tree(extracted_tree)
+  assert 'BC "EXTRACT" does not exist in input tree' in log_collector.logs
+
+  log_collector.reset()
+  extractor = EP.create_extractor_from_family(part_tree, 'EXTRACT', comm)
+  extractor.exchange_fields(['Geometry_3d'])
+  assert is_empty_tree(extractor.get_extract_part_tree())
+  assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs

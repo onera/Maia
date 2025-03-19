@@ -75,6 +75,11 @@ class Extractor:
 
     # ExtractPart dimension
     self.location = location
+    if self.location == '': # Early return if the extraction is totally empty
+      self.extract_tree = PT.new_CGNSTree()
+      self.dim = None
+      return
+
     self.dim = LOC_TO_DIM[location]
     assert self.dim in [0,2,3], "[MAIA] Error : dimensions 1 not yet implemented"
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
@@ -141,6 +146,8 @@ class Extractor:
     self.extract_tree = extract_tree
 
   def exchange_fields(self, fs_container):
+    if self.location == '': # Nothing to do if extract_tree is None
+      return
     exchange_fld_func = exchange_field_s if self.is_struct else exchange_field_u
     exchange_fld_func(self.part_tree,  self.extract_tree , self.dim, self.exch_tool_box,\
           fs_container, self.comm)
@@ -152,7 +159,7 @@ class Extractor:
 def _extract_part_from_zsr(part_tree, zsr_name, comm,
                            transfer_dataset=True,
                            containers_name=[], **options):
-  extractor = create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
+  extractor = _create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
   l_containers_name = [name for name in containers_name]
   if transfer_dataset:
@@ -226,16 +233,19 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   end = time.time()
 
   # > Print some light stats
-  elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
-  mlog.info(f"Extraction from ZoneSubRegion \"{zsr_name}\" completed ({end-start:.2f} s) -- "
-            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
-            f"(Σ={mlog.size_to_str(n_cell_all)})")
+  if dim is not None:
+    elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
+    mlog.info(f"Extraction from ZoneSubRegion \"{zsr_name}\" completed ({end-start:.2f} s) -- "
+              f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
+              f"(Σ={mlog.size_to_str(n_cell_all)})")
+  else:
+    mlog.warning(f"ZoneSubRegion \"{zsr_name}\" does not exist in input tree, "
+                 f"an empty extracted tree is returned from extract_part_from_zsr")
 
   return extract_tree
 
 
-def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
-  """Same as extract_part_from_zsr, but return the extractor object."""
+def _create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
   # Get zones by domains
 
   graph_part_tool = options.get("graph_part_tool", "hilbert")
@@ -264,6 +274,16 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
 
   return Extractor(part_tree, patch, location, comm,
                    graph_part_tool=graph_part_tool)
+
+def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
+  """Same as extract_part_from_zsr, but return the extractor object."""
+  # Get zones by domains
+
+  extractor = _create_extractor_from_zsr(part_tree, zsr_path, comm, **options)
+  if extractor.location == '':
+    mlog.warning(f"ZoneSubRegion \"{zsr_path}\" does not exist in input tree, "
+                 f"an empty extractor is returned from create_extractor_from_zsr")
+  return extractor
 
 
 
@@ -319,10 +339,14 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
   end = time.time()
 
   # > Print some light stats
-  elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
-  mlog.info(f"Extraction from BC \"{bc_name}\" completed ({end-start:.2f} s) -- "
-            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
-            f"(Σ={mlog.size_to_str(n_cell_all)})")
+  if dim is not None:
+    elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
+    mlog.info(f"Extraction from BC \"{bc_name}\" completed ({end-start:.2f} s) -- "
+              f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
+              f"(Σ={mlog.size_to_str(n_cell_all)})")
+  else:
+    mlog.warning(f"BC \"{bc_name}\" does not exist in input tree, "
+                 f"an empty extracted tree is returned from extract_part_from_bc_name")
 
   return extract_tree
 
@@ -340,12 +364,17 @@ def create_extractor_from_bc_name(part_tree, bc_name, comm, **options):
       if bc_n is not None:
         PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
 
-  return create_extractor_from_zsr(local_part_tree, bc_name, comm, **options)
+  extractor = _create_extractor_from_zsr(local_part_tree, bc_name, comm, **options)
+  if extractor.location == '':
+    mlog.warning(f"BC \"{bc_name}\" does not exist in input tree, "
+                 f"an empty extractor is returned from create_extractor_from_bc_name")
+  return extractor
 
 
 def _prepare_extract_from_family(part_tree, family_name, comm):
   
-  if PT.get_value(PT.get_node_from_name(part_tree, 'ZoneType'))=='Structured':
+  has_struct_zone = any(PT.Zone.Type(zone) == 'Structured' for zone in PT.get_all_Zone_t(part_tree))
+  if comm.allreduce(has_struct_zone, MPI.LOR):
     raise RuntimeError(f'extract_part_from_family function is not implemented for Structured meshes.')
 
   # Local copy of the part_tree to add ZSR 
@@ -475,18 +504,26 @@ def extract_part_from_family(part_tree, family_name, comm,
 
 
   # > Print some light stats
-  elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
-  mlog.info(f"Extraction from Family \"{family_name}\" completed ({end-start:.2f} s) -- "
-            f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
-            f"(Σ={mlog.size_to_str(n_cell_all)})")
+  if dim is not None:
+    elts_kind, n_cell, n_cell_all = get_stats(extract_tree, dim, comm)
+    mlog.info(f"Extraction from Family \"{family_name}\" completed ({end-start:.2f} s) -- "
+              f"Extracted tree has locally {mlog.size_to_str(n_cell)} {elts_kind} "
+              f"(Σ={mlog.size_to_str(n_cell_all)})")
+  else:
+    mlog.warning(f"Family \"{family_name}\" does not exist in input tree, "
+                 f"an empty extracted tree is returned from extract_part_from_family")
 
   return extract_tree
 
 
   
 def create_extractor_from_family(part_tree, family_name, comm, **options):
-  """Same as extract_part_from_bc_name, but return the extractor object."""
+  """Same as extract_part_from_family, but return the extractor object."""
 
   local_part_tree, _ = _prepare_extract_from_family(part_tree, family_name, comm)
 
-  return create_extractor_from_zsr(local_part_tree, f"__{family_name}", comm, **options)
+  extractor = _create_extractor_from_zsr(local_part_tree, f"__{family_name}", comm, **options)
+  if extractor.location == '':
+    mlog.warning(f"Family \"{family_name}\" does not exist in input tree, "
+                 f"an empty extractor is returned from create_extractor_from_family")
+  return extractor

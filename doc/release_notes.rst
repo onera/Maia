@@ -25,6 +25,7 @@ Developpement version
 - Create internal edges in isosurface and extract_part functionnalities
 - concatenate_subsets_from_families: fix GridLocation value of updated ZoneSubRegion nodes
 - compute_wall_distance: write output (using huge value) even if no BCWall are found in mesh
+- extract_part: return an empty tree instead of raising when requested subset does not exist
 
 v1.6 (January 2025)
 -------------------
