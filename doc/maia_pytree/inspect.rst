@@ -95,6 +95,7 @@ Here is a summary of the available functions, depending of the input node:
   :nosignatures:
 
   ~maia.pytree.BCDataSet.GridLocation
+  ~maia.pytree.BCDataSet.getPatch
 
 
 .. note:: Functions are displayed below as static methods, gathered into classes.

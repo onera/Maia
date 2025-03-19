@@ -1050,6 +1050,36 @@ class BCDataSet(Subset):
     grid_loc_n = W.get_child_from_label(bcds_node, 'GridLocation_t')
     return N.get_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
 
+  @staticmethod
+  def getPatch(bcds_node:CGNSTree, bc_node:CGNSTree) -> CGNSTree:
+    """ Return the PointList or PointRange node defining a BCDataSet node.
+
+    This function is a specialization of :func:`Subset.getPatch` for BCDataSet nodes:
+    if no PointList or PointRange is defined in the dataset, the one of the parent BC is returned.
+
+    Args:
+      bcds_node (CGNSTree): Input BCDataSet node
+      bc_node (CGNSTree): Related BC node
+    Returns:
+      CGNSTree : PointList or PointRange node
+    Example:
+      >>> bc = PT.new_BC(point_range=[[1,5],[1,1]])
+      >>> ds1 = PT.new_BCDataSet('DataSet1', point_range=[[1,2],[1,1]], parent=bc)
+      >>> ds2 = PT.new_BCDataSet('DataSet2', parent=bc)
+      >>> PT.BCDataSet.getPatch(ds1, bc)
+      ['PointRange', array([[1, 2], [1, 1]], dtype=int32), [], 'IndexRange_t']
+      >>> PT.BCDataSet.getPatch(ds2, bc)
+      ['PointRange', array([[1, 5], [1, 1]], dtype=int32), [], 'IndexRange_t']
+    """
+    from maia import pytree as PT
+    pl = W.get_child_from_name(bcds_node, 'PointList')
+    pr = W.get_child_from_name(bcds_node, 'PointRange')
+    if (pl is None) and (pr is None):
+      return Subset.getPatch(bc_node)
+    else:
+      assert (pl is None) ^ (pr is None)
+      return pl if pl is not None else pr
+
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("IndexRange_t"))
