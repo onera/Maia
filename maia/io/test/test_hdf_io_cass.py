@@ -3,8 +3,6 @@ import numpy as np
 import os
 import pytest_parallel
 import maia.utils.test_utils as TU
-#import Converter 
-#from maia.io import _hdf_io_cass as LC 
 import maia
 from maia.io.cgns_io_tree import  create_tree_hdf_filter 
 from maia.io.cgns_io_tree import add_distribution_info
@@ -132,7 +130,8 @@ def create_tree_with_perio_jn(comm):
     PT.new_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[xmin, xmax])
 
     return tree
-  
+
+
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(1)
 def test_load_grid_connectivity_property(comm):
@@ -140,26 +139,40 @@ def test_load_grid_connectivity_property(comm):
   out_file = os.path.join(tmp_dir, 'yt.cgns')
   dist_tree=create_tree_with_perio_jn(comm)
   maia.io.dist_tree_to_file(dist_tree, out_file, comm)
-  dist_tree= LC.load_size_tree(out_file, comm)
-  LC.load_grid_connectivity_property(out_file, dist_tree)
-
-
+  size_tree = LC.load_size_tree(out_file, comm)
+  LC.load_grid_connectivity_property(out_file, size_tree)
+  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t']
+  for gc in PT.get_children_from_predicates(size_tree, ['ZoneGridConnectivity_t', is_gc]):
+      assert (PT.get_node_from_name(gc, 'RotationCenter') == [0., 0., 0.]).all()
+      assert (PT.get_node_from_name(gc, 'RotationAngle') == [0., 0., 0.]).all()
+      assert (PT.get_node_from_name(gc, 'Translation') == [-1., 0., 0.]).all()
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(2)  
 def test_load_partial(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  dist_tree = LC.load_size_tree(filename, comm)
-  add_distribution_info(dist_tree, comm)
-  hdf_filter = create_tree_hdf_filter(dist_tree) 
+  size_tree = LC.load_size_tree(filename, comm)
+  add_distribution_info(size_tree, comm)
+  hdf_filter = create_tree_hdf_filter(size_tree) 
   hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
   assert hdf_filter is not None
-  LC.load_partial(filename, dist_tree, hdf_filter,comm)
+  LC.load_partial(filename, size_tree, hdf_filter,comm)
+  if comm.rank == 0:
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneU/GridCoordinates/CoordinateX')[1] == [1., 2, 3]).all()
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneU/GridCoordinates/CoordinateY')[1] == [-1., -2, -3]).all()
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneS/GridCoordinates/CoordinateX')[1] == [1., 3]).all()
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneS/GridCoordinates/CoordinateY')[1] == [-1., 0]).all()
+  elif comm.rank == 1:
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneU/GridCoordinates/CoordinateX')[1] == [4., 5, 6]).all()
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneU/GridCoordinates/CoordinateY')[1] == [-4., -5, -6]).all()
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneS/GridCoordinates/CoordinateX')[1] == [2., 4]).all()
+    assert (PT.get_node_from_path(size_tree, 'Base/ZoneS/GridCoordinates/CoordinateY')[1] == [-1., 0]).all()
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 def test_read_full():
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  LC.read_full(filename)
+  data =LC.read_full(filename)
+  assert data is not None
   
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(1)
@@ -170,21 +183,4 @@ def test_write_full(comm):
            ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneB/GridCoordinates/CoordinateY']] 
   filename_to_write = "write_tree.hdf"
   LC.write_full(filename_to_write, dist_tree, links)
-  
- # TEST NOT CORRECT  
-@pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
-@pytest_parallel.mark.parallel(1)
-def test_write_partial(comm):
-  filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  dist_tree = LC.load_size_tree(filename, comm)
-  filename_to_write = "write_tree.hdf"
-  links = [['.', 'this/hdf/file.hdf', 'this/node', 'Base/ZoneA/GridCoordinates/CoordinateX'],
-           ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneB/GridCoordinates/CoordinateY']] 
-  add_distribution_info(dist_tree, comm)
-  hdf_filter = create_tree_hdf_filter(dist_tree) 
-  hdf_filter = {f'/{key}' : data for key, data in hdf_filter.items()} 
-  #LC.write_partial(filename_to_write, dist_tree, hdf_filter, links, comm)
-  
-
-
-  
+  assert os.path.exists(filename_to_write)

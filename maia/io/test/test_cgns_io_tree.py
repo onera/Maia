@@ -1,15 +1,12 @@
 import os
+import warnings 
 import pytest
 import pytest_parallel
-import maia.io 
-import maia.pytree as PT
-import maia.utils.test_utils as TU
-import warnings 
+from mpi4py import MPI
 import maia
-from maia.io import cgns_io_tree as IOT
-from maia.io.cgns_io_tree import load_tree_from_filter
-from maia.io.cgns_io_tree import  create_tree_hdf_filter 
-from maia.io.cgns_io_tree import add_distribution_info
+import maia.pytree as PT
+import maia.io.cgns_io_tree as IOT
+import maia.utils.test_utils as TU
 
 
 @pytest_parallel.mark.parallel(1)
@@ -126,7 +123,7 @@ def test_fill_size_tree(comm):
     IOT.fill_size_tree(dist_tree, filename, comm, True)
     
 
-@pytest_parallel.mark.parallel(1)
+@pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize('legacy', [False, True])  
 def test_load_size_tree(legacy, comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
@@ -203,23 +200,59 @@ def test_load_partial(comm):
     assert (PT.get_node_from_path(dist_tree, 'Base/ZoneS/GridCoordinates/CoordinateX')[1] == [2., 4]).all()
     assert (PT.get_node_from_path(dist_tree, 'Base/ZoneS/GridCoordinates/CoordinateY')[1] == [-1., 0]).all()
 
-def test_load_from_filter(comm):  
-    dist_tree = maia.factory.generate_dist_block([4,2,2], 'S', comm)
-    maia.algo.dist.convert_s_to_ngon(dist_tree, comm)
-    tmp_dir = TU.create_collective_tmp_dir(comm)
-    filename = os.path.join(tmp_dir, 'tree.cgns')
-    maia.io.dist_tree_to_file(dist_tree, filename, comm)
-    hdf_filter = create_tree_hdf_filter(dist_tree)
-    hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
-    IOT.load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
 
- 
+def create_example_mesh(comm):
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+  filename = os.path.join(tmp_dir, 'tree.cgns')
 
+  if comm.rank == 0:
+    dist_tree = maia.factory.generate_dist_block([4,2,2], 'S', MPI.COMM_SELF)
+    maia.algo.dist.convert_s_to_ngon(dist_tree, MPI.COMM_SELF)
+    maia.io.dist_tree_to_file(dist_tree, filename, MPI.COMM_SELF)
     
+  comm.barrier()
+  return filename
 
-  
-
-
-
-
-      
+@pytest_parallel.mark.parallel(2)
+def test_load_from_filter(comm):
+  filename=create_example_mesh(comm)
+  size_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm)
+  IOT.add_distribution_info(size_tree, comm)
+  hdf_filter = IOT.create_tree_hdf_filter(size_tree)
+  hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')} 
+  IOT.load_tree_from_filter(filename, size_tree, comm, hdf_filter)
+  ngon_node = PT.Zone.NGonNode(PT.get_all_Zone_t(size_tree)[0])
+  if comm.rank==0:
+    ngon_rank0=("""
+    NGonElements Elements_t I4 [22, 0]:
+      ElementRange IndexRange_t I4 [1, 16]:
+      ElementStartOffset#Size DataArray_t I8 [17]:
+      ElementStartOffset DataArray_t I4 [0, 4, 8, 12, 16, 20, 24, 28, 32]:
+      ElementConnectivity#Size DataArray_t I8 [64]:
+      ElementConnectivity DataArray_t:
+        I4 : [1, 9, 13, 5, 2, 6, 14, 10, 3, 7, 15, 11, 4, 8, 16, 12, 1, 2, 10, 9, 2, 3, 11, 10, 3, 4, 12, 11, 5, 13, 14, 6]
+      ParentElements#Size DataArray_t I8 [16, 2]:
+      ParentElements DataArray_t I4 [[17, 0], [17, 18], [18, 19], [19, 0], [17, 0], [18, 0], [19, 0], [17, 0]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Element DataArray_t I4 [0, 8, 16]:
+        ElementConnectivity DataArray_t I4 [0, 32, 64]:
+                """)
+    ngon_expected = PT.yaml.to_node(ngon_rank0)
+  elif comm.rank==1:
+    ngon_rank1=("""
+    NGonElements Elements_t I4 [22, 0]:
+      ElementRange IndexRange_t I4 [1, 16]:
+      ElementStartOffset#Size DataArray_t I8 [17]:
+      ElementStartOffset DataArray_t I4 [32, 36, 40, 44, 48, 52, 56, 60, 64]:
+      ElementConnectivity#Size DataArray_t I8 [64]:
+      ElementConnectivity DataArray_t:
+        I4 : [6, 14, 15, 7, 7, 15, 16, 8, 1, 5, 6, 2, 2, 6, 7, 3, 3, 7, 8, 4, 9, 10, 14, 13, 10, 11, 15, 14, 11, 12, 16, 15]
+      ParentElements#Size DataArray_t I8 [16, 2]:
+      ParentElements DataArray_t I4 [[18, 0], [19, 0], [17, 0], [18, 0], [19, 0], [17, 0], [18, 0], [19, 0]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Element DataArray_t I4 [8, 16, 16]:
+        ElementConnectivity DataArray_t I4 [32, 64, 64]:
+      """)
+    ngon_expected = PT.yaml.to_node(ngon_rank1)
+  assert PT.is_same_node(ngon_node, ngon_expected)
+    
