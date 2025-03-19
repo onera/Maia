@@ -141,9 +141,8 @@ def test_load_grid_connectivity_property(comm):
   dist_tree=create_tree_with_perio_jn(comm)
   maia.io.dist_tree_to_file(dist_tree, out_file, comm)
   dist_tree= LC.load_size_tree(out_file, comm)
-  PT.print_tree(dist_tree)
   LC.load_grid_connectivity_property(out_file, dist_tree)
-  PT.print_tree(dist_tree)
+
 
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
@@ -179,12 +178,10 @@ def test_write_partial(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
   dist_tree = LC.load_size_tree(filename, comm)
   filename_to_write = "write_tree.hdf"
-  PT.print_tree(dist_tree)
   links = [['.', 'this/hdf/file.hdf', 'this/node', 'Base/ZoneA/GridCoordinates/CoordinateX'],
            ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneB/GridCoordinates/CoordinateY']] 
   add_distribution_info(dist_tree, comm)
   hdf_filter = create_tree_hdf_filter(dist_tree) 
-  print(hdf_filter)
   hdf_filter = {f'/{key}' : data for key, data in hdf_filter.items()} 
   #LC.write_partial(filename_to_write, dist_tree, hdf_filter, links, comm)
   

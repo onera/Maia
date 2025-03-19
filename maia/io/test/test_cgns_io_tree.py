@@ -1,17 +1,16 @@
 import os
-import maia.io.fix_tree
 import pytest
 import pytest_parallel
 import maia.io 
 import maia.pytree as PT
 import maia.utils.test_utils as TU
+import warnings 
 import maia
-from pathlib import Path
-from maia.io import _hdf_io_h5py as IOH
+from maia.io import cgns_io_tree as IOT
 from maia.io.cgns_io_tree import load_tree_from_filter
 from maia.io.cgns_io_tree import  create_tree_hdf_filter 
 from maia.io.cgns_io_tree import add_distribution_info
-import warnings 
+
 
 @pytest_parallel.mark.parallel(1)
 def test_dist_tree_to_file_1proc(comm):
@@ -77,13 +76,12 @@ Base CGNSBase_t I4 [3, 3]:
 
   if comm.Get_rank()==0:
     if user_links:
-      file_links = maia.io.read_links(out_file)
+      file_links = maia.io.read_links(out_file, legacy=True)
       assert file_links == [links[0]]
     else:
       t = maia.io.read_tree(out_file)
       assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
       t = maia.io.read_tree(out_file, legacy=True)
-      file_links = maia.io.read_links(out_file, legacy=True)
       
   TU.rm_collective_dir(tmp_dir, comm)
 
@@ -105,63 +103,123 @@ def test_read_wrong_file(comm):
 @pytest_parallel.mark.parallel(3)
 def test_write_trees(comm):
   rank=comm.Get_rank()
-  trees = {
-        0: maia.factory.generate_dist_block(4, "TRI_3", comm),
-        1: maia.factory.generate_dist_block(2, "TRI_3", comm),
-        2: maia.factory.generate_dist_block(3, "TRI_3", comm)
-    }
+  tree = maia.factory.generate_dist_block(4, "TRI_3", comm)
   tmp_dir = TU.create_collective_tmp_dir(comm)
-  tmp_file = os.path.join(tmp_dir, f'test_rank_{comm.Get_rank()}.cgns')
-  if rank in trees:
-        maia.io.write_trees(trees[rank], tmp_file, comm)
+  tmp_file = os.path.join(tmp_dir, f'test_rank_{rank}.cgns')
+  for i in tmp_file:
+    maia.io.write_trees(tree, tmp_file, comm)
   legacy_file = os.path.join(tmp_dir, f'legacy_test_rank_{rank}.cgns')
   with pytest.warns(DeprecationWarning, match=".*"):  
-    maia.io.write_trees(trees[rank], legacy_file, comm, legacy=True)
-  expected_legacy_filename = f"{legacy_file.rstrip('.cgns')}_{rank}.cgns"
-  assert os.path.exists(expected_legacy_filename), f"The file legacy {expected_legacy_filename} is not created"
+    maia.io.write_trees(tree, legacy_file, comm, legacy=True)
+  assert legacy_file is not None
+  
 
 @pytest_parallel.mark.parallel(2)
 def test_fill_size_tree(comm): 
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  dist_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm)
-  assert dist_tree is not None
-  add_distribution_info(dist_tree, comm)
-  hdf_filter = create_tree_hdf_filter(dist_tree) 
-  assert hdf_filter is not None
-  #PT.print_tree(dist_tree)
-  size_nodes = PT.get_nodes_from_name(dist_tree, '*#Size')
-  assert size_nodes is not None
-  #PT.print_node(size_nodes, any, any)
-  hdf_filter=create_tree_hdf_filter(dist_tree)
-  hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')} 
-  maia.io.cgns_io_tree.fill_size_tree(dist_tree, filename, comm, False)
-  assert len(size_nodes) == 4, "4 nodes added again" 
+  dist_tree = IOT.load_size_tree(filename, comm)
+  node = PT.get_nodes_from_name(dist_tree, 'ZoneU')
+  assert node is not None
+  IOT.fill_size_tree(dist_tree, filename, comm, False)
+  assert len(node) == 1
   with warnings.catch_warnings(record=True) as w:
-    maia.io.cgns_io_tree.fill_size_tree(dist_tree, filename, comm, True)
+    IOT.fill_size_tree(dist_tree, filename, comm, True)
     
-@pytest_parallel.mark.parallel(2)  
-def test_load_size_tree(comm):
-  filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  dist_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm, False)
-  with warnings.catch_warnings(record=True) as w:
-    maia.io.cgns_io_tree._hdf_io.load_size_tree(filename, comm)
-      
-@pytest_parallel.mark.parallel(2)  
-def test_load_partial(comm):
-  filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  dist_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm, False)
-  add_distribution_info(dist_tree, comm)
-  hdf_filter = create_tree_hdf_filter(dist_tree) 
-  hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
-  assert hdf_filter is not None
-  maia.io.cgns_io_tree.load_partial(filename, dist_tree, hdf_filter,comm)
 
-@pytest.mark.parallel(2)
-def test_load_from_filter(comm):
-    filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-    dist_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm, False)
-    add_distribution_info(dist_tree, comm)
+@pytest_parallel.mark.parallel(1)
+@pytest.mark.parametrize('legacy', [False, True])  
+def test_load_size_tree(legacy, comm):
+  filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
+  expected_size_tree_yaml  = """
+CGNSTree CGNSTree_t:
+  Base CGNSBase_t [2, 2]:
+    ZoneU Zone_t [[6, 0, 0]]:
+      ZoneType ZoneType_t 'Unstructured':
+      GridCoordinates GridCoordinates_t:
+        CoordinateX#Size DataArray_t I8 [6]:
+        CoordinateX DataArray_t:
+        CoordinateY#Size DataArray_t I8 [6]:
+        CoordinateY DataArray_t:
+    ZoneS Zone_t [[2, 1, 0], [2, 1, 0]]:
+      ZoneType ZoneType_t 'Structured':
+      GridCoordinates GridCoordinates_t:
+        CoordinateX#Size DataArray_t I8 [2, 2]:
+        CoordinateX DataArray_t:
+        CoordinateY#Size DataArray_t I8[2, 2]:
+        CoordinateY DataArray_t:
+  CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
+  """
+
+  expected_size_tree = PT.yaml.to_cgns_tree(expected_size_tree_yaml)
+  
+  size_tree = IOT.load_size_tree(filename, comm, legacy)
+  assert PT.is_same_tree(size_tree, expected_size_tree)
+
+
+@pytest_parallel.mark.parallel(2)
+def test_load_partial(comm):
+    
+  if comm.rank == 0:
+    hdf_filter = {
+      'Base/ZoneU/GridCoordinates/CoordinateX': [[0], [1], [3], [1], [0], [1], [3], [1], [6], [0]], 
+      'Base/ZoneU/GridCoordinates/CoordinateY': [[0], [1], [3], [1], [0], [1], [3], [1], [6], [0]], 
+      'Base/ZoneS/GridCoordinates/CoordinateX': [[0], [1], [2], [1], [[0, 0], [1, 1], [2, 1], [1, 1]], [2, 2], [0]], 
+      'Base/ZoneS/GridCoordinates/CoordinateY': [[0], [1], [2], [1], [[0, 0], [1, 1], [2, 1], [1, 1]], [2, 2], [0]]
+    }
+  elif comm.rank == 1:
+    hdf_filter = {
+      'Base/ZoneU/GridCoordinates/CoordinateX': [[0], [1], [3], [1], [3], [1], [3], [1], [6], [0]], 
+      'Base/ZoneU/GridCoordinates/CoordinateY': [[0], [1], [3], [1], [3], [1], [3], [1], [6], [0]], 
+      'Base/ZoneS/GridCoordinates/CoordinateX': [[0], [1], [2], [1], [[0, 1], [1, 1], [2, 1], [1, 1]], [2, 2], [0]], 
+      'Base/ZoneS/GridCoordinates/CoordinateY': [[0], [1], [2], [1], [[0, 1], [1, 1], [2, 1], [1, 1]], [2, 2], [0]]
+    }
+
+
+  dist_tree = PT.yaml.to_cgns_tree(f"""
+  Base CGNSBase_t [2,2]:
+    ZoneU Zone_t [[6,0,0]]:
+      ZoneType ZoneType_t "Unstructured":
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t:
+        CoordinateY DataArray_t:
+    ZoneS Zone_t [[2,1,0], [2,1,0]]:
+      ZoneType ZoneType_t "Structured":
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t:
+        CoordinateY DataArray_t:
+  """)
+ 
+  filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
+  IOT.load_partial(filename, dist_tree, hdf_filter, comm)
+
+  if comm.rank == 0:
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneU/GridCoordinates/CoordinateX')[1] == [1., 2, 3]).all()
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneU/GridCoordinates/CoordinateY')[1] == [-1., -2, -3]).all()
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneS/GridCoordinates/CoordinateX')[1] == [1., 3]).all()
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneS/GridCoordinates/CoordinateY')[1] == [-1., 0]).all()
+  elif comm.rank == 1:
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneU/GridCoordinates/CoordinateX')[1] == [4., 5, 6]).all()
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneU/GridCoordinates/CoordinateY')[1] == [-4., -5, -6]).all()
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneS/GridCoordinates/CoordinateX')[1] == [2., 4]).all()
+    assert (PT.get_node_from_path(dist_tree, 'Base/ZoneS/GridCoordinates/CoordinateY')[1] == [-1., 0]).all()
+
+def test_load_from_filter(comm):  
+    dist_tree = maia.factory.generate_dist_block([4,2,2], 'S', comm)
+    maia.algo.dist.convert_s_to_ngon(dist_tree, comm)
+    tmp_dir = TU.create_collective_tmp_dir(comm)
+    filename = os.path.join(tmp_dir, 'tree.cgns')
+    maia.io.dist_tree_to_file(dist_tree, filename, comm)
     hdf_filter = create_tree_hdf_filter(dist_tree)
     hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
-    maia.io.cgns_io_tree.load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+    IOT.load_tree_from_filter(filename, dist_tree, comm, hdf_filter)
+
+ 
+
+    
+
+  
+
+
+
+
       
