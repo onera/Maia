@@ -265,6 +265,7 @@ def iter_nodes_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs)
 def iter_children_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs):
   """Specialization of iter_nodes_from_name_and_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
+  return iter_nodes_from_name_and_label(root, name, label, **kwargs)
 
 # ---------------------------------------------------------------------------- #
 
@@ -707,9 +708,7 @@ def iterNodesFromPredicate(root, predicate, *args, **kwargs):
   return iter_nodes_from_predicate(root, predicate, *args, **kwargs)
 
 def getNodeFromPredicates(root, predicate, *args, **kwargs):
-  """ Alias for get_node_from_predicates (legacy), with default value 'deep' for search"""
-  if 'explore' not in kwargs:
-    kwargs['explore'] = 'deep'
+  """ Alias for get_node_from_predicates"""
   return get_node_from_predicates(root, predicate, *args, **kwargs)
 
 def getNodesFromPredicates(root, predicate, *args, **kwargs):

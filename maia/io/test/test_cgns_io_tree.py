@@ -1,5 +1,6 @@
 import os
 import warnings 
+import numpy as np
 import pytest
 import pytest_parallel
 from mpi4py import MPI
@@ -8,6 +9,8 @@ import maia.pytree as PT
 import maia.io.cgns_io_tree as IOT
 import maia.utils.test_utils as TU
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 @pytest_parallel.mark.parallel(1)
 def test_dist_tree_to_file_1proc(comm):
@@ -99,28 +102,60 @@ def test_read_wrong_file(comm):
 
 @pytest_parallel.mark.parallel(3)
 def test_write_trees(comm):
-  rank=comm.Get_rank()
   tree = maia.factory.generate_dist_block(4, "TRI_3", comm)
   tmp_dir = TU.create_collective_tmp_dir(comm)
-  tmp_file = os.path.join(tmp_dir, f'test_rank_{rank}.cgns')
-  for i in tmp_file:
-    maia.io.write_trees(tree, tmp_file, comm)
-  legacy_file = os.path.join(tmp_dir, f'legacy_test_rank_{rank}.cgns')
-  with pytest.warns(DeprecationWarning, match=".*"):  
+
+  tmp_file = os.path.join(tmp_dir, f'test.cgns')
+  maia.io.write_trees(tree, tmp_file, comm)
+
+  legacy_file = os.path.join(tmp_dir, f'legacy_test.cgns')
+  with pytest.warns(DeprecationWarning):
     maia.io.write_trees(tree, legacy_file, comm, legacy=True)
-  assert legacy_file is not None
+
+  comm.barrier()
+  for i in range(comm.Get_size()):
+    assert os.path.exists(os.path.join(tmp_dir, f'test_{i}.cgns'))
+    assert os.path.exists(os.path.join(tmp_dir, f'legacy_test_{i}.cgns'))
+
+  TU.rm_collective_dir(tmp_dir, comm)
   
 
 @pytest_parallel.mark.parallel(2)
-def test_fill_size_tree(comm): 
+@pytest.mark.parametrize('legacy', [False, True])  
+def test_fill_size_tree(legacy, comm): 
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  dist_tree = IOT.load_size_tree(filename, comm)
-  node = PT.get_nodes_from_name(dist_tree, 'ZoneU')
-  assert node is not None
-  IOT.fill_size_tree(dist_tree, filename, comm, False)
-  assert len(node) == 1
-  with warnings.catch_warnings(record=True) as w:
-    IOT.fill_size_tree(dist_tree, filename, comm, True)
+
+  cx_u = [[1.,2.,3.], [4.,5.,6.]][comm.rank]
+  cy_u = [[-1.,-2.,-3.], [-4.,-5.,-6.]][comm.rank]
+  cx_s = [[1.0, 3.0],[2.,4.]][comm.rank]
+  cy_s = [[-1.0, 0.0],[-1.,0.]][comm.rank]
+  distri_vtx_u = [[0,3,6], [3,6,6]][comm.rank]
+  distri_cell_u = [[0,0,0], [0,0,0]][comm.rank]
+  distri_vtx_s = [[0,2,4], [2,4,4]][comm.rank]
+  distri_cell_s = [[0,1,1], [1,1,1]][comm.rank]
+  
+  expected = PT.yaml.to_cgns_tree(f"""
+  Base CGNSBase_t I4 [2, 2]:
+    ZoneU Zone_t I4 [[6, 0, 0]]:
+      ZoneType ZoneType_t 'Unstructured':
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 {cx_u}:
+        CoordinateY DataArray_t R8 {cy_u}:
+      :CGNS#Distribution UserDefinedData_t:
+        Vertex DataArray_t {dtype}  {distri_vtx_u}:
+        Cell DataArray_t {dtype} {distri_cell_u}:
+    ZoneS Zone_t I4 [[2, 1, 0], [2, 1, 0]]:
+      ZoneType ZoneType_t 'Structured':
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 {cx_s}:
+        CoordinateY DataArray_t R8 {cy_s}:
+      :CGNS#Distribution UserDefinedData_t:
+        Vertex DataArray_t {dtype} {distri_vtx_s}:
+        Cell DataArray_t {dtype} {distri_cell_s}:
+  """)
+
+  dist_tree = IOT.file_to_dist_tree(filename, comm, legacy=legacy)
+  assert PT.is_same_tree(expected, dist_tree)
     
 
 @pytest_parallel.mark.parallel(2)
@@ -171,7 +206,6 @@ def test_load_partial(comm):
       'Base/ZoneS/GridCoordinates/CoordinateY': [[0], [1], [2], [1], [[0, 1], [1, 1], [2, 1], [1, 1]], [2, 2], [0]]
     }
 
-
   dist_tree = PT.yaml.to_cgns_tree(f"""
   Base CGNSBase_t [2,2]:
     ZoneU Zone_t [[6,0,0]]:
@@ -201,7 +235,10 @@ def test_load_partial(comm):
     assert (PT.get_node_from_path(dist_tree, 'Base/ZoneS/GridCoordinates/CoordinateY')[1] == [-1., 0]).all()
 
 
-def create_example_mesh(comm):
+@pytest_parallel.mark.parallel(2)
+def test_load_from_filter(comm):
+
+  # Create U/NGON tree for test
   tmp_dir = TU.create_collective_tmp_dir(comm)
   filename = os.path.join(tmp_dir, 'tree.cgns')
 
@@ -209,21 +246,21 @@ def create_example_mesh(comm):
     dist_tree = maia.factory.generate_dist_block([4,2,2], 'S', MPI.COMM_SELF)
     maia.algo.dist.convert_s_to_ngon(dist_tree, MPI.COMM_SELF)
     maia.io.dist_tree_to_file(dist_tree, filename, MPI.COMM_SELF)
-    
-  comm.barrier()
-  return filename
 
-@pytest_parallel.mark.parallel(2)
-def test_load_from_filter(comm):
-  filename=create_example_mesh(comm)
+  comm.barrier()
+
+  # Prepare tested function arguments
   size_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm)
   IOT.add_distribution_info(size_tree, comm)
   hdf_filter = IOT.create_tree_hdf_filter(size_tree)
   hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')} 
+
+  # Test function
   IOT.load_tree_from_filter(filename, size_tree, comm, hdf_filter)
   ngon_node = PT.Zone.NGonNode(PT.get_all_Zone_t(size_tree)[0])
+
   if comm.rank==0:
-    ngon_rank0=("""
+    ngon_expected = PT.yaml.to_node("""
     NGonElements Elements_t I4 [22, 0]:
       ElementRange IndexRange_t I4 [1, 16]:
       ElementStartOffset#Size DataArray_t I8 [17]:
@@ -236,10 +273,9 @@ def test_load_from_filter(comm):
       :CGNS#Distribution UserDefinedData_t:
         Element DataArray_t I4 [0, 8, 16]:
         ElementConnectivity DataArray_t I4 [0, 32, 64]:
-                """)
-    ngon_expected = PT.yaml.to_node(ngon_rank0)
+    """)
   elif comm.rank==1:
-    ngon_rank1=("""
+    ngon_expected = PT.yaml.to_node("""
     NGonElements Elements_t I4 [22, 0]:
       ElementRange IndexRange_t I4 [1, 16]:
       ElementStartOffset#Size DataArray_t I8 [17]:
@@ -252,7 +288,8 @@ def test_load_from_filter(comm):
       :CGNS#Distribution UserDefinedData_t:
         Element DataArray_t I4 [8, 16, 16]:
         ElementConnectivity DataArray_t I4 [32, 64, 64]:
-      """)
-    ngon_expected = PT.yaml.to_node(ngon_rank1)
+    """)
+
   assert PT.is_same_node(ngon_node, ngon_expected)
     
+  TU.rm_collective_dir(tmp_dir, comm)

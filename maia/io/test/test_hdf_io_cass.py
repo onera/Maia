@@ -1,15 +1,14 @@
-import pytest
-import numpy as np
 import os
+import pytest
 import pytest_parallel
-import maia.utils.test_utils as TU
+
 import maia
-from maia.io.cgns_io_tree import  create_tree_hdf_filter 
-from maia.io.cgns_io_tree import add_distribution_info
+import maia.utils.test_utils as TU
+
+from maia.io.cgns_io_tree import create_tree_hdf_filter, add_distribution_info
 
 know_cassiopee = True
 try:
-  import Converter
   from maia.io import _hdf_io_cass as LC
 except ImportError:
   know_cassiopee = False
@@ -135,10 +134,11 @@ def create_tree_with_perio_jn(comm):
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(1)
 def test_load_grid_connectivity_property(comm):
+  dist_tree=create_tree_with_perio_jn(comm)
   tmp_dir = TU.create_collective_tmp_dir(comm)
   out_file = os.path.join(tmp_dir, 'yt.cgns')
-  dist_tree=create_tree_with_perio_jn(comm)
   maia.io.dist_tree_to_file(dist_tree, out_file, comm)
+
   size_tree = LC.load_size_tree(out_file, comm)
   LC.load_grid_connectivity_property(out_file, size_tree)
   is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t']
@@ -146,6 +146,7 @@ def test_load_grid_connectivity_property(comm):
       assert (PT.get_node_from_name(gc, 'RotationCenter') == [0., 0., 0.]).all()
       assert (PT.get_node_from_name(gc, 'RotationAngle') == [0., 0., 0.]).all()
       assert (PT.get_node_from_name(gc, 'Translation') == [-1., 0., 0.]).all()
+  TU.rm_collective_dir(tmp_dir, comm)
 
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(2)  
@@ -155,7 +156,7 @@ def test_load_partial(comm):
   add_distribution_info(size_tree, comm)
   hdf_filter = create_tree_hdf_filter(size_tree) 
   hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
-  assert hdf_filter is not None
+  
   LC.load_partial(filename, size_tree, hdf_filter,comm)
   if comm.rank == 0:
     assert (PT.get_node_from_path(size_tree, 'Base/ZoneU/GridCoordinates/CoordinateX')[1] == [1., 2, 3]).all()
@@ -171,16 +172,33 @@ def test_load_partial(comm):
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 def test_read_full():
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  data =LC.read_full(filename)
-  assert data is not None
+  tree = LC.read_full(filename)
+
+  expected = PT.yaml.to_cgns_tree(f"""
+  Base CGNSBase_t I4 [2, 2]:
+    ZoneU Zone_t I4 [[6, 0, 0]]:
+      ZoneType ZoneType_t 'Unstructured':
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [1,2,3,4,5,6]:
+        CoordinateY DataArray_t R8 [-1,-2,-3,-4,-5,-6]:
+    ZoneS Zone_t I4 [[2, 1, 0], [2, 1, 0]]:
+      ZoneType ZoneType_t 'Structured':
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [[1,2],[3,4]]:
+        CoordinateY DataArray_t R8 [[-1,-1],[0,0]]:
+  """)
+   # Converter casts CGNSLibraryVersion
+  PT.rm_children_from_label(expected, 'CGNSLibraryVersion_t')
+  PT.rm_children_from_label(tree, 'CGNSLibraryVersion_t')
+  assert PT.is_same_tree(tree, expected)
   
 @pytest.mark.skipif(not know_cassiopee, reason="Require Cassiopee")
 @pytest_parallel.mark.parallel(1)
-def test_write_full(comm):
-  filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
-  dist_tree = LC.load_size_tree(filename, comm)
-  links = [['.', 'this/hdf/file.hdf', 'this/node', 'Base/ZoneA/GridCoordinates/CoordinateX'],
-           ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneB/GridCoordinates/CoordinateY']] 
-  filename_to_write = "write_tree.hdf"
-  LC.write_full(filename_to_write, dist_tree, links)
-  assert os.path.exists(filename_to_write)
+def test_write_full(tmp_path, comm):
+  tree = maia.factory.generate_dist_block(4, 'TRI_3', comm)
+  links = [['.', 'this/hdf/file.hdf', 'this/node', 'Base/zone/GridCoordinates/CoordinateX'],
+           ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/zone/GridCoordinates/CoordinateY']] 
+  filename = tmp_path / 'out.cgns'
+  LC.write_full(str(filename), tree, links)
+
+  assert filename.exists()

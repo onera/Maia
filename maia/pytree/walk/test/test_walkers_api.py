@@ -23,12 +23,6 @@ dir_path = PT.__path__[0]
 
 get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 
-def get_ZoneBC(root):
-    return PT.get_child_from_name(root, 'ZoneBC')
-
-def get_bc1(zonebc):
-    return PT.get_child_from_name(zonebc, 'bc1')
-
 def test_get_node_from_predicate():
   tree = PTy.to_node(yt)
 
@@ -162,7 +156,6 @@ def test_predicates_to_paths():
 
 def test_get_child_from_value():
   tree = PTy.to_node(yt)
-  PT.print_tree(tree)
   bc1 = PT.get_node_from_name(tree, 'bc1')
   child = PT.get_child_from_value(bc1, 'BC1')
   assert child is not None
@@ -258,13 +251,9 @@ def test_iter_children_from_value():
 def test_iter_nodes_from_name_and_label():
   tree = PTy.to_node(yt)
   nodes = list(PT.iter_nodes_from_name_and_label(tree, 'FamilyName', 'FamilyName_t'))
-  values = sorted([PT.get_value(n) for n in nodes])
-  for val in values:
-      assert val in ['ROW1', 'BC1', 'BC2']
+  values = [PT.get_value(n) for n in nodes]
+  assert values == ['BC1', 'BC2', 'ROW1']
 
-# La fonction alias pour une recherche en "child" devrait retourner un itérateur.
-# Or, il apparaît qu'elle ne retourne rien (None). On marque ce test comme xfail.
-@pytest.mark.xfail(reason="iter_children_from_name_and_label manque le return de l'itérateur")
 def test_iter_children_from_name_and_label():
   tree = PTy.to_node(yt)
   bc2 = PT.get_node_from_name(tree, 'bc2')
@@ -335,6 +324,8 @@ def test_iter_children_from_names():
   nodes = list(PT.iter_children_from_names(tree, ['ZoneBC']))
   assert len(nodes) == 1
   assert PT.get_name(nodes[0]) == 'ZoneBC'
+  nodes = list(PT.iter_children_from_names(tree, ['ZoneBC', 'FamilyName']))
+  assert len(nodes) == 0
 
 def test_iter_nodes_from_values():
   tree = PTy.to_node(yt)
@@ -353,13 +344,13 @@ def test_iter_children_from_values():
 def test_iter_nodes_from_name_and_labels():
   tree = PTy.to_node(yt)
   nodes = list(PT.iter_nodes_from_name_and_labels(tree, ['FamilyName'], ['FamilyName_t']))
-  assert len(nodes) >= 1
+  assert len(nodes) == 3
   for n in nodes:
       assert PT.get_name(n) == 'FamilyName'
 
-# Une deuxième version de la fonction alias de recherche child par noms et labels.
-# On la marque xfail car elle présente le même problème que l'autre.
-@pytest.mark.xfail(reason="iter_children_from_name_and_labels manque le return de l'itérateur")
+  nodes = list(PT.iter_nodes_from_name_and_labels(tree, ['bc*', 'FamilyName'], ['BC_t', 'FamilyName_t']))
+  assert len(nodes) == 2
+
 def test_iter_children_from_name_and_labels_duplicate():
   tree = PTy.to_node(yt)
   bc2 = PT.get_node_from_name(tree, 'bc2')
@@ -411,23 +402,21 @@ def test_get_children_from_name_and_labels():
 
 # ---------------------------------------------------------------------------
 # Test sur l'alias hérité getNodeFromPredicates
-# Celui-ci passe par défaut le paramètre 'explore' qui n'est plus accepté.
-# On marque ce test comme xfail pour signaler le problème.
-@pytest.mark.xfail(reason="Legacy alias getNodeFromPredicates passe 'explore' et lève une TypeError")
 def test_getNodeFromPredicates():
-    tree = PTy.to_node(yt)
-    node1 = PT.get_node_from_predicates(tree, 'FamilyName_t')
-    node2 = PT.getNodeFromPredicates(tree, 'FamilyName_t')
-    assert node1 == node2
+  tree = PTy.to_node(yt)
+  node1 = PT.get_node_from_predicates(tree, 'FamilyName_t')
+  node2 = PT.getNodeFromPredicates(tree, 'FamilyName_t')
+  assert node1 == node2
 
-def test_get_all_zone_t_from_zone_t():
+def test_get_all_Zone_t():
+  # From Zone
   yaml_str = "MyZone Zone_t:"
   tree = PTy.to_node(yaml_str)
   zones = PT.get_all_Zone_t(tree)
   assert len(zones) == 1
   assert PT.get_name(zones[0]) == "MyZone"
 
-def test_get_all_zone_t_from_cgnsbase_t():
+  # From Base
   yaml_str = """
   Base CGNSBase_t:
     Zone1 Zone_t:
@@ -436,12 +425,10 @@ def test_get_all_zone_t_from_cgnsbase_t():
   """
   tree = PTy.to_node(yaml_str)
   zones = PT.get_all_Zone_t(tree)
-  zone_names = [PT.get_name(n) for n in zones]
   assert len(zones) == 2
-  assert "Zone1" in zone_names
-  assert "Zone2" in zone_names
+  assert get_names(zones) == ["Zone1", "Zone2"]
 
-def test_get_all_zone_t_from_cgnstree_t():
+  # From Tree
   yaml_str = """
   Tree CGNSTree_t:
     BaseA CGNSBase_t:
@@ -452,30 +439,28 @@ def test_get_all_zone_t_from_cgnstree_t():
   """
   tree = PTy.to_node(yaml_str)
   zones = PT.get_all_Zone_t(tree)
-  zone_names = [PT.get_name(n) for n in zones]
   assert len(zones) == 3
-  assert set(zone_names) == {"Zone1", "ZoneExtra", "Zone2"}
+  assert get_names(zones) == ["Zone1", "ZoneExtra", "Zone2"]
 
 def test_get_all_cgnsbase_t_from_cgnsbase_t():
-    yaml_str = "BaseA CGNSBase_t:"
-    tree = PTy.to_node(yaml_str)
-    bases = PT.get_all_CGNSBase_t(tree)
-    # On s'attend à retrouver un unique nœud, celui-ci étant la racine
-    assert len(bases) == 1
-    assert PT.get_name(bases[0]) == "BaseA"
+  # From Base
+  yaml_str = "BaseA CGNSBase_t:"
+  tree = PTy.to_node(yaml_str)
+  bases = PT.get_all_CGNSBase_t(tree)
+  assert len(bases) == 1
+  assert PT.get_name(bases[0]) == "BaseA"
 
-def test_get_all_cgnsbase_t_from_cgnstree_t():
-    yaml_str = """
-    Tree CGNSTree_t:
-      BaseA CGNSBase_t:
-      BaseB CGNSBase_t:
-      NotBase SomethingElse_t:
-    """
-    tree = PTy.to_node(yaml_str)
-    bases = PT.get_all_CGNSBase_t(tree)
-    base_names = [PT.get_name(b) for b in bases]
-    assert len(bases) == 2
-    assert set(base_names) == {"BaseA", "BaseB"}
+  # From Tree
+  yaml_str = """
+  Tree CGNSTree_t:
+    BaseA CGNSBase_t:
+    BaseB CGNSBase_t:
+    NotBase SomethingElse_t:
+  """
+  tree = PTy.to_node(yaml_str)
+  bases = PT.get_all_CGNSBase_t(tree)
+  assert len(bases) == 2
+  assert get_names(bases) == ["BaseA", "BaseB"]
 
 def test_get_node_from_labels():
   tree = PTy.to_node(yt)
@@ -497,5 +482,3 @@ def test_get_nodes_from_labels():
   assert len(nodes) == 2
   names = sorted([PT.get_name(n) for n in nodes])
   assert names == ["bc1", "bc2"]
-
-
