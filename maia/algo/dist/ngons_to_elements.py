@@ -157,7 +157,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   dn_face   = len(face_vtx)
 
   face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
-  face_n = face_vtx.counts
+  face_n = face_vtx.counts.astype(np.int32, copy=False)
 
   old_face_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0])
   
