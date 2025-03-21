@@ -81,7 +81,7 @@ def test_pe_to_ngon(comm):
   ngon_ec_bck  = PT.get_node_from_path(ngon_bck, 'ElementConnectivity')[1]
 
   PT.rm_nodes_from_name(zone, 'NGonElements')
-  NGT.edge_pe_to_ngon(zone, comm)
+  maia.algo.edge_pe_to_ngon(zone, comm)
   ngon = PT.get_node_from_path(zone, 'NGonElements')
   ngon_er  = PT.Element.Range(ngon)
   ngon_eso = PT.get_node_from_path(ngon, 'ElementStartOffset')[1]

@@ -19,187 +19,112 @@ def balance_with_uniform_weights(n_elem_per_zone, n_rank):
 
     May be usefull when weigthed partitioning is not available
     """
-    # LOG.info(' '*4 + " ~> PrepareDistribBaseGen ")
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     sorted_zone = sorted(n_elem_per_zone.items(), key=lambda item:item[1], reverse=True)
-    n_elem_zone_abs = {key:value for key,value in sorted_zone}
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    n_elem_zone_sorted = {key:value for key,value in sorted_zone}
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    # I/ Step 1
     # > Compute mean per rank
-    n_elem_tot    = sum(n_elem_zone_abs.values())
-    mini_per_rank = min(n_elem_zone_abs.values())
-    maxi_per_rank = max(n_elem_zone_abs.values())
-    mean_per_rank = n_elem_tot//n_rank
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    mean_per_rank = sum(n_elem_zone_sorted.values()) // n_rank
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    # > Verbose
-    # LOG.debug(' '*8 + "*"*100)
-    # LOG.debug(' '*8 + " n_elem_tot : {0} on {1} processors".format(n_elem_tot, n_rank))
-    # LOG.debug(' '*8 + " mean_per_rank : {0} ".format(mean_per_rank))
-    # LOG.debug(' '*8 + " mini_per_rank : {0} ".format(mini_per_rank))
-    # LOG.debug(' '*8 + " maxi_per_rank : {0} ".format(maxi_per_rank))
-    # LOG.debug(' '*8 + "*"*100)
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     # > Init the dictionnary containing procs list
-    dproc_to_zone = {key : [] for key in n_elem_zone_abs}
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dzone_to_procs = {key : [] for key in n_elem_zone_sorted}
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    # In this first pass, we loop over all the zones and:
+    #  - affect to each zone P new ranks with P = zone_size / mean_per_rank
+    #  - if we found an other (untreated) zone with less elements than the remainder,
+    #     affect the first of P ranks to this zone and reduce remainder.
+    #     Do this until there is no more zone with less elts than remainder.
     cur_rank = 0
-    for i_zone, i_elem in n_elem_zone_abs.items():
-      # *******************************************
-      # > Verbose
-      # LOG.debug(' '*8 + "-"*100)
-      # LOG.debug(' '*8 + "~> i_zone/i_elem : {0}/{1} ".format(i_zone, i_elem ))
-      # LOG.debug(' '*8 + "~> cur_rank : {0} ".format(cur_rank))
-      # *******************************************
+    for i_zone, i_elem in n_elem_zone_sorted.items():
 
-      # *******************************************
       # > Compute n_rank affected to the current Zone
       n_rank_zone = i_elem//mean_per_rank
-      # LOG.debug(' '*8 + " ~> n_rank_zone : {0} ".format(n_rank_zone))
-      # *******************************************
-
-      # *******************************************
-      for iproc in range(n_rank_zone):
-        dproc_to_zone[i_zone].append(iproc+cur_rank)
-      # *******************************************
-
-      # *******************************************
-      # > Compute the number of remaining (rest of integer division )
       r_elem = i_elem - n_rank_zone*mean_per_rank
-      # LOG.debug(' '*8 + " ~> r_elem : {0} ".format(r_elem))
-      # *******************************************
+      
+      dzone_to_procs[i_zone].extend(range(cur_rank, cur_rank+n_rank_zone))
 
-      # *******************************************
-      # > Loop on the next Zone
+      # > Loop on the other Zone
       ii_rank  = 0
-      for j_zone, j_elem in n_elem_zone_abs.items():
-        # ooooooooooooooooooooooooooooooooooooooooo
-        # > Verbose
-        LOG.debug(' '*20 + "o"*80 )
-        LOG.debug(' '*20 + "~> j_zone/j_elem : {0}/{1} ".format(j_zone, j_elem))
-        # ooooooooooooooooooooooooooooooooooooooooo
+      for j_zone, j_elem in n_elem_zone_sorted.items():
 
-        # ooooooooooooooooooooooooooooooooooooooooo
-        # > Check if j_zone have proc already affected
-        if(len(dproc_to_zone[j_zone]) != 0):
-          continue # > Zone already affectted
-        # ooooooooooooooooooooooooooooooooooooooooo
+        # > Skip if other zone already affected
+        if len(dzone_to_procs[j_zone]) != 0:
+          continue
+        # > This will skip all zones if no ranks were affected to izone (if i_elem < mean_per_rank)
+        if n_rank_zone == 0:
+          continue
 
-        # ooooooooooooooooooooooooooooooooooooooooo
-        # > Check if no proc to affect
-        if(n_rank_zone == 0):
-          continue # > No proc to affect
-        # ooooooooooooooooooooooooooooooooooooooooo
-
-        # ooooooooooooooooooooooooooooooooooooooooo
         # > Test if j_elem < r_elem
-        if(j_elem <= r_elem):
-          # if(ii_rank > n_rank):
-          if(ii_rank > n_rank_zone):
+        if j_elem <= r_elem:
+          if ii_rank > n_rank_zone:
             ii_rank = 0
-          dproc_to_zone[j_zone].append(ii_rank+cur_rank)
-          # LOG.debug(' '*8 + " ~> cur_rank : {0} ".format(cur_rank))
-          # LOG.debug(' '*8 + " ~> ii_rank  : {0} ".format(ii_rank))
-          # LOG.debug(' '*8 + " ~> Add r_elem : {0} to proc : {1} [{2}/{3}] ".format(r_elem, ii_rank+cur_rank, cur_rank, ii_rank))
+          dzone_to_procs[j_zone].append(ii_rank+cur_rank)
           ii_rank += 1
           r_elem  -= j_elem
-        # ooooooooooooooooooooooooooooooooooooooooo
 
-      # *******************************************
       cur_rank += n_rank_zone
-      # *******************************************
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    # > Some zone have no proc affected and some rank are steal not assigned
+    # End of first pass :: compute number of ranks w/o zones and zones not yet treated 
     n_rank_remain  = n_rank - cur_rank
-    d_remain_zones = {zone : j_elem for zone,j_elem in n_elem_zone_abs.items() if dproc_to_zone[zone] == []}
+    d_remain_zones = {zone : j_elem for zone,j_elem in n_elem_zone_sorted.items() if len(dzone_to_procs[zone]) == 0}
 
-    # LOG.debug(' '*8 + " ~> Some zone have no proc affected and some rank are steal not assigned : {0}/{1} ".format(d_remain_zones, n_rank_remain))
-
+    # In this pass, we gather zones with few elements (up to mean_per_rank) on the not yet used ranks
     while d_remain_zones:
-      # LOG.debug(' '*8 + " n_rank_remain : {0} ".format(n_rank_remain))
 
       n_elem_remain = 0
       for j_zone, j_elem in d_remain_zones.items():
         if (n_elem_remain + j_elem) <= mean_per_rank:
-          dproc_to_zone[j_zone].append(cur_rank)
+          dzone_to_procs[j_zone].append(cur_rank)
           n_elem_remain += j_elem
-      # LOG.debug(' '*8 + " cur_rank : {0} ".format(cur_rank))
+      
       cur_rank += 1
-
       n_rank_remain = n_rank-cur_rank
-      d_remain_zones = {zone : j_elem for zone,j_elem in d_remain_zones.items() if dproc_to_zone[zone] == []}
+      d_remain_zones = {zone : j_elem for zone,j_elem in d_remain_zones.items() if len(dzone_to_procs[zone]) == 0}
 
       if n_rank_remain == 0:
         break
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     # > Some zone have no proc affected and all ranks are assigned
-    # LOG.debug(' '*8 + " Some zone have no proc affected and all ranks are assigned : {0}/{1} ".format(d_remain_zones, n_rank_remain))
+    # > In this step we dispatch each remaining zone on the least loaded rank, until we have no more
+    #   unaffected zone
     n_elem_mpi_tmp = np.zeros(n_rank, dtype=np.float64)
-    for i_zone, lprocs in dproc_to_zone.items():
-      n_elem_mpi_tmp[lprocs] += n_elem_per_zone[i_zone]/len(lprocs)
+    for i_zone, lprocs in dzone_to_procs.items():
+      if len(lprocs) > 0:  # To skip unaffected zones
+        n_elem_mpi_tmp[lprocs] += n_elem_per_zone[i_zone] / len(lprocs)
 
     while d_remain_zones:
-      # *******************************************
+
+      # search the process which has fewer elmts
       min_loaded_proc = np.argmin(n_elem_mpi_tmp)
-      min_load        = n_elem_mpi_tmp[min_loaded_proc]
-      # *******************************************
 
-      # *******************************************
+      # select the first zone remaining and add it to the less loaded rank
       cur_zone_to_add, cur_zone_to_add_n_elem = next(iter(d_remain_zones.items()))
-      # *******************************************
-
-      # *******************************************
-      dproc_to_zone[cur_zone_to_add].append(min_loaded_proc)
+      dzone_to_procs[cur_zone_to_add].append(min_loaded_proc)
       n_elem_mpi_tmp[min_loaded_proc] += cur_zone_to_add_n_elem
-      # *******************************************
+      
+      # Remove the treated zones
+      d_remain_zones = {zone : j_elem for zone,j_elem in d_remain_zones.items() if len(dzone_to_procs[zone]) == 0}
 
-      # *******************************************
-      d_remain_zones = {zone : j_elem for zone,j_elem in d_remain_zones.items() if dproc_to_zone[zone] == []}
-      # *******************************************
 
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    # > Some rank are steal not assigned
-    # LOG.debug(' '*8 + " ~> Some rank are steal not assigned / cur_rank : {0} ".format(cur_rank))
+    # > If we have unaffected ranks, we add each one of it to the zone for which 
+    #   zone_size / n_proc_this_zone is maximal
     while(cur_rank != n_rank):
-      zone_to_delem = {zone : n_elem_per_zone[zone]/len(lprocs) for zone, lprocs in dproc_to_zone.items()}
+      zone_to_delem = {zone : n_elem_per_zone[zone]/len(lprocs) for zone, lprocs in dzone_to_procs.items()}
+
       maxZone = max(zone_to_delem.items(), key=lambda item:item[1])[0]
-
-      # > Fill maxZone
-      # LOG.debug(' '*8 + " ~> maxZone : {0} ".format(maxZone))
-      # LOG.debug(' '*8 + " ~> cur_rank : {0} ".format(cur_rank))
-      dproc_to_zone[maxZone].append(cur_rank)
+      dzone_to_procs[maxZone].append(cur_rank)
       cur_rank += 1
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    
     # > Remove double entry
-    for i_zone in dproc_to_zone.keys():
-      dproc_to_zone[i_zone] = list(set(dproc_to_zone[i_zone]))
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+    dzone_to_procs = {key: list(set(val)) for key, val in dzone_to_procs.items()}
+   
     # > Format
     repart_per_zone = dict()
-    for zone, procs in dproc_to_zone.items():
+    for zone, procs in dzone_to_procs.items():
       homonegeous_split = single_zone_balancing.homogeneous_repart(n_elem_per_zone[zone], len(procs))
       # > Unpack
       homonegeous_split_it = iter(homonegeous_split)
       repart_per_zone[zone] = [next(homonegeous_split_it) if i in procs else 0 for i in range(n_rank)]
-    # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
     return repart_per_zone
 

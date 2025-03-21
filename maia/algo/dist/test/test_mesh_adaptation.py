@@ -51,7 +51,19 @@ def test_unpack_metric():
   metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, "FlowSol/Tensor")]
   assert metrics_names==[ "TensorXX","TensorXY","TensorXZ",
                           "TensorYY","TensorYZ","TensorZZ" ]
+  
+  # > Wrong because metric path is integer (not str and not list)
+  with pytest.raises(ValueError):
+    MA.unpack_metric(tree, 10)
 
+  # > Wrong because leads to scalar and tensor fields (7 nodes)
+  tree_extra = PT.deep_copy(tree)
+  fs = PT.get_node_from_name(tree_extra, 'FlowSol')
+  PT.new_DataArray('Tensor', [1., 1., 1.], parent=fs)
+
+  with pytest.raises(ValueError):
+    MA.unpack_metric(tree_extra, "FlowSol/Tensor")
+       
   # > Paths to multiple fields (order matters)
   metric = ["FlowSol/TensorXX", "FlowSol/TensorZZ",
             "FlowSol/TensorXZ", "FlowSol/TensorXY",
@@ -59,6 +71,21 @@ def test_unpack_metric():
   metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, metric)]
   assert metrics_names==[ "TensorXX","TensorZZ","TensorXZ",
                           "TensorXY","TensorYZ","TensorYY" ]
+
+
+  # Wrong : tensor with only two fields
+  tree_extra = PT.yaml.to_cgns_tree("""
+  Base CGNSBase_t [3, 3]:
+    Zone Zone_t [[3,1,0]]:
+      ZoneType ZoneType_t "Unstructured":
+      FlowSol FlowSolution_t:
+        TensorXY DataArray_t R8 [1., 1., 1.]:
+        TensorYZ DataArray_t R8 [1., 1., 1.]:
+  """)
+  with pytest.raises(ValueError):
+    MA.unpack_metric(tree_extra, "FlowSol/Tensor")
+
+
 
 @pytest.mark.skipif(not feflo_exists, reason="Require Feflo.a")
 @pytest_parallel.mark.parallel(2)

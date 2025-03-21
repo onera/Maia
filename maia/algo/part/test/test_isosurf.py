@@ -1,6 +1,7 @@
 import pytest
 import pytest_parallel
 import numpy as np
+from mpi4py import MPI
 
 import maia
 import maia.pytree        as PT
@@ -160,3 +161,60 @@ def test_isosurf_one_domain(comm):
 
   assert PT.get_label(PT.get_child_from_name(iso_zone, "maia#surface_data")) == 'UserDefinedData_t'
 
+@pytest_parallel.mark.parallel(2)
+def test_compute_elliptical_slice(comm):
+  
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  slice_tree = ISO.elliptical_slice(part_tree, [0.5,0.5,0.5,.5,1.,1.,.25**2], \
+      comm, elt_type='NGON_n')
+  assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is None
+  iso_zone = PT.get_all_Zone_t(slice_tree)[0]
+  assert comm.allreduce(PT.Zone.n_cell(iso_zone), MPI.SUM) == 88
+  
+@pytest_parallel.mark.parallel(1)  
+def test_compute_spherical_slice(comm):
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  
+  zone      = PT.get_node_from_label(part_tree, "Zone_t")
+  vol_rank  = comm.Get_rank() * np.ones(PT.Zone.n_cell(zone))
+  src_sol   = PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'i_rank' : vol_rank}, parent=zone)
+  slice_tree = maia.algo.part.spherical_slice(part_tree, [0.5,0.5,0.5,0.25], comm, \
+      ["FlowSolution"])
+
+  iso_zone = PT.get_all_Zone_t(slice_tree)[0]
+  assert PT.Zone.n_cell(iso_zone) == 1008 and PT.Zone.n_vtx(iso_zone) == 506
+  elts = PT.get_nodes_from_label(iso_zone, 'Elements_t')
+  assert len(elts) == 1 and PT.Element.CGNSName(elts[0]) == 'TRI_3'
+  assert maia.pytree.get_child_from_name(iso_zone, "FlowSolution") is not None
+  assert (PT.get_node_from_name(iso_zone, 'i_rank')[1] == 0).all()
+
+@pytest_parallel.mark.parallel(2) 
+def test_compute_plane_slice(comm):
+  dist_tree = maia.factory.generate_dist_block(5, 'Poly', comm)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.1], comm, elt_type='QUAD_4')
+  
+  iso_zone = PT.get_all_Zone_t(slice_tree)[0]
+  assert PT.Zone.n_cell(iso_zone) == 32 and PT.Zone.n_vtx(iso_zone) == 45
+
+  assert np.allclose(PT.get_node_from_name(iso_zone, 'CoordinateZ')[1], 0.1)
+
+
+@pytest_parallel.mark.parallel(1) 
+def test_compute_iso_surface(comm):
+  dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  node = PT.get_node_from_name(dist_tree, 'Zmin')
+  PT.set_value(node, 'BCWall')
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
+  maia.algo.part.compute_wall_distance(part_tree, comm, point_cloud='Vertex')
+
+  part_tree_iso = maia.algo.part.iso_surface(part_tree, "WallDistance/TurbulentDistance", iso_val=0.25,\
+       containers_name=['WallDistance'], comm=comm)
+
+  iso_zone = PT.get_all_Zone_t(part_tree_iso)[0]
+  assert PT.Zone.n_cell(iso_zone) == 800 and PT.Zone.n_vtx(iso_zone) == 441
+
+  # Iso value field should be constant
+  assert np.allclose(PT.get_node_from_name(part_tree_iso, 'TurbulentDistance')[1], 0.25)

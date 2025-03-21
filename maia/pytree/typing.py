@@ -3,7 +3,7 @@ import numpy as np
 
 try: #Require numpy >= 1.20
   from numpy.typing import ArrayLike, DTypeLike
-except ImportError:
+except ImportError:  #pragma: no cover
   ArrayLike = Any
   DTypeLike = Any
 

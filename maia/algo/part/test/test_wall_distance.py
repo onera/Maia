@@ -106,7 +106,6 @@ def test_projection_to(comm):
   PT.add_child(zone, zone_bc)
 
   WD.compute_projection_to(part_tree, lambda n: PT.get_label(n) == 'BC_t', comm)
-  PT.print_tree(part_tree)
 
   fs = PT.get_child_from_name(zone, 'SurfDistance')
   assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'

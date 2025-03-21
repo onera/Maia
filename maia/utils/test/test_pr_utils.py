@@ -108,11 +108,24 @@ class Test_compute_pointList_from_pointRanges():
       sub_ranges = [np.array([[2,2],[1,1],[1,1]]),
                     np.array([[2,2],[1,1],[2,2]])]
       pointList = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"J"+self.loc)
-      assert (pointList == [[14,20]]).all()
+      assert (pointList == [[14,20]]).all()  
+    
 
   class Test_vertex():
     nVtx       = np.array([3, 3, 3], np.int64)
     loc        = "Vertex"
+    
+    def test_1D_range(self):
+      nVtx_1D=np.array([5], np.int32)
+      sub_ranges=[np.array([[2,4]])]
+      pointList= pr_utils.compute_pointList_from_pointRanges(sub_ranges,nVtx_1D, self.loc)
+      assert (pointList == [[2,3,4]]).all()
+      
+    def test_2D_range(self):
+      nVtx_2D=np.array([5,5], np.int32)
+      sub_ranges=[np.array([[1,2], [1,2]])]
+      pointList= pr_utils.compute_pointList_from_pointRanges(sub_ranges,nVtx_2D,self.loc)
+      assert (pointList == [[1,2,6,7]]).all()
     # --------------------------------------------------------------------------- #
     #VtxRange BC (IDir)= [[3,3], [1,3], [1,3]]
     def test_simple_range(self):

@@ -2,7 +2,7 @@ import pytest
 
 import maia.pytree as PT
 
-from maia.algo.apply_function_to_nodes import apply_to_zones, zones_iterator
+from maia.algo.apply_function_to_nodes import apply_to_zones, zones_iterator, apply_to_bases
 
 def test_apply_to_zones():
 
@@ -63,4 +63,24 @@ def test_zones_iterator():
     for z in zones_iterator(PT.get_node_from_label(tree, 'ZoneBC_t')):
       pass
 
-  
+
+def test_apply_to_bases():
+    def add_child(base):
+        PT.new_child(base, 'Family', 'Family_t', 'WALL')
+
+    yt = """
+    BaseA CGNSBase_t:
+      zoneI Zone_t:
+    BaseB CGNSBase_t:
+      zoneII Zone_t:
+    """
+    # yam to cgns tree
+    tree = PT.yaml.to_cgns_tree(yt)
+    # extract a node from a tree
+    base1= PT.get_node_from_name(tree, 'BaseA')
+
+    apply_to_bases(add_child, tree)
+    assert PT.get_node_from_name(base1,'Family') is not None
+    # check if the fucntion is applied to others zones
+    with pytest.raises(Exception):
+      apply_to_bases(add_child, PT.get_node_from_name(tree, "zoneI"))

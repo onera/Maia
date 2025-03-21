@@ -15,9 +15,13 @@ def test_index_to_ijk():
   assert (s_numb.ijk_to_index(*s_numb.index_to_ijk(idx, [7,5,3]), [7,5,3]) == idx).all()
 
 def test_ij_to_index():
+  n_vtx=[3,7]
   assert s_numb.ij_to_index(1,1,[3,7]) ==  1
   assert s_numb.ij_to_index(2,5,[3,7]) == 14
   assert s_numb.ij_to_index(3,7,[3,7]) == 21
+  with pytest.raises(ValueError, match="Unsupported location 'InvalidLoc'"):
+    s_numb.index_to_ij_from_loc(1, 'InvalidLoc', n_vtx)
+  
 def test_index_to_ij():
   assert s_numb.index_to_ij( 1,[3,7]) == (1,1)
   assert s_numb.index_to_ij(14,[3,7]) == (2,5)
@@ -66,4 +70,24 @@ def test_faceindex_to_idx_2d():
   assert (s_numb.ij_to_edgeiIndex(*s_numb.edgeiIndex_to_ij(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
   assert (s_numb.ij_to_edgejIndex(*s_numb.edgejIndex_to_ij(idx, n_cell, n_vtx), n_cell, n_vtx) == idx).all()
 
-
+def test_index_to_ijk_from_loc():
+  n_vtx=[5,5,5]
+  n_cell=[4,4,4]
+  assert s_numb.index_to_ijk_from_loc(1, 'Vertex', n_vtx)== s_numb.index_to_ijk(1, n_vtx)
+  assert s_numb.index_to_ijk_from_loc(10, 'CellCenter', n_vtx)== s_numb.index_to_ijk(10, n_cell)
+  assert s_numb.index_to_ijk_from_loc(3, 'IFaceCenter', n_vtx)== s_numb.faceiIndex_to_ijk(3, n_cell, n_vtx)
+  assert s_numb.index_to_ijk_from_loc(4, 'JFaceCenter', n_vtx)== s_numb.facejIndex_to_ijk(4,n_cell, n_vtx)
+  assert s_numb.index_to_ijk_from_loc(3, 'KFaceCenter', n_vtx)== s_numb.facekIndex_to_ijk(3,n_cell, n_vtx)
+  
+  with pytest.raises(ValueError, match="Unsupported location 'InvalidLoc'"):
+    s_numb.index_to_ijk_from_loc(1, 'InvalidLoc', n_vtx)
+  
+def test_index_to_ij_from_loc():
+  n_vtx=[5,5]
+  n_cell=[4,4]
+  assert s_numb.index_to_ij_from_loc(1, 'Vertex', n_vtx)== s_numb.index_to_ij(1, n_vtx)
+  assert s_numb.index_to_ij_from_loc(2, 'CellCenter', n_vtx)== s_numb.index_to_ij(2, n_cell)
+  assert s_numb.index_to_ij_from_loc(3, 'IEdgeCenter', n_vtx)== s_numb.edgeiIndex_to_ij(3, n_cell, n_vtx)
+  assert s_numb.index_to_ij_from_loc(4, 'JEdgeCenter', n_vtx)== s_numb.edgejIndex_to_ij(4, n_cell, n_vtx)
+  with pytest.raises(ValueError, match="Unsupported location 'InvalidLoc'"):
+    s_numb.index_to_ij_from_loc(1, 'InvalidLoc', n_vtx)
