@@ -1,5 +1,6 @@
 import sys
 import numpy       as np
+from pathlib import Path
 from typing import TextIO
 
 from maia.pytree.typing import *
@@ -277,7 +278,7 @@ def print_tree(tree:CGNSTree,
   out_lines = to_string(tree, verbose=verbose, max_depth=max_depth, 
                         colors=colors, print_if=print_if)
   
-  if isinstance(out, str):
+  if isinstance(out, (str, Path)):
     with open(out, 'w') as f: # Auto open file if filename is provided
       for l in out_lines:
         f.write(l)
