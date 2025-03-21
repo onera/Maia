@@ -70,48 +70,16 @@ job:doc:
     - make maia_sphinx
 
 
-#todo : display reports on browser eg with gitlab pages
 job:ctest:
   stage: test
-  before_script:
-    - |
-      cat > $CUSTOM_CI_DIR/build/.coveragerc << EOF
-      [coverage:run]
-      parallel = true
-      source = maia
-      EOF
   script:
-    - INIT_ORIGINAL_FOLDER=$(pwd)
-    - rm -rf $INIT_ORIGINAL_FOLDER/reports # Cleanup old builds reports if existing
     - cd $CUSTOM_CI_DIR/build
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - export PATH=$FEFLOPATH:$PATH
     - source source.sh
     - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 coverage run -m pytest ../maia
+    - mpirun -np 4 python3 -m pytest ../maia
     - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
-
-    - coverage combine
-    - coverage report
-    - coverage xml -o coverage_unit_tests.xml
-    - sed 's@'"$CI_PROJECT_DIR"'/@@' -i coverage_unit_tests.xml
-    # GitLab needs artifacts to be in the folder of the job so move it
-    - mv ./coverage_unit_tests.xml $INIT_ORIGINAL_FOLDER && mv ./reports  $INIT_ORIGINAL_FOLDER
-  when: on_success # s'exécutera uniquement si le job `job:build` passe
-  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
-  artifacts:
-    paths:
-      - ./reports/*
-    when: always
-    # Next allows to display a test tab in the pipeline with report but requires a feature flag to be enabled,
-    # see https://docs.gitlab.com/ee/ci/unit_test_reports.html#viewing-unit-test-reports-on-gitlab
-    # Use it in combination with --junitxml=reports/pytest-junit.xml in the pytest launcher (TestCreate.cmake)
-    reports:
-      junit: ./reports/*_test.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: ./coverage_unit_tests.xml
 
 job:doc_snippets:
   stage: test
@@ -138,23 +106,45 @@ job:portability_gnum:
     - mpirun -np 4 python3 -m pytest ../maia/
     - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
 
-job:portability_cfd6:
+job:coverage:
   stage: test
-  rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  before_script:
+    - |
+      cat > $CUSTOM_CI_DIR/build/.coveragerc << EOF
+      [coverage:run]
+      parallel = true
+      source = maia
+      EOF
   script:
-    - cd $CUSTOM_CI_DIR
+    - INIT_ORIGINAL_FOLDER=$(pwd)
+    - rm -rf $INIT_ORIGINAL_FOLDER/reports # Cleanup old builds reports if existing
+    - cd $CUSTOM_CI_DIR/build
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi
-    - mkdir -p build_cfd6 && cd build_cfd6
-    - cmake ../ -DCMAKE_BUILD_TYPE=Debug
-                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17
-                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2'
-                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
-    - make -j 24
-    - source $ELSASPIRO/.env_elsA
+    - source $ELSASPIRO/.env_elsA   # Get Converter
+    - module load gcc/10.2.0
+    - export PATH=$FEFLOPATH:$PATH  # Get Feflo
     - source source.sh
-    - mpirun -np 4 python3 -m pytest ../maia/
+    - mpirun -np 4 coverage run -m pytest ../maia
+
+    - coverage combine
+    - coverage report --sort=cover --fail-under=95
+    - coverage xml -o coverage_unit_tests.xml
+    - sed 's@'"$CI_PROJECT_DIR"'/@@' -i coverage_unit_tests.xml
+    # GitLab needs artifacts to be in the folder of the job so move it
+    - mv ./coverage_unit_tests.xml $INIT_ORIGINAL_FOLDER && mv ./reports  $INIT_ORIGINAL_FOLDER
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    paths:
+      - ./reports/*
+    when: always
+    # Next allows to display a test tab in the pipeline with report but requires a feature flag to be enabled,
+    # see https://docs.gitlab.com/ee/ci/unit_test_reports.html#viewing-unit-test-reports-on-gitlab
+    # Use it in combination with --junitxml=reports/pytest-junit.xml in the pytest launcher (TestCreate.cmake)
+    reports:
+      junit: ./reports/*_test.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: ./coverage_unit_tests.xml
 
 job:portability_openmpi:
   stage: test
