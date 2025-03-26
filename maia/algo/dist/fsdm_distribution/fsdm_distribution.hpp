@@ -16,9 +16,6 @@ namespace maia {
 auto add_fsdm_distribution(cgns::tree& b, MPI_Comm comm) -> void;
 
 auto distribute_bc_ids_to_match_face_dist(cgns::tree& b, MPI_Comm comm) -> void;
-auto distribute_vol_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) -> void;
-auto distribute_fields_to_match_global_element_range(cgns::tree& b, MPI_Comm comm) -> void;
-
 
 // distribute_bc_ids_to_match_face_dist impl {
 // Note: see this as a temporary until a multi_array from a "rack" is implemented
