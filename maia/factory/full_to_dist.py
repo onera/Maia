@@ -6,8 +6,10 @@ import maia.pytree.maia   as MT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
+from maia.typing import CGNSTree, MPIComm, List, Optional, Tuple, Union, Any
 
-def distribute_pl_node(node, comm):
+
+def distribute_pl_node(node: CGNSTree, comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
   """
   Distribute a standard node having a PointList (and its childs) over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
@@ -15,10 +17,10 @@ def distribute_pl_node(node, comm):
   dist_node = PT.deep_copy(node)
   n_elem = PT.Subset.n_elem(dist_node)
   distri = par_utils.uniform_distribution(n_elem, comm)
-
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(dist_node, 'IndexArray_t'):
     array_n[1] = array_n[1][:, distri[0]:distri[1]]
+    print(f"Type de array_n[1]: {type(array_n[1])}")  # Debug
   # Standard Data Arrays
   for array_n in PT.iter_children_from_label(dist_node, 'DataArray_t'):
     array_n[1] = array_n[1][distri[0]:distri[1]]
@@ -47,7 +49,7 @@ def distribute_pl_node(node, comm):
 
   return dist_node
 
-def distribute_data_node(node, comm):
+def distribute_data_node(node: CGNSTree, comm: MPIComm) ->Tuple[str, Optional[Any], List[CGNSTree], str]:
   """
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
@@ -66,7 +68,7 @@ def distribute_data_node(node, comm):
 
   return dist_node
 
-def distribute_element_node(node, comm):
+def distribute_element_node(node: CGNSTree, comm: MPIComm) ->Tuple[str, Optional[str], List[CGNSTree], str]:
   """
   Distribute a standard element node over several processes, using uniform distribution.
   Mainly useful for unit tests. Node must be know by each process.
@@ -76,6 +78,7 @@ def distribute_element_node(node, comm):
 
   n_elem = PT.Element.Size(node)
   distri = par_utils.uniform_distribution(n_elem, comm)
+  distri = np.array(distri) if not isinstance(distri, np.ndarray) else distri
   MT.newDistribution({'Element' : distri}, dist_node)
 
   ec = PT.get_child_from_name(dist_node, 'ElementConnectivity')
@@ -84,7 +87,6 @@ def distribute_element_node(node, comm):
     distri_ec = eso[1][[distri[0], distri[1], -1]]
     ec[1] = ec[1][distri_ec[0] : distri_ec[1]]
     eso[1] = eso[1][distri[0]:distri[1]+1]
-
     MT.newDistribution({'ElementConnectivity' : np_utils.safe_int_cast(distri_ec, distri.dtype)}, dist_node)
   else:
     n_vtx = PT.Element.NVtx(node)
@@ -97,7 +99,7 @@ def distribute_element_node(node, comm):
   
   return dist_node
 
-def _distribute_tree(tree, comm):
+def _distribute_tree(tree: CGNSTree, comm: MPIComm) ->Tuple[str, Optional[np.ndarray], List[CGNSTree], str]:
   """
   Distribute a standard cgns tree over several processes, using uniform distribution.
   Mainly useful for unit tests. Tree must be know by each process.
@@ -113,7 +115,7 @@ def _distribute_tree(tree, comm):
     if PT.Zone.Type(zone) == 'Structured':
       zone_distri['Face'] = par_utils.uniform_distribution(PT.Zone.n_face(zone), comm)
 
-    MT.newDistribution(zone_distri, zone)
+    MT.newDistribution(zone_distri, zone) #type: ignore
 
     # > Coords
     grid_coords = PT.get_children_from_label(zone, 'GridCoordinates_t')
@@ -171,7 +173,7 @@ def _distribute_tree(tree, comm):
 
   return dist_tree
 
-def _broadcast_full_to_dist(tree, comm, owner):
+def _broadcast_full_to_dist(tree: CGNSTree, comm: MPIComm, owner: int) -> Union[CGNSTree, None]:
   """
   Create a distributed tree from a full tree holded by only one proc.
   """
@@ -232,7 +234,7 @@ def _broadcast_full_to_dist(tree, comm, owner):
 
   return dist_tree
 
-def full_to_dist_tree(tree, comm, owner=None):
+def full_to_dist_tree(tree: CGNSTree, comm: MPIComm, owner: Optional[int]=None) -> Union[CGNSTree,None]:
   """ Generate a distributed tree from a standard (full) CGNS Tree.
 
   Input tree can be defined on a single process (using ``owner = rank_id``),

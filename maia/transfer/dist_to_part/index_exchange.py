@@ -7,8 +7,11 @@ import maia.pytree.maia as MT
 
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils    as te_utils
+from maia.typing    import CGNSTree, MPIComm, Dict, List, Optional
 
-def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
+
+def collect_distributed_pl(dist_zone: CGNSTree, query_list: List[List[str]],
+                           filter_loc: Optional[List[str]]=None) -> List[np.ndarray]:
   """
   Search and collect all the pointList values found under the nodes
   matching one of the query of query_list
@@ -42,7 +45,8 @@ def collect_distributed_pl(dist_zone, query_list, filter_loc=None):
   return point_lists
 
 
-def create_part_pointlists(dist_zone, p_zone, p_groups, pl_pathes, locations):
+def create_part_pointlists(dist_zone: CGNSTree, p_zone: CGNSTree,
+                           p_groups: Dict[str, int], pl_pathes: List[List], locations):
   i_pl = 0
   for pl_path in pl_pathes:
     for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):

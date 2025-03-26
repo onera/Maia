@@ -1,8 +1,12 @@
 from . import dist, part, seq
 
-from .indexing  import pe_to_nface, nface_to_pe, edge_pe_to_ngon, ngon_to_edge_pe
+from .indexing  import pe_to_nface, \
+                       nface_to_pe, \
+                       edge_pe_to_ngon, \
+                       ngon_to_edge_pe
 
-from .geometry  import compute_elements_center, compute_elements_measure
+from .geometry  import compute_elements_center, \
+                       compute_elements_measure
 
 from .geosearch import find_closest_points, localize_points
 

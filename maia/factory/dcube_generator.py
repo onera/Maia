@@ -9,12 +9,13 @@ from maia.pytree.sids import elements_utils as EU
 import maia
 from maia.utils import np_utils, par_utils, layouts
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
+from maia.typing import *
 
 from .dline_generator import generate_dist_line
 
 _is_iterable = lambda obj: hasattr(obj, '__len__')
 
-def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
+def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm: MPIComm, elt_min_dim: int =0) ->CGNSTree:
 
   g_dims  = dmesh_nodal.dmesh_nodal_get_g_dims()
   n_vtx   = g_dims['n_vtx_abs']
@@ -58,7 +59,10 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
     
 
 # --------------------------------------------------------------------------
-def dcube_generate(n_vtx, edge_length, origin, comm):
+def dcube_generate(n_vtx: Optional[int],
+                   edge_length: float,
+                   origin: Tuple[float, float, float],
+                   comm: MPIComm) -> CGNSTree:
   """
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree
@@ -122,7 +126,12 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   return dist_tree
 
 # --------------------------------------------------------------------------
-def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_ridges=False):
+def dcube_nodal_generate(n_vtx: Union[int, List[int]], 
+                         edge_length: float,
+                         origin: Tuple[float, float],
+                         cgns_elmt_name: str,
+                         comm: MPIComm, 
+                         get_ridges: bool =False) -> CGNSTree:
   """
   This function calls paradigm to generate a distributed mesh of a cube with various type of elements, and
   return a CGNS PyTree
@@ -193,7 +202,11 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   return dist_tree
 
-def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'):
+def dcube_struct_generate(n_vtx: int, 
+                          edge_length: float, 
+                          origin:Tuple[float, float, float] ,
+                          comm: MPIComm, 
+                          bc_location: str='Vertex') -> CGNSTree:
   max_coords = np.asarray(origin).copy() + np.asarray(edge_length)
 
   dist_tree = maia.factory.generate_dist_points(n_vtx, "Structured", comm, origin, max_coords)
@@ -246,7 +259,11 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'
   return dist_tree
 
 
-def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=1.):
+def generate_dist_block(n_vtx: Union[int, Tuple[int,...]], 
+                        cgns_elmt_name: str,
+                        comm: MPIComm,
+                        origin: np.ndarray=np.zeros(3), 
+                        length: Union[float, Tuple[float, ...]]=1.) -> CGNSTree:
   """Generate a distributed mesh with a block shape (line, parallelogram or parallelepiped). 
   
   This function returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

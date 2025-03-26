@@ -1,19 +1,22 @@
 import numpy as np
-import Pypdm.Pypdm as PDM
+import Pypdm.Pypdm as PDM # type: ignore
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
 from maia.utils import par_utils, layouts
+from maia.typing import *
+
 
 # --------------------------------------------------------------------------
-def _dcloud_to_cgns(dpoint_cloud, comm):
+def _dcloud_to_cgns(dpoint_cloud: Dict[str, int], 
+                    comm: MPIComm):
   """
   """
   # > Generate dist_tree
   n_g_vtx = dpoint_cloud['np_distrib_pts'][comm.size]
-  dist_zone = PT.new_Zone('zone', size=[[n_g_vtx, 0, 0]], type='Unstructured')
+  dist_zone = PT.new_Zone('zone', size=[[n_g_vtx, 0, 0]], type='Unstructured') 
 
   # > Grid coordinates
   cx, cy, cz = layouts.interlaced_to_tuple_coords(dpoint_cloud['np_dpts_coord'])
@@ -26,7 +29,10 @@ def _dcloud_to_cgns(dpoint_cloud, comm):
   return dist_zone
 
 # --------------------------------------------------------------------------
-def dpoint_cloud_cartesian_generate(n_vtx, coord_min, coord_max, comm):
+def dpoint_cloud_cartesian_generate(n_vtx: Union[int, Tuple[int, ...],List[int]],
+                                    coord_min: List[float],
+                                    coord_max: List[float], 
+                                    comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
   """
   This function calls paradigm to generate a distributed set of points a cloud of points, in a cartesian grid, and
   return a CGNS PyTree
@@ -81,7 +87,11 @@ def dpoint_cloud_cartesian_generate(n_vtx, coord_min, coord_max, comm):
 
 
 # --------------------------------------------------------------------------
-def dpoint_cloud_random_generate(n_g_pts, coord_min, coord_max, comm, seed=None):
+def dpoint_cloud_random_generate(n_g_pts: int, 
+                                 coord_min: List[float], 
+                                 coord_max: List[float],
+                                 comm: MPIComm, 
+                                 seed: Optional[int]=None) -> CGNSTree:
   """
   This function calls paradigm to generate a distributed set of points a cloud of points, in a random way and
   return a CGNS PyTree
@@ -115,7 +125,11 @@ def dpoint_cloud_random_generate(n_g_pts, coord_min, coord_max, comm, seed=None)
 
   return dist_tree
 
-def generate_dist_points(n_vtx, zone_type, comm, origin=np.zeros(3), max_coords=np.ones(3)):
+def generate_dist_points(n_vtx: Union[int, np.ndarray], 
+                         zone_type: str, 
+                         comm: MPIComm, 
+                         origin: np.ndarray = np.zeros(3), 
+                         max_coords: np.ndarray = np.ones(3)) -> CGNSTree:
   """Generate a distributed mesh including only cartesian points.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

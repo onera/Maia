@@ -1,7 +1,8 @@
 import numpy as np
 
 import maia.pytree as PT
-
+from maia.typing import CGNSTree, ArrayLike
+from typing import Dict, List, Optional, Tuple, Any
 from maia.utils import np_utils
 from maia.utils import vstride as vs
 
@@ -21,7 +22,9 @@ ELT_FACE_VTX = {'TETRA_4' : (np.array([3,3,3,3], np.int32),
                              np.array([1,4,3,2, 1,2,6,5 ,2,3,7,6, 3,4,8,7, 1,5,8,4, 5,6,7,8]) - 1)
                 }
 
-def compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n):
+def compute_center_and_flux(local_coords: List[Optional [ArrayLike]],
+                            face_vtx_idx: np.ndarray,
+                            face_vtx_n: np.ndarray) -> Tuple[np.ndarray, np.ndarray,]:
   """
   Compute, for each face, the term nF|F| where nF is the unit outward normal
   and |F| the area of the face.
@@ -50,7 +53,10 @@ def compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n):
 
   return center, normalflux
 
-def update_container(zone, container_name, loc, fields={}):
+def update_container(zone: CGNSTree, 
+                     container_name: str,
+                     loc: str,
+                     fields: Dict[str, ArrayLike]={}) -> Tuple[Any, ...]:
   """ Utility to retrieve a container from its name, or create it """
   container = PT.get_child_from_name(zone, container_name)
   if container is not None: # Container exists

@@ -13,6 +13,7 @@ from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
+from maia.typing import CGNSTree, MPIComm, Optional, Dict, Any
 
 def _append_or_create(d, key, val):
   try:
@@ -23,14 +24,14 @@ def _append_or_create(d, key, val):
 def camel_case(s):
   return sub(r"(_|-)+", " ", s).title().replace(" ", "")
 
-def merge_all_zones_from_families(tree, comm, **kwargs):
+def merge_all_zones_from_families(tree: CGNSTree, comm: MPIComm, **kwargs: Dict[str, Any]) ->None:
   """Apply merge_zones_from_family to each family of the tree"""
   family_names = [PT.get_name(node) for node in \
           PT.iter_nodes_from_label(tree, 'Family_t', depth=2)]
   for family_name in family_names:
     merge_zones_from_family(tree, family_name, comm, **kwargs)
 
-def merge_zones_from_family(tree, family_name, comm, **kwargs):
+def merge_zones_from_family(tree: CGNSTree, family_name: str, comm: MPIComm, **kwargs: Dict[str, Any]) ->None:
   """Merge the zones belonging to the given family into a single one.
 
   See :func:`merge_zones` for full documentation.
@@ -65,7 +66,7 @@ def merge_zones_from_family(tree, family_name, comm, **kwargs):
       zone_name = zone_name.lower()
     merge_zones(tree, zone_paths, comm, output_path=f'{base_name}/{zone_name}', **kwargs)
 
-def merge_connected_zones(tree, comm, **kwargs):
+def merge_connected_zones(tree: CGNSTree, comm: MPIComm, **kwargs: Dict[str, Any]) -> None:
   """Detect all the zones connected through 1to1 matching jns and merge them.
 
   See :func:`merge_zones` for full documentation.
@@ -90,7 +91,8 @@ def merge_connected_zones(tree, comm, **kwargs):
     base = zone_paths[0].split('/')[0]
     merge_zones(tree, zone_paths_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
-def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', concatenate_jns=True):
+def merge_zones(tree: CGNSTree, zone_paths: CGNSTree, comm: MPIComm, 
+                output_path:Optional[str] =None, subset_merge: Optional[str]='name', concatenate_jns: bool =True):
   """Merge the given zones into a single one.
 
   Input tree is modified inplace : original zones will be removed from the tree and replaced
@@ -222,7 +224,8 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
   for base_n in to_remove:
     PT.rm_children_from_name(tree, base_n)
 
-def _merge_zones(tree, comm, subset_merge_strategy='name'):
+def _merge_zones(tree: CGNSTree, comm: MPIComm, 
+                 subset_merge_strategy: str='name') -> CGNSTree:
   """
   Tree must contain *only* the zones to merge. We use a tree instead of a list of zone because it's easier
   to retrieve opposites zones througt joins. Interface beetween zones shall be described by faces

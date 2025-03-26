@@ -1,16 +1,20 @@
 import mpi4py.MPI as MPI
 import numpy      as np
+from   maia.typing import List, Callable
 
 import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
+from   maia.typing import CGNSTree, MPIComm
 
 from maia.io.distribution_tree import interpret_policy
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_pl_node(node, distribution, comm):
+def redistribute_pl_node(node: CGNSTree,
+                         distribution: Callable[[int, MPIComm], np.ndarray],
+                         comm: MPIComm) -> None:
   """
   Redistribute a standard node having a PointList (and its childs) over several processes,
   using a given distribution function. Mainly useful for unit tests. Node must be known by
@@ -55,7 +59,10 @@ def redistribute_pl_node(node, distribution, comm):
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_data_node(node, distri, new_distri, comm):
+def redistribute_data_node(node: CGNSTree,
+                           distri: List[CGNSTree],
+                           new_distri: List[CGNSTree],
+                           comm: MPIComm) -> None:
   """
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
   using given distribution. Mainly useful for unit tests. Node must be known by each process.
@@ -69,7 +76,9 @@ def redistribute_data_node(node, distri, new_distri, comm):
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_elements_node(node, distribution, comm):
+def redistribute_elements_node(node: CGNSTree,
+                               distribution: Callable[[int, MPIComm], np.ndarray],
+                               comm: MPIComm) -> None:
 
   assert PT.get_label(node) == 'Elements_t'
 
@@ -145,7 +154,9 @@ def redistribute_elements_node(node, distribution, comm):
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_zone(zone, distribution, comm):
+def redistribute_zone(zone: CGNSTree,
+                      distribution: Callable[[int, MPIComm], np.ndarray],
+                      comm: MPIComm) -> None:
 
   # Get distribution
   old_distrib = {'Vertex' : MT.getDistribution(zone, "Vertex")[1],
@@ -207,8 +218,10 @@ def redistribute_zone(zone, distribution, comm):
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_tree(dist_tree, policy, comm):
-  """ Redistribute the data of the input tree according to the choosen distribution policy.
+def redistribute_tree(dist_tree: CGNSTree,
+                      policy: str,
+                      comm: MPIComm) -> None:
+  """Redistribute the data of the input tree according to the chosen distribution policy.
 
   Supported policies are:
 

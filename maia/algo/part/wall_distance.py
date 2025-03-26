@@ -3,18 +3,22 @@ from mpi4py import MPI
 import numpy as np
 import warnings
 
+
+
 import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia import npy_pdm_gnum_dtype as pdm_dtype
+
+from maia        import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.utils                      import np_utils
 from maia.utils                      import logging as mlog
 from maia.transfer                   import protocols as EP
 from maia.transfer                   import utils as tr_utils
 from maia.factory.dist_from_part     import discover_nodes_from_matching
+from maia.typing                     import CGNSTree, MPIComm, List, Dict, Any, Tuple, Union, Literal
 
 from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import _compute_elements_center
@@ -23,7 +27,8 @@ from .point_cloud_utils              import get_point_cloud
 
 BC_WALLS = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
 
-def _are_same_perio_abs(first, second):
+def _are_same_perio_abs(first: Tuple[np.ndarray, np.ndarray, np.ndarray], 
+                        second: Tuple[np.ndarray, np.ndarray, np.ndarray]) -> bool:
   """ Return True if the two periodic transformation are the same in absolute value"""
   first_center, first_angle, first_trans = first
   second_center, second_angle, second_trans = second
@@ -59,7 +64,7 @@ def _get_output_shape(zone, out_container):
     raise RuntimeError("Unmanaged output location")
   return shape
 
-def detect_wall_families(tree, bcwalls=BC_WALLS):
+def detect_wall_families(tree: CGNSTree, bcwalls: List[str] = BC_WALLS) -> List[str]:
   """
   Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
   """
@@ -74,7 +79,15 @@ class WallDistance:
   """ Implementation of wall distance. See compute_wall_distance for full documentation.
   """
 
-  def __init__(self, part_tree, bc_predicate, mpi_comm, *, method="cloud", point_cloud='CellCenter', out_fs_name='WallDistance', perio=True):
+  def __init__(self, 
+               part_tree: CGNSTree, 
+               bc_predicate: Any, 
+               mpi_comm: MPIComm, 
+               *, 
+               method: str = "cloud", 
+               point_cloud: str = 'CellCenter', 
+               out_fs_name: str = 'WallDistance', 
+               perio: bool = True) -> None:
     self.part_tree = part_tree
     self.bc_predicate = bc_predicate
     self.mpi_comm  = mpi_comm
@@ -92,7 +105,11 @@ class WallDistance:
     self.perio = perio
     self.periodicities_per_group = {}
     
-  def _shift_id_and_push_in_global_list(self, parts_datas, all_parts_datas, i_dom, perio_ghost):
+  def _shift_id_and_push_in_global_list(self, 
+                                        parts_datas: List[List[np.ndarray]], 
+                                        all_parts_datas: List[List[np.ndarray]], 
+                                        i_dom: int, 
+                                        perio_ghost: bool) -> None:
 
     face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z = parts_datas
     face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l = all_parts_datas
@@ -124,7 +141,11 @@ class WallDistance:
     face_ln_to_gn_l.extend(face_ln_to_gn_z)
     vtx_ln_to_gn_l.extend(vtx_ln_to_gn_z)
     
-  def _dupl_shift_id_and_push_in_global_list(self, parts_datas, all_parts_datas, i_dom, perio):
+  def _dupl_shift_id_and_push_in_global_list(self, 
+                                             parts_datas: List[List[np.ndarray]], 
+                                             all_parts_datas: List[List[np.ndarray]], 
+                                             i_dom: int, 
+                                             perio: Tuple[np.ndarray, np.ndarray, np.ndarray]) -> List[List[np.ndarray]]:
 
     vtx_bnd_z = parts_datas[3]
     vtx_bnd_dupl_z = []
@@ -141,7 +162,9 @@ class WallDistance:
     self._shift_id_and_push_in_global_list(dupl_parts_data, all_parts_datas, i_dom, True)
     return dupl_parts_data
 
-  def _setup_surf_mesh(self, parts_per_dom, comm):
+  def _setup_surf_mesh(self, 
+                       parts_per_dom: Dict[str, List[CGNSTree]], 
+                       comm: MPIComm) -> None:
     """
     Setup the surfacic mesh for wall distance computing
     """
@@ -218,7 +241,10 @@ class WallDistance:
                                         vtx_bnd_l[i_part],
                                         vtx_ln_to_gn_l[i_part])
 
-  def _setup_vol_mesh(self, i_domain, part_zones, comm):
+  def _setup_vol_mesh(self, 
+                      i_domain: int, 
+                      part_zones: List[CGNSTree], 
+                      comm: MPIComm) -> None:
     """
     Setup the volumic mesh for wall distance computing (only for propagation method)
     """
@@ -253,7 +279,10 @@ class WallDistance:
                                        n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
                                        n_vtx, vtx_coords, vtx_ln_to_gn)
 
-  def _get(self, i_domain, part_zones, dist_zone_path):
+  def _get(self, 
+           i_domain: int, 
+           part_zones: List[CGNSTree], 
+           dist_zone_path: str) -> None:
     """
     Get results after wall distance computation and store it in the FlowSolution
     node of name self.out_fs_name
@@ -432,7 +461,11 @@ def compute_projection_to(part_tree, bc_predicate, comm, point_cloud='CellCenter
   else:
     mlog.info(f"Projection computed ({end-start:.2f} s)")
 
-def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name='WallDistance', **options):
+def compute_wall_distance(part_tree: CGNSTree,
+                          comm: MPIComm,
+                          point_cloud: Union[Literal['CellCenter', 'Vertex'], str] = 'CellCenter',
+                          out_fs_name: str = 'WallDistance',
+                          **options: Any) -> None:
   """Compute wall distances and add it in tree.
 
   For each volumic point, compute the distance to the nearest face belonging to a BC of kind wall.

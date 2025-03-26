@@ -3,6 +3,8 @@ from mpi4py import MPI
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT
+from   maia.typing import *
+
 import Pypdm.Pypdm as PDM
 import numpy as np
 from maia.utils import np_utils, par_utils, as_pdm_gnum
@@ -29,7 +31,8 @@ def _shift_face_num(cgns_ids, zone, reverse=False):
   else:
     return cgns_ids - offset
 
-def _nodal_sections_to_face_vtx(sections, rank):
+def _nodal_sections_to_face_vtx(sections: List[Dict[str, Any]],
+                                rank: int) -> Tuple[np.ndarray, np.ndarray]:
   """ Rebuild a Ngon like connectivity (face_vtx) from sections coming from PDM """
   elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=PT.maia.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
 
@@ -212,7 +215,11 @@ def apply_periodicity(cloud, periodic):
   cloud['coords'] = coords_p
 
 
-def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **options):
+def connect_1to1_from_paths(dist_tree: CGNSTree,
+                            subset_paths: List[List[str]],
+                            comm: MPIComm,
+                            periodic: Optional[Dict[str, np.ndarray]] = None,
+                            **options: Any) -> None:
 
   # Steps are
   # 1.  Get input PL at faces (if they are vertex -> convert it)
@@ -362,7 +369,11 @@ def connect_1to1_from_paths(dist_tree, subset_paths, comm, periodic=None, **opti
       PT.rm_node_from_path(dist_tree, cloud_path)
 
 
-def connect_1to1_families(dist_tree, families, comm, periodic=None, **options):
+def connect_1to1_families(dist_tree: CGNSTree,
+                          families: Tuple[str, str],
+                          comm: MPIComm,
+                          periodic: Optional[Dict[str, Any]] = None,
+                          **options: Any) -> None:
   """Find the matching faces between cgns nodes belonging to the two provided families.
 
   For each one of the two families, all the BC_t or GridConnectivity_t nodes related to the family

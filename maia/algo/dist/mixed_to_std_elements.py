@@ -1,6 +1,6 @@
 import mpi4py.MPI as mpi
-
 import numpy as np
+from maia.typing import List, Optional, Any
 
 import maia
 from maia               import pytree        as PT
@@ -8,10 +8,11 @@ from maia.pytree        import maia          as MT
 from maia.transfer      import protocols     as MTP
 from maia.utils         import par_utils     as MUPar
 from maia.utils.ndarray import np_utils
+from maia.typing        import CGNSTree, MPIComm
 
 import maia.pytree.sids.elements_utils    as MPSEU
 
-def collect_pl_nodes(root, filter_loc=None):
+def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> List[CGNSTree]:
   """
   Search and collect all the pointList nodes found in subsets found
   under root
@@ -35,7 +36,7 @@ def collect_pl_nodes(root, filter_loc=None):
       pointlist_nodes.append(new_pl_n)
   return pointlist_nodes
 
-def convert_mixed_to_elements(dist_tree, comm):
+def convert_mixed_to_elements(dist_tree: CGNSTree, comm: MPIComm) -> None:
     """
     Transform a mixed connectivity into an element based connectivity.
     

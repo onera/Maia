@@ -1,5 +1,4 @@
 import numpy              as np
-
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -7,6 +6,7 @@ from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering, pr_utils
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
+from maia.typing          import CGNSTree, MPIComm, List, Dict, Union, Literal
 
 from maia.algo.dist.matching_jns_tools import gc_is_reference
 
@@ -251,7 +251,11 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
 ###############################################################################
 
 ###############################################################################
-def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
+def convert_s_to_u(
+  dist_tree: CGNSTree,
+  connectivity: Literal['NGON_n', 'NFACE_n', 'HEXA_8', 'TETRA_4', 'PYRA_5', 'PENTA_6'],
+  comm: MPIComm,
+  subset_loc: Dict[str, Union[str, List[str]]] = {}) -> None:
   """Performs the destructuration of the input ``dist_tree``.
 
   Tree is modified in place: a NGON_n or HEXA_8 (not yet implemented)
@@ -377,14 +381,14 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         PT.rm_children_from_name(distri, 'Face')
 
 ###############################################################################
-def convert_s_to_ngon(dist_tree, comm):
+def convert_s_to_ngon(dist_tree: CGNSTree, comm: MPIComm) -> None:
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
   convert_s_to_u(dist_tree,
                  'NGON_n',
                  comm,
                  {'BC_t' : 'FaceCenter', 'GC_t' : 'FaceCenter'})
 
-def convert_s_to_poly(dist_tree, comm):
+def convert_s_to_poly(dist_tree: CGNSTree, comm: MPIComm) -> None:
   """Same as convert_s_to_ngon, but also creates the NFace connectivity"""
   from maia.algo import pe_to_nface
   convert_s_to_ngon(dist_tree, comm)

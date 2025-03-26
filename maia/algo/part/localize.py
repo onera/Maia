@@ -7,6 +7,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
+from maia.typing                 import CGNSTree, MPIComm, List, Dict, Tuple, Any, Union
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.transfer               import utils as te_utils
 from maia.utils                  import vstride as vs
@@ -16,7 +17,7 @@ from maia.factory.dist_from_part import get_parts_per_blocks
 from .point_cloud_utils  import get_point_cloud
 from .connectivity_utils import cell_vtx_connectivity, PDM_connectivity_transpose
 
-def _get_part_data_ngon(part_zone):
+def _get_part_data_ngon(part_zone: CGNSTree) -> List[np.ndarray]:
   dim = PT.Zone.CellDimension(part_zone)
   cx, cy, cz = PT.Zone.coordinates(part_zone)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
@@ -57,7 +58,7 @@ def _get_part_data_ngon(part_zone):
                 
 
 
-def _get_part_data_elts(part_zone):
+def _get_part_data_elts(part_zone: CGNSTree) -> List[np.ndarray]:
   # Actually works for elt of S meshes, for which we rebuild cell_vtx connectivity
   coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(part_zone)]
   vtx_coords = np_utils.interweave_arrays(coords)
@@ -70,7 +71,11 @@ def _get_part_data_elts(part_zone):
   return [cell_vtx.displs, cell_vtx.values, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
     
 
-def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
+def _mesh_location(src_parts: List[Tuple[int, str, List[np.ndarray]]], 
+                   tgt_clouds: List[Tuple[np.ndarray, np.ndarray]], 
+                   comm: MPIComm, 
+                   reverse: bool = False, 
+                   loc_tolerance: float = 1E-6) -> Union[List[Dict[str, np.ndarray]], Tuple[List[Dict[str, np.ndarray]], List[Dict[str, np.ndarray]]]]:
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists :
@@ -237,8 +242,11 @@ def _collect_target(tgt_parts_per_dom, location):
           for tgt_parts in tgt_parts_per_dom]
 
 
-def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
-    reverse=False, loc_tolerance=1E-6):
+def _localize_points(
+  src_parts_per_dom: List[List[CGNSTree]], tgt_parts_per_dom: List[List[CGNSTree]], 
+  location: str, comm: MPIComm, reverse: bool = False, 
+  loc_tolerance: float = 1E-6) -> Union[List[List[Dict[str, np.ndarray]]], Tuple[List[List[Dict[str, np.ndarray]]], List[List[Dict[str, np.ndarray]]]]]:
+
   """ Intermediate API who do not place output in tree.
   Inputs are list of size n_domain_src (resp. tgt) containing partitioned zones (resp. clouds)
   for each domain 
@@ -250,7 +258,11 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
 
 
 
-def localize_points(src_tree, tgt_tree, location, comm, **options):
+def localize_points(src_tree: CGNSTree, 
+                    tgt_tree: CGNSTree, 
+                    location: str, 
+                    comm: MPIComm, 
+                    **options: Any) -> None:
   """
   Partitionned implementation of maia.algo.localize_points
   """

@@ -5,12 +5,13 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
+from maia.typing import CGNSTree, MPIComm, Tuple, Any, List, Optional
 
 # --------------------------------------------------------------------------
-def dplane_generate(xmin, xmax, ymin, ymax,
-                    have_random, init_random,
-                    nx, ny,
-                    comm):
+def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,
+                    have_random: bool, init_random: int,
+                    nx: int, ny: int,
+                    comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
   """
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree

@@ -1,4 +1,5 @@
 from maia.algo.apply_function_to_nodes import zones_iterator
+from maia.typing import CGNSTree
 
 import numpy as np
 import maia
@@ -6,14 +7,14 @@ import maia.pytree as PT
 
 from maia.utils import np_utils
 
-def indexed_to_interleaved_connectivity(node):
+def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
   offset = PT.get_child_from_name(node, 'ElementStartOffset')
   connec = PT.get_child_from_name(node, 'ElementConnectivity')
 
   connec[1] = np_utils.indexed_to_interlaced(offset[1], connec[1])
   PT.rm_child(node, offset)
 
-def interlaced_to_indexed_connectivity(node):
+def interlaced_to_indexed_connectivity(node: CGNSTree) -> None:
   n_elem = PT.Element.Size(node)
   connec = PT.get_child_from_name(node, 'ElementConnectivity')
   idx, array = np_utils.interlaced_to_indexed(n_elem, connec[1])
@@ -21,14 +22,14 @@ def interlaced_to_indexed_connectivity(node):
   PT.new_DataArray('ElementStartOffset', value=idx, parent=node)
   connec[1] = array
 
-def create_mixed_elts_eso(node):
+def create_mixed_elts_eso(node: CGNSTree) -> None:
   from cmaia.utils import layouts
   ec = PT.get_node_from_name(node, 'ElementConnectivity')[1]
   eso = np.empty(PT.Element.Size(node)+1, ec.dtype)
   layouts.create_mixed_elts_eso(ec, eso)
   PT.new_DataArray('ElementStartOffset', eso, parent=node)
 
-def enforce_ngon_pe_local(t):
+def enforce_ngon_pe_local(t: CGNSTree) -> None:
   """
   Shift the ParentElements values in order to make it start at 1, as requested by legacy tools.
 
@@ -52,7 +53,7 @@ def enforce_ngon_pe_local(t):
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')
     pe[1] = maia.algo.indexing.get_pe_local(ngon_node)
 
-def poly_new_to_old(tree, full_onera_compatibility=True):
+def poly_new_to_old(tree: CGNSTree, full_onera_compatibility: bool = True) -> None:
   """
   Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.
 
@@ -111,7 +112,7 @@ def poly_new_to_old(tree, full_onera_compatibility=True):
 
 
 
-def poly_old_to_new(tree):
+def poly_old_to_new(tree: CGNSTree) -> None:
   """
   Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.
 

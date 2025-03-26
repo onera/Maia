@@ -1,10 +1,10 @@
 import numpy as np
-
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 import Pypdm.Pypdm as PDM
 
+from maia.typing    import CGNSTree, MPIComm, List, Dict, Tuple
 from maia           import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils     import np_utils, py_utils, par_utils, as_pdm_gnum
 from maia.algo.dist import matching_jns_tools as MJT
@@ -23,7 +23,9 @@ def _get_shifted_arrays(arrays_per_dom, comm):
     shifted_per_dom.append([array + offset[i_dom] for array in arrays]) # Shift (with copy)
   return offset, shifted_per_dom
 
-def get_shifted_ln_to_gn_from_loc(parts_per_dom, location, comm):
+def get_shifted_ln_to_gn_from_loc(parts_per_dom: List[List[CGNSTree]], 
+                                  location: str, 
+                                  comm: MPIComm) -> Tuple[np.ndarray, List[List[np.ndarray]]]:
   """ Wraps _get_zone_ln_to_gn_from_loc around multiple domains,
   shifting lngn with previous values"""
   from .point_cloud_utils import _get_zone_ln_to_gn_from_loc
@@ -32,7 +34,9 @@ def get_shifted_ln_to_gn_from_loc(parts_per_dom, location, comm):
     lngns_per_dom.append([_get_zone_ln_to_gn_from_loc(part, location) for part in part_zones])
   return _get_shifted_arrays(lngns_per_dom, comm)
 
-def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
+def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSTree]], 
+                      comm: MPIComm, 
+                      merge_jns: bool = True) -> List[List[np.ndarray]]:
 
   # Get gnum shifted for vertices
   vtx_mdom_offsets, shifted_lngn = get_shifted_ln_to_gn_from_loc(parts_per_dom.values(), 'Vertex', comm)

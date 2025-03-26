@@ -16,7 +16,6 @@ def PDM_combine_connectivity(first:vs.VStrideArray, second:vs.VStrideArray):
 def PDM_connectivity_transpose(n_opp:int, connec:vs.VStrideArray):                                             
   return vs.from_displs(*PDM.connectivity_transpose(int(n_opp), connec.displs, connec.values))
 
-
 def cell_vtx_connectivity_S(zone_S, dim) :
     n_cell = PT.Zone.n_cell(zone_S)
     vertex_size = PT.Zone.VertexSize(zone_S)

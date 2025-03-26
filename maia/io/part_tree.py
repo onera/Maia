@@ -11,6 +11,11 @@ from maia.factory.partitioning import compute_nosplit_weights
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
 
+from maia.typing import (
+    CGNSTree, MPIComm, CGNSPath,
+    List, Union, Any, PathLike
+)
+
 if _LEGACY_IO:
   import Converter.Filter as Filter
   from Converter.Distributed import writeZones
@@ -19,7 +24,8 @@ else:
   from ._hdf_io_h5py  import _write_links
   from .hdf._hdf_cgns import open_from_path, load_tree_partial, _load_node_partial, _write_node_partial
 
-def enforce_maia_naming(part_tree, comm):
+def enforce_maia_naming(part_tree: CGNSTree, 
+                        comm: MPIComm) -> None:
   """Rename the zones and joins of a partitionned tree such that maia
   convention are respected
   """
@@ -59,21 +65,27 @@ def enforce_maia_naming(part_tree, comm):
       PT.set_value(donor_name, MT.conv.name_intra_gc(opp_proc, opp_part, cur_proc, cur_part))
 
 
-def _read_part_from_name(tree, filename, comm):
+def _read_part_from_name(tree: CGNSTree, 
+                         filename: Union[str, PathLike], 
+                         comm: MPIComm) -> List[CGNSPath]:
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
   if max_proc != comm.Get_size():
     mlog.error(f"Reading with {comm.Get_size()} procs file {filename} written for {max_proc} procs")
   return [path for path in zones_path if PT.maia.conv.get_part_suffix(path)[0] == comm.Get_rank()]
 
-def _read_part_from_size(tree, filename, comm):
+def _read_part_from_size(tree: CGNSTree, 
+                         filename: Union[str, PathLike], 
+                         comm: MPIComm) -> List[CGNSPath]:
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
   mlog.warning(f"Ignoring procs affectation when reading file {filename} written for {max_proc} procs")
   return [path for path in compute_nosplit_weights(tree, comm)]
 
 
-def file_to_part_tree(filename, comm, redispatch=False):
+def file_to_part_tree(filename: str, 
+                      comm: MPIComm, 
+                      redispatch: bool = False) -> CGNSTree:
   """file_to_part_tree(filename, comm, redispatch=False)
   
   Read the partitioned zones from a hdf container and affect them
@@ -162,7 +174,11 @@ def file_to_part_tree(filename, comm, redispatch=False):
   return tree
 
 
-def part_tree_to_file(part_tree, filename, comm, single_file=False, links=[]):
+def part_tree_to_file(part_tree: CGNSTree, 
+                      filename: str, 
+                      comm: MPIComm, 
+                      single_file: bool = False, 
+                      links: List[List[str]] = []) -> None:
   """part_tree_to_file(part_tree, filename, comm, single_file=False, links=[])
   
   Gather the partitioned zones managed by all the processes and write it in a unique

@@ -1,10 +1,10 @@
 import numpy as np
-
 import maia
 import maia.pytree as PT
 
 from maia.utils import np_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
+from maia.typing import CGNSTree, MPIComm, List, Any
 
 from . import multidom_gnum
 from . import connectivity_utils
@@ -14,7 +14,8 @@ import Pypdm.Pypdm as PDM
 
 class CenterToNode:
 
-  def __init__(self, tree, comm, idw_power=1, cross_domain=True):
+  def __init__(self, tree: CGNSTree, comm: MPIComm, 
+               idw_power: int =1, cross_domain: bool =True) -> Any:
 
     self.parts    = []
     self.weights  = []
@@ -64,7 +65,7 @@ class CenterToNode:
     self.gmean = PDM.GlobalMean(gnum_list, comm)
 
 
-  def move_fields(self, container_name):
+  def move_fields(self, container_name: str) -> None:
 
     #Check that solutions are known on each source partition
     fields_per_part = list()
@@ -102,7 +103,7 @@ class CenterToNode:
         PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
-  def __init__(self, tree, comm, idw_power=1):
+  def __init__(self, tree: CGNSTree, comm: MPIComm, idw_power: int =1) -> None:
 
     self.parts        = []
     self.weights      = []
@@ -135,7 +136,7 @@ class NodeToCenter:
         self.cell_vtx.append(cell_vtx)
           
 
-  def move_fields(self, container_name):
+  def move_fields(self, container_name: str) -> None:
 
     for i_part, part in enumerate(self.parts):
       cell_vtx_idx = self.cell_vtx  [i_part].displs
@@ -163,7 +164,10 @@ class NodeToCenter:
 
 
 
-def centers_to_nodes(tree, comm, containers_name=[], **options):
+def centers_to_nodes(tree: CGNSTree, 
+                     comm: MPIComm, 
+                     containers_name: List[str] = [], 
+                     **options: Any) -> None:
   """ Create Vertex located FlowSolution_t from CellCenter located FlowSolution_t.
 
   Interpolation is based on Inverse Distance Weighting 
@@ -200,7 +204,10 @@ def centers_to_nodes(tree, comm, containers_name=[], **options):
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
-def nodes_to_centers(tree, comm, containers_name=[], **options):
+def nodes_to_centers(tree: CGNSTree, 
+                     comm: MPIComm, 
+                     containers_name: List[str] = [], 
+                     **options: Any) -> None:
   """ Create CellCenter located FlowSolution_t from Vertex located FlowSolution_t.
 
   Interpolation is based on Inverse Distance Weighting 

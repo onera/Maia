@@ -2,11 +2,13 @@ import time
 import mpi4py.MPI as MPI
 import numpy as np
 
+
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 
 from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
+from maia.typing   import CGNSTree, MPIComm, List, Any, Optional, Union
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.factory.partitioning import part_bound_orient as PBO
@@ -18,7 +20,7 @@ import Pypdm.Pypdm as PDM
 
 familyname_query = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
 
-def copy_referenced_families(source_base, target_base):
+def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> None:
   """ Copy from source_base to target_base the Family_t nodes referenced
   by a (Additional)FamilyName (at zone level) in the target base """
   copied_families = []
@@ -30,7 +32,10 @@ def copy_referenced_families(source_base, target_base):
       PT.add_child(target_base, family_node)
 
 
-def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
+def exchange_field_one_domain(part_zones: List[CGNSTree], 
+                              iso_part_zone: Optional[CGNSTree], 
+                              containers_name: List[str], 
+                              comm: MPIComm) -> None:
 
   for container_name in containers_name :
 
@@ -185,7 +190,10 @@ def exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm):
       PT.rm_child(iso_part_zone, FS_iso)
 
 
-def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
+def _exchange_field(part_tree: CGNSTree, 
+                    iso_part_tree: CGNSTree, 
+                    containers_name: List[str], 
+                    comm: MPIComm) -> None:
   """
   Exchange fields found under each container from part_tree to iso_part_tree
   """
@@ -201,7 +209,12 @@ def _exchange_field(part_tree, iso_part_tree, containers_name, comm) :
 
 
 
-def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm):
+def iso_surface_one_domain(part_zones: List[CGNSTree], 
+                           iso_kind: str, 
+                           iso_params: Union[List[np.ndarray], List[float]], 
+                           elt_type: str, 
+                           graph_part_tool: str, 
+                           comm: MPIComm) -> Optional[CGNSTree]:
   """
   Compute isosurface in a zone
   """ 
@@ -435,7 +448,12 @@ def iso_surface_one_domain(part_zones, iso_kind, iso_params, elt_type, graph_par
 
 
 
-def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, graph_part_tool, comm):
+def _iso_surface(part_tree: CGNSTree, 
+                 iso_field_path: str, 
+                 iso_val: float, 
+                 elt_type: str, 
+                 graph_part_tool: str, 
+                 comm: MPIComm) -> CGNSTree:
 
   fs_name, field_name = iso_field_path.split('/')
 
@@ -467,7 +485,12 @@ def _iso_surface(part_tree, iso_field_path, iso_val, elt_type, graph_part_tool, 
   return iso_part_tree
 
 
-def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **options):
+def iso_surface(part_tree: CGNSTree, 
+                iso_field: str, 
+                comm: MPIComm, 
+                iso_val: float = 0., 
+                containers_name: List[str] = [], 
+                **options: Any) -> CGNSTree:
   """ Create an isosurface from the provided field and value on the input partitioned tree.
 
   Isosurface is returned as an independant (2d) partitioned CGNSTree. 
@@ -531,7 +554,12 @@ def iso_surface(part_tree, iso_field, comm, iso_val=0., containers_name=[], **op
 
 
 
-def _surface_from_equation(part_tree, surface_type, equation, elt_type, graph_part_tool, comm):
+def _surface_from_equation(part_tree: CGNSTree, 
+                           surface_type: str, 
+                           equation: List[float], 
+                           elt_type: str, 
+                           graph_part_tool: str, 
+                           comm: MPIComm) -> CGNSTree:
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
   assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
@@ -556,7 +584,11 @@ def _surface_from_equation(part_tree, surface_type, equation, elt_type, graph_pa
   return iso_part_tree
 
 
-def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
+def plane_slice(part_tree: CGNSTree, 
+                plane_eq: List[float], 
+                comm: MPIComm, 
+                containers_name: List[str] = [], 
+                **options: Any) -> CGNSTree:
   """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
 
@@ -599,7 +631,11 @@ def plane_slice(part_tree, plane_eq, comm, containers_name=[], **options):
   return iso_part_tree
 
 
-def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
+def spherical_slice(part_tree: CGNSTree, 
+                    sphere_eq: List[float], 
+                    comm: MPIComm, 
+                    containers_name: List[str] = [], 
+                    **options: Any) -> CGNSTree:
   """ Create a spherical slice from the provided equation
   :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
   on the input partitioned tree.
@@ -643,7 +679,11 @@ def spherical_slice(part_tree, sphere_eq, comm, containers_name=[], **options):
   return iso_part_tree
 
 
-def elliptical_slice(part_tree, ellipse_eq, comm, containers_name=[], **options):
+def elliptical_slice(part_tree: CGNSTree, 
+                     ellipse_eq: List[float], 
+                     comm: MPIComm, 
+                     containers_name: List[str] = [], 
+                     **options: Any) -> CGNSTree:
   """ Create a elliptical slice from the provided equation
   :math:`(x-x_0)^2/a^2 + (y-y_0)^2/b^2 + (z-z_0)^2/c^2 = R^2`
   on the input partitioned tree.

@@ -43,8 +43,8 @@ def compute_edge_center(zone, comm, edge_indices=None):
   edge_indices is a pointlist like array of edges ids or None. If provided,
     centers are computed only for the specified edges. 
   """
-  if edge_indices is not None:
-    assert isinstance(edge_indices, np.ndarray) and edge_indices.ndim == 2 and edge_indices.shape[0] == 1
+  #if edge_indices is not None:
+    #assert isinstance(edge_indices, np.ndarray) and edge_indices.ndim == 2 and edge_indices.shape[0] == 1
 
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone) and PT.Zone.CellDimension(zone) == 3:
@@ -92,7 +92,7 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
   if face_indices is not None:
-    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
+    #assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
     if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
       assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
         "Indices location must be specified when filtering faces center on 3D structured meshes"
@@ -140,8 +140,8 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
 def compute_cell_center(zone, comm, cell_indices=None):
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
-  if cell_indices is not None:
-    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
+  #if cell_indices is not None:
+    #assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
 
   if PT.Zone.Type(zone) == "Structured":
     cell_vtx = CU.cell_vtx_connectivity_S(zone, PT.Zone.CellDimension(zone), cell_indices)

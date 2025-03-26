@@ -9,12 +9,14 @@ from   maia.utils         import np_utils
 from   .extract_part_s    import exchange_field_s, extract_part_one_domain_s
 from   .extract_part_u    import exchange_field_u, extract_part_one_domain_u
 from   .extraction_utils  import LOC_TO_DIM
+from   maia.typing        import CGNSTree, MPIComm, List, Dict, Any, Tuple, Union
 
 import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-def get_stats(extract_tree, dim, comm):
+def get_stats(extract_tree: CGNSTree, dim: int,
+              comm: MPIComm) -> Tuple[str, int, int]:
     elts_kind = ['vtx', 'edges', 'faces', 'cells'][dim]
     if dim == 0:
       n_cell = sum([PT.Zone.n_vtx(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
@@ -24,7 +26,8 @@ def get_stats(extract_tree, dim, comm):
     return elts_kind, n_cell, n_cell_all
 
 
-def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
+def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
+                         zone_type: str) -> bool:
 
   if zone_type=='Structured':
     unwanted_type = 'IndexArray_t'
@@ -49,12 +52,12 @@ def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
       PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
   return there_is_dataset
 
-class Extractor:
-  def __init__( self,
-                part_tree, patch, location, comm,
-                # equilibrate=True,
-                graph_part_tool="hilbert"):
 
+class Extractor:
+  def __init__(self,part_tree: CGNSTree,patch: Dict[str, Any],
+               location: str,comm: MPIComm,
+               graph_part_tool: str = "hilbert") -> Union[None, int]:
+    """Initialize an extractor object to perform extraction of a part of a mesh"""
     self.part_tree     = part_tree
     self.exch_tool_box = dict()
     self.comm          = comm
@@ -145,20 +148,23 @@ class Extractor:
         PT.add_child(extract_base, PT.deep_copy(fam_node))
     self.extract_tree = extract_tree
 
-  def exchange_fields(self, fs_container):
+  def exchange_fields(self, fs_container: Dict[str, Any]) -> None:
+    """Exchange fields between partitions"""
     if self.location == '': # Nothing to do if extract_tree is None
       return
     exchange_fld_func = exchange_field_s if self.is_struct else exchange_field_u
     exchange_fld_func(self.part_tree,  self.extract_tree , self.dim, self.exch_tool_box,\
           fs_container, self.comm)
 
-  def get_extract_part_tree(self) :
+  def get_extract_part_tree(self) -> CGNSTree:
+    """Return the extracted part tree"""
     return self.extract_tree
 
 
-def _extract_part_from_zsr(part_tree, zsr_name, comm,
-                           transfer_dataset=True,
-                           containers_name=[], **options):
+def _extract_part_from_zsr(part_tree: CGNSTree, zsr_name: str,comm: MPIComm,
+                           transfer_dataset: bool = True,containers_name: List[str] = [],
+                           **options: Any) -> CGNSTree:
+  """Internal function to extract part from ZoneSubRegion"""
   extractor = _create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
   l_containers_name = [name for name in containers_name]
@@ -176,9 +182,9 @@ def _extract_part_from_zsr(part_tree, zsr_name, comm,
   return extract_tree, extractor.dim
 
 
-def extract_part_from_zsr(part_tree, zsr_name, comm,
-                          transfer_dataset=True,
-                          containers_name=[], **options):
+def extract_part_from_zsr(part_tree: CGNSTree,zsr_name: str,comm: MPIComm,
+                          transfer_dataset: bool = True, containers_name: List[str] = [],
+                          **options: Any) -> CGNSTree:
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
 
@@ -245,7 +251,9 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   return extract_tree
 
 
-def _create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
+def _create_extractor_from_zsr(part_tree: CGNSTree,zsr_path: str,
+                               comm: MPIComm, **options: Any) -> Extractor:
+  """Create an extractor object from a ZoneSubRegion path"""
   # Get zones by domains
 
   graph_part_tool = options.get("graph_part_tool", "hilbert")
@@ -287,10 +295,9 @@ def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
 
 
 
-def extract_part_from_bc_name(part_tree, bc_name, comm,
-                              transfer_dataset=True,
-                              containers_name=[],
-                              **options):
+def extract_part_from_bc_name(part_tree: CGNSTree, bc_name: str,comm: MPIComm,
+                              transfer_dataset: bool = True, containers_name: List[str] = [],
+                              **options: Any) -> CGNSTree:
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
 
@@ -350,8 +357,9 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
 
   return extract_tree
 
-def create_extractor_from_bc_name(part_tree, bc_name, comm, **options):
-  """Same as extract_part_from_bc_name, but return the extractor object."""
+def create_extractor_from_bc_name(part_tree: CGNSTree, bc_name: str,
+                                  comm: MPIComm,**options: Any) -> Extractor:
+  """Create an extractor object from a BC name"""
   
   # Local copy of the part_tree to add ZSR 
   local_part_tree   = PT.shallow_copy(part_tree)
@@ -371,7 +379,9 @@ def create_extractor_from_bc_name(part_tree, bc_name, comm, **options):
   return extractor
 
 
-def _prepare_extract_from_family(part_tree, family_name, comm):
+def _prepare_extract_from_family(part_tree: CGNSTree, family_name: str,
+                                 comm: MPIComm) -> Tuple[CGNSTree, Dict[str, Any]]:
+  """Internal function to prepare extraction from a family name"""
   
   has_struct_zone = any(PT.Zone.Type(zone) == 'Structured' for zone in PT.get_all_Zone_t(part_tree))
   if comm.allreduce(has_struct_zone, MPI.LOR):
@@ -436,10 +446,9 @@ def _prepare_extract_from_family(part_tree, family_name, comm):
   return local_part_tree, fam_node_paths
 
 
-def extract_part_from_family(part_tree, family_name, comm,
-                             transfer_dataset=True,
-                             containers_name=[],
-                             **options):
+def extract_part_from_family(part_tree: CGNSTree, family_name: str, comm: MPIComm,
+                             transfer_dataset: bool = True, containers_name: List[str] = [],
+                             **options: Any) -> CGNSTree:
   """Extract the submesh defined by the provided family name from the input volumic
   partitioned tree.
   
@@ -517,8 +526,9 @@ def extract_part_from_family(part_tree, family_name, comm,
 
 
   
-def create_extractor_from_family(part_tree, family_name, comm, **options):
-  """Same as extract_part_from_family, but return the extractor object."""
+def create_extractor_from_family(part_tree: CGNSTree, family_name: str,
+                                 comm: MPIComm, **options: Any) -> Extractor:
+  """Create an extractor object from a family name"""
 
   local_part_tree, _ = _prepare_extract_from_family(part_tree, family_name, comm)
 

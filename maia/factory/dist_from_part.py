@@ -12,13 +12,14 @@ from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.transfer.part_to_dist import tree_api           as part_to_dist
 from maia.utils                 import py_utils, par_utils, np_utils
 from maia                       import npy_pdm_gnum_dtype as pdm_dtype
+from maia.typing import *
 
 from maia.pytree.graph.algo import step
 class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
-  def __init__(self):
-      self.ud_paths = list()
-  def pre(self, nodes):
+  def __init__(self) -> None:
+    self.ud_paths = list()
+  def pre(self, nodes: CGNSTree) ->Optional[str]:
     last = nodes[-1]
     if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) not in [':CGNS#GlobalNumbering', ':CGNS#LocalNumbering']:
       path = "/".join([PT.get_name(n) for n in nodes])
@@ -31,9 +32,13 @@ class UDDCollector:
       self.ud_paths.append(PT.utils.path_tail(path, 1))
       return step.over # Stop exploring this level after search
 
-def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
-                                 child_list=[], get_value="ancestors",
-                                 merge_rule=lambda path:path):
+def discover_nodes_from_matching(dist_node: CGNSTree,
+                                 part_nodes: List[CGNSTree],
+                                 queries: List[str],
+                                 comm: MPIComm,
+                                 child_list: List[str] = [],
+                                 get_value: Union[str, List[bool]] = "ancestors",
+                                 merge_rule: Callable[[str], str] = lambda path:path) -> None:
   """
   Recreate a distributed structure (basically without data) in dist_node merging all the
   path found in (locally known) part_nodes.
@@ -48,6 +53,15 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
     merge_rule accepts a function whose argument is the leaf node path. This function can map the path to an
       other, eg to merge splitted node related to a same dist node
   Todo : could be optimised using a distributed hash table -> see BM
+    
+  Args:
+    dist_node: Distributed node to update
+    part_nodes: List of partitioned nodes to search in
+    queries: List of queries to match
+    comm: MPI communicator
+    child_list: List of node names/types to copy from leaf nodes
+    get_value: Which nodes' values to report to dist node
+    merge_rule: Function to map leaf node paths
   """
   collected_part_nodes = dict()
   for part_node in part_nodes:
@@ -86,11 +100,20 @@ def discover_nodes_from_matching(dist_node, part_nodes, queries, comm,
         for child in childs:
           PT.add_child(ancestor, child)
 
-def get_parts_per_blocks(part_tree, comm):
+def get_parts_per_blocks(part_tree: CGNSTree, 
+                         comm: MPIComm) -> Dict[str, List[CGNSTree]]:
   """
+  Return a dict of the partitioned zones found in part_tree, sorted by initial domain.
   From the partitioned trees, retrieve the paths of the distributed blocks
   and return a dictionnary associating each path to the list of the corresponding
   partitioned zones
+  
+  Args:
+    part_tree: Partitioned CGNS tree
+    comm: MPI communicator
+  
+  Returns:
+    Dictionary mapping domain paths to lists of partitioned zones
   """
   dist_doms = PT.new_CGNSTree()
   discover_nodes_from_matching(dist_doms, [part_tree], 'CGNSBase_t/Zone_t', comm,
@@ -100,7 +123,7 @@ def get_parts_per_blocks(part_tree, comm):
     parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
   return parts_per_dom
 
-def _get_joins_dist_tree(parts_per_dom, comm):
+def _get_joins_dist_tree(parts_per_dom: CGNSTree, comm: MPIComm) -> CGNSTree:
   """
   """
   is_face_intra_gc = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
@@ -124,15 +147,24 @@ def _get_joins_dist_tree(parts_per_dom, comm):
 
   return dist_tree
 
-def get_joins_dist_tree(part_tree, comm):
+def get_joins_dist_tree(part_tree: CGNSTree, comm:MPIComm) -> CGNSTree:
   """ Recreate a dist tree containing only original jns from
   the partitioned tree (with PL). Only for U blocks !"""
   parts_per_dom = get_parts_per_blocks(part_tree, comm)
   return _get_joins_dist_tree(parts_per_dom, comm)
 
-def _recover_dist_block_size(part_zones, comm):
-  """ From a list of partitioned zones (coming from same initial block),
-  retrieve the size of the initial block """
+def _recover_dist_block_size(part_zones: List[CGNSTree], 
+                             comm: MPIComm) -> List[int]:
+  """
+  Recover the size of a distributed block from its partitions.
+  
+  Args:
+    part_zones: List of partitioned zones
+    comm: MPI communicator
+  
+  Returns:
+    List of block sizes
+  """
   intra1to1 = lambda n: PT.get_label(n) == 'GridConnectivity1to1_t' and MT.conv.is_intra_gc(PT.get_name(n))
 
   # Collect zone size and pr+opposite zone thought partitioning jns
@@ -180,7 +212,17 @@ def _recover_dist_block_size(part_zones, comm):
   d_zone_dims[:,0] = d_zone_dims[:,1] + 1 # Update vertices
   return d_zone_dims
 
-def _recover_elements(dist_zone, part_zones, comm):
+def _recover_elements(dist_zone: CGNSTree, 
+                      part_zones: List[CGNSTree], 
+                      comm: MPIComm) -> None:
+  """
+  Recover elements information for a distributed zone from its partitions.
+  
+  Args:
+    dist_zone: Distributed zone to update
+    part_zones: List of partitioned zones
+    comm: MPI communicator
+  """
   # > Get the list of part elements
   fake_zone = PT.shallow_copy(dist_zone) #This is just to store the elements
   discover_nodes_from_matching(fake_zone, part_zones, 'Elements_t', comm, get_value='leaf')
@@ -304,7 +346,17 @@ def _recover_elements(dist_zone, part_zones, comm):
         ER = PT.get_child_from_name(elt, 'ElementRange')
         ER[1] += dim_shift
 
-def _recover_BC(dist_zone, part_zones, comm):
+def _recover_BC(dist_zone: CGNSTree, 
+                part_zones: List[CGNSTree], 
+                comm: MPIComm) -> None:
+  """
+  Recover BC information for a distributed zone from its partitions.
+  
+  Args:
+    dist_zone: Distributed zone to update
+    part_zones: List of partitioned zones
+    comm: MPI communicator
+  """
   bc_predicate = ['ZoneBC_t', 'BC_t']
 
   discover_nodes_from_matching(dist_zone, part_zones, bc_predicate, comm,
@@ -316,7 +368,15 @@ def _recover_BC(dist_zone, part_zones, comm):
     elif PT.Zone.Type(dist_zone) == 'Structured':
       IPTB.part_pr_to_dist_pr(dist_zone, part_zones, bc_path, comm)
 
-def _recover_GC(dist_zone, part_zones, comm):
+def _recover_GC(dist_zone: CGNSTree, part_zones: List[CGNSTree], comm: MPIComm) -> None:
+  """
+  Recover GridConnectivity information for a distributed zone from its partitions.
+  
+  Args:
+    dist_zone: Distributed zone to update
+    part_zones: List of partitioned zones
+    comm: MPI communicator
+  """
   is_gc       = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   is_gc_intra = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
 
@@ -348,7 +408,17 @@ def _recover_GC(dist_zone, part_zones, comm):
       elif par_utils.exists_everywhere(part_gcs, 'PointList', comm):
         IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
 
-def _recover_base_iterative_data(dist_tree, part_tree, comm):
+def _recover_base_iterative_data(dist_tree: CGNSTree, 
+                                 part_tree: CGNSTree, 
+                                 comm: MPIComm) -> None:
+  """
+  Recover BaseIterativeData information for a distributed tree from its partitions.
+  
+  Args:
+    dist_tree: Distributed tree to update
+    part_tree: Partitioned tree
+    comm: MPI communicator
+  """
   # > Add BaseIterativeData by hand, because we need to manage the names
   for dist_base in PT.get_all_CGNSBase_t(dist_tree):
     part_base = PT.get_child_from_name(part_tree, PT.get_name(dist_base))
@@ -383,7 +453,9 @@ def _recover_base_iterative_data(dist_tree, part_tree, comm):
         d_it_data = comm.bcast(d_it_data, root=root)
       PT.add_child(dist_base, d_it_data)
 
-def recover_dist_tree(part_tree, comm, data_transfer=[]):
+def recover_dist_tree(part_tree: CGNSTree, 
+                      comm: MPIComm, 
+                      data_transfer: List[str] = []) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
   """ Regenerate a distributed tree from a partitioned tree.
 
   The partitioned tree should have been created using Maia, or

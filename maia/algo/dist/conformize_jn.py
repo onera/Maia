@@ -4,8 +4,11 @@ import maia.pytree.maia   as MT
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols   as EP
 from maia.utils     import par_utils
+from maia.typing    import CGNSTree, MPIComm, List
 
-def conformize_jn_pair(dist_tree, jn_paths, comm):
+def conformize_jn_pair(dist_tree: CGNSTree,
+                       jn_paths: List[str],
+                       comm: MPIComm) -> None:
   """
   Ensure that the vertices belonging to the two sides of a 1to1 GridConnectivity
   have the same coordinates.

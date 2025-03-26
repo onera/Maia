@@ -1,8 +1,9 @@
 import maia.pytree as PT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
+from maia.typing import CGNSTree, MPIComm, Optional
 
-def _reshape_S_arrays(tree):
+def _reshape_S_arrays(tree: CGNSTree) -> None:
   """ Some structured arrays (under FlowSolution_t, GridCoordinates_t) have been
   flattened in distributed tree. This function regive them a 2D/3D shape
   """
@@ -16,7 +17,9 @@ def _reshape_S_arrays(tree):
         for array in PT.get_nodes_from_label(container, 'DataArray_t'):
           array[1] = array[1].reshape(wanted_shape, order='F')
 
-def dist_to_full_tree(dist_tree, comm, target=0):
+def dist_to_full_tree(dist_tree: CGNSTree, 
+                      comm: MPIComm, 
+                      target: int = 0) -> Optional[CGNSTree]:
   """ Generate a standard (full) CGNS Tree from a distributed tree.
 
   The output tree can be used with sequential tools, but is no more compatible with

@@ -9,6 +9,7 @@ from maia.algo.dist import ngon_tools
 from maia.transfer  import protocols as EP
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import logging as mlog
+from maia.typing    import CGNSTree, MPIComm, Literal
 
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 
@@ -543,7 +544,11 @@ def _pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm):
   return new_distrib_idx, dist_pl, dist_data
     
 
-def extrude(dist_tree, extrusion_vector, comm, ksubset_as='GC', dupl_vtx_data=False):
+def extrude(dist_tree: CGNSTree,
+            extrusion_vector: np.ndarray,
+            comm: MPIComm,
+            ksubset_as: Literal['GC', 'BC'] = 'GC',
+            dupl_vtx_data: bool = False) -> None:
   """ Extrude a 2D mesh in the provided direction.
 
   The resulting mesh will be a 3D mesh with one layer of cells. Existing subsets and containers

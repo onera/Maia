@@ -10,6 +10,8 @@ from   maia.algo.dist.adaptation_utils   import apply_offset_to_elts
 from   maia.algo.dist.extract_part       import extract_elmt_connectivity_from_pl
 from   maia.utils                        import np_utils, par_utils, as_pdm_gnum
 from   maia.utils                        import logging as mlog
+from   maia.typing                       import CGNSTree, MPIComm, List
+
 
 def replace_bc_identifiers(zone, bc_identifiers):
   """
@@ -78,7 +80,8 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
   return parents
 
 
-def find_ridges(dist_tree, bc_identifiers, comm) -> None:
+def find_ridges(dist_tree: CGNSTree, bc_identifiers: List[str], 
+                comm: MPIComm) -> None:
   """Retrieve the edges delimiting specified BC surfaces of a volumic mesh.
 
   Tree is modified inplace: Elements_t nodes containing resulting edge elements

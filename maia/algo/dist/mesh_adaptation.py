@@ -6,6 +6,7 @@ import maia
 import maia.pytree        as PT
 import maia.pytree.utils  as PTu
 import maia.utils.logging as mlog
+from   maia.typing import CGNSTree, MPIComm, List, Optional, Union, Any
 
 from maia.io.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
 from maia.algo.dist.matching_jns_tools import add_joins_donor_name, get_matching_jns
@@ -52,9 +53,13 @@ def unpack_metric(dist_tree, metric_paths):
   return metric_nodes
 
 
-def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts, tmp_dir):
-  
-
+def _adapt_mesh_with_feflo(dist_tree: CGNSTree, 
+                           metric: Union[str,List[str]],
+                           comm: MPIComm, 
+                           container_names: List[str],
+                           constraints: Optional[str],
+                           feflo_opts: str,
+                           tmp_dir: str) -> CGNSTree:
   # > Create tmp directory
   tmp_repo   = Path(tmp_dir)
 
@@ -264,7 +269,13 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
 
 
-def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], periodic=False, feflo_opts="", **options):
+def adapt_mesh_with_feflo(dist_tree: CGNSTree,
+                          metric: Union[str, List[str]],
+                          comm: MPIComm,
+                          container_names: List[str],
+                          periodic: bool = False,
+                          feflo_opts: str = "",
+                          **options: Any) -> CGNSTree:
   """Run a mesh adaptation step using *Feflo.a* software.
 
   Important:

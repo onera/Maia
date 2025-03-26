@@ -5,10 +5,12 @@ from maia.transfer import utils     as te_utils,\
                           protocols as EP
 
 from maia.transfer.part_to_dist import index_exchange as IPTB
+from maia.typing import CGNSTree, MPIComm, List
 
 import Pypdm.Pypdm as PDM
 
-def dist_coords_to_part_coords(dist_zone, part_zones, comm):
+def dist_coords_to_part_coords(dist_zone: CGNSTree, part_zones: CGNSTree,
+                               comm: MPIComm) -> None:
   """
   Transfert all the data included in GridCoordinates_t nodes from a distributed
   zone to the partitioned zones
@@ -33,7 +35,7 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       PT.new_DataArray(data_name, shaped_data, parent=part_gc)
     PT.add_child(part_gc, PT.get_child_from_name(dist_gc, 'CoordinateTransform'))
 
-def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
+def dist_coords_to_part_coords_m(dist_zones: CGNSTree, part_zones_per_dom: CGNSTree, comm: MPIComm) ->None:
   """
   Same as dist_coords_to_part_coords, but with the multiblock version (only one collective call)
   """
@@ -81,7 +83,8 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
       i_part += 1
 
 
-def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
+def _dist_to_part_sollike(dist_zone: CGNSTree, part_zones: CGNSTree, 
+                          mask_tree: CGNSTree, comm: MPIComm) -> None:
   """
   Shared code for FlowSolution_t and DiscreteData_t
   """
@@ -124,7 +127,8 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
           shaped_data = data[ipart].reshape(shape, order='F')
           PT.new_DataArray(data_name, shaped_data, parent=p_sol)
 
-def dist_sol_to_part_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_sol_to_part_sol(dist_zone: CGNSTree, part_zones: CGNSTree, comm: MPIComm, 
+                         include: List =[], exclude: List =[]) -> None:
   """
   Transfert all the data included in FlowSolution_t nodes from a distributed
   zone to the partitioned zones
@@ -132,7 +136,8 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
   mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
-def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_discdata_to_part_discdata(dist_zone: CGNSTree, part_zones: CGNSTree, comm: MPIComm, 
+                                   include: List =[], exclude: List =[]) -> None:
   """
   Transfert all the data included in DiscreteData_t nodes from a distributed
   zone to the partitioned zones
@@ -140,7 +145,8 @@ def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], excl
   mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
-def dist_gridmotion_to_part_gridmotion(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_gridmotion_to_part_gridmotion(dist_zone: CGNSTree, part_zones: CGNSTree, comm: MPIComm, 
+                                       include: List =[], exclude: List =[]) -> None:
   """
   Transfert all the data included in ArbitraryGridMotion_t nodes from a distributed
   zone to the partitioned zones
@@ -148,7 +154,8 @@ def dist_gridmotion_to_part_gridmotion(dist_zone, part_zones, comm, include=[], 
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ArbitraryGridMotion_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
-def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_dataset_to_part_dataset(dist_zone: CGNSTree, part_zones: CGNSTree, comm: MPIComm,
+                                 include: List =[], exclude: List =[])-> None:
   """
   Transfert all the data included in BCDataSet_t/BCData_t nodes from a distributed
   zone to the partitioned zones
@@ -206,7 +213,8 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
               p_container = PT.update_child(part_ds, container_name, 'BCData_t')
               PT.new_DataArray(field_name, data.copy(), parent=p_container)
 
-def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_subregion_to_part_subregion(dist_zone: CGNSTree, part_zones: CGNSTree, comm: MPIComm,
+                                     include: List =[], exclude: List =[]) -> None:
   """
   Transfert all the data included in ZoneSubRegion_t nodes from a distributed
   zone to the partitioned zones

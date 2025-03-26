@@ -1,4 +1,6 @@
-def cell_to_indexes(i_cell, plan_size, line_size):
+from maia.typing import *
+
+def cell_to_indexes(i_cell: Union[int, ArrayLike], plan_size: int, line_size: int) -> Tuple[Union[int, ArrayLike], Union[int, ArrayLike], Union[int, ArrayLike]]:
   """ Compute the (i,j,k) indices of a cell or a node
   from its global index.
   Numbering convention is increasing i,j,k. Here global index

@@ -1,15 +1,20 @@
 import numpy as np
-
 import maia.pytree        as PT
 
 import maia.algo.transform as TRF
 import maia.algo.dist.conformize_jn as CCJ
 import maia.algo.dist.matching_jns_tools as MJT
+from   maia.typing import CGNSTree, MPIComm, List, Tuple, Any
 
 from maia.utils import logging as mlog
 
-def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_nb, comm,
-      conformize=False, apply_to_fields=True):
+def duplicate_from_periodic_jns(dist_tree: CGNSTree,
+                                zone_paths: List[str],
+                                jn_paths_for_dupl: Tuple[List[str], List[str]],
+                                dupl_nb: int,
+                                comm: MPIComm,
+                                conformize: bool = False,
+                                apply_to_fields: bool = True) -> None:
   """Duplicate a mesh from a transformation defined in its periodic connectivities.
 
   Input tree is modified inplace.
@@ -76,7 +81,7 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
   #                                                     MatchA2Dup 
   #
   #############
-
+    
   if dupl_nb < 0:
     return
 
@@ -198,8 +203,12 @@ def duplicate_from_periodic_jns(dist_tree, zone_paths, jn_paths_for_dupl, dupl_n
     PT.set_value(jn_b_last_node, f"{jn_values_b[jb]}.D0")
   
 
-def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl, comm,
-      conformize=False, apply_to_fields=True):
+def duplicate_from_rotation_jns_to_360(dist_tree: CGNSTree,
+                                       zone_paths: List[str],
+                                       jn_paths_for_dupl: Tuple[List[str], List[str]],
+                                       comm: MPIComm,
+                                       conformize: bool = False,
+                                       apply_to_fields: bool = True) -> None:
   """Reconstitute a circular mesh from an angular section of the geometry.
 
   Input tree is modified inplace.
@@ -289,7 +298,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree, zone_paths, jn_paths_for_dupl,
       CCJ.conformize_jn_pair(dist_tree, [jn_path_a_init, jn_path_b_last], comm)
 
 
-def _family_name_to_zones_and_jns_paths(dist_tree, family_name):
+def _family_name_to_zones_and_jns_paths(dist_tree: CGNSTree, family_name: str) -> Tuple[List[str], List[List[str]]]:
   is_z_in_fam = lambda n : PT.get_label(n) == 'Zone_t' and PT.predicate.belongs_to_family(n, family_name)
   zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_z_in_fam])
 
@@ -309,7 +318,11 @@ def _family_name_to_zones_and_jns_paths(dist_tree, family_name):
 
   return zone_paths, perio_jns
 
-def duplicate_family_from_periodic_jns(dist_tree, family_name, dupl_nb, comm, **kwargs):
+def duplicate_family_from_periodic_jns(dist_tree: CGNSTree,
+                                       family_name: str,
+                                       dupl_nb: int,
+                                       comm: MPIComm,
+                                       **kwargs: Any) -> None:
   """Duplicate zones belonging to the specified family.
 
   This is a shortcut for :func:`duplicate_from_periodic_jns` with autodetection of:
@@ -340,7 +353,10 @@ def duplicate_family_from_periodic_jns(dist_tree, family_name, dupl_nb, comm, **
   zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name)
   duplicate_from_periodic_jns(dist_tree, zone_paths, perio_jns, dupl_nb, comm, **kwargs)
 
-def duplicate_family_from_rotation_jns_to_360(dist_tree, family_name, comm, **kwargs):
+def duplicate_family_from_rotation_jns_to_360(dist_tree: CGNSTree,
+                                              family_name: str,
+                                              comm: MPIComm,
+                                              **kwargs: Any) -> None:
   """Reconstitute a circular mesh from an angular section of the geometry for zones
   belonging to the provided family"""
       

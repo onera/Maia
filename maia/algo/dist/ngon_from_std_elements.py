@@ -1,7 +1,7 @@
 import numpy              as np
-
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from maia.typing import CGNSTree, MPIComm
 
 import maia
 from maia.utils import np_utils, par_utils, layouts
@@ -158,7 +158,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   PT.rm_nodes_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
 
-def generate_ngon_from_std_elements(dist_tree, comm):
+def generate_ngon_from_std_elements(dist_tree: CGNSTree, 
+                                    comm: MPIComm) -> None:
   """
   Transform an element based connectivity into a polyedric (NGon based)
   connectivity.
@@ -262,8 +263,10 @@ def generate_ngon_from_std_elements(dist_tree, comm):
     PT.rm_child(dist_zone, container)
 
   MJT.copy_donor_subset(dist_tree)
-
-def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
+  
+def convert_elements_to_ngon(dist_tree: CGNSTree,
+                             comm: MPIComm,
+                             stable_sort: bool = False) -> None:
   """
   Transform an element based connectivity into a polyedric (NGon based)
   connectivity.

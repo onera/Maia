@@ -1,13 +1,13 @@
 import mpi4py.MPI as mpi
-
 import numpy as np
 
 from maia            import pytree        as PT
 from maia.transfer   import protocols     as MTP
 from maia.utils      import par_utils     as MUPar
+from maia.typing import CGNSTree, MPIComm
 
 
-def convert_elements_to_mixed(dist_tree, comm):
+def convert_elements_to_mixed(dist_tree: CGNSTree, comm: MPIComm) -> None:
     """
     Transform an element based connectivity into a mixed connectivity.
     

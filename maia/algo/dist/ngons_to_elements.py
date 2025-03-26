@@ -5,6 +5,7 @@ import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 from maia.pytree.sids import elements_utils as EU
+from maia.typing import CGNSTree, MPIComm
 
 from maia.utils     import np_utils, par_utils, vstride
 from maia.transfer  import protocols as EP
@@ -278,7 +279,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   PT.rm_child(zone, nface_n)
  
 
-def convert_ngon_to_elements(dist_tree, comm):
+def convert_ngon_to_elements(dist_tree: CGNSTree, comm: MPIComm) -> None:
   """
   Transform a polyedric (NGon based) connectivity into a standard nodal
   connectivity.

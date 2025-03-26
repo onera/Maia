@@ -1,11 +1,11 @@
 from mpi4py import MPI
 import numpy as np
-
 import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+from maia.typing                 import CGNSTree, MPIComm, List, Dict, Any, Tuple, Callable
 from maia.utils                  import py_utils, np_utils
 from maia.utils                  import logging as mlog
 from maia.utils                  import vstride as vs
@@ -19,7 +19,13 @@ from .import closest_points as CLO
 
 class Interpolator:
   """ Low level class to perform interpolations """
-  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, input_loc, output_loc, comm):
+  def __init__(self, 
+               src_parts_per_dom: List[List[CGNSTree]], 
+               tgt_parts_per_dom: List[List[CGNSTree]], 
+               src_to_tgt: List[Dict[str, np.ndarray]], 
+               input_loc: str, 
+               output_loc: str, 
+               comm: MPIComm) -> None:
     self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
     self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
     
@@ -60,14 +66,14 @@ class Interpolator:
       pass
 
 
-  def _reduce_single_val(self, i_part, data):
+  def _reduce_single_val(self, i_part: int, data: np.ndarray) -> np.ndarray:
     """
     A basic reduce function who take the first received value for each target
     """
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
     return data[come_from_idx[:-1]]
 
-  def _reduce_weighted_mean(self, i_part, data):
+  def _reduce_weighted_mean(self, i_part: int, data: np.ndarray) -> np.ndarray:
     """
     Compute a weighted mean of the received values.
     Usable only if weight are available in src_to_tgt dict
@@ -80,7 +86,9 @@ class Interpolator:
     return reduced_data / reduced_factor
 
 
-  def exchange_fields(self, container_name, reduce_func=_reduce_weighted_mean):
+  def exchange_fields(self, 
+                      container_name: str, 
+                      reduce_func: Callable[[int, np.ndarray], np.ndarray] = _reduce_weighted_mean) -> None:
     """
     For all fields found under container_name node,
     - Perform a part to part exchange
@@ -137,7 +145,11 @@ class Interpolator:
           PT.update_child(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
 
 
-def _cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_weight, n_vtx):
+# vs.array is not accepteble by mypy, np.ndarray is puted 
+def _cell_tgt_to_vtx_tgt(cell_vtx: np.ndarray, 
+                         cell_tgt: np.ndarray,
+                         cell_vtx_weight:np.ndarray,
+                         n_vtx:int) -> Tuple[np.ndarray, np.ndarray]:
   """
   Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
   onto vtx->tgt information.
@@ -347,7 +359,8 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
 
-def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options):
+def create_interpolator(src_tree: CGNSTree, tgt_tree: CGNSTree, comm: MPIComm, 
+                        src_location: str, location: str, **options: Dict[str, Any]) -> None:
   """Same as interpolate, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange
   fields without recomputing the src_to_tgt indirection (geometry must remain the same).

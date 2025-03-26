@@ -1,26 +1,46 @@
 import numpy as np
-
 import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils                  import np_utils, as_pdm_gnum, layouts
+from maia.utils      import np_utils, as_pdm_gnum, layouts
+from maia.typing     import CGNSTree, MPIComm, List, Tuple
 
 from .geometry       import _compute_elements_center
 from .multidom_gnum  import _get_shifted_arrays
 
-def _get_zone_ln_to_gn_from_loc(zone, location):
-  """ Wrapper to get the expected lngn value """
+def _get_zone_ln_to_gn_from_loc(zone: CGNSTree, location: str) -> np.ndarray:
+  """ Wrapper to get the expected lngn value 
+  
+  Args:
+    zone: CGNS zone node
+    location: Grid location ('Vertex', 'CellCenter', etc.)
+  
+  Returns:
+    Global numbering array for the specified location
+  """
   _loc = location.replace('Center', '')
   ln_to_gn = as_pdm_gnum(PT.get_value(MT.getGlobalNumbering(zone, _loc)))
   return ln_to_gn
 
-def get_point_cloud(zone, location='CellCenter'):
+def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[np.ndarray, np.ndarray]:
   """
   If location == Vertex, return the (interlaced) coordinates of vertices 
   and vertex global numbering of a partitioned zone
   If location == Center, compute and return the (interlaced) coordinates of
   cell centers and cell global numbering of a partitioned zone
+  
+  Args:
+    zone: CGNS zone node
+    location: Grid location ('Vertex', 'CellCenter', etc.)
+  
+  Returns:
+    Tuple containing:
+      - Interlaced coordinates array
+      - Global numbering array
+  
+  Raises:
+    RuntimeError: If location is unknown or node not found
   """
   if location == 'Vertex':
     coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(zone)]
@@ -43,9 +63,22 @@ def get_point_cloud(zone, location='CellCenter'):
 
   raise RuntimeError("Unknow location or node")
 
-def get_shifted_point_clouds(parts_per_dom, location, comm):
+def get_shifted_point_clouds(parts_per_dom: List[List[CGNSTree]], 
+                             location: str,
+                             comm: MPIComm) -> Tuple[int, List[List[Tuple[np.ndarray, np.ndarray]]]]:
   """ Wraps get_point_cloud around multiple domains,
-  shifting lngn with previous values"""
+  shifting lngn with previous values
+  
+  Args:
+    parts_per_dom: List of lists of partitioned zones per domain
+    location: Grid location ('Vertex', 'CellCenter', etc.)
+    comm: MPI communicator
+  
+  Returns:
+    Tuple containing:
+      - Offset value
+      - List of lists of (coords, lngn) tuples per domain
+  """
   coords_per_dom = []
   lngn_per_dom = []
   for part_zones in parts_per_dom:
@@ -60,18 +93,37 @@ def get_shifted_point_clouds(parts_per_dom, location, comm):
     clouds_per_dom.append(list(zip(dom_coords, dom_lngns)))
   return offset, clouds_per_dom
 
-def extract_sub_cloud(coords, lngn, indices):
+def extract_sub_cloud(coords: np.ndarray, 
+                      lngn: np.ndarray,
+                      indices: int) -> Tuple[np.ndarray, np.ndarray]:
   """
   Extract coordinates and lngn from a list of indices, starting at 0.
+  
+  Args:
+    coords: Coordinates array
+    lngn: Global numbering array
+    indices: Indices to extract
+  
+  Returns:
+    Tuple containing:
+      - Extracted coordinates array
+      - Extracted global numbering array
   """
   sub_lngn   = layouts.extract_from_indices(lngn  , indices, 1, 0)
   sub_coords = layouts.extract_from_indices(coords, indices, 3, 0)
   return sub_coords, sub_lngn
 
-def create_sub_numbering(lngn_l, comm):
+def create_sub_numbering(lngn_l: List[np.ndarray], comm: MPIComm) -> List[np.ndarray]:
   """
   Create a new compact, starting at 1 numbering from a list of
   gnums.
+  
+  Args:
+    lngn_l: List of global numbering arrays
+    comm: MPI communicator
+  
+  Returns:
+    List of new global numbering arrays
   """
   n_part = len(lngn_l)
   if comm.allreduce(n_part) == 0:

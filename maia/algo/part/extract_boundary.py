@@ -4,12 +4,13 @@ import maia.pytree        as PT
 
 from maia.utils     import np_utils, s_numbering, pr_utils
 from maia.transfer  import utils as te_utils
+from maia.typing import CGNSTree, MPIComm, List, Callable, Tuple
 
 from .point_cloud_utils import create_sub_numbering
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
-def _struct2d_connectivity(zone):
+def _struct2d_connectivity(zone: CGNSTree) -> Tuple[np.ndarray, np.ndarray]:
   n_vtx_i, n_vtx_j = PT.Zone.VertexSize(zone)
   n_vtx = n_vtx_i*n_vtx_j
   nf_i = n_vtx_i * (n_vtx_j-1)
@@ -37,7 +38,7 @@ def _struct2d_connectivity(zone):
   #ymax[1::2] = tmp
   return edge_vtx_idx, edge_vtx
 
-def _struct3d_connectivity(zone):
+def _struct3d_connectivity(zone: CGNSTree) -> Tuple[np.ndarray, np.ndarray]:
   nf_i, nf_j, nf_k = PT.Zone.FaceSize(zone)
   n_face_tot = nf_i + nf_j + nf_k
 
@@ -47,7 +48,7 @@ def _struct3d_connectivity(zone):
   face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, PT.Zone.CellSize(zone), dtype=np.int32)
   return face_vtx_idx, face_vtx
 
-def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
+def _pr_to_face_pl(n_vtx_zone: Tuple[int, ...], pr: np.ndarray, input_loc: str) -> np.ndarray:
   """
   Transform a (partitioned) PointRange pr of any location input_loc into a PointList
   supported by the faces or edges. n_vtx_zone is the number of vertices of the zone to which the
@@ -78,7 +79,8 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
 
   return pl
 
-def _extract_sub_connectivity(array_idx, array, sub_elts):
+def _extract_sub_connectivity(array_idx: np.ndarray, array: np.ndarray, 
+                              sub_elts: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   """
   From an idx+array mother->child connectivity (eg face->vtx or cell->face) and a list of
   mother element ids (starting at 1), create a sub connectivity involving only these mothers.
@@ -99,7 +101,8 @@ def _extract_sub_connectivity(array_idx, array, sub_elts):
   return sub_array_idx, sub_array, child_ids
 
 
-def extract_faces_mesh(zone, face_ids):
+def extract_faces_mesh(zone: CGNSTree, 
+                       face_ids: np.ndarray) -> Tuple[ np.ndarray, np.ndarray, np.ndarray]:
   """
   Extract a sub mesh from a U or S zone and a (flat) list of face ids to extract :
   create the sub ngon connectivity and extract the coordinates of vertices 
@@ -150,7 +153,9 @@ def extract_faces_mesh(zone, face_ids):
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
 
-def extract_surf_from_bc(part_zones, bc_predicate, comm):
+def extract_surf_from_bc(part_zones: List[CGNSTree], 
+                         bc_predicate: Callable[[CGNSTree], bool], 
+                         comm: MPIComm) -> CGNSTree:
   """
   From a list of partitioned zones (coming from the same initial domain), get the list
   of faces (or edge, depending on zone dimension)

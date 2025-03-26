@@ -4,6 +4,7 @@ from mpi4py import MPI
 
 import maia.pytree as PT
 
+from maia.typing   import CGNSTree, MPIComm, List, Dict, Any
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
@@ -31,7 +32,7 @@ class UDDCollector:
       self.ud_paths.append(PT.utils.path_tail(path, 1))
       return step.over # Stop exploring this level after search
 
-def set_default(dist_tree, comm):
+def set_default(dist_tree: CGNSTree, comm: MPIComm) -> Dict[str, Any]:
 
   default_renum = {'cell_renum_method' : 'NONE',
                    'face_renum_method' : 'NONE',
@@ -63,7 +64,9 @@ def set_default(dist_tree, comm):
 
   return default
 
-def partition_dist_tree(dist_tree, comm, **kwargs):
+def partition_dist_tree(dist_tree: CGNSTree, 
+                        comm: MPIComm, 
+                        **kwargs: Any) -> CGNSTree:
   """Perform the partitioning operation: create a partitioned tree from the input distributed tree.
 
   Important:
@@ -169,10 +172,10 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
 
   return part_tree
 
-def _partitioning(dist_tree,
-                  dzone_to_weighted_parts,
-                  comm,
-                  part_options):
+def _partitioning(dist_tree: CGNSTree,
+                  dzone_to_weighted_parts: Dict[str, List[float]],
+                  comm: MPIComm,
+                  part_options: Dict[str, Any]) -> CGNSTree:
 
   intra_jn = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
                         and PT.maia.conv.is_intra_gc(PT.get_name(n))

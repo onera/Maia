@@ -1,4 +1,6 @@
 import numpy as np
+from typing import List, Dict, Optional, Tuple, Set
+from maia.typing import CGNSTree, MPIComm, ArrayLike
 
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
@@ -7,7 +9,7 @@ import maia.pytree.maia  as MT
 from maia.utils import np_utils, par_utils
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-def get_partitioned_zones(part_tree, dist_zone_path):
+def get_partitioned_zones(part_tree: CGNSTree, dist_zone_path: str) -> List[CGNSTree]:
   """
   Return a list of the partitioned zones created from a distributed zone name
   found in part_tree
@@ -20,14 +22,14 @@ def get_partitioned_zones(part_tree, dist_zone_path):
   else:
     return []
 
-def get_cgns_distribution(dist_node, name):
+def get_cgns_distribution(dist_node: CGNSTree, name: str) -> np.ndarray:
   """
   Return the (partial) distribution array of a distributed zone from
   its path.
   """
   return PT.get_value(MT.getDistribution(dist_node, name))
 
-def get_subset_distribution(zone, node):
+def get_subset_distribution(zone: CGNSTree, node: CGNSTree) -> np.ndarray:
   """ Return the distribution node to which a Subset is related, 
   ie an Index distribution array or a Cell/Vertex distribution array"""
   location = PT.Subset.GridLocation(node)
@@ -44,7 +46,7 @@ def get_subset_distribution(zone, node):
     raise RuntimeError(f"Unable to find distribution data for subset node {PT.get_name(node)}")
   return PT.get_value(distri_n)
 
-def create_all_elt_distribution(dist_elts, comm):
+def create_all_elt_distribution(dist_elts: List[CGNSTree], comm: MPIComm) -> np.ndarray:
   """
   Create the :CGNS#Distribution-like distribution array we would
   have if all the Element_t nodes were concatenated
@@ -52,7 +54,7 @@ def create_all_elt_distribution(dist_elts, comm):
   elt_sections_dn  = [PT.Element.Size(elt) for elt in dist_elts]
   return par_utils.uniform_distribution(sum(elt_sections_dn), comm)
 
-def collect_cgns_g_numbering(part_nodes, name, prefix=''):
+def collect_cgns_g_numbering(part_nodes: List[CGNSTree], name: str, prefix: str = '') -> List[np.ndarray]:
   """
   Return the list of the CGNS:GlobalNumbering array of name name found for each
   partition, stating from part_node and searching under the (optional) prefix path
@@ -62,7 +64,7 @@ def collect_cgns_g_numbering(part_nodes, name, prefix=''):
   return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
       PT.get_value(MT.getGlobalNumbering(prefixed(part_node), name)).astype(pdm_gnum_dtype) for part_node in part_nodes]
 
-def create_all_elt_g_numbering(p_zone, dist_elts):
+def create_all_elt_g_numbering(p_zone: CGNSTree, dist_elts: List[CGNSTree]) -> np.ndarray:
   """
   Create for the partitioned zone p_zone the global numbering array
   that would correspond to all the Elements_t of the mesh.
@@ -82,7 +84,8 @@ def create_all_elt_g_numbering(p_zone, dist_elts):
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn
 
-def get_entities_numbering(part_zone):
+def get_entities_numbering(
+  part_zone: CGNSTree) -> Tuple[Optional[ArrayLike], Optional[ArrayLike], Optional[ArrayLike], Optional[ArrayLike]]:
   """
   Shortcut to return vertex, edge, face and cell global numbering of a partitioned
   (structured or unstructured) zone. Arrays can be None if numbering does not exists.
@@ -113,7 +116,9 @@ def get_entities_numbering(part_zone):
 
   return vtx_ln_to_gn, edge_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
 
-def create_mask_tree(root, labels, include, exclude):
+def create_mask_tree(root: CGNSTree, labels: List[str], 
+                     include: Optional[Set[str]] = None, 
+                     exclude: Optional[Set[str]] = None) -> CGNSTree:
   """
   Create a mask tree from root using either the include or exclude list + hints on searched labels
   """

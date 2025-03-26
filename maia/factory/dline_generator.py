@@ -4,8 +4,12 @@ from   maia.utils  import par_utils
 from   maia        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import numpy as np
+from maia.typing import CGNSTree, MPIComm, Union
 
-def generate_dist_line(n_point, start, end, comm):
+def generate_dist_line(n_point: Union[int, np.ndarray], 
+                       start: np.ndarray,
+                       end: np.ndarray,
+                       comm: MPIComm) -> CGNSTree:
   """
   Generate distributed straight line between start and end coordinates
   discretized with n_points.

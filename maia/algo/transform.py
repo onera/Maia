@@ -2,6 +2,7 @@ import numpy as np
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
+from maia.typing import CGNSTree, MPIComm, ArrayLike, List, Tuple, Dict, Optional, Union
 from maia.utils           import py_utils, np_utils, par_utils, pr_utils
 from maia.utils.numbering import range_to_slab          as HFR2S
 from maia.transfer import protocols as EP
@@ -11,21 +12,21 @@ from maia.utils import logging as mlog
 
 from .geometry import _compute_elements_center
 
-def _to_xyz(r, theta, z):
+def _to_xyz(r: ArrayLike, theta: ArrayLike, z: ArrayLike) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
   return r*np.cos(theta), r*np.sin(theta), z
-def _to_xyz_vectors(vr, vtheta, vz, theta):
+def _to_xyz_vectors(vr: np.ndarray, vtheta: np.ndarray, vz: np.ndarray, theta: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   return vr*np.cos(theta)-vtheta*np.sin(theta), vtheta*np.cos(theta)+vr*np.sin(theta), vz
-def _to_rthetaz(x, y, z):
+def _to_rthetaz(x: np.ndarray, y: np.ndarray, z: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   return np.sqrt(x**2+y**2), np.arctan2(y, x), z
-def _to_rthetaz_vectors(vx, vy, vz, theta):
+def _to_rthetaz_vectors(vx: np.ndarray, vy: np.ndarray, vz: np.ndarray, theta: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
-def transform_affine_zone(zone,
-                          vtx_mask,
-                          rotation_center,
-                          rotation_angle,
-                          translation,
-                          apply_to_fields):
+def transform_affine_zone(zone: CGNSTree,
+                          vtx_mask: np.ndarray,
+                          rotation_center: np.ndarray,
+                          rotation_angle: np.ndarray,
+                          translation: np.ndarray,
+                          apply_to_fields: bool) -> None:
   """
   Implementation of transform affine (see associated documentation) for
   a given zone.
@@ -104,11 +105,11 @@ def transform_affine_zone(zone,
 
 
 
-def transform_affine(t,
-                     rotation_center = np.zeros(3),
-                     rotation_angle  = np.zeros(3),
-                     translation     = np.zeros(3),
-                     apply_to_fields = True):
+def transform_affine(t: CGNSTree,
+                     rotation_center: np.ndarray = np.zeros(3),
+                     rotation_angle: np.ndarray = np.zeros(3),
+                     translation: np.ndarray = np.zeros(3),
+                     apply_to_fields: bool = True) -> None:
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -155,7 +156,7 @@ def transform_affine(t,
     vtx_mask = np.ones(PT.get_value(any_coord).shape, bool)
     transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
 
-def scale_mesh(t, s=1.):
+def scale_mesh(t: CGNSTree, s: Union[float, ArrayLike] = 1.) -> None:
   """Rescale the GridCoordinates of the input mesh.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -198,7 +199,7 @@ def scale_mesh(t, s=1.):
 
 
 # Belows are helper functions to compute entity theta coordinate, depending of GridLocation
-def _compute_cellcenter_theta(z, comm):
+def _compute_cellcenter_theta(z: CGNSTree, comm: Optional[MPIComm]) -> ArrayLike:
   theta = _compute_elements_center(z, 3, comm)[1::3]
   if PT.Zone.Type(z) == 'Structured' and MT.getDistribution(z) is None:
     theta = theta.reshape(PT.Zone.CellSize(z), order='F')
@@ -208,7 +209,7 @@ COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
                  'FaceCenter'  : lambda z,comm : _compute_elements_center(z,2,comm)[1::3], #Only partial subsets -> no reshape needed
                  'Vertex'      : lambda z,c : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1]}
 
-def _get_subset_container(nodes):
+def _get_subset_container(nodes: List[CGNSTree]) -> Dict[str, List[CGNSTree]]:
   """
   Return the parent node containing the PointList or PointRange information.
   Container stack should start at Zone level
@@ -228,7 +229,10 @@ def _get_subset_container(nodes):
     return last
 
 
-def shrink_to_subset(array, zone, subset, comm):
+def shrink_to_subset(array: np.ndarray,
+                     zone: CGNSTree,
+                     subset: CGNSTree,
+                     comm: Optional[MPIComm]) -> ArrayLike:
   """
   Extract a subpart of a full array (eg defined on all Vertex) on a specific 
   patch (U/PointList or S/PointRange). Array / subset can be distributed or partitioned.
@@ -284,7 +288,11 @@ def shrink_to_subset(array, zone, subset, comm):
       distri = par_utils.dn_to_distribution(array.size, comm)
       return EP.block_to_part(array, distri, idx-1, comm)
       
-def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields, abs_tol=1.e-8):
+def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
+                                                       revolution_axis: np.ndarray,
+                                                       comm: Optional[MPIComm],
+                                                       apply_to_fields: bool,
+                                                       abs_tol:float=1.e-8) -> None:
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.
 
   Transformation is defined by
@@ -374,7 +382,11 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis, comm,
         PT.set_value(gc_angle, gc_angle_new)
         PT.set_value(gc_trans, gc_trans_new)
      
-def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm, apply_to_fields, abs_tol=1.e-8):
+def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
+                                                       revolution_axis: np.ndarray,
+                                                       comm: Optional[MPIComm],
+                                                       apply_to_fields: bool,
+                                                       abs_tol:float=1.e-8) -> None:
   """Compute the cartesian coordinates from a unit revolution axis.
 
   Transformation is defined by
@@ -464,7 +476,9 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t, revolution_axis, comm,
         PT.set_value(gc_angle, gc_angle_new)
         PT.set_value(gc_trans, gc_trans_new)
 
-def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
+def auxiliary_coords_system(t: CGNSTree,
+                            transition_matrix: Optional[np.ndarray],
+                            apply_to_fields: bool = True) -> None: 
   """Convert the input tree from or to an auxiliary coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, and can have cartesian or 
@@ -562,7 +576,10 @@ def auxiliary_coords_system(t, transition_matrix, apply_to_fields=True):
         PT.set_value(gc_trans, gc_trans_new)
     
 
-def cartesian_to_cylindrical(t, axis, comm=None, apply_to_fields=True):
+def cartesian_to_cylindrical(t: CGNSTree,
+                             axis: ArrayLike,
+                             comm: Optional[MPIComm] = None,
+                             apply_to_fields: bool = True) -> None:
   """Convert the input tree into a cylindrical coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cartesian coordinates.
@@ -597,7 +614,10 @@ def cartesian_to_cylindrical(t, axis, comm=None, apply_to_fields=True):
   revolution_axis_unit = axis / np.linalg.norm(axis)
   cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis_unit, comm, apply_to_fields)
 
-def cylindrical_to_cartesian(t, axis, comm=None, apply_to_fields=True):
+def cylindrical_to_cartesian(t: CGNSTree,
+                             axis: ArrayLike,
+                             comm: Optional[MPIComm] = None,
+                             apply_to_fields: bool = True) -> None:
   """Convert the input tree into a cartesian coordinate system.
 
   Input zone(s) in the tree can be either structured or unstructured, but must have cylindrical coordinates.

@@ -1,9 +1,10 @@
 import numpy as np
 
 import maia.pytree as PT
+from maia.typing import CGNSTree
 from cmaia.part_algo import enforce_pe_left_parent
 
-def enforce_boundary_pe_left(zone_node):
+def enforce_boundary_pe_left(zone_node: CGNSTree) -> None:
   """
   Force the boundary ngon to have a non zero left parent cell.
   In such case, connetivities (FaceVtx & NFace) are reversed to preserve face

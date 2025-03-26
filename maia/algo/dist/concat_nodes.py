@@ -4,11 +4,16 @@ import maia.pytree.maia   as MT
 from maia.utils import np_utils, par_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
 from maia.algo.dist import matching_jns_tools as MJT
+from maia.typing    import CGNSTree, MPIComm, List, Optional, Union
 
 import numpy as np
 
-def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
-    additional_data_queries=[], additional_child_queries=[], master=None):
+def concatenate_subset_nodes(nodes: List[CGNSTree],
+                             comm: MPIComm,
+                             output_name: str = 'ConcatenatedNode',
+                             additional_data_queries: List[str] = [],
+                             additional_child_queries: List[str] = [],
+                             master: Optional[CGNSTree] = None) -> CGNSTree:
   """
   Concatenate some subset nodes (ie nodes having a PointList) into a single one.
   Subset nodes to be merged shall describe the same entity (eg a BC that have been split in two parts)
@@ -75,8 +80,12 @@ def concatenate_subset_nodes(nodes, comm, output_name='ConcatenatedNode',
   return node
 
 
-def concatenate_bc_nodes(bc_nodes, comm, output_name='ConcatenatedNode',
-    additional_data_queries=[], additional_child_queries=[], master=None):
+def concatenate_bc_nodes(bc_nodes: List[CGNSTree],
+                         comm: MPIComm,
+                         output_name: str = 'ConcatenatedNode',
+                         additional_data_queries: List[str] = [],
+                         additional_child_queries: List[str] = [],
+                         master: Optional[CGNSTree] = None) -> CGNSTree:
   """
   API for concatenate_subset_nodes which concatenate BCDS/PointList and BCDS/BCData/DataArray by default.
   """
@@ -89,7 +98,7 @@ def concatenate_bc_nodes(bc_nodes, comm, output_name='ConcatenatedNode',
   return bc_n
 
 
-def concatenate_jns(tree, comm):
+def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   """
   Parse the GridConnectivity_t of a tree and concatenate the GCs related to a same zone:
   if we have two jns A and B from zone1 to zone2 and two jns C and D from zone2 to zone1,
@@ -173,7 +182,9 @@ def concatenate_jns(tree, comm):
     MJT.add_joins_donor_name(tree, comm, force=True)
 
 
-def concatenate_subsets_from_families(dist_tree, comm, families='*'):
+def concatenate_subsets_from_families(dist_tree: CGNSTree,
+                                      comm: MPIComm,
+                                      families: Union[str, List[str]] = '*') -> None:
   """ For each family, gather the related BC nodes into a single BC.
 
   If the shorcut ``'*'`` is used for ``families`` argument,
@@ -272,7 +283,9 @@ def concatenate_subsets_from_families(dist_tree, comm, families='*'):
 
 is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
 
-def deconcatenate_subsets_from_families(dist_tree, comm, families='*'):
+def deconcatenate_subsets_from_families(dist_tree: CGNSTree,
+                                        comm: MPIComm,
+                                        families: Union[str, List[str]] = '*') -> None:
   """ For each given family, deconcatenate the related BC gathered with
   the concatenation service.
 

@@ -1,11 +1,11 @@
 import numpy as np
-
 import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
+from maia.typing                 import CGNSTree, MPIComm, List, Dict, Tuple, Union
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.utils                  import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks
@@ -13,7 +13,11 @@ from maia.factory.dist_from_part import get_parts_per_blocks
 from .point_cloud_utils import get_point_cloud
 
 
-def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
+def _closest_points(src_clouds: List[Tuple[np.ndarray, np.ndarray]], 
+                    tgt_clouds: List[Tuple[np.ndarray, np.ndarray]], 
+                    comm: MPIComm, 
+                    n_pts: int = 1, 
+                    reverse: bool = False) -> Union[List[Dict[str, np.ndarray]], Tuple[List[Dict[str, np.ndarray]], List[Dict[str, np.ndarray]]]]:
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists of tuples (coords, lngn)
@@ -91,8 +95,12 @@ def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
   else:
     return py_utils.to_nested_list(result, n_clouds_per_dom_tgt)
 
-def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt_location, comm, reverse=False):
-
+def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
+                         tgt_parts_per_dom: List[List[CGNSTree]], 
+                         src_location: str, 
+                         tgt_location: str, 
+                         comm: MPIComm, 
+                         reverse: bool = False) -> Union[List[List[Dict[str, np.ndarray]]], Tuple[List[List[Dict[str, np.ndarray]]], List[List[Dict[str, np.ndarray]]]]]:
   src_clouds = [[get_point_cloud(part, src_location) for part in src_parts] \
           for src_parts in src_parts_per_dom]
   tgt_clouds = [[get_point_cloud(part, tgt_location) for part in tgt_parts] \
@@ -101,7 +109,10 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
   return _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse)
 
 
-def find_closest_points(src_tree, tgt_tree, location, comm):
+def find_closest_points(src_tree: CGNSTree, 
+                        tgt_tree: CGNSTree, 
+                        location: str, 
+                        comm: MPIComm) -> None:
   """
   Partitionned implementation of maia.algo.find_closest_points
   """
