@@ -1,10 +1,14 @@
 import numpy as np
-from maia.typing import List, Tuple, Union, ArrayLike
+from maia.typing import List, ArrayLike
 import maia.pytree as PT
 
 from .s_numbering_funcs import ijk_to_index_from_loc, ij_to_index_from_loc
 
-def normal_index_shift(point_range: ArrayLike, n_vtx: List[int], bnd_axis: int, input_loc: str, output_loc: str) -> int:
+def normal_index_shift(point_range: ArrayLike,
+                       n_vtx: List[int],
+                       bnd_axis: int,
+                       input_loc: str, 
+                       output_loc: str) -> int:
   """
   Return the value that should be added to pr[normal_index,:] to account for cell <-> face|vtx transformation :
     +1 if we move from cell to face|vtx and if it was the last plane of cells
@@ -18,7 +22,9 @@ def normal_index_shift(point_range: ArrayLike, n_vtx: List[int], bnd_axis: int, 
                     +int(not out_loc_is_cell and in_loc_is_cell)
   return int(normal_index_is_last) * correction_sign
 
-def transform_bnd_pr_size(point_range: ArrayLike, input_loc: str, output_loc: str) -> ArrayLike:
+def transform_bnd_pr_size(point_range: ArrayLike,
+                          input_loc: str,
+                          output_loc: str) -> ArrayLike:
   """
   Predict a point_range defined at an input_location if it were defined at an output_location
   """
@@ -65,7 +71,10 @@ def unroll_pr(pr: ArrayLike) -> ArrayLike:
 
   return out
 
-def compute_pointList_from_pointRanges(sub_pr_list: List[ArrayLike], n_vtx_S: List[int], loc: str, order: str = 'F') -> ArrayLike:
+def compute_pointList_from_pointRanges(sub_pr_list: List[ArrayLike],
+                                       n_vtx_S: List[int],
+                                       loc: str,
+                                       order: str = 'F') -> ArrayLike:
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
   describe entity of kind loc, which can take the values '{I,J,K}FaceCenter', 'Vertex' or 'CellCenter'.

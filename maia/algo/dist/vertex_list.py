@@ -12,7 +12,7 @@ from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, vstride
 from maia.algo.dist             import matching_jns_tools as MJT
 
 from maia.transfer import protocols as EP
-from maia.typing   import CGNSTree, MPIComm, List, Tuple
+from maia.typing   import CGNSDistTree, MPIComm, List, Tuple
 
 def shifted_eso(ngon):
   eso = PT.get_node_from_path(ngon, 'ElementStartOffset')[1]
@@ -279,7 +279,7 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
 
   return isolated_face
 
-def generate_jn_vertex_list(dist_tree: CGNSTree, jn_path: str,
+def generate_jn_vertex_list(dist_tree: CGNSDistTree, jn_path: str,
                             comm: MPIComm) -> List[np.ndarray]:
   """
   From a FaceCenter join (given by its path in the tree), create the distributed arrays VertexList
@@ -375,7 +375,7 @@ def generate_jn_vertex_list(dist_tree: CGNSTree, jn_path: str,
   return pl_vtx, pld_vtx, distri_jn_vtx
 
 def _generate_jns_vertex_list(
-  dist_tree: CGNSTree, 
+  dist_tree: CGNSDistTree, 
   interface_pathes: str,
   comm: MPIComm) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
   """
@@ -459,7 +459,7 @@ def _generate_jns_vertex_list(
   return all_pl_vtx, all_pld_vtx, all_distri_vtx
     
 
-def generate_jns_vertex_list(dist_tree: CGNSTree, comm: MPIComm, 
+def generate_jns_vertex_list(dist_tree: CGNSDistTree, comm: MPIComm, 
                              have_isolated_faces: bool = False) -> None:
   """
   For each 1to1 FaceCenter matching join found in the distributed tree,
@@ -473,8 +473,8 @@ def generate_jns_vertex_list(dist_tree: CGNSTree, comm: MPIComm,
   Only unstructured-NGon based meshes are supported.
 
   Args:
-    dist_tree  (CGNSTree): Distributed tree
-    comm       (`MPIComm`) : MPI communicator
+    dist_tree  (CGNSDistTree): Distributed tree
+    comm       (`MPIComm`)   : MPI communicator
     have_isolated_faces (bool, optional) : Indicate if original joins includes
       faces who does not share any edge with other external (join) faces.
       If False, disable the special treatement needed by such faces (better performances,

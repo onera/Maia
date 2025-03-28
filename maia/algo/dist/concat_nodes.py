@@ -4,7 +4,7 @@ import maia.pytree.maia   as MT
 from maia.utils import np_utils, par_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
 from maia.algo.dist import matching_jns_tools as MJT
-from maia.typing    import CGNSTree, MPIComm, List, Optional, Union
+from maia.typing    import *
 
 import numpy as np
 
@@ -182,7 +182,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
     MJT.add_joins_donor_name(tree, comm, force=True)
 
 
-def concatenate_subsets_from_families(dist_tree: CGNSTree,
+def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                       comm: MPIComm,
                                       families: Union[str, List[str]] = '*') -> None:
   """ For each family, gather the related BC nodes into a single BC.
@@ -205,8 +205,8 @@ def concatenate_subsets_from_families(dist_tree: CGNSTree,
     For each family-grouped BCs, BCDataSet nodes must have the same tree structure
 
   Args:
-    dist_tree (CGNSTree)              : Distributed unstructured tree, starting at Zone_t level or higher.
-    comm      (MPIComm)               : MPI communicator
+    dist_tree (CGNSDistTree)                 : Distributed unstructured tree, starting at Zone_t level or higher.
+    comm      (MPIComm)                      : MPI communicator
     families  (list of str or '*', optional) : Family names. Default to ``"*"``. 
 
   Example:
@@ -283,7 +283,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSTree,
 
 is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
 
-def deconcatenate_subsets_from_families(dist_tree: CGNSTree,
+def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                         comm: MPIComm,
                                         families: Union[str, List[str]] = '*') -> None:
   """ For each given family, deconcatenate the related BC gathered with
@@ -300,8 +300,8 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSTree,
     added by :func:`~maia.algo.dist.concatenate_subsets_from_families`.
 
   Args:
-    dist_tree (CGNSTree)              : Distributed unstructured tree, starting at Zone_t level or higher.
-    comm      (MPIComm)               : MPI communicator
+    dist_tree (CGNSDistTree)                 : Distributed unstructured tree, starting at Zone_t level or higher.
+    comm      (MPIComm)                      : MPI communicator
     families  (list of str or '*', optional) : Family names. Default to ``"*"``. 
 
   Example:

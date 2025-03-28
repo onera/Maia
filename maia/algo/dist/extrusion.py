@@ -9,7 +9,7 @@ from maia.algo.dist import ngon_tools
 from maia.transfer  import protocols as EP
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import logging as mlog
-from maia.typing    import CGNSTree, MPIComm, Literal
+from maia.typing    import CGNSTree, CGNSDistTree, MPIComm, Literal
 
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 
@@ -544,7 +544,7 @@ def _pl_and_data_vtx_duplication(pl, distrib_idx, n_vtx_2d, data, comm):
   return new_distrib_idx, dist_pl, dist_data
     
 
-def extrude(dist_tree: CGNSTree,
+def extrude(dist_tree: CGNSDistTree,
             extrusion_vector: np.ndarray,
             comm: MPIComm,
             ksubset_as: Literal['GC', 'BC'] = 'GC',
@@ -567,12 +567,12 @@ def extrude(dist_tree: CGNSTree,
   Input tree is modified inplace.
 
   Args:
-    dist_tree (CGNSTree): Input 2D distributed tree
+    dist_tree (CGNSDistTree): Input 2D distributed tree
     extrusion_vector (array of 3 floats): extrusion axis, which can be any non zero vector
-    comm      (MPIComm) : MPI communicator
+    comm      (MPIComm)     : MPI communicator
     ksubset_as (str): Set kind of surfacic subset created for the initial and extruded planes.
                           Default to ``GC``.
-    dupl_vtx_data (bool): Enable duplication of vertex located fields (see above). Default to ``False``.
+    dupl_vtx_data (bool)    : Enable duplication of vertex located fields (see above). Default to ``False``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py

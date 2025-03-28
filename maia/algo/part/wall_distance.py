@@ -18,7 +18,7 @@ from maia.utils                      import logging as mlog
 from maia.transfer                   import protocols as EP
 from maia.transfer                   import utils as tr_utils
 from maia.factory.dist_from_part     import discover_nodes_from_matching
-from maia.typing                     import CGNSTree, MPIComm, List, Dict, Any, Tuple, Union, Literal
+from maia.typing                     import *
 
 from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import _compute_elements_center
@@ -80,7 +80,7 @@ class WallDistance:
   """
 
   def __init__(self, 
-               part_tree: CGNSTree, 
+               part_tree: CGNSPartTree, 
                bc_predicate: Any, 
                mpi_comm: MPIComm, 
                *, 
@@ -461,7 +461,7 @@ def compute_projection_to(part_tree, bc_predicate, comm, point_cloud='CellCenter
   else:
     mlog.info(f"Projection computed ({end-start:.2f} s)")
 
-def compute_wall_distance(part_tree: CGNSTree,
+def compute_wall_distance(part_tree: CGNSPartTree,
                           comm: MPIComm,
                           point_cloud: Union[Literal['CellCenter', 'Vertex'], str] = 'CellCenter',
                           out_fs_name: str = 'WallDistance',
@@ -487,8 +487,8 @@ def compute_wall_distance(part_tree: CGNSTree,
       Only available when method=cloud.
 
   Args:
-    part_tree (CGNSTree): Input partitionned tree
-    comm       (MPIComm): MPI communicator
+    part_tree (CGNSPartTree)   : Input partitionned tree
+    comm       (MPIComm)       : MPI communicator
     point_cloud (str, optional): Points to project on the surface. Can either be one of
       "CellCenter" or "Vertex" (coordinates are retrieved from the mesh) or the name of a FlowSolution
       node in which coordinates are stored. Defaults to CellCenter.

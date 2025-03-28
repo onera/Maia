@@ -2,7 +2,7 @@ from mpi4py import MPI
 import numpy              as np
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.typing import CGNSTree, MPIComm, Any, List, Tuple, Dict
+from maia.typing         import *
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT
@@ -15,7 +15,9 @@ LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell',
              'IEdgeCenter': 'Edge', 'JEdgeCenter': 'Edge',
              'IFaceCenter': 'Face', 'JFaceCenter': 'Face', 'KFaceCenter': 'Face'}
 
-def create_part_pl_gnum_unique(part_zones: CGNSTree, node_path: CGNSTree, comm: MPIComm) -> Any:
+def create_part_pl_gnum_unique(part_zones: CGNSPartTree, 
+                               node_path: CGNSTree,
+                               comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node, assuming that entity in
   this node are not duplicated over partitions.
@@ -42,8 +44,10 @@ def create_part_pl_gnum_unique(part_zones: CGNSTree, node_path: CGNSTree, comm: 
       distri_ud = MT.newGlobalNumbering(parent=node)
       PT.new_DataArray('Index', np.arange(start, start+size_per_part[offset], dtype=pdm_gnum_dtype), parent=distri_ud)
 
-def create_part_pl_gnum(dist_zone: CGNSTree, part_zones: CGNSTree, 
-                        node_path: CGNSTree, comm: MPIComm) -> Any:
+def create_part_pl_gnum(dist_zone: CGNSDistTree, 
+                        part_zones: CGNSPartTree, 
+                        node_path: CGNSTree,
+                        comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node, even if entity in
   this node appears in accross multiple partitions.
@@ -95,7 +99,10 @@ def create_part_pl_gnum(dist_zone: CGNSTree, part_zones: CGNSTree,
       PT.new_DataArray('Index', part_lngn[i_zone], parent=distri_ud)
       i_zone += 1
 
-def create_part_pr_gnum(dist_zone: CGNSTree, part_zones: CGNSTree, node_path: CGNSTree, comm: MPIComm) -> Any:
+def create_part_pr_gnum(dist_zone: CGNSDistTree, 
+                        part_zones: CGNSPartTree,
+                        node_path: CGNSTree, 
+                        comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node containing a partitioned point range
   """
@@ -137,8 +144,11 @@ def create_part_pr_gnum(dist_zone: CGNSTree, part_zones: CGNSTree, node_path: CG
       MT.newGlobalNumbering({'Index': index_gnum[i_zone]}, parent=node)
       i_zone += 1
 
-def part_pl_to_dist_pl(dist_zone: CGNSTree, part_zones: CGNSTree,
-                       node_path: CGNSTree, comm: MPIComm, allow_mult: bool = False) ->Any:
+def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
+                       part_zones: CGNSPartTree,
+                       node_path: CGNSTree, 
+                       comm: MPIComm, 
+                       allow_mult: bool = False) -> None:
   """
   Create a distributed point list for the node specified by its node_path
   from the partitioned point lists.
@@ -205,8 +215,13 @@ def part_pl_to_dist_pl(dist_zone: CGNSTree, part_zones: CGNSTree,
   MT.newDistribution({'Index' : distri}, parent=dist_node)
 
 
-def _part_triplet_to_dist_triplet(ptriplet: List[int], loc: str, ln_to_gn: Dict[int, int],
-                                  pvtx_size: Tuple[int,int,int], dvtx_size: Tuple[int, int, int]) -> Tuple[int, int, int]:
+def _part_triplet_to_dist_triplet(
+  ptriplet: List[int], 
+  loc: str,
+  ln_to_gn: Dict[int, int],
+  pvtx_size: Tuple[int,int,int],
+  dvtx_size: Tuple[int, int, int]) -> Tuple[Union[int,Any], Union[int, Any], Union[int, Any]]:
+    
   """ Convert a structured partitioned (local) i,j,k triplet to the corresponding
   global triplet in the distributed block """
   pcell_size = tuple(k-1 for k in pvtx_size)

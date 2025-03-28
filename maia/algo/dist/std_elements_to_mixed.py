@@ -4,10 +4,10 @@ import numpy as np
 from maia            import pytree        as PT
 from maia.transfer   import protocols     as MTP
 from maia.utils      import par_utils     as MUPar
-from maia.typing import CGNSTree, MPIComm
+from maia.typing     import CGNSDistTree, MPIComm
 
 
-def convert_elements_to_mixed(dist_tree: CGNSTree, comm: MPIComm) -> None:
+def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
     """
     Transform an element based connectivity into a mixed connectivity.
     
@@ -15,8 +15,8 @@ def convert_elements_to_mixed(dist_tree: CGNSTree, comm: MPIComm) -> None:
     Note that the original ordering of elements is preserved.
   
     Args:
-      dist_tree  (CGNSTree): Tree with connectivity described by standard elements
-      comm       (`MPIComm`) : MPI communicator
+      dist_tree  (CGNSDistTree): Tree with connectivity described by standard elements
+      comm       (`MPIComm`)   : MPI communicator
   
     Example:
         .. literalinclude:: snippets/test_algo.py
@@ -25,7 +25,6 @@ def convert_elements_to_mixed(dist_tree: CGNSTree, comm: MPIComm) -> None:
           :dedent: 2
     """
     rank = comm.Get_rank()
-    
     for zone in PT.get_all_Zone_t(dist_tree):
         part_data_ec = []
         part_data_eso = []

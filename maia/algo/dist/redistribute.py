@@ -6,7 +6,7 @@ import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
-from   maia.typing import CGNSTree, MPIComm
+from   maia.typing import CGNSTree, CGNSDistTree, MPIComm
 
 from maia.io.distribution_tree import interpret_policy
 
@@ -218,7 +218,7 @@ def redistribute_zone(zone: CGNSTree,
 
 
 # ---------------------------------------------------------------------------------------
-def redistribute_tree(dist_tree: CGNSTree,
+def redistribute_tree(dist_tree: CGNSDistTree,
                       policy: str,
                       comm: MPIComm) -> None:
   """Redistribute the data of the input tree according to the chosen distribution policy.
@@ -234,9 +234,9 @@ def redistribute_tree(dist_tree: CGNSTree,
   Input is modified inplace.
 
   Args:
-    dist_tree (CGNSTree) : Distributed tree
-    policy    (str)      : distribution policy (see above)
-    comm      (MPIComm)  : MPI communicator
+    dist_tree (CGNSDistTree) : Distributed tree
+    policy    (str)          : distribution policy (see above)
+    comm      (MPIComm)      : MPI communicator
 
   Example:
     .. literalinclude:: snippets/test_algo.py

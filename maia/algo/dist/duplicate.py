@@ -4,11 +4,11 @@ import maia.pytree        as PT
 import maia.algo.transform as TRF
 import maia.algo.dist.conformize_jn as CCJ
 import maia.algo.dist.matching_jns_tools as MJT
-from   maia.typing import CGNSTree, MPIComm, List, Tuple, Any
+from   maia.typing import *
 
 from maia.utils import logging as mlog
 
-def duplicate_from_periodic_jns(dist_tree: CGNSTree,
+def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
                                 zone_paths: List[str],
                                 jn_paths_for_dupl: Tuple[List[str], List[str]],
                                 dupl_nb: int,
@@ -20,7 +20,7 @@ def duplicate_from_periodic_jns(dist_tree: CGNSTree,
   Input tree is modified inplace.
 
   Args:
-    dist_tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSDistTree): Input distributed tree
     zone_paths (list of str): List of pathes (BaseName/ZoneName) of the connected zones to duplicate
     jn_paths_for_dupl (pair of list of str): (listA, listB) where listA (resp. list B) stores all the
         pathes of the GridConnectivity nodes defining the first (resp. second) side of a periodic match.
@@ -203,7 +203,7 @@ def duplicate_from_periodic_jns(dist_tree: CGNSTree,
     PT.set_value(jn_b_last_node, f"{jn_values_b[jb]}.D0")
   
 
-def duplicate_from_rotation_jns_to_360(dist_tree: CGNSTree,
+def duplicate_from_rotation_jns_to_360(dist_tree: CGNSDistTree,
                                        zone_paths: List[str],
                                        jn_paths_for_dupl: Tuple[List[str], List[str]],
                                        comm: MPIComm,
@@ -214,7 +214,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree: CGNSTree,
   Input tree is modified inplace.
 
   Args:
-    dist_tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSDistTree): Input distributed tree
     zone_paths (list of str): List of pathes (BaseName/ZoneName) of the connected zones to duplicate
     jn_paths_for_dupl (pair of list of str): (listA, listB) where listA (resp. list B) stores all the
         pathes of the GridConnectivity nodes defining the first (resp. second) side of a periodic match.
@@ -298,7 +298,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree: CGNSTree,
       CCJ.conformize_jn_pair(dist_tree, [jn_path_a_init, jn_path_b_last], comm)
 
 
-def _family_name_to_zones_and_jns_paths(dist_tree: CGNSTree, family_name: str) -> Tuple[List[str], List[List[str]]]:
+def _family_name_to_zones_and_jns_paths(dist_tree: CGNSDistTree, family_name: str) -> Tuple[List[str], List[List[str]]]:
   is_z_in_fam = lambda n : PT.get_label(n) == 'Zone_t' and PT.predicate.belongs_to_family(n, family_name)
   zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_z_in_fam])
 
@@ -318,7 +318,7 @@ def _family_name_to_zones_and_jns_paths(dist_tree: CGNSTree, family_name: str) -
 
   return zone_paths, perio_jns
 
-def duplicate_family_from_periodic_jns(dist_tree: CGNSTree,
+def duplicate_family_from_periodic_jns(dist_tree: CGNSDistTree,
                                        family_name: str,
                                        dupl_nb: int,
                                        comm: MPIComm,
@@ -332,7 +332,7 @@ def duplicate_family_from_periodic_jns(dist_tree: CGNSTree,
     if the number of periodic transformation found in the group of zones is not exactly one.
 
   Args:
-    dist_tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSDistTree): Input distributed tree
     family_name (str): Name of family gathering the zones to duplicate
     dupl_nb (int) : Number of duplications to perform
     comm       (MPIComm) : MPI communicator
@@ -353,7 +353,7 @@ def duplicate_family_from_periodic_jns(dist_tree: CGNSTree,
   zone_paths, perio_jns = _family_name_to_zones_and_jns_paths(dist_tree, family_name)
   duplicate_from_periodic_jns(dist_tree, zone_paths, perio_jns, dupl_nb, comm, **kwargs)
 
-def duplicate_family_from_rotation_jns_to_360(dist_tree: CGNSTree,
+def duplicate_family_from_rotation_jns_to_360(dist_tree: CGNSDistTree,
                                               family_name: str,
                                               comm: MPIComm,
                                               **kwargs: Any) -> None:

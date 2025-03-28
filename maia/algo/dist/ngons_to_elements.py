@@ -5,12 +5,11 @@ import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 from maia.pytree.sids import elements_utils as EU
-from maia.typing import CGNSTree, MPIComm
+from maia.typing import CGNSTree, CGNSDistTree, MPIComm
 
 from maia.utils     import np_utils, par_utils, vstride
 from maia.transfer  import protocols as EP
 from maia.algo.dist import matching_jns_tools as MJT
-
 
 from cmaia.algo import combine_to_tetra, combine_to_pyra, \
                        combine_to_penta, combine_to_hexa
@@ -279,7 +278,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   PT.rm_child(zone, nface_n)
  
 
-def convert_ngon_to_elements(dist_tree: CGNSTree, comm: MPIComm) -> None:
+def convert_ngon_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """
   Transform a polyedric (NGon based) connectivity into a standard nodal
   connectivity.
@@ -289,8 +288,8 @@ def convert_ngon_to_elements(dist_tree: CGNSTree, comm: MPIComm) -> None:
   are removed and relevant data (such as PointList) are updated.
 
   Args:
-    dist_tree  (CGNSTree): distributed tree with polyedric connectivity
-    comm       (`MPIComm`) : MPI communicator
+    dist_tree  (CGNSDistTree): distributed tree with polyedric connectivity
+    comm       (`MPIComm`)   : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py

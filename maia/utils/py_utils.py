@@ -18,7 +18,10 @@ def to_flat_list(nested_list: List[List[T]]) -> List[T]:
   """ Transform a list of list to a flat list"""
   return [obj for l in nested_list for obj in l]
 
-def bucket_split(l: List[T], f: Callable[[T], int], compress: bool = False, size: Optional[int] = None) -> List[List[T]]:
+def bucket_split(l: List[T], 
+                 f: Callable[[T], int],
+                 compress: bool = False,
+                 size: Optional[int] = None) -> List[List[T]]:
   """ Dispatch the elements of list l into n sublists, according to the result of function f """
   if size is None: 
     size = max(f(e) for e in l) + 1

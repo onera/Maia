@@ -6,9 +6,9 @@ import maia.pytree.maia as MT
 from maia.transfer import protocols as EP
 from maia.utils import np_utils, par_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.typing import CGNSTree, MPIComm
+from maia.typing import CGNSDistTree, MPIComm
 
-def concatenate_elt_sections(dist_tree: CGNSTree, comm: MPIComm) -> None:
+def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """ Gather the Element_t sections of same ElementType into a single one.
 
   Resulting sections are named after their ElementType. Note that :
@@ -20,8 +20,8 @@ def concatenate_elt_sections(dist_tree: CGNSTree, comm: MPIComm) -> None:
   Input tree is modified inplace.
 
   Args:
-    dist_tree (CGNSTree) : Distributed tree
-    comm (MPIComm)  : MPI communicator
+    dist_tree (CGNSDistTree) : Distributed tree
+    comm (MPIComm)           : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -178,7 +178,8 @@ def reorder_sections(tree, permutation):
         pld[1] += offset[r-1]
       
       
-def reorder_elt_sections_from_dim(dist_tree: CGNSTree, reverse: bool =False) ->None:
+def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree, 
+                                  reverse: bool = False) -> None:
   """ Reorder the Elements_t sections of the input tree according to their dimension.
 
   By default, Elements_t nodes are sorted in increasing dimension order (1D, then 2D, then 3D).

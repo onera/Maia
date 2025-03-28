@@ -11,10 +11,7 @@ from maia.factory.partitioning import compute_nosplit_weights
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
 
-from maia.typing import (
-    CGNSTree, MPIComm, CGNSPath,
-    List, Union, Any, PathLike
-)
+from maia.typing import *
 
 if _LEGACY_IO:
   import Converter.Filter as Filter
@@ -24,7 +21,7 @@ else:
   from ._hdf_io_h5py  import _write_links
   from .hdf._hdf_cgns import open_from_path, load_tree_partial, _load_node_partial, _write_node_partial
 
-def enforce_maia_naming(part_tree: CGNSTree, 
+def enforce_maia_naming(part_tree: CGNSPartTree, 
                         comm: MPIComm) -> None:
   """Rename the zones and joins of a partitionned tree such that maia
   convention are respected
@@ -66,7 +63,7 @@ def enforce_maia_naming(part_tree: CGNSTree,
 
 
 def _read_part_from_name(tree: CGNSTree, 
-                         filename: Union[str, PathLike], 
+                         filename: PathLike, 
                          comm: MPIComm) -> List[CGNSPath]:
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
@@ -75,7 +72,7 @@ def _read_part_from_name(tree: CGNSTree,
   return [path for path in zones_path if PT.maia.conv.get_part_suffix(path)[0] == comm.Get_rank()]
 
 def _read_part_from_size(tree: CGNSTree, 
-                         filename: Union[str, PathLike], 
+                         filename: PathLike,
                          comm: MPIComm) -> List[CGNSPath]:
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
@@ -83,9 +80,9 @@ def _read_part_from_size(tree: CGNSTree,
   return [path for path in compute_nosplit_weights(tree, comm)]
 
 
-def file_to_part_tree(filename: str, 
+def file_to_part_tree(filename: PathLike, 
                       comm: MPIComm, 
-                      redispatch: bool = False) -> CGNSTree:
+                      redispatch: bool = False) -> CGNSPartTree:
   """file_to_part_tree(filename, comm, redispatch=False)
   
   Read the partitioned zones from a hdf container and affect them
@@ -174,8 +171,8 @@ def file_to_part_tree(filename: str,
   return tree
 
 
-def part_tree_to_file(part_tree: CGNSTree, 
-                      filename: str, 
+def part_tree_to_file(part_tree: CGNSPartTree, 
+                      filename: PathLike, 
                       comm: MPIComm, 
                       single_file: bool = False, 
                       links: List[List[str]] = []) -> None:
@@ -189,11 +186,11 @@ def part_tree_to_file(part_tree: CGNSTree,
   linking to additional subfiles.
   
   Args:
-    part_tree (CGNSTree) : Partitioned tree
-    filename (str) : Path of the output file
-    comm     (MPIComm) : MPI communicator
-    single_file (bool) : Produce a unique file if True; use CGNS links otherwise.
-    links (list): List of links to create (see SIDS-to-Python guide). Each rank must provide
+    part_tree (CGNSPartTree) : Partitioned tree
+    filename (str)           : Path of the output file
+    comm     (MPIComm)       : MPI communicator
+    single_file (bool)       : Produce a unique file if True; use CGNS links otherwise.
+    links (list)             : List of links to create (see SIDS-to-Python guide). Each rank must provide
       only the links related to one of its partitions.
 
   Example:

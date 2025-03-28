@@ -8,7 +8,7 @@ from maia.pytree        import maia          as MT
 from maia.transfer      import protocols     as MTP
 from maia.utils         import par_utils     as MUPar
 from maia.utils.ndarray import np_utils
-from maia.typing        import CGNSTree, MPIComm
+from maia.typing        import CGNSTree, CGNSDistTree, MPIComm
 
 import maia.pytree.sids.elements_utils    as MPSEU
 
@@ -36,7 +36,7 @@ def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> 
       pointlist_nodes.append(new_pl_n)
   return pointlist_nodes
 
-def convert_mixed_to_elements(dist_tree: CGNSTree, comm: MPIComm) -> None:
+def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
     """
     Transform a mixed connectivity into an element based connectivity.
     
@@ -44,8 +44,8 @@ def convert_mixed_to_elements(dist_tree: CGNSTree, comm: MPIComm) -> None:
     and the PointList are updated.
   
     Args:
-      dist_tree  (CGNSTree): Tree with connectivity described by mixed elements
-      comm       (`MPIComm`) : MPI communicator
+      dist_tree  (CGNSDistTree): Tree with connectivity described by mixed elements
+      comm       (`MPIComm`)   : MPI communicator
   
     Example:
         .. literalinclude:: snippets/test_algo.py

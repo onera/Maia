@@ -17,7 +17,9 @@ def _closest_points(src_clouds: List[Tuple[np.ndarray, np.ndarray]],
                     tgt_clouds: List[Tuple[np.ndarray, np.ndarray]], 
                     comm: MPIComm, 
                     n_pts: int = 1, 
-                    reverse: bool = False) -> Union[List[Dict[str, np.ndarray]], Tuple[List[Dict[str, np.ndarray]], List[Dict[str, np.ndarray]]]]:
+                    reverse: bool = False) -> Union[List[Dict[str, np.ndarray]],
+                                                    Tuple[List[Dict[str, np.ndarray]],
+                                                    List[Dict[str, np.ndarray]]]]:
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists of tuples (coords, lngn)
@@ -100,7 +102,9 @@ def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]],
                          src_location: str, 
                          tgt_location: str, 
                          comm: MPIComm, 
-                         reverse: bool = False) -> Union[List[List[Dict[str, np.ndarray]]], Tuple[List[List[Dict[str, np.ndarray]]], List[List[Dict[str, np.ndarray]]]]]:
+                         reverse: bool = False) -> Union[List[List[Dict[str, np.ndarray]]],
+                                                         Tuple[List[List[Dict[str, np.ndarray]]],
+                                                         List[List[Dict[str, np.ndarray]]]]]:
   src_clouds = [[get_point_cloud(part, src_location) for part in src_parts] \
           for src_parts in src_parts_per_dom]
   tgt_clouds = [[get_point_cloud(part, tgt_location) for part in tgt_parts] \

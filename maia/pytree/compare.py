@@ -72,8 +72,8 @@ def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False
   Note that no check is performed on their children.
 
   Args:
-    t1 (CGNSTree): first tree
-    t2 (CGNSTree): second tree
+    node1 (CGNSTree): first tree
+    node2 (CGNSTree): second tree
     abs_tol (float) : absolute tolerance used for value comparison, performed by ``np.allclose`` function
     type_tol (bool): if True, allow comparaison of compatible but different types (I4/I8 or R4/R8).
       Otherwise, nodes are considered to differ.

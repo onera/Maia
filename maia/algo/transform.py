@@ -2,7 +2,7 @@ import numpy as np
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
-from maia.typing import CGNSTree, MPIComm, ArrayLike, List, Tuple, Dict, Optional, Union
+from maia.typing import   CGNSTree, MPIComm, ArrayLike, List, Tuple, Dict, Optional, Union
 from maia.utils           import py_utils, np_utils, par_utils, pr_utils
 from maia.utils.numbering import range_to_slab          as HFR2S
 from maia.transfer import protocols as EP
@@ -156,7 +156,7 @@ def transform_affine(t: CGNSTree,
     vtx_mask = np.ones(PT.get_value(any_coord).shape, bool)
     transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
 
-def scale_mesh(t: CGNSTree, s: Union[float, ArrayLike] = 1.) -> None:
+def scale_mesh(t: CGNSTree, s: Union[float, np.ndarray] = 1.) -> None:
   """Rescale the GridCoordinates of the input mesh.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -199,7 +199,7 @@ def scale_mesh(t: CGNSTree, s: Union[float, ArrayLike] = 1.) -> None:
 
 
 # Belows are helper functions to compute entity theta coordinate, depending of GridLocation
-def _compute_cellcenter_theta(z: CGNSTree, comm: Optional[MPIComm]) -> ArrayLike:
+def _compute_cellcenter_theta(z: CGNSTree, comm: MPIComm) -> ArrayLike:
   theta = _compute_elements_center(z, 3, comm)[1::3]
   if PT.Zone.Type(z) == 'Structured' and MT.getDistribution(z) is None:
     theta = theta.reshape(PT.Zone.CellSize(z), order='F')
@@ -289,8 +289,8 @@ def shrink_to_subset(array: np.ndarray,
       return EP.block_to_part(array, distri, idx-1, comm)
       
 def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
-                                                       revolution_axis: np.ndarray,
-                                                       comm: Optional[MPIComm],
+                                                       revolution_axis: ArrayLike,
+                                                       comm: MPIComm,
                                                        apply_to_fields: bool,
                                                        abs_tol:float=1.e-8) -> None:
   """ Implementation of cartesian_to_cylindrical for a unit revolution axis.
@@ -383,8 +383,8 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
         PT.set_value(gc_trans, gc_trans_new)
      
 def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
-                                                       revolution_axis: np.ndarray,
-                                                       comm: Optional[MPIComm],
+                                                       revolution_axis: ArrayLike,
+                                                       comm: MPIComm,
                                                        apply_to_fields: bool,
                                                        abs_tol:float=1.e-8) -> None:
   """Compute the cartesian coordinates from a unit revolution axis.
@@ -616,7 +616,7 @@ def cartesian_to_cylindrical(t: CGNSTree,
 
 def cylindrical_to_cartesian(t: CGNSTree,
                              axis: ArrayLike,
-                             comm: Optional[MPIComm] = None,
+                             comm: Optional[MPIComm],
                              apply_to_fields: bool = True) -> None:
   """Convert the input tree into a cartesian coordinate system.
 

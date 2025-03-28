@@ -3,7 +3,7 @@ import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.typing import CGNSTree, MPIComm, Optional
+from maia.typing import CGNSTree, CGNSDistTree, MPIComm, Optional
 
 from maia.utils     import par_utils, layouts
 
@@ -112,8 +112,8 @@ def dsphere_hollow_nodal_generate(n_vtx: int,
 def generate_dist_sphere(m: int, 
                          cgns_elmt_name: str, 
                          comm: MPIComm, 
-                         origin: Optional[np.ndarray] = np.zeros(3), 
-                         radius: float = 1.) -> CGNSTree:
+                         origin: np.ndarray = np.zeros(3), 
+                         radius: float = 1.) -> CGNSDistTree:
   """Generate a distributed mesh with a spherical topology.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

@@ -4,9 +4,9 @@ import maia.pytree.maia   as MT
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols   as EP
 from maia.utils     import par_utils
-from maia.typing    import CGNSTree, MPIComm, List
+from maia.typing    import CGNSDistTree, MPIComm, List
 
-def conformize_jn_pair(dist_tree: CGNSTree,
+def conformize_jn_pair(dist_tree: CGNSDistTree,
                        jn_paths: List[str],
                        comm: MPIComm) -> None:
   """
@@ -20,10 +20,10 @@ def conformize_jn_pair(dist_tree: CGNSTree,
   Input tree is modified inplace.
 
   Args:
-    dist_tree  (CGNSTree): Input tree
-    jn_pathes  (list of str): Pathes of the two matching ``GridConnectivity_t``
+    dist_tree  (CGNSDistTree): Input tree
+    jn_pathes  (list of str) : Pathes of the two matching ``GridConnectivity_t``
        nodes. Pathes must start from the root of the tree.
-    comm       (`MPIComm`) : MPI communicator
+    comm       (`MPIComm`)   : MPI communicator
 
   """
   

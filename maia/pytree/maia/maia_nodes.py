@@ -4,7 +4,7 @@ from maia.pytree.meta   import begin_api_export, end_api_export
 from maia.pytree import walk as W
 from maia.pytree import node as N
 from maia.pytree import sids as S
-
+import maia.pytree as PT
 from maia.utils import vstride as vs
 
 begin_api_export()
@@ -24,6 +24,92 @@ def getGlobalNumbering(node:CGNSTree, lngn_name:str=None) -> Optional[CGNSTree]:
   """
   return W.get_node_from_path(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
       else W.get_child_from_name(node, ':CGNS#GlobalNumbering')
+# --------------------------------------------------------------------------      
+def check_contain_zones(tree: CGNSTree) -> List[CGNSTree]:
+  """_summary_
+
+  Args:
+      tree (CGNSTree): _description_
+
+  Returns:
+      List[CGNSTree]: _description_
+  """
+  zones=PT.get_all_Zone_t(tree)
+  if zones is None:
+    return
+  pass
+
+def is_cgns_part_tree(tree: CGNSTree) -> bool:
+  """_summary_
+
+  Args:
+      tree (CGNSTree): _description_
+
+  Returns:
+      bool: _description_
+  """
+  zones = check_contain_zones(tree)
+  pass
+
+def is_cgns_dist_tree(tree: CGNSTree) -> bool:
+  """_summary_
+
+  Args:
+      tree (CGNSTree): _description_
+
+  Returns:
+      bool: _description_
+  """
+  zones = check_contain_zones(tree)
+  pass
+
+def is_cgns_full_tree(tree: CGNSTree) -> bool:
+  """_summary_
+
+  Args:
+      tree (CGNSTree): _description_
+
+  Returns:
+      bool: _description_
+  """
+  return not is_cgns_part_tree(tree) and not is_cgns_dist_tree(tree)
+
+def check_cgns_dist_tree(tree: CGNSTree):
+  """_summary_
+
+  Args:
+      tree (CGNSTree): _description_
+
+  Raises:
+      ValueError: _description_
+  """
+  if not is_cgns_dist_tree(tree):
+    raise ValueError("...")
+  
+def check_cgns_part_tree(tree: CGNSTree):
+  """_summary_
+
+  Args:
+      tree (CGNSTree): _description_
+
+  Raises:
+      ValueError: _description_
+  """
+  if not is_cgns_part_tree(tree):
+    raise ValueError("...")
+  
+def check_cgns_full_tree(tree: CGNSTree):
+  """_summary_
+
+  Args:
+      tree (CGNSTree): _description_
+
+  Raises:
+      ValueError: _description_
+  """
+  if not is_cgns_full_tree(tree):
+    raise ValueError("...")
+  
 
 # --------------------------------------------------------------------------
 def newDistribution(distributions:Dict[str, np.ndarray] = dict(), parent:CGNSTree=None) -> CGNSTree:

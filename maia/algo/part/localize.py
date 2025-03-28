@@ -243,9 +243,13 @@ def _collect_target(tgt_parts_per_dom, location):
 
 
 def _localize_points(
-  src_parts_per_dom: List[List[CGNSTree]], tgt_parts_per_dom: List[List[CGNSTree]], 
-  location: str, comm: MPIComm, reverse: bool = False, 
-  loc_tolerance: float = 1E-6) -> Union[List[List[Dict[str, np.ndarray]]], Tuple[List[List[Dict[str, np.ndarray]]], List[List[Dict[str, np.ndarray]]]]]:
+  src_parts_per_dom: List[List[CGNSTree]], 
+  tgt_parts_per_dom: List[List[CGNSTree]], 
+  location: str, comm: MPIComm, 
+  reverse: bool = False, 
+  loc_tolerance: float = 1E-6) -> Union[List[List[Dict[str, np.ndarray]]], 
+                                        Tuple[List[List[Dict[str, np.ndarray]]],
+                                        List[List[Dict[str, np.ndarray]]]]]:
 
   """ Intermediate API who do not place output in tree.
   Inputs are list of size n_domain_src (resp. tgt) containing partitioned zones (resp. clouds)

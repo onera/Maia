@@ -257,7 +257,7 @@ class GlobalMultiIndexer:
     self._Take(dist_data, local_data_l, count)
     return local_data_l
 
-  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1) -> Buffer:
+  def Put(self, local_data_l: List[Buffer], dist_data: Buffer = None, /, count=1) -> Buffer:
     """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
@@ -540,7 +540,7 @@ class GlobalIndexer:
     """
     return self.GIndexer_m.put([local_data])
 
-  def Take(self, dist_data:Buffer, local_data:Buffer=None, /, count=1) -> Buffer:
+  def Take(self, dist_data:Buffer, local_data: Buffer = None, /, count=1) -> Buffer:
     """ ``take`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*dn`, where :math:`c` is a
@@ -565,7 +565,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take(dist_data, local_data_l, count)[0]
 
-  def Put(self, local_data: Buffer, dist_data:Buffer=None, /, count=1) -> Buffer:
+  def Put(self, local_data: Buffer, dist_data: Buffer = None, /, count=1) -> Buffer:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
@@ -630,7 +630,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take_v(dist_data, local_data_l)[0]
 
-  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /) -> VBuffer:
+  def Put_v(self, local_data: VBuffer, dist_data: VBuffer = None, /) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by a tuple of two objects:

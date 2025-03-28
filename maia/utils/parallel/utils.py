@@ -1,6 +1,6 @@
 from mpi4py import MPI
 import numpy as np
-from maia.typing import List, TypeVar, Callable, Any, Sequence, Union, Optional, ArrayLike, CGNSTree, MPIComm
+from maia.typing import *
 import maia.pytree as PT
 
 from maia.utils import py_utils
@@ -38,7 +38,10 @@ def dn_to_distribution(dn_elt: int, comm: MPIComm) -> ArrayLike:
   comm.Bcast(distri[2:], root=comm.Get_size()-1)
   return distri
 
-def distribution_from_gnum(gnum_list: List[ArrayLike], comm: MPIComm, weights: bool = False, full: bool = False) -> ArrayLike:
+def distribution_from_gnum(gnum_list: List[ArrayLike], 
+                           comm: MPIComm, 
+                           weights: bool = False,
+                           full: bool = False) -> ArrayLike:
   """
   Create a distribution including all the provided gnums. 
   If weights=True, the distribution try to put the same number of ids on each rank.
@@ -81,7 +84,9 @@ def partial_to_full_distribution(partial_distrib: ArrayLike, comm: MPIComm) -> A
 def full_to_partial_distribution(full_distrib: ArrayLike, comm: MPIComm) -> ArrayLike:
   return full_distrib[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
 
-def gather_and_shift(value: Union[int, float, ArrayLike], comm: MPIComm, dtype: Optional[np.dtype] = None) -> ArrayLike:
+def gather_and_shift(value: Union[int, float, ArrayLike],
+                     comm: MPIComm, 
+                     dtype: Optional[np.dtype] = None) -> ArrayLike:
   if dtype is None:
     value = np.asarray(value)
     dtype = value.dtype

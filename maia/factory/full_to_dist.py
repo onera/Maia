@@ -6,10 +6,11 @@ import maia.pytree.maia   as MT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
-from maia.typing import CGNSTree, MPIComm, List, Optional, Tuple, Union, Any
+from maia.typing      import *
 
 
-def distribute_pl_node(node: CGNSTree, comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
+def distribute_pl_node(node: CGNSTree, 
+                       comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
   """
   Distribute a standard node having a PointList (and its childs) over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
@@ -49,7 +50,8 @@ def distribute_pl_node(node: CGNSTree, comm: MPIComm) -> Tuple[str, Optional[Any
 
   return dist_node
 
-def distribute_data_node(node: CGNSTree, comm: MPIComm) ->Tuple[str, Optional[Any], List[CGNSTree], str]:
+def distribute_data_node(node: CGNSTree, 
+                         comm: MPIComm) ->Tuple[str, Optional[Any], List[CGNSTree], str]:
   """
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
@@ -68,7 +70,8 @@ def distribute_data_node(node: CGNSTree, comm: MPIComm) ->Tuple[str, Optional[An
 
   return dist_node
 
-def distribute_element_node(node: CGNSTree, comm: MPIComm) ->Tuple[str, Optional[str], List[CGNSTree], str]:
+def distribute_element_node(node: CGNSTree, 
+                            comm: MPIComm) ->Tuple[str, Optional[str], List[CGNSTree], str]:
   """
   Distribute a standard element node over several processes, using uniform distribution.
   Mainly useful for unit tests. Node must be know by each process.
@@ -173,7 +176,9 @@ def _distribute_tree(tree: CGNSTree, comm: MPIComm) ->Tuple[str, Optional[np.nda
 
   return dist_tree
 
-def _broadcast_full_to_dist(tree: CGNSTree, comm: MPIComm, owner: int) -> Union[CGNSTree, None]:
+def _broadcast_full_to_dist(tree: CGNSTree,
+                            comm: MPIComm, 
+                            owner: int) -> Union[CGNSTree, None]:
   """
   Create a distributed tree from a full tree holded by only one proc.
   """
@@ -234,7 +239,9 @@ def _broadcast_full_to_dist(tree: CGNSTree, comm: MPIComm, owner: int) -> Union[
 
   return dist_tree
 
-def full_to_dist_tree(tree: CGNSTree, comm: MPIComm, owner: Optional[int]=None) -> Union[CGNSTree,None]:
+def full_to_dist_tree(tree: CGNSTree,
+                      comm: MPIComm, 
+                      owner: int = None) -> CGNSDistTree:
   """ Generate a distributed tree from a standard (full) CGNS Tree.
 
   Input tree can be defined on a single process (using ``owner = rank_id``),

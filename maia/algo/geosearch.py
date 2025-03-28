@@ -5,6 +5,7 @@ from .dist import closest_points as dist_closest
 from .part import closest_points as part_closest
 from .dist import localize as dist_localize
 from .part import localize as part_localize
+from maia.typing  import *
 
 def is_distributed(tree):
   for zone in PT.get_all_Zone_t(tree):
@@ -12,7 +13,11 @@ def is_distributed(tree):
       return True
   return False
 
-def localize_points(src_tree, tgt_tree, location, comm, **options):
+def localize_points(src_tree: CGNSTree, 
+                    tgt_tree: CGNSTree,
+                    location: str = ({'CellCenter', 'Vertex'}),
+                    comm: Optional[MPIComm]= None, 
+                    **options: Dict[str, Any]) -> None:
   """Localize points between two trees.
 
   For all the points of the target tree matching the given location,
@@ -53,7 +58,10 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
     part_localize.localize_points(src_tree, tgt_tree, location, comm, **options)
 
 
-def find_closest_points(src_tree, tgt_tree, location, comm):
+def find_closest_points(src_tree: CGNSTree, 
+                        tgt_tree: CGNSTree,
+                        location: str = ({'CellCenter', 'Vertex'}),
+                        comm: Optional[MPIComm]=None) -> None:
   """Find the closest points between two trees.
 
   For all points of the target tree matching the given location,

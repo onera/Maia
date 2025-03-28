@@ -1,7 +1,7 @@
 import maia.pytree as PT
 
 import maia.transfer as TE
-from   maia.typing import CGNSTree, MPIComm, Dict, List, Tuple, Literal
+from   maia.typing import *
 from . import data_exchange
 from maia.factory.dist_from_part import _recover_base_iterative_data, discover_nodes_from_matching
 
@@ -19,8 +19,8 @@ FUNCS = [data_exchange.part_sol_to_dist_sol,
          data_exchange.part_subregion_to_dist_subregion,
          data_exchange.part_dataset_to_dist_dataset]
 
-def _part_zones_to_dist_zone(dist_zone: CGNSTree,
-                             part_zones: List[CGNSTree],
+def _part_zones_to_dist_zone(dist_zone: CGNSDistTree,
+                             part_zones: List[CGNSPartTree],
                              comm: MPIComm,
                              filter_dict: Dict[str, Tuple[Literal['I', 'E'], List[str]]]) -> None:
   """
@@ -63,8 +63,8 @@ def part_zones_to_dist_zone_only(dist_zone: CGNSTree,
   filter_dict.update({label : ('E', []) for label in LABELS if filter_dict[label][1] == ['*']})
   _part_zones_to_dist_zone(dist_zone, part_zones, comm, filter_dict)
 
-def part_zones_to_dist_zone_all(dist_zone: CGNSTree,
-                                part_zones: List[CGNSTree],
+def part_zones_to_dist_zone_all(dist_zone: CGNSDistTree,
+                                part_zones: List[CGNSPartTree],
                                 comm: MPIComm,
                                 exclude_dict: Dict[str, List[str]] = {}) -> None:
   """ Transfer all the data fields, excepted those specified in exclude_dict,
@@ -81,8 +81,8 @@ def part_zones_to_dist_zone_all(dist_zone: CGNSTree,
   filter_dict.update({label : ('I', []) for label in LABELS if filter_dict[label][1] == ['*']})
   _part_zones_to_dist_zone(dist_zone, part_zones, comm, filter_dict)
 
-def part_tree_to_dist_tree_only_labels(dist_tree: CGNSTree,
-                                       part_tree: CGNSTree,
+def part_tree_to_dist_tree_only_labels(dist_tree: CGNSDistTree,
+                                       part_tree: CGNSPartTree,
                                        labels: List[str],
                                        comm: MPIComm) -> None:
   """ Transfer only the data fields matching the provided labels from the partitioned tree
@@ -100,8 +100,8 @@ def part_tree_to_dist_tree_only_labels(dist_tree: CGNSTree,
     p_zones = TE.utils.get_partitioned_zones(part_tree, PT.get_name(d_base) + '/' + PT.get_name(d_zone))
     part_zones_to_dist_zone_only(d_zone, p_zones, comm, include_dict)
 
-def part_tree_to_dist_tree_all(dist_tree: CGNSTree,
-                               part_tree: CGNSTree,
+def part_tree_to_dist_tree_all(dist_tree: CGNSDistTree,
+                               part_tree: CGNSPartTree,
                                comm: MPIComm) -> None:
   """ Transfer all the data fields from the partitioned tree to the corresponding distributed tree.
   
@@ -115,17 +115,17 @@ def part_tree_to_dist_tree_all(dist_tree: CGNSTree,
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
 
-def part_tree_to_dist_tree_copy(dist_tree: CGNSTree,
-                                part_tree: CGNSTree,
-                                predicates: List[str],
+def part_tree_to_dist_tree_copy(dist_tree: CGNSDistTree,
+                                part_tree: CGNSPartTree,
+                                predicates: Union[List[str], str],
                                 comm: MPIComm) -> None:
   """ Copy nodes matching the input predicates chain from part_tree to dist_tree
 
   Args:
-    dist_tree (CGNSTree): Distributed tree
-    part_tree (CGNSTree): Corresponding partitioned tree
+    dist_tree (CGNSDistTree): Distributed tree
+    part_tree (CGNSPartTree): Corresponding partitioned tree
     predicates (str or list): Predicates chain, starting from tree level
-    comm (MPIComm) : MPI communicator
+    comm (MPIComm)          : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_transfer.py

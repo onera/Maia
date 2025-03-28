@@ -24,14 +24,19 @@ def _append_or_create(d, key, val):
 def camel_case(s):
   return sub(r"(_|-)+", " ", s).title().replace(" ", "")
 
-def merge_all_zones_from_families(tree: CGNSTree, comm: MPIComm, **kwargs: Dict[str, Any]) ->None:
+def merge_all_zones_from_families(tree: CGNSTree,
+                                  comm: MPIComm,
+                                  **kwargs: Dict[str, Any]) -> None:
   """Apply merge_zones_from_family to each family of the tree"""
   family_names = [PT.get_name(node) for node in \
           PT.iter_nodes_from_label(tree, 'Family_t', depth=2)]
   for family_name in family_names:
     merge_zones_from_family(tree, family_name, comm, **kwargs)
 
-def merge_zones_from_family(tree: CGNSTree, family_name: str, comm: MPIComm, **kwargs: Dict[str, Any]) ->None:
+def merge_zones_from_family(tree: CGNSTree,
+                            family_name: str,
+                            comm: MPIComm,
+                            **kwargs: Dict[str, Any]) -> None:
   """Merge the zones belonging to the given family into a single one.
 
   See :func:`merge_zones` for full documentation.
@@ -66,7 +71,9 @@ def merge_zones_from_family(tree: CGNSTree, family_name: str, comm: MPIComm, **k
       zone_name = zone_name.lower()
     merge_zones(tree, zone_paths, comm, output_path=f'{base_name}/{zone_name}', **kwargs)
 
-def merge_connected_zones(tree: CGNSTree, comm: MPIComm, **kwargs: Dict[str, Any]) -> None:
+def merge_connected_zones(tree: CGNSTree, 
+                          comm: MPIComm, 
+                          **kwargs: Dict[str, Any]) -> None:
   """Detect all the zones connected through 1to1 matching jns and merge them.
 
   See :func:`merge_zones` for full documentation.
@@ -91,8 +98,12 @@ def merge_connected_zones(tree: CGNSTree, comm: MPIComm, **kwargs: Dict[str, Any
     base = zone_paths[0].split('/')[0]
     merge_zones(tree, zone_paths_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
-def merge_zones(tree: CGNSTree, zone_paths: CGNSTree, comm: MPIComm, 
-                output_path:Optional[str] =None, subset_merge: Optional[str]='name', concatenate_jns: bool =True):
+def merge_zones(tree: CGNSTree, 
+                zone_paths: CGNSTree,
+                comm: MPIComm, 
+                output_path: str = None,
+                subset_merge: str = 'name', 
+                concatenate_jns: bool = True) -> None:
   """Merge the given zones into a single one.
 
   Input tree is modified inplace : original zones will be removed from the tree and replaced

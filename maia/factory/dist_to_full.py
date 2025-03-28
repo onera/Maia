@@ -1,7 +1,7 @@
 import maia.pytree as PT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
-from maia.typing import CGNSTree, MPIComm, Optional
+from maia.typing import CGNSTree, CGNSDistTree, MPIComm, Optional
 
 def _reshape_S_arrays(tree: CGNSTree) -> None:
   """ Some structured arrays (under FlowSolution_t, GridCoordinates_t) have been
@@ -17,9 +17,9 @@ def _reshape_S_arrays(tree: CGNSTree) -> None:
         for array in PT.get_nodes_from_label(container, 'DataArray_t'):
           array[1] = array[1].reshape(wanted_shape, order='F')
 
-def dist_to_full_tree(dist_tree: CGNSTree, 
+def dist_to_full_tree(dist_tree: CGNSDistTree, 
                       comm: MPIComm, 
-                      target: int = 0) -> Optional[CGNSTree]:
+                      target: Optional[int] = 0) -> Optional[CGNSTree]:
   """ Generate a standard (full) CGNS Tree from a distributed tree.
 
   The output tree can be used with sequential tools, but is no more compatible with

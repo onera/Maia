@@ -24,7 +24,7 @@ ELT_FACE_VTX = {'TETRA_4' : (np.array([3,3,3,3], np.int32),
 
 def compute_center_and_flux(local_coords: List[Optional [ArrayLike]],
                             face_vtx_idx: np.ndarray,
-                            face_vtx_n: np.ndarray) -> Tuple[np.ndarray, np.ndarray,]:
+                            face_vtx_n: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
   """
   Compute, for each face, the term nF|F| where nF is the unit outward normal
   and |F| the area of the face.
@@ -56,7 +56,7 @@ def compute_center_and_flux(local_coords: List[Optional [ArrayLike]],
 def update_container(zone: CGNSTree, 
                      container_name: str,
                      loc: str,
-                     fields: Dict[str, ArrayLike]={}) -> Tuple[Any, ...]:
+                     fields: Dict[str, ArrayLike]={}) -> Optional[CGNSTree]:
   """ Utility to retrieve a container from its name, or create it """
   container = PT.get_child_from_name(zone, container_name)
   if container is not None: # Container exists

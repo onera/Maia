@@ -129,7 +129,7 @@ def generate_dist_points(n_vtx: Union[int, np.ndarray],
                          zone_type: str, 
                          comm: MPIComm, 
                          origin: np.ndarray = np.zeros(3), 
-                         max_coords: np.ndarray = np.ones(3)) -> CGNSTree:
+                         max_coords: np.ndarray = np.ones(3)) -> CGNSDistTree:
   """Generate a distributed mesh including only cartesian points.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

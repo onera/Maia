@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Set
-from maia.typing import CGNSTree, MPIComm, ArrayLike
+from maia.typing import CGNSTree, CGNSPartTree, MPIComm, ArrayLike
 
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
@@ -9,7 +9,7 @@ import maia.pytree.maia  as MT
 from maia.utils import np_utils, par_utils
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-def get_partitioned_zones(part_tree: CGNSTree, dist_zone_path: str) -> List[CGNSTree]:
+def get_partitioned_zones(part_tree: CGNSPartTree, dist_zone_path: str) -> List[CGNSPartTree]:
   """
   Return a list of the partitioned zones created from a distributed zone name
   found in part_tree
@@ -22,14 +22,14 @@ def get_partitioned_zones(part_tree: CGNSTree, dist_zone_path: str) -> List[CGNS
   else:
     return []
 
-def get_cgns_distribution(dist_node: CGNSTree, name: str) -> np.ndarray:
+def get_cgns_distribution(dist_node: CGNSTree, name: str) -> ArrayLike:
   """
   Return the (partial) distribution array of a distributed zone from
   its path.
   """
   return PT.get_value(MT.getDistribution(dist_node, name))
 
-def get_subset_distribution(zone: CGNSTree, node: CGNSTree) -> np.ndarray:
+def get_subset_distribution(zone: CGNSTree, node: CGNSTree) -> ArrayLike:
   """ Return the distribution node to which a Subset is related, 
   ie an Index distribution array or a Cell/Vertex distribution array"""
   location = PT.Subset.GridLocation(node)

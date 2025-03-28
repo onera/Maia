@@ -100,7 +100,7 @@ def discover_nodes_from_matching(dist_node: CGNSTree,
         for child in childs:
           PT.add_child(ancestor, child)
 
-def get_parts_per_blocks(part_tree: CGNSTree, 
+def get_parts_per_blocks(part_tree: CGNSPartTree, 
                          comm: MPIComm) -> Dict[str, List[CGNSTree]]:
   """
   Return a dict of the partitioned zones found in part_tree, sorted by initial domain.
@@ -147,7 +147,7 @@ def _get_joins_dist_tree(parts_per_dom: CGNSTree, comm: MPIComm) -> CGNSTree:
 
   return dist_tree
 
-def get_joins_dist_tree(part_tree: CGNSTree, comm:MPIComm) -> CGNSTree:
+def get_joins_dist_tree(part_tree: CGNSPartTree, comm:MPIComm) -> CGNSTree:
   """ Recreate a dist tree containing only original jns from
   the partitioned tree (with PL). Only for U blocks !"""
   parts_per_dom = get_parts_per_blocks(part_tree, comm)
@@ -408,8 +408,8 @@ def _recover_GC(dist_zone: CGNSTree, part_zones: List[CGNSTree], comm: MPIComm) 
       elif par_utils.exists_everywhere(part_gcs, 'PointList', comm):
         IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
 
-def _recover_base_iterative_data(dist_tree: CGNSTree, 
-                                 part_tree: CGNSTree, 
+def _recover_base_iterative_data(dist_tree: CGNSDistTree, 
+                                 part_tree: CGNSPartTree, 
                                  comm: MPIComm) -> None:
   """
   Recover BaseIterativeData information for a distributed tree from its partitions.
@@ -453,9 +453,9 @@ def _recover_base_iterative_data(dist_tree: CGNSTree,
         d_it_data = comm.bcast(d_it_data, root=root)
       PT.add_child(dist_base, d_it_data)
 
-def recover_dist_tree(part_tree: CGNSTree, 
+def recover_dist_tree(part_tree: CGNSPartTree, 
                       comm: MPIComm, 
-                      data_transfer: List[str] = []) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
+                      data_transfer: List[str] = []) -> CGNSDistTree:
   """ Regenerate a distributed tree from a partitioned tree.
 
   The partitioned tree should have been created using Maia, or
@@ -470,12 +470,12 @@ def recover_dist_tree(part_tree: CGNSTree,
     or see :ref:`Transfer module<user_man_transfer>`. 
   
   Args:
-    part_tree (CGNSTree) : Partitioned CGNS Tree
-    comm       (MPIComm) : MPI communicator
+    part_tree (CGNSPartTree)   : Partitioned CGNS Tree
+    comm       (MPIComm)       : MPI communicator
     data_transfer (list of str): Labels of data nodes to transfer during operation
       (see :attr:`data_transfer`)
   Returns:
-    CGNSTree: distributed cgns tree
+    CGNSTree                   : distributed cgns tree
 
   Example:
       .. literalinclude:: snippets/test_factory.py

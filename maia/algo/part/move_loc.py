@@ -4,7 +4,7 @@ import maia.pytree as PT
 
 from maia.utils import np_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
-from maia.typing import CGNSTree, MPIComm, List, Any
+from maia.typing import CGNSTree, CGNSPartTree, MPIComm, List, Any
 
 from . import multidom_gnum
 from . import connectivity_utils
@@ -15,7 +15,7 @@ import Pypdm.Pypdm as PDM
 class CenterToNode:
 
   def __init__(self, tree: CGNSTree, comm: MPIComm, 
-               idw_power: int =1, cross_domain: bool =True) -> Any:
+               idw_power: int = 1, cross_domain: bool = True) -> Any:
 
     self.parts    = []
     self.weights  = []
@@ -103,7 +103,7 @@ class CenterToNode:
         PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
-  def __init__(self, tree: CGNSTree, comm: MPIComm, idw_power: int =1) -> None:
+  def __init__(self, tree: CGNSTree, comm: MPIComm, idw_power: int = 1) -> None:
 
     self.parts        = []
     self.weights      = []
@@ -164,7 +164,7 @@ class NodeToCenter:
 
 
 
-def centers_to_nodes(tree: CGNSTree, 
+def centers_to_nodes(tree: CGNSPartTree, 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
                      **options: Any) -> None:
@@ -204,7 +204,7 @@ def centers_to_nodes(tree: CGNSTree,
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
-def nodes_to_centers(tree: CGNSTree, 
+def nodes_to_centers(tree: CGNSPartTree, 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
                      **options: Any) -> None:

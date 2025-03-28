@@ -8,7 +8,7 @@ import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 
 from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
-from maia.typing   import CGNSTree, MPIComm, List, Any, Optional, Union
+from maia.typing   import CGNSTree, MPIComm, List, Any, Optional, Union, CGNSPartTree
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.factory.partitioning import part_bound_orient as PBO
@@ -190,7 +190,7 @@ def exchange_field_one_domain(part_zones: List[CGNSTree],
       PT.rm_child(iso_part_zone, FS_iso)
 
 
-def _exchange_field(part_tree: CGNSTree, 
+def _exchange_field(part_tree: CGNSPartTree, 
                     iso_part_tree: CGNSTree, 
                     containers_name: List[str], 
                     comm: MPIComm) -> None:
@@ -448,7 +448,7 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
 
 
 
-def _iso_surface(part_tree: CGNSTree, 
+def _iso_surface(part_tree: CGNSPartTree, 
                  iso_field_path: str, 
                  iso_val: float, 
                  elt_type: str, 
@@ -485,12 +485,12 @@ def _iso_surface(part_tree: CGNSTree,
   return iso_part_tree
 
 
-def iso_surface(part_tree: CGNSTree, 
+def iso_surface(part_tree: CGNSPartTree, 
                 iso_field: str, 
                 comm: MPIComm, 
                 iso_val: float = 0., 
                 containers_name: List[str] = [], 
-                **options: Any) -> CGNSTree:
+                **options: Any) -> CGNSPartTree:
   """ Create an isosurface from the provided field and value on the input partitioned tree.
 
   Isosurface is returned as an independant (2d) partitioned CGNSTree. 
@@ -554,7 +554,7 @@ def iso_surface(part_tree: CGNSTree,
 
 
 
-def _surface_from_equation(part_tree: CGNSTree, 
+def _surface_from_equation(part_tree: CGNSPartTree, 
                            surface_type: str, 
                            equation: List[float], 
                            elt_type: str, 
@@ -584,11 +584,11 @@ def _surface_from_equation(part_tree: CGNSTree,
   return iso_part_tree
 
 
-def plane_slice(part_tree: CGNSTree, 
+def plane_slice(part_tree: CGNSPartTree, 
                 plane_eq: List[float], 
                 comm: MPIComm, 
                 containers_name: List[str] = [], 
-                **options: Any) -> CGNSTree:
+                **options: Any) -> CGNSPartTree:
   """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
 
@@ -631,11 +631,11 @@ def plane_slice(part_tree: CGNSTree,
   return iso_part_tree
 
 
-def spherical_slice(part_tree: CGNSTree, 
+def spherical_slice(part_tree: CGNSPartTree, 
                     sphere_eq: List[float], 
                     comm: MPIComm, 
                     containers_name: List[str] = [], 
-                    **options: Any) -> CGNSTree:
+                    **options: Any) -> CGNSPartTree:
   """ Create a spherical slice from the provided equation
   :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
   on the input partitioned tree.
@@ -679,7 +679,7 @@ def spherical_slice(part_tree: CGNSTree,
   return iso_part_tree
 
 
-def elliptical_slice(part_tree: CGNSTree, 
+def elliptical_slice(part_tree: CGNSPartTree, 
                      ellipse_eq: List[float], 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 

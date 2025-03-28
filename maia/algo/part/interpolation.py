@@ -5,7 +5,7 @@ import Pypdm.Pypdm as PDM
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.typing                 import CGNSTree, MPIComm, List, Dict, Any, Tuple, Callable
+from maia.typing                 import *
 from maia.utils                  import py_utils, np_utils
 from maia.utils                  import logging as mlog
 from maia.utils                  import vstride as vs
@@ -310,7 +310,12 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
   for container_name in containers_name:
     interpolator.exchange_fields(container_name)
 
-def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
+def interpolate(src_tree: CGNSPartTree,
+                tgt_tree: CGNSPartTree, 
+                comm: MPIComm,
+                containers_name: Union[List,str], 
+                location: str = ({'CellCenter', 'Vertex'}),
+                **options: Dict[str, Any]) -> None:
   """Interpolate fields between two partitionned trees.
 
   This function can transfer CellCenter or Vertex located fields, but not both
@@ -359,8 +364,13 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
 
 
-def create_interpolator(src_tree: CGNSTree, tgt_tree: CGNSTree, comm: MPIComm, 
-                        src_location: str, location: str, **options: Dict[str, Any]) -> None:
+def create_interpolator(
+  src_tree: CGNSTree, 
+  tgt_tree: CGNSTree,
+  comm: MPIComm, 
+  src_location: str,
+  location: str,
+  **options: Dict[str, Any]) -> None:
   """Same as interpolate, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange
   fields without recomputing the src_to_tgt indirection (geometry must remain the same).

@@ -1,3 +1,4 @@
+import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 from maia.algo.apply_function_to_nodes import zones_iterator
@@ -10,7 +11,7 @@ def _compute_elements_center(zone: CGNSTree,
                              dim: int, 
                              comm: Optional[MPIComm] = None,
                              element_indices: Optional[ArrayLike] = None,
-                             elements_loc: Optional[str] = None) -> Any:
+                             elements_loc: Optional[str] = None) -> np.ndarray:
   """Dispatch centers computing according to zone dimension and 
   requested dimension
   If element_indices is not None, a PointList like array is expected; center
@@ -24,7 +25,7 @@ def _compute_elements_center(zone: CGNSTree,
 
 def _compute_elements_measure(zone: CGNSTree,
                               dim: int,
-                              comm: Optional[MPIComm] = None) -> Any:
+                              comm: Optional[MPIComm] = None) -> None:
   """Dispatch measure computing according to zone dimension and 
   requested dimension """
   if MT.getDistribution(zone) is not None:

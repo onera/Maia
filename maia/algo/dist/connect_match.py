@@ -215,7 +215,7 @@ def apply_periodicity(cloud, periodic):
   cloud['coords'] = coords_p
 
 
-def connect_1to1_from_paths(dist_tree: CGNSTree,
+def connect_1to1_from_paths(dist_tree: CGNSDistTree,
                             subset_paths: List[List[str]],
                             comm: MPIComm,
                             periodic: Optional[Dict[str, np.ndarray]] = None,
@@ -369,7 +369,7 @@ def connect_1to1_from_paths(dist_tree: CGNSTree,
       PT.rm_node_from_path(dist_tree, cloud_path)
 
 
-def connect_1to1_families(dist_tree: CGNSTree,
+def connect_1to1_families(dist_tree: CGNSDistTree,
                           families: Tuple[str, str],
                           comm: MPIComm,
                           periodic: Optional[Dict[str, Any]] = None,
@@ -398,10 +398,10 @@ def connect_1to1_families(dist_tree: CGNSTree,
     tolerance is relative to the minimal distance to its neighbouring vertices.
 
   Args:
-    dist_tree  (CGNSTree)   : Input distributed tree. Only U connectivities are managed.
-    families  (tuple of str): Name of the two families to connect.
-    comm           (MPIComm): MPI communicator
-    periodic (dic, optional): Transformation from first to second family if the interface is periodic.
+    dist_tree  (CGNSDistTree) : Input distributed tree. Only U connectivities are managed.
+    families  (tuple of str)  : Name of the two families to connect.
+    comm           (MPIComm)  : MPI communicator
+    periodic (dic, optional)  : Transformation from first to second family if the interface is periodic.
                               None otherwise. Defaults to None.
     **options: Additional options
 

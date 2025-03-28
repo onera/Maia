@@ -15,7 +15,7 @@ from .vertex_list    import face_ids_to_vtx_ids
 from .geometry.utils import get_local_coordinates
 from maia.algo.part  import closest_points as CLO
 from maia.algo.dist  import merge_jn       as MJN
-from maia.typing     import CGNSTree, MPIComm, Any
+from maia.typing     import CGNSDistTree, CGNSTree, MPIComm, Any
 import Pypdm.Pypdm as PDM
 
 def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
@@ -223,7 +223,9 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   MJN._update_pl_pld_in_jn(dist_tree, zone_path)
 
 # ------------------------------------------------------------------------------------------
-def remove_degen_faces_from_family(dist_tree: CGNSTree, degen_family: str, comm: MPIComm):
+def remove_degen_faces_from_family(dist_tree: CGNSDistTree, 
+                                   degen_family: str, 
+                                   comm: MPIComm) -> None:
   """
   Remove the specified degenerated faces in the input tree.
 
@@ -237,9 +239,9 @@ def remove_degen_faces_from_family(dist_tree: CGNSTree, degen_family: str, comm:
     - Only U-NGon meshes are managed in this function.
 
   Args:
-    dist_tree  (CGNSTree): Input distributed tree, with U-NGon connectivies
+    dist_tree  (CGNSDistTree) : Input distributed tree, with U-NGon connectivies
     degen_family (str): Name of the family refering to the degenerated faces
-    comm       (`MPIComm`) : MPI communicator
+    comm       (`MPIComm`)    : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py

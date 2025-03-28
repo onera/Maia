@@ -173,7 +173,7 @@ def deconcatenate_subsets_from_families(part_tree, comm, families='*'):
     Each family from ``families`` argument must lead to unique BC.
 
   Args:
-    part_tree (CGNSTree)              : Partitioned unstructured tree
+    part_tree (CGNSPartTree)          : Partitioned unstructured tree
     comm      (MPIComm)               : MPI communicator
     families  (str or list, optional) : Family names. Default to ``"*"``. 
   """

@@ -96,8 +96,8 @@ def poly2d_convert_3dlike_to_std(dist_tree, comm):
   3like vision is supposed have correct edge orientations.
 
   Args:
-    dist_tree (CGNSTree): Distributed tree
-    comm      (MPIComm) : MPI communicator
+    dist_tree (CGNSDistTree): Distributed tree
+    comm      (MPIComm)     : MPI communicator
   """
   is_2D_base = lambda n: PT.get_label(n) == 'CGNSBase_t' and PT.get_value(n)[0] == 2
   for zone in PT.get_children_from_predicates(dist_tree, [is_2D_base, 'Zone_t']):
@@ -114,8 +114,8 @@ def poly2d_convert_std_to_3dlike(dist_tree, comm):
   and some solvers
 
   Args:
-    dist_tree (CGNSTree): Distributed tree
-    comm      (MPIComm) : MPI communicator
+    dist_tree (CGNSDistTree): Distributed tree
+    comm      (MPIComm)     : MPI communicator
   """
   is_2D_base = lambda n: PT.get_label(n) == 'CGNSBase_t' and PT.get_value(n)[0] == 2
   for zone in PT.get_children_from_predicates(dist_tree, [is_2D_base, 'Zone_t']):

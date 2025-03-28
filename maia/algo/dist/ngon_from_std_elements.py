@@ -1,7 +1,7 @@
 import numpy              as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.typing import CGNSTree, MPIComm
+from maia.typing import CGNSDistTree, MPIComm, Optional
 
 import maia
 from maia.utils import np_utils, par_utils, layouts
@@ -158,7 +158,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   PT.rm_nodes_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
 
-def generate_ngon_from_std_elements(dist_tree: CGNSTree, 
+def generate_ngon_from_std_elements(dist_tree: CGNSDistTree, 
                                     comm: MPIComm) -> None:
   """
   Transform an element based connectivity into a polyedric (NGon based)
@@ -174,8 +174,8 @@ def generate_ngon_from_std_elements(dist_tree: CGNSTree,
   This function also works on 2d meshes.
 
   Args:
-    dist_tree  (CGNSTree): Tree with connectivity described by standard elements
-    comm       (`MPIComm`) : MPI communicator
+    dist_tree  (CGNSDistTree): Tree with connectivity described by standard elements
+    comm       (`MPIComm`)   : MPI communicator
   """
   MJT.add_joins_donor_name(dist_tree, comm)
 
@@ -264,7 +264,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSTree,
 
   MJT.copy_donor_subset(dist_tree)
   
-def convert_elements_to_ngon(dist_tree: CGNSTree,
+def convert_elements_to_ngon(dist_tree: CGNSDistTree,
                              comm: MPIComm,
                              stable_sort: bool = False) -> None:
   """
@@ -281,8 +281,8 @@ def convert_elements_to_ngon(dist_tree: CGNSTree,
   (:func:`convert_mixed_to_elements` is called under the hood).
 
   Args:
-    dist_tree  (CGNSTree): Tree with connectivity described by standard elements
-    comm       (`MPIComm`) : MPI communicator
+    dist_tree  (CGNSDistTree): Tree with connectivity described by standard elements
+    comm       (`MPIComm`)   : MPI communicator
     stable_sort (bool, optional) : If True, 2D elements described in the
       elements section keep their original id. Defaults to False.
 

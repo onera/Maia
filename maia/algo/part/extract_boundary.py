@@ -4,7 +4,7 @@ import maia.pytree        as PT
 
 from maia.utils     import np_utils, s_numbering, pr_utils
 from maia.transfer  import utils as te_utils
-from maia.typing import CGNSTree, MPIComm, List, Callable, Tuple
+from maia.typing import CGNSTree, CGNSPartTree, MPIComm, List, Callable, Tuple
 
 from .point_cloud_utils import create_sub_numbering
 
@@ -102,7 +102,7 @@ def _extract_sub_connectivity(array_idx: np.ndarray, array: np.ndarray,
 
 
 def extract_faces_mesh(zone: CGNSTree, 
-                       face_ids: np.ndarray) -> Tuple[ np.ndarray, np.ndarray, np.ndarray]:
+                       face_ids: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   """
   Extract a sub mesh from a U or S zone and a (flat) list of face ids to extract :
   create the sub ngon connectivity and extract the coordinates of vertices 
@@ -153,9 +153,12 @@ def extract_faces_mesh(zone: CGNSTree,
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
 
-def extract_surf_from_bc(part_zones: List[CGNSTree], 
-                         bc_predicate: Callable[[CGNSTree], bool], 
-                         comm: MPIComm) -> CGNSTree:
+def extract_surf_from_bc(
+  part_zones: List[CGNSPartTree], 
+  bc_predicate: Callable[[CGNSPartTree], bool], 
+  comm: MPIComm) -> Tuple[List[CGNSPartTree], List[CGNSPartTree], 
+                          List[CGNSPartTree], List[CGNSPartTree], 
+                          List[CGNSPartTree], List[CGNSPartTree]]:
   """
   From a list of partitioned zones (coming from the same initial domain), get the list
   of faces (or edge, depending on zone dimension)
