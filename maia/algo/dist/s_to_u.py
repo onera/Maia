@@ -4,7 +4,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
-from maia.utils           import py_utils, s_numbering, pr_utils
+from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
 
@@ -26,14 +26,11 @@ def _s_location(loc, bnd_axis):
   return loc if loc != 'FaceCenter' else ['I', 'J', 'K'][bnd_axis] + 'FaceCenter'
 
 ###############################################################################
-def n_face_per_dir(n_vtx, n_edge):
-  """
-  Compute the number of faces in each direction from the number of vtx/edge
-  in each direction
-  """
-  return np.array([n_vtx[0]*n_edge[1]*n_edge[2],
-                   n_vtx[1]*n_edge[0]*n_edge[2],
-                   n_vtx[2]*n_edge[0]*n_edge[1]])
+def n_face_per_dir(n_vtx):
+  """ Compute the number of faces in each direction from the number of vtx in each direction """
+  return (n_vtx[0]*(n_vtx[1]-1)*(n_vtx[2]-1),
+          n_vtx[1]*(n_vtx[0]-1)*(n_vtx[2]-1),
+          n_vtx[2]*(n_vtx[0]-1)*(n_vtx[1]-1))
 ###############################################################################
 
 
@@ -211,19 +208,16 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
   Generates distributed NGonElement node from the number of
   vertices in the zone.
   """
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
+  nface_per_dir = n_face_per_dir(n_vtx_zone)
+  nf_i, nf_j, nf_k = nface_per_dir
+  face_distri = par_utils.uniform_distribution(sum(nface_per_dir), comm)
 
-  n_cell_zone = tuple(k-1 for k in n_vtx_zone)
-
-  nf_i, nf_j, nf_k = n_face_per_dir(n_vtx_zone, n_cell_zone)
-  n_face_tot = nf_i + nf_j + nf_k
-  face_distri = py_utils.uniform_distribution_at(n_face_tot, i_rank, n_rank)
+  n_face_tot = face_distri[2]
+  n_face_loc = face_distri[1] - face_distri[0]
 
   if dtype is None:
     dtype = np.int32 if n_face_tot < np.iinfo(np.int32).max else np.int64
 
-  n_face_loc = face_distri[1] - face_distri[0]
   #Bounds stores for each proc [id of first iface, id of first jface, id of first kface, id of last kface]
   # assuming that face are globally ordered i, then j, then k
   bounds = np.empty(4, dtype=dtype)
@@ -238,15 +232,13 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
 
   assert bounds[3]-bounds[0] == n_face_loc
 
-
   face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=dtype)
-  face_vtx, face_pe = s_numbering.ngon_dconnectivity_from_gnum(bounds+1,n_cell_zone, dtype)
+  face_vtx, face_pe = s_numbering.ngon_dconnectivity_from_gnum(bounds+1,n_vtx_zone, dtype)
 
   _erange = np.array([1, n_face_tot], dtype=dtype)
   ngon = PT.new_NGonElements('NGonElements', erange=_erange, eso=face_vtx_idx, ec=face_vtx, pe=face_pe)
 
-  cg_face_distri = np.array([*face_distri, n_face_tot], dtype=pdm_gnum_dtype)
-  MT.newDistribution({'Element' : cg_face_distri, 'ElementConnectivity' : 4*cg_face_distri}, parent=ngon)
+  MT.newDistribution({'Element' : face_distri, 'ElementConnectivity' : 4*face_distri}, parent=ngon)
 
   return ngon
 ###############################################################################

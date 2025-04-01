@@ -5,11 +5,11 @@ namespace py = pybind11;
 using namespace pybind11::literals;
 
 template<typename g_num>
-inline g_num n_face_glob(py::array_t<g_num> &cell_size) {
-  const g_num *n_cell = cell_size.data();
-  return (n_cell[0]+1)*n_cell[1]*n_cell[2] +
-         (n_cell[1]+1)*n_cell[0]*n_cell[2] +
-         (n_cell[2]+1)*n_cell[0]*n_cell[1];
+inline g_num n_face_glob(py::array_t<g_num> &vtx_size) {
+  const g_num *n_vtx = vtx_size.data();
+  return n_vtx[0]*(n_vtx[1]-1)*(n_vtx[2]-1) +
+         n_vtx[1]*(n_vtx[0]-1)*(n_vtx[2]-1) +
+         n_vtx[2]*(n_vtx[0]-1)*(n_vtx[1]-1);
 }
 
 /* Generate a distributed ngon connectivity between the indicated face gnum ids for
@@ -33,8 +33,8 @@ void ngon_dconnectivity_from_gnum(g_num begin, g_num endI, g_num endJ, g_num end
   assert (face_vtx.ndim() == 1 && face_vtx.shape()[0] == 4*n_face_loc);
   assert (pe.ndim() == 2 && pe.shape()[0] == n_face_loc && pe.shape()[1] == 2);
 
-  const g_num *n_cell = zone_size.data();
-  const g_num n_vtx[] = {n_cell[0]+1, n_cell[1]+1, n_cell[2]+1};
+  const g_num *n_vtx = zone_size.data();
+  const g_num n_cell[] = {n_vtx[0]-1, n_vtx[1]-1, n_vtx[2]-1};
 
   auto pe_ptr       = pe      .template mutable_unchecked<2>();
   auto face_vtx_ptr = face_vtx.template mutable_unchecked<1>();

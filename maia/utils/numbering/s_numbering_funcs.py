@@ -251,7 +251,7 @@ def edgejIndex_to_ij(idx, n_cell, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def ngon_dconnectivity_from_gnum(bounds, n_cell, dtype):
+def ngon_dconnectivity_from_gnum(bounds, n_vtx, dtype):
   """
   Generate a distributed ngon connectivity between the indicated face gnum ids for
   a zone of a given size.
@@ -259,11 +259,11 @@ def ngon_dconnectivity_from_gnum(bounds, n_cell, dtype):
     [begin; endI[ for i-normal faces   Examples :
     [endI; endJ[  for j-normal faces    * [100, 200, 300, 300] -> generate ifaces 100-200 and jface 200-300
     [endJ; endK[  for k-normal faces    * [300, 300, 300, 400] -> generate kfaces 300-400
-  Size of dist zone must be given as the number of cells (size=3)
+  Size of dist zone must be given as the number of vertices (size=3)
   """
   n_face_loc = bounds[3] - bounds[0]
   face_pe  = np.empty((n_face_loc, 2), order='F', dtype=dtype)
   face_vtx = np.empty(4*n_face_loc, dtype=dtype)
 
-  cnumbering.ngon_dconnectivity_from_gnum(*bounds, np.array(n_cell, dtype=dtype), face_pe, face_vtx)
+  cnumbering.ngon_dconnectivity_from_gnum(*bounds, np.array(n_vtx, dtype=dtype), face_pe, face_vtx)
   return face_vtx, face_pe

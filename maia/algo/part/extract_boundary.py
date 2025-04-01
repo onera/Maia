@@ -44,7 +44,7 @@ def _struct3d_connectivity(zone):
   bounds = np.array([0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k], np.int32)
 
   face_vtx_idx = 4*np.arange(0, n_face_tot+1, dtype=np.int32)
-  face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, PT.Zone.CellSize(zone), dtype=np.int32)
+  face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, PT.Zone.VertexSize(zone), dtype=np.int32)
   return face_vtx_idx, face_vtx
 
 def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
