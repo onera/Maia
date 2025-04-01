@@ -215,8 +215,8 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for the method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only unstructured connectivities are managed.
-    tgt_tree (CGNSTree): Target tree, partitionned.
+    src_tree (CGNSTree): Source tree, partitioned. Only unstructured connectivities are managed.
+    tgt_tree (CGNSTree): Target tree, partitioned.
     location ({'CellCenter', 'Vertex'}) : Target points to localize
     comm       (MPIComm): MPI communicator
     **options: Additional options related to location strategy

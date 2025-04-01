@@ -83,8 +83,8 @@ def find_closest_points(src_tree, tgt_tree, location, comm):
   The ids of source points refers to cells or vertices depending on the chosen location.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned
-    tgt_tree (CGNSTree): Target tree, partitionned
+    src_tree (CGNSTree): Source tree, partitioned
+    tgt_tree (CGNSTree): Target tree, partitioned
     location ({'CellCenter', 'Vertex'}) : Entity to use to compute closest points
     comm       (MPIComm): MPI communicator
 

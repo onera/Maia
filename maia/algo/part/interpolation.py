@@ -303,7 +303,7 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
     interpolator.exchange_fields(container_name)
 
 def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
-  """Interpolate fields between two partitionned trees.
+  """Interpolate fields between two partitioned trees.
 
   This function can transfer CellCenter or Vertex located fields, but not both
   at the same time.
@@ -332,8 +332,8 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only 3D unstructured connectivities are managed.
-    tgt_tree (CGNSTree): Target tree, partitionned. Structured or unstructured connectivities are managed.
+    src_tree (CGNSTree): Source tree, partitioned. Only 3D unstructured connectivities are managed.
+    tgt_tree (CGNSTree): Target tree, partitioned. Structured or unstructured connectivities are managed.
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
     location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.

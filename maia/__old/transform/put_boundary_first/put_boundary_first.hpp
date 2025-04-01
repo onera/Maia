@@ -25,7 +25,7 @@ Preconditions:
         - or does not contain such a node and its connectivities are supposed to refer to only boundary nodes
 
 Postconditions:
-    - Only the *unstructured* zones are partitionned with boundary nodes and boundary connectivities first
+    - Only the *unstructured* zones are partitioned with boundary nodes and boundary connectivities first
         (because it is impossible to partition structured zone coordinates without splitting the zone)
     - "GridCoordinates" are reordered so that boundary nodes come first. The reorder is stable
     - For each zone,
@@ -48,7 +48,7 @@ Limitations:
     - The following nodes are deleted because their re-indexing has not been implemented:
         - "Elements_t" nodes of "NFACE" type
         - Sub node "ParentElementsPosition" of the ngon node
-     - Even if the tree is already partitionned (VertexSizeBoundary != 0), all partitionning steps are done (again).
+     - Even if the tree is already partitioned (VertexSizeBoundary != 0), all partitioning steps are done (again).
 
 Complexity:
     - An effort as been made to isolate all complex loop computations into well-known algorithms (find, stable_partition)
