@@ -1,7 +1,7 @@
 @import 'theme.css'; /* for the Read the Docs theme */
 
 .wy-nav-content {
-  max-width: 1000px !important;
+  max-width: 900px !important; /* Default value seems to be 800*/
 }
 
 .rst-content div[class^="highlight"] pre {
@@ -48,17 +48,28 @@ div.indexpage p {
 /* --------------------------------------------------------------------------- */
 
 dl.class{
-  border-left: 1px solid #002266;
+  border-left: 2px solid #6ab0de;
 }
 
 dl.function {
-  border-left: 1px solid #b32d00;
+  border-left: 1px solid #6ab0de;
 }
 
 dl.method {
-  border-left: 1px solid #1f7a1f;
+  border-left: 1px solid #ccc;
 }
 
-dl.attribute{
-  border-left: 1px solid #6ab0de;
+/* This erase the CSS rule defined in sphinx theme responsible for the small grey border before methods signature 
+  We erase this rule because such a border is already added by dl.method, and we don't want to have two */
+html.writer-html4 .rst-content dl:not(.docutils) dl:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) > dt,
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) dl:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) > dt {
+  border: none;
 }
+
+/* Also erase the CSS rule defined in sphinx theme responsible for the blue border on the top of signatures 
+  We just replace it with a smaller value */
+html.writer-html4 .rst-content dl:not(.docutils) > dt,
+html.writer-html5 .rst-content dl[class]:not(.option-list):not(.field-list):not(.footnote):not(.citation):not(.glossary):not(.simple) > dt {
+  border-top: 2px solid #6ab0de;
+}
+
