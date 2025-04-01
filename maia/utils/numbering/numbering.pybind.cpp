@@ -12,6 +12,13 @@ inline g_num n_face_glob(py::array_t<g_num> &vtx_size) {
          n_vtx[2]*(n_vtx[0]-1)*(n_vtx[1]-1);
 }
 
+template<typename g_num>
+inline g_num n_edge_glob(py::array_t<g_num> &vtx_size) {
+  const g_num *n_vtx = vtx_size.data();
+  return n_vtx[0]*(n_vtx[1]-1) + n_vtx[1]*(n_vtx[0]-1);
+}
+
+
 /* Generate a distributed ngon connectivity between the indicated face gnum ids for
  * a zone of a given size.
  * Faces will be generated for global id between
@@ -131,6 +138,83 @@ void ngon_dconnectivity_from_gnum(g_num begin, g_num endI, g_num endJ, g_num end
   }
 }
 
+template<typename g_num>
+void edge_dconnectivity_from_gnum(g_num begin, g_num endI, g_num endJ,
+                                  py::array_t<g_num> &zone_size,
+                                  py::array_t<g_num, py::array::f_style>& pe,
+                                  py::array_t<g_num, py::array::f_style>& edge_vtx) {
+
+  //Some checks
+  int n_edge_loc = endJ - begin;
+  g_num n_edge_tot = n_edge_glob(zone_size);
+  assert (begin <= endI && endI <= endJ);
+  assert (edge_vtx.ndim() == 1 && edge_vtx.shape()[0] == 2*n_edge_loc);
+  assert (pe.ndim() == 2 && pe.shape()[0] == n_edge_loc && pe.shape()[1] == 2);
+
+  const g_num *n_vtx = zone_size.data();
+  const g_num n_cell[] = {n_vtx[0]-1, n_vtx[1]-1};
+
+  auto pe_ptr       = pe      .template mutable_unchecked<2>();
+  auto edge_vtx_ptr = edge_vtx.template mutable_unchecked<1>();
+
+  //Manage i oriented edges
+  g_num gedge = begin; //Global number of iface
+  for (int i = 0; i < endI - begin; ++i) {
+    g_num line_nb   = (gedge-1) / n_vtx[0];
+    bool is_min_bnd  = (gedge%n_vtx[0] == 1);
+    bool is_max_bnd  = (gedge%n_vtx[0] == 0);
+    bool is_internal = !is_min_bnd & !is_max_bnd;
+
+    //Internal edges : left, right = idx-line_number-1, idx-line_number
+    //Min edges      : left        = idx-line_number
+    //Max edges      : left        = idx-line_number-1
+    pe_ptr(i, 0) = (gedge - line_nb + n_edge_tot) - 1 + is_min_bnd;
+    pe_ptr(i, 1) = (gedge - line_nb + n_edge_tot)*is_internal;
+
+    g_num n1 = gedge;
+    g_num n2 = n1 + n_vtx[0];
+    if (is_min_bnd) {
+      edge_vtx_ptr(2*i+0) = n2;
+      edge_vtx_ptr(2*i+1) = n1;
+    }
+    else {
+      edge_vtx_ptr(2*i+0) = n1;
+      edge_vtx_ptr(2*i+1) = n2;
+    }
+    gedge++;
+  }
+
+  //Manage j oriented edges
+  g_num ne_i = n_vtx[0]*(n_vtx[1]-1);
+  g_num nb_edge_j  = n_vtx[1] * n_cell[0];
+  gedge = endI - ne_i; //Global number of jface
+  for (int i = endI - begin; i < endJ - begin; ++i) {
+    g_num line_nb  = (gedge-1) / n_cell[0];
+    g_num plane_nb = (gedge-1) / nb_edge_j;
+    bool is_min_bnd  = gedge < n_vtx[0];
+    bool is_max_bnd  = gedge > nb_edge_j - n_vtx[0] + 1;
+    bool is_internal = !is_min_bnd & !is_max_bnd;
+    
+    //Internal faces : left, right = idx, idx - n_cell[0]
+    //Min faces      : left        = idx
+    //Max faces      : left        = idx - n_cell[0]
+    pe_ptr(i, 0) = (gedge + n_edge_tot) - n_cell[0]*(is_max_bnd);
+    pe_ptr(i, 1) = (gedge - n_cell[0] + n_edge_tot)*is_internal;
+
+    g_num n1 = gedge + line_nb;
+    g_num n2 = n1 + 1;
+    if (is_max_bnd) {
+      edge_vtx_ptr(2*i+0) = n2;
+      edge_vtx_ptr(2*i+1) = n1;
+    }
+    else {
+      edge_vtx_ptr(2*i+0) = n1;
+      edge_vtx_ptr(2*i+1) = n2;
+    }
+    gedge++;
+  }
+}
+
 
 void register_numbering_module(py::module_& parent) {
 
@@ -145,4 +229,13 @@ void register_numbering_module(py::module_& parent) {
         "beginI"_a.noconvert(), "endI"_a.noconvert(), "endJ"_a.noconvert(), "endK"_a.noconvert(),
         "zone_size"_a.noconvert(), "face_pe"_a.noconvert(), "face_vtx"_a.noconvert(),
         "Generate NGon connectivity and parent element from global numbering bounds");
+
+  m.def("edge_dconnectivity_from_gnum", &edge_dconnectivity_from_gnum<int32_t>,
+        "beginI"_a.noconvert(), "endI"_a.noconvert(), "endJ"_a.noconvert(),
+        "zone_size"_a.noconvert(), "edge_pe"_a.noconvert(), "edge_vtx"_a.noconvert(),
+        "Generate 2D Edge connectivity and parent element from global numbering bounds");
+  m.def("edge_dconnectivity_from_gnum", &edge_dconnectivity_from_gnum<int64_t>,
+        "beginI"_a.noconvert(), "endI"_a.noconvert(), "endJ"_a.noconvert(),
+        "zone_size"_a.noconvert(), "edge_pe"_a.noconvert(), "edge_vtx"_a.noconvert(),
+        "Generate 2D Edge connectivity and parent element from global numbering bounds");
 }
