@@ -64,7 +64,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     sub_pr[bnd_axis,:] += shift
 
   _loc = _s_location(output_loc, bnd_axis)
-  point_list = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, _loc)
+  point_list = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, _loc, dtype=point_range.dtype)
 
   bc_u = PT.new_node(PT.get_name(bc_s), PT.get_label(bc_s), PT.get_value(bc_s))
   PT.new_GridLocation(output_loc, parent=bc_u)
@@ -92,7 +92,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
 
     if not (is_related and ds_output_loc == output_loc): #Otherwise, point list has already been computed
       _loc = _s_location(ds_output_loc, bnd_axis)
-      ds_pl = pr_utils.compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, _loc)
+      ds_pl = pr_utils.compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, _loc, dtype=point_range.dtype)
       PT.update_child(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
       PT.new_IndexArray(value=ds_pl, parent=bcds)
       MT.newDistribution({'Index' : ds_distri}, parent=bcds)
@@ -183,8 +183,9 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   order = 'C' if loc_transform_2d[0] > loc_transform_2d[1] else 'F'
 
   _loc, _loc_opp = _s_location(output_loc, bnd_axis), _s_location(output_loc, bnd_axis_opp)
-  point_list_loc     = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, _loc)
-  point_list_opp_loc = pr_utils.compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, _loc_opp, order)
+  dtype = point_range_loc.dtype
+  point_list_loc     = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, _loc, dtype=dtype)
+  point_list_opp_loc = pr_utils.compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, _loc_opp, order, dtype=dtype)
 
   if gc_is_reference(gc_s, zone_path):
     point_list, point_list_opp = point_list_loc, point_list_opp_loc

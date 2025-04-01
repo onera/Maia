@@ -73,9 +73,10 @@ class Test_compute_pointList_from_pointRanges():
     loc        = "FaceCenter"
     # --------------------------------------------------------------------------- #
     def test_emptyRange(self):
-      pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,"I"+self.loc)
-      assert (pointList.shape == (1,0))
-      assert (pointList == np.empty((1,0), dtype=np.int32)).all()
+      pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,"I"+self.loc,dtype=np.int32)
+      assert pointList.shape == (1,0) and pointList.dtype == np.int32
+      with pytest.raises(ValueError):
+        pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,"I"+self.loc)
     # --------------------------------------------------------------------------- #
     #FaceRange BC (Idir) : [[3,3], [1,2], [1,2]]
     def test_simple_range(self):
@@ -154,9 +155,8 @@ class Test_compute_pointList_from_pointRanges():
     loc        = "CellCenter"
     # --------------------------------------------------------------------------- #
     def test_emptyRange(self):
-      pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,self.loc)
-      assert (pointList.shape == (1,0))
-      assert (pointList == np.empty((1,0), dtype=np.int32)).all()
+      pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,self.loc,dtype=np.int64)
+      assert pointList.shape == (1,0) and pointList.dtype == np.int64
     # --------------------------------------------------------------------------- #
     #CellRange BC (IDir)= [[2,2], [1,2], [1,2]]
     def test_simple_range(self):
