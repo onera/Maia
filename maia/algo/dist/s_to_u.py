@@ -307,25 +307,32 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
 
 ###############################################################################
 def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
-  """Performs the destructuration of the input ``dist_tree``.
+  """Performs the destructuration of the input distributed tree.
 
-  Tree is modified in place: a NGON_n or HEXA_8 (not yet implemented)
-  connectivity is generated, and the following subset nodes are converted:
-  BC_t, BCDataSet_t and GridConnectivity1to1_t.
+  The element connectivity can be generated:
 
-  Note: 
-    Exists also as :func:`convert_s_to_ngon()` with connectivity set to 
-    NGON_n and subset_loc set to FaceCenter.
+  - as polyedric elements, if ``connectivity`` is set to ``Poly``; 
+  - as standard elements, if ``connectivity`` is set to ``Standard`` (**not yet implemented**).
+
+  In addition, the output location of the ``BC_t`` and ``GridConnectivity(1to1)_t`` subsets can be
+  specified with the ``subset_loc`` dictionnary, using respectively the keys ``BC_t`` and ``GC_t``.
+  If nothing is specified, these nodes keep their initial ``GridLocation_t`` value.
+
+  Input tree is modified inplace.
+
+  Note:
+    Exists also as :func:`convert_s_to_ngon` with connectivity set to 
+    ``Poly`` and subset location set to ``FaceCenter`` (or ``EdgeCenter`` for 2D meshes).
 
   Args:
     dist_tree (CGNSTree): Structured tree
     connectivity (str): Type of elements used to describe the connectivity.
-      Admissible values are ``"NGON_n"`` and ``"HEXA"`` (not yet implemented).
+      Admissible values are ``"Poly"`` and ``"Standard"`` (not yet implemented).
     comm       (MPIComm) : MPI communicator
     subset_loc (dict, optional):
-        Expected output GridLocation for the following subset nodes: BC_t, GC_t.
+        Expected output GridLocation for the following subset nodes: ``BC_t``, ``GC_t``.
         For each label, output location can be a single location value, a list
-        of locations or None to preserve the input value. Defaults to None.
+        of locations or None to preserve the input value. Defaults to ``None``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
