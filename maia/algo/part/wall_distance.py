@@ -454,7 +454,7 @@ def compute_wall_distance(part_tree, comm, point_cloud='CellCenter', out_fs_name
       Only available when method=cloud.
 
   Args:
-    part_tree (CGNSTree): Input partitionned tree
+    part_tree (CGNSTree): Input partitioned tree
     comm       (MPIComm): MPI communicator
     point_cloud (str, optional): Points to project on the surface. Can either be one of
       "CellCenter" or "Vertex" (coordinates are retrieved from the mesh) or the name of a FlowSolution

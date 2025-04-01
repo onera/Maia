@@ -26,7 +26,7 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
 
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for the method.
 
-  Inputs trees can be either distributed or partitionned, but both must be of same kind.
+  Inputs trees can be either distributed or partitioned, but both must be of same kind.
 
   Args:
     src_tree (CGNSTree): Source tree
@@ -45,7 +45,7 @@ def localize_points(src_tree, tgt_tree, location, comm, **options):
   tgt_dist = is_distributed(tgt_tree)
 
   if src_dist ^ tgt_dist:
-    raise ValueError("Source and target tree must be both distributed or partitionned")
+    raise ValueError("Source and target tree must be both distributed or partitioned")
   
   if src_dist:
     dist_localize.localize_points(src_tree, tgt_tree, location, comm, **options)
@@ -62,7 +62,7 @@ def find_closest_points(src_tree, tgt_tree, location, comm):
   container called "ClosestPoint" on the target zones.
   The ids of source points refers to cells or vertices depending on the chosen location.
 
-  Inputs trees can be either distributed or partitionned, but both must be of same kind.
+  Inputs trees can be either distributed or partitioned, but both must be of same kind.
 
   Args:
     src_tree (CGNSTree): Source tree
@@ -80,7 +80,7 @@ def find_closest_points(src_tree, tgt_tree, location, comm):
   tgt_dist = is_distributed(tgt_tree)
 
   if src_dist ^ tgt_dist:
-    raise ValueError("Source and target tree must be both distributed or partitionned")
+    raise ValueError("Source and target tree must be both distributed or partitioned")
   
   if src_dist:
     dist_closest.find_closest_points(src_tree, tgt_tree, location, comm)

@@ -103,7 +103,7 @@ def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt
 
 def find_closest_points(src_tree, tgt_tree, location, comm):
   """
-  Partitionned implementation of maia.algo.find_closest_points
+  Partitioned implementation of maia.algo.find_closest_points
   """
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())

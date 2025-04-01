@@ -109,7 +109,7 @@ def part_tree_to_dist_tree_copy(dist_tree, part_tree, predicates, comm):
       cut = 2
       dist_root_path = PT.utils.path_head(path, 2)
       dist_root = PT.get_node_from_path(dist_tree, dist_root_path)
-      if PT.get_label(dist_root) == 'Zone_t': # Deal zone (names differ on partitionned tree)
+      if PT.get_label(dist_root) == 'Zone_t': # Deal zone (names differ on partitioned tree)
         part_roots = TE.utils.get_partitioned_zones(part_tree, dist_root_path)
         if len(names) >= 4 and leads_to_gc(path): # Data is actually below a GC : must manage jn splitting
           cut = 4

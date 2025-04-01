@@ -14,8 +14,8 @@ Dependencies
 * :code:`mpi4py` (python package)
 * :code:`h5py` with :code:`MPI` (python package)
 
-* :code:`ParMetis` (optional, for partitionning)
-* :code:`PtScotch` (optional, for partitionning)
+* :code:`ParMetis` (optional, for partitioning)
+* :code:`PtScotch` (optional, for partitioning)
 
 The build process requires:
 

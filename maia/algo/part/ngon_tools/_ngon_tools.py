@@ -12,7 +12,7 @@ from maia.utils import vstride as vs
 import cmaia.part_algo as cpart_algo
 
 def PDM_face_vtx_from_face_and_edge(face_edge_idx, face_edge, edge_vtx):
-  # Cast are not necessary since partitionned meshes are supposed to be int32
+  # Cast are not necessary since partitioned meshes are supposed to be int32
   _face_edge_idx = np_utils.safe_int_cast(face_edge_idx, np.int32)
   _face_edge     = np_utils.safe_int_cast(face_edge, np.int32)
   _edge_vtx      = np_utils.safe_int_cast(edge_vtx, np.int32)

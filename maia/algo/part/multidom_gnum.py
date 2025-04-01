@@ -43,7 +43,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   # Now we want to give a common gnum to the vertices connected thought GC. The outline is: 
   # 1. go back to distribute vision of GC to build graph of connected vertices
   # 2. Give to each group of connected vertices a gnum
-  # 3. Send this data to the partitionned GCs using a PartToPart.
+  # 3. Send this data to the partitioned GCs using a PartToPart.
   # 4. Use the recv data to update the shifted_lngn
 
 
@@ -110,7 +110,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   rank_offset = par_utils.gather_and_shift(graph_idx.size-1, comm)[comm.Get_rank()]
   vtx_group_id = np_utils.repeated_arange(np.diff(graph_idx), 1+rank_offset)
 
-  # 3. Send this data to the partitionned GCs using a PartToPart.
+  # 3. Send this data to the partitioned GCs using a PartToPart.
 
   vtx_ggnum_graph = [graph_ids + vtx_mdom_offsets[graph_dom]] #Domain gnum on graph side
 

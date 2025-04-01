@@ -252,7 +252,7 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
 
 def localize_points(src_tree, tgt_tree, location, comm, **options):
   """
-  Partitionned implementation of maia.algo.localize_points
+  Partitioned implementation of maia.algo.localize_points
   """
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())

@@ -30,7 +30,7 @@ A typical workflow could be:
 
 1. Load a structured tree from a file, which produces a **dist tree**.
 2. Apply some distributed algorithms to this tree: for example a structured to unstructured conversion (``algo.dist`` module).
-3. Generate a corresponding partitionned tree (``factory`` module).
+3. Generate a corresponding partitioned tree (``factory`` module).
 4. Apply some partitioned algorithms to the **part tree**, such as wall distance computation (``algo.part`` module),
    and even call you own tools (e.g. a CFD solver)
 5. Transfer the resulting fields to the **dist tree** (``transfer`` module).

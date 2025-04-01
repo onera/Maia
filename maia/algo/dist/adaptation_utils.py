@@ -136,7 +136,7 @@ def elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm):
   elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
   elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
 
-  # > Get partitionned connectivity of elt_pl
+  # > Get partitioned connectivity of elt_pl
   elt_ec   = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
   GI = EP.GlobalIndexer(elt_distri_f, elt_pl-elt_offset, comm)
   pl_ec = GI.Take(elt_ec, count=PT.Element.NVtx(elt_n))

@@ -50,7 +50,7 @@ def compute_cell_center(zone, cell_indices=None):
   Centers are computed using a basic average over the vertices of the cells.
 
   Args:
-    zone (CGNSTree): Partitionned CGNS Zone
+    zone (CGNSTree): Partitioned CGNS Zone
     cell_indices (ndarray) : pointlist like array of cells ids or None. If provided,
       centers are computed only for the specified cells.
   Returns:
@@ -103,7 +103,7 @@ def compute_face_center(zone, face_indices=None, face_indices_loc=None):
     explicitly defined in cgns tree.
 
   Args:
-    zone (CGNSTree): Partitionned 2D or 3D U CGNS Zone
+    zone (CGNSTree): Partitioned 2D or 3D U CGNS Zone
     face_indices (ndarray) : pointlist like array of faces ids or None. If provided,
       centers are computed only for the specified faces. If the mesh is structured 2D,
       face_indices_loc is requested as well and indicates the location of the pointlist.
@@ -170,7 +170,7 @@ def compute_edge_center(zone,edge_indices=None):
     explicitly defined in cgns tree.
 
   Args:
-    zone (CGNSTree): Partitionned 2D or 3D U-elts CGNS Zone
+    zone (CGNSTree): Partitioned 2D or 3D U-elts CGNS Zone
     edge_indices (ndarray) : pointlist like array of edges ids or None. If provided,
       centers are computed only for the specified edges. 
   Returns:

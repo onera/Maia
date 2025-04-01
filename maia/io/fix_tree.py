@@ -106,7 +106,7 @@ def fix_structured_pr_shape(size_tree):
 def ensure_symmetric_gc1to1(tree):
   """
   Force structured GC1to1 to have symmetric PointRange/PointRangeDonor
-  This is done because some maia functions (as partitionning) require this condition,
+  This is done because some maia functions (as partitioning) require this condition,
   but we should correct theses to not rely anymore on this assumption (TODO).
 
   """

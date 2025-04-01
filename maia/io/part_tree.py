@@ -20,7 +20,7 @@ else:
   from .hdf._hdf_cgns import open_from_path, load_tree_partial, _load_node_partial, _write_node_partial
 
 def enforce_maia_naming(part_tree, comm):
-  """Rename the zones and joins of a partitionned tree such that maia
+  """Rename the zones and joins of a partitioned tree such that maia
   convention are respected
   """
   old_to_new = {}

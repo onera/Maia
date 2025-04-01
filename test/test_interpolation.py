@@ -55,7 +55,7 @@ def test_interpolation_non_overlaping_cubes(comm, strategy, src_elt, tgt_elt, wr
   distri = PT.maia.getDistribution(zone, 'Cell')[1]
   PT.new_DataArray("Density", np.arange(distri[0], distri[1], dtype=float)+1, parent=d_fs)
 
-  # Create partition on the meshes. Source and destination can have a different partitionning !
+  # Create partition on the meshes. Source and destination can have a different partitioning !
   dzone_to_weighted_parts_src    = MF.partitioning.compute_regular_weights(dist_tree_src   , comm, 2)
   dzone_to_weighted_parts_target = MF.partitioning.compute_regular_weights(dist_tree_target, comm, 1)
   part_tree_src    = MF.partition_dist_tree(dist_tree_src   , comm, zone_to_parts=dzone_to_weighted_parts_src   )
