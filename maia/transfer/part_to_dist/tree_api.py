@@ -4,6 +4,7 @@ import maia.transfer as TE
 from   maia.typing import *
 from . import data_exchange
 from maia.factory.dist_from_part import _recover_base_iterative_data, discover_nodes_from_matching
+from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 
 __all__ = ['part_zones_to_dist_zone_only',
            'part_zones_to_dist_zone_all',
@@ -58,6 +59,9 @@ def part_zones_to_dist_zone_only(dist_zone: CGNSTree,
     comm: MPI communicator
     include_dict: Dictionary mapping labels to paths to include
   """
+  check_cgns_dist_tree(dist_zone)
+  for part_zone in part_zones:
+    check_cgns_part_tree(part_zone)
   filter_dict = {label : ('I', include_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : includeall -> exclude nothing
   filter_dict.update({label : ('E', []) for label in LABELS if filter_dict[label][1] == ['*']})
@@ -76,6 +80,9 @@ def part_zones_to_dist_zone_all(dist_zone: CGNSDistTree,
     comm: MPI communicator
     exclude_dict: Dictionary mapping labels to paths to exclude
   """
+  check_cgns_dist_tree(dist_zone)
+  for part_zone in part_zones:
+    check_cgns_part_tree(part_zone)
   filter_dict = {label : ('E', exclude_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : excludeall -> include nothing
   filter_dict.update({label : ('I', []) for label in LABELS if filter_dict[label][1] == ['*']})
@@ -94,6 +101,8 @@ def part_tree_to_dist_tree_only_labels(dist_tree: CGNSDistTree,
     labels: List of labels to transfer
     comm: MPI communicator
   """
+  check_cgns_dist_tree(dist_tree)
+  check_cgns_part_tree(part_tree)
   assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
@@ -106,10 +115,12 @@ def part_tree_to_dist_tree_all(dist_tree: CGNSDistTree,
   """ Transfer all the data fields from the partitioned tree to the corresponding distributed tree.
   
   Args:
-    dist_tree: Distributed tree to receive data
-    part_tree: Partitioned tree to transfer from
-    comm: MPI communicator
+    dist_tree (CGNSDistTree): Distributed tree to receive data
+    part_tree (CGNSPartTree): Partitioned tree to transfer from
+    comm      (MPIComm)     : MPI communicator
   """
+  check_cgns_dist_tree(dist_tree)
+  check_cgns_part_tree(part_tree)
   _recover_base_iterative_data(dist_tree, part_tree, comm)
   part_tree_to_dist_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
@@ -133,6 +144,8 @@ def part_tree_to_dist_tree_copy(dist_tree: CGNSDistTree,
         :end-before: #part_tree_to_dist_tree_copy@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
+  check_cgns_part_tree(part_tree)
   assert isinstance(predicates, (list, str))
   single_pred = '/' not in predicates if isinstance(predicates, str) else len(predicates) == 1
   if single_pred:

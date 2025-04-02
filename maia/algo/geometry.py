@@ -72,7 +72,7 @@ def compute_elements_center(t: CGNSTree,
   Args:
     t    (CGNSTree)            : Tree starting at Zone_t level or higher
     dim  (int or 'CellCenter') : Entity on which centers are computed (see above)
-    comm       (MPIComm)       : MPI communicator, mandatory only for distributed trees
+    comm (MPIComm)             : MPI communicator, mandatory only for distributed trees
 
   Example:
       .. literalinclude:: snippets/test_algo.py

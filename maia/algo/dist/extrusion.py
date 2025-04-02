@@ -9,7 +9,8 @@ from maia.algo.dist import ngon_tools
 from maia.transfer  import protocols as EP
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import logging as mlog
-from maia.typing    import CGNSTree, CGNSDistTree, MPIComm, Literal
+from maia.typing    import CGNSDistTree, MPIComm, Literal
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 
@@ -580,6 +581,7 @@ def extrude(dist_tree: CGNSDistTree,
         :end-before: #extrude@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   ksubset_as = ksubset_as.upper()
   if not ksubset_as in ['BC', 'GC']:
     raise ValueError(f"'ksubset_as' is {ksubset_as} but only 'GC' and 'BC' are allowed !")

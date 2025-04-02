@@ -19,7 +19,7 @@ from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
 from .load_balancing import balancing_quality
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from maia.pytree.graph.algo import step
 class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
@@ -92,7 +92,7 @@ def partition_dist_tree(dist_tree: CGNSDistTree,
         :end-before: #partition_dist_tree@end
         :dedent: 2
   """
-
+  check_cgns_dist_tree(dist_tree)
   options = set_default(dist_tree, comm)
   subkeys = ['reordering'] #Key for which we have sub dicts
 

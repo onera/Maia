@@ -6,8 +6,8 @@ from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering, pr_utils
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
-from maia.typing          import CGNSDistTree, MPIComm, List, Dict, Union, Literal
-
+from maia.typing          import *
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from maia.algo.dist.matching_jns_tools import gc_is_reference
 
 def get_output_loc(request_dict, s_node):
@@ -255,7 +255,7 @@ def convert_s_to_u(
   dist_tree: CGNSDistTree,
   connectivity: Literal['NGON_n', 'NFACE_n', 'HEXA_8', 'TETRA_4', 'PYRA_5', 'PENTA_6'],
   comm: MPIComm,
-  subset_loc: Dict[str, Union[str, List[str]]] = {}) -> None:
+  subset_loc: Optional[Dict[str, Union[str, List[str]]]] = {}) -> None:
   """Performs the destructuration of the input ``dist_tree``.
 
   Tree is modified in place: a NGON_n or HEXA_8 (not yet implemented)
@@ -267,10 +267,10 @@ def convert_s_to_u(
     NGON_n and subset_loc set to FaceCenter.
 
   Args:
-    dist_tree (CGNSDistTree): Structured tree
-    connectivity (str): Type of elements used to describe the connectivity.
+    dist_tree (CGNSDistTree): Structured distributed tree
+    connectivity (str)      : Type of elements used to describe the connectivity.
       Admissible values are ``"NGON_n"`` and ``"HEXA"`` (not yet implemented).
-    comm       (MPIComm) : MPI communicator
+    comm       (MPIComm)    : MPI communicator
     subset_loc (dict, optional):
         Expected output GridLocation for the following subset nodes: BC_t, GC_t.
         For each label, output location can be a single location value, a list
@@ -282,6 +282,7 @@ def convert_s_to_u(
         :end-before: #convert_s_to_u@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
@@ -383,6 +384,7 @@ def convert_s_to_u(
 ###############################################################################
 def convert_s_to_ngon(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
+  check_cgns_dist_tree(dist_tree)
   convert_s_to_u(dist_tree,
                  'NGON_n',
                  comm,

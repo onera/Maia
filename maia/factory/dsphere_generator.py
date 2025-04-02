@@ -112,8 +112,8 @@ def dsphere_hollow_nodal_generate(n_vtx: int,
 def generate_dist_sphere(m: int, 
                          cgns_elmt_name: str, 
                          comm: MPIComm, 
-                         origin: np.ndarray = np.zeros(3), 
-                         radius: float = 1.) -> CGNSDistTree:
+                         origin: Optional[np.ndarray] = np.zeros(3), 
+                         radius: Optional[float] = 1.) -> CGNSDistTree:
   """Generate a distributed mesh with a spherical topology.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

@@ -210,10 +210,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
-    - dist_tree       (CGNSTree) : dist_tree to convert
-    - files           (dict)     : file names for meshb files
-    - metric_nodes    (str)      : CGNS metric nodes
-    - container_names (str)      : container_names to be interpolated
+    - dist_tree       (CGNSDistTree) : dist_tree to convert
+    - files           (dict)         : file names for meshb files
+    - metric_nodes    (str)          : CGNS metric nodes
+    - container_names (str)          : container_names to be interpolated
   '''
 
   dt_size = sum(MT.metrics.dtree_nbytes(dist_tree))

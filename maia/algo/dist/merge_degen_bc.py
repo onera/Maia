@@ -4,7 +4,7 @@ import numpy      as np
 import maia
 import maia.pytree                      as PT
 import maia.pytree.maia                 as MT
-
+import Pypdm.Pypdm                      as PDM
 from maia                     import npy_pdm_gnum_dtype    as pdm_gnum_dtype
 from maia.transfer            import protocols             as EP
 from maia.utils               import par_utils, np_utils, vstride
@@ -15,8 +15,9 @@ from .vertex_list    import face_ids_to_vtx_ids
 from .geometry.utils import get_local_coordinates
 from maia.algo.part  import closest_points as CLO
 from maia.algo.dist  import merge_jn       as MJN
-from maia.typing     import CGNSDistTree, CGNSTree, MPIComm, Any
-import Pypdm.Pypdm as PDM
+from maia.typing     import CGNSDistTree, MPIComm, Any
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
+
 
 def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
   """
@@ -249,7 +250,7 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
         :end-before: #remove_degen_faces_from_family@end
         :dedent: 2
   """
-  
+  check_cgns_dist_tree(dist_tree)
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     zone_n = PT.get_node_from_path(dist_tree, zone_path)
     vtx_distri = PT.maia.get_distribution(zone_n, 'Vertex')[1]

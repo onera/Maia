@@ -9,7 +9,7 @@ from maia.transfer      import protocols     as MTP
 from maia.utils         import par_utils     as MUPar
 from maia.utils.ndarray import np_utils
 from maia.typing        import CGNSTree, CGNSDistTree, MPIComm
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 import maia.pytree.sids.elements_utils    as MPSEU
 
 def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> List[CGNSTree]:
@@ -53,6 +53,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
           :end-before: #convert_mixed_to_elements@end
           :dedent: 2
     """
+    check_cgns_dist_tree(dist_tree)
     rank = comm.Get_rank()
     size = comm.Get_size()
 

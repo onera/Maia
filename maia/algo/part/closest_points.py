@@ -5,11 +5,11 @@ import maia.pytree        as PT
 
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-from maia.typing                 import CGNSTree, MPIComm, List, Dict, Tuple, Union
+from maia.typing                 import *
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.utils                  import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks
-
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 from .point_cloud_utils import get_point_cloud
 
 
@@ -113,8 +113,8 @@ def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]],
   return _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse)
 
 
-def find_closest_points(src_tree: CGNSTree, 
-                        tgt_tree: CGNSTree, 
+def find_closest_points(src_tree: CGNSPartTree, 
+                        tgt_tree: CGNSPartTree, 
                         location: str, 
                         comm: MPIComm) -> None:
   """

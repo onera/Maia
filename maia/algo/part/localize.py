@@ -7,7 +7,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.typing                 import CGNSTree, MPIComm, List, Dict, Tuple, Any, Union
+from maia.typing                 import *
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.transfer               import utils as te_utils
 from maia.utils                  import vstride as vs
@@ -262,8 +262,8 @@ def _localize_points(
 
 
 
-def localize_points(src_tree: CGNSTree, 
-                    tgt_tree: CGNSTree, 
+def localize_points(src_tree: CGNSPartTree, 
+                    tgt_tree: CGNSPartTree, 
                     location: str, 
                     comm: MPIComm, 
                     **options: Any) -> None:

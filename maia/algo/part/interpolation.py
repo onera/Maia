@@ -16,6 +16,7 @@ from .import point_cloud_utils as PCU
 from .import multidom_gnum     as MDG
 from .import localize as LOC
 from .import closest_points as CLO
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 
 class Interpolator:
   """ Low level class to perform interpolations """
@@ -345,9 +346,9 @@ def interpolate(src_tree: CGNSPartTree,
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
 
   Args:
-    src_tree (CGNSTree): Source tree, partitionned. Only 3D unstructured connectivities are managed.
-    tgt_tree (CGNSTree): Target tree, partitionned. Structured or unstructured connectivities are managed.
-    comm       (MPIComm): MPI communicator
+    src_tree (CGNSPartTree): Source tree, partitionned. Only 3D unstructured connectivities are managed.
+    tgt_tree (CGNSPartTree): Target tree, partitionned. Structured or unstructured connectivities are managed.
+    comm       (MPIComm)   : MPI communicator
     containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
     location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.
     **options: Options related to interpolation strategy
@@ -358,6 +359,8 @@ def interpolate(src_tree: CGNSPartTree,
         :end-before: #interpolate@end
         :dedent: 2
   """
+  check_cgns_part_tree(src_tree)
+  check_cgns_part_tree(tgt_tree)
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
@@ -365,16 +368,19 @@ def interpolate(src_tree: CGNSPartTree,
 
 
 def create_interpolator(
-  src_tree: CGNSTree, 
-  tgt_tree: CGNSTree,
+  src_tree: CGNSPartTree, 
+  tgt_tree: CGNSPartTree,
   comm: MPIComm, 
   src_location: str,
   location: str,
-  **options: Dict[str, Any]) -> None:
+  **options: Dict[str, Any]
+) -> None:
   """Same as interpolate, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange
   fields without recomputing the src_to_tgt indirection (geometry must remain the same).
   """
+  check_cgns_part_tree(src_tree)
+  check_cgns_part_tree(tgt_tree)
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 

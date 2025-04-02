@@ -10,7 +10,7 @@ from maia.typing import CGNSTree, CGNSDistTree, MPIComm
 from maia.utils     import np_utils, par_utils, vstride
 from maia.transfer  import protocols as EP
 from maia.algo.dist import matching_jns_tools as MJT
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from cmaia.algo import combine_to_tetra, combine_to_pyra, \
                        combine_to_penta, combine_to_hexa
 
@@ -297,6 +297,7 @@ def convert_ngon_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         :end-before: #convert_ngon_to_elements@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   # Needed to update the joins afterward
   MJT.add_joins_donor_name(dist_tree, comm)
 

@@ -15,6 +15,7 @@ from maia.factory.partitioning import part_bound_orient as PBO
 from maia.utils    import np_utils, layouts
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 
 import Pypdm.Pypdm as PDM
 
@@ -488,7 +489,7 @@ def _iso_surface(part_tree: CGNSPartTree,
 def iso_surface(part_tree: CGNSPartTree, 
                 iso_field: str, 
                 comm: MPIComm, 
-                iso_val: float = 0., 
+                iso_val: Optional[float] = 0., 
                 containers_name: List[str] = [], 
                 **options: Any) -> CGNSPartTree:
   """ Create an isosurface from the provided field and value on the input partitioned tree.
@@ -508,7 +509,7 @@ def iso_surface(part_tree: CGNSPartTree,
       the isosurface (GridConnectivity_t nodes become BC_t nodes) and FaceCenter fields are allowed to be exchanged.
 
   Args:
-    part_tree     (CGNSTree)    : Partitioned tree on which isosurf is computed. Only U-NGon
+    part_tree     (CGNSPartTree): Partitioned tree on which isosurf is computed. Only U-NGon
       connectivities are managed.
     iso_field     (str)         : Path (starting at Zone_t level) of the field to use to compute isosurface.
     comm          (MPIComm)     : MPI communicator
@@ -533,6 +534,7 @@ def iso_surface(part_tree: CGNSPartTree,
       :end-before: #compute_iso_surface@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
 
   elt_type        = options.get("elt_type", "TRI_3")
@@ -596,7 +598,7 @@ def plane_slice(part_tree: CGNSPartTree,
   for use restrictions and additional advices.
 
   Args:
-    part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
+    part_tree    (CGNSPartTree) : Partitioned tree to slice. Only U-NGon connectivities are managed.
     plane_eq     (list of float): List of 4 floats :math:`[a,b,c,d]` defining the plane equation.
     comm          (MPIComm)     : MPI communicator
     containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
@@ -611,6 +613,7 @@ def plane_slice(part_tree: CGNSPartTree,
       :end-before: #compute_plane_slice@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
 
   elt_type        = options.get("elt_type", "TRI_3")
@@ -644,9 +647,9 @@ def spherical_slice(part_tree: CGNSPartTree,
   for use restrictions and additional advices.
 
   Args:
-    part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
-    sphere_eq      (list of float): List of 4 floats :math:`[x_0, y_0, z_0, R]` defining the sphere equation.
-    comm          (MPIComm)     : MPI communicator
+    part_tree     (CGNSPartTree) : Partitioned tree to slice. Only U-NGon connectivities are managed.
+    sphere_eq     (list of float): List of 4 floats :math:`[x_0, y_0, z_0, R]` defining the sphere equation.
+    comm          (MPIComm)      : MPI communicator
     containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
@@ -659,6 +662,7 @@ def spherical_slice(part_tree: CGNSPartTree,
       :end-before: #compute_spherical_slice@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
 
   elt_type        = options.get("elt_type", "TRI_3")
@@ -692,7 +696,7 @@ def elliptical_slice(part_tree: CGNSPartTree,
   for use restrictions and additional advices.
 
   Args:
-    part_tree     (CGNSTree)    : Partitioned tree to slice. Only U-NGon connectivities are managed.
+    part_tree     (CGNSPartTree): Partitioned tree to slice. Only U-NGon connectivities are managed.
     ellispe_eq   (list of float): List of 7 floats :math:`[x_0, y_0, z_0, a, b, c, R^2]`
       defining the ellipse equation.
     comm          (MPIComm)     : MPI communicator

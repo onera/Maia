@@ -13,7 +13,8 @@ from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
-from maia.typing import CGNSTree, MPIComm, Optional, Dict, Any
+from maia.typing    import *
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def _append_or_create(d, key, val):
   try:
@@ -28,12 +29,13 @@ def merge_all_zones_from_families(tree: CGNSTree,
                                   comm: MPIComm,
                                   **kwargs: Dict[str, Any]) -> None:
   """Apply merge_zones_from_family to each family of the tree"""
+  check_cgns_dist_tree(check_cgns_dist_tree)
   family_names = [PT.get_name(node) for node in \
           PT.iter_nodes_from_label(tree, 'Family_t', depth=2)]
   for family_name in family_names:
     merge_zones_from_family(tree, family_name, comm, **kwargs)
 
-def merge_zones_from_family(tree: CGNSTree,
+def merge_zones_from_family(dist_tree: CGNSDistTree,
                             family_name: str,
                             comm: MPIComm,
                             **kwargs: Dict[str, Any]) -> None:
@@ -42,10 +44,10 @@ def merge_zones_from_family(tree: CGNSTree,
   See :func:`merge_zones` for full documentation.
 
   Args:
-    tree (CGNSTree): Input distributed tree
-    family_name (str): Name of the family (read from ``FamilyName_t`` node)
+    dist_tree (CGNSDistTree): Input distributed tree
+    family_name (str)       : Name of the family (read from ``FamilyName_t`` node)
         used to select the zones.
-    comm (MPIComm) : MPI communicator
+    comm (MPIComm)          : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path
 
   See also:
@@ -58,20 +60,21 @@ def merge_zones_from_family(tree: CGNSTree,
         :end-before: #merge_zones_from_family@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   match_fam = lambda m: PT.get_child_from_label(m, 'FamilyName_t') is not None and \
                         PT.get_value(PT.get_child_from_label(m, 'FamilyName_t')) == family_name
 
   is_zone_with_fam = lambda n: PT.get_label(n) == 'Zone_t' and match_fam(n)
 
-  zone_paths = PT.predicates_to_paths(tree, ['CGNSBase_t', is_zone_with_fam])
+  zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_zone_with_fam])
   if zone_paths:
     base_name = zone_paths[0].split('/')[0]
     zone_name = camel_case(family_name)
     if zone_name == family_name:
       zone_name = zone_name.lower()
-    merge_zones(tree, zone_paths, comm, output_path=f'{base_name}/{zone_name}', **kwargs)
+    merge_zones(dist_tree, zone_paths, comm, output_path=f'{base_name}/{zone_name}', **kwargs)
 
-def merge_connected_zones(tree: CGNSTree, 
+def merge_connected_zones(dist_tree: CGNSDistTree, 
                           comm: MPIComm, 
                           **kwargs: Dict[str, Any]) -> None:
   """Detect all the zones connected through 1to1 matching jns and merge them.
@@ -79,7 +82,7 @@ def merge_connected_zones(tree: CGNSTree,
   See :func:`merge_zones` for full documentation.
   
   Args:
-    tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSDistTree): Input distributed tree
     comm (MPIComm) : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path
 
@@ -89,21 +92,22 @@ def merge_connected_zones(tree: CGNSTree,
         :end-before: #merge_connected_zones@end
         :dedent: 2
   """
-  MJT.add_joins_donor_name(tree, comm)
-  grouped_zone_paths = PT.Tree.find_connected_zones(tree)
+  check_cgns_dist_tree(dist_tree)
+  MJT.add_joins_donor_name(dist_tree, comm)
+  grouped_zone_paths = PT.Tree.find_connected_zones(dist_tree)
 
   for i, zone_paths in enumerate(grouped_zone_paths):
     zone_paths_u = [path for path in zone_paths \
-        if sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured']
+        if sids.Zone.Type(PT.get_node_from_path(dist_tree, path)) == 'Unstructured']
     base = zone_paths[0].split('/')[0]
-    merge_zones(tree, zone_paths_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
+    merge_zones(dist_tree, zone_paths_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
-def merge_zones(tree: CGNSTree, 
-                zone_paths: CGNSTree,
+def merge_zones(dist_tree: CGNSDistTree, 
+                zone_paths: List[str],
                 comm: MPIComm, 
-                output_path: str = None,
+                output_path: Optional[str] = None,
                 subset_merge: str = 'name', 
-                concatenate_jns: bool = True) -> None:
+                concatenate_jns: Optional[bool] = True) -> None:
   """Merge the given zones into a single one.
 
   Input tree is modified inplace : original zones will be removed from the tree and replaced
@@ -124,7 +128,7 @@ def merge_zones(tree: CGNSTree,
   to merge must have a FaceCenter location.
 
   Args:
-    tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSDistTree): Input distributed tree
     zone_paths (list of str): List of path (BaseName/ZoneName) of the zones to merge.
         Wildcard ``*`` are allowed in BaseName and/or ZoneName.
     comm       (MPIComm): MPI communicator
@@ -139,46 +143,47 @@ def merge_zones(tree: CGNSTree,
         :end-before: #merge_zones@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   # Transform wildcard into concrete path
   replace_super_wildcard = lambda p: '*/*' if p == '*' else p
   zone_paths = [replace_super_wildcard(p) for p in zone_paths]
-  zone_paths = PT.utils.concretize_paths(tree, zone_paths, ['CGNSBase_t', 'Zone_t'])
+  zone_paths = PT.utils.concretize_paths(dist_tree, zone_paths, ['CGNSBase_t', 'Zone_t'])
 
-  assert all([sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured' for path in zone_paths])
+  assert all([sids.Zone.Type(PT.get_node_from_path(dist_tree, path)) == 'Unstructured' for path in zone_paths])
   #Those one will be needed for jn recovering
-  MJT.add_joins_donor_name(tree, comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
   #Force full donor name, otherwise it is hard to reset jns
-  sids.enforceDonorAsPath(tree)
+  sids.enforceDonorAsPath(dist_tree)
 
   # We create a tree including only the zones to merge to speed up some operations
   masked_tree = PT.new_CGNSTree()
   for zone_path in zone_paths:
     base_n, zone_n = zone_path.split('/')
     masked_base = PT.update_child(masked_tree, base_n, 'CGNSBase_t')
-    PT.add_child(masked_base, PT.get_node_from_path(tree, zone_path))
+    PT.add_child(masked_base, PT.get_node_from_path(dist_tree, zone_path))
 
     #Remove from input tree at the same time
-    PT.rm_node_from_path(tree, zone_path)
+    PT.rm_node_from_path(dist_tree, zone_path)
 
   #Merge zones
   merged_zone = _merge_zones(masked_tree, comm, subset_merge)
 
   #Add output
   if output_path is None:
-    output_base = PT.get_node_from_path(tree, zone_paths[0].split('/')[0])
+    output_base = PT.get_node_from_path(dist_tree, zone_paths[0].split('/')[0])
   else:
-    output_base = PT.get_node_from_path(tree, output_path.split('/')[0])
+    output_base = PT.get_node_from_path(dist_tree, output_path.split('/')[0])
     if output_base is None:
-      output_base = PT.new_CGNSBase(output_path.split('/')[0], cell_dim=3, phy_dim=3, parent=tree)
+      output_base = PT.new_CGNSBase(output_path.split('/')[0], cell_dim=3, phy_dim=3, parent=dist_tree)
     PT.set_name(merged_zone, output_path.split('/')[1])
   PT.add_child(output_base, merged_zone)
 
   #First we have to retrieve PLDonor for external jn and update opposite zones
   merged_zone_path = PT.get_name(output_base) + '/' + PT.get_name(merged_zone)
   jn_to_pl = {}
-  for jn_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
-    gc = PT.get_node_from_path(tree, jn_path)
+  for jn_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
+    gc = PT.get_node_from_path(dist_tree, jn_path)
     if PT.GridConnectivity.is1to1(gc):
       jn_to_pl[jn_path] = \
           (PT.get_child_from_name(gc, 'PointList')[1], PT.get_child_from_name(gc, 'PointListDonor')[1], MT.getDistribution(gc))
@@ -186,22 +191,22 @@ def merge_zones(tree: CGNSTree,
   # Update opposite names when going to opp zone (intrazone have been caried before)
   for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
     if PT.GridConnectivity.is1to1(gc) and PT.get_value(gc) not in zone_paths:
-      opp_path = MJT.get_jn_donor_path(tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
-      opp_gc = PT.get_node_from_path(tree, opp_path)
+      opp_path = MJT.get_jn_donor_path(dist_tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
+      opp_gc = PT.get_node_from_path(dist_tree, opp_path)
       opp_gc_donor_name = PT.get_child_from_name(opp_gc, 'GridConnectivityDonorName') #TODO factorize
       PT.set_value(opp_gc_donor_name, gc[0])
   #Now all donor names are OK
 
-  for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
+  for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     is_merged_zone = zone_path == merged_zone_path
-    zone = PT.get_node_from_path(tree, zone_path)
+    zone = PT.get_node_from_path(dist_tree, zone_path)
     for zgc, gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
       #Update name and PL
       if PT.get_value(gc) in zone_paths: #Can be: jn from non concerned zone to merged zones or periodic from merged zones
         PT.set_value(gc, merged_zone_path)
         jn_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
         if PT.GridConnectivity.is1to1(gc):
-          jn_path_opp= MJT.get_jn_donor_path(tree, jn_path)
+          jn_path_opp= MJT.get_jn_donor_path(dist_tree, jn_path)
           # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
           # merged zone
           if not is_merged_zone or jn_path_opp < jn_path:
@@ -211,7 +216,7 @@ def merge_zones(tree: CGNSTree,
             PT.add_child(gc, jn_to_pl[jn_path_opp][2])
 
   if concatenate_jns:
-    GN.concatenate_jns(tree, comm)
+    GN.concatenate_jns(dist_tree, comm)
 
   # Transfert some nodes on the merged zone, only if they exist everywhere and have same value
   merge_me = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
@@ -229,11 +234,11 @@ def merge_zones(tree: CGNSTree,
 
   # Cleanup empty bases
   to_remove = []
-  for base in PT.get_children_from_label(tree, 'CGNSBase_t'):
+  for base in PT.get_children_from_label(dist_tree, 'CGNSBase_t'):
     if len(PT.get_children_from_label(base, 'Zone_t')) == 0:
       to_remove.append(PT.get_name(base))
   for base_n in to_remove:
-    PT.rm_children_from_name(tree, base_n)
+    PT.rm_children_from_name(dist_tree, base_n)
 
 def _merge_zones(tree: CGNSTree, comm: MPIComm, 
                  subset_merge_strategy: str='name') -> CGNSTree:

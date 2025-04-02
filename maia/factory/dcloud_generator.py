@@ -1,5 +1,5 @@
 import numpy as np
-import Pypdm.Pypdm as PDM # type: ignore
+import Pypdm.Pypdm as PDM 
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -128,8 +128,8 @@ def dpoint_cloud_random_generate(n_g_pts: int,
 def generate_dist_points(n_vtx: Union[int, np.ndarray], 
                          zone_type: str, 
                          comm: MPIComm, 
-                         origin: np.ndarray = np.zeros(3), 
-                         max_coords: np.ndarray = np.ones(3)) -> CGNSDistTree:
+                         origin: Optional[np.ndarray] = np.zeros(3), 
+                         max_coords: Optional[np.ndarray] = np.ones(3)) -> CGNSDistTree:
   """Generate a distributed mesh including only cartesian points.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

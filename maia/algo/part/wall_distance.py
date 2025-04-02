@@ -24,6 +24,7 @@ from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import _compute_elements_center
 
 from .point_cloud_utils              import get_point_cloud
+from maia.pytree.maia.check_tree     import check_cgns_part_tree
 
 BC_WALLS = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
 
@@ -463,8 +464,8 @@ def compute_projection_to(part_tree, bc_predicate, comm, point_cloud='CellCenter
 
 def compute_wall_distance(part_tree: CGNSPartTree,
                           comm: MPIComm,
-                          point_cloud: Union[Literal['CellCenter', 'Vertex'], str] = 'CellCenter',
-                          out_fs_name: str = 'WallDistance',
+                          point_cloud: Optional[Union[Literal['CellCenter', 'Vertex'], str]] = 'CellCenter',
+                          out_fs_name: Optional[str] = 'WallDistance',
                           **options: Any) -> None:
   """Compute wall distances and add it in tree.
 
@@ -501,7 +502,7 @@ def compute_wall_distance(part_tree: CGNSPartTree,
         :end-before: #compute_wall_distance@end
         :dedent: 2
   """
-
+  check_cgns_part_tree(part_tree)
   start = time.time()
   
   # Retrieve Wall Families (warning -- if we have a Family_t appearing under two bases 

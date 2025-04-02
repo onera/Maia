@@ -457,12 +457,14 @@ def test_equilibrate_data(comm):
 def test_input_overflow(comm):
   tree = PT.yaml.to_cgns_tree("""
   Zone1 Zone_t I4 [[1, 400000000, 0]]:
+    :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
     ZoneType ZoneType_t "Unstructured":
     NGON Elements_t [22, 0]:
       ElementRange IndexRange_t I4 [1, 800000000]: # Fake value to overflow
     NFace Elements_t [23, 0]:
       ElementRange IndexRange_t I4 [800000001, 1200000000]: # Fake value to overflow
   Zone2 Zone_t [[1, 500000000, 0]]:
+    :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
     ZoneType ZoneType_t "Unstructured":
     NGON Elements_t [22, 0]:
       ElementRange IndexRange_t I4 [1, 900000000]: # Fake value to overflow

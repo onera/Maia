@@ -1,7 +1,7 @@
 from typing import (
     Tuple, List, Dict, Optional, Any, Callable, Union, Iterator, NamedTuple,
     TypeVar, Generic, Type, Protocol, runtime_checkable, Sequence, Set, Literal,
-    TextIO, Iterable
+    TextIO, Iterable, overload
 )
 from os import PathLike
 import numpy as np

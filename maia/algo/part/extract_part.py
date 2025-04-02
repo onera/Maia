@@ -10,6 +10,7 @@ from   .extract_part_s    import exchange_field_s, extract_part_one_domain_s
 from   .extract_part_u    import exchange_field_u, extract_part_one_domain_u
 from   .extraction_utils  import LOC_TO_DIM
 from   maia.typing        import *
+from   maia.pytree.maia.check_tree import check_cgns_part_tree
 
 import numpy as np
 
@@ -204,7 +205,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
     extracted tree.
 
   Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. U-Elts
+    part_tree       (CGNSPartTree): Partitioned tree from which extraction is computed. U-Elts
       connectivities are *not* managed.
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
@@ -236,6 +237,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
       :end-before:  #extract_from_zsr@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
   extract_tree, dim = _extract_part_from_zsr(part_tree, zsr_name, comm,
                                              transfer_dataset=transfer_dataset,
@@ -255,8 +257,10 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   return extract_tree
 
 
-def _create_extractor_from_zsr(part_tree: CGNSPartTree,zsr_path: str,
-                               comm: MPIComm, **options: Any) -> Extractor:
+def _create_extractor_from_zsr(part_tree: CGNSPartTree, 
+                               zsr_path: str,
+                               comm: MPIComm,
+                               **options: Dict[str,Any]) -> Extractor:
   """Create an extractor object from a ZoneSubRegion path"""
   # Get zones by domains
 
@@ -287,17 +291,18 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,zsr_path: str,
   return Extractor(part_tree, patch, location, comm,
                    graph_part_tool=graph_part_tool)
 
-def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
+def create_extractor_from_zsr(part_tree: CGNSPartTree,
+                              zsr_path : str, 
+                              comm: MPIComm, 
+                              **options: Dict[str,Any]) -> Extractor:
   """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
-
+  check_cgns_part_tree(part_tree)
   extractor = _create_extractor_from_zsr(part_tree, zsr_path, comm, **options)
   if extractor.location == '':
     mlog.warning(f"ZoneSubRegion \"{zsr_path}\" does not exist in input tree, "
                  f"an empty extractor is returned from create_extractor_from_zsr")
   return extractor
-
-
 
 def extract_part_from_bc_name(part_tree: CGNSPartTree,
                               bc_name: str,
@@ -323,6 +328,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
       :end-before:  #extract_from_bc_name@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
 
   # Local copy of the part_tree to add ZSR 
@@ -367,7 +373,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
 def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
                                   comm: MPIComm,**options: Any) -> Extractor:
   """Create an extractor object from a BC name"""
-  
+  check_cgns_part_tree(part_tree)
   # Local copy of the part_tree to add ZSR 
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
@@ -480,6 +486,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
       :end-before:  #extract_from_family@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
 
   local_part_tree, fam_node_paths = _prepare_extract_from_family(part_tree, family_name, comm)
@@ -539,7 +546,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
 def create_extractor_from_family(part_tree: CGNSPartTree, family_name: str,
                                  comm: MPIComm, **options: Any) -> Extractor:
   """Create an extractor object from a family name"""
-
+  check_cgns_part_tree(part_tree)
   local_part_tree, _ = _prepare_extract_from_family(part_tree, family_name, comm)
 
   extractor = _create_extractor_from_zsr(local_part_tree, f"__{family_name}", comm, **options)

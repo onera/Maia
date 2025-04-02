@@ -4,7 +4,7 @@ from maia.typing import CGNSTree
 import numpy as np
 import maia
 import maia.pytree as PT
-
+from maia.pytree.maia.check_tree import check_cgns_full_tree
 from maia.utils import np_utils
 
 def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
@@ -29,14 +29,14 @@ def create_mixed_elts_eso(node: CGNSTree) -> None:
   layouts.create_mixed_elts_eso(ec, eso)
   PT.new_DataArray('ElementStartOffset', eso, parent=node)
 
-def enforce_ngon_pe_local(t: CGNSTree) -> None:
+def enforce_ngon_pe_local(full_tree: CGNSTree) -> None:
   """
   Shift the ParentElements values in order to make it start at 1, as requested by legacy tools.
 
   The tree is modified in place.
 
   Args:
-    t (CGNSTree): Tree starting at Zone_t level or higher.
+    full_tree (CGNSTree): Tree starting at Zone_t level or higher.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -45,7 +45,8 @@ def enforce_ngon_pe_local(t: CGNSTree) -> None:
         :dedent: 2
 
   """
-  for zone in zones_iterator(t):
+  check_cgns_full_tree(full_tree)
+  for zone in zones_iterator(full_tree):
     try:
       ngon_node = PT.Zone.NGonNode(zone)
     except RuntimeError: #If no NGon, go to next zone
@@ -53,14 +54,14 @@ def enforce_ngon_pe_local(t: CGNSTree) -> None:
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')
     pe[1] = maia.algo.indexing.get_pe_local(ngon_node)
 
-def poly_new_to_old(tree: CGNSTree, full_onera_compatibility: bool = True) -> None:
+def poly_new_to_old(full_tree: CGNSTree, full_onera_compatibility: bool = True) -> None:
   """
   Transform a tree with polyhedral unstructured connectivity with new CGNS 4.x conventions to old CGNS 3.x conventions.
 
   The tree is modified in place.
 
   Args:
-    tree (CGNSTree): Tree described with new CGNS convention.
+    full_tree (CGNSTree): Tree described with new CGNS convention.
     full_onera_compatibility (bool): if ``True``, shift NFace and ParentElements ids to begin at 1, irrespective of the NGon and NFace ElementRanges, and make the NFace connectivity unsigned
 
   Example:
@@ -69,9 +70,10 @@ def poly_new_to_old(tree: CGNSTree, full_onera_compatibility: bool = True) -> No
         :end-before: #poly_new_to_old@end
         :dedent: 2
   """
-  cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
+  check_cgns_full_tree(full_tree)
+  cg_version_node = PT.get_child_from_label(full_tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 3.1)
-  for z in PT.get_all_Zone_t(tree):
+  for z in PT.get_all_Zone_t(full_tree):
     if PT.Zone.Type(z) != 'Unstructured':
       continue
     elif PT.Zone.has_ngon_elements(z):
@@ -112,7 +114,7 @@ def poly_new_to_old(tree: CGNSTree, full_onera_compatibility: bool = True) -> No
 
 
 
-def poly_old_to_new(tree: CGNSTree) -> None:
+def poly_old_to_new(full_tree: CGNSTree) -> None:
   """
   Transform a tree with polyhedral unstructured connectivity with old CGNS 3.x conventions to new CGNS 4.x conventions.
 
@@ -121,7 +123,7 @@ def poly_old_to_new(tree: CGNSTree) -> None:
   This function accepts trees with old ONERA conventions where NFace and ParentElements ids begin at 1, irrespective of the NGon and NFace ElementRanges, and where the NFace connectivity is unsigned. The resulting tree has the correct CGNS/SIDS conventions.
 
   Args:
-    tree (CGNSTree): Tree described with old CGNS convention.
+    full_tree (CGNSTree): Tree described with old CGNS convention.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -129,9 +131,10 @@ def poly_old_to_new(tree: CGNSTree) -> None:
         :end-before: #poly_old_to_new@end
         :dedent: 2
   """
-  cg_version_node = PT.get_child_from_label(tree, 'CGNSLibraryVersion_t')
+  check_cgns_full_tree(full_tree)
+  cg_version_node = PT.get_child_from_label(full_tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 4.2)
-  for z in PT.get_all_Zone_t(tree):
+  for z in PT.get_all_Zone_t(full_tree):
     if PT.Zone.Type(z) != 'Unstructured':
       continue
     elif PT.Zone.has_ngon_elements(z):

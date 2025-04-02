@@ -11,7 +11,7 @@ from   maia.algo.dist.extract_part       import extract_elmt_connectivity_from_p
 from   maia.utils                        import np_utils, par_utils, as_pdm_gnum
 from   maia.utils                        import logging as mlog
 from   maia.typing                       import CGNSDistTree, MPIComm, List, Union
-
+from   maia.pytree.maia.check_tree       import check_cgns_dist_tree
 
 def replace_bc_identifiers(zone, bc_identifiers):
   """
@@ -104,9 +104,9 @@ def find_ridges(dist_tree: CGNSDistTree,
     each BC constitutes an independant group.
 
   Args:
-    dist_tree      (CGNSTree): Unstructured distributed tree, starting at Zone_t level or higher.
-    bc_identifiers (list): List of BC groups bounded by searched edges (see above)
-    comm           (MPIComm) : MPI communicator
+    dist_tree      (CGNSDistTree): Unstructured distributed tree, starting at Zone_t level or higher.
+    bc_identifiers (list)        : List of BC groups bounded by searched edges (see above)
+    comm           (MPIComm)     : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -114,7 +114,7 @@ def find_ridges(dist_tree: CGNSDistTree,
         :end-before: #retrieve_ridges@end
         :dedent: 2
   """
-
+  check_cgns_dist_tree(dist_tree)
   for zone in zones_iterator(dist_tree):
 
     assert PT.Zone.CellDimension(zone)>1

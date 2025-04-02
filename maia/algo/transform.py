@@ -109,7 +109,7 @@ def transform_affine(t: CGNSTree,
                      rotation_center: np.ndarray = np.zeros(3),
                      rotation_angle: np.ndarray = np.zeros(3),
                      translation: np.ndarray = np.zeros(3),
-                     apply_to_fields: bool = True) -> None:
+                     apply_to_fields: Optional[bool] = True) -> None:
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.

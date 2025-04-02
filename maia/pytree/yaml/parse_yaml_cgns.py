@@ -81,7 +81,7 @@ def parse_yaml_dict(yaml_dict):
     t += [[name,value,children,label]]
   return t
 
-def to_nodes(yaml_stream) -> CGNSTree:
+def to_nodes(yaml_stream) -> List[CGNSTree]:
   """ Convert a yaml stream into a list of python CGNSTree.
 
   This function is similar to :func:`to_node`, but allows

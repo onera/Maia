@@ -5,6 +5,7 @@ from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols   as EP
 from maia.utils     import par_utils
 from maia.typing    import CGNSDistTree, MPIComm, List
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def conformize_jn_pair(dist_tree: CGNSDistTree,
                        jn_paths: List[str],
@@ -26,7 +27,7 @@ def conformize_jn_pair(dist_tree: CGNSDistTree,
     comm       (`MPIComm`)   : MPI communicator
 
   """
-  
+  check_cgns_dist_tree(dist_tree)
   # Get vtx ids and opposite vtx ids for this join
   location = PT.Subset.GridLocation(PT.get_node_from_path(dist_tree, jn_paths[0]))
   if location == 'Vertex':

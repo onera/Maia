@@ -13,7 +13,7 @@ from maia.transfer.part_to_dist import tree_api           as part_to_dist
 from maia.utils                 import py_utils, par_utils, np_utils
 from maia                       import npy_pdm_gnum_dtype as pdm_dtype
 from maia.typing import *
-
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 from maia.pytree.graph.algo import step
 class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
@@ -471,11 +471,11 @@ def recover_dist_tree(part_tree: CGNSPartTree,
   
   Args:
     part_tree (CGNSPartTree)   : Partitioned CGNS Tree
-    comm       (MPIComm)       : MPI communicator
+    comm      (MPIComm)        : MPI communicator
     data_transfer (list of str): Labels of data nodes to transfer during operation
       (see :attr:`data_transfer`)
   Returns:
-    CGNSTree                   : distributed cgns tree
+    CGNSDistTree               : distributed cgns tree
 
   Example:
       .. literalinclude:: snippets/test_factory.py
@@ -483,6 +483,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
         :end-before: #recover_dist_tree@end
         :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 

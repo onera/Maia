@@ -1,7 +1,7 @@
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 import maia.transfer as TE
 from   maia.typing import *
 from . import data_exchange
@@ -53,6 +53,9 @@ def dist_zone_to_part_zones_only(dist_zone: CGNSDistTree,
         :end-before: #dist_zone_to_part_zones_only@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_zone)
+  for part_zone in part_zones:
+    check_cgns_part_tree(part_zone)
   filter_dict = {label : ('I', include_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : includeall -> exclude nothing
   filter_dict.update({label : ('E', []) for label in LABELS if filter_dict[label][1] == ['*']})
@@ -71,6 +74,9 @@ def dist_zone_to_part_zones_all(dist_zone: CGNSDistTree,
         :end-before: #dist_zone_to_part_zones_all@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_zone)
+  for part_zone in part_zones:
+    check_cgns_part_tree(part_zone)
   filter_dict = {label : ('E', exclude_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : excludeall -> include nothing
   filter_dict.update({label : ('I', []) for label in LABELS if filter_dict[label][1] == ['*']})
@@ -89,6 +95,8 @@ def dist_tree_to_part_tree_only_labels(dist_tree: CGNSDistTree,
         :end-before: #dist_tree_to_part_tree_only_labels@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
+  check_cgns_part_tree(part_tree)
   assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
@@ -107,6 +115,8 @@ def dist_tree_to_part_tree_all(dist_tree: CGNSDistTree,
         :end-before: #dist_tree_to_part_tree_all@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
+  check_cgns_part_tree(part_tree)
   dist_tree_to_part_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths
@@ -129,6 +139,8 @@ def dist_tree_to_part_tree_copy(dist_tree: CGNSDistTree,
         :end-before: #dist_tree_to_part_tree_copy@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
+  check_cgns_part_tree(part_tree)
   for path in PT.predicates_to_paths(dist_tree, predicates):
     # If path include a Zone_t node, we must loop over corresponding partitioned zones
     # so we update the correponding name to include wildcard *

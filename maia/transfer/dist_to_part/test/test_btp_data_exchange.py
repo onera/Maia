@@ -14,6 +14,7 @@ dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 dt0 = """
 ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [1,2,3]:
@@ -69,6 +70,7 @@ ZoneU Zone_t [[6,0,0]]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [0,3,6]:
 ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [1,2,3]:
     CoordinateY DataArray_t [2,2,2]:
@@ -81,6 +83,7 @@ ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
 
 dt1 = """
 ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [4,5,6]:
@@ -136,6 +139,7 @@ ZoneU Zone_t [[6,0,0]]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [3,6,6]:
 ZoneS Zone_t [[2,0,0],[3,0,0],[1,0,0]]:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t [4,5,6]:
     CoordinateY DataArray_t [1,1,1]:
@@ -367,6 +371,7 @@ def test_dist_dataset_to_part_dataset(comm, from_api):
     dt = dt0
     pt = """
   ZoneU.P0.N0 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t: #fake to avoid the test
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -379,7 +384,9 @@ def test_dist_dataset_to_part_dataset(comm, from_api):
     pt = """
   ZoneU.P1.N0 Zone_t [[2,0,0]]:
     ZBC ZoneBC_t:
+    :CGNS#GlobalNumbering UserDefinedData_t: #fake to avoid the test
   ZoneU.P1.N1 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t: #fake to avoid the test
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -419,6 +426,7 @@ def test_dist_subregion_to_part_subregion(comm, api_mode):
     dt = dt0
     pt = """
   ZoneU.P0.N0 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZBC ZoneBC_t:
       BC BC_t:
         PointList IndexArray_t [[1, 12, 21]]:
@@ -439,6 +447,7 @@ def test_dist_subregion_to_part_subregion(comm, api_mode):
     dt = dt1
     pt = """
   ZoneU.P1.N0 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZSRWithPL ZoneSubRegion_t:
       GridLocation GridLocation_t "Vertex":
       PointList IndexArray_t [[1,2]]:
@@ -464,6 +473,7 @@ def test_dist_subregion_to_part_subregion(comm, api_mode):
     ZSRWithGC.1 ZoneSubRegion_t:
       GridConnectivityRegionName Descriptor_t "GC.1":
   ZoneU.P1.N1 Zone_t [[2,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZBC ZoneBC_t:
       BC BC_t:
         PointList IndexArray_t [[1, 29, 108]]:

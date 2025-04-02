@@ -10,9 +10,9 @@ from maia       import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, vstride
 
 from maia.algo.dist             import matching_jns_tools as MJT
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from maia.transfer import protocols as EP
-from maia.typing   import CGNSDistTree, MPIComm, List, Tuple
+from maia.typing   import CGNSDistTree, MPIComm, List, Tuple, Optional
 
 def shifted_eso(ngon):
   eso = PT.get_node_from_path(ngon, 'ElementStartOffset')[1]
@@ -279,14 +279,16 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
 
   return isolated_face
 
-def generate_jn_vertex_list(dist_tree: CGNSDistTree, jn_path: str,
-                            comm: MPIComm) -> List[np.ndarray]:
+def generate_jn_vertex_list(dist_tree: CGNSDistTree, 
+                            jn_path: str,
+                            comm: MPIComm) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
   """
   From a FaceCenter join (given by its path in the tree), create the distributed arrays VertexList
   and VertexListDonor such that vertices are matching 1 to 1.
   Return the two index arrays and the partial distribution array, which is
   identical for both of them
   """
+  check_cgns_dist_tree(dist_tree)
   jn = PT.get_node_from_path(dist_tree, jn_path)
   assert PT.Subset.GridLocation(jn) == 'FaceCenter'
 
@@ -374,10 +376,9 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree, jn_path: str,
 
   return pl_vtx, pld_vtx, distri_jn_vtx
 
-def _generate_jns_vertex_list(
-  dist_tree: CGNSDistTree, 
-  interface_pathes: str,
-  comm: MPIComm) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+def _generate_jns_vertex_list(dist_tree: CGNSDistTree, 
+                              interface_pathes: str,
+                              comm: MPIComm) -> Tuple[List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
   """
   Such as generate_jn_vertex_list, create the distributed arrays VertexList
   and VertexListDonor such that vertices are matching 1 to 1 from FaceCenter interfaces.
@@ -460,7 +461,7 @@ def _generate_jns_vertex_list(
     
 
 def generate_jns_vertex_list(dist_tree: CGNSDistTree, comm: MPIComm, 
-                             have_isolated_faces: bool = False) -> None:
+                             have_isolated_faces: Optional[bool] = False) -> None:
   """
   For each 1to1 FaceCenter matching join found in the distributed tree,
   create a corresponding 1to1 Vertex matching join.
@@ -487,6 +488,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree, comm: MPIComm,
         :end-before: #generate_jns_vertex_list@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   #Build join ids to identify opposite joins
   MJT.add_joins_donor_name(dist_tree, comm)
 

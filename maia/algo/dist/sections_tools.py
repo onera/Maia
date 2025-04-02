@@ -6,7 +6,8 @@ import maia.pytree.maia as MT
 from maia.transfer import protocols as EP
 from maia.utils import np_utils, par_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.typing import CGNSDistTree, MPIComm
+from maia.typing import CGNSDistTree, MPIComm, Optional
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """ Gather the Element_t sections of same ElementType into a single one.
@@ -29,6 +30,7 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         :end-before: #concatenate_elt_sections@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   for zone in zones_iterator(dist_tree):
 
     to_gather = {}
@@ -179,7 +181,7 @@ def reorder_sections(tree, permutation):
       
       
 def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree, 
-                                  reverse: bool = False) -> None:
+                                  reverse: Optional[bool] = False) -> None:
   """ Reorder the Elements_t sections of the input tree according to their dimension.
 
   By default, Elements_t nodes are sorted in increasing dimension order (1D, then 2D, then 3D).
@@ -188,8 +190,8 @@ def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree,
   Input tree is modified inplace.
 
   Args:
-    dist_tree   (CGNSTree): Distributed tree
-    reverse (bool, optional): If True, elements of the higher dimension get the lower ElementRange.
+    dist_tree (CGNSDistTree)  : Distributed tree
+    reverse (bool, optional)  : If True, elements of the higher dimension get the lower ElementRange.
       Defaults to ``False``.
 
   Example:
@@ -198,7 +200,7 @@ def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree,
         :end-before: #reorder_elt_sections_from_dim@end
         :dedent: 2
   """
-
+  check_cgns_dist_tree(dist_tree)
   # This is to break tie between 2 elements of same dimension
   base_elts = ['NODE', 'BAR', 'TRI', 'QUAD', 'NGON', 'TETRA', 'PYRA', 'PENTA', 'HEXA', 'NFACE']
   sign = -1 if reverse else 1 # To have increasing of decreasing dim order

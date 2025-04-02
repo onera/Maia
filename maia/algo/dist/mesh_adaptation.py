@@ -14,7 +14,7 @@ from maia.algo.dist.adaptation_utils import convert_vtx_gcs_as_face_bcs,\
                                             deplace_periodic_patch,\
                                             retrieve_initial_domain,\
                                             rm_feflo_added_elt
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def unpack_metric(dist_tree, metric_paths):
   """
@@ -319,7 +319,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   periodic 1to1 GridConnectivity_t nodes in dist_tree will be used to perform mesh adaptation.
 
   Args:
-    dist_tree      (CGNSTree)    : Distributed tree to be adapted. Only U-Elements
+    dist_tree      (CGNSDistTree): Distributed tree to be adapted. Only U-Elements
       single zone trees are managed.
     metric         (str or list) : Path(s) to metric fields (see above)
     comm           (MPIComm)     : MPI communicator
@@ -347,7 +347,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
         :end-before: #adapt_with_feflo@end
         :dedent: 2
   """
-
+  check_cgns_dist_tree(dist_tree)
   tmp_dir = options.get('tmp_dir', './TMP_adapt_dir')
   constraints = options.get('constraints', None)
 

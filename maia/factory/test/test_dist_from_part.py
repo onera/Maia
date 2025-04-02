@@ -539,6 +539,7 @@ def test_recover_failure(comm):
   ptree = PT.yaml.to_cgns_tree(f"""
   WALL Family_t:
   WALL.P{comm.rank}.N0 Zone_t:
+    :CGNS#GlobalNumbering UserDefinedData_t:
   """)
   if comm.rank == 1:
     PT.rm_nodes_from_predicate(ptree, lambda n : PT.get_label(n) in ['Family_t', 'Zone_t'])

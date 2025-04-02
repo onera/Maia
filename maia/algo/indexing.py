@@ -1,11 +1,11 @@
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.typing import CGNSTree, MPIComm, Iterator, Optional, Any
+from maia.typing import *
 import numpy as np
 
 from .dist import ngon_tools as dist_ngon_tools
 from .part import ngon_tools as part_ngon_tools
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 
 is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
 is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
@@ -37,15 +37,15 @@ def get_pe_local(node: CGNSTree) -> np.ndarray:
     else:
       return pe_val
 
-def pe_to_nface(t: CGNSTree, 
+def pe_to_nface(t: CGNSTree,
                 comm: Optional[MPIComm] = None, 
-                removePE: bool = False) -> None:
+                removePE: Optional[bool] = False) -> None:
   """Create a NFace node from a NGon node with ParentElements.
 
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t          (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm       (MPIComm) : MPI communicator, mandatory only for distributed zones
     remove_PE  (bool, optional): If True, remove the ParentElements node.
       Defaults to False.
@@ -67,13 +67,13 @@ def pe_to_nface(t: CGNSTree,
 
 def nface_to_pe(t: CGNSTree, 
                 comm: Optional[MPIComm] = None, 
-                removeNFace: bool = False) -> None:
+                removeNFace: Optional[bool] = False) -> None:
   """Create a ParentElements node in the NGon node from a NFace node.
 
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
     removeNFace (bool, optional): If True, remove the NFace node.
       Defaults to False.
@@ -93,15 +93,15 @@ def nface_to_pe(t: CGNSTree,
       part_ngon_tools.nface_to_pe(zone, removeNFace)
 
 
-def edge_pe_to_ngon(t: CGNSTree, 
+def edge_pe_to_ngon(t: CGNSTree,
                     comm: MPIComm, 
-                    removePE: bool = False) -> None:
+                    removePE: Optional[bool] = False) -> None:
   """Create a NGon node from a Edge node with ParentElements.
 
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t          (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm       (MPIComm) : MPI communicator, mandatory only for distributed zones
     remove_PE  (bool, optional): If True, remove the ParentElements node.
       Defaults to False.
@@ -120,7 +120,7 @@ def edge_pe_to_ngon(t: CGNSTree,
     else:
       part_ngon_tools.edge_pe_to_ngon(zone, removePE)
 
-def ngon_to_edge_pe(t: CGNSTree, 
+def ngon_to_edge_pe(t: CGNSTree,
                     comm: MPIComm, 
                     remove_NGon: Optional[bool] = False) -> None:
   """Create a ParentElements node in the EdgeElements node from a NGon node.
@@ -131,7 +131,7 @@ def ngon_to_edge_pe(t: CGNSTree,
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
     removeNFace (bool, optional): If True, remove the NGon node.
       Defaults to False.

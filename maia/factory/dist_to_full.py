@@ -2,6 +2,7 @@ import maia.pytree as PT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 from maia.typing import CGNSTree, CGNSDistTree, MPIComm, Optional
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def _reshape_S_arrays(tree: CGNSTree) -> None:
   """ Some structured arrays (under FlowSolution_t, GridCoordinates_t) have been
@@ -26,9 +27,9 @@ def dist_to_full_tree(dist_tree: CGNSDistTree,
   maia parallel algorithms.
 
   Args:
-    dist_tree   (CGNSTree) : Distributed CGNS tree
-    comm         (MPIComm) : MPI communicator
-    target (int, optional) : MPI rank holding the output tree. Defaults to 0.
+    dist_tree   (CGNSDistTree) : Distributed CGNS tree
+    comm         (MPIComm)     : MPI communicator
+    target (int, optional)     : MPI rank holding the output tree. Defaults to 0.
   Returns:
     CGNSTree: Full (not distributed) tree or None
 
@@ -38,7 +39,7 @@ def dist_to_full_tree(dist_tree: CGNSDistTree,
         :end-before: #dist_to_full_tree@end
         :dedent: 2
   """
-
+  check_cgns_dist_tree(dist_tree)
   full_tree = PT.deep_copy(dist_tree)
 
   redistribute.redistribute_tree(full_tree, f'gather.{target}', comm)

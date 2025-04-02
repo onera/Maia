@@ -6,6 +6,7 @@ from .part import closest_points as part_closest
 from .dist import localize as dist_localize
 from .part import localize as part_localize
 from maia.typing  import *
+from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 
 def is_distributed(tree):
   for zone in PT.get_all_Zone_t(tree):
@@ -13,8 +14,23 @@ def is_distributed(tree):
       return True
   return False
 
-def localize_points(src_tree: CGNSTree, 
-                    tgt_tree: CGNSTree,
+@overload
+def localize_points(src_tree: CGNSDistTree,
+                    tgt_tree: CGNSDistTree,
+                    location: str = ({'CellCenter', 'Vertex'}),
+                    comm: Optional[MPIComm]= None, 
+                    **options: Dict[str, Any]) -> None:
+  pass
+@overload
+def localize_points(src_tree: CGNSPartTree,
+                    tgt_tree: CGNSPartTree,
+                    location: str = ({'CellCenter', 'Vertex'}),
+                    comm: Optional[MPIComm]= None, 
+                    **options: Dict[str, Any]) -> None:
+  pass
+
+def localize_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
+                    tgt_tree: Union[CGNSDistTree, CGNSPartTree],
                     location: str = ({'CellCenter', 'Vertex'}),
                     comm: Optional[MPIComm]= None, 
                     **options: Dict[str, Any]) -> None:
@@ -27,15 +43,15 @@ def localize_points(src_tree: CGNSTree,
   Note that if the source tree is structured, the output gnum is still a scalar index
   and not a (i,j,k) triplet.
 
-  Localization can be parametred thought the options kwargs:
+  Localization can be parametred thought theUnion[CGNSDistTree, CGNSPartTree], options kwargs:
 
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for the method.
 
   Inputs trees can be either distributed or partitionned, but both must be of same kind.
 
   Args:
-    src_tree (CGNSTree): Source tree
-    tgt_tree (CGNSTree): Target tree
+    src_tree (CGNSDistTree|CGNSPartTree): Source tree
+    tgt_tree (CGNSDistTree|CGNSPartTree): Target tree
     location ({'CellCenter', 'Vertex'}) : Target points to localize
     comm       (MPIComm): MPI communicator
     **options: Additional options related to location strategy
@@ -53,13 +69,30 @@ def localize_points(src_tree: CGNSTree,
     raise ValueError("Source and target tree must be both distributed or partitionned")
   
   if src_dist:
+    check_cgns_dist_tree(src_tree)
+    check_cgns_dist_tree(tgt_tree)
     dist_localize.localize_points(src_tree, tgt_tree, location, comm, **options)
   else:
+    check_cgns_part_tree(src_tree)
+    check_cgns_part_tree(tgt_tree)
     part_localize.localize_points(src_tree, tgt_tree, location, comm, **options)
 
+@overload
+def find_closest_points(src_tree: CGNSDistTree,
+                        tgt_tree: CGNSDistTree,
+                        location: str = ({'CellCenter', 'Vertex'}),
+                        comm: Optional[MPIComm]=None) -> None:
+  pass
 
-def find_closest_points(src_tree: CGNSTree, 
-                        tgt_tree: CGNSTree,
+@overload 
+def find_closest_points(src_tree: CGNSPartTree,
+                        tgt_tree: CGNSPartTree,
+                        location: str = ({'CellCenter', 'Vertex'}),
+                        comm: Optional[MPIComm]=None) -> None:
+  pass
+
+def find_closest_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
+                        tgt_tree: Union[CGNSDistTree, CGNSPartTree],
                         location: str = ({'CellCenter', 'Vertex'}),
                         comm: Optional[MPIComm]=None) -> None:
   """Find the closest points between two trees.
@@ -73,10 +106,10 @@ def find_closest_points(src_tree: CGNSTree,
   Inputs trees can be either distributed or partitionned, but both must be of same kind.
 
   Args:
-    src_tree (CGNSTree): Source tree
-    tgt_tree (CGNSTree): Target tree
-    location ({'CellCenter', 'Vertex'}) : Entity to use to compute closest points
-    comm       (MPIComm): MPI communicator
+    src_tree (CGNSDistTree|CGNSPartTree): Source tree
+    tgt_tree (CGNSDistTree|CGNSPartTree): Target tree
+    location  ({'CellCenter', 'Vertex'}): Entity to use to compute closest points
+    comm      (MPIComm): MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -91,6 +124,10 @@ def find_closest_points(src_tree: CGNSTree,
     raise ValueError("Source and target tree must be both distributed or partitionned")
   
   if src_dist:
+    check_cgns_dist_tree(src_tree)
+    check_cgns_dist_tree(tgt_tree)
     dist_closest.find_closest_points(src_tree, tgt_tree, location, comm)
   else:
+    check_cgns_part_tree(src_tree)
+    check_cgns_part_tree(tgt_tree)
     part_closest.find_closest_points(src_tree, tgt_tree, location, comm)

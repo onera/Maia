@@ -8,7 +8,8 @@ import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
 from   maia.typing import CGNSTree, CGNSDistTree, MPIComm
 
-from maia.io.distribution_tree import interpret_policy
+from maia.io.distribution_tree   import interpret_policy
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 
 # ---------------------------------------------------------------------------------------
@@ -244,6 +245,7 @@ def redistribute_tree(dist_tree: CGNSDistTree,
       :end-before: #redistribute_dist_tree@end
       :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   distribution = interpret_policy(policy, comm)
 
   for zone in PT.iter_all_Zone_t(dist_tree):

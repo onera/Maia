@@ -135,9 +135,9 @@ def extract_edges(dist_tree, domain_pls, comm):
   - point_list *array* if dist_tree is Zone_t
 
   Args:
-    dist_tree      (CGNSTree)   : Unstructured CGNSTree or Zone_t
-    domain_pls     (dict or str): PointList of edges to extract defined by domain
-    comm           (MPIComm)    : MPI communicator
+    dist_tree      (CGNSDistTree) : Unstructured CGNSTree or Zone_t
+    domain_pls     (dict or str)  : PointList of edges to extract defined by domain
+    comm           (MPIComm)      : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py

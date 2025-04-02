@@ -7,7 +7,7 @@ from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
 from maia.typing      import *
-
+from maia.pytree.maia.check_tree import check_cgns_full_tree
 
 def distribute_pl_node(node: CGNSTree, 
                        comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
@@ -239,9 +239,12 @@ def _broadcast_full_to_dist(tree: CGNSTree,
 
   return dist_tree
 
-def full_to_dist_tree(tree: CGNSTree,
+@overload
+def full_to_dist_tree(full_tree: CGNSTree, comm: MPIComm, owner: None) -> CGNSDistTree: ...
+
+def full_to_dist_tree(full_tree: Optional[CGNSTree],
                       comm: MPIComm, 
-                      owner: int = None) -> CGNSDistTree:
+                      owner: Optional[int] = None) -> CGNSDistTree:
   """ Generate a distributed tree from a standard (full) CGNS Tree.
 
   Input tree can be defined on a single process (using ``owner = rank_id``),
@@ -250,7 +253,7 @@ def full_to_dist_tree(tree: CGNSTree,
   In both cases, output distributed tree will be equilibrated over all the processes.
 
   Args:
-    tree       (CGNSTree) : Full (not distributed) tree.
+    full_tree   (CGNSTree) : Full (not distributed) tree.
     comm        (MPIComm) : MPI communicator
     owner (int, optional) : MPI rank holding the input tree. Defaults to None.
   Returns:
@@ -262,11 +265,12 @@ def full_to_dist_tree(tree: CGNSTree,
         :end-before: #full_to_dist_tree@end
         :dedent: 2
   """
-
+  if full_tree is not None:
+    check_cgns_full_tree(full_tree)
   if owner is not None:
-    dist_tree = _broadcast_full_to_dist(tree, comm, owner)
+    dist_tree = _broadcast_full_to_dist(full_tree, comm, owner)
     redistribute.redistribute_tree(dist_tree, 'uniform', comm)
     return dist_tree
   else:
-    return _distribute_tree(tree, comm)
+    return _distribute_tree(full_tree, comm)
 

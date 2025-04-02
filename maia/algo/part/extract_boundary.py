@@ -7,7 +7,7 @@ from maia.transfer  import utils as te_utils
 from maia.typing import CGNSTree, CGNSPartTree, MPIComm, List, Callable, Tuple
 
 from .point_cloud_utils import create_sub_numbering
-
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 def _struct2d_connectivity(zone: CGNSTree) -> Tuple[np.ndarray, np.ndarray]:
@@ -168,7 +168,8 @@ def extract_surf_from_bc(
 
   Return lists (of size n_part) of sub face_vtx connectivity, sub vtx coordinates and global numberings
   """
-
+  for part_zone in part_zones:
+    check_cgns_part_tree(part_zone)
   bc_face_vtx_l     = []
   bc_face_vtx_idx_l = []
   bc_coords_l       = []

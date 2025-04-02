@@ -7,6 +7,7 @@ from maia.algo.dist import matching_jns_tools as MJT
 from maia.typing    import *
 
 import numpy as np
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def concatenate_subset_nodes(nodes: List[CGNSTree],
                              comm: MPIComm,
@@ -184,7 +185,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
 
 def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                       comm: MPIComm,
-                                      families: Union[str, List[str]] = '*') -> None:
+                                      families: Optional[Union[str, List[str]]] = '*') -> None:
   """ For each family, gather the related BC nodes into a single BC.
 
   If the shorcut ``'*'`` is used for ``families`` argument,
@@ -216,6 +217,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
       :dedent: 2
 
   """
+  check_cgns_dist_tree(dist_tree)
   for dist_zone in zones_iterator(dist_tree):
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
@@ -285,7 +287,7 @@ is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
 
 def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                         comm: MPIComm,
-                                        families: Union[str, List[str]] = '*') -> None:
+                                        families: Optional[Union[str, List[str]]] = '*') -> None:
   """ For each given family, deconcatenate the related BC gathered with
   the concatenation service.
 
@@ -311,6 +313,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
       :dedent: 2
 
   """
+  check_cgns_dist_tree(dist_tree)
   for dist_zone in zones_iterator(dist_tree):
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"

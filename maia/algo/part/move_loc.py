@@ -9,7 +9,7 @@ from maia.typing import CGNSTree, CGNSPartTree, MPIComm, List, Any
 from . import multidom_gnum
 from . import connectivity_utils
 from . import geometry
-
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 import Pypdm.Pypdm as PDM
 
 class CenterToNode:
@@ -164,7 +164,7 @@ class NodeToCenter:
 
 
 
-def centers_to_nodes(tree: CGNSPartTree, 
+def centers_to_nodes(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
                      **options: Any) -> None:
@@ -183,7 +183,7 @@ def centers_to_nodes(tree: CGNSPartTree,
     apply to internal partitioning interfaces, which are always crossed.
 
   Args:
-    tree      (CGNSTree): Partionned tree
+    part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
     **options: Options related to interpolation, see above.
@@ -199,12 +199,13 @@ def centers_to_nodes(tree: CGNSPartTree,
         :end-before: #centers_to_nodes@end
         :dedent: 2
   """
-  C2N = CenterToNode(tree, comm, **options)
+  check_cgns_part_tree(part_tree)
+  C2N = CenterToNode(part_tree, comm, **options)
 
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
-def nodes_to_centers(tree: CGNSPartTree, 
+def nodes_to_centers(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
                      **options: Any) -> None:
@@ -219,7 +220,7 @@ def nodes_to_centers(tree: CGNSPartTree,
   - ``idw_power`` (float, default = 1) -- Power to which the cell-vertex distance is elevated.
 
   Args:
-    tree      (CGNSTree): Partionned tree
+    part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
     **options: Options related to interpolation, see above.
@@ -235,7 +236,8 @@ def nodes_to_centers(tree: CGNSPartTree,
         :end-before: #nodes_to_centers@end
         :dedent: 2
   """
-  N2C = NodeToCenter(tree, comm, **options)
+  check_cgns_part_tree(part_tree)
+  N2C = NodeToCenter(part_tree, comm, **options)
 
   for container_name in containers_name:
     N2C.move_fields(container_name)

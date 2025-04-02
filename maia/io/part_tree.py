@@ -7,7 +7,7 @@ import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from maia.factory.partitioning import compute_nosplit_weights
-
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
 
@@ -199,6 +199,7 @@ def part_tree_to_file(part_tree: CGNSPartTree,
         :end-before: #save_part_tree@end
         :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   rank = comm.Get_rank()
   filename = str(filename)
   base_name, extension = os.path.splitext(filename)

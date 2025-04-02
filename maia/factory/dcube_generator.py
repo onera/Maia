@@ -262,8 +262,8 @@ def dcube_struct_generate(n_vtx: int,
 def generate_dist_block(n_vtx: Union[int, Tuple[int,...]], 
                         cgns_elmt_name: str,
                         comm: MPIComm,
-                        origin: np.ndarray = np.zeros(3), 
-                        length: Union[float, Tuple[float, ...]] = 1.) -> CGNSDistTree:
+                        origin: Optional[np.ndarray] = np.zeros(3), 
+                        length: Optional[Union[float, Tuple[float, ...]]] = 1.) -> CGNSDistTree:
   """Generate a distributed mesh with a block shape (line, parallelogram or parallelepiped). 
   
   This function returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

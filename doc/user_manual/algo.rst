@@ -17,7 +17,7 @@ The ``maia.algo.seq`` module contains a few sequential utility algorithms.
 Distributed algorithms
 ----------------------
 
-The following algorithms applies on maia distributed trees.
+The following algorithms apply on maia distributed trees.
 
 
 Connectivities conversions
@@ -67,7 +67,7 @@ Data management
 Partitioned algorithms
 ----------------------
 
-The following algorithms applies on maia partitioned trees.
+The following algorithms apply on maia partitioned trees.
 
 Geometric calculations
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ Interpolations
 Generic algorithms
 ------------------
 
-The following algorithms applies on maia distributed or partitioned trees
+The following algorithms apply on maia distributed or partitioned trees
 
 Geometry transformations
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -124,7 +124,7 @@ Connectivities conversions
 Sequential algorithms
 ---------------------
 
-The following algorithms applies on regular (full) pytrees. Note that
+The following algorithms apply on regular (full) pytrees. Note that
 these compatibility functions are also wrapped in the ``maia_poly_old_to_new``
 and ``maia_poly_new_to_old`` scripts, see :ref:`Quick start<quick_start_req>` section.
 
