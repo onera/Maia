@@ -67,8 +67,29 @@ def test_unroll_pr():
                            [7,7,7,7,6,6,6,6,5,5,5,5]])).all()
   assert (pr_utils.unroll_pr(np.array([[1,1], [4,4], [1,1]])) == np.array([[1], [4], [1]])).all()
 
-class Test_compute_pointList_from_pointRanges():
-  class Test_face():
+class Test_compute_pointList_from_pointRanges:
+  class Test_edge:
+    nVtx       = np.array([6, 3], np.int32)
+    loc        = "EdgeCenter"
+
+    def test_emptyRange(self):
+      pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,"I"+self.loc,dtype=np.int32)
+      assert pointList.shape == (1,0) and pointList.dtype == np.int32
+      with pytest.raises(ValueError):
+        pointList  = pr_utils.compute_pointList_from_pointRanges([],self.nVtx,"I"+self.loc)
+
+    def test_simple_range(self):
+      sub_ranges = [np.array([[6,6],[1,2]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"I"+self.loc)
+      assert (pointList == [[6,12]]).all()
+
+    def test_mult_range(self):
+      sub_ranges = [np.array([[4,5],[3,3]]), np.array([[1,3],[3,3]])]
+      pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,"J"+self.loc)
+      assert (pointList == [[26,27,23,24,25]]).all()
+
+
+  class Test_face:
     nVtx       = np.array([3, 3, 3], np.int32)
     loc        = "FaceCenter"
     # --------------------------------------------------------------------------- #
@@ -112,7 +133,7 @@ class Test_compute_pointList_from_pointRanges():
       assert (pointList == [[14,20]]).all()  
     
 
-  class Test_vertex():
+  class Test_vertex:
     nVtx       = np.array([3, 3, 3], np.int64)
     loc        = "Vertex"
     
@@ -150,7 +171,7 @@ class Test_compute_pointList_from_pointRanges():
       pointList  = pr_utils.compute_pointList_from_pointRanges(sub_ranges,self.nVtx,self.loc)
       assert (pointList == [[2,3,5,6]]).all()
 
-  class Test_cell():
+  class Test_cell:
     nVtx       = np.array([3, 3, 3])
     loc        = "CellCenter"
     # --------------------------------------------------------------------------- #

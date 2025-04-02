@@ -37,30 +37,65 @@ def test_s_location():
 
 # --------------------------------------------------------------------------- #
 
-def test_bc_s_to_bc_u():
-  #We dont test value of PL here, this is carried out by Test_compute_pointList_from_pointRanges
+@pytest.mark.parametrize('output_loc', ['FaceCenter', 'Vertex'])
+def test_bc_s_to_bc_u(output_loc):
   n_vtx = np.array([4,4,4])
-  bc_s = PT.new_BC('MyBCName', type='BCOutflow', point_range=[[1,4], [1,4], [4,4]])
-  bc_u = s_to_u.bc_s_to_bc_u(bc_s, n_vtx, 'FaceCenter', 0, 1)
+  bc_s = PT.new_BC('MyBCName', type='BCOutflow', point_range=[[1,4], [1,4], [3,3]])
+  bc_u = s_to_u.bc_s_to_bc_u(bc_s, n_vtx, output_loc, 0, 1)
   assert PT.get_name(bc_u) == 'MyBCName'
   assert PT.get_value(bc_u) == 'BCOutflow'
-  assert PT.Subset.GridLocation(bc_u) == 'FaceCenter'
-  assert PT.get_value(PT.get_child_from_name(bc_u, 'PointList')).shape == (1,9)
+  assert PT.Subset.GridLocation(bc_u) == output_loc
+  if output_loc == 'FaceCenter':
+    assert PT.get_value(PT.get_child_from_name(bc_u, 'PointList')).shape == (1,9)
+    assert np.array_equal(PT.get_child_from_name(bc_u, 'PointList')[1], [[91,92,93,94,95,96,97,98,99]])
+  elif output_loc == 'Vertex':
+    assert PT.get_value(PT.get_child_from_name(bc_u, 'PointList')).shape == (1,16)
+    assert np.array_equal(PT.get_child_from_name(bc_u, 'PointList')[1], [[33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48]])
 
-def test_bcds_s_to_bcds_u():
-  #We dont test value of PL here, this is carried out by Test_compute_pointList_from_pointRanges
+@pytest.mark.parametrize('output_loc', ['Vertex', 'FaceCenter'])
+def test_bcds_s_to_bcds_u(output_loc):
   n_vtx = np.array([4,4,4])
   bc_s = PT.new_BC('MyBCName', type='BCOutflow', point_range=[[1,4], [1,4], [4,4]])
-  MT.newDistribution({'Index' : [0,16,16]}, parent=bc_s)
-  bcds = PT.new_child(bc_s, 'BCDataSet', 'BCDataSet_t')
-  bcdata = PT.new_child(bcds, "DirichletData", "BCData_t")
-  PT.new_DataArray("array", np.arange(16), parent=bcdata)
-  bc_u = s_to_u.bc_s_to_bc_u(bc_s, n_vtx, 'FaceCenter', 0, 1)
-  bcds = PT.get_node_from_name(bc_u, 'BCDataSet')
-  assert bcds is not None
-  assert PT.Subset.GridLocation(bcds) == 'Vertex'
-  assert PT.get_node_from_name(bcds, 'PointList') is not None
-  assert PT.get_node_from_name(bcds, 'array') is not None
+  distri = MT.newDistribution({'Index' : [0,16,16]}, parent=bc_s)
+
+  # A dataset w/o PointRange
+  ds = PT.new_BCDataSet('RelatedDS', parent=bc_s)
+  bcdata = PT.new_BCData("NeumannData", fields={'array' : np.ones(16)}, parent=ds)
+
+  # A dataset still Vertex located, but with its PointRange
+  ds = PT.new_BCDataSet('CustomVertexDS', point_range=[[2,3], [2,3], [4,4]], parent=bc_s)
+  PT.maia.newDistribution({'Index' : [0,4,4]}, parent=ds)
+  PT.new_BCData('NeumannData', fields={'array' : 2*np.ones(4)}, parent=ds)
+
+  # A dataset already FaceCenter located
+  ds = PT.new_BCDataSet('CustomFaceDS', point_range=[[1,3], [1,3], [4,4]], loc='KFaceCenter', parent=bc_s)
+  PT.maia.newDistribution({'Index' : [0,9,9]}, parent=ds)
+  PT.new_BCData('NeumannData', fields={'array' : 3*np.ones(9)}, parent=ds)
+
+  bc_u = s_to_u.bc_s_to_bc_u(bc_s, n_vtx, output_loc, 0, 1)
+
+  # If BC loc is preserved, related DS remains related. Otherwise, it stays Vertex and becomes unrelated
+  ds = PT.get_child_from_name(bc_u, 'RelatedDS')
+  if output_loc == 'FaceCenter':
+    assert (l:=PT.get_child_from_name(ds, 'GridLocation')) is not None and PT.get_value(l) == 'Vertex'
+    assert np.array_equal(PT.get_child_from_name(ds, 'PointList')[1], np.arange(49,64+1).reshape((1,-1)))
+  elif output_loc == 'Vertex':
+    assert PT.get_child_from_name(ds, 'GridLocation') is None
+    assert PT.get_child_from_name(ds, 'PointList') is None
+  assert PT.get_node_from_name(ds, 'array') is not None
+
+  # Unrelated DS keeps its location and get a new PL
+  ds = PT.get_child_from_name(bc_u, 'CustomVertexDS')
+  assert PT.BCDataSet.GridLocation(ds, bc_u) == 'Vertex'
+  assert np.array_equal(PT.get_child_from_name(ds, 'PointList')[1], [[54,55,58,59]])
+  assert PT.get_node_from_name(ds, 'array') is not None
+
+  ds = PT.get_child_from_name(bc_u, 'CustomFaceDS')
+  assert PT.BCDataSet.GridLocation(ds, bc_u) == 'FaceCenter'
+  assert np.array_equal(PT.get_child_from_name(ds, 'PointList')[1], [[100,101,102,103,104,105,106,107,108]])
+  assert PT.get_node_from_name(ds, 'array') is not None
+
+
 
 def test_gc_s_to_gc_u():
   #https://cgns.github.io/CGNS_docs_current/sids/cnct.html

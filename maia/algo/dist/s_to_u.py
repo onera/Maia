@@ -436,7 +436,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
           PT.rm_children_from_label(zonegc_s, "GridConnectivity1to1_t")
           PT.get_children(zonegc_s).extend(gc_u_list)
 
-        # Face distribution does not exist on U meshes
+        # Face or Edge distribution does not exist on U meshes
         distri = MT.getDistribution(zone)
         PT.rm_children_from_name(distri, 'Face')
         PT.rm_children_from_name(distri, 'Edge')
