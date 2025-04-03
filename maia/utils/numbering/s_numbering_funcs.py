@@ -251,7 +251,7 @@ def edgejIndex_to_ij(idx, n_cell, n_vtx):
 ###############################################################################
 
 ###############################################################################
-def ngon_dconnectivity_from_gnum(bounds, n_cell, dtype):
+def ngon_dconnectivity_from_gnum(bounds, n_vtx, dtype):
   """
   Generate a distributed ngon connectivity between the indicated face gnum ids for
   a zone of a given size.
@@ -259,11 +259,28 @@ def ngon_dconnectivity_from_gnum(bounds, n_cell, dtype):
     [begin; endI[ for i-normal faces   Examples :
     [endI; endJ[  for j-normal faces    * [100, 200, 300, 300] -> generate ifaces 100-200 and jface 200-300
     [endJ; endK[  for k-normal faces    * [300, 300, 300, 400] -> generate kfaces 300-400
-  Size of dist zone must be given as the number of cells (size=3)
+  Size of dist zone must be given as the number of vertices (size=3)
   """
   n_face_loc = bounds[3] - bounds[0]
   face_pe  = np.empty((n_face_loc, 2), order='F', dtype=dtype)
   face_vtx = np.empty(4*n_face_loc, dtype=dtype)
 
-  cnumbering.ngon_dconnectivity_from_gnum(*bounds, np.array(n_cell, dtype=dtype), face_pe, face_vtx)
+  cnumbering.ngon_dconnectivity_from_gnum(*bounds, np.array(n_vtx, dtype=dtype), face_pe, face_vtx)
   return face_vtx, face_pe
+
+def edge_dconnectivity_from_gnum(bounds, n_vtx, dtype):
+  """
+  Generate a distributed edge connectivity between the indicated edge gnum ids for
+  a zone of a given size.
+  Edges will be generated for global id between
+    [begin; endI[ for i-normal edges   Examples :
+    [endI; endJ[  for j-normal edges    * [100, 200, 300] -> generate iedges 100-200 and jedges 200-300
+    [endJ; endK[  for k-normal faces    * [300, 300, 300, 400] -> generate kfaces 300-400
+  Size of dist zone must be given as the number of vertices (size=2)
+  """
+  n_edge_loc = bounds[2] - bounds[0]
+  edge_pe  = np.empty((n_edge_loc, 2), order='F', dtype=dtype)
+  edge_vtx = np.empty(2*n_edge_loc, dtype=dtype)
+
+  cnumbering.edge_dconnectivity_from_gnum(*bounds, np.array(n_vtx, dtype=dtype), edge_pe, edge_vtx)
+  return edge_vtx, edge_pe

@@ -4,7 +4,7 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
-from maia.utils           import py_utils, s_numbering, pr_utils
+from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
 
@@ -18,22 +18,31 @@ def get_output_loc(request_dict, s_node):
     out_loc = PT.Subset.GridLocation(s_node)
     if 'FaceCenter' in out_loc: #Remove 'I', 'J', or 'K' for FaceCenter
       out_loc = 'FaceCenter'
+    if 'EdgeCenter' in out_loc: #Remove 'I', 'J' for EdgeCenter
+      out_loc = 'EdgeCenter'
   if isinstance(out_loc, str):
     out_loc = [out_loc]
   return out_loc
 
 def _s_location(loc, bnd_axis):
-  return loc if loc != 'FaceCenter' else ['I', 'J', 'K'][bnd_axis] + 'FaceCenter'
+  if loc == 'EdgeCenter':
+    return ['I', 'J'][bnd_axis] + 'EdgeCenter'
+  elif loc == 'FaceCenter':
+    return ['I', 'J', 'K'][bnd_axis] + 'FaceCenter'
+  else:
+    return loc
 
 ###############################################################################
-def n_face_per_dir(n_vtx, n_edge):
-  """
-  Compute the number of faces in each direction from the number of vtx/edge
-  in each direction
-  """
-  return np.array([n_vtx[0]*n_edge[1]*n_edge[2],
-                   n_vtx[1]*n_edge[0]*n_edge[2],
-                   n_vtx[2]*n_edge[0]*n_edge[1]])
+def n_face_per_dir(n_vtx):
+  """ Compute the number of faces in each direction from the number of vtx in each direction """
+  return (n_vtx[0]*(n_vtx[1]-1)*(n_vtx[2]-1),
+          n_vtx[1]*(n_vtx[0]-1)*(n_vtx[2]-1),
+          n_vtx[2]*(n_vtx[0]-1)*(n_vtx[1]-1))
+
+def n_edge_per_dir(n_vtx):
+  """ Compute the number of edges in each direction from the number of vtx in each direction """
+  return (n_vtx[0]*(n_vtx[1]-1),
+          n_vtx[1]*(n_vtx[0]-1))
 ###############################################################################
 
 
@@ -54,6 +63,8 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   bc_size = pr_utils.transform_bnd_pr_size(point_range, input_loc, output_loc)
   bc_range = py_utils.uniform_distribution_at(bc_size.prod(), i_rank, n_rank)
   bc_slabs = HFR2S.compute_slabs(bc_size, bc_range)
+  if len(n_vtx_zone) == 2:
+    bc_slabs = [slab[:2] for slab in bc_slabs]
 
   shift = pr_utils.normal_index_shift(point_range, n_vtx_zone, bnd_axis, input_loc, output_loc)
   #Prepare sub pointRanges from slabs
@@ -64,7 +75,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     sub_pr[bnd_axis,:] += shift
 
   _loc = _s_location(output_loc, bnd_axis)
-  point_list = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, _loc)
+  point_list = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_zone, _loc, dtype=point_range.dtype)
 
   bc_u = PT.new_node(PT.get_name(bc_s), PT.get_label(bc_s), PT.get_value(bc_s))
   PT.new_GridLocation(output_loc, parent=bc_u)
@@ -77,22 +88,23 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     is_related = ds_point_range is None
     if not is_related: #BCDS has its own location / pr
       ds_distri = MT.getDistribution(bcds, 'Index')[1]
-      ds_loc   = PT.Subset.GridLocation(bcds)
     if is_related: #BCDS has same location / pr than bc
       ds_point_range = PT.get_child_from_name(bc_s, 'PointRange')
       ds_distri = MT.getDistribution(bc_s, 'Index')[1]
-      ds_loc   = input_loc
+    ds_loc = PT.BCDataSet.GridLocation(bcds, bc_s)
     ds_size = PT.PointRange.SizePerIndex(ds_point_range)
     ds_slabs = HFR2S.compute_slabs(ds_size, ds_distri[0:2])
     ds_sub_pr_list = [np.asarray(slab, ds_point_range[1].dtype) for slab in ds_slabs]
+    if len(n_vtx_zone) == 2:
+      ds_sub_pr_list = [slab[:2] for slab in ds_sub_pr_list]
     for sub_pr in ds_sub_pr_list:
       sub_pr[:,0] += ds_point_range[1][:,0]
       sub_pr[:,1] += ds_point_range[1][:,0] - 1
-    ds_output_loc = 'FaceCenter' if ds_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'] else ds_loc
+    ds_output_loc = ds_loc[1:] if ds_loc[0] in 'IJK' else ds_loc
 
     if not (is_related and ds_output_loc == output_loc): #Otherwise, point list has already been computed
       _loc = _s_location(ds_output_loc, bnd_axis)
-      ds_pl = pr_utils.compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, _loc)
+      ds_pl = pr_utils.compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, _loc, dtype=point_range.dtype)
       PT.update_child(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
       PT.new_IndexArray(value=ds_pl, parent=bcds)
       MT.newDistribution({'Index' : ds_distri}, parent=bcds)
@@ -152,6 +164,8 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   gc_slabs = HFR2S.compute_slabs(gc_size, gc_range)
 
   sub_pr_list = [np.asarray(slab, point_range.dtype) for slab in gc_slabs]
+  if len(n_vtx_zone) == 2:
+    sub_pr_list = [slab[:2] for slab in sub_pr_list]
   #Compute sub pointranges from slab
   for sub_pr in sub_pr_list:
     sub_pr[:,0] += point_range_loc[:,0]
@@ -179,12 +193,17 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
       sub_pr_opp[reverted,:] -= 1
 
   # If the axes of opposite PointRange occurs in reverse order, vect. loop must be reverted thanks to order
-  loc_transform_2d = np.abs(np.delete(loc_transform, bnd_axis))
-  order = 'C' if loc_transform_2d[0] > loc_transform_2d[1] else 'F'
+  if len(n_vtx_zone) == 3:
+    loc_transform_2d = np.abs(np.delete(loc_transform, bnd_axis))
+    order = 'C' if loc_transform_2d[0] > loc_transform_2d[1] else 'F'
+  else:
+    # Not really relevant for 2D because we work on line of points; result will be the same
+    order='F'
 
   _loc, _loc_opp = _s_location(output_loc, bnd_axis), _s_location(output_loc, bnd_axis_opp)
-  point_list_loc     = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, _loc)
-  point_list_opp_loc = pr_utils.compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, _loc_opp, order)
+  dtype = point_range_loc.dtype
+  point_list_loc     = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, n_vtx_loc, _loc, dtype=dtype)
+  point_list_opp_loc = pr_utils.compute_pointList_from_pointRanges(sub_pr_opp_list, n_vtx_opp_loc, _loc_opp, order, dtype=dtype)
 
   if gc_is_reference(gc_s, zone_path):
     point_list, point_list_opp = point_list_loc, point_list_opp_loc
@@ -205,24 +224,21 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
 ###############################################################################
 
 ###############################################################################
-def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
+def zonedims_to_ngon_3d(n_vtx_zone, comm, dtype=None):
   """
   Generates distributed NGonElement node from the number of
   vertices in the zone.
   """
-  i_rank = comm.Get_rank()
-  n_rank = comm.Get_size()
+  nface_per_dir = n_face_per_dir(n_vtx_zone)
+  nf_i, nf_j, nf_k = nface_per_dir
+  face_distri = par_utils.uniform_distribution(sum(nface_per_dir), comm)
 
-  n_cell_zone = tuple(k-1 for k in n_vtx_zone)
-
-  nf_i, nf_j, nf_k = n_face_per_dir(n_vtx_zone, n_cell_zone)
-  n_face_tot = nf_i + nf_j + nf_k
-  face_distri = py_utils.uniform_distribution_at(n_face_tot, i_rank, n_rank)
+  n_face_tot = face_distri[2]
+  n_face_loc = face_distri[1] - face_distri[0]
 
   if dtype is None:
     dtype = np.int32 if n_face_tot < np.iinfo(np.int32).max else np.int64
 
-  n_face_loc = face_distri[1] - face_distri[0]
   #Bounds stores for each proc [id of first iface, id of first jface, id of first kface, id of last kface]
   # assuming that face are globally ordered i, then j, then k
   bounds = np.empty(4, dtype=dtype)
@@ -237,40 +253,86 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
 
   assert bounds[3]-bounds[0] == n_face_loc
 
-
   face_vtx_idx = 4*np.arange(face_distri[0], face_distri[1]+1, dtype=dtype)
-  face_vtx, face_pe = s_numbering.ngon_dconnectivity_from_gnum(bounds+1,n_cell_zone, dtype)
+  face_vtx, face_pe = s_numbering.ngon_dconnectivity_from_gnum(bounds+1,n_vtx_zone, dtype)
 
   _erange = np.array([1, n_face_tot], dtype=dtype)
   ngon = PT.new_NGonElements('NGonElements', erange=_erange, eso=face_vtx_idx, ec=face_vtx, pe=face_pe)
 
-  cg_face_distri = np.array([*face_distri, n_face_tot], dtype=pdm_gnum_dtype)
-  MT.newDistribution({'Element' : cg_face_distri, 'ElementConnectivity' : 4*cg_face_distri}, parent=ngon)
+  MT.newDistribution({'Element' : face_distri, 'ElementConnectivity' : 4*face_distri}, parent=ngon)
 
   return ngon
 ###############################################################################
 
 ###############################################################################
+def zonedims_to_ngon_2d(n_vtx_zone, comm, dtype=None):
+
+  nedge_per_dir = n_edge_per_dir(n_vtx_zone)
+  ne_i, ne_j = nedge_per_dir
+  edge_distri = par_utils.uniform_distribution(sum(nedge_per_dir), comm)
+
+  n_edge_tot = edge_distri[2]
+  n_edge_loc = edge_distri[1] - edge_distri[0]
+
+  if dtype is None:
+    dtype = np.int32 if n_edge_tot < np.iinfo(np.int32).max else np.int64
+
+  #Bounds stores for each proc [id of first iedge, id of first jedge, id of last jedge]
+  # assuming that edge are globally ordered i, then j
+  bounds = np.empty(3, dtype=dtype)
+  bounds[0] = edge_distri[0]
+  bounds[1] = bounds[0]
+  if bounds[0] < ne_i:
+    bounds[1] = min(edge_distri[1], ne_i)
+  bounds[2] = edge_distri[1]
+
+  assert bounds[2]-bounds[0] == n_edge_loc
+
+  edge_vtx, edge_pe = s_numbering.edge_dconnectivity_from_gnum(bounds+1, n_vtx_zone, dtype)
+
+  _erange = np.array([1, n_edge_tot], dtype=dtype)
+  edge = PT.new_Elements('EdgeElements', 'BAR_2', erange=_erange, econn=edge_vtx, pe=edge_pe)
+
+  MT.newDistribution({'Element' : edge_distri}, parent=edge)
+  return edge
+###############################################################################
+
+###############################################################################
+def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
+  if len(n_vtx_zone) == 3:
+    return zonedims_to_ngon_3d(n_vtx_zone, comm, dtype)
+  elif len(n_vtx_zone) == 2:
+    return zonedims_to_ngon_2d(n_vtx_zone, comm, dtype)
+###############################################################################
+
+###############################################################################
 def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
-  """Performs the destructuration of the input ``dist_tree``.
+  """Performs the destructuration of the input distributed tree.
 
-  Tree is modified in place: a NGON_n or HEXA_8 (not yet implemented)
-  connectivity is generated, and the following subset nodes are converted:
-  BC_t, BCDataSet_t and GridConnectivity1to1_t.
+  The element connectivity can be generated:
 
-  Note: 
-    Exists also as :func:`convert_s_to_ngon()` with connectivity set to 
-    NGON_n and subset_loc set to FaceCenter.
+  - as polyedric elements, if ``connectivity`` is set to ``Poly``; 
+  - as standard elements, if ``connectivity`` is set to ``Standard`` (**not yet implemented**).
+
+  In addition, the output location of the ``BC_t`` and ``GridConnectivity(1to1)_t`` subsets can be
+  specified with the ``subset_loc`` dictionnary, using respectively the keys ``BC_t`` and ``GC_t``.
+  If nothing is specified, these nodes keep their initial ``GridLocation_t`` value.
+
+  Input tree is modified inplace.
+
+  Note:
+    Exists also as :func:`convert_s_to_ngon` with connectivity set to 
+    ``Poly`` and subset location set to ``FaceCenter`` (or ``EdgeCenter`` for 2D meshes).
 
   Args:
     dist_tree (CGNSTree): Structured tree
     connectivity (str): Type of elements used to describe the connectivity.
-      Admissible values are ``"NGON_n"`` and ``"HEXA"`` (not yet implemented).
+      Admissible values are ``"Poly"`` and ``"Standard"`` (not yet implemented).
     comm       (MPIComm) : MPI communicator
     subset_loc (dict, optional):
-        Expected output GridLocation for the following subset nodes: BC_t, GC_t.
+        Expected output GridLocation for the following subset nodes: ``BC_t``, ``GC_t``.
         For each label, output location can be a single location value, a list
-        of locations or None to preserve the input value. Defaults to None.
+        of locations or None to preserve the input value. Defaults to ``None``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -304,7 +366,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
 
         PT.add_child(zone, zonedims_to_ngon(n_vtx, comm, zone[1].dtype))
 
-        loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'CellCenter': '#Cell'}
+        loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'EdgeCenter' : '#Edge', 'CellCenter': '#Cell'}
         zonebc_s = PT.get_child_from_label(zone, "ZoneBC_t")
         if zonebc_s is not None:
           bc_u_list = list()
@@ -353,6 +415,8 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
             pl = PT.get_child_from_name(gc_s, 'PointList')[1]
             pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path])
             pl_idx = pl_idx.reshape((1,-1), order='F')
+            if 'EdgeCenter' in loc: #IEdge or JEdge -> EdgeCenter
+              PT.update_child(gc_s, 'GridLocation', value='EdgeCenter')
             if 'FaceCenter' in loc: #IFace, JFace or KFaceCenter -> FaceCenter
               PT.update_child(gc_s, 'GridLocation', value='FaceCenter')
             PT.update_child(gc_s, 'PointList', value=pl_idx)
@@ -372,21 +436,28 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
           PT.rm_children_from_label(zonegc_s, "GridConnectivity1to1_t")
           PT.get_children(zonegc_s).extend(gc_u_list)
 
-        # Face distribution does not exist on U meshes
+        # Face or Edge distribution does not exist on U meshes
         distri = MT.getDistribution(zone)
         PT.rm_children_from_name(distri, 'Face')
+        PT.rm_children_from_name(distri, 'Edge')
 
 ###############################################################################
 def convert_s_to_ngon(dist_tree, comm):
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
+  bases_dim = set(PT.get_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree))
+  assert len(bases_dim) == 1, "Differents CellDimension in same tree are not allowed"
+  _subset_loc = 'EdgeCenter' if list(bases_dim)[0] == 2 else 'FaceCenter'
   convert_s_to_u(dist_tree,
                  'NGON_n',
                  comm,
-                 {'BC_t' : 'FaceCenter', 'GC_t' : 'FaceCenter'})
+                 {'BC_t' : _subset_loc, 'GC_t' : _subset_loc})
 
 def convert_s_to_poly(dist_tree, comm):
   """Same as convert_s_to_ngon, but also creates the NFace connectivity"""
-  from maia.algo import pe_to_nface
+  from maia.algo import pe_to_nface, edge_pe_to_ngon
   convert_s_to_ngon(dist_tree, comm)
   for z in PT.iter_all_Zone_t(dist_tree):
-    pe_to_nface(z,comm)
+    if PT.Zone.CellDimension(z) == 2:
+      edge_pe_to_ngon(z,comm)
+    elif PT.Zone.CellDimension(z) == 3:
+      pe_to_nface(z,comm)

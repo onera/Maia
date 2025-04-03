@@ -66,16 +66,13 @@ def unroll_pr(pr):
   return out
 
 
-def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, loc, order='F'):
+def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, loc, order='F', dtype=None):
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
   describe entity of kind loc, which can take the values '{I,J,K}FaceCenter', 'Vertex' or 'CellCenter'.
   The pointlist array will be output at the same location.
   Note that the pointRange intervals can be reverted (start > end) as it occurs in GC nodes.
   """
-
-  n_cell_S = [nv - 1 for nv in n_vtx_S]
-
   dim = len(n_vtx_S)
 
   # The lambda func ijk_to_func redirect to the good indexing function depending
@@ -106,8 +103,13 @@ def compute_pointList_from_pointRanges(sub_pr_list, n_vtx_S, loc, order='F'):
     ijk_to_vect_func = lambda i_idx : ijk_to_func(i_idx)
 
   sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
-  dtype = sub_pr_list[0].dtype if len(sub_pr_list) > 0 else int
-  point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=dtype)
+  if dtype is not None:
+    _dtype = dtype
+  elif len(sub_pr_list) > 0:
+    _dtype = sub_pr_list[0].dtype
+  else:
+    raise ValueError("Can not infer output dtype from empty input list")
+  point_list = np.empty((1, sum(sub_range_sizes)), order='F', dtype=_dtype)
   counter = 0
 
   for ipr, pr in enumerate(sub_pr_list):
