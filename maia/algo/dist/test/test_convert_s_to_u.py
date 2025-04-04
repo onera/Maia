@@ -395,3 +395,24 @@ def test_s_to_u_2d_gc(connectivity, jn_loc, comm):
   assert PT.is_same_tree(PT.get_child_from_label(zoneA, 'ZoneGridConnectivity_t'), zgc_left)
   assert PT.is_same_tree(PT.get_child_from_label(zoneB, 'ZoneGridConnectivity_t'), zgc_right)
   
+
+@pytest.mark.parametrize("connectivity", ['Poly', 'Standard'])
+def test_cell_center_subset_shift(connectivity, comm):
+  tree = maia.factory.generate_dist_block(4, 'S', comm)
+
+  bc_s = PT.new_BC('BC', type='BCOutflow', loc='CellCenter', point_range=[[1,3], [2,3], [1,1]])
+  PT.maia.newDistribution({'Index' : [0,6,6]}, parent=bc_s)
+  zbc = PT.get_node_from_label(tree, 'ZoneBC_t')
+  PT.set_children(zbc, [bc_s])
+
+  maia.algo.dist.convert_s_to_u(tree, connectivity, comm)
+
+  before_shift = np.array([[4,5,6, 7,8,9]])
+  if connectivity == 'Poly':
+    shift = 3*(4*3*3) # Shift will all internal faces
+  else:
+    shift = 6*(3*3) # Shift will only external faces
+
+  bc = PT.get_node_from_label(tree, 'BC_t')
+  assert PT.Subset.GridLocation(bc) == 'CellCenter'
+  assert (PT.get_child_from_name(bc, 'PointList')[1] == before_shift + shift).all()

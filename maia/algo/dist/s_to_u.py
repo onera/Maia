@@ -370,7 +370,6 @@ def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
   MT.new_distribution({'Element' : ref_bnd_elt_distri}, bar)
 
   # Lastly, update range of volumic elts to put it after
-  # TODO ? CellCenter BC are never offseted, even in NG/NF case ??
   PT.Element.Range(PT.get_child_from_label(zone, 'Elements_t'))[:] += erange[1]
 ###############################################################################
 
@@ -522,6 +521,16 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         # Create lowerdim elts now, because BC/groups have been translated into ids
         if connectivity == 'Standard':
           add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm)
+
+        # Update CellCenter subsets 
+        if connectivity == 'Standard':
+          elt = PT.get_child_from_name(zone, 'QUAD_4' if cell_dim == 3 else 'BAR_2')
+        else:
+          elt = PT.Zone.NGonNode(zone) if cell_dim == 3 else MT.Zone.EdgeNode(zone)
+        cell_offset = PT.Element.Range(elt)[1]
+        for subset in PT.iter_all_subsets(zone, 'CellCenter'):
+          pl = PT.get_child_from_name(subset, 'PointList')
+          pl[1][0] += cell_offset
 
         # Face or Edge distribution does not exist on U meshes
         distri = MT.getDistribution(zone)
