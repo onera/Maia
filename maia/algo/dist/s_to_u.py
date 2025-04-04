@@ -364,6 +364,7 @@ def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
   new_pl = [vb[1] for vb in GI.Take_v((counts, values))]
 
   # Effective update of PL and create Elements_t node
+  # Fake BC will be skipped by zip() inside _update_pl
   _update_pl(zone, loc, new_pl)
   erange = np.array([1, ref_bnd_elt_distri[-1]], elt_vtx.dtype)
   bar = PT.new_Elements(elt_kind, elt_kind, erange=erange, econn=elt_vtx, parent=zone)
@@ -380,7 +381,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
   The element connectivity can be generated:
 
   - as polyedric elements, if ``connectivity`` is set to ``Poly``; 
-  - as standard elements, if ``connectivity`` is set to ``Standard`` (**not yet implemented**).
+  - as standard elements, if ``connectivity`` is set to ``Standard``.
 
   In addition, the output location of the ``BC_t`` and ``GridConnectivity(1to1)_t`` subsets can be
   specified with the ``subset_loc`` dictionnary, using respectively the keys ``BC_t`` and ``GC_t``.
@@ -395,7 +396,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
   Args:
     dist_tree (CGNSTree): Structured tree
     connectivity (str): Type of elements used to describe the connectivity.
-      Admissible values are ``"Poly"`` and ``"Standard"`` (not yet implemented).
+      Admissible values are ``"Poly"`` and ``"Standard"``.
     comm       (MPIComm) : MPI communicator
     subset_loc (dict, optional):
         Expected output GridLocation for the following subset nodes: ``BC_t``, ``GC_t``.

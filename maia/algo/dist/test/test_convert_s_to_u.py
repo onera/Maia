@@ -298,7 +298,7 @@ def test_s_to_u_2d_dataset(bc_loc_edge, comm):
   PT.keep_children_from_name(zbc, 'Ymax')
   
   loc = {'BC_t' : 'EdgeCenter'} if bc_loc_edge else {}
-  maia.algo.dist.convert_s_to_u(tree, 'NGON_n', comm, loc)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm, loc)
   
   ymax = PT.get_node_from_name(tree, 'Ymax')
   if bc_loc_edge:
@@ -342,10 +342,12 @@ def test_s_to_u_2d_gc(connectivity, jn_loc, comm):
   zoneB = PT.get_node_from_label(treeB, 'Zone_t')
   PT.set_name(zoneB, 'Right')
 
-  gc = PT.new_GridConnectivity1to1('Xmax', 'Right', point_range=[[6,6],[1,3]], point_range_donor=[[2,4],[4,4]], transform=[-2,1])
+  pr_left = np.array([[6,6],[1,3]], pdm_dtype)
+  pr_right = np.array([[2,4],[4,4]], pdm_dtype)
+  gc = PT.new_GridConnectivity1to1('Xmax', 'Right', point_range=pr_left, point_range_donor=pr_right, transform=[-2,1])
   PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[gc], parent=zoneA)
 
-  gc = PT.new_GridConnectivity1to1('Xmin', 'Left', point_range=[[2,4],[4,4]], point_range_donor=[[6,6],[1,3]], transform=[2,-1])
+  gc = PT.new_GridConnectivity1to1('Xmin', 'Left', point_range=pr_right, point_range_donor=pr_left, transform=[2,-1])
   PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[gc], parent=zoneB)
 
   tree = PT.union(treeA, treeB)
@@ -373,8 +375,8 @@ def test_s_to_u_2d_gc(connectivity, jn_loc, comm):
       GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridConnectivityDonorName Descriptor_t "Xmin":
       GridLocation GridLocation_t "{jn_loc}":
-      PointList IndexArray_t {pl_left}:
-      PointListDonor IndexArray_t {pl_right}:
+      PointList IndexArray_t {stype} {pl_left}:
+      PointListDonor IndexArray_t {stype} {pl_right}:
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {stype} {distri}:
   """)
@@ -384,8 +386,8 @@ def test_s_to_u_2d_gc(connectivity, jn_loc, comm):
       GridConnectivityType GridConnectivityType_t "Abutting1to1":
       GridConnectivityDonorName Descriptor_t "Xmax":
       GridLocation GridLocation_t "{jn_loc}":
-      PointList IndexArray_t {pl_right}:
-      PointListDonor IndexArray_t {pl_left}:
+      PointList IndexArray_t {stype} {pl_right}:
+      PointListDonor IndexArray_t {stype} {pl_left}:
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {stype} {distri}:
   """)

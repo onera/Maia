@@ -21,7 +21,7 @@ def test_s2u(comm, subset_output_loc, write_output):
   dist_tree = MIO.file_to_dist_tree(mesh_file, comm)
 
   subset_loc = {key: subset_output_loc for key in ['BC_t', 'GC_t']}
-  convert_s_to_u(dist_tree, 'NGON_n', comm, subset_loc)
+  convert_s_to_u(dist_tree, 'Poly', comm, subset_loc)
 
   for zone in PT.iter_all_Zone_t(dist_tree):
     assert PT.Zone.Type(zone) == 'Unstructured'

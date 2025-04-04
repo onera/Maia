@@ -43,7 +43,7 @@ def test_vtx_ids_to_face_ids_elmt(comm):
 @pytest_parallel.mark.parallel([1,2])
 def test_convert_subset_as_facelist(comm):
   tree = maia.factory.generate_dist_block(3, 'S', comm)
-  maia.algo.dist.convert_s_to_u(tree, 'NGON', comm)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
 
   subset_tools.convert_subset_as_facelist(tree, 'Base/zone/ZoneBC/Xmax', comm)
 

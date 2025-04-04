@@ -58,6 +58,7 @@ Base CGNSBase_t I4 [3, 3]:
     ZoneGridConnectivity ZoneGridConnectivity_t:
       matchA GridConnectivity_t 'Small':
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'matchB':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t:
           I4 : [[51, 68, 85, 102, 119, 136, 187, 204, 221, 238, 255, 272, 323, 340, 357, 374, 391, 408, 459, 476, 493, 510,
@@ -98,6 +99,7 @@ Base CGNSBase_t I4 [3, 3]:
     ZoneGridConnectivity ZoneGridConnectivity_t:
       matchB GridConnectivity_t 'Large':
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
+        GridConnectivityDonorName Descriptor_t 'matchA':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t:
           I4 : [[440, 439, 438, 437, 436, 435, 386, 385, 384, 383, 382, 381, 332, 331, 330, 329, 328, 327, 278, 277, 276,
