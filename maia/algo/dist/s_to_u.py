@@ -7,8 +7,11 @@ from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
+from maia.transfer.protocols import GlobalMultiIndexer
 
-from maia.algo.dist.matching_jns_tools import gc_is_reference
+from .matching_jns_tools import gc_is_reference
+from .connectivity_utils import cell_vtx_connectivity_S
+from .ngons_to_elements  import _collected_shifted_pl, _update_pl
 
 def get_output_loc(request_dict, s_node):
   """Retrieve output location from the node if not provided in argument"""
@@ -44,6 +47,24 @@ def n_edge_per_dir(n_vtx):
   return (n_vtx[0]*(n_vtx[1]-1),
           n_vtx[1]*(n_vtx[0]-1))
 ###############################################################################
+
+def generate_all_bnd_bcs(n_vtx, dtype):
+  if len(n_vtx) == 2:
+    nv0, nv1 = n_vtx
+    point_range_list = [[[  1,  1], [  1,nv1]],
+                        [[nv0,nv0], [  1,nv1]],
+                        [[  1,nv0], [  1,  1]],
+                        [[  1,nv0], [nv1,nv1]]]
+  if len(n_vtx) == 3:
+    nv0, nv1, nv2 = n_vtx
+    point_range_list = [[[  1,  1], [  1,nv1], [  1,nv2]],
+                        [[nv0,nv0], [  1,nv1], [  1,nv2]],
+                        [[  1,nv0], [  1,  1], [  1,nv2]],
+                        [[  1,nv0], [nv1,nv1], [  1,nv2]],
+                        [[  1,nv0], [  1,nv1], [  1,  1]],
+                        [[  1,nv0], [  1,nv1], [nv2,nv2]]]
+    
+  return [PT.new_BC(point_range=np.array(pr, dtype=dtype)) for pr in point_range_list]
 
 
 
@@ -306,6 +327,55 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
 ###############################################################################
 
 ###############################################################################
+def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
+  zdtype = zone[1].dtype
+
+  # TODO : GC_t management
+  # Get the list of referenced bnd in mesh
+  loc = {2 : 'EdgeCenter', 3 : 'FaceCenter'}[cell_dim]
+  elt_kind = {2: 'BAR_2', 3 : 'QUAD_4'}[cell_dim]
+  cnt_func = {2 : s_numbering.bar2_connectivity_of_selected_gid,
+              3 : s_numbering.quad4_connectivity_of_selected_gid}[cell_dim]
+  ini_pl = _collected_shifted_pl(zone, loc, 0)
+
+  # Add some ids to be sure to generated every bnd elements, even
+  # if they are not referenced
+  bcs_l = generate_all_bnd_bcs(n_vtx, zdtype)
+  bcu_l = [bc_s_to_bc_u(bcs, n_vtx, loc, comm.rank, comm.size) for bcs in bcs_l]
+  extra_pl = np.concatenate([PT.get_child_from_name(bcu, 'PointList')[1][0] for bcu in bcu_l])
+  ini_pl.append(extra_pl)
+
+  # Distribution of all lowerdim elts (including non referenced)
+  all_bnd_elt_distri_f = par_utils.distribution_from_gnum(ini_pl, comm, True, True)
+  GI = GlobalMultiIndexer(all_bnd_elt_distri_f, [t-1 for t in ini_pl], comm)
+  ref_bnd_elt_mask = GI.access_counts > 0
+  # Distribution of referenced lowerdim elts only
+  ref_bnd_elt_distri = par_utils.dn_to_distribution(ref_bnd_elt_mask.sum(), comm)
+
+  # Extract gid of referenced lowerdim elts (arange + mask) and compute elt connectivity
+  d_start = all_bnd_elt_distri_f[comm.rank]
+  d_end   = all_bnd_elt_distri_f[comm.rank+1]
+  ref_ids = np.arange(d_start+1, d_end+1, dtype=zone[1].dtype)[ref_bnd_elt_mask]
+  elt_vtx = cnt_func(ref_ids, n_vtx)
+
+  # Then "compress" to renumber ref elts and send this number to update PointLists
+  counts = np.zeros(ref_bnd_elt_mask.size, np.int32)
+  counts[ref_bnd_elt_mask] = 1
+  values = np.arange(ref_bnd_elt_distri[0]+1, ref_bnd_elt_distri[1]+1, dtype=zdtype)
+  new_pl = [vb[1] for vb in GI.Take_v((counts, values))]
+
+  # Effective update of PL and create Elements_t node
+  _update_pl(zone, loc, new_pl)
+  erange = np.array([1, ref_bnd_elt_distri[-1]], elt_vtx.dtype)
+  bar = PT.new_Elements(elt_kind, elt_kind, erange=erange, econn=elt_vtx, parent=zone)
+  MT.new_distribution({'Element' : ref_bnd_elt_distri}, bar)
+
+  # Lastly, update range of volumic elts to put it after
+  # TODO ? CellCenter BC are never offseted, even in NG/NF case ??
+  PT.Element.Range(PT.get_child_from_label(zone, 'Elements_t'))[:] += erange[1]
+###############################################################################
+
+###############################################################################
 def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
   """Performs the destructuration of the input distributed tree.
 
@@ -356,6 +426,21 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         zone_dims_s = PT.get_value(zone)
         zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
         n_vtx  = PT.Zone.VertexSize(zone)
+        cell_dim = PT.Zone.CellDimension(zone)
+        zdtype = zone_dims_s.dtype
+
+        if connectivity == 'Standard':
+          # Standard elements --> compute volumic (resp. surfacic) elts 1 ... n_cell
+          # Lowerdim elts (eg. indexed by BCs) will be computed later BC conversion
+          cell_vtx = cell_vtx_connectivity_S(zone, cell_dim)
+          elt_type = {2: 'QUAD_4', 3: 'HEXA_8'}[cell_dim]
+          erange = np.array([1, PT.Zone.n_cell(zone)], zdtype)
+          elt = PT.new_Elements(elt_type, elt_type, erange=erange, econn=cell_vtx.values, parent=zone)
+          MT.new_distribution({'Element' : MT.get_distribution(zone, 'Cell')[1].copy()}, elt)
+        else:
+          # Poly elements --> compute surfacic (resp. lineic) elts 1 ... n_face
+          # Then FaceCenter (resp. EdgeCenter) BCs are ready
+          PT.add_child(zone, zonedims_to_ngon(n_vtx, comm, zdtype))
       
         PT.update_child(zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
         PT.set_value(zone, zone_dims_u)
@@ -363,8 +448,6 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         for flow_solution_s in PT.iter_children_from_label(zone, "FlowSolution_t"):
           patch = PT.get_child_from_predicate(flow_solution_s, lambda n: PT.get_name(n) in ['PointRange', 'PointList'])
           assert patch is None, f"Partial FlowSolution_t are not supported"
-
-        PT.add_child(zone, zonedims_to_ngon(n_vtx, comm, zone[1].dtype))
 
         loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'EdgeCenter' : '#Edge', 'CellCenter': '#Cell'}
         zonebc_s = PT.get_child_from_label(zone, "ZoneBC_t")
@@ -435,6 +518,10 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
           PT.rm_children_from_predicate(zonegc_s, is_abutt)
           PT.rm_children_from_label(zonegc_s, "GridConnectivity1to1_t")
           PT.get_children(zonegc_s).extend(gc_u_list)
+
+        # Create lowerdim elts now, because BC/groups have been translated into ids
+        if connectivity == 'Standard':
+          add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm)
 
         # Face or Edge distribution does not exist on U meshes
         distri = MT.getDistribution(zone)

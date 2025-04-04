@@ -12,6 +12,28 @@ import maia
 
 from maia.algo.dist  import s_to_u
 
+def test_generate_all_bnd_bcs():
+  bcs = s_to_u.generate_all_bnd_bcs([42,8], np.int32)
+  assert len(bcs) == 4
+  assert all(PT.get_label(n) == 'BC_t' for n in bcs)
+  assert all(PT.Subset.getPatch(n)[1].dtype == np.int32 for n in bcs)
+  assert (PT.get_child_from_name(bcs[0], 'PointRange')[1] == [[1,1],[1,8]]).all()
+  assert (PT.get_child_from_name(bcs[1], 'PointRange')[1] == [[42,42],[1,8]]).all()
+  assert (PT.get_child_from_name(bcs[2], 'PointRange')[1] == [[1,42],[1,1]]).all()
+  assert (PT.get_child_from_name(bcs[3], 'PointRange')[1] == [[1,42],[8,8]]).all()
+
+  bcs = s_to_u.generate_all_bnd_bcs([42,8,24], np.int64)
+  assert len(bcs) == 6
+  assert all(PT.get_label(n) == 'BC_t' for n in bcs)
+  assert all(PT.Subset.getPatch(n)[1].dtype == np.int64 for n in bcs)
+  assert (PT.get_child_from_name(bcs[0], 'PointRange')[1] == [[1,1],[1,8],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[1], 'PointRange')[1] == [[42,42],[1,8],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[2], 'PointRange')[1] == [[1,42],[1,1],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[3], 'PointRange')[1] == [[1,42],[8,8],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[4], 'PointRange')[1] == [[1,42],[1,8],[1,1]]).all()
+  assert (PT.get_child_from_name(bcs[5], 'PointRange')[1] == [[1,42],[1,8],[24,24]]).all()
+
+
 ###############################################################################
 def test_n_face_per_dir():
   nVtx = np.array([7,9,5])
@@ -155,6 +177,72 @@ def test_zonedims_to_ngon(comm):
   assert PT.get_child_from_name(ngon, 'ElementConnectivity')[1].shape == (4*expected_n_faces,)
 ###############################################################################
 
+@pytest_parallel.mark.parallel(2)
+def test_s_to_u_2d_elt(comm):
+  
+  tree = maia.factory.generate_dist_block([6,3], 'S', comm)
+  PT.rm_nodes_from_name(tree, 'Xmin')
+  PT.rm_nodes_from_name(tree, 'Ymax')
+
+  maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
+
+  if comm.rank == 0:
+    expected_bar_ec = np.array([7, 1, 6, 12, 13, 7, 12, 18, 1, 2, 2, 3], pdm_dtype)
+    expected_bar_distri = np.array([0,6,14], pdm_dtype)
+    expected_quad_ec = np.array([1, 2, 8, 7, 2, 3, 9, 8, 3, 4, 10, 9, 4, 5, 11, 10, 5, 6, 12, 11], pdm_dtype)
+    expected_quad_distri = np.array([0,5,10], pdm_dtype)
+  elif comm.rank == 1:
+    expected_bar_ec = np.array([3, 4, 4, 5, 5, 6, 14, 13, 15, 14, 16, 15, 17, 16, 18, 17], pdm_dtype)
+    expected_bar_distri = np.array([6,14,14], pdm_dtype)
+    expected_quad_ec = np.array([7, 8, 14, 13, 8, 9, 15, 14, 9, 10, 16, 15, 10, 11, 17, 16, 11, 12, 18, 17], pdm_dtype)
+    expected_quad_distri = np.array([5,10,10], pdm_dtype)
+
+  expected_bar = PT.new_Elements('BAR_2', 'BAR_2', erange=np.array([1,14], pdm_dtype), econn=expected_bar_ec)
+  MT.new_distribution({'Element' : expected_bar_distri}, expected_bar)
+  expected_quad = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([15,24], pdm_dtype), econn=expected_quad_ec)
+  MT.new_distribution({'Element' : expected_quad_distri}, expected_quad)
+
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'BAR_2'), expected_bar)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_quad)
+
+@pytest_parallel.mark.parallel(3)
+def test_s_to_u_3d_elt(comm):
+  tree = maia.factory.generate_dist_block([4,3,2], 'S', comm)
+  maia.algo.dist.convert_s_to_u(tree, 'Standard', comm, subset_loc={'BC_t' : 'FaceCenter'})
+
+  if comm.rank == 0:
+    expected_quad_ec = np.array([1,13,17,5, 4,8,20,16, 5,17,21,9, 8,12,24,20, 1,2,14,13, 2,3,15,14], pdm_dtype)
+    expected_quad_distri = np.array([0,6,22], pdm_dtype)
+    expected_hexa_ec = np.array([1,2,6,5,13,14,18,17, 2,3,7,6,14,15,19,18], pdm_dtype)
+    expected_hexa_distri = np.array([0,2,6], pdm_dtype)
+    expected_zmax_pl = np.array([[17,18]], pdm_dtype)
+    expected_zmax_distri = np.array([0,2,6], pdm_dtype)
+  elif comm.rank == 1:
+    expected_quad_ec = np.array([3,4,16,15, 10,9,22,21, 11,10,23,22, 12,11,24,23, 1,5,6,2, 2,6,7,3, 3,7,8,4], pdm_dtype)
+    expected_quad_distri = np.array([6,13,22], pdm_dtype)
+    expected_hexa_ec = np.array([3,4,8,7,15,16,20,19, 5,6,10,9,17,18,22,21], pdm_dtype)
+    expected_hexa_distri = np.array([2,4,6], pdm_dtype)
+    expected_zmax_pl = np.array([[19,20]], pdm_dtype)
+    expected_zmax_distri = np.array([2,4,6], pdm_dtype)
+  elif comm.rank == 2:
+    expected_quad_ec = np.array([5,9,10,6, 6,10,11,7, 7,11,12,8, 13,14,18,17, 14,15,19,18,
+                                15,16,20,19, 17,18,22,21, 18,19,23,22, 19,20,24,23], pdm_dtype)
+    expected_quad_distri = np.array([13,22,22], pdm_dtype)
+    expected_hexa_ec = np.array([6,7,11,10,18,19,23,22, 7,8,12,11,19,20,24,23], pdm_dtype)
+    expected_hexa_distri = np.array([4,6,6], pdm_dtype)
+    expected_zmax_pl = np.array([[21,22]], pdm_dtype)
+    expected_zmax_distri = np.array([4,6,6], pdm_dtype)
+  
+  expected_bar = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([1,22], pdm_dtype), econn=expected_quad_ec)
+  MT.new_distribution({'Element' : expected_quad_distri}, expected_bar)
+  expected_quad = PT.new_Elements('HEXA_8', 'HEXA_8', erange=np.array([23,28], pdm_dtype), econn=expected_hexa_ec)
+  MT.new_distribution({'Element' : expected_hexa_distri}, expected_quad)
+  expected_zmax = PT.new_BC('Zmax', 'Null', loc='FaceCenter', point_list=expected_zmax_pl)
+  MT.new_distribution({'Index' : expected_zmax_distri}, expected_zmax)
+
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_bar)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'HEXA_8'), expected_quad)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'Zmax'), expected_zmax)
 
 @pytest_parallel.mark.parallel([1,3])
 def test_s_to_u_2d(comm):
