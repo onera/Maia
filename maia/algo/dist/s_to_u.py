@@ -9,7 +9,7 @@ from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
 from maia.transfer.protocols import GlobalMultiIndexer
 
-from .matching_jns_tools import gc_is_reference
+from .matching_jns_tools import gc_is_reference, add_joins_donor_name, copy_donor_subset
 from .connectivity_utils import cell_vtx_connectivity_S
 from .ngons_to_elements  import _collected_shifted_pl, _update_pl
 
@@ -330,7 +330,6 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
 def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
   zdtype = zone[1].dtype
 
-  # TODO : GC_t management
   # Get the list of referenced bnd in mesh
   loc = {2 : 'EdgeCenter', 3 : 'FaceCenter'}[cell_dim]
   elt_kind = {2: 'BAR_2', 3 : 'QUAD_4'}[cell_dim]
@@ -355,7 +354,7 @@ def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
   # Extract gid of referenced lowerdim elts (arange + mask) and compute elt connectivity
   d_start = all_bnd_elt_distri_f[comm.rank]
   d_end   = all_bnd_elt_distri_f[comm.rank+1]
-  ref_ids = np.arange(d_start+1, d_end+1, dtype=zone[1].dtype)[ref_bnd_elt_mask]
+  ref_ids = np.arange(d_start+1, d_end+1, dtype=zdtype)[ref_bnd_elt_mask]
   elt_vtx = cnt_func(ref_ids, n_vtx)
 
   # Then "compress" to renumber ref elts and send this number to update PointLists
@@ -413,6 +412,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
+  add_joins_donor_name(dist_tree, comm)
   zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.get_node_from_path(dist_tree, path))
                               for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
 
@@ -527,6 +527,8 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         distri = MT.getDistribution(zone)
         PT.rm_children_from_name(distri, 'Face')
         PT.rm_children_from_name(distri, 'Edge')
+
+  copy_donor_subset(dist_tree)
 
 ###############################################################################
 def convert_s_to_ngon(dist_tree, comm):

@@ -330,7 +330,8 @@ def test_s_to_u_2d_dataset(bc_loc_edge, comm):
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("jn_loc", ['Vertex', 'EdgeCenter'])
-def test_s_to_u_2d_gc(jn_loc, comm):
+@pytest.mark.parametrize("connectivity", ['Poly', 'Standard'])
+def test_s_to_u_2d_gc(connectivity, jn_loc, comm):
 
   treeA = maia.factory.generate_dist_block([6,3], 'S', comm, length=[5, 2])
   treeB = maia.factory.generate_dist_block([5,4], 'S', comm, length=[4, 3])
@@ -351,24 +352,26 @@ def test_s_to_u_2d_gc(jn_loc, comm):
   # Only test GCs in this function
   PT.rm_nodes_from_label(tree, 'ZoneBC_t')
 
-  if jn_loc == 'Vertex':
-    maia.algo.dist.convert_s_to_u(tree, 'NGON_n', comm)
-  elif jn_loc == 'EdgeCenter':
-    maia.algo.dist.convert_s_to_ngon(tree, comm)
+  maia.algo.dist.convert_s_to_u(tree, connectivity, comm, {'GC_t' : jn_loc})
 
   if jn_loc == 'Vertex':
     pl_left  = [[6,12]]  if comm.rank == 0 else [[18]]
     pl_right = [[17,18]] if comm.rank == 0 else [[19]]
     distri = [0,2,3]     if comm.rank == 0 else [2,3,3]
   elif jn_loc == 'EdgeCenter':
-    pl_left  = [[6]]  if comm.rank == 0 else [[12]]
-    pl_right = [[29]] if comm.rank == 0 else [[30]]
+    if connectivity == 'Poly':
+      pl_left  = [[6]]  if comm.rank == 0 else [[12]]
+      pl_right = [[29]] if comm.rank == 0 else [[30]]
+    elif connectivity == 'Standard':
+      pl_left  = [[2]]  if comm.rank == 0 else [[4]]
+      pl_right = [[12]] if comm.rank == 0 else [[13]]
     distri = [0,1,2]  if comm.rank == 0 else [1,2,2]
 
   zgc_left = PT.yaml.to_node(f"""
   ZoneGridConnectivity ZoneGridConnectivity_t:
     Xmax GridConnectivity_t "Right":
       GridConnectivityType GridConnectivityType_t "Abutting1to1":
+      GridConnectivityDonorName Descriptor_t "Xmin":
       GridLocation GridLocation_t "{jn_loc}":
       PointList IndexArray_t {pl_left}:
       PointListDonor IndexArray_t {pl_right}:
@@ -379,6 +382,7 @@ def test_s_to_u_2d_gc(jn_loc, comm):
   ZoneGridConnectivity ZoneGridConnectivity_t:
     Xmin GridConnectivity_t "Left":
       GridConnectivityType GridConnectivityType_t "Abutting1to1":
+      GridConnectivityDonorName Descriptor_t "Xmax":
       GridLocation GridLocation_t "{jn_loc}":
       PointList IndexArray_t {pl_right}:
       PointListDonor IndexArray_t {pl_left}:
