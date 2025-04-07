@@ -64,6 +64,16 @@ def update_zone_pointers(part_tree):
         PT.set_value(zone_pointers_n, zone_pointers_all)
         PT.update_child(base_it_data, 'NumberOfZones', 'DataArray_t', number_of_zones)
 
+def _copy_additional_nodes_zsr(d_zsr, p_zsr):
+  labels   = ['FamilyName_t', 'AdditionalFamilyName_t']
+  reg_name = ['BCRegionName','GridConnectivityRegionName'] 
+
+  for node in PT.get_children_from_predicate(d_zsr, lambda n: PT.get_label(n) in labels):
+    PT.add_child(p_zsr, node)
+  for node in PT.get_children_from_predicate(d_zsr, lambda n: PT.get_label(n) == 'Descriptor_t' and \
+                                                              PT.get_name(n) not in reg_name):
+    PT.add_child(p_zsr, node)
+
 def copy_additional_nodes(dist_zone, part_zone):
   """
   """
@@ -105,6 +115,11 @@ def copy_additional_nodes(dist_zone, part_zone):
         if PT.get_name(node) in names or PT.get_label(node) in types:
           PT.add_child(p_gc, node)
 
+  #ZSRs
+  for p_zsr in PT.iter_children_from_label(part_zone, 'ZoneSubRegion_t'):
+    d_zsr = PT.get_child_from_name(dist_zone, PT.get_name(p_zsr))
+    _copy_additional_nodes_zsr(d_zsr, p_zsr)
+
 
 def generate_related_zsr(dist_zone, part_zone):
   """
@@ -118,7 +133,8 @@ def generate_related_zsr(dist_zone, part_zone):
       bc_name = PT.get_value(bc_descriptor)
       bc_n = PT.get_child_from_predicates(part_zone, f'ZoneBC_t/{bc_name}')
       if bc_n is not None and PT.Subset.n_elem(bc_n) > 0: # BC can exists, but be empty (if it holds BCDS of different location)
-        PT.new_ZoneSubRegion(PT.get_name(d_zsr), bc_name=bc_name, parent=part_zone)
+        p_zsr = PT.new_ZoneSubRegion(PT.get_name(d_zsr), bc_name=bc_name, parent=part_zone)
+        _copy_additional_nodes_zsr(d_zsr, p_zsr)
     elif gc_descriptor is not None:
       gc_name = PT.get_value(gc_descriptor)
       is_related_gc = lambda n: is_inter_gc(n) and MT.conv.get_split_prefix(PT.get_name(n)) == gc_name and PT.Subset.n_elem(n) > 0
@@ -126,7 +142,8 @@ def generate_related_zsr(dist_zone, part_zone):
       for gc_n in gcs_n:
         pgc_name = PT.get_name(gc_n)
         pzsr_name = MT.conv.add_split_suffix(PT.get_name(d_zsr), MT.conv.get_split_suffix(pgc_name))
-        PT.new_ZoneSubRegion(pzsr_name, gc_name=pgc_name, parent=part_zone)
+        p_zsr = PT.new_ZoneSubRegion(pzsr_name, gc_name=pgc_name, parent=part_zone)
+        _copy_additional_nodes_zsr(d_zsr, p_zsr)
 
 def split_original_joins(p_tree):
   """
