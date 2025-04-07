@@ -307,3 +307,6 @@ def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
   else:
     generate_ngon_from_std_elements(dist_tree, comm)
 
+  lib_version = PT.get_child_from_name(dist_tree, 'CGNSLibraryVersion')
+  if PT.get_value(lib_version)[0] < 4:
+    PT.set_value(lib_version, 4.2)
