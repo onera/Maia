@@ -80,13 +80,18 @@ def _guess_reduce_dt_and_identity(dt_in, op):
 
   return dt_out, val
 
-def put_strided(a, a_count, indices, read_counts, read, extend=False):
+def put_strided(a, a_count, indices, read_counts, read, extend=False, out_offsets=None):
   """
   A special case of VStrideArray.put() where out (a) is preallocated
   and all indices will be visited
   """
   if extend:
-    vstride.put_extend(a_count, a, indices, read_counts, read)
+    a_displs = np.empty(len(a_count)+1, dtype=a_count.dtype)
+    a_displs[0] = 0
+    np.cumsum(a_count, out=a_displs[1:])
+    if out_offsets is not None:
+      a_displs[:-1] += out_offsets
+    vstride.put_extend(a_count, a_displs, a, indices, read_counts, read)
   else:
     vstride.put(a_count, a, indices, read_counts, read)
 
@@ -427,19 +432,20 @@ class GlobalMultiIndexer:
     assert all(data_in.size == counts_in.sum() for data_in, counts_in in zip(buff_in_l, counts_in_l))
 
     if dist_data is None:
+      counts_out_ini = None
       cnts_dtype = counts_in_l[0].dtype.str if len(self.pn) > 0 else ''
       data_dtype = buff_in_l[0].dtype.str   if len(self.pn) > 0 else ''
       if self.empty_part:
         out_dtype = self.comm.allreduce(cnts_dtype+data_dtype,  MPI.MAX)
         cnts_dtype, data_dtype = out_dtype[:3], out_dtype[3:]
     else:
-      counts_out, buff_out = dist_data
-      if counts_out.size != self.dn:
-        raise ValueError(f"Invalid size of output counts (expected {self.dn}, got {counts_out.size})")
-      if buff_out.size - counts_out.sum() != 0:
-        raise ValueError(f"Invalid size of output distributed buffer (expected {counts_out.sum()}, got {buff_out.size})")
-      cnts_dtype = counts_out.dtype
-      data_dtype = buff_out.dtype
+      counts_out_ini, buff_out_ini = dist_data
+      if counts_out_ini.size != self.dn:
+        raise ValueError(f"Invalid size of output counts (expected {self.dn}, got {counts_out_ini.size})")
+      if buff_out_ini.size - counts_out_ini.sum() != 0:
+        raise ValueError(f"Invalid size of output distributed buffer (expected {counts_out_ini.sum()}, got {buff_out_ini.size})")
+      cnts_dtype = counts_out_ini.dtype
+      data_dtype = buff_out_ini.dtype
       # Retrieve _counts_out from counts_out seems not possible because of data erasion, we will recompute it 
 
 
@@ -453,13 +459,21 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((_counts_in, self.part_counts), 
                         (_counts_out, self.dist_counts))
 
-    if dist_data is None:
-      counts_out  = np.zeros(self.dn, dtype=_counts_out.dtype)
-      if extend:
-        np.add.at(counts_out, self.dist_select_idx, _counts_out)
-      else:
-        counts_out[self.dist_select_idx] = _counts_out
-      buff_out = np.empty(counts_out.sum(), data_dtype)
+    if dist_data is not None:
+      counts_out = dist_data[0].copy()
+    else:
+      counts_out = np.zeros(self.dn, cnts_dtype)
+
+    if extend:
+      np.add.at(counts_out, self.dist_select_idx, _counts_out)
+    else:
+      np.put(counts_out, self.dist_select_idx, _counts_out)
+
+    # Prepare output buffer: in both case, we need to reallocate at counts_out.sum()
+    # If initila data was provided, we need to replace it in the new buffer
+    buff_out = np.empty(counts_out.sum(), data_dtype)
+    if dist_data is not None:
+      vstride.resize(counts_out, buff_out, dist_data[0], dist_data[1])
 
     # Count the actual number of items to send/recv, using stride array
     # (this is the partial sum of portion of the stride array related to the given rank)
@@ -482,7 +496,7 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((send_buff, send_counts, send_buff.dtype.char), (recv_buff, recv_counts, send_buff.dtype.char))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, extend)
+    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, extend, counts_out_ini)
 
     return counts_out, buff_out
   
@@ -689,21 +703,32 @@ class GlobalIndexer:
 
     This output data is either:
 
-    - provided by the caller, in which case ``dist_counts`` must be already filled, *eg.*
-      with :obj:`Put(local_counts, dist_counts)`, and ``dist_buff``
-      must be prellocated at relevant size and datatype;
+    - initialized by the caller,
     - or automatically allocated by the method as a pair of new numpy array if ``dist_data=None``.
+
+    Note that:  
+
+    - if a global index appears more than once in the idx lists, the associated data in the output
+      variable buffer will be
+
+      - the last appearing (in increasing processes order) if ``extend=False``;
+      - the concatenation of all input candidates (including initial value if provided) otherwise.
+
+    - if a global index does not appears in any idx list, its associated data in the output
+      variable buffer will be 
+      
+      - the user provided value if ``dist_data`` is not ``None``;
+      - an empty subset of values (counts=0) otherwise.
 
     Args:
       local_data (variable buffer): data to write at each accessed index, ie tuple 
         (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
-      dist_data (variable buffer, optional): preallocated buffer to store distributed data or None
+      dist_data (variable buffer, optional): initial output buffer to store distributed data or ``None``
       extend  (bool, optional) : If ``True``, gather the values written at a same global index.
         Otherwise, keep only the last one. Defaults to ``False``.
     Returns:
       variable buffer: output distributed data, returned as the tuple of values
       (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*)).
-      The return object is ``dist_data`` if it was given by the user.
     """
     return self.GIndexer_m.Put_v([local_data], dist_data, extend=extend)
 

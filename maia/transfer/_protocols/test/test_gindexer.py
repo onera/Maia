@@ -314,18 +314,39 @@ class Test_g_indexer:
     assert np.array_equal(counts_out_app, expected_out_app[0])
     assert np.allclose(data_out_app, expected_out_app[1])
 
-    # As for Put method, we can use a preallocated buffer, in this 
-    # case the counts_out array must be already filled and data_out must have
+    # As for Put method, we can use an initial output buffer
     # relevant size 
-    data_out2 = np.zeros_like(data_out)
-    GI.Put_v((counts_in, data_in), (counts_out, data_out2)) 
-    assert np.array_equal(data_out, data_out2)
+    if comm.rank == 0:
+      cnts_out_ini = np.array([0,2,3,2,0])
+      buff_out_ini = np.array([-1,-1,-2,-2,-2,-3,-3], float)
+    else:
+      cnts_out_ini = np.zeros(expected_out[0].size, int)
+      buff_out_ini = np.empty(0, float)
 
-    # If we use extend + preallocated mode, counts_out can be compute with ReduceOp = SUM
-    counts_out = GI.Put(counts_in, reduce=ReduceOp.SUM)
-    data_out2 = np.zeros(counts_out.sum(), data_in.dtype)
-    GI.Put_v((counts_in, data_in), (counts_out, data_out2), extend=True) 
-    assert np.array_equal(data_out2, data_out_app)
+    counts_out, buff_out = GI.Put_v((counts_in, data_in), (cnts_out_ini, buff_out_ini)) 
+
+    if comm.rank == 0:
+      # idx 0,1,2,4 are erased by input data with counts [0,1,0,x,2]
+      # idx 3 remains untouched
+      assert np.array_equal(counts_out, [0,1,0,2,2])
+      assert np.allclose(buff_out, [20.,-3,-3, 50,55])
+    else:
+      assert np.array_equal(counts_out, expected_out[0])
+      assert np.allclose(buff_out, expected_out[1])
+    # Reallocation occurs
+    assert cnts_out_ini is not counts_out
+    assert buff_out_ini is not buff_out
+
+    # If we use extend + preallocated mode, initial data remains
+    counts_out, buff_out = GI.Put_v((counts_in, data_in), (cnts_out_ini, buff_out_ini), extend=True) 
+    if comm.rank == 0:
+      # idx 0,1,2,4 are appened by input data with counts [0,1,0,x,2]
+      # idx 3 remains untouched
+      assert np.array_equal(counts_out, [0,3,3,2,2])
+      assert np.allclose(buff_out, [-1.,-1,20, -2,-2,-2, -3,-3, 50,55])
+    else:
+      assert np.array_equal(counts_out, expected_out_app[0])
+      assert np.allclose(buff_out, expected_out_app[1])
 
 
   def test_failures(self, comm):

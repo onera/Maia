@@ -234,15 +234,15 @@ applied to the data written at the same index to compute the result.
 
 **Variable buffer objects**:
 when it's come to variable buffer, an additional array of counts has to be used.
-For now, this array has to be a numpy array of integers. The data buffer
-can still be any object supporting the buffer protocol.
+For now, this array has to be a numpy array of integers, while the data buffer
+can be a numpy array of any datatype.
 This is the most complex implementation, but it allows to work with sparse data
 since a count of 0 is allowed for any global index.
 
 Following what is done in the previous paragraph, the output variable buffer
 is allocated by the function as a pair of numpy array if ``None`` argument is used,
-or can be provided to the function by the user. In this case, the output array of counts
-is supposed to be by known; only the output data buffer is filled.
+or can be provided to the function by the user. In this case, indices that are
+not accessed by any process keep their initial values.
 
 Here is an exemple of the ``take`` implementation for a variable buffer::
 
@@ -329,6 +329,11 @@ of 5 because 3 values has been written by P0, then 2 values by P2.
 .. image:: ./put_v_ext.png
   :width: 60%
   :align: center
+
+.. note:: 
+  - The concatenation also include the initial values of the output variable array, which allows
+    the users to update existing data.
+    If no output array is provided, as in the above example, we simply use internally an empty (counts == 0) initial array.
 
 API reference
 -------------

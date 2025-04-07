@@ -356,9 +356,40 @@ put(py::array_t<I1>  write_counts,
   }
 }
 
+template<typename I1>
+void
+resize(py::array_t<I1>  write_counts,
+       py::buffer       write_buff,
+       py::array_t<I1>  read_counts,
+       py::buffer       read_buff) {
+
+  auto   n_data = write_counts.size();
+  size_t s_data = write_buff.request().itemsize;
+
+  auto _write_counts = write_counts.data();
+  auto _read_counts  = read_counts.data();
+
+  std::byte* _read_buff  = static_cast<std::byte*> ( read_buff.request().ptr);
+  std::byte* _write_buff = static_cast<std::byte*> (write_buff.request().ptr);
+  
+  auto _cur_read  = _read_buff;
+  auto _cur_write = _write_buff;
+  for (int i=0; i < n_data; ++i) {
+    auto r_count = _read_counts[i];
+    auto w_count = _write_counts[i];
+
+    auto count = std::min(r_count, w_count);
+    std::copy_n(_cur_read, count*s_data, _cur_write);
+   
+    _cur_read += s_data*r_count;
+    _cur_write += s_data*w_count;
+  }
+}
+
 template<typename I1, typename I2>
 void
 put_extend(py::array_t<I1>  write_counts,
+           py::array_t<I1>  write_displs,
            py::buffer       write_buff,
            py::array_t<I2>  ind,
            py::array_t<I1>  read_counts,
@@ -368,21 +399,19 @@ put_extend(py::array_t<I1>  write_counts,
 
   auto _ind          = ind.data();
   auto _write_counts = write_counts.data();
+  auto _write_displs = write_displs.data();
   auto _read_counts  = read_counts.data();
 
   std::byte* _read_buff  = static_cast<std::byte*> ( read_buff.request().ptr);
   std::byte* _write_buff = static_cast<std::byte*> (write_buff.request().ptr);
   
-  std::vector<I1> write_displs(write_counts.size()+1);
-  std::vector<I1> write_offset(write_counts.size()+1, 0);
-  write_displs[0] = 0;
-  std::partial_sum(_write_counts, _write_counts+write_counts.size(), &write_displs[1]);
+  std::vector<I1> write_offset(write_displs.size(), 0);
 
   int64_t r_idx = 0;
   for (int i=0; i < ind.size(); ++i) {
     auto idx = _ind[i];
     auto r_count = _read_counts[i];
-    auto w_start = write_displs[idx] + write_offset[idx];
+    auto w_start = _write_displs[idx] + write_offset[idx];
 
     std::copy_n(_read_buff + s_data*r_idx, 
                 r_count*s_data,
@@ -511,18 +540,25 @@ void register_vstride_module(py::module_& parent) {
         py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("indices").noconvert(),
         py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
 
-  m.def("put_extend", &put_extend<int32_t, int32_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("indices").noconvert(),
+  m.def("resize", &resize<int32_t>,
+        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(),
         py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+  m.def("resize", &resize<int64_t>,
+        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(),
+        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+
+  m.def("put_extend", &put_extend<int32_t, int32_t>,
+        py::arg("w_counts").noconvert(), py::arg("w_displs").noconvert(), py::arg("w_values").noconvert(),
+        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
   m.def("put_extend", &put_extend<int32_t, int64_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("indices").noconvert(),
-        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(),
+        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
   m.def("put_extend", &put_extend<int32_t, int32_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("indices").noconvert(),
-        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(),
+        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
   m.def("put_extend", &put_extend<int64_t, int64_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("indices").noconvert(),
-        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(),
+        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
 
 
   m.def("concatenate_by_stride", &concatenate_by_stride<int32_t>,
