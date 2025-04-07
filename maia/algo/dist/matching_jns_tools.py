@@ -214,8 +214,8 @@ def store_interfaces_ids(dist_tree):
   for i, matching_pair in enumerate(matching_pairs):
     for j,jn_path in enumerate(matching_pair):
       jn = PT.get_node_from_path(dist_tree, jn_path)
-      PT.new_node("DistInterfaceId",  "DataArray_t", i+1, parent=jn)
-      PT.new_node("DistInterfaceOrd", "DataArray_t", j,   parent=jn)
+      PT.new_Descriptor("DistInterfaceId",  str(i+1), parent=jn)
+      PT.new_Descriptor("DistInterfaceOrd", str(j),   parent=jn)
 
 def clear_interface_ids(dist_tree):
   """

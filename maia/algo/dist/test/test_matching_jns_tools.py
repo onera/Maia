@@ -218,11 +218,11 @@ Base CGNSBase_t:
   def test_store_interfaces_ids(self):
     dist_tree = PT.deep_copy(self.dist_tree)
     MJT.store_interfaces_ids(dist_tree)
-    expected_id = [1,1,2,2]
-    expected_pos = [0,1,0,1]
+    expected_id = ['1','1','2','2']
+    expected_pos = ['0','1','0','1']
     for i, jn in enumerate(PT.iter_nodes_from_label(dist_tree, 'GridConnectivity_t')):
-      assert (PT.get_child_from_name(jn, 'DistInterfaceId')[1] == expected_id[i]).all()
-      assert (PT.get_child_from_name(jn, 'DistInterfaceOrd')[1] == expected_pos[i]).all()
+      assert PT.get_value(PT.get_child_from_name(jn, 'DistInterfaceId')) == expected_id[i]
+      assert PT.get_value(PT.get_child_from_name(jn, 'DistInterfaceOrd')) == expected_pos[i]
 
 
 def test_clear_interfaces_ids():
@@ -231,7 +231,7 @@ Base0 CGNSBase_t:
   ZoneA Zone_t:
     ZGC ZoneGridConnectivity_t:
       matchAB GridConnectivity_t "ZoneB":
-        DistInterfaceId DataArray_t [1]:
+        DistInterfaceId Descriptor_t "1":
   ZoneB Zone_t:
     ZGC ZoneGridConnectivity_t:
       matchBA GridConnectivity_t "ZoneA":
