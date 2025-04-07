@@ -196,8 +196,8 @@ def is_unique_strided(array, stride, comm):
   cst_stride = np.ones(len(vsarray), np.int32)
 
   # Origin is not mandatory for TETRA because we just want the TRI ids at the end
-  _, origin = GI.Put_v((cst_stride, src_dist_gnum), append=True)
-  _, tmp_ec = GI.Put_v((3*cst_stride, array), append=True)
+  _, origin = GI.Put_v((cst_stride, src_dist_gnum), extend=True)
+  _, tmp_ec = GI.Put_v((3*cst_stride, array), extend=True)
   part_mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
 
   # Retrieve mask on initial distribution

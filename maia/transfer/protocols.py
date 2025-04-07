@@ -184,10 +184,10 @@ def part_to_block(part_data, distri, ln_to_gn_list, comm, reduce_func=None, **kw
         def _exchange_one(part_fields):
           if isinstance(PTB, GlobalIndexer):
             assert isinstance(part_fields, vs.VStrideArray)
-            return vs.from_counts(*PTB.Put_v((part_fields.counts, part_fields.values), append=True))
+            return vs.from_counts(*PTB.Put_v((part_fields.counts, part_fields.values), extend=True))
           elif isinstance(PTB, GlobalMultiIndexer):
             assert all(isinstance(pf, vs.VStrideArray) for pf in part_fields)
-            return vs.from_counts(*PTB.Put_v([(pf.counts, pf.values) for pf in part_fields], append=True))
+            return vs.from_counts(*PTB.Put_v([(pf.counts, pf.values) for pf in part_fields], extend=True))
       elif isinstance(PTB, GlobalIndexer): # We can guess from input arg
         def _exchange_one(part_fields):
           return PTB.Put_v((part_fields.counts, part_fields.values)) if isinstance(part_fields, vs.VStrideArray) \

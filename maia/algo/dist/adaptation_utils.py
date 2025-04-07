@@ -216,9 +216,9 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
 
   # Origin is not mandatory for TETRA because we just want the TRI ids at the end
   _, origin = GI.Put_v([(cst_stride[0], src_dist_gnum),
-                        (cst_stride[1], np.zeros(tetra_key.size, src_dist_gnum.dtype))], append=True)
+                        (cst_stride[1], np.zeros(tetra_key.size, src_dist_gnum.dtype))], extend=True)
   _, tmp_ec = GI.Put_v([(3*cst_stride[0], src_face_vtx.values),
-                        (3*cst_stride[1], tgt_face_vtx.values)], append=True)
+                        (3*cst_stride[1], tgt_face_vtx.values)], extend=True)
   mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
 
   mask[origin == 0] = True # We dont want to get tetra faces

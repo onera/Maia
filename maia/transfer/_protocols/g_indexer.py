@@ -80,12 +80,12 @@ def _guess_reduce_dt_and_identity(dt_in, op):
 
   return dt_out, val
 
-def put_strided(a, a_count, indices, read_counts, read, append=False):
+def put_strided(a, a_count, indices, read_counts, read, extend=False):
   """
   A special case of VStrideArray.put() where out (a) is preallocated
   and all indices will be visited
   """
-  if append:
+  if extend:
     vstride.put_extend(a_count, a, indices, read_counts, read)
   else:
     vstride.put(a_count, a, indices, read_counts, read)
@@ -404,14 +404,14 @@ class GlobalMultiIndexer:
 
     return local_data_l
 
-  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /, *, append=False) -> VBuffer:
+  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /, *, extend=False) -> VBuffer:
     """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
       local_data_l (list of N var. buffer): for each index list, values to write as pair \
         (**local_counts** (*np array of* :math:`pn_k` *int*), **local_buff** (*buffer*))
       dist_data (variable buffer, optional) : preallocated buffer to store distributed data or None
-      append  (bool, optional) : If ``True``, gather the values written at a same global index.
+      extend  (bool, optional) : If ``True``, gather the values written at a same global index.
         Otherwise, keep only the last one. Defaults to ``False``.
     Returns:
       variable buffer: output distributed data, returned as pair of values \
@@ -455,7 +455,7 @@ class GlobalMultiIndexer:
 
     if dist_data is None:
       counts_out  = np.zeros(self.dn, dtype=_counts_out.dtype)
-      if append:
+      if extend:
         np.add.at(counts_out, self.dist_select_idx, _counts_out)
       else:
         counts_out[self.dist_select_idx] = _counts_out
@@ -482,7 +482,7 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((send_buff, send_counts, send_buff.dtype.char), (recv_buff, recv_counts, send_buff.dtype.char))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, append)
+    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, extend)
 
     return counts_out, buff_out
   
@@ -673,7 +673,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take_v(dist_data, local_data_l)[0]
 
-  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /, *, append=False) -> VBuffer:
+  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /, *, extend=False) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by a tuple of two objects:
@@ -698,14 +698,14 @@ class GlobalIndexer:
       local_data (variable buffer): data to write at each accessed index, ie tuple 
         (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
       dist_data (variable buffer, optional): preallocated buffer to store distributed data or None
-      append  (bool, optional) : If ``True``, gather the values written at a same global index.
+      extend  (bool, optional) : If ``True``, gather the values written at a same global index.
         Otherwise, keep only the last one. Defaults to ``False``.
     Returns:
       variable buffer: output distributed data, returned as the tuple of values
       (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*)).
       The return object is ``dist_data`` if it was given by the user.
     """
-    return self.GIndexer_m.Put_v([local_data], dist_data, append=append)
+    return self.GIndexer_m.Put_v([local_data], dist_data, extend=extend)
 
   @property
   def empty_dist(self) -> bool:

@@ -90,7 +90,7 @@ def preserve_orientation(part_zones, comm):
   mask = GI.access_counts >= 2 # <-- these ones
 
   # In addition, exchange partition id and reduce with min to choose a master
-  dist_data_f = vs.from_counts(*GI.Put_v(data_list, append=True))
+  dist_data_f = vs.from_counts(*GI.Put_v(data_list, extend=True))
 
   dist_data = dist_data_f.reduce(vs.ReduceOp.MIN)[mask]
   

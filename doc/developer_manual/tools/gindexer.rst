@@ -311,11 +311,11 @@ for global index 0, which is accessed twice, the written data
 This is why we used a dashed arrow for P0 on the scheme: its value is not written
 in the distributed array, because of priority order.
 
-This rule can be disabled with the parameter ``append=True``: when used, all the data
+This rule can be disabled with the parameter ``extend=True``: when used, all the data
 written at a same global index are concatenated according to their apparition order
 (in increasing rank order)::
 
-  counts_new, dist_data_new = GI.Put_v((counts, values), append=True)
+  counts_new, dist_data_new = GI.Put_v((counts, values), extend=True)
   #P0 : counts_new    = array([5,0])                   #nb of vals for 0..2
   #     dist_data_new = array([0.1,0.2,0.3,20.1,20.2]) #values (5, then 0)
   #P1 : counts_new    = array([0,1])                   #nb of vals for 2..4
@@ -323,7 +323,7 @@ written at a same global index are concatenated according to their apparition or
   #P2 : counts_new    = array([1])                     #nb of vals for 4..5
   #     dist_data_new = array([4.1],                 ) #values (1)
 
-On the above example, we can see that with ``append=True``, global index 0 get a counts
+On the above example, we can see that with ``extend=True``, global index 0 get a counts
 of 5 because 3 values has been written by P0, then 2 values by P2.
 
 .. image:: ./put_v_ext.png

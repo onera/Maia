@@ -405,13 +405,13 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
 
 
   # Two echanges are needed, one for PE (with stride == 2), one for connectivity
-  d_strid_ec, d_data_ec = GI.Put_v([(a.counts, a.values) for a in p_data_ec], append=has_pe)
+  d_strid_ec, d_data_ec = GI.Put_v([(a.counts, a.values) for a in p_data_ec], extend=has_pe)
 
   d_elt_n = d_strid_ec
   dist_ec = d_data_ec
 
   if has_pe:
-    d_strid_pe, d_data_pe = GI.Put_v([(a.counts, a.values) for a in p_data_pe], append=True)
+    d_strid_pe, d_data_pe = GI.Put_v([(a.counts, a.values) for a in p_data_pe], extend=True)
 
     # Post treat : delete duplicated faces.
     dn_elt = d_strid_pe.shape[0]

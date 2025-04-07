@@ -351,7 +351,7 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
   distri = par_utils.distribution_from_gnum(pl_vtx_l, comm, True, True)
   GI = EP.GlobalMultiIndexer(distri, [pl-1 for pl in pl_vtx_l], comm)
   pl_vtx = np.flatnonzero(GI.access_counts > 0) + distri[comm.rank] + 1
-  _, pld_vtx = GI.Put_v([(np.ones(pld.size, np.int32), pld) for pld in pld_vtx_l], append=True)
+  _, pld_vtx = GI.Put_v([(np.ones(pld.size, np.int32), pld) for pld in pld_vtx_l], extend=True)
   assert pld_vtx.size == pl_vtx.size
   dn_vtx_jn = pld_vtx.size
   distri = par_utils.gather_and_shift(dn_vtx_jn, comm)

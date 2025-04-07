@@ -303,8 +303,8 @@ class Test_g_indexer:
     assert np.array_equal(counts_out, expected_out[0])
     assert np.allclose(data_out, expected_out[1])
 
-    # The flag append allows to keep all the data coming from a given gnum, in appartion order
-    counts_out_app, data_out_app = GI.Put_v((counts_in, data_in), append=True)
+    # The flag extend allows to keep all the data coming from a given gnum, in appartion order
+    counts_out_app, data_out_app = GI.Put_v((counts_in, data_in), extend=True)
     expected_out_app = [
       (np.array([0,1,0,0,2]), np.array([20., 50.,55])),
       (np.array([], int), np.array([], float)),
@@ -321,10 +321,10 @@ class Test_g_indexer:
     GI.Put_v((counts_in, data_in), (counts_out, data_out2)) 
     assert np.array_equal(data_out, data_out2)
 
-    # If we use append + preallocated mode, counts_out can be compute with ReduceOp = SUM
+    # If we use extend + preallocated mode, counts_out can be compute with ReduceOp = SUM
     counts_out = GI.Put(counts_in, reduce=ReduceOp.SUM)
     data_out2 = np.zeros(counts_out.sum(), data_in.dtype)
-    GI.Put_v((counts_in, data_in), (counts_out, data_out2), append=True) 
+    GI.Put_v((counts_in, data_in), (counts_out, data_out2), extend=True) 
     assert np.array_equal(data_out2, data_out_app)
 
 

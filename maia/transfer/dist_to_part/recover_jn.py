@@ -60,7 +60,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
   for field_name, p_field in part_data.items():
     vbuff_ini = [(_pstride, _pfield) for _pstride,_pfield in zip(part_stride, p_field)]
 
-    d_stride, d_field = GI.Put_v(vbuff_ini, append=True)
+    d_stride, d_field = GI.Put_v(vbuff_ini, extend=True)
     vbuff_up = GI.Take_v((d_stride, d_field))
 
     part_stride_new           = [data[0] for data in vbuff_up]
