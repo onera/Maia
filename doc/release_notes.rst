@@ -18,7 +18,7 @@ Developpement version
 - Update Periodic_t values in cartesian ↔ cylindrical conversions
 - localize_points: allow source mesh to be structured
 - Allow distributed meshes in localize_points and find_closest_points
-- convert_s_to_u: manage 2D input meshes
+- convert_s_to_u: manage 2D input meshes and add standard elements output mode
 
 🐞 Fixes
 ^^^^^^^^
@@ -27,6 +27,7 @@ Developpement version
 - concatenate_subsets_from_families: fix GridLocation value of updated ZoneSubRegion nodes
 - compute_wall_distance: write output (using huge value) even if no BCWall are found in mesh
 - extract_part: return an empty tree instead of raising when requested subset does not exist
+- convert_s_to_u: correct PointList values of CellCenter subsets
 
 v1.6 (January 2025)
 -------------------

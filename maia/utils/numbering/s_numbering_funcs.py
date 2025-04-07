@@ -284,3 +284,21 @@ def edge_dconnectivity_from_gnum(bounds, n_vtx, dtype):
 
   cnumbering.edge_dconnectivity_from_gnum(*bounds, np.array(n_vtx, dtype=dtype), edge_pe, edge_vtx)
   return edge_vtx, edge_pe
+
+def quad4_connectivity_of_selected_gid(face_idx, n_vtx):
+  """
+  Similar to edge_dconnectivity_from_gnum, but generate only the specified ids 
+  and do not create ParentElements data
+  """
+  face_vtx = np.empty(4*face_idx.size, dtype=face_idx.dtype)
+  cnumbering.quad4_connectivity_from_idx(face_idx, np.array(n_vtx, dtype=face_idx.dtype), face_vtx)
+  return face_vtx
+
+def bar2_connectivity_of_selected_gid(edge_idx, n_vtx):
+  """
+  Similar to face_dconnectivity_from_gnum, but generate only the specified ids 
+  and do not create ParentElements data
+  """
+  edge_vtx = np.empty(2*edge_idx.size, dtype=edge_idx.dtype)
+  cnumbering.bar2_connectivity_from_idx(edge_idx, np.array(n_vtx, dtype=edge_idx.dtype), edge_vtx)
+  return edge_vtx

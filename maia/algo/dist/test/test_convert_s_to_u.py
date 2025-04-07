@@ -12,6 +12,28 @@ import maia
 
 from maia.algo.dist  import s_to_u
 
+def test_generate_all_bnd_bcs():
+  bcs = s_to_u.generate_all_bnd_bcs([42,8], np.int32)
+  assert len(bcs) == 4
+  assert all(PT.get_label(n) == 'BC_t' for n in bcs)
+  assert all(PT.Subset.getPatch(n)[1].dtype == np.int32 for n in bcs)
+  assert (PT.get_child_from_name(bcs[0], 'PointRange')[1] == [[1,1],[1,8]]).all()
+  assert (PT.get_child_from_name(bcs[1], 'PointRange')[1] == [[42,42],[1,8]]).all()
+  assert (PT.get_child_from_name(bcs[2], 'PointRange')[1] == [[1,42],[1,1]]).all()
+  assert (PT.get_child_from_name(bcs[3], 'PointRange')[1] == [[1,42],[8,8]]).all()
+
+  bcs = s_to_u.generate_all_bnd_bcs([42,8,24], np.int64)
+  assert len(bcs) == 6
+  assert all(PT.get_label(n) == 'BC_t' for n in bcs)
+  assert all(PT.Subset.getPatch(n)[1].dtype == np.int64 for n in bcs)
+  assert (PT.get_child_from_name(bcs[0], 'PointRange')[1] == [[1,1],[1,8],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[1], 'PointRange')[1] == [[42,42],[1,8],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[2], 'PointRange')[1] == [[1,42],[1,1],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[3], 'PointRange')[1] == [[1,42],[8,8],[1,24]]).all()
+  assert (PT.get_child_from_name(bcs[4], 'PointRange')[1] == [[1,42],[1,8],[1,1]]).all()
+  assert (PT.get_child_from_name(bcs[5], 'PointRange')[1] == [[1,42],[1,8],[24,24]]).all()
+
+
 ###############################################################################
 def test_n_face_per_dir():
   nVtx = np.array([7,9,5])
@@ -155,6 +177,75 @@ def test_zonedims_to_ngon(comm):
   assert PT.get_child_from_name(ngon, 'ElementConnectivity')[1].shape == (4*expected_n_faces,)
 ###############################################################################
 
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("with_bc", [True, False])
+def test_s_to_u_2d_elt(with_bc, comm):
+  
+  tree = maia.factory.generate_dist_block([6,3], 'S', comm)
+  if not with_bc:
+    PT.rm_nodes_from_label(tree, 'ZoneBC_t')
+
+  # Even if the input mesh does not include BCs, the boundary elements
+  # are supposed to be created
+  maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
+
+  if comm.rank == 0:
+    expected_bar_ec = np.array([7, 1, 6, 12, 13, 7, 12, 18, 1, 2, 2, 3], pdm_dtype)
+    expected_bar_distri = np.array([0,6,14], pdm_dtype)
+    expected_quad_ec = np.array([1, 2, 8, 7, 2, 3, 9, 8, 3, 4, 10, 9, 4, 5, 11, 10, 5, 6, 12, 11], pdm_dtype)
+    expected_quad_distri = np.array([0,5,10], pdm_dtype)
+  elif comm.rank == 1:
+    expected_bar_ec = np.array([3, 4, 4, 5, 5, 6, 14, 13, 15, 14, 16, 15, 17, 16, 18, 17], pdm_dtype)
+    expected_bar_distri = np.array([6,14,14], pdm_dtype)
+    expected_quad_ec = np.array([7, 8, 14, 13, 8, 9, 15, 14, 9, 10, 16, 15, 10, 11, 17, 16, 11, 12, 18, 17], pdm_dtype)
+    expected_quad_distri = np.array([5,10,10], pdm_dtype)
+
+  expected_bar = PT.new_Elements('BAR_2', 'BAR_2', erange=np.array([1,14], pdm_dtype), econn=expected_bar_ec)
+  MT.new_distribution({'Element' : expected_bar_distri}, expected_bar)
+  expected_quad = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([15,24], pdm_dtype), econn=expected_quad_ec)
+  MT.new_distribution({'Element' : expected_quad_distri}, expected_quad)
+
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'BAR_2'), expected_bar)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_quad)
+
+@pytest_parallel.mark.parallel(3)
+def test_s_to_u_3d_elt(comm):
+  tree = maia.factory.generate_dist_block([4,3,2], 'S', comm)
+  maia.algo.dist.convert_s_to_u(tree, 'Standard', comm, subset_loc={'BC_t' : 'FaceCenter'})
+
+  if comm.rank == 0:
+    expected_quad_ec = np.array([1,13,17,5, 4,8,20,16, 5,17,21,9, 8,12,24,20, 1,2,14,13, 2,3,15,14], pdm_dtype)
+    expected_quad_distri = np.array([0,6,22], pdm_dtype)
+    expected_hexa_ec = np.array([1,2,6,5,13,14,18,17, 2,3,7,6,14,15,19,18], pdm_dtype)
+    expected_hexa_distri = np.array([0,2,6], pdm_dtype)
+    expected_zmax_pl = np.array([[17,18]], pdm_dtype)
+    expected_zmax_distri = np.array([0,2,6], pdm_dtype)
+  elif comm.rank == 1:
+    expected_quad_ec = np.array([3,4,16,15, 10,9,22,21, 11,10,23,22, 12,11,24,23, 1,5,6,2, 2,6,7,3, 3,7,8,4], pdm_dtype)
+    expected_quad_distri = np.array([6,13,22], pdm_dtype)
+    expected_hexa_ec = np.array([3,4,8,7,15,16,20,19, 5,6,10,9,17,18,22,21], pdm_dtype)
+    expected_hexa_distri = np.array([2,4,6], pdm_dtype)
+    expected_zmax_pl = np.array([[19,20]], pdm_dtype)
+    expected_zmax_distri = np.array([2,4,6], pdm_dtype)
+  elif comm.rank == 2:
+    expected_quad_ec = np.array([5,9,10,6, 6,10,11,7, 7,11,12,8, 13,14,18,17, 14,15,19,18,
+                                15,16,20,19, 17,18,22,21, 18,19,23,22, 19,20,24,23], pdm_dtype)
+    expected_quad_distri = np.array([13,22,22], pdm_dtype)
+    expected_hexa_ec = np.array([6,7,11,10,18,19,23,22, 7,8,12,11,19,20,24,23], pdm_dtype)
+    expected_hexa_distri = np.array([4,6,6], pdm_dtype)
+    expected_zmax_pl = np.array([[21,22]], pdm_dtype)
+    expected_zmax_distri = np.array([4,6,6], pdm_dtype)
+  
+  expected_bar = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([1,22], pdm_dtype), econn=expected_quad_ec)
+  MT.new_distribution({'Element' : expected_quad_distri}, expected_bar)
+  expected_quad = PT.new_Elements('HEXA_8', 'HEXA_8', erange=np.array([23,28], pdm_dtype), econn=expected_hexa_ec)
+  MT.new_distribution({'Element' : expected_hexa_distri}, expected_quad)
+  expected_zmax = PT.new_BC('Zmax', 'Null', loc='FaceCenter', point_list=expected_zmax_pl)
+  MT.new_distribution({'Index' : expected_zmax_distri}, expected_zmax)
+
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_bar)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'HEXA_8'), expected_quad)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'Zmax'), expected_zmax)
 
 @pytest_parallel.mark.parallel([1,3])
 def test_s_to_u_2d(comm):
@@ -210,7 +301,7 @@ def test_s_to_u_2d_dataset(bc_loc_edge, comm):
   PT.keep_children_from_name(zbc, 'Ymax')
   
   loc = {'BC_t' : 'EdgeCenter'} if bc_loc_edge else {}
-  maia.algo.dist.convert_s_to_u(tree, 'NGON_n', comm, loc)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm, loc)
   
   ymax = PT.get_node_from_name(tree, 'Ymax')
   if bc_loc_edge:
@@ -242,7 +333,8 @@ def test_s_to_u_2d_dataset(bc_loc_edge, comm):
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("jn_loc", ['Vertex', 'EdgeCenter'])
-def test_s_to_u_2d_gc(jn_loc, comm):
+@pytest.mark.parametrize("connectivity", ['Poly', 'Standard'])
+def test_s_to_u_2d_gc(connectivity, jn_loc, comm):
 
   treeA = maia.factory.generate_dist_block([6,3], 'S', comm, length=[5, 2])
   treeB = maia.factory.generate_dist_block([5,4], 'S', comm, length=[4, 3])
@@ -253,37 +345,41 @@ def test_s_to_u_2d_gc(jn_loc, comm):
   zoneB = PT.get_node_from_label(treeB, 'Zone_t')
   PT.set_name(zoneB, 'Right')
 
-  gc = PT.new_GridConnectivity1to1('Xmax', 'Right', point_range=[[6,6],[1,3]], point_range_donor=[[2,4],[4,4]], transform=[-2,1])
+  pr_left = np.array([[6,6],[1,3]], pdm_dtype)
+  pr_right = np.array([[2,4],[4,4]], pdm_dtype)
+  gc = PT.new_GridConnectivity1to1('Xmax', 'Right', point_range=pr_left, point_range_donor=pr_right, transform=[-2,1])
   PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[gc], parent=zoneA)
 
-  gc = PT.new_GridConnectivity1to1('Xmin', 'Left', point_range=[[2,4],[4,4]], point_range_donor=[[6,6],[1,3]], transform=[2,-1])
+  gc = PT.new_GridConnectivity1to1('Xmin', 'Left', point_range=pr_right, point_range_donor=pr_left, transform=[2,-1])
   PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[gc], parent=zoneB)
 
   tree = PT.union(treeA, treeB)
   # Only test GCs in this function
   PT.rm_nodes_from_label(tree, 'ZoneBC_t')
 
-  if jn_loc == 'Vertex':
-    maia.algo.dist.convert_s_to_u(tree, 'NGON_n', comm)
-  elif jn_loc == 'EdgeCenter':
-    maia.algo.dist.convert_s_to_ngon(tree, comm)
+  maia.algo.dist.convert_s_to_u(tree, connectivity, comm, {'GC_t' : jn_loc})
 
   if jn_loc == 'Vertex':
     pl_left  = [[6,12]]  if comm.rank == 0 else [[18]]
     pl_right = [[17,18]] if comm.rank == 0 else [[19]]
     distri = [0,2,3]     if comm.rank == 0 else [2,3,3]
   elif jn_loc == 'EdgeCenter':
-    pl_left  = [[6]]  if comm.rank == 0 else [[12]]
-    pl_right = [[29]] if comm.rank == 0 else [[30]]
+    if connectivity == 'Poly':
+      pl_left  = [[6]]  if comm.rank == 0 else [[12]]
+      pl_right = [[29]] if comm.rank == 0 else [[30]]
+    elif connectivity == 'Standard':
+      pl_left  = [[2]]  if comm.rank == 0 else [[4]]
+      pl_right = [[12]] if comm.rank == 0 else [[13]]
     distri = [0,1,2]  if comm.rank == 0 else [1,2,2]
 
   zgc_left = PT.yaml.to_node(f"""
   ZoneGridConnectivity ZoneGridConnectivity_t:
     Xmax GridConnectivity_t "Right":
       GridConnectivityType GridConnectivityType_t "Abutting1to1":
+      GridConnectivityDonorName Descriptor_t "Xmin":
       GridLocation GridLocation_t "{jn_loc}":
-      PointList IndexArray_t {pl_left}:
-      PointListDonor IndexArray_t {pl_right}:
+      PointList IndexArray_t {stype} {pl_left}:
+      PointListDonor IndexArray_t {stype} {pl_right}:
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {stype} {distri}:
   """)
@@ -291,9 +387,10 @@ def test_s_to_u_2d_gc(jn_loc, comm):
   ZoneGridConnectivity ZoneGridConnectivity_t:
     Xmin GridConnectivity_t "Left":
       GridConnectivityType GridConnectivityType_t "Abutting1to1":
+      GridConnectivityDonorName Descriptor_t "Xmax":
       GridLocation GridLocation_t "{jn_loc}":
-      PointList IndexArray_t {pl_right}:
-      PointListDonor IndexArray_t {pl_left}:
+      PointList IndexArray_t {stype} {pl_right}:
+      PointListDonor IndexArray_t {stype} {pl_left}:
       :CGNS#Distribution UserDefinedData_t:
         Index DataArray_t {stype} {distri}:
   """)
@@ -303,3 +400,24 @@ def test_s_to_u_2d_gc(jn_loc, comm):
   assert PT.is_same_tree(PT.get_child_from_label(zoneA, 'ZoneGridConnectivity_t'), zgc_left)
   assert PT.is_same_tree(PT.get_child_from_label(zoneB, 'ZoneGridConnectivity_t'), zgc_right)
   
+
+@pytest.mark.parametrize("connectivity", ['Poly', 'Standard'])
+def test_cell_center_subset_shift(connectivity, comm):
+  tree = maia.factory.generate_dist_block(4, 'S', comm)
+
+  bc_s = PT.new_BC('BC', type='BCOutflow', loc='CellCenter', point_range=[[1,3], [2,3], [1,1]])
+  PT.maia.newDistribution({'Index' : [0,6,6]}, parent=bc_s)
+  zbc = PT.get_node_from_label(tree, 'ZoneBC_t')
+  PT.set_children(zbc, [bc_s])
+
+  maia.algo.dist.convert_s_to_u(tree, connectivity, comm)
+
+  before_shift = np.array([[4,5,6, 7,8,9]])
+  if connectivity == 'Poly':
+    shift = 3*(4*3*3) # Shift will all internal faces
+  else:
+    shift = 6*(3*3) # Shift will only external faces
+
+  bc = PT.get_node_from_label(tree, 'BC_t')
+  assert PT.Subset.GridLocation(bc) == 'CellCenter'
+  assert (PT.get_child_from_name(bc, 'PointList')[1] == before_shift + shift).all()

@@ -215,6 +215,125 @@ void edge_dconnectivity_from_gnum(g_num begin, g_num endI, g_num endJ,
   }
 }
 
+template<typename g_num>
+void bar2_connectivity_from_idx(py::array_t<g_num> &edge_idx,
+                                py::array_t<g_num> &vtx_size,
+                                py::array_t<g_num> &edge_vtx) {
+
+auto _vtx_size = vtx_size.data();
+auto _edge_idx = edge_idx.data();
+auto _edge_vtx = edge_vtx.mutable_data();
+
+
+g_num n_edge_i = _vtx_size[0]*(_vtx_size[1]-1);
+
+  for (int i_edge=0; i_edge < edge_idx.size(); ++i_edge) {
+    g_num vtx1, vtx2;
+    g_num edge = _edge_idx[i_edge];
+
+    // Edge is i-normal
+    if (edge <= n_edge_i) {
+      g_num j = (edge-1) / _vtx_size[0] + 1;
+      g_num i = edge - (j-1)*_vtx_size[0];
+
+      vtx1 = i + (j-1)*_vtx_size[0];
+      vtx2 = i + (j  )*_vtx_size[0];
+
+      if (i==1) {
+        std::swap(vtx1, vtx2);
+      }
+    }
+    // Edge is j-normal
+    else {
+      g_num j = (edge - 1 - n_edge_i) / (_vtx_size[0]-1) + 1;
+      g_num i = edge - (j-1)*(_vtx_size[0]-1) - n_edge_i;
+
+      vtx1 = i   + (j-1)*_vtx_size[0];
+      vtx2 = i+1 + (j-1)*_vtx_size[0];
+
+      if (j==_vtx_size[1]) {
+        std::swap(vtx1, vtx2);
+      }
+    }
+    _edge_vtx[2*i_edge+0] = vtx1;
+    _edge_vtx[2*i_edge+1] = vtx2;
+  }
+}
+
+template<typename g_num>
+void quad4_connectivity_from_idx(py::array_t<g_num> &face_idx,
+                                 py::array_t<g_num> &vtx_size,
+                                 py::array_t<g_num> &face_vtx) {
+
+auto _face_idx = face_idx.data();
+auto _face_vtx = face_vtx.mutable_data();
+
+auto n_vtx = vtx_size.data();
+const g_num n_cell[] = {n_vtx[0]-1, n_vtx[1]-1, n_vtx[2]-1};
+
+g_num n_face_i = n_vtx[0]*n_cell[1]*n_cell[2];
+g_num n_face_j = n_vtx[1]*n_cell[0]*n_cell[2];
+
+  for (int i_face=0; i_face < face_idx.size(); ++i_face) {
+    g_num vtx1, vtx2, vtx3, vtx4;
+    g_num face = _face_idx[i_face];
+
+    // Face is i-normal
+    if (face <= n_face_i) {
+      g_num k = ((face - 1) / (n_vtx[0]*n_cell[1])) + 1;
+      g_num j = (face - (k-1)*(n_vtx[0]*n_cell[1]) - 1) / n_vtx[0] + 1;
+      g_num i = face - (j-1)*n_vtx[0] - (k-1)*(n_vtx[0]*n_cell[1]);
+
+      // (i,j,k) (i,j+1,k) (i,j+1,k+1), (i,j,k+1)
+      vtx1 = i + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+      vtx2 = i + (j  )*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+      vtx3 = i + (j  )*n_vtx[0] + (k  )*n_vtx[0]*n_vtx[1];
+      vtx4 = i + (j-1)*n_vtx[0] + (k  )*n_vtx[0]*n_vtx[1];
+
+      if (i==1) {
+        std::swap(vtx2, vtx4);
+      }
+    }
+    // Face is j-normal
+    else if (face <= n_face_i + n_face_j) {
+
+      g_num k = ((face - 1 - n_face_i) / (n_vtx[1]*n_cell[0])) + 1;
+      g_num j = (face - (k-1)*(n_vtx[1]*n_cell[0]) - 1 - n_face_i) / n_cell[0] + 1;
+      g_num i = face - (j-1)*n_cell[0] - (k-1)*(n_vtx[1]*n_cell[0]) - n_face_i;
+
+      // (i,j,k) (i+1,j,k) (i+1,j,k+1), (i,j,k+1)
+      vtx1 = i   + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+      vtx2 = i+1 + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+      vtx3 = i+1 + (j-1)*n_vtx[0] + (k  )*n_vtx[0]*n_vtx[1];
+      vtx4 = i   + (j-1)*n_vtx[0] + (k  )*n_vtx[0]*n_vtx[1];
+
+      if (j==n_vtx[1]) {
+        std::swap(vtx1, vtx2);
+      }
+    }
+    // Face is k-normal
+    else {
+      g_num k = ((face - 1 - n_face_i - n_face_j) / (n_cell[0]*n_cell[1])) + 1;
+      g_num j = (face - (k-1)*(n_cell[0]*n_cell[1]) - 1 - n_face_i - n_face_j) / n_cell[0] + 1;
+      g_num i = face - (j-1)*n_cell[0] - (k-1)*(n_cell[0]*n_cell[1]) - n_face_i - n_face_j;
+
+      // (i,j,k) (i+1,j,k) (i+1,j+1,k), (i,j+1,k)
+      vtx1 = i   + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+      vtx2 = i+1 + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+      vtx3 = i+1 + (j  )*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+      vtx4 = i   + (j  )*n_vtx[0] + (k-1)*n_vtx[0]*n_vtx[1];
+
+      if (k==1) {
+        std::swap(vtx2, vtx4);
+      }
+    }
+    _face_vtx[4*i_face+0] = vtx1;
+    _face_vtx[4*i_face+1] = vtx2;
+    _face_vtx[4*i_face+2] = vtx3;
+    _face_vtx[4*i_face+3] = vtx4;
+  }
+}
+
 
 void register_numbering_module(py::module_& parent) {
 
@@ -238,4 +357,18 @@ void register_numbering_module(py::module_& parent) {
         "beginI"_a.noconvert(), "endI"_a.noconvert(), "endJ"_a.noconvert(),
         "zone_size"_a.noconvert(), "edge_pe"_a.noconvert(), "edge_vtx"_a.noconvert(),
         "Generate 2D Edge connectivity and parent element from global numbering bounds");
+
+  m.def("bar2_connectivity_from_idx", &bar2_connectivity_from_idx<int32_t>,
+        "edge_idx"_a.noconvert(), 
+        "zone_size"_a.noconvert(), "edge_vtx"_a.noconvert());
+  m.def("bar2_connectivity_from_idx", &bar2_connectivity_from_idx<int64_t>,
+        "edge_idx"_a.noconvert(), 
+        "zone_size"_a.noconvert(), "edge_vtx"_a.noconvert());
+
+  m.def("quad4_connectivity_from_idx", &quad4_connectivity_from_idx<int32_t>,
+        "face_idx"_a.noconvert(), 
+        "zone_size"_a.noconvert(), "face_vtx"_a.noconvert());
+  m.def("quad4_connectivity_from_idx", &quad4_connectivity_from_idx<int64_t>,
+        "face_idx"_a.noconvert(), 
+        "zone_size"_a.noconvert(), "face_vtx"_a.noconvert());
 }
