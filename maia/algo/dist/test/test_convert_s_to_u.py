@@ -178,12 +178,15 @@ def test_zonedims_to_ngon(comm):
 ###############################################################################
 
 @pytest_parallel.mark.parallel(2)
-def test_s_to_u_2d_elt(comm):
+@pytest.mark.parametrize("with_bc", [True, False])
+def test_s_to_u_2d_elt(with_bc, comm):
   
   tree = maia.factory.generate_dist_block([6,3], 'S', comm)
-  PT.rm_nodes_from_name(tree, 'Xmin')
-  PT.rm_nodes_from_name(tree, 'Ymax')
+  if not with_bc:
+    PT.rm_nodes_from_label(tree, 'ZoneBC_t')
 
+  # Even if the input mesh does not include BCs, the boundary elements
+  # are supposed to be created
   maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
 
   if comm.rank == 0:
