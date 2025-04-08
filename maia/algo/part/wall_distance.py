@@ -309,11 +309,14 @@ class WallDistance:
       closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
       closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
       if self.perio:
+        domain_id = np.array([], dtype=closest_elt_gnum.dtype)
+        nb_dom_prev = 0
         for gn, group in enumerate(self.grouped_zone_paths):
-          if dist_zone_path in group:
-            group_num = gn
-            break
-        closest_surf_domain = closest_surf_domain//(3**len(self.periodicities_per_group[group_num]))
+          domain_id_loc = np.arange(len(group)*3**len(self.periodicities_per_group[gn]), dtype=closest_elt_gnum.dtype)
+          domain_id_loc = domain_id_loc//(3**len(self.periodicities_per_group[gn]))+nb_dom_prev
+          domain_id = np.concatenate([domain_id, domain_id_loc])
+          nb_dom_prev += len(group)
+        closest_surf_domain = domain_id[closest_surf_domain]
       PT.new_DataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
 
       # Reput closest face gnum in shifted numbering, but ignoring periodic patches

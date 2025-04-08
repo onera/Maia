@@ -190,6 +190,55 @@ def test_walldistance_perio(comm):
     assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltGnum'))  == expected_gnum[z]).all()
     assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltDomId')) == expected_dom_id[z]).all()
 
+
+@pytest_parallel.mark.parallel(1)
+@pytest.mark.parametrize('mesh_type', ['S', 'U'])
+def test_walldistance_perio_multi_groups(comm, mesh_type):
+  # WARNING: this test-case was created to fix an error but revealed another.
+  #          So the distance computed is the case is false !
+  
+  # Case preparation
+  dt1 = maia.factory.generate_dist_block([3,4,2], 'S', comm, length=[-1.,2.,1])
+  zone1 = PT.get_node_from_label(dt1, 'Zone_t')
+  PT.set_name(zone1, 'Zone1')
+  ymin1 = PT.get_node_from_name(dt1, 'Ymin')
+  PT.set_value(ymin1, 'BCWallViscous')
+  dt2 = maia.factory.generate_dist_block([4,5,2], 'S', comm, length=[1.,2.,1], origin=[0.,0.25,0.])
+  zone2 = PT.get_node_from_label(dt2, 'Zone_t')
+  PT.set_name(zone2, 'Zone2')
+  xmax2 = PT.get_node_from_name(dt2, 'Xmax')
+  PT.set_value(xmax2, 'BCWallViscous')
+  ymin2 = PT.get_node_from_name(dt2, 'Ymin')
+  ymax2 = PT.get_node_from_name(dt2, 'Ymax')
+  PT.update_node(ymin2, label='GridConnectivity1to1_t', value='Base/Zone2')
+  PT.update_node(ymax2, label='GridConnectivity1to1_t', value='Base/Zone2')
+  PT.rm_node_from_path(dt2, 'Base/Zone2/ZoneBC/Ymin')
+  PT.rm_node_from_path(dt2, 'Base/Zone2/ZoneBC/Ymax')
+  PT.new_IndexRange('PointRangeDonor', PT.get_child_from_name(ymax2, 'PointRange')[1], parent=ymin2)
+  PT.new_IndexRange('PointRangeDonor', PT.get_child_from_name(ymin2, 'PointRange')[1], parent=ymax2)
+  PT.new_GridConnectivityProperty({'translation':[0.,-2.,0]}, parent=ymin2)
+  PT.new_GridConnectivityProperty({'translation':[0.,2.,0]}, parent=ymax2)
+  PT.new_child(ymin2, 'Transform', 'Transform_t', value=[1,2,3])
+  PT.new_child(ymax2, 'Transform', 'Transform_t', value=[1,2,3])
+  zgc2 = PT.new_ZoneGridConnectivity(parent=zone2)
+  PT.add_child(zgc2, ymin2)
+  PT.add_child(zgc2, ymax2)
+  dt = PT.union(dt1,dt2)
+  
+  if mesh_type == 'U':
+    maia.algo.dist.convert_s_to_ngon(dt, comm)
+  
+  #Case execution
+  pt = maia.factory.partition_dist_tree(dt, comm)
+  WD.compute_wall_distance(pt, comm, perio=True)
+  
+  #Case test
+  wd1 = PT.get_node_from_path(pt, 'Base/Zone1.P0.N0/WallDistance/ClosestEltDomId')
+  wd2 = PT.get_node_from_path(pt, 'Base/Zone2.P0.N0/WallDistance/ClosestEltDomId')
+  assert (PT.get_value(wd1).flatten('F') == [0, 0, 0, 0, 1, 0]).all()
+  assert np.all(PT.get_value(wd2).flatten('F') == [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+
+
 @pytest_parallel.mark.parallel(2)
 def test_walldistance_vtx(comm):
   if comm.Get_rank() == 0:
