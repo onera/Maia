@@ -176,7 +176,7 @@ There is nothing surprising for the ``take`` case. For the ``put`` case, notice 
   (with inscreasing ranks order) was kept;
 - no process provided data for global index 2 : the value ``None`` has been used.
 
-The first rule applies also to buffers implementations; for the second rule,
+The first rule is also the default behavious of buffers implementations; for the second rule,
 unreferenced indices will remain unitialized when using
 :func:`~maia.transfer.protocols.GlobalIndexer.Put`, and will get a zero counts when using
 :func:`~maia.transfer.protocols.GlobalIndexer.Put_v`.
@@ -198,32 +198,51 @@ or be allocated by the function as a numpy array if ``None`` value is used::
   # P2 : extr = array([3,5],       dtype=int)   #requested indices [0]
 
   dn = distri[rank+1] - distri[rank]
-  dist_data_new = empty(2*dn, dtype=int)
-  dist_data_new.fill(-1) # To track unitialized values
+  dist_data_new = zeros(2*dn, dtype=int) # To track unitialized values
+  if rank == 2: # To illustrate write priority
+    extr *= -1  # Now P2 has extr = array([-3,-5], dtype=int)
 
   GI.Put(extr, dist_data_new, count=2)
-  # P0 : dist_data_new = array([3,5,5,7],     dtype=int)      #glob idx 0..2
-  # P1 : dist_data_new = array([-1,-1,17,19], dtype=int)      #glob idx 2..4
+  # P0 : dist_data_new = array([-3,-5,5,7],   dtype=int)      #glob idx 0..2
+  # P1 : dist_data_new = array([0,0,17,19],   dtype=int)      #glob idx 2..4
   # P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5
 
 
 Note that as explained above, data at position 2 in ``dist_data_new`` kept
 its original value, since no process provided data for this index.
-Also note that when using the preallocated buffer mode, it is the user's responsibility to allocate
-the output buffer to the correct size and datatype.
+On the other side, the value written at position 0 is the one coming from rank 2,
+since this is the last encountered.
+
+An alternative is to use one of the available :ref:`reduction function <reduceop>` to accumulate the data
+coming from the different processes::
+
+  GI.Put(extr, dist_data_new, count=2, reduce=ReduceOp.MAX)
+  # P0 : dist_data_new = array([3,5,5,7],     dtype=int)      #glob idx 0..2
+  # P1 : dist_data_new = array([0,0,17,19],   dtype=int)      #glob idx 2..4
+  # P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5
+
+In this case, the size of the output data remains the same, but the reduction function is
+applied to the data written at the same index to compute the result.
+
+.. note:: 
+  - The reduction also include the initial value of the output array. In preallocated mode,
+    it is the user's responsibility to choose this initial value. In allocating mode, we use
+    the neutral element of the requested operation.
+  - If :math:`c \neq 1`, the reduction is applied to each item independently.
+
 
 
 **Variable buffer objects**:
 when it's come to variable buffer, an additional array of counts has to be used.
-For now, this array has to be a numpy array of integers. The data buffer
-can still be any object supporting the buffer protocol.
+For now, this array has to be a numpy array of integers, while the data buffer
+can be a numpy array of any datatype.
 This is the most complex implementation, but it allows to work with sparse data
 since a count of 0 is allowed for any global index.
 
 Following what is done in the previous paragraph, the output variable buffer
 is allocated by the function as a pair of numpy array if ``None`` argument is used,
-or can be provided to the function by the user. In this case, the output array of counts
-is supposed to be by known; only the output data buffer is filled.
+or can be provided to the function by the user. In this case, indices that are
+not accessed by any process keep their initial values.
 
 Here is an exemple of the ``take`` implementation for a variable buffer::
 
@@ -255,22 +274,22 @@ which can be illustrated as follow:
 And here is an exemple of the ``put`` implementation for a variable buffer::
 
   if rank == 0:
-    counts = array([1,3])                      #nb of vals to write at [4,0]
-    values = array([4.1,0.1,0.2,0.3],dtype='f')#values (1, then 3)
+    counts = array([1,3])                       #nb of vals to write at [4,0]
+    values = array([4.1,0.1,0.2,0.3],dtype='f') #values (1, then 3)
   if rank == 1:
-    counts = array([0,1])                      #nb of vals to write at [1,3]
-    values = array([30.1],           dtype='f')#values (0, then 1)
+    counts = array([0,1])                       #nb of vals to write at [1,3]
+    values = array([13.1],           dtype='f') #values (0, then 1)
   if rank == 2:
-    counts = array([2])                        #nb of vals to write at [0]
-    values = array([100.1,100.2],    dtype='f')#values (2)
+    counts = array([2])                         #nb of vals to write at [0]
+    values = array([20.1,20.2],      dtype='f') #values (2)
 
   counts_new, dist_data_new = GI.Put_v((counts, values))
-  # P0 : counts_new    = array([2,0])                   #nb of vals for 0..2
-  #      dist_data_new = array([100.1,100.2],dtype='f') #values (2, then 0)
-  # P1 : counts_new    = array([0,1])                   #nb of vals for 2..4
-  #      dist_data_new = array([30.1],       dtype='f') #values (0, then 1)
-  # P2 : counts_new    = array([1])                     #nb of vals for 4..5
-  #      dist_data_new = array([4.1],        dtype='f') #values (1)
+  # P0 : counts_new    = array([2,0])                  #nb of vals for 0..2
+  #      dist_data_new = array([20.1,20.2], dtype='f') #values (2, then 0)
+  # P1 : counts_new    = array([0,1])                  #nb of vals for 2..4
+  #      dist_data_new = array([13.1],      dtype='f') #values (0, then 1)
+  # P2 : counts_new    = array([1])                    #nb of vals for 4..5
+  #      dist_data_new = array([4.1],       dtype='f') #values (1)
 
 with its corresponding illustration (note that 0-length data does not *really* exist in memory):
 
@@ -283,14 +302,38 @@ the number of described data (ie the length of the distributed section, or
 the length of the requested indices list), and that the size of the data buffer
 is equal to the sum of the associated counting array.
 
+Note than unaccessed indices (such as index 2) automatically get a 0 count after
+the ``Put_v`` operation: on the other side, index 1 get a 0 count because it was
+explicitly put by P1.
 Once again, one can observe the resolution of writting conflicts:
 for global index 0, which is accessed twice, the written data
 (and thus its counts value) come from the process having the highest rank (P2).
 This is why we used a dashed arrow for P0 on the scheme: its value is not written
 in the distributed array, because of priority order.
-Note also than unaccessed indices (such as index 2) automatically get a 0 count after
-the ``Put_v`` operation: on the other side, index 1 get a 0 count because it was
-explicitly put by P1.
+
+This rule can be disabled with the parameter ``extend=True``: when used, all the data
+written at a same global index are concatenated according to their apparition order
+(in increasing rank order)::
+
+  counts_new, dist_data_new = GI.Put_v((counts, values), extend=True)
+  #P0 : counts_new    = array([5,0])                   #nb of vals for 0..2
+  #     dist_data_new = array([0.1,0.2,0.3,20.1,20.2]) #values (5, then 0)
+  #P1 : counts_new    = array([0,1])                   #nb of vals for 2..4
+  #     dist_data_new = array([30.1],                ) #values (0, then 1)
+  #P2 : counts_new    = array([1])                     #nb of vals for 4..5
+  #     dist_data_new = array([4.1],                 ) #values (1)
+
+On the above example, we can see that with ``extend=True``, global index 0 get a counts
+of 5 because 3 values has been written by P0, then 2 values by P2.
+
+.. image:: ./put_v_ext.png
+  :width: 60%
+  :align: center
+
+.. note:: 
+  - The concatenation also include the initial values of the output variable array, which allows
+    the users to update existing data.
+    If no output array is provided, as in the above example, we simply use internally an empty (counts == 0) initial array.
 
 API reference
 -------------
@@ -302,3 +345,8 @@ API reference
 .. autoclass:: maia.transfer.protocols.GlobalMultiIndexer
     :members:
     :member-order: bysource
+
+.. _reduceop:
+
+.. autodata:: maia.transfer.protocols.ReduceOp
+  :annotation: : Enum class

@@ -9,7 +9,7 @@ from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.algo      import indexing
 from maia.transfer  import protocols  as EP
-from maia.utils     import np_utils, par_utils, s_numbering, as_pdm_gnum
+from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import vstride as vs
 
 from .ngon_tools    import PDM_dfacecell_to_dcellface
@@ -100,8 +100,7 @@ def combine_dconnectivity(distri1, distri2, cnt1, cnt2, keep_sign, comm):
   """
   # 1. For values of A->B, get corresponding values in B->C
   #    so we have A->C but with reps. and without sign
-  GI = EP.GlobalIndexer(distri2, np.abs(cnt1.values)-1, comm)
-  cnt3 = vs.from_counts(*GI.Take_v((cnt2.counts, cnt2.values)))
+  cnt3 = EP.block_to_part(cnt2, distri2, np.abs(cnt1.values)-1, comm)
 
   # 2. Report sign of A->C if needed. The sign extends to all the 
   #   'C' elements coming from a same 'B' elt
@@ -142,8 +141,7 @@ def cell_vtx_connectivity_ngon(zone, comm, cell_subset=None):
 
     if cell_subset is not None:
       _cell_subset = cell_subset - PT.Zone.get_elt_range_per_dim(zone)[3][0]
-      cell_vtx_n, cell_vtx_v = EP.block_to_part_strided(cell_vtx.counts, cell_vtx.values, _cell_distri, _cell_subset, comm)
-      cell_vtx = vs.from_counts(cell_vtx_n, cell_vtx_v)
+      cell_vtx = EP.block_to_part(cell_vtx, _cell_distri, _cell_subset, comm)
   else:
     raise NotImplementedError("Only NGON zones are managed")
 

@@ -55,8 +55,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     if not use_geom and comm.allreduce(np.array_equal(cell_distri, nface_distri), MPI.LAND):
       pcell_face = dcell_face
     else:
-      pcell_face_n, pcell_face_val = EP.block_to_part_strided(dcell_face.counts, dcell_face.values, nface_distri, cell_gnum-1, comm, legacy=False)
-      pcell_face = vs.from_displs(pcell_face_n, pcell_face_val)
+      pcell_face = EP.block_to_part(dcell_face, nface_distri, cell_gnum-1, comm)
     face_gnum, inverse = np.unique(abs(pcell_face.values), return_inverse=True)
     face_gnum = face_gnum.astype(cell_gnum.dtype, copy=False)
     pcell_face_idx = pcell_face.displs.astype(np.int32, copy=False)
@@ -64,10 +63,10 @@ def minimal_partitioning(zone, comm, use_geom=False):
     
     # Compute part. like face_vtx
     ngon_distri = MT.get_distribution(ngon, 'Element')[1]
-    pface_vtx_n, pface_vtx = EP.block_to_part_strided(dface_vtx.counts, dface_vtx.values, ngon_distri, face_gnum-1, comm, legacy=False) 
-    vtx_gnum, inverse = np.unique(pface_vtx, return_inverse=True) # Unique preserve dtype
+    _pface_vtx = EP.block_to_part(dface_vtx, ngon_distri, face_gnum-1, comm)
+    vtx_gnum, inverse = np.unique(_pface_vtx.values, return_inverse=True) # Unique preserve dtype
     vtx_gnum = vtx_gnum.astype(cell_gnum.dtype, copy=False)
-    pface_vtx_idx = np_utils.sizes_to_indices(pface_vtx_n, dtype=np.int32)
+    pface_vtx_idx = np_utils.sizes_to_indices(_pface_vtx.counts, dtype=np.int32)
     pface_vtx     = np.arange(1, len(vtx_gnum)+1, dtype=np.int32)[inverse]
 
     part_data = [pcell_face_idx, pcell_face, pface_vtx_idx, pface_vtx, \
@@ -93,8 +92,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     if not use_geom:
       pface_edge = dface_edge
     else:
-      pface_edge_n, pface_edge_val = EP.block_to_part_strided(dface_edge.counts, dface_edge.values, _face_distri, cell_gnum-1, comm, legacy=False)
-      pface_edge = vs.from_counts(pface_edge_n, pface_edge_val)
+      pface_edge = EP.block_to_part(dface_edge, _face_distri, cell_gnum-1, comm)
     edge_gnum, inverse = np.unique(abs(pface_edge.values), return_inverse=True)
     pface_edge_idx = pface_edge.displs.astype(np.int32, copy=False)
     pface_edge     = np.sign(pface_edge.values, dtype=np.int32) * np.arange(1, len(edge_gnum)+1, dtype=np.int32)[inverse]
@@ -120,8 +118,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     if not use_geom:
       pcell_vtx = dcell_vtx
     else:
-      pcell_vtx_n, pcell_vtx_val = EP.block_to_part_strided(dcell_vtx.counts, dcell_vtx.values, cell_distri, cell_gnum-1, comm, legacy=False)
-      pcell_vtx = vs.from_counts(pcell_vtx_n, pcell_vtx_val)
+      pcell_vtx = EP.block_to_part(dcell_vtx, cell_distri, cell_gnum-1, comm)
     vtx_gnum, inverse = np.unique(pcell_vtx.values, return_inverse=True)
     vtx_gnum = vtx_gnum.astype(cell_gnum.dtype, copy=False)
     pcell_vtx_idx  = pcell_vtx.displs.astype(np.int32, copy=False)
@@ -131,7 +128,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     part_data = [pcell_vtx_idx, pcell_vtx, cell_gnum, vtx_gnum]
 
   # Bring back coordinates
-  pcoords = EP.block_to_part(dcoords._asdict(), vtx_distri, vtx_gnum-1, comm, legacy=False)
+  pcoords = EP.block_to_part(dcoords._asdict(), vtx_distri, vtx_gnum-1, comm)
   pvtx_coords = np_utils.interweave_arrays(list(pcoords.values()))
   if is_poly_3d_zone(zone):
     part_data.insert(4, pvtx_coords)

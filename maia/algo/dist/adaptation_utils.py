@@ -4,6 +4,7 @@ import maia
 import maia.pytree as PT
 import maia.transfer.protocols as EP
 from   maia.utils  import np_utils, par_utils, as_pdm_gnum
+from maia.utils import vstride as vs
 from   maia.utils.parallel import algo as par_algo
 from   maia.algo.dist import transform as dist_transform
 from   maia.algo.dist.merge_ids      import merge_distributed_ids
@@ -197,24 +198,27 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
   
 
   # Tri are already decomposed
-  src_face_vtx_idx, src_face_vtx = 3*np.arange(src_dist_ids.size+1, dtype=np.int32), src_ec_elt
+  src_face_vtx = vs.from_counts(3, src_ec_elt)
   # Do tetra decomposition, locally
-  tgt_face_vtx_idx, tgt_face_vtx = PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, as_pdm_gnum(tgt_ec_elt))
+  tgt_face_vtx = vs.from_displs(*PDM.decompose_std_elmt_faces(PDM._PDM_MESH_NODAL_TETRA4, as_pdm_gnum(tgt_ec_elt)))
 
   # Now we we will reuse seq algorithm is_unique_strided to find
   # shared faces. Since they can be on different processes, we need to gather it
   # (according to their sum of vtx) before.
   # A fully distributded version of is_unique_strided would be better ...
-  tri_key   = np.add.reduceat(src_face_vtx, src_face_vtx_idx[:-1])
-  tetra_key = np.add.reduceat(tgt_face_vtx, tgt_face_vtx_idx[:-1])
+  tri_key   = src_face_vtx.reduce(vs.ReduceOp.SUM)
+  tetra_key = tgt_face_vtx.reduce(vs.ReduceOp.SUM)
 
-  weights = [np.ones(t.size, float) for t in [tri_key, tetra_key]]
-  ptb = EP.PartToBlock(None, [tri_key, tetra_key], comm, weight=weights, keep_multiple=True, legacy=True)
-  cst_stride = [np.ones(t.size-1, np.int32) for t in [src_face_vtx_idx, tgt_face_vtx_idx]]
+  distri = par_utils.distribution_from_gnum([tri_key, tetra_key], comm, True, True)
+  GI = EP.GlobalMultiIndexer(distri, [tri_key-1, tetra_key-1], comm)
+  
+  cst_stride = [np.ones(len(t), np.int32) for t in [src_face_vtx, tgt_face_vtx]]
 
   # Origin is not mandatory for TETRA because we just want the TRI ids at the end
-  _, origin = ptb.exchange_field([src_dist_gnum, np.zeros(tetra_key.size, src_dist_gnum.dtype)], part_stride=cst_stride)
-  _, tmp_ec = ptb.exchange_field([src_face_vtx, tgt_face_vtx], part_stride=[3*s for s in cst_stride])
+  _, origin = GI.Put_v([(cst_stride[0], src_dist_gnum),
+                        (cst_stride[1], np.zeros(tetra_key.size, src_dist_gnum.dtype))], extend=True)
+  _, tmp_ec = GI.Put_v([(3*cst_stride[0], src_face_vtx.values),
+                        (3*cst_stride[1], tgt_face_vtx.values)], extend=True)
   mask = np_utils.is_unique_strided(tmp_ec, 3, method='hash')
 
   mask[origin == 0] = True # We dont want to get tetra faces

@@ -263,7 +263,7 @@ class Test_generate_jn_vertex_list():
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
 
-    expected_dist = [0,6,12] if comm.Get_rank() == 0 else [6,12,12]
+    expected_dist = [0,7,12] if comm.Get_rank() == 0 else [7,12,12]
     expected_full_pl_vtx     = [4,8,12,16,20,24,28,32,40,44,56,60]
     expected_full_pl_vtx_opp = [1,5,9,13,17,21,25,29,37,41,53,57]
     assert (distri_jn_vtx == expected_dist).all()

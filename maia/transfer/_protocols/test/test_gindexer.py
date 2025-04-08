@@ -4,7 +4,7 @@ import pytest_parallel
 import numpy as np
 
 from maia.transfer._protocols           import g_indexer
-from maia.transfer._protocols.g_indexer import GlobalIndexer, GlobalMultiIndexer
+from maia.transfer._protocols.g_indexer import GlobalIndexer, GlobalMultiIndexer, ReduceOp
 
 def test_put_strided():
     idx = np.array([1,0,2,1])
@@ -25,13 +25,32 @@ def test_put_strided():
     g_indexer.put_strided(data_out, counts_out, idx, counts_in, data_in)
     assert (data_out == np.array([-1,-1.,-1.,  1.1,1.2,  3.1])).all()
 
-
     counts_in = np.array([2,3,1,2], int) # => Two compatible stride for idx 1 (last is keep)
     data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3,   3.1,   4.1, 4.2]) 
     data_out.fill(-1)
 
     g_indexer.put_strided(data_out, counts_out, idx, counts_in, data_in)
     assert (data_out == np.array([2.1,2.2,2.3,  4.1,4.2,  3.1])).all()
+
+    # In extend mode
+    counts_out = np.array([3,4,1], int)
+    data_out   = np.empty(8, float)
+    counts_in = np.array([2,3,1,2], int) 
+    data_in = np.array([1.1, 1.2,   2.1, 2.2, 2.3,   3.1,   4.1, 4.2])
+    g_indexer.put_strided(data_out, counts_out, idx, counts_in, data_in, extend=True)
+    assert (data_out == np.array([2.1,2.2,2.3,  1.1,1.2,4.1,4.2,  3.1])).all()
+
+def test_guess_reduce_dt_and_identity():
+  assert g_indexer._guess_reduce_dt_and_identity('f', g_indexer.ReduceOp.LAND) == ('?', True)
+  assert g_indexer._guess_reduce_dt_and_identity('i', g_indexer.ReduceOp.SUM)  == ('i', 0)
+  assert g_indexer._guess_reduce_dt_and_identity('?', g_indexer.ReduceOp.SUM)  == ('l', 0)
+  assert g_indexer._guess_reduce_dt_and_identity('d', g_indexer.ReduceOp.MIN)  == ('d', np.inf)
+  assert g_indexer._guess_reduce_dt_and_identity('f', g_indexer.ReduceOp.MAX)  == ('f', -np.inf)
+  assert g_indexer._guess_reduce_dt_and_identity('i', g_indexer.ReduceOp.MAX)  == ('i', np.iinfo(np.int32).min)
+  with pytest.raises(ValueError):
+    assert g_indexer._guess_reduce_dt_and_identity('?', g_indexer.ReduceOp.PROD)
+  with pytest.raises(ValueError):
+    assert g_indexer._guess_reduce_dt_and_identity('d', g_indexer.ReduceOp.BAND)
 
 @pytest_parallel.mark.parallel(4)
 class Test_g_indexer:
@@ -89,6 +108,13 @@ class Test_g_indexer:
                     ][comm.rank]
     assert data_out == expected_out
 
+    # With output list provided:
+    if comm.rank == 0:
+      data_out[2] = "data that will be erased"
+    out = GI.take(data_in, data_out) 
+    assert out is data_out
+    assert data_out == expected_out
+
     # When using put function, we enter with data sized and organized as the requested indices
 
     data_in = [['a', 'letter c', 'e', 'f', ['a', 'list', 'of', 'h']], # Values to put at indices 0,2,4,6,8
@@ -107,6 +133,21 @@ class Test_g_indexer:
                     [], 
                     [None, 'f', None],
                     [['a','list','of','h'],42.0,None,'l']
+                    ][comm.rank]
+    assert data_out == expected_out
+
+    # We can also choose the initial value by provided an initial dist_data to the function
+    data_out = [[-1,-2,-3,-4,-5],
+                [], 
+                [-6,-7,-8],
+                [-9,-10,-11,-12]
+                ][comm.rank]
+    out = GI.put(data_in, data_out)
+    assert out is data_out
+    expected_out = [['aaaa', 'b', 'letter c', -4, 'e'], 
+                    [], 
+                    [-6, 'f', -8],
+                    [['a','list','of','h'],42.0,-11,'l']
                     ][comm.rank]
     assert data_out == expected_out
 
@@ -284,12 +325,51 @@ class Test_g_indexer:
     assert np.array_equal(counts_out, expected_out[0])
     assert np.allclose(data_out, expected_out[1])
 
-    # As for Put method, we can use a preallocated buffer, in this 
-    # case the counts_out array must be already filled and data_out must have
+    # The flag extend allows to keep all the data coming from a given gnum, in appartion order
+    counts_out_app, data_out_app = GI.Put_v((counts_in, data_in), extend=True)
+    expected_out_app = [
+      (np.array([0,1,0,0,2]), np.array([20., 50.,55])),
+      (np.array([], int), np.array([], float)),
+      (np.array([0,0,0]), np.array([], float)),
+      (np.array([0,4,0,1]), np.array([100.,105, 100.,105,  120])),
+    ][rank]
+    assert np.array_equal(counts_out_app, expected_out_app[0])
+    assert np.allclose(data_out_app, expected_out_app[1])
+
+    # As for Put method, we can use an initial output buffer
     # relevant size 
-    data_out2 = np.zeros_like(data_out)
-    GI.Put_v((counts_in, data_in), (counts_out, data_out2)) 
-    assert np.array_equal(data_out, data_out2)
+    if comm.rank == 0:
+      cnts_out_ini = np.array([0,2,3,2,0])
+      buff_out_ini = np.array([-1,-1,-2,-2,-2,-3,-3], float)
+    else:
+      cnts_out_ini = np.zeros(expected_out[0].size, int)
+      buff_out_ini = np.empty(0, float)
+
+    counts_out, buff_out = GI.Put_v((counts_in, data_in), (cnts_out_ini, buff_out_ini)) 
+
+    if comm.rank == 0:
+      # idx 0,1,2,4 are erased by input data with counts [0,1,0,x,2]
+      # idx 3 remains untouched
+      assert np.array_equal(counts_out, [0,1,0,2,2])
+      assert np.allclose(buff_out, [20.,-3,-3, 50,55])
+    else:
+      assert np.array_equal(counts_out, expected_out[0])
+      assert np.allclose(buff_out, expected_out[1])
+    # Reallocation occurs
+    assert cnts_out_ini is not counts_out
+    assert buff_out_ini is not buff_out
+
+    # If we use extend + preallocated mode, initial data remains
+    counts_out, buff_out = GI.Put_v((counts_in, data_in), (cnts_out_ini, buff_out_ini), extend=True) 
+    if comm.rank == 0:
+      # idx 0,1,2,4 are appened by input data with counts [0,1,0,x,2]
+      # idx 3 remains untouched
+      assert np.array_equal(counts_out, [0,3,3,2,2])
+      assert np.allclose(buff_out, [-1.,-1,20, -2,-2,-2, -3,-3, 50,55])
+    else:
+      assert np.array_equal(counts_out, expected_out_app[0])
+      assert np.allclose(buff_out, expected_out_app[1])
+
 
   def test_failures(self, comm):
     # Creating a GI with an 'out of bounds' index should raise :

@@ -1,6 +1,7 @@
 from mpi4py import MPI
 import numpy as np
 import pickle
+from enum import Enum
 
 from cmaia.utils import layouts, vstride
 
@@ -11,10 +12,23 @@ NDArrayInt = NDArray[np.integer]
 Buffer = NDArray[Any] 
 VBuffer = Tuple[NDArrayInt, Buffer]  
 
+ReduceOp = Enum('ReduceOp', 'SUM PROD MIN MAX LAND LOR BAND BOR')
+ReduceOp.__doc__ = """
+Enumeration storing the available operations. Members are :attr:`SUM`, :attr:`PROD`, :attr:`MIN`, :attr:`MAX`, 
+:attr:`LAND`, :attr:`LOR`, :attr:`BAND` and :attr:`BOR`,
+where 'L' stands for logical operations and 'B' for bitwise operations.
+"""
 
-def counting_sort(array, n_bins):
-  return layouts.counting_sort(array, n_bins)
 
+OP_TO_UFUNC = {ReduceOp.SUM  : np.add,
+               ReduceOp.PROD : np.multiply,
+               ReduceOp.MIN  : np.minimum,
+               ReduceOp.MAX  : np.maximum,
+               ReduceOp.LAND : np.logical_and,
+               ReduceOp.LOR  : np.logical_or,
+               ReduceOp.BAND : np.bitwise_and,
+               ReduceOp.BOR  : np.bitwise_or}
+    
 def counting_sort_mult(arrays, n_bins):
   return layouts.counting_sort_mult(arrays, n_bins)
 
@@ -28,13 +42,58 @@ def take_strided(a_counts, a_val, indices, out):
   np.cumsum(a_counts, out=a_displs[1:])
   vstride.take(a_displs, a_val, indices, out)
 
+def _guess_reduce_dt_and_identity(dt_in, op):
+  """
+  Utilitary function to properly initialize the output array when a
+  Put with reduction is done, depending of input datatype and reduction function
 
-def put_strided(a, a_count, indices, read_counts, read):
+  This function return the output datatype and the initial value
+  of the output array.
+
+  Output dtype table is (x stands for unsupported): 
+         add       mul    max/min land/lor  band/bor
+   b      i8         x       x        b         x
+  i4      i4        i4      i4        b        i4
+  i8      i8        i8      i8        b        i8
+  f4      f4        f4      f4        b         x
+  f8      f8        f8      f8        b         x
+   
+  """
+  if dt_in == '?' and op not in [ReduceOp.SUM, ReduceOp.LAND, ReduceOp.LOR]:
+    raise ValueError(f"Unsupported reduction {op} for input dtype {np.dtype(dt_in)}")
+  elif dt_in in 'fd' and op in [ReduceOp.BAND, ReduceOp.BOR]:
+    raise ValueError(f"Unsupported reduction {op} for input dtype {np.dtype(dt_in)}")
+
+  if dt_in == '?' and op == ReduceOp.SUM:
+    dt_out = 'l'
+  elif op in [ReduceOp.LAND, ReduceOp.LOR]:
+    dt_out = '?'
+  else:
+    dt_out = dt_in
+
+  if op == ReduceOp.MIN:
+    val =  np.inf if dt_in in 'fd' else np.iinfo(np.dtype(dt_in)).max
+  elif op == ReduceOp.MAX:
+    val = -np.inf if dt_in in 'fd' else np.iinfo(np.dtype(dt_in)).min
+  else:
+    val = OP_TO_UFUNC[op].identity
+
+  return dt_out, val
+
+def put_strided(a, a_count, indices, read_counts, read, extend=False, out_offsets=None):
   """
   A special case of VStrideArray.put() where out (a) is preallocated
   and all indices will be visited
   """
-  vstride.put(a_count, a, indices, read_counts, read)
+  if extend:
+    a_displs = np.empty(len(a_count)+1, dtype=a_count.dtype)
+    a_displs[0] = 0
+    np.cumsum(a_count, out=a_displs[1:])
+    if out_offsets is not None:
+      a_displs[:-1] += out_offsets
+    vstride.put_extend(a_count, a_displs, a, indices, read_counts, read)
+  else:
+    vstride.put(a_count, a, indices, read_counts, read)
 
 class GlobalMultiIndexer:
   """
@@ -108,11 +167,13 @@ class GlobalMultiIndexer:
     return self._empty_part
 
 
-  def take(self, dist_data: List, /) -> List[List]:
+  def take(self, dist_data: List, local_data_l:List[List]=None, /) -> List[List]:
     """ Generalization of :func:`GlobalIndexer.take` for multi index access.
 
     Args:
       dist_data (list of size :math:`dn`) : section of the distributed data
+      local_data_l (:math:`N` list of size :math:`pn_k`, optional) : preallocated lists
+        to store extracted values corresponding to each index list, or None.
     Returns:
       :math:`N` list of size :math:`pn_k` : for each index list,
       values extracted at the requested indices
@@ -123,23 +184,29 @@ class GlobalMultiIndexer:
     buff_in = np.frombuffer(b''.join(pickelized), dtype=np.int8)
     
     data_out_l = self.Take_v((counts_in, buff_in))
-    
-    res = list()
-    for (counts_out, buff_out) in data_out_l:
-      out = []
-      r_start = 0
-      for size in counts_out:
-        out.append(pickle.loads(buff_out[r_start:r_start+size].tobytes()))
-        r_start += size
-      res.append(out)
-    return res
 
-  def put(self, local_data_l: List[List], /) -> List:
+    if local_data_l is None:
+      local_data_l = [[None]*pn for pn in self.pn]
+    else:
+      assert isinstance(local_data_l, list) and len(local_data_l) == len(self.pn)
+
+    
+    for i, (counts_out, buff_out) in enumerate(data_out_l):
+      out = local_data_l[i]
+      r_start = 0
+      for j, size in enumerate(counts_out):
+        out[j] = pickle.loads(buff_out[r_start:r_start+size].tobytes())
+        r_start += size
+
+    return local_data_l
+
+  def put(self, local_data_l: List[List], dist_data:List=None, /) -> List:
     """ Generalization of :func:`GlobalIndexer.put` for multi index access.
 
     Args:
       local_data_l (:math:`N` list of size :math:`pn_k`) : for each index list, data to write
         at each accessed index
+      dist_data  (list of size :math:`dn`, optional) : preallocated list to store distributed data or None
     Returns:
       list of size :math:`dn`: output distributed data
     """
@@ -152,25 +219,33 @@ class GlobalMultiIndexer:
     
     counts_out, buff_out = self.Put_v(_data_in_l)
     
-    out = []
+    if dist_data is not None:
+      assert isinstance(dist_data, list) and len(dist_data) == self.dn
+    else:
+      dist_data = [None for _ in range(self.dn)]
+    
     r_start = 0
-    for size in counts_out:
+    for i,size in enumerate(counts_out):
       if size != 0:
-        out.append(pickle.loads(buff_out[r_start:r_start+size].tobytes()))
-      else:
-        out.append(None)
+        dist_data[i] = pickle.loads(buff_out[r_start:r_start+size].tobytes())
       r_start += size
-    return out
+    return dist_data
 
-  def _Take(self, dist_data: Buffer, local_data_l: List[Buffer], count=1):
-    """ Generalization of :func:`GlobalIndexer.Take_into` for multi index access.
+  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
+    """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
     Args:
-      dist_data  (buffer) : section of the distributed data
-      local_data_l (list of :math:`N` buffer) : preallocated buffers to store extracted values
-        corresponding to each index list
+      dist_data (buffer of size :math:`c*dn`) : section of the distributed data
+      local_data_l (list of :math:`N` buffer, optional) : preallocated buffers to store extracted values
+        corresponding to each index list, or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
+    Returns:
+      :math:`N` buffer of size :math:`c*pn_k`: for each index list,
+      values extracted at the requested indices
     """
+    if local_data_l is None:
+      local_data_l = [np.empty(count*pn, dist_data.dtype) for pn in self.pn]
+
     assert len(local_data_l) == len(self.pn)
 
     if dist_data.size - count*self.dn != 0:
@@ -178,6 +253,8 @@ class GlobalMultiIndexer:
     for ipart, (data_out, pn) in enumerate(zip(local_data_l, self.pn)):
       if data_out.size - count*pn != 0:
         raise ValueError(f"Invalid size of output local buffer n°{ipart} (expected {count*pn}, got {data_out.size})")
+      if data_out.dtype != dist_data.dtype:
+        raise TypeError(f"Invalid dtype of output local buffer n°{ipart} (expected {dist_data.dtype.char}, got {data_out.dtype.char})")
 
 
     send_buff = np.empty(count*self.dist_select_idx.size, dist_data.dtype)
@@ -202,25 +279,44 @@ class GlobalMultiIndexer:
         for j in range(count):
           data_out[j::count] = recv_buff[put_idx+j]
 
-  def _Put(self, local_data_l: List[Buffer] , dist_data: Buffer, count=1):
-    """ Generalization of :func:`GlobalIndexer.Put_into` for multi index access.
+
+    return local_data_l
+
+  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1, *, reduce:ReduceOp=None) -> Buffer:
+    """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
-      local_data_l (list of :math:`N` buffer) : for each index list, data to write at each accessed index
-      dist_data  (buffer) : preallocated buffer to store distributed data
+      local_data_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
+        data to write at each accessed index
+      dist_data (buffer, optional) : preallocated buffer to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
+      reduce (:class:`ReduceOp`, optional) : Binary operation applied to the data written
+        at the same global index. Defaults to ``None``.
+    Returns:
+      buffer of size :math:`c*dn`: output distributed data
     """
     assert len(local_data_l) == len(self.pn)
+
+    dtype_loc = max(data.dtype.char for data in local_data_l) if len(local_data_l) > 0 else ''
+    dtype = self.comm.allreduce(dtype_loc, MPI.MAX)
+
+    if dist_data is None:
+      if reduce is None:
+        dist_data = np.empty(count*self.dn, dtype)
+      else:
+        out_dtype, val = _guess_reduce_dt_and_identity(dtype, reduce)
+        dist_data = np.full(count*self.dn, val, out_dtype)
 
     if dist_data.size - count*self.dn != 0:
       raise ValueError(f"Invalid size of output distributed buffer (expected {count*self.dn}, got {dist_data.size})")
     for ipart, (data_in, pn) in enumerate(zip(local_data_l, self.pn)):
       if data_in.size - count*pn != 0:
         raise ValueError(f"Invalid size of input local buffer n°{ipart} (expected {count*pn}, got {data_in.size})")
+      if data_in.dtype.char != dtype:
+        raise TypeError(f"Invalid dtype of input local buffer n°{ipart} (expected {dtype}, got {data_in.dtype.char})")
 
-
-    send_buff = np.empty(count*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=dist_data.dtype)
-    recv_buff = np.empty(count*self.dist_counts.sum(),  dtype=dist_data.dtype)
+    send_buff = np.empty(count*sum([write_pos.size for write_pos in self.part_write_pos]), dtype=dtype)
+    recv_buff = np.empty(count*self.dist_counts.sum(),  dtype=dtype)
 
     for data_in, part_write_pos in zip(local_data_l, self.part_write_pos):
       if count == 1:
@@ -230,56 +326,23 @@ class GlobalMultiIndexer:
         for j in range(count):
           send_buff[pull_idx+j] = data_in[j::count]
 
-    self.comm.Alltoallv((send_buff, count*self.part_counts, dist_data.dtype.char), 
-                        (recv_buff, count*self.dist_counts, dist_data.dtype.char))
+    self.comm.Alltoallv((send_buff, count*self.part_counts, dtype), 
+                        (recv_buff, count*self.dist_counts, dtype))
+
+    def _put_one(idx, values):
+      if reduce is None:
+        dist_data[idx] = values
+      else:
+        OP_TO_UFUNC[reduce].at(dist_data, idx, values)
 
     if count == 1:
-      dist_data[self.dist_select_idx] = recv_buff
+      _put_one(self.dist_select_idx, recv_buff)
     else:
       put_idx = count*self.dist_select_idx
       for j in range(count):
-        dist_data[put_idx+j] = recv_buff[j::count]
+        _put_one(put_idx+j, recv_buff[j::count])
 
-  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
-    """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
-
-    Args:
-      dist_data (buffer of size :math:`c*dn`) : section of the distributed data
-      local_data_l (list of :math:`N` buffer, optional) : preallocated buffers to store extracted values
-        corresponding to each index list, or None
-      count (int) : scalar value of :math:`c`. Defaults to 1.
-    Returns:
-      :math:`N` buffer of size :math:`c*pn_k`: for each index list,
-      values extracted at the requested indices
-    """
-    if local_data_l is None:
-      local_data_l = [np.empty(count*pn, dist_data.dtype) for pn in self.pn]
-    self._Take(dist_data, local_data_l, count)
-    return local_data_l
-
-  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1) -> Buffer:
-    """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
-
-    Args:
-      local_data_l (:math:`N` buffer of size :math:`c*pn_k`) : for each index list,
-        data to write at each accessed index
-      dist_data (buffer, optional) : preallocated buffer to store distributed data or None
-      count (int) : scalar value of :math:`c`. Defaults to 1.
-    Returns:
-      buffer of size :math:`c*dn`: output distributed data
-    """
-    assert len(local_data_l) == len(self.pn)
-
-    if dist_data is None:
-      dtype  = local_data_l[0].dtype.str if len(local_data_l) > 0 else ''
-      if self.empty_part:
-        dtype  = self.comm.allreduce(dtype,  MPI.MAX)
-      dist_data = np.empty(count*self.dn, dtype)
-
-    self._Put(local_data_l, dist_data, count)
     return dist_data
-
-
 
 
   def Take_v(self, dist_data: VBuffer, local_data_l: List[VBuffer]=None, /) -> List[VBuffer]:
@@ -356,36 +419,19 @@ class GlobalMultiIndexer:
 
     return local_data_l
 
-  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /) -> VBuffer:
+  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /, *, extend=False) -> VBuffer:
     """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
       local_data_l (list of N var. buffer): for each index list, values to write as pair \
         (**local_counts** (*np array of* :math:`pn_k` *int*), **local_buff** (*buffer*))
       dist_data (variable buffer, optional) : preallocated buffer to store distributed data or None
+      extend  (bool, optional) : If ``True``, gather the values written at a same global index.
+        Otherwise, keep only the last one. Defaults to ``False``.
     Returns:
       variable buffer: output distributed data, returned as pair of values \
         (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*))
     """
-    # Note for later: extension to keep_multiple is not so complicated : 
-    # compute counts_out with np.add.at(counts_out, self.dist_select_idx, _counts_out) instead of np.put
-    # (because np.put is responsible of 'keeping last value')
-    # Then update last put_strided to remove the check on the size : loop becomes
-    # 
-    # std::vector<int> offset(write_counts.size(), 0);
-    # for (int i=0; i < write_idx.size(); ++i) {
-    #   int idx = _write_idx[i];
-    #   int w_start = write_displs[idx] + offset[idx];
-    #   int w_end   = write_displs[idx+1];
-    #
-    #   std::copy_n(_read_buff + s_data*r_idx,
-    #               _read_counts[i]*s_data,
-    #               _write_buff + s_data*w_start);
-    #
-    #   offset[idx] += _read_counts[i];
-    #   r_idx       += _read_counts[i];
-    # } 
-
     # Variable stride
 
     counts_in_l = [data_in[0] for data_in in local_data_l]
@@ -396,19 +442,20 @@ class GlobalMultiIndexer:
     assert all(data_in.size == counts_in.sum() for data_in, counts_in in zip(buff_in_l, counts_in_l))
 
     if dist_data is None:
+      counts_out_ini = None
       cnts_dtype = counts_in_l[0].dtype.str if len(self.pn) > 0 else ''
       data_dtype = buff_in_l[0].dtype.str   if len(self.pn) > 0 else ''
       if self.empty_part:
         out_dtype = self.comm.allreduce(cnts_dtype+data_dtype,  MPI.MAX)
         cnts_dtype, data_dtype = out_dtype[:3], out_dtype[3:]
     else:
-      counts_out, buff_out = dist_data
-      if counts_out.size != self.dn:
-        raise ValueError(f"Invalid size of output counts (expected {self.dn}, got {counts_out.size})")
-      if buff_out.size - counts_out.sum() != 0:
-        raise ValueError(f"Invalid size of output distributed buffer (expected {counts_out.sum()}, got {buff_out.size})")
-      cnts_dtype = counts_out.dtype
-      data_dtype = buff_out.dtype
+      counts_out_ini, buff_out_ini = dist_data
+      if counts_out_ini.size != self.dn:
+        raise ValueError(f"Invalid size of output counts (expected {self.dn}, got {counts_out_ini.size})")
+      if buff_out_ini.size - counts_out_ini.sum() != 0:
+        raise ValueError(f"Invalid size of output distributed buffer (expected {counts_out_ini.sum()}, got {buff_out_ini.size})")
+      cnts_dtype = counts_out_ini.dtype
+      data_dtype = buff_out_ini.dtype
       # Retrieve _counts_out from counts_out seems not possible because of data erasion, we will recompute it 
 
 
@@ -422,11 +469,21 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((_counts_in, self.part_counts), 
                         (_counts_out, self.dist_counts))
 
-    if dist_data is None:
-      counts_out  = np.zeros(self.dn, dtype=_counts_out.dtype)
-      counts_out[self.dist_select_idx] = _counts_out
-      buff_out = np.empty(counts_out.sum(), data_dtype)
-    
+    if dist_data is not None:
+      counts_out = dist_data[0].copy()
+    else:
+      counts_out = np.zeros(self.dn, cnts_dtype)
+
+    if extend:
+      np.add.at(counts_out, self.dist_select_idx, _counts_out)
+    else:
+      np.put(counts_out, self.dist_select_idx, _counts_out)
+
+    # Prepare output buffer: in both case, we need to reallocate at counts_out.sum()
+    # If initila data was provided, we need to replace it in the new buffer
+    buff_out = np.empty(counts_out.sum(), data_dtype)
+    if dist_data is not None:
+      vstride.resize(counts_out, buff_out, dist_data[0], dist_data[1])
 
     # Count the actual number of items to send/recv, using stride array
     # (this is the partial sum of portion of the stride array related to the given rank)
@@ -449,7 +506,7 @@ class GlobalMultiIndexer:
     self.comm.Alltoallv((send_buff, send_counts, send_buff.dtype.char), (recv_buff, recv_counts, send_buff.dtype.char))
 
     # Post treat recv buffer (data arrive in mpi layout, put it in requested layout)
-    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff)
+    put_strided(buff_out, counts_out, self.dist_select_idx, _counts_out, recv_buff, extend, counts_out_ini)
 
     return counts_out, buff_out
   
@@ -505,7 +562,7 @@ class GlobalIndexer:
     self.GIndexer_m = GlobalMultiIndexer(distri, [g_idx], comm)
     self.GIndexer_m._empty_part = False
 
-  def take(self, dist_data:List, /) -> List:
+  def take(self, dist_data:List, local_data:List=None, /) -> List:
     """ ``take`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -514,12 +571,15 @@ class GlobalIndexer:
 
     Args:
       dist_data (list of size :math:`dn`) : section of the distributed data
+      local_data (list of size :math:`pn`, optional) : preallocated list to store extracted values or ``None``
     Returns:
-      list of size :math:`pn`: values extracted at the requested indices
+      list of size :math:`pn`: values extracted at the requested indices.
+      The return object is ``local_data`` if it was given by the user.
     """
-    return self.GIndexer_m.take(dist_data)[0]
+    local_data_l = [local_data] if local_data is not None else None
+    return self.GIndexer_m.take(dist_data, local_data_l)[0]
 
-  def put(self, local_data: List, /) -> List:
+  def put(self, local_data: List, dist_data:List=None, /) -> List:
     """ ``put`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -528,17 +588,21 @@ class GlobalIndexer:
 
     Note that:
 
-    - if a global index does not appears in any idx list, its associated data in the output
-      buffer will be ``None``;
     - if a global index appears more than once in the idx lists, the associated data in the output
       buffer will be the last appearing (in increasing processes order)
-
+    - if a global index does not appears in any idx list, its associated data in the output
+      buffer will be:
+       
+        - the user provided value if ``dist_data`` is provided;
+        - ``None`` otherwise.
+    
     Args:
       local_data (list of size :math:`pn`) : data to write at each accessed index
+      dist_data  (list of size :math:`dn`, optional) : preallocated list to store distributed data or None
     Returns:
-      list of size :math:`dn`: output distributed data
+      list of size :math:`dn`: output distributed data. The return object is ``dist_data`` if it was given by the user.
     """
-    return self.GIndexer_m.put([local_data])
+    return self.GIndexer_m.put([local_data], dist_data)
 
   def Take(self, dist_data:Buffer, local_data:Buffer=None, /, count=1) -> Buffer:
     """ ``take`` implementation for buffer-like objects 
@@ -565,7 +629,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take(dist_data, local_data_l, count)[0]
 
-  def Put(self, local_data: Buffer, dist_data:Buffer=None, /, count=1) -> Buffer:
+  def Put(self, local_data: Buffer, dist_data:Buffer=None, /, count=1, *, reduce=None) -> Buffer:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
@@ -580,21 +644,31 @@ class GlobalIndexer:
 
     Note that:
 
-    - if a global index does not appears in any idx list, its associated data in the output
-      buffer will be uninitialized;
     - if a global index appears more than once in the idx lists, the associated data in the output
-      buffer will be the last appearing (in increasing processes order)
+      buffer will be
+
+      - the last appearing (in increasing processes order) if ``reduce=None``;
+      - the result of the reduction function, applied to the input candidates otherwise.
+
+    - if a global index does not appears in any idx list, its associated data in the output
+      buffer will be 
+      
+      - the user provided value if ``dist_data`` is preallocated;
+      - an uninitialized value if ``reduce=None`` and if ``dist_data`` is not preallocated;
+      - the neutral element of the reduction function otherwise.
 
     Args:
       local_data (buffer of size :math:`c*pn`) : data to write at each accessed index
       dist_data (buffer of size :math:`c*dn`, optional) : preallocated buffer
         to store distributed data or None
       count (int) : scalar value of :math:`c`. Defaults to 1.
+      reduce (:class:`ReduceOp`, optional) : Binary operation applied to the data written
+        at the same global index. Defaults to ``None``.
     Returns:
       buffer of size :math:`c*dn`: output distributed data.
       The return object is ``dist_data`` if it was given by the user.
     """
-    return self.GIndexer_m.Put([local_data], dist_data, count)
+    return self.GIndexer_m.Put([local_data], dist_data, count, reduce=reduce)
 
   def Take_v(self, dist_data: VBuffer, local_data: VBuffer=None, /) -> VBuffer:
     """ ``take`` implementation for variable buffer-like objects 
@@ -630,7 +704,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take_v(dist_data, local_data_l)[0]
 
-  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /) -> VBuffer:
+  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /, *, extend=False) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by a tuple of two objects:
@@ -646,21 +720,34 @@ class GlobalIndexer:
 
     This output data is either:
 
-    - provided by the caller, in which case ``dist_counts`` must be already filled, *eg.*
-      with :obj:`Put(local_counts, dist_counts)`, and ``dist_buff``
-      must be prellocated at relevant size and datatype;
+    - initialized by the caller,
     - or automatically allocated by the method as a pair of new numpy array if ``dist_data=None``.
+
+    Note that:  
+
+    - if a global index appears more than once in the idx lists, the associated data in the output
+      variable buffer will be
+
+      - the last appearing (in increasing processes order) if ``extend=False``;
+      - the concatenation of all input candidates (including initial value if provided) otherwise.
+
+    - if a global index does not appears in any idx list, its associated data in the output
+      variable buffer will be 
+      
+      - the user provided value if ``dist_data`` is not ``None``;
+      - an empty subset of values (counts=0) otherwise.
 
     Args:
       local_data (variable buffer): data to write at each accessed index, ie tuple 
         (**local_counts** (*np array of* :math:`pn` *int*), **local_buff** (*buffer*))
-      dist_data (variable buffer, optional): preallocated buffer to store distributed data or None
+      dist_data (variable buffer, optional): initial output buffer to store distributed data or ``None``
+      extend  (bool, optional) : If ``True``, gather the values written at a same global index.
+        Otherwise, keep only the last one. Defaults to ``False``.
     Returns:
       variable buffer: output distributed data, returned as the tuple of values
       (**dist_counts** (*np array of* :math:`dn` *int*), **dist_buff** (*buffer*)).
-      The return object is ``dist_data`` if it was given by the user.
     """
-    return self.GIndexer_m.Put_v([local_data], dist_data)
+    return self.GIndexer_m.Put_v([local_data], dist_data, extend=extend)
 
   @property
   def empty_dist(self) -> bool:

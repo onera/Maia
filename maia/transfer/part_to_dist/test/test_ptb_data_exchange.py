@@ -350,7 +350,7 @@ ZoneU Zone_t [[6,0,0]]:
     PointList IndexArray_t [[2]]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t {0} [0,1,3]:
-    field1 DataArray_t [10]:
+    field1 DataArray_t I8 [10]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [0,3,6]:
   """.format(dtype)
@@ -359,7 +359,7 @@ ZoneU Zone_t [[6,0,0]]:
     FlowSolWithPL FlowSolution_t:
       GridLocation GridLocation_t "CellCenter":
       PointList IndexArray_t [[1,8,10]]:
-      field1 DataArray_t [0,-10,-15]:
+      field1 DataArray_t I8 [0,-10,-15]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [1,2,1]:
     NewFlowSol DiscreteData_t:
@@ -377,7 +377,7 @@ ZoneU Zone_t [[6,0,0]]:
     PointList IndexArray_t [[6,4]]:
     :CGNS#Distribution UserDefinedData_t:
       Index DataArray_t {0} [1,3,3]:
-    field1 DataArray_t [20,30]:
+    field1 DataArray_t I8 [20,30]:
   :CGNS#Distribution UserDefinedData_t:
     Vertex DataArray_t {0} [3,6,6]:
   """.format(dtype)
@@ -386,7 +386,7 @@ ZoneU Zone_t [[6,0,0]]:
     FlowSolWithPL FlowSolution_t:
       GridLocation GridLocation_t "CellCenter":
       PointList IndexArray_t [[12,15]]:
-      field1 DataArray_t [-20,-30]:
+      field1 DataArray_t I8 [-20,-30]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Index DataArray_t {0} [3,1]:
     NewFlowSol DiscreteData_t:

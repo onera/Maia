@@ -141,28 +141,26 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
 
   first_vtx  = face_vtx
   second_vtx = vs.roll(first_vtx, -1, vs.INNER_AXIS)
-  key_from_face = first_vtx.values + second_vtx.values
+  key_from_face = first_vtx.values + second_vtx.values - 1
   start_gnum = distri_face[0] + PT.Element.Range(ngon_node)[0]
   face_gnum = np_utils.repeated_arange(face_vtx.counts, start_gnum, dtype=face_vtx.dtype)
 
   # Now do the search in // using key
   # First : gather data from face into a block vision
-  ptb = EP.PartToBlock(None, [key_from_face], comm, keep_multiple=True, legacy=True)
+  distri = par_utils.distribution_from_gnum([key_from_face+1], comm, full=True)
   stride_one = np.ones(key_from_face.size, np.int32)
 
-  stride, data1 = ptb.exchange_field([face_gnum],        [stride_one])
-  stride, data2 = ptb.exchange_field([first_vtx.values], [stride_one])
   # We don't need to exchange second vertex because we know key and vtx1 (vtx1 + vtx2 == key)
-  dist_data = {'FaceGnum' : data1, 'FirstVtx' : data2}
-  ptb_distri = ptb.getDistributionCopy()
-  # Adapt to full block, since some gnum does not appear
-  fstride = np.zeros(ptb_distri[comm.rank+1] - ptb_distri[comm.rank], np.int32)
-  fstride[ptb.getBlockGnumCopy() - ptb_distri[comm.rank] - 1] = stride
+  data = {'FaceGnum' : vs.from_counts(stride_one, face_gnum),
+          'FirstVtx' : vs.from_counts(stride_one, first_vtx.values)}
+  dist_data = EP.part_to_block(data, distri, key_from_face, comm, append=True)
+
 
   # Second : get data from block, for each edge
-  recv_stride, recv_data = EP.block_to_part_strided(fstride, dist_data, ptb_distri, key_from_edge, comm)
-  first_vtx  = recv_data['FirstVtx']
-  face_gnum  = recv_data['FaceGnum']
+  recv_data = EP.block_to_part(dist_data, distri, key_from_edge, comm)
+  recv_stride = recv_data['FirstVtx'].counts
+  first_vtx  = recv_data['FirstVtx'].values
+  face_gnum  = recv_data['FaceGnum'].values
 
 
   # Third: post treat (solving conflits) for fill edge_face

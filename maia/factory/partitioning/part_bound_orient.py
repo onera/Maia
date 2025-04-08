@@ -7,6 +7,7 @@ import maia.pytree.maia as MT
 import maia
 
 from maia.utils    import par_utils
+from maia.utils    import vstride as vs
 from maia.transfer import protocols as EP
 
 is_ngon_3d = lambda z : PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
@@ -45,7 +46,9 @@ def orientation_preserved(part_zones, comm):
 
   # In both cases, we flagged faces having a left parent. When summing flags, if a face has a value > 1, it means
   # that it has two times a left parent, and thus that faces has been reverted after split to have output normal
-  out = EP.part_to_block(data_list, None, gnum_list, comm, reduce_func=EP.reduce_sum, legacy=True)
+  distri = par_utils.distribution_from_gnum(gnum_list, comm, full=True)
+  out = EP.part_to_block(data_list, distri, [g-1 for g in gnum_list], comm, reduce_func=EP.reduce_sum)
+
   return not comm.allreduce((out > 1).any(), op=MPI.LOR)
 
 
@@ -78,24 +81,23 @@ def preserve_orientation(part_zones, comm):
     
     bnd_list.append(ext_faces_left_pe)
     gnum_list.append(face_gnum[ext_faces_left_pe])
-    data_list.append(cur_zone_glob*np.ones(ext_faces_left_pe.size, np.int32))
+    data_list.append((np.ones(ext_faces_left_pe.size, np.int32), 
+                      cur_zone_glob*np.ones(ext_faces_left_pe.size, np.int32)))
     
   # Gather data to identify faces having two times right parent == 0
-  PTB = EP.PartToBlock(None, gnum_list, comm, keep_multiple=True, legacy=True)
-  mask = PTB.getBlockGnumCountCopy() >= 2 # <-- these ones
-  distri = PTB.getDistributionCopy()
+  distri = par_utils.distribution_from_gnum(gnum_list, comm, full=True)
+  GI = EP.GlobalMultiIndexer(distri, [g-1 for g in gnum_list], comm)
+  mask = GI.access_counts >= 2 # <-- these ones
 
   # In addition, exchange partition id and reduce with min to choose a master
-  p_stride = [np.ones(p_f.size, dtype=np.int32) for p_f in data_list]
-  dist_stride, dist_data = PTB.exchange_field(data_list, p_stride)
-  dist_data = EP.reduce_min(dist_data, dist_stride)
+  dist_data_f = vs.from_counts(*GI.Put_v(data_list, extend=True))
+
+  dist_data = dist_data_f.reduce(vs.ReduceOp.MIN)[mask]
   
   # Send back master part. id to partitions (we do it only for duplicated faces)
-  dist_stride = np.zeros(distri[comm.rank+1]-distri[comm.rank], np.int32)
-  dist_stride[PTB.getBlockGnumCopy()[mask] - distri[comm.rank] - 1] = 1
-  dist_data = dist_data[mask]
+  send_data = vs.from_counts(mask.astype(np.int32), dist_data)
 
-  out_stride, out_data = EP.block_to_part_strided(dist_stride, dist_data, distri, [g-1 for g in gnum_list], comm)
+  out_data = EP.block_to_part(send_data, distri, [g-1 for g in gnum_list], comm)
 
   # Now treat partitions to swap faces 
   for izone, part_zone in enumerate(part_zones):
@@ -104,32 +106,29 @@ def preserve_orientation(part_zones, comm):
     # Only faces having out_stride == 1 should be considered, and in addition
     # we need to retrieve their local num in all face (because we extracted bnd faces)
     ext_faces_left_pe = bnd_list[izone]
-    todeal = ext_faces_left_pe[out_stride[izone]==1]
+    todeal = ext_faces_left_pe[out_data[izone].counts==1]
 
     ngon_node  = PT.Zone.NGonNode(part_zone)
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')[1]
-    eso = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-    ec = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+    face_vtx = MT.Element.connectivity(ngon_node)
 
     has_nface = PT.Zone.has_nface_elements(part_zone)
     if has_nface:
       nface_node  = PT.Zone.NFaceNode(part_zone)
-      nface_ec  = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
-      nface_eso = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
+      cell_face = MT.Element.connectivity(nface_node)
 
-    for iface, master in zip(todeal, out_data[izone]):
+    for iface, master in zip(todeal, out_data[izone].values):
       if master != cur_zone_glob:
         pe[iface, 1] = pe[iface, 0] # Swap PE
         pe[iface, 0] = 0
         
         # Swap face_vtx connectivity
-        ec_view = ec[eso[iface]:eso[iface+1]]
-        ec_view[:] = ec_view[::-1]
+        face_vtx[iface] = face_vtx[iface][::-1]
 
         # Change sign in cell_face
         if has_nface:
           parent_cell = pe[iface, 1] - PT.Element.Range(nface_node)[0]
-          nface_ec_view = nface_ec[nface_eso[parent_cell]:nface_eso[parent_cell+1]]
+          nface_ec_view = cell_face[parent_cell]
           nface_ec_view[nface_ec_view == (iface+1)] *= -1
     
         

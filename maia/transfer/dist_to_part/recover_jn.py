@@ -4,7 +4,7 @@ import maia.pytree       as PT
 import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT
 
-from maia.utils     import np_utils
+from maia.utils     import np_utils, par_utils
 from maia.transfer  import protocols as EP
 from maia.transfer  import utils    as te_utils
 from maia.algo.dist import matching_jns_tools as MJT
@@ -53,16 +53,22 @@ def get_pl_donor(dist_tree, part_tree, comm):
     part_data['ijoin'].append( gc_id*np.ones(pl.size, dtype=pl.dtype))
     part_stride.append(np.ones(pl.size, np.int32))
 
-  PTB = EP.PartToBlock(None, shifted_lntogn, comm, keep_multiple=True, legacy=True)
-  distribution = PTB.getDistributionCopy()
+  distribution = par_utils.distribution_from_gnum(shifted_lntogn, comm, full=True)
+  GI = EP.GlobalMultiIndexer(distribution, [s-1 for s in shifted_lntogn], comm)
 
-  dData = dict()
+  part_data_new = dict()
   for field_name, p_field in part_data.items():
-    d_stride, d_field = PTB.exchange_field(p_field, part_stride)
-    dData[field_name] = d_field
+    vbuff_ini = [(_pstride, _pfield) for _pstride,_pfield in zip(part_stride, p_field)]
+
+    d_stride, d_field = GI.Put_v(vbuff_ini, extend=True)
+    vbuff_up = GI.Take_v((d_stride, d_field))
+
+    part_stride_new           = [data[0] for data in vbuff_up]
+    part_data_new[field_name] = [data[1] for data in vbuff_up]
 
   # Erase part stride & data
-  part_stride, part_data = EP.block_to_part_strided(d_stride, dData, distribution, [s-1 for s in shifted_lntogn], comm)
+  part_stride = part_stride_new
+  part_data = part_data_new
 
   #Post treat
   i_join = 0

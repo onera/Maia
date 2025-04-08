@@ -31,10 +31,8 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   face_vtx = MT.Element.connectivity(ngon)
 
   # Get the vertex associated to the faces in FaceList
-  p_stride, part_data = EP.block_to_part_strided(face_vtx.counts, face_vtx.values, \
-      distri_ngon, face_ids-1, comm)
+  return EP.block_to_part(face_vtx, distri_ngon, face_ids-1, comm)
 
-  return vstride.from_counts(p_stride, part_data)
 
 def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm):
   """
@@ -69,28 +67,16 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
     restricted_pl_vtx = pl_vtx
 
   # Exchange to locally have the list of *all* jn faces related to vertex
-  p_stride = [np.diff(pl_vtx_face_idx).astype(np.int32, copy=False)]
+  part_data = {'vtx_to_face'   : vstride.from_displs(pl_vtx_face_idx, pl_vtx_face),
+               'vtx_to_face_d' : vstride.from_displs(pl_vtx_face_idx, pl_vtx_face_d)}
 
-  part_data = {'vtx_to_face'   : [pl_vtx_face],
-               'vtx_to_face_d' : [pl_vtx_face_d]}
+  distri = par_utils.distribution_from_gnum([pl_vtx], comm, True, True)
 
-  PTB = EP.PartToBlock(None, [pl_vtx], comm, keep_multiple=True, legacy=True)
-  dist_data = dict()
-  for field_name, p_field in part_data.items():
-    d_stride, d_field = PTB.exchange_field(p_field, p_stride)
-    dist_data[field_name] = d_field
+  dist_data = EP.part_to_block(part_data, distri, pl_vtx-1, comm, append=True)
+  part_data = EP.block_to_part(dist_data, distri, restricted_pl_vtx-1, comm)
 
-
-  #Recreate stride for all vertex
-  first, count, total = PTB.getBeginNbEntryAndGlob()
-  b_stride = np.zeros(count, np.int32)
-  b_stride[PTB.getBlockGnumCopy() - first - 1] = d_stride
-
-  p_stride, part_data = EP.block_to_part_strided(b_stride, dist_data, \
-      PTB.getDistributionCopy(), restricted_pl_vtx-1, comm)
-
-  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"], return_index=True)
-  extended_pl_d = part_data["vtx_to_face_d"][unique_idx]
+  extended_pl, unique_idx = np.unique(part_data["vtx_to_face"].values, return_index=True)
+  extended_pl_d = part_data["vtx_to_face_d"].values[unique_idx]
 
   return extended_pl, extended_pl_d
 
@@ -362,9 +348,10 @@ def generate_jn_vertex_list(dist_tree, jn_path, comm):
     pld_vtx_l.append(pld_vtx_local)
 
   #Final part_to_block will merge gnum from two method and reequilibrate
-  PTB = EP.PartToBlock(None, pl_vtx_l, comm, weight=True, keep_multiple=True, legacy=True)
-  pl_vtx = PTB.getBlockGnumCopy()
-  _, pld_vtx = PTB.exchange_field(pld_vtx_l, [np.ones(pl.size, np.int32) for pl in pl_vtx_l])
+  distri = par_utils.distribution_from_gnum(pl_vtx_l, comm, True, True)
+  GI = EP.GlobalMultiIndexer(distri, [pl-1 for pl in pl_vtx_l], comm)
+  pl_vtx = np.flatnonzero(GI.access_counts > 0) + distri[comm.rank] + 1
+  _, pld_vtx = GI.Put_v([(np.ones(pld.size, np.int32), pld) for pld in pld_vtx_l], extend=True)
   assert pld_vtx.size == pl_vtx.size
   dn_vtx_jn = pld_vtx.size
   distri = par_utils.gather_and_shift(dn_vtx_jn, comm)
