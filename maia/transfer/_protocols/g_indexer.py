@@ -167,11 +167,13 @@ class GlobalMultiIndexer:
     return self._empty_part
 
 
-  def take(self, dist_data: List, /) -> List[List]:
+  def take(self, dist_data: List, local_data_l:List[List]=None, /) -> List[List]:
     """ Generalization of :func:`GlobalIndexer.take` for multi index access.
 
     Args:
       dist_data (list of size :math:`dn`) : section of the distributed data
+      local_data_l (:math:`N` list of size :math:`pn_k`, optional) : preallocated lists
+        to store extracted values corresponding to each index list, or None.
     Returns:
       :math:`N` list of size :math:`pn_k` : for each index list,
       values extracted at the requested indices
@@ -182,23 +184,29 @@ class GlobalMultiIndexer:
     buff_in = np.frombuffer(b''.join(pickelized), dtype=np.int8)
     
     data_out_l = self.Take_v((counts_in, buff_in))
-    
-    res = list()
-    for (counts_out, buff_out) in data_out_l:
-      out = []
-      r_start = 0
-      for size in counts_out:
-        out.append(pickle.loads(buff_out[r_start:r_start+size].tobytes()))
-        r_start += size
-      res.append(out)
-    return res
 
-  def put(self, local_data_l: List[List], /) -> List:
+    if local_data_l is None:
+      local_data_l = [[None]*pn for pn in self.pn]
+    else:
+      assert isinstance(local_data_l, list) and len(local_data_l) == len(self.pn)
+
+    
+    for i, (counts_out, buff_out) in enumerate(data_out_l):
+      out = local_data_l[i]
+      r_start = 0
+      for j, size in enumerate(counts_out):
+        out[j] = pickle.loads(buff_out[r_start:r_start+size].tobytes())
+        r_start += size
+
+    return local_data_l
+
+  def put(self, local_data_l: List[List], dist_data:List=None, /) -> List:
     """ Generalization of :func:`GlobalIndexer.put` for multi index access.
 
     Args:
       local_data_l (:math:`N` list of size :math:`pn_k`) : for each index list, data to write
         at each accessed index
+      dist_data  (list of size :math:`dn`, optional) : preallocated list to store distributed data or None
     Returns:
       list of size :math:`dn`: output distributed data
     """
@@ -211,15 +219,17 @@ class GlobalMultiIndexer:
     
     counts_out, buff_out = self.Put_v(_data_in_l)
     
-    out = []
+    if dist_data is not None:
+      assert isinstance(dist_data, list) and len(dist_data) == self.dn
+    else:
+      dist_data = [None for _ in range(self.dn)]
+    
     r_start = 0
-    for size in counts_out:
+    for i,size in enumerate(counts_out):
       if size != 0:
-        out.append(pickle.loads(buff_out[r_start:r_start+size].tobytes()))
-      else:
-        out.append(None)
+        dist_data[i] = pickle.loads(buff_out[r_start:r_start+size].tobytes())
       r_start += size
-    return out
+    return dist_data
 
   def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
     """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
@@ -552,7 +562,7 @@ class GlobalIndexer:
     self.GIndexer_m = GlobalMultiIndexer(distri, [g_idx], comm)
     self.GIndexer_m._empty_part = False
 
-  def take(self, dist_data:List, /) -> List:
+  def take(self, dist_data:List, local_data:List=None, /) -> List:
     """ ``take`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -561,12 +571,15 @@ class GlobalIndexer:
 
     Args:
       dist_data (list of size :math:`dn`) : section of the distributed data
+      local_data (list of size :math:`pn`, optional) : preallocated list to store extracted values or ``None``
     Returns:
-      list of size :math:`pn`: values extracted at the requested indices
+      list of size :math:`pn`: values extracted at the requested indices.
+      The return object is ``local_data`` if it was given by the user.
     """
-    return self.GIndexer_m.take(dist_data)[0]
+    local_data_l = [local_data] if local_data is not None else None
+    return self.GIndexer_m.take(dist_data, local_data_l)[0]
 
-  def put(self, local_data: List, /) -> List:
+  def put(self, local_data: List, dist_data:List=None, /) -> List:
     """ ``put`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -575,17 +588,21 @@ class GlobalIndexer:
 
     Note that:
 
-    - if a global index does not appears in any idx list, its associated data in the output
-      buffer will be ``None``;
     - if a global index appears more than once in the idx lists, the associated data in the output
       buffer will be the last appearing (in increasing processes order)
-
+    - if a global index does not appears in any idx list, its associated data in the output
+      buffer will be:
+       
+        - the user provided value if ``dist_data`` is provided;
+        - ``None`` otherwise.
+    
     Args:
       local_data (list of size :math:`pn`) : data to write at each accessed index
+      dist_data  (list of size :math:`dn`, optional) : preallocated list to store distributed data or None
     Returns:
-      list of size :math:`dn`: output distributed data
+      list of size :math:`dn`: output distributed data. The return object is ``dist_data`` if it was given by the user.
     """
-    return self.GIndexer_m.put([local_data])
+    return self.GIndexer_m.put([local_data], dist_data)
 
   def Take(self, dist_data:Buffer, local_data:Buffer=None, /, count=1) -> Buffer:
     """ ``take`` implementation for buffer-like objects 

@@ -108,6 +108,13 @@ class Test_g_indexer:
                     ][comm.rank]
     assert data_out == expected_out
 
+    # With output list provided:
+    if comm.rank == 0:
+      data_out[2] = "data that will be erased"
+    out = GI.take(data_in, data_out) 
+    assert out is data_out
+    assert data_out == expected_out
+
     # When using put function, we enter with data sized and organized as the requested indices
 
     data_in = [['a', 'letter c', 'e', 'f', ['a', 'list', 'of', 'h']], # Values to put at indices 0,2,4,6,8
@@ -126,6 +133,21 @@ class Test_g_indexer:
                     [], 
                     [None, 'f', None],
                     [['a','list','of','h'],42.0,None,'l']
+                    ][comm.rank]
+    assert data_out == expected_out
+
+    # We can also choose the initial value by provided an initial dist_data to the function
+    data_out = [[-1,-2,-3,-4,-5],
+                [], 
+                [-6,-7,-8],
+                [-9,-10,-11,-12]
+                ][comm.rank]
+    out = GI.put(data_in, data_out)
+    assert out is data_out
+    expected_out = [['aaaa', 'b', 'letter c', -4, 'e'], 
+                    [], 
+                    [-6, 'f', -8],
+                    [['a','list','of','h'],42.0,-11,'l']
                     ][comm.rank]
     assert data_out == expected_out
 
