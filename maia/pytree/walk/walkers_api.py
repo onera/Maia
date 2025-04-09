@@ -517,9 +517,9 @@ def get_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
     ...       GridLocation GridLocation_t "Vertex":
     ... ''')
     >>> PT.get_node_from_path(zone, 'ZoneBC/BC/GridLocation')
-    # Return node GridLocation
-    >>> PT.get_node_from_path(zone, 'ZoneBC/BC/PointRange')
-    # Return None
+    ['GridLocation', array([b'V', b'e', b'r', b't', b'e', b'x'], dtype='|S1'), 
+                     [], 'GridLocation_t']
+    >>> PT.get_node_from_path(zone, 'ZoneBC/BC/PointRange') # Returns Nothing
   """
   if path == '':
     return root

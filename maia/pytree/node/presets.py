@@ -26,7 +26,7 @@ def new_CGNSTree(*, version:float=4.2):
   Example:
     >>> node = PT.new_CGNSTree()
     >>> PT.print_tree(node)
-    CGNSTree CGNSTree_t
+    CGNSTree CGNSTree_t 
     └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
   """
   version = new_node('CGNSLibraryVersion', 'CGNSLibraryVersion_t', value=version)
@@ -65,7 +65,7 @@ def new_Family(name:str='Family', *, family_bc:str=None, parent:CGNSTree=None):
   Example:
     >>> node = PT.new_Family('WALL', family_bc='BCWall')
     >>> PT.print_tree(node)
-    WALL Family_t
+    WALL Family_t 
     └───FamilyBC FamilyBC_t "BCWall"
   """
   family = new_node(name, 'Family_t', None, [], parent=parent)
@@ -374,7 +374,7 @@ def new_BCData(name:str,
   Example:
     >>> node = PT.new_BCData('DirichletData', fields={'Global' : np.float64(4.4), 'Local' : np.ones(100)})
     >>> PT.print_tree(node)
-    DirichletData BCData_t
+    DirichletData BCData_t 
     ├───Global DataArray_t R8 [4.4]
     └───Local DataArray_t R8 (100,)
   """
@@ -495,8 +495,8 @@ def new_GridConnectivityProperty(periodic:Dict[str,ArrayLike]={}, parent:CGNSTre
     >>> perio = {"translation" : [1.0, 0.0, 0.0]}
     >>> node = PT.new_GridConnectivityProperty(perio)
     >>> PT.print_tree(node)
-    GridConnectivityProperty GridConnectivityProperty_t
-    └───Periodic Periodic_t
+    GridConnectivityProperty GridConnectivityProperty_t 
+    └───Periodic Periodic_t 
         ├───RotationAngle DataArray_t R4 [0. 0. 0.]
         ├───RotationCenter DataArray_t R4 [0. 0. 0.]
         └───Translation DataArray_t R4 [1. 0. 0.]
@@ -666,10 +666,9 @@ def new_Axisymmetry(*, reference_point:ArrayLike=None, axis_vector:ArrayLike=Non
   Example:
     >>> node = PT.new_Axisymmetry(reference_point=[0.0, 0.0], axis_vector=[0.0, 1.0])
     >>> PT.print_tree(node)
-    Axisymmetry Axisymmetry_t
-    └───AxisymmetryReferencePoint DataArray_t R4 [0.  0. ]
-    └───AxisymmetryAxisVector DataArray_t R4 [0.  1. ]
-
+    Axisymmetry Axisymmetry_t 
+    ├───AxisymmetryReferencePoint DataArray_t R4 [0. 0.]
+    └───AxisymmetryAxisVector DataArray_t R4 [0. 1.]
   """
   node = new_node('Axisymmetry', 'Axisymmetry_t', parent=parent)
   if reference_point is not None:
@@ -736,7 +735,7 @@ def new_GridCoordinates(name:str='GridCoordinates', *, fields:Dict[str,ArrayLike
     >>> coords={'CoordinateX' : [1.,2.,3.], 'CoordinateY' : [1.,1.,1.]}
     >>> node = PT.new_GridCoordinates(fields=coords)
     >>> PT.print_tree(node)
-    GridCoordinates GridCoordinates_t
+    GridCoordinates GridCoordinates_t 
     ├───CoordinateX DataArray_t R4 [1. 2. 3.]
     └───CoordinateY DataArray_t R4 [1. 1. 1.]
   """
@@ -765,7 +764,7 @@ def new_FlowSolution(name:str = 'FlowSolution',
     >>> node = PT.new_FlowSolution('FS', loc='CellCenter',
     ...                            fields={'Density' : np.ones(125)})
     >>> PT.print_tree(node)
-    FS FlowSolution_t
+    FS FlowSolution_t 
     ├───GridLocation GridLocation_t "CellCenter"
     └───Density DataArray_t R8 (125,)
   """
@@ -796,7 +795,7 @@ def new_DiscreteData(name:str = 'DiscreteData',
     >>> node = PT.new_DiscreteData('DD', loc='Vertex',
     ...                            fields={'VtxWeight' : np.ones(100)})
     >>> PT.print_tree(node)
-    DD DiscreteData_t
+    DD DiscreteData_t 
     ├───GridLocation GridLocation_t "Vertex"
     └───VtxWeight DataArray_t R8 (100,)
   """
@@ -838,13 +837,13 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
     >>> node = PT.new_ZoneSubRegion('Extraction', bc_name = 'Bottom',
     ...                             fields={'Density' : np.ones(125)})
     >>> PT.print_tree(node)
-    Extraction ZoneSubRegion_t
+    Extraction ZoneSubRegion_t 
     ├───BCRegionName Descriptor_t "Bottom"
     └───Density DataArray_t R8 (125,)
     >>> node = PT.new_ZoneSubRegion('Probe', loc='CellCenter',
     ...                             point_list=[[104]])
     >>> PT.print_tree(node)
-    Probe1 ZoneSubRegion_t
+    Probe ZoneSubRegion_t 
     ├───GridLocation GridLocation_t "CellCenter"
     └───PointList IndexArray_t I4 [[104]]
   """
@@ -886,7 +885,7 @@ def new_UserDefinedData(name:str = 'UserDefined',
   Example:
     >>> node = PT.new_UserDefinedData('MyUserDefData', value=np.ones(200))
     >>> PT.print_tree(node)
-    UserDefined UserDefinedData_t R8 (200,)
+    MyUserDefData UserDefinedData_t R8 (200,)
   """
   return new_node(name, label='UserDefinedData_t', value=value, parent=parent)
 
@@ -941,7 +940,7 @@ def new_FlowEquationSet(parent=None):
   Example:
     >>> node = PT.new_FlowEquationSet()
     >>> PT.print_tree(node)
-    FlowEquationSet FlowEquationSet_t
+    FlowEquationSet FlowEquationSet_t 
   """
   return new_node('FlowEquationSet', label='FlowEquationSet_t', parent=parent)
 
@@ -980,7 +979,7 @@ def new_ReferenceState(name:str = 'ReferenceState',
   Example:
     >>> node = PT.new_ReferenceState("RefState", fields={"Density" : 1.})
     >>> PT.print_tree(node)
-    RefState ReferenceState_t
+    RefState ReferenceState_t 
     └───Density DataArray_t R4 [1.]
   """
   ref_state = new_node(name, 'ReferenceState_t', None, [], parent)

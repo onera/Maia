@@ -190,6 +190,7 @@ def rm_node_from_path(root:CGNSTree, path:str):
     ├───ZoneType ZoneType_t "Null"
     └───FS FlowSolution_t 
         └───Temperature DataArray_t R4 [273.]
+
   See also:
     Also exists as :func:`pop_node_from_path`, which removes the node and returns it.
   """

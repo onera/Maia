@@ -94,13 +94,13 @@ def to_nodes(yaml_stream) -> CGNSTree:
     list of CGNSTree : python representation of each root node
   Example:
     >>> nodes = PT.yaml.to_nodes('''
-    BC1 BC_t:
-      GridLocation GridLocation_t "FaceCenter":
-      PointList IndexArray_t [[1,2,3]]:
-    BC2 BC_t:
-      GridLocation GridLocation_t "Vertex":
-      PointList IndexArray_t [[1,2,3]]:
-    ''')
+    ... BC1 BC_t:
+    ...   GridLocation GridLocation_t "FaceCenter":
+    ...   PointList IndexArray_t [[1,2,3]]:
+    ... BC2 BC_t:
+    ...   GridLocation GridLocation_t "Vertex":
+    ...   PointList IndexArray_t [[1,2,3]]:
+    ... ''')
     >>> len(nodes)
     2
   """
@@ -122,10 +122,10 @@ def to_node(yaml_stream) -> CGNSTree:
     CGNSTree : python representation of the node
   Example:
     >>> node = PT.yaml.to_node('''
-    BC BC_t:
-      GridLocation GridLocation_t "FaceCenter":
-      PointList IndexArray_t [[1,2,3]]:
-    ''')
+    ... BC BC_t:
+    ...   GridLocation GridLocation_t "FaceCenter":
+    ...   PointList IndexArray_t [[1,2,3]]:
+    ... ''')
     >>> PT.print_tree(node)
     BC BC_t 
     ├───GridLocation GridLocation_t "FaceCenter"
@@ -153,9 +153,9 @@ def to_cgns_tree(yaml_stream) -> CGNSTree:
     CGNSTree : python representation of the tree
   Example:
     >>> tree = PT.yaml.to_cgns_tree('''
-    Zone Zone_t:
-      ZoneType ZoneType_t "Structured":
-    ''')
+    ... Zone Zone_t:
+    ...   ZoneType ZoneType_t "Structured":
+    ... ''')
     >>> PT.print_tree(tree)
     CGNSTree CGNSTree_t 
     ├───Base CGNSBase_t I4 [3 3]

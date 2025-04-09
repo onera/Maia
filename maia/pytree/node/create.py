@@ -53,7 +53,7 @@ def update_node(node:CGNSTree, name:str=UNSET, label:str=UNSET, value:Any=UNSET,
     >>> node = PT.new_node('Zone')
     >>> PT.update_node(node, label='Zone_t', value=[[11,10,0]])
     >>> node
-    ['Zone', array([[11,10,0]], dtype=int32), [], 'Zone_t']
+    ['Zone', array([[11, 10,  0]], dtype=int32), [], 'Zone_t']
   """
   if name is not UNSET:
     NA.set_name(node, name)
@@ -103,7 +103,10 @@ def update_child(parent:CGNSTree, name:str, label:str=UNSET, value:Any=UNSET, ch
   Example:
     >>> zone = PT.new_node('Zone', label='Zone_t') # Basic node creation
     >>> PT.update_child(zone, 'ZoneType', 'ZoneType_t') # Child is created
+    ['ZoneType', None, [], 'ZoneType_t']
     >>> PT.update_child(zone, 'ZoneType', value="Unstructured") # Child is updated
+    ['ZoneType', array([b'U', b'n', b's', b't', b'r', b'u', b'c', b't', b'u', b'r', b'e',
+           b'd'], dtype='|S1'), [], 'ZoneType_t']
     >>> PT.print_tree(zone)
     Zone Zone_t 
     └───ZoneType ZoneType_t "Unstructured"
@@ -131,7 +134,7 @@ def shallow_copy(t:CGNSTree) -> CGNSTree:
     >>> zone_dupl = PT.shallow_copy(zone)
     >>> zone_dupl[1] *= 2
     >>> PT.get_value(zone)
-    array([[18, 8, 0]], dtype=int32)
+    array([[18,  8,  0]], dtype=int32)
   """
   out = [NA.get_name(t), NA.get_value(t, raw=True), [], NA.get_label(t)]
   for child in NA.get_children(t):
