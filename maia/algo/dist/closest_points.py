@@ -12,7 +12,7 @@ def _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse):
   tgt_clouds_per_dom = [[c] for c in tgt_clouds]
   src_clouds_per_dom = [[c] for c in src_clouds]
 
-  result = _mdom_closest_points_part(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse)
+  result = _mdom_closest_points_part(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse=reverse)
 
   # Remove intermediate level
   if reverse:

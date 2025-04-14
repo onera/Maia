@@ -59,8 +59,9 @@ def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False, need_s
   else:
     return all_closest
 
-def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
+def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, **kwargs):
 
+  reverse = kwargs.get('reverse', False)
   n_clouds_per_dom_src = [len(parts) for parts in src_clouds_per_dom]
   n_clouds_per_dom_tgt = [len(parts) for parts in tgt_clouds_per_dom]
 
@@ -83,7 +84,7 @@ def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
   tgt_clouds = py_utils.to_flat_list(tgt_clouds_per_dom)
   src_clouds = py_utils.to_flat_list(src_clouds_per_dom)
 
-  result = _closest_points(src_clouds, tgt_clouds, comm, 1, reverse)
+  result = _closest_points(src_clouds, tgt_clouds, comm, **kwargs)
 
   # Shift back result
   direct_result = result[0] if reverse else result
@@ -93,6 +94,7 @@ def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
   if reverse:
     for src_result in result[1]:
       gnum_shifted = src_result.pop('tgt_in_src')
+      src_result['tgt_in_src_shifted'] = gnum_shifted
       ini_gnum, domain =  np_utils.shifted_to_local(gnum_shifted.values, tgt_offset)
       src_result['tgt_in_src'] = vs.from_displs(gnum_shifted.displs, ini_gnum)
       src_result['domain'] = vs.from_displs(gnum_shifted.displs, domain)
@@ -103,14 +105,14 @@ def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
   else:
     return py_utils.to_nested_list(result, n_clouds_per_dom_tgt)
 
-def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt_location, comm, reverse=False):
+def _find_closest_points(src_parts_per_dom, tgt_parts_per_dom, src_location, tgt_location, comm, **kwargs):
 
   src_clouds = [[get_point_cloud(part, src_location) for part in src_parts] \
           for src_parts in src_parts_per_dom]
   tgt_clouds = [[get_point_cloud(part, tgt_location) for part in tgt_parts] \
           for tgt_parts in tgt_parts_per_dom]
 
-  return _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse)
+  return _mdom_closest_points(src_clouds, tgt_clouds, comm, **kwargs)
 
 
 def find_closest_points(src_tree, tgt_tree, location, comm):
