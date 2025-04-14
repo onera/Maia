@@ -10,13 +10,15 @@ from maia.utils                  import py_utils, np_utils, par_utils
 from maia.utils                  import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks
 
-from .point_cloud_utils import get_point_cloud
+from .point_cloud_utils import get_point_cloud, create_sub_numbering
 
 
-def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
+def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False, need_shift=False):
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists of tuples (coords, lngn)
+  If target lngn does is not a contiguous range 1...n_tgt_pts, need_shift must be True to allow
+  the creation of a (temporary) subnumbering
   """
 
   # > Create and setup global data
@@ -28,6 +30,10 @@ def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
     closest_point.src_cloud_set(i_part, lngn.shape[0], coords, lngn)
 
   # > Setup target
+  if need_shift:
+    ini_tgt_gnum = [tgt_cloud[1] for tgt_cloud in tgt_clouds]
+    sub_tgt_gnum = create_sub_numbering(ini_tgt_gnum, comm)
+    tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(tgt_clouds, sub_tgt_gnum)]
   for i_part, (coords, lngn) in enumerate(tgt_clouds):
     closest_point.tgt_cloud_set(i_part, lngn.shape[0], coords, lngn)
 
@@ -35,10 +41,16 @@ def _closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False):
 
   all_closest = [closest_point.points_get(i_part_tgt) for i_part_tgt in range(len(tgt_clouds))]
 
+
   if reverse:
+    _results = [closest_point.tgt_in_src_get(i_src_part) for i_src_part in range(len(src_clouds))]
     all_closest_inv = []
+    # Retrieve target original gnum (transform inplace)
+    if need_shift:
+      gnum_to_transform = [_result["tgt_in_src"] for _result in _results]
+      PDM.transform_to_parent_gnum(gnum_to_transform, sub_tgt_gnum, ini_tgt_gnum, comm)
     for i_src_part in range(len(src_clouds)):
-      _result = closest_point.tgt_in_src_get(i_src_part)
+      _result = _results[i_src_part]
       all_closest_inv.append({
         'tgt_in_src'       : vs.from_displs(_result['tgt_in_src_idx'], _result['tgt_in_src']),
         'tgt_in_src_dist2' : vs.from_displs(_result['tgt_in_src_idx'], _result['tgt_in_src_dist2'])

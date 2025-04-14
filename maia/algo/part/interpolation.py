@@ -208,21 +208,15 @@ def create_src_to_tgt(src_parts_per_dom,
     _, tgt_clouds = PCU.get_shifted_point_clouds(tgt_parts_per_dom, tgt_loc, comm)
     tgt_clouds = py_utils.to_flat_list(tgt_clouds)
 
-    # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
+    # > If we previously did a mesh location, we only treat unlocated points, so we filter tgt_clouds
+    tgt_need_shift = False
     if strategy != 'Closest':
       assert len(all_unlocated) == len(tgt_clouds)
-      sub_clouds = [PCU.extract_sub_cloud(*tgt_cloud, all_unlocated[i]) for i,tgt_cloud in enumerate(tgt_clouds)]
-      all_extracted_lngn = [sub_cloud[1] for sub_cloud in sub_clouds]
-      all_sub_lngn = PCU.create_sub_numbering(all_extracted_lngn, comm) #This one is collective
-      tgt_clouds = [(tgt_cloud[0], sub_lngn) for tgt_cloud, sub_lngn in zip(sub_clouds, all_sub_lngn)]
+      tgt_clouds = [PCU.extract_sub_cloud(*tgt_cloud, all_unlocated[i]) for i,tgt_cloud in enumerate(tgt_clouds)]
+      tgt_need_shift = True
 
     n_clo = n_closest_pt
-    all_closest, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, n_clo, reverse=True)
-
-    #If we worked on sub gnum, we must go back to original numbering
-    if strategy != 'Closest':
-      gnum_to_transform = [results["tgt_in_src"].values for results in all_closest_inv]
-      PDM.transform_to_parent_gnum(gnum_to_transform, all_sub_lngn, all_extracted_lngn, comm)
+    _, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, n_clo, reverse=True, need_shift=tgt_need_shift)
 
   dist2weight = lambda V : vs.from_displs(V.displs, 1. / np.maximum(V.values, 1E-20))
   # Combine Location & Closest results if both method were used
