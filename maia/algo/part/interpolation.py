@@ -271,32 +271,6 @@ def create_src_to_tgt(src_parts_per_dom,
 
 
 
-def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options):
-  """
-  Low level interface for interpolation
-  Input are a list of partitioned zones for each src domain, and a list of partitioned zone for each tgt
-  domain. Lists mush be coherent across procs, ie we must have an empty entry if a proc does not know a domain.
-
-  containers_name is the list of FlowSolution containers to be interpolated
-  location is the output location (CellCenter or Vertex); input location can be Vertex only if 
-  strategy is 'Closest', otherwise it must be CellCenter
-  **options are passed to interpolator creationg function, see create_src_to_tgt
-  """
-  # Guess location of input fields
-  if len(containers_name) == 0:
-    return
-  try:
-    first_part = next(part for dom in src_parts_per_dom for part in dom)
-    input_loc = PT.Subset.GridLocation(PT.get_child_from_name(first_part, containers_name[0]))
-  except StopIteration:
-    input_loc = ''
-  input_loc = comm.allreduce(input_loc, op=MPI.MAX)
-
-  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, input_loc, location, **options)
-
-  interpolator = Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, input_loc, location, comm)
-  for container_name in containers_name:
-    interpolator.exchange_fields(container_name)
 
 def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   """Interpolate fields between two partitioned trees.
@@ -341,10 +315,26 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
         :end-before: #interpolate@end
         :dedent: 2
   """
-  src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
-  tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
+  # Early return if containers_name is empty
+  assert isinstance(containers_name, list)
+  if len(containers_name) == 0:
+    return
 
-  interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options)
+  # Guess location of input fields using first input zone
+  try:
+    first_part = next(PT.iter_all_Zone_t(src_tree))
+    input_loc = PT.Subset.GridLocation(PT.get_child_from_name(first_part, containers_name[0]))
+  except StopIteration:
+    input_loc = ''
+  input_loc = comm.allreduce(input_loc, op=MPI.MAX)
+
+  # Create interpolator
+  interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)
+
+  # Exchange fields
+  for container_name in containers_name:
+    interpolator.exchange_fields(container_name)
+
 
 
 def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options):

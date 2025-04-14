@@ -268,8 +268,9 @@ def test_interpolate_fields(comm):
       assert PT.Subset.GridLocation(fs) == 'Vertex'
       assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
 
+
 @pytest_parallel.mark.parallel(2)
-class Test_interpolation_api():
+def test_interpolation_api(comm):
   src_zone_0 = PT.yaml.to_node(src_part_0)
   src_zone_1 = PT.yaml.to_node(src_part_1)
   tgt_zone_0 = PT.yaml.to_node(tgt_part_0)
@@ -279,60 +280,39 @@ class Test_interpolation_api():
   # - For 10 to 18 (middle) : 1 2 2 4 3 3 4 3 3
   # - For 19 to 27 (top)    : 5 6 6 7 8 8  7 8 8
   expected_vtx_sol = [ np.array([1., 1, 5, 2, 4, 3, 2, 4, 3, 6, 7, 8]),
-                       np.array([4., 4, 7, 8, 8, 4, 3, 3, 4, 3, 3, 3, 3, 7, 8, 8]),
-                       np.array([2., 3, 3, 2, 6, 2, 3, 3, 2, 3, 3, 3, 3, 6, 8, 8])]
+                      np.array([4., 4, 7, 8, 8, 4, 3, 3, 4, 3, 3, 3, 3, 7, 8, 8]),
+                      np.array([2., 3, 3, 2, 6, 2, 3, 3, 2, 3, 3, 3, 3, 6, 8, 8])]
   expected_cell_sol = [ np.array([1., 5.]),
                         np.array([7., 8., 4.]),
                         np.array([2., 6., 3.])]
-  all_zones = [src_zone_0, src_zone_1, tgt_zone_0, tgt_zone_1, tgt_zone_2]
 
-  def test_interpolate_from_parts_per_dom(self,comm):
-    if comm.Get_rank() == 0:
-      src_parts_per_dom = [[self.src_zone_0]]
-      tgt_parts_per_dom = [[self.tgt_zone_0, self.tgt_zone_1]]
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1]]
-    elif comm.Get_rank() == 1:
-      src_parts_per_dom = [[self.src_zone_1]]
-      tgt_parts_per_dom = [[self.tgt_zone_2]]
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in [2]]
+  src_tree = PT.new_CGNSTree()
+  src_base = PT.new_CGNSBase(parent=src_tree)
+  tgt_tree = PT.new_CGNSTree()
+  tgt_base = PT.new_CGNSBase(parent=tgt_tree)
 
-    ITP.interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, \
-        ['MySolution'], 'Vertex', strategy='Closest')
+  if comm.Get_rank() == 0:
+    src_zone_0[0] = 'Source.P0.N0'
+    tgt_zone_0[0] = 'Target.P0.N0'
+    tgt_zone_1[0] = 'Target.P0.N1'
+    tgt_zone_2[0] = 'Target.P0.N2'
+    PT.add_child(src_base, src_zone_0)
+    PT.add_child(tgt_base, tgt_zone_0)
+    PT.add_child(tgt_base, tgt_zone_1)
+    PT.add_child(tgt_base, tgt_zone_2)
+    expected_vtx_sol = [expected_vtx_sol[k] for k in [0,1,2]]
+  elif comm.Get_rank() == 1:
+    src_zone_1[0] = 'Source.P1.N0'
+    PT.add_child(src_base, src_zone_1)
+    expected_vtx_sol = [expected_vtx_sol[k] for k in []]
 
-    for tgt_zones in tgt_parts_per_dom:
-      for i_tgt, tgt_zone in enumerate(tgt_zones):
-        fs = PT.get_child_from_name(tgt_zone, 'MySolution')
-        assert PT.Subset.GridLocation(fs) == 'Vertex'
-        assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+  ITP.interpolate(src_tree, tgt_tree, comm, \
+      ['MySolution'], 'Vertex', strategy='Closest')
 
-  def test_interpolate_from_dom_part_trees(self,comm):
-    src_tree = PT.new_CGNSTree()
-    src_base = PT.new_CGNSBase(parent=src_tree)
-    tgt_tree = PT.new_CGNSTree()
-    tgt_base = PT.new_CGNSBase(parent=tgt_tree)
-
-    if comm.Get_rank() == 0:
-      self.src_zone_0[0] = 'Source.P0.N0'
-      self.tgt_zone_0[0] = 'Target.P0.N0'
-      self.tgt_zone_1[0] = 'Target.P0.N1'
-      self.tgt_zone_2[0] = 'Target.P0.N2'
-      PT.add_child(src_base, self.src_zone_0)
-      PT.add_child(tgt_base, self.tgt_zone_0)
-      PT.add_child(tgt_base, self.tgt_zone_1)
-      PT.add_child(tgt_base, self.tgt_zone_2)
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1,2]]
-    elif comm.Get_rank() == 1:
-      self.src_zone_1[0] = 'Source.P1.N0'
-      PT.add_child(src_base, self.src_zone_1)
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in []]
-
-    ITP.interpolate(src_tree, tgt_tree, comm, \
-        ['MySolution'], 'Vertex', strategy='Closest')
-
-    for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
-      fs = PT.get_child_from_name(tgt_zone, 'MySolution')
-      assert PT.Subset.GridLocation(fs) == 'Vertex'
-      assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+  for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
+    fs = PT.get_child_from_name(tgt_zone, 'MySolution')
+    assert PT.Subset.GridLocation(fs) == 'Vertex'
+    assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("strategy", ['Closest', 'LocationAndClosest'])
