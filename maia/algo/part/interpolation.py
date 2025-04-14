@@ -4,12 +4,10 @@ import numpy as np
 import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
-import maia.pytree.maia   as MT
 
 from maia.utils                  import py_utils, np_utils
 from maia.utils                  import logging as mlog
 from maia.utils                  import vstride as vs
-from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .import point_cloud_utils as PCU
@@ -180,80 +178,82 @@ def create_src_to_tgt(src_parts_per_dom,
 
   assert strategy in ['LocationAndClosest', 'Location', 'Closest']
 
+  location_out_inv = [] # Init to avoid unbound error
+  closest_out_inv  = []
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
-    all_n_vtx = [PT.Zone.n_vtx(zone) for src_parts in src_parts_per_dom for zone in src_parts]
 
     location_out, location_out_inv = LOC._localize_points(src_parts_per_dom, tgt_parts_per_dom, \
         tgt_loc, comm, True, loc_tolerance)
 
-    # output is nested by domain so we need to flatten it
-    all_unlocated = [data['unlocated_ids'] for domain in location_out for data in domain]
-    all_located_inv = py_utils.to_flat_list(location_out_inv)
-    n_unlocated = sum([t.size for t in all_unlocated])
+    n_unlocated = sum([sum([data['unlocated_ids'].size for data in domain]) \
+                       for domain in location_out])
     n_tot_unlocated = comm.allreduce(n_unlocated, op=MPI.SUM)
     if comm.Get_rank() == 0:
       mlog.stat(f"[interpolation] Number of unlocated points for Location method is {n_tot_unlocated}")
 
+    if src_loc=="Vertex":
+      # Move results of mesh location from cell to vtx
+      for src_parts, domain_location_out_inv in zip(src_parts_per_dom, location_out_inv):
+        for part, data in zip(src_parts, domain_location_out_inv):
+          vtx_to_tgt, vtx_to_weight = _cell_tgt_to_vtx_tgt(data['cell_vtx'],
+                                                           data['points_gnum_shifted'],
+                                                           data['points_weights'].values,      
+                                                           PT.Zone.n_vtx(part))
+          data['points_gnum_shifted@VTX'] = vtx_to_tgt
+          data['points_weights@VTX'] = vtx_to_weight
 
-  all_closest_inv = list()
+
+  #Phase 2 -- closest point
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
 
-    # > Setup source for closest point (with shift to manage multidomain)
-    _, src_clouds = PCU.get_shifted_point_clouds(src_parts_per_dom, src_loc, comm)
-    src_clouds = py_utils.to_flat_list(src_clouds)
-
-    # > Setup target for closest point (with shift to manage multidomain)
-    _, tgt_clouds = PCU.get_shifted_point_clouds(tgt_parts_per_dom, tgt_loc, comm)
-    tgt_clouds = py_utils.to_flat_list(tgt_clouds)
-
-    # > If we previously did a mesh location, we only treat unlocated points, so we filter tgt_clouds
+    # We hook midlevel API to filter some target points (the one already located)
+    src_clouds = [[PCU.get_point_cloud(part, src_loc) for part in src_parts] \
+      for src_parts in src_parts_per_dom]
+    tgt_clouds = [[PCU.get_point_cloud(part, tgt_loc) for part in tgt_parts] \
+      for tgt_parts in tgt_parts_per_dom]
     tgt_need_shift = False
     if strategy != 'Closest':
-      assert len(all_unlocated) == len(tgt_clouds)
-      tgt_clouds = [PCU.extract_sub_cloud(*tgt_cloud, all_unlocated[i]) for i,tgt_cloud in enumerate(tgt_clouds)]
       tgt_need_shift = True
+      tgt_clouds = [[PCU.extract_sub_cloud(*cloud, location_out[i][j]['unlocated_ids']) for j,cloud in enumerate(clouds)] \
+        for i, clouds in enumerate(tgt_clouds)]
 
-    n_clo = n_closest_pt
-    _, all_closest_inv = CLO._closest_points(src_clouds, tgt_clouds, comm, n_clo, reverse=True, need_shift=tgt_need_shift)
+    _, closest_out_inv = CLO._mdom_closest_points(src_clouds, tgt_clouds, comm, n_pts=n_closest_pt, reverse=True, need_shift=tgt_need_shift)
+
 
   dist2weight = lambda V : vs.from_displs(V.displs, 1. / np.maximum(V.values, 1E-20))
-  # Combine Location & Closest results if both method were used
+  all_located_inv = py_utils.to_flat_list(location_out_inv)
+  all_closest_inv = py_utils.to_flat_list(closest_out_inv)
+  #Phase 3 : Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
     if src_loc=="CellCenter":
       
       src_to_tgt = [{'target_gnum' : data['points_gnum_shifted']} 
                     for data in all_located_inv]
     elif src_loc=="Vertex":
-      src_to_tgt = list()
-      for data, n_vtx in zip(all_located_inv, all_n_vtx):
+      src_to_tgt = [{'target_gnum' :data['points_gnum_shifted@VTX'],
+                     'target_weight' : data['points_weights@VTX']}
+                    for data in all_located_inv]
 
-        vtx_to_tgt, vtx_to_weight = _cell_tgt_to_vtx_tgt(data['cell_vtx'],
-                                                         data['points_gnum_shifted'],
-                                                         data['points_weights'].values,      
-                                                         n_vtx)
-        src_to_tgt.append({'target_gnum' :vtx_to_tgt, 'target_weight' : vtx_to_weight})
         
   elif strategy == 'Closest':
-    src_to_tgt = [{'target_gnum' : data['tgt_in_src'],
+    src_to_tgt = [{'target_gnum' : data['tgt_in_src_shifted'],
                    'target_weight' : dist2weight(data['tgt_in_src_dist2'])}
                    for data in all_closest_inv]
   else:
     src_to_tgt = []
 
-    for res_loc, n_vtx, res_clo in zip(all_located_inv, all_n_vtx, all_closest_inv):
-      clo_tgt_in_src = res_clo['tgt_in_src']
+    for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
+      clo_tgt_in_src = res_clo['tgt_in_src_shifted']
       clo_weight     = dist2weight(res_clo['tgt_in_src_dist2'])
 
       if src_loc=="CellCenter":
         loc_src_to_tgt = res_loc['points_gnum_shifted']
         loc_weight     = vs.from_displs(loc_src_to_tgt.displs, np.ones(loc_src_to_tgt.dsize))
-      elif src_loc=="Vertex": # Move results of mesh location from cell to vtx
-        loc_src_to_tgt, loc_weight = _cell_tgt_to_vtx_tgt(res_loc['cell_vtx'],
-                                                          res_loc['points_gnum_shifted'],
-                                                          res_loc['points_weights'].values,      #cell_vtx_weight
-                                                          n_vtx)
+      elif src_loc=="Vertex":
+        loc_src_to_tgt = res_loc['points_gnum_shifted@VTX']
+        loc_weight = res_loc['points_weights@VTX']
 
         
       tgt_in_src_vs = vs.concatenate([loc_src_to_tgt, clo_tgt_in_src], vs.INNER_AXIS)
