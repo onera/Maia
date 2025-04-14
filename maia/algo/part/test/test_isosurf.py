@@ -161,6 +161,7 @@ def test_isosurf_one_domain(comm):
 
   assert PT.get_label(PT.get_child_from_name(iso_zone, "maia#surface_data")) == 'UserDefinedData_t'
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(2)
 def test_compute_elliptical_slice(comm):
   
@@ -172,6 +173,7 @@ def test_compute_elliptical_slice(comm):
   iso_zone = PT.get_all_Zone_t(slice_tree)[0]
   assert comm.allreduce(PT.Zone.n_cell(iso_zone), MPI.SUM) == 88
   
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(1)  
 def test_compute_spherical_slice(comm):
   dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
@@ -190,6 +192,7 @@ def test_compute_spherical_slice(comm):
   assert maia.pytree.get_child_from_name(iso_zone, "FlowSolution") is not None
   assert (PT.get_node_from_name(iso_zone, 'i_rank')[1] == 0).all()
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(2) 
 def test_compute_plane_slice(comm):
   dist_tree = maia.factory.generate_dist_block(5, 'Poly', comm)
@@ -202,6 +205,7 @@ def test_compute_plane_slice(comm):
   assert np.allclose(PT.get_node_from_name(iso_zone, 'CoordinateZ')[1], 0.1)
 
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(1) 
 def test_compute_iso_surface(comm):
   dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
