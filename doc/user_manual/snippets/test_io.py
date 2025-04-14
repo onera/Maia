@@ -45,6 +45,18 @@ def test_save_part_tree():
   maia.io.part_tree_to_file(part_tree, 'part_tree.cgns', MPI.COMM_WORLD)
   #save_part_tree@end
 
+
+def test_save_part_tree_new_folder():
+  #save_part_tree_new_folder@start
+  from mpi4py import MPI
+  import maia
+
+  dist_tree = maia.factory.generate_dist_block(10, "Poly", MPI.COMM_WORLD)
+  part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD)
+
+  maia.io.part_tree_to_file(part_tree, 'toto/part_tree.cgns', MPI.COMM_WORLD)
+  #save_part_tree_new_folder@end
+
 def test_write_tree():
   #write_tree@start
   from mpi4py import MPI
@@ -63,3 +75,12 @@ def test_write_trees():
   dist_tree = maia.factory.generate_dist_block(10, "Poly", MPI.COMM_WORLD)
   maia.io.write_trees(dist_tree, "tree.cgns", MPI.COMM_WORLD)
   #write_trees@end
+
+def test_write_trees_new_folder():
+  #write_trees_new_folder@start
+  from mpi4py import MPI
+  import maia
+
+  dist_tree = maia.factory.generate_dist_block(10, "Poly", MPI.COMM_WORLD)
+  maia.io.write_trees(dist_tree, "tree.cgns", MPI.COMM_WORLD)
+  #write_trees_new_folder@end

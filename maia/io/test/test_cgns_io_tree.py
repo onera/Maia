@@ -103,12 +103,12 @@ def test_write_trees(comm):
   tree = maia.factory.generate_dist_block(4, "TRI_3", comm)
   tmp_dir = TU.create_collective_tmp_dir(comm)
 
-  tmp_file = os.path.join(tmp_dir, f'test.cgns')
+  tmp_file = os.path.join(tmp_dir, f'TOTO/test.cgns')
   maia.io.write_trees(tree, tmp_file, comm)
 
   comm.barrier()
   for i in range(comm.Get_size()):
-    assert os.path.exists(os.path.join(tmp_dir, f'test_{i}.cgns'))
+    assert os.path.exists(os.path.join(tmp_dir, f'TOTO/test_{i}.cgns'))
 
   TU.rm_collective_dir(tmp_dir, comm)
   

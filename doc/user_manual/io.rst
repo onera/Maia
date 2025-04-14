@@ -73,3 +73,10 @@ or GlobalNumbering nodes will not be removed.
 .. autofunction:: maia.io.write_tree
 .. autofunction:: maia.io.write_trees
 
+Non-existing folders
+--------------------
+
+If your launch scripts don't create directly the folder in which the output
+files have to be written, maia creates it:
+
+.. autofunction:: maia.io.utils.create_parent_folder

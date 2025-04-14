@@ -19,6 +19,9 @@ else:
   from ._hdf_io_h5py  import _write_links
   from .hdf._hdf_cgns import open_from_path, load_tree_partial, _load_node_partial, _write_node_partial
 
+
+from maia.io.utils import create_parent_folder
+
 def enforce_maia_naming(part_tree, comm):
   """Rename the zones and joins of a partitioned tree such that maia
   convention are respected
@@ -197,6 +200,8 @@ def part_tree_to_file(part_tree, filename, comm, single_file=False, links=[]):
   # Recover base data and families
   is_not_zone = lambda n : PT.get_label(n) != 'Zone_t'
   discover_nodes_from_matching(top_tree, [part_tree], 'CGNSBase_t', comm, get_value='all', child_list=[is_not_zone])
+
+  create_parent_folder(comm, filename)
 
   if single_file:
     # Sequential write seems to be faster than collective io -- see 01d84da7 for other methods

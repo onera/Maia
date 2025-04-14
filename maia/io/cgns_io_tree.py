@@ -19,6 +19,8 @@ else:
 
 from maia.factory     import full_to_dist
 
+from maia.io.utils import create_parent_folder
+
 def load_size_tree(filename, comm):
   return _hdf_io.load_size_tree(filename, comm)
 
@@ -30,7 +32,7 @@ def load_partial(filename, dist_tree, hdf_filter, comm):
 
 def write_tree(tree, filename, links=[]):
   """write_tree(tree, filename, links=[])
-  
+
   Sequential write to a CGNS file.
 
   Args:
@@ -49,8 +51,8 @@ def write_tree(tree, filename, links=[]):
 
 def read_tree(filename):
   """read_tree(filename)
-  
-  Sequential load of a CGNS file. 
+
+  Sequential load of a CGNS file.
 
   Args:
     filename (str) : Path of the file
@@ -67,8 +69,8 @@ def read_tree(filename):
 
 def read_links(filename):
   """read_links(filename)
-  
-  Detect the links embedded in a CGNS file. 
+
+  Detect the links embedded in a CGNS file.
 
   Links information are returned as described in sids-to-python. Note that
   no data are loaded and the tree structure is not even built.
@@ -151,9 +153,9 @@ def fill_size_tree(tree, filename, comm):
 
 def file_to_dist_tree(filename, comm):
   """file_to_dist_tree(filename, comm)
-  
+
   Distributed load of a CGNS file.
-  
+
   Args:
     filename (str) : Path of the file
     comm     (MPIComm) : MPI communicator
@@ -185,7 +187,7 @@ def file_to_dist_tree(filename, comm):
 
 def dist_tree_to_file(dist_tree, filename, comm, links=[]):
   """dist_tree_to_file(dist_tree, filename, comm, links=[])
-  
+
   Distributed write to a CGNS file.
 
   If links are used, the link description list must be identiqual on all ranks.
@@ -207,6 +209,10 @@ def dist_tree_to_file(dist_tree, filename, comm, links=[]):
             f" (Σ={mlog.bsize_to_str(all_dt_size)})...")
   start = time.time()
   filename = str(filename)
+
+  # Check if folder exists
+  create_parent_folder(comm,filename)
+
   hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links)
   end = time.time()
@@ -214,7 +220,7 @@ def dist_tree_to_file(dist_tree, filename, comm, links=[]):
 
 def write_trees(tree, filename, comm, links=[]):
   """write_trees(tree, filename, comm, links=[])
-  
+
   Sequential write to CGNS files.
 
   Write separate trees for each process. Rank id will be automatically
@@ -235,6 +241,7 @@ def write_trees(tree, filename, comm, links=[]):
   """
   # Give to each process a filename
   filename = str(filename)
+  create_parent_folder(comm, filename)
   base_name, extension = os.path.splitext(filename)
   base_name += f"_{comm.Get_rank()}"
   _filename = base_name + extension
