@@ -1,158 +1,19 @@
 from mpi4py import MPI
 import numpy as np
 
-import Pypdm.Pypdm as PDM
-
 import maia.pytree        as PT
 
-from maia.utils                  import py_utils, np_utils
+from maia.utils                  import py_utils
 from maia.utils                  import logging as mlog
 from maia.utils                  import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .import point_cloud_utils as PCU
 from .import multidom_gnum     as MDG
-from .import localize as LOC
+from .import localize       as LOC
 from .import closest_points as CLO
 
-class Interpolator:
-  """ Low level class to perform interpolations """
-  def __init__(self, src_parts, tgt_parts, src_to_tgt, input_loc, output_loc, comm):
-    self.src_parts = src_parts
-    self.tgt_parts = tgt_parts
-    
-    self.output_loc = output_loc
-    self.input_loc = input_loc
-    self.comm = comm
-
-    # If some rank have no partitions, store a rank used as root to share FS names
-    self.root = None
-    if comm.allreduce(len(self.src_parts) == 0, MPI.LOR):
-      self.root = self.comm.allreduce(-1 if len(self.src_parts) == 0 else comm.rank, MPI.MAX)
-
-    self.PTP = PDM.PartToPart(comm,
-                              src_to_tgt['src_gnum'],
-                              src_to_tgt['tgt_gnum'],
-                              [a.displs for a in src_to_tgt['target_gnum']],
-                              [a.values for a in src_to_tgt['target_gnum']])
-
-    self.referenced_nums = self.PTP.get_referenced_lnum2()
-    self.sending_gnums = self.PTP.get_gnum1_come_from()
-
-    # Send weight to targets partitions (if available)
-    try:
-      _weight = [a.values for a in src_to_tgt['target_weight']]
-      request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
-                               _weight)
-      _, self.tgt_weight = self.PTP.wait(request)
-    except KeyError:
-      pass
-
-
-  def _reduce_single_val(self, i_part, data):
-    """
-    A basic reduce function who take the first received value for each target
-    """
-    come_from_idx = self.sending_gnums[i_part]['come_from_idx']
-    return data[come_from_idx[:-1]]
-
-  def _reduce_weighted_mean(self, i_part, data):
-    """
-    Compute a weighted mean of the received values.
-    Usable only if weight are available in src_to_tgt dict
-    (eg not Location method used on a CellCenter source).
-    """
-    come_from_idx = self.sending_gnums[i_part]['come_from_idx']
-    reduced_data   = np.add.reduceat(data*self.tgt_weight[i_part], come_from_idx[:-1])
-    reduced_factor = np.add.reduceat(     self.tgt_weight[i_part], come_from_idx[:-1])
-    assert reduced_data.size == come_from_idx.size - 1
-    return reduced_data / reduced_factor
-
-
-  def exchange_fields(self, container_name, reduce_func=_reduce_weighted_mean):
-    """
-    For all fields found under container_name node,
-    - Perform a part to part exchange
-    - Reduce the received data using reduce_func (because tgt elements can receive multiple data)
-    - Fill the target sol with a default value + the reduced value
-    """
-
-    #Check that solutions are known on each source partition
-    fields_per_part = list()
-    for src_part in self.src_parts:
-      container = PT.get_node_from_path(src_part, container_name)
-      assert PT.Subset.GridLocation(container) == self.input_loc
-      fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-      fields_per_part.append(fields_name)
-    if len(fields_per_part) > 0:
-      assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
-
-    fields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
-    if self.root is not None: # Some rank have no src partitions, share field names
-      fields_names = self.comm.bcast(fields_names, root=self.root)
-
-    #Cleanup target partitions
-    for tgt_part in self.tgt_parts:
-      PT.rm_children_from_name(tgt_part, container_name)
-      fs = PT.new_FlowSolution(container_name, loc=self.output_loc, parent=tgt_part)
-
-    #Collect src sol
-    src_field_dic = dict()
-    for field_name in fields_names:
-      field_path = container_name + '/' + field_name
-      src_field_dic[field_name] = [PT.get_node_from_path(part, field_path)[1] for part in self.src_parts]
-
-    #Exchange
-    for field_name, src_sol in src_field_dic.items():
-      request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                               PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1,
-                               src_sol)
-      strides, lnp_part_data = self.PTP.wait(request)
-
-      for i_part, tgt_part in enumerate(self.tgt_parts):
-        fs = PT.get_node_from_path(tgt_part, container_name)
-        data_size = PT.Zone.n_cell(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.n_vtx(tgt_part)
-        data = np.nan * np.ones(data_size)
-        come_from_idx = self.sending_gnums[i_part]['come_from_idx']
-        if (np.diff(come_from_idx) == 1).all():
-          reduced_data = lnp_part_data[i_part]
-        else:
-          reduced_data = reduce_func(self, i_part, lnp_part_data[i_part])
-        data[self.referenced_nums[i_part]-1] = reduced_data #Use referenced ids to erase default value
-        if PT.Zone.Type(tgt_part) == 'Unstructured':
-          PT.update_child(fs, field_name, 'DataArray_t', data)
-        else:
-          shape = PT.Zone.CellSize(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
-          PT.update_child(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
-
-
-def _cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_weight, n_vtx):
-  """
-  Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
-  onto vtx->tgt information.
-  """
-  # Id of cell having some tgt, duplicated if multiple tgt
-  active_cell = np_utils.repeated_arange(cell_tgt.counts, dtype=np.int32)
-  # Cell vtx only for these cells, still duplicated
-  # len of active_cell_vtx is == len(active_cell) == cell_tgt.dsize (because of reps)
-  active_cell_vtx = vs.take(cell_vtx, active_cell)
-
-  # Number of vertex counted with reps
-  vtx_to_tgt_n = np.zeros(n_vtx, dtype=np.int32)
-  np.add.at(vtx_to_tgt_n, active_cell_vtx.values-1, 1)
-
-  # Cell_tgt -> id points shifté ; on les etend 
-  cell_tgt_extended = np.repeat(cell_tgt.values, active_cell_vtx.counts) # cell_vtx->tgt
-
-  sort_idx = np.argsort(active_cell_vtx.values)
-  vtx_to_tgt     = cell_tgt_extended[sort_idx] # vtx->tgt
-  vtx_to_tgt_wgt = cell_vtx_weight[sort_idx]
-
-  vtx_to_tgt_vs = vs.from_counts(vtx_to_tgt_n, vtx_to_tgt)
-  vtx_to_weight = vs.from_counts(vtx_to_tgt_n, vtx_to_tgt_wgt)
-
-  return vtx_to_tgt_vs, vtx_to_weight
+from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt
 
 
 def create_src_to_tgt(src_parts_per_dom,
@@ -267,47 +128,8 @@ def create_src_to_tgt(src_parts_per_dom,
 
 
 def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
-  """Interpolate fields between two partitioned trees.
-
-  This function can transfer CellCenter or Vertex located fields, but not both
-  at the same time.
-  Target tree is modified inplace: the requested FlowSolution_t containers are transfered
-  from the source tree.
-
-  Interpolation strategy can be controled thought the options kwargs:
-
-  - ``strategy`` (default = 'Closest') -- control interpolation method
-
-    - 'Closest' : Target points use the inverse distance weighting on the ``n_closest_pt`` source point values.
-    - 'Location' : For ``CellCenter`` fields, target points take the value of the cell in which they are located.
-      For ``Vertex`` fields, target points use finite element weights of source cell vertices to compute interpolation.
-      In both cases, unlocated points take the value ``NaN``.
-    - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
-      for the unlocated points.
-
-  - ``n_closest_pt`` (default = 1) -- If strategy is 'Closest' or 'LocationAndClosest', 
-    specify the number of closest points used for interpolation.
-
-  - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
-
-  See also:
-    :func:`create_interpolator` takes the same parameters (excepted ``containers_name``,
-    which must be replaced by ``src_location``), and returns an Interpolator object which can be used
-    to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
-
-  Args:
-    src_tree (CGNSTree): Source tree, partitioned. Only 3D unstructured connectivities are managed.
-    tgt_tree (CGNSTree): Target tree, partitioned. Structured or unstructured connectivities are managed.
-    comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
-    location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.
-    **options: Options related to interpolation strategy
-
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #interpolate@start
-        :end-before: #interpolate@end
-        :dedent: 2
+  """
+  Partitioned implementation of maia.algo.interpolate
   """
   # Early return if containers_name is empty
   assert isinstance(containers_name, list)
@@ -332,9 +154,8 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
 
 
 def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options):
-  """Same as interpolate, but return the interpolator object instead
-  of doing interpolations. Interpolator can be called multiple time to exchange
-  fields without recomputing the src_to_tgt indirection (geometry must remain the same).
+  """
+  Distributed implementation of maia.algo.interpolate
   """
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
