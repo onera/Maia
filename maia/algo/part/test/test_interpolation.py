@@ -205,11 +205,11 @@ def test_create_src_to_tgt(comm):
   tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in zones]]
   excp_target = np.array([1,2,3,4]) if comm.Get_rank() == 0 else np.array([5,6,7,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm)
-  assert (src_to_tgt[0]['target_gnum'].displs == [0,1,2,3,4]).all()
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['target_gnum'][0].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Closest')
-  assert (src_to_tgt[0]['target_gnum'].displs == [0,1,2,3,4]).all()
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['target_gnum'][0].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
@@ -217,11 +217,11 @@ def test_create_src_to_tgt(comm):
       cx[1] += .5
   excp_target = np.array([2,1,3,4]) if comm.Get_rank() == 0 else np.array([6,5,8,7])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='LocationAndClosest')
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
 
   excp_target = np.array([2,3]) if comm.Get_rank() == 0 else np.array([6,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Location')
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
 
 def test_interpolator_reductions():
   class Empty: #Used to create a interpolator like object
@@ -248,33 +248,30 @@ def test_interpolator_reductions():
 @pytest_parallel.mark.parallel(2)
 def test_interpolate_fields(comm):
   if comm.Get_rank() == 0:
-    pt = src_part_0
+    pt = src_part_0.replace("ZoneU", "ZoneU.P0.N0")
     expected_sol = np.array([2.,2.,2.,3.,3.,3.,3.,3.,3., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   else:
-    pt = src_part_1
+    pt = src_part_1.replace("ZoneU", "ZoneU.P1.N0")
     expected_sol = np.array([6.,6.,6.,8.,8.,8.,8.,8.,8., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   part_tree = PT.yaml.to_cgns_tree(pt)
+  src_tree = part_tree
 
-  src_parts_per_dom = [PT.get_all_Zone_t(part_tree)]
-  tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in PT.get_all_Zone_t(part_tree)]]
-  for tgt_zones in tgt_parts_per_dom:
-    for tgt_zone in tgt_zones:
-      cx = PT.get_node_from_name(tgt_zone, 'CoordinateX')
-      cy = PT.get_node_from_name(tgt_zone, 'CoordinateY')
-      cz = PT.get_node_from_name(tgt_zone, 'CoordinateZ')
-      cx[1] += .55
-      cy[1] += .05
-      cz[1] -= .05
+  tgt_tree = PT.deep_copy(src_tree)
+  for tgt_zone in PT.get_all_Zone_t(tgt_tree):
+    cx = PT.get_node_from_name(tgt_zone, 'CoordinateX')
+    cy = PT.get_node_from_name(tgt_zone, 'CoordinateY')
+    cz = PT.get_node_from_name(tgt_zone, 'CoordinateZ')
+    cx[1] += .55
+    cy[1] += .05
+    cz[1] -= .05
 
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, 'CellCenter', 'Vertex')
-  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'CellCenter', 'Vertex', comm)
+  interpolator = ITP.create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'Vertex')
   interpolator.exchange_fields('MySolution')
 
-  for tgt_zones in tgt_parts_per_dom:
-    for tgt_zone in tgt_zones:
-      fs = PT.get_node_from_name(tgt_zone, 'MySolution')
-      assert PT.Subset.GridLocation(fs) == 'Vertex'
-      assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
+  for tgt_zone in PT.get_all_Zone_t(tgt_tree):
+    fs = PT.get_node_from_name(tgt_zone, 'MySolution')
+    assert PT.Subset.GridLocation(fs) == 'Vertex'
+    assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
 
 
 @pytest_parallel.mark.parallel(2)

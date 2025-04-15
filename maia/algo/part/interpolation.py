@@ -17,9 +17,9 @@ from .import closest_points as CLO
 
 class Interpolator:
   """ Low level class to perform interpolations """
-  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, input_loc, output_loc, comm):
-    self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
-    self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
+  def __init__(self, src_parts, tgt_parts, src_to_tgt, input_loc, output_loc, comm):
+    self.src_parts = src_parts
+    self.tgt_parts = tgt_parts
     
     self.output_loc = output_loc
     self.input_loc = input_loc
@@ -30,26 +30,18 @@ class Interpolator:
     if comm.allreduce(len(self.src_parts) == 0, MPI.LOR):
       self.root = self.comm.allreduce(-1 if len(self.src_parts) == 0 else comm.rank, MPI.MAX)
 
-    _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, self.input_loc, comm)
-    all_src_lngn = py_utils.to_flat_list(src_lngn_per_dom)
-
-    _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, self.output_loc, comm)
-    all_tgt_lngn = py_utils.to_flat_list(tgt_lngn_per_dom)
-
-    self.src_to_tgt_idx = [data['target_gnum'].displs for data in src_to_tgt]
-    _src_to_tgt = [data['target_gnum'].values for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
-                              all_src_lngn,
-                              all_tgt_lngn,
-                              self.src_to_tgt_idx,
-                              _src_to_tgt)
+                              src_to_tgt['src_gnum'],
+                              src_to_tgt['tgt_gnum'],
+                              [a.displs for a in src_to_tgt['target_gnum']],
+                              [a.values for a in src_to_tgt['target_gnum']])
 
     self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
 
     # Send weight to targets partitions (if available)
     try:
-      _weight = [data['target_weight'].values for data in src_to_tgt]
+      _weight = [a.values for a in src_to_tgt['target_weight']]
       request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
                                _weight)
@@ -227,39 +219,47 @@ def create_src_to_tgt(src_parts_per_dom,
   all_closest_inv = py_utils.to_flat_list(closest_out_inv)
   #Phase 3 : Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
-    if src_loc=="CellCenter":
-      
-      src_to_tgt = [{'target_gnum' : data['points_gnum_shifted']} 
-                    for data in all_located_inv]
-    elif src_loc=="Vertex":
-      src_to_tgt = [{'target_gnum' :data['points_gnum_shifted@VTX'],
-                     'target_weight' : data['points_weights@VTX']}
-                    for data in all_located_inv]
-
+    if src_loc == "CellCenter":
+      tgt_in_src_gnum = [data['points_gnum_shifted'] for data in all_located_inv]
+      tgt_in_src_wght = None
+    elif src_loc == "Vertex":
+      tgt_in_src_gnum = [data['points_gnum_shifted@VTX'] for data in all_located_inv]
+      tgt_in_src_wght = [data['points_weights@VTX'] for data in all_located_inv]
         
   elif strategy == 'Closest':
-    src_to_tgt = [{'target_gnum' : data['tgt_in_src_shifted'],
-                   'target_weight' : dist2weight(data['tgt_in_src_dist2'])}
-                   for data in all_closest_inv]
-  else:
-    src_to_tgt = []
+    tgt_in_src_gnum = [data['tgt_in_src_shifted'] for data in all_closest_inv]
+    tgt_in_src_wght = [dist2weight(data['tgt_in_src_dist2']) for data in all_closest_inv]
 
+  else:
+    tgt_in_src_gnum = []
+    tgt_in_src_wght = []
     for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
-      clo_tgt_in_src = res_clo['tgt_in_src_shifted']
-      clo_weight     = dist2weight(res_clo['tgt_in_src_dist2'])
+      clo_tgt_in_src_gnum = res_clo['tgt_in_src_shifted']
+      clo_tgt_in_scr_wght = dist2weight(res_clo['tgt_in_src_dist2'])
 
       if src_loc=="CellCenter":
-        loc_src_to_tgt = res_loc['points_gnum_shifted']
-        loc_weight     = vs.from_displs(loc_src_to_tgt.displs, np.ones(loc_src_to_tgt.dsize))
+        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted']
+        loc_tgt_in_src_wght = vs.from_displs(loc_src_to_tgt_gnum.displs, np.ones(loc_src_to_tgt_gnum.dsize))
       elif src_loc=="Vertex":
-        loc_src_to_tgt = res_loc['points_gnum_shifted@VTX']
-        loc_weight = res_loc['points_weights@VTX']
-
+        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted@VTX']
+        loc_tgt_in_src_wght = res_loc['points_weights@VTX']
         
-      tgt_in_src_vs = vs.concatenate([loc_src_to_tgt, clo_tgt_in_src], vs.INNER_AXIS)
-      tgt_weight_vs = vs.concatenate([loc_weight, clo_weight],         vs.INNER_AXIS)
+      tgt_in_src_gnum.append(vs.concatenate([loc_src_to_tgt_gnum, clo_tgt_in_src_gnum], vs.INNER_AXIS))
+      tgt_in_src_wght.append(vs.concatenate([loc_tgt_in_src_wght, clo_tgt_in_scr_wght], vs.INNER_AXIS))
 
-      src_to_tgt.append({'target_gnum' :tgt_in_src_vs, 'target_weight':tgt_weight_vs})
+
+  # Finalize: add src and tgt gnum (shifted and as flat data)
+  _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, src_loc, comm)
+  _, tgt_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(tgt_parts_per_dom, tgt_loc, comm)
+
+  src_to_tgt = {
+    'src_gnum' : py_utils.to_flat_list(src_lngn_per_dom),
+    'tgt_gnum' : py_utils.to_flat_list(tgt_lngn_per_dom),
+    'target_gnum' : tgt_in_src_gnum
+    }
+
+  if tgt_in_src_wght is not None:
+    src_to_tgt['target_weight'] = tgt_in_src_wght
 
   return src_to_tgt
 
@@ -340,4 +340,6 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **opti
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
   src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, location, **options)
-  return Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, src_location, location, comm)
+  src_parts = py_utils.to_flat_list(src_parts_per_dom)
+  tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom)
+  return Interpolator(src_parts, tgt_parts, src_to_tgt, src_location, location, comm)

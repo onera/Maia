@@ -16,6 +16,20 @@ from maia.algo.part import point_cloud_utils as PCU
 from .import localize as LOC
 from .import closest_points as CLO
 
+def get_shifted_gnum_from_loc(zones, loc):
+  assert loc in ['CellCenter', 'Vertex']
+  all_gnum = []
+  offset = 0
+  for zone in zones:
+    distri_name = 'Cell' if loc == 'CellCenter' else 'Vertex'
+    distri = MT.get_distribution(zone, distri_name)[1]
+    gnum = np.arange(distri[0]+1+offset, distri[1]+1+offset, dtype=distri.dtype)
+    if loc == 'CellCenter':
+      offset += PT.Zone.n_cell(zone)
+    else:
+      offset += PT.Zone.n_vtx(zone)
+    all_gnum.append(gnum)
+  return all_gnum
 
 class Interpolator:
   """ Low level class to perform interpolations """
@@ -27,45 +41,18 @@ class Interpolator:
     self.input_loc = input_loc
     self.comm = comm
 
-    all_src_lngn = []
-    offset = 0
-    for zone in src_dom:
-      distri_name = 'Cell' if input_loc == 'CellCenter' else 'Vertex'
-      distri = MT.get_distribution(zone, distri_name)[1]
-      gnum = np.arange(distri[0]+1+offset, distri[1]+1+offset, dtype=distri.dtype)
-      if input_loc == 'CellCenter':
-        offset += PT.Zone.n_cell(zone)
-      else:
-        offset += PT.Zone.n_vtx(zone)
-      all_src_lngn.append(gnum)
-
-    all_tgt_lngn = []
-    offset = 0
-    for zone in tgt_dom:
-      distri_name = 'Cell' if output_loc == 'CellCenter' else 'Vertex'
-      distri = MT.get_distribution(zone, distri_name)[1]
-      gnum = np.arange(distri[0]+1+offset, distri[1]+1+offset, dtype=distri.dtype)
-      if output_loc == 'CellCenter':
-        offset += PT.Zone.n_cell(zone)
-      else:
-        offset += PT.Zone.n_vtx(zone)
-      all_tgt_lngn.append(gnum)
-
-
-    self.src_to_tgt_idx = [data['target_gnum'].displs for data in src_to_tgt]
-    _src_to_tgt = [data['target_gnum'].values for data in src_to_tgt]
     self.PTP = PDM.PartToPart(comm,
-                              all_src_lngn,
-                              all_tgt_lngn,
-                              self.src_to_tgt_idx,
-                              _src_to_tgt)
+                              src_to_tgt['src_gnum'],
+                              src_to_tgt['tgt_gnum'],
+                              [a.displs for a in src_to_tgt['target_gnum']],
+                              [a.values for a in src_to_tgt['target_gnum']])
 
     self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
 
     # Send weight to targets partitions (if available)
     try:
-      _weight = [data['target_weight'].values for data in src_to_tgt]
+      _weight = [a.values for a in src_to_tgt['target_weight']]
       request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
                                _weight)
@@ -262,38 +249,47 @@ def create_src_to_tgt(src_dom,
   #Phase 3 : Combine Location & Closest results if both method were used
   if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
     if src_loc=="CellCenter":
-      
-      src_to_tgt = [{'target_gnum' : data['points_gnum_shifted']} 
-                    for data in all_located_inv]
+      tgt_in_src_gnum = [data['points_gnum_shifted'] for data in all_located_inv]
+      tgt_in_src_wght = None
     elif src_loc=="Vertex":
-      src_to_tgt = [{'target_gnum' :data['points_gnum_shifted@VTX'],
-                     'target_weight' : data['points_weights@VTX']}
-                    for data in all_located_inv]
-      
+      tgt_in_src_gnum = [data['points_gnum_shifted@VTX'] for data in all_located_inv]
+      tgt_in_src_wght = [data['points_weights@VTX'] for data in all_located_inv]
         
   elif strategy == 'Closest':
-    src_to_tgt = [{'target_gnum' : data['tgt_in_src_shifted'],
-                   'target_weight' : dist2weight(data['tgt_in_src_dist2'])}
-                   for data in all_closest_inv]
+    tgt_in_src_gnum = [data['tgt_in_src_shifted'] for data in all_closest_inv]
+    tgt_in_src_wght = [dist2weight(data['tgt_in_src_dist2']) for data in all_closest_inv]
+    
   else:
-    src_to_tgt = []
+    tgt_in_src_gnum = []
+    tgt_in_src_wght = []
 
     for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
-      clo_tgt_in_src = res_clo['tgt_in_src_shifted']
-      clo_weight     = dist2weight(res_clo['tgt_in_src_dist2'])
+      clo_tgt_in_src_gnum = res_clo['tgt_in_src_shifted']
+      clo_tgt_in_scr_wght = dist2weight(res_clo['tgt_in_src_dist2'])
 
       if src_loc=="CellCenter":
-        loc_src_to_tgt = res_loc['points_gnum_shifted']
-        loc_weight     = vs.from_displs(loc_src_to_tgt.displs, np.ones(loc_src_to_tgt.dsize))
+        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted']
+        loc_tgt_in_src_wght = vs.from_displs(loc_src_to_tgt_gnum.displs, np.ones(loc_src_to_tgt_gnum.dsize))
       elif src_loc=="Vertex": # Move results of mesh location from cell to vtx
-        loc_src_to_tgt = res_loc['points_gnum_shifted@VTX']
-        loc_weight = res_loc['points_weights@VTX']
+        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted@VTX']
+        loc_tgt_in_src_wght = res_loc['points_weights@VTX']
 
-        
-      tgt_in_src_vs = vs.concatenate([loc_src_to_tgt, clo_tgt_in_src], vs.INNER_AXIS)
-      tgt_weight_vs = vs.concatenate([loc_weight, clo_weight],         vs.INNER_AXIS)
+      tgt_in_src_gnum.append(vs.concatenate([loc_src_to_tgt_gnum, clo_tgt_in_src_gnum], vs.INNER_AXIS))
+      tgt_in_src_wght.append(vs.concatenate([loc_tgt_in_src_wght, clo_tgt_in_scr_wght], vs.INNER_AXIS))
 
-      src_to_tgt.append({'target_gnum' :tgt_in_src_vs, 'target_weight':tgt_weight_vs})
+  # Finalize: add src and tgt gnum (shifted and as flat data)
+
+  all_src_lngn = get_shifted_gnum_from_loc(src_dom, src_loc)
+  all_tgt_lngn = get_shifted_gnum_from_loc(tgt_dom, tgt_loc)
+
+  src_to_tgt = {
+    'src_gnum' : all_src_lngn,
+    'tgt_gnum' : all_tgt_lngn,
+    'target_gnum' : tgt_in_src_gnum
+    }
+
+  if tgt_in_src_wght is not None:
+    src_to_tgt['target_weight'] = tgt_in_src_wght
 
   return src_to_tgt
 
