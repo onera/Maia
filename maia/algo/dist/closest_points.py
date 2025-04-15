@@ -6,13 +6,14 @@ from maia.algo.dist.localize import get_point_cloud
 
 from maia.algo.part.closest_points import _mdom_closest_points as _mdom_closest_points_part
 
-def _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse):
+def _mdom_closest_points(src_clouds, tgt_clouds, comm, **kwargs):
 
+  reverse = kwargs.get('reverse', False)
   # Add a level in list to mimic partitions
   tgt_clouds_per_dom = [[c] for c in tgt_clouds]
   src_clouds_per_dom = [[c] for c in src_clouds]
 
-  result = _mdom_closest_points_part(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse=reverse)
+  result = _mdom_closest_points_part(src_clouds_per_dom, tgt_clouds_per_dom, comm, **kwargs)
 
   # Remove intermediate level
   if reverse:
@@ -21,11 +22,11 @@ def _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse):
     return py_utils.to_flat_list(result)
 
 
-def _find_closest_points(src_dom, tgt_dom, src_location, tgt_location, comm, reverse=False):
+def _find_closest_points(src_dom, tgt_dom, src_location, tgt_location, comm, **kwargs):
 
   src_clouds = [get_point_cloud(zone, comm, src_location) for zone in src_dom]
   tgt_clouds = [get_point_cloud(zone, comm, tgt_location) for zone in tgt_dom]
-  return _mdom_closest_points(src_clouds, tgt_clouds, comm, reverse)
+  return _mdom_closest_points(src_clouds, tgt_clouds, comm, **kwargs)
 
 
 def find_closest_points(src_tree, tgt_tree, location, comm):
