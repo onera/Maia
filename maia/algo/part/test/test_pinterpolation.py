@@ -261,7 +261,7 @@ def test_interpolation_api(comm):
     PT.add_child(src_base, src_zone_1)
     expected_vtx_sol = [expected_vtx_sol[k] for k in []]
 
-  ITP.interpolate(src_tree, tgt_tree, comm, \
+  maia.algo.interpolate(src_tree, tgt_tree, comm, \
       ['MySolution'], 'Vertex', strategy='Closest')
 
   for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
@@ -334,9 +334,9 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
     gnum     = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
     PT.new_FlowSolution('FS', loc="Vertex", fields={'gnum':gnum, 'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
 
-  interpolator = maia.algo.part.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
-                                                    strategy=strategy,
-                                                    n_closest_pt=1)
+  interpolator = maia.algo.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
+                                               strategy=strategy,
+                                               n_closest_pt=1)
   interpolator.exchange_fields('FS', ITP.Interpolator._reduce_weighted_mean)
 
   # > Check result

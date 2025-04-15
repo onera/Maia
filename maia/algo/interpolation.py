@@ -81,6 +81,6 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **
     raise ValueError("Source and target tree must be both distributed or partitioned")
 
   if src_dist:
-    dist_interpolation.create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options)
+    return dist_interpolation.create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options)
   else:
-    part_interpolation.create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options)
+    return part_interpolation.create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options)
