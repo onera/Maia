@@ -1,4 +1,3 @@
-import maia
 import maia.pytree.maia as MT
 import maia.pytree      as PT
 from   maia.typing import CGNSTree, List, Optional
@@ -10,8 +9,7 @@ def is_cgns_part_tree(tree: CGNSTree) -> bool:
     Returns:
         bool: True if the tree is a partitioned tree, False otherwise.
     """
-    zones = PT.get_all_Zone_t(tree)
-    return all(MT.getGlobalNumbering(zone) is not None for zone in zones)
+    return all(MT.getGlobalNumbering(zone) is not None for zone in PT.iter_all_Zone_t(tree))
 
 def is_cgns_dist_tree(tree: CGNSTree) -> bool:
     """Determine if the CGNS tree represents a distributed tree.
@@ -20,8 +18,7 @@ def is_cgns_dist_tree(tree: CGNSTree) -> bool:
     Returns:
         bool: True if the tree is a distributed tree, False otherwise.
     """
-    zones = PT.get_all_Zone_t(tree)
-    return all(MT.getDistribution(zone) is not None for zone in zones)
+    return all(MT.getDistribution(zone) is not None for zone in PT.iter_all_Zone_t(tree))
 
 def is_cgns_full_tree(tree: CGNSTree) -> bool:
     """Determine if the CGNS tree is a full CGNS tree.
@@ -30,21 +27,17 @@ def is_cgns_full_tree(tree: CGNSTree) -> bool:
     Returns:
         bool: True if the tree is neither a partitioned nor a distributed tree.
     """
-    zones = PT.get_all_Zone_t(tree)
-    return all(MT.getDistribution(zone) is None\
-        and  MT.getGlobalNumbering(zone) is None\
-              for zone in zones)
+    return all(MT.getDistribution(zone) is None and  MT.getGlobalNumbering(zone) is None \
+              for zone in PT.iter_all_Zone_t(tree))
 
-def check_contain_zones(tree: CGNSTree) -> Optional[List[CGNSTree]]:
+def check_contain_zones(tree: CGNSTree) -> None:
     """Check if the given CGNS tree contains zones.
     Args:
         tree (CGNSTree): The input CGNS tree.
     Returns:
         List[CGNSTree]: A list of zones if found, otherwise an empty list.
     """
-
-    zones = PT.get_all_Zone_t(tree)
-    if len(zones) == 0:
+    if len(PT.get_all_Zone_t(tree)) == 0:
         raise ValueError("Invalid tree structure: missing Zone_t elements.")
     
 def check_cgns_dist_tree(tree: CGNSTree) -> None:

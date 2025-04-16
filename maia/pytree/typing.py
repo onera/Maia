@@ -6,6 +6,7 @@ from typing import (
 from os import PathLike
 import numpy as np
 
+from numpy.typing import NDArray
 try: #Require numpy >= 1.20
   from numpy.typing import ArrayLike, DTypeLike
 except ImportError:  #pragma: no cover

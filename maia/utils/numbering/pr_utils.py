@@ -1,10 +1,10 @@
 import numpy as np
-from maia.typing import List, ArrayLike
+from maia.typing import List, ArrayLike, NDArray
 import maia.pytree as PT
 
 from .s_numbering_funcs import ijk_to_index_from_loc, ij_to_index_from_loc
 
-def normal_index_shift(point_range: ArrayLike,
+def normal_index_shift(point_range: NDArray,
                        n_vtx: List[int],
                        bnd_axis: int,
                        input_loc: str, 
@@ -22,9 +22,9 @@ def normal_index_shift(point_range: ArrayLike,
                     +int(not out_loc_is_cell and in_loc_is_cell)
   return int(normal_index_is_last) * correction_sign
 
-def transform_bnd_pr_size(point_range: ArrayLike,
+def transform_bnd_pr_size(point_range: NDArray,
                           input_loc: str,
-                          output_loc: str) -> ArrayLike:
+                          output_loc: str) -> NDArray:
   """
   Predict a point_range defined at an input_location if it were defined at an output_location
   """
@@ -38,7 +38,7 @@ def transform_bnd_pr_size(point_range: ArrayLike,
     size += (~mask)
   return size
 
-def unroll_pr(pr: ArrayLike) -> ArrayLike:
+def unroll_pr(pr: NDArray) -> NDArray:
   """
   Create a structured pointList of size (idx_dim,N) spawning the same region than the input PR.
   Unrolling if done following cgns conventions : increasing i, then j, then k
@@ -71,10 +71,10 @@ def unroll_pr(pr: ArrayLike) -> ArrayLike:
 
   return out
 
-def compute_pointList_from_pointRanges(sub_pr_list: List[ArrayLike],
+def compute_pointList_from_pointRanges(sub_pr_list: List[NDArray],
                                        n_vtx_S: List[int],
                                        loc: str,
-                                       order: str = 'F') -> ArrayLike:
+                                       order: str = 'F') -> NDArray:
   """
   Transform a list of pointRange in a concatenated pointList array in order. The sub_pr_list must
   describe entity of kind loc, which can take the values '{I,J,K}FaceCenter', 'Vertex' or 'CellCenter'.

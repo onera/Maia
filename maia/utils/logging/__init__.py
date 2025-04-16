@@ -11,7 +11,7 @@ def add_printer_to_logger(logger_name: str, printer: Union[str, Any]) -> None:
     _add_printer_obj_to_logger(logger_name, printer)
 
 
-def size_to_str(size: Union[int, float]) -> str:
+def size_to_str(size: int) -> str:
   units = ["", "K", "M", "G", "T", "P", "E", "Z", "Y"]
   i = 0
   if size < 1000: #Corner case with no decimal
@@ -21,7 +21,7 @@ def size_to_str(size: Union[int, float]) -> str:
       i += 1
   return "{0:.1f}{1}".format(size, units[i])
 
-def bsize_to_str(size: Union[int, float]) -> str:
+def bsize_to_str(size: int) -> str:
   units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
   i = 0
   if size < 1000: #Corner case with no decimal

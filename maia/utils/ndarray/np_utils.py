@@ -1,7 +1,8 @@
 import warnings
 import numbers
 import numpy as np
-from maia.typing import List, Tuple, Optional, Union, Any, ArrayLike, DTypeLike
+from maia.typing import List, Tuple, Optional, Union, Any, ArrayLike, DTypeLike, NDArray
+from numbers import Number, Integral
 
 import cmaia.utils as cutils
 from cmaia.utils import layouts
@@ -9,7 +10,7 @@ from cmaia.utils import layouts
 _VS_MSG = "This function is deprecated in favor of the VStrideArray class " \
           "(https://numerics.gitlab-pages.onera.net/mesh/maia/dev/developer_manual/tools/vstride.html)"
 
-def interweave_arrays(array_list: List[ArrayLike]) -> ArrayLike:
+def interweave_arrays(array_list: List[NDArray]) -> NDArray:
   #https://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
   first  = array_list[0]
   number = len(array_list)
@@ -18,14 +19,14 @@ def interweave_arrays(array_list: List[ArrayLike]) -> ArrayLike:
     output[i::number] = array
   return output
 
-def single_dim_pr_to_pl(pr: ArrayLike, distrib: Optional[Tuple[int, int]] = None) -> ArrayLike:
+def single_dim_pr_to_pl(pr: NDArray, distrib: Optional[NDArray] = None) -> NDArray:
   assert pr.shape[0] == 1
   if distrib is not None:
     return np.arange(pr[0,0]+distrib[0], pr[0,0]+distrib[1], dtype=pr.dtype).reshape((1,-1), order='F')
   else:
     return np.arange(pr[0,0], pr[0,1]+1, dtype=pr.dtype).reshape((1,-1), order='F')
 
-def compress(t: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
+def compress(t: NDArray) -> Tuple[NDArray, NDArray]:
   """
   Inverse of np.repeat. Go back to array with np.repeat(val, np.diff(idx))
   """
@@ -39,16 +40,16 @@ def compress(t: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
   val = t[idx[:-1]]
   return idx, val
 
-def indexed_to_interlaced(idx: ArrayLike, array: ArrayLike) -> ArrayLike:
+def indexed_to_interlaced(idx: NDArray, array: NDArray) -> NDArray:
   """ Create an interlaced array from two offset + data arrays (eg. cgns 3 from cgns 4)"""
   return layouts.indexed_to_interleaved_connectivity(idx, array)
 
-def interlaced_to_indexed(n_elem: int, array: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
+def interlaced_to_indexed(n_elem: int, array: NDArray) -> Tuple[NDArray, NDArray]:
   """ Create two offset + data arrays from an interlaced array (eg. cgns 4 from cgns 3)"""
   return layouts.interleaved_to_indexed_connectivity(n_elem, array)
 
-def concatenate_np_arrays(arrays: List[ArrayLike], 
-                          dtype: Optional[DTypeLike] = None) -> Tuple[ArrayLike, ArrayLike]:
+def concatenate_np_arrays(arrays: List[NDArray], 
+                          dtype: Optional[DTypeLike] = None) -> Tuple[NDArray, NDArray]:
   """
   Merge the input array such that output array is F ordered and
   have CGNS coherent shape ( (N,) or (IndexDimension, N) ).
@@ -67,8 +68,8 @@ def concatenate_np_arrays(arrays: List[ArrayLike],
     stacked = safe_int_cast(stacked, dtype)
   return merged_idx, stacked
 
-def concatenate_point_list(point_lists: List[ArrayLike], 
-                           dtype: Optional[DTypeLike] = None) -> Tuple[ArrayLike, ArrayLike]:
+def concatenate_point_list(point_lists: List[NDArray], 
+                           dtype: Optional[DTypeLike] = None) -> Tuple[NDArray, NDArray]:
   """
   Merge all the PointList arrays in point_lists list
   into a flat 1d array and an index array
@@ -76,7 +77,7 @@ def concatenate_point_list(point_lists: List[ArrayLike],
   arrays = [pl[0,:] for pl in point_lists]
   return concatenate_np_arrays(arrays, dtype)
 
-def sizes_to_indices(nb_array: ArrayLike, dtype: Optional[DTypeLike] = None) -> ArrayLike:
+def sizes_to_indices(nb_array: NDArray, dtype: Optional[DTypeLike] = None) -> NDArray:
   """ Create and offset array from a size array """
   nptype = dtype if dtype else np.asarray(nb_array).dtype
   offset_array = np.empty(len(nb_array)+1, dtype=nptype)
@@ -84,14 +85,14 @@ def sizes_to_indices(nb_array: ArrayLike, dtype: Optional[DTypeLike] = None) -> 
   np.cumsum(nb_array, out=offset_array[1:])
   return offset_array
 
-def shift_nonzeros(array: ArrayLike, shift: Union[int, float]) -> None:
+def shift_nonzeros(array: NDArray, shift: Number) -> None:
   """
   Add the scalar value shift to the element of array that are not
   equal to 0 (inplace)
   """
   array += shift * (array != 0)
 
-def shift_absvalue(array: ArrayLike, shift: Union[int, float]) -> None:
+def shift_absvalue(array: NDArray, shift: Number) -> None:
   """
   Add the scalar value shift to the element of array
   regardless of their sign
@@ -102,8 +103,8 @@ def shift_absvalue(array: ArrayLike, shift: Union[int, float]) -> None:
   array += shift
   array[neg] *= -1
 
-def shifted_to_local(array: ArrayLike,
-                     offset: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
+def shifted_to_local(array: NDArray,
+                     offset: NDArray) -> Tuple[NDArray, NDArray]:
   """ Assuming that offset describes intervals and array global
   values between offset[0]; offset[N], retrieve the
   interval + position within this interval of each value """
@@ -111,9 +112,9 @@ def shifted_to_local(array: ArrayLike,
   output = array - offset[interval_num - 1]
   return output, interval_num.astype(np.int32)
 
-def reverse_connectivity(ids: ArrayLike, 
-                         idx: ArrayLike, 
-                         array: ArrayLike) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
+def reverse_connectivity(ids: NDArray, 
+                         idx: NDArray, 
+                         array: NDArray) -> Tuple[NDArray, NDArray, NDArray]:
   """
   Reverse an strided array (idx+array) supported by some elements whose id is given by ids
   Return a strided array(r_idx+r_array) and the ids of (initially children) elements
@@ -128,7 +129,7 @@ def reverse_connectivity(ids: ArrayLike,
 
   return (r_ids, r_idx, r_array)
 
-def multi_arange(starts: ArrayLike, stops: ArrayLike) -> ArrayLike:
+def multi_arange(starts: NDArray, stops: NDArray) -> NDArray:
   """
   Create concatenated np.arange of integers for multiple start/stop
   See https://codereview.stackexchange.com/questions/83018/
@@ -145,7 +146,7 @@ def multi_arange(starts: ArrayLike, stops: ArrayLike) -> ArrayLike:
   l = stops - starts # Lengths of each range.
   return np.repeat(stops - l.cumsum(dtype=dtype), l) + np.arange(l.sum(), dtype=dtype)
 
-def arange_with_jumps(multi_interval: ArrayLike, jumps: ArrayLike) -> ArrayLike:
+def arange_with_jumps(multi_interval: NDArray, jumps: NDArray) -> NDArray:
   """
   Create an arange, but where sub-intervals are removed
   """
@@ -154,18 +155,18 @@ def arange_with_jumps(multi_interval: ArrayLike, jumps: ArrayLike) -> ArrayLike:
   return multi_arange(multi_interval[ :-1][~jumps],
                       multi_interval[1:  ][~jumps])
 
-def repeated_arange(counts: Union[int, ArrayLike],
+def repeated_arange(counts: Union[Integral, NDArray],
                     start: int = 0, 
                     stop: Optional[int] = None,
                     step: int = 1, 
-                    dtype: Optional[DTypeLike] = None) -> ArrayLike:
+                    dtype: Optional[DTypeLike] = None) -> NDArray:
   if stop is None:
     stop = start+counts.size
   else:
     assert isinstance(counts, numbers.Integral) or stop-start == step*counts.size
   return np.repeat(np.arange(start, stop, step, dtype), counts)
 
-def jagged_merge(idx1: ArrayLike, array1: ArrayLike, idx2: ArrayLike, array2: ArrayLike) -> Tuple[ArrayLike, ArrayLike]:
+def jagged_merge(idx1: NDArray, array1: NDArray, idx2: NDArray, array2: NDArray) -> Tuple[NDArray, NDArray]:
   """
   Interwave two jagged arrays of same n_elt
   """
@@ -177,10 +178,10 @@ def jagged_merge(idx1: ArrayLike, array1: ArrayLike, idx2: ArrayLike, array2: Ar
   merged = vs.concatenate([a1, a2], axis=vs.INNER_AXIS)
   return merged.displs, merged.values
 
-def roll_from(array: ArrayLike,
+def roll_from(array: NDArray,
               start_idx: Optional[int] = None,
               start_value: Optional[Any] = None, 
-              reverse: bool = False) -> ArrayLike:
+              reverse: bool = False) -> NDArray:
   """
   Return a new array starting from given index (or value), in normal or reversed order
   """
@@ -190,7 +191,7 @@ def roll_from(array: ArrayLike,
 
   return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
 
-def others_mask(array: ArrayLike, ids: ArrayLike) -> ArrayLike:
+def others_mask(array: NDArray, ids: NDArray) -> NDArray:
   """
   Return a mask usefull to access elements of array whose local index *are not* in ids array
   """
@@ -198,8 +199,8 @@ def others_mask(array: ArrayLike, ids: ArrayLike) -> ArrayLike:
   mask[ids] = False
   return mask
 
-def unique_sorted(sorted_array: ArrayLike,
-                  return_counts: bool = False) -> Union[ArrayLike, Tuple[ArrayLike, ArrayLike]]:
+def unique_sorted(sorted_array: NDArray,
+                  return_counts: bool = False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
   """ A faster implementation of np.unique() if input array
   is sorted
   """
@@ -222,9 +223,9 @@ def unique_sorted(sorted_array: ArrayLike,
   return unique_array, counts
 
 
-def is_unique_strided(array: ArrayLike, 
+def is_unique_strided(array: NDArray, 
                       stride: int, 
-                      method: str = 'hash') -> ArrayLike:
+                      method: str = 'hash') -> NDArray:
   """
   For a cst strided array (eg. a connectivity), return a bool array indicating
   for each element if it appears only once (w/ considering ordering)
@@ -240,7 +241,7 @@ def is_unique_strided(array: ArrayLike,
 
 def reverse_by_stride(array_idx: ArrayLike,
                       array: ArrayLike, 
-                      inplace: bool = False) -> ArrayLike:
+                      inplace: bool = False) -> NDArray:
   """
   Reverse each interval of an array.
   NB : the values are only sorted within each interval, there is no reverse between intervals.
@@ -258,7 +259,7 @@ def reverse_by_stride(array_idx: ArrayLike,
 
 def sort_by_stride(array_idx: ArrayLike,
                    array: ArrayLike,
-                   inplace: bool = False) -> ArrayLike:
+                   inplace: bool = False) -> NDArray:
   """
   Sort each stride of an array.
   NB : the values are only sorted within each interval, there is no sorting between intervals.
@@ -274,7 +275,7 @@ def sort_by_stride(array_idx: ArrayLike,
     arr_out = vs.sort(arr_in, vs.INNER_AXIS)
     return arr_out.values
 
-def make_unique_by_stride(array_idx: ArrayLike, array: ArrayLike) -> ArrayLike:
+def make_unique_by_stride(array_idx: ArrayLike, array: ArrayLike) -> NDArray:
   """
   Take a strided input array, and create a new one without repetitions
   within each interval.
@@ -319,8 +320,8 @@ def take_strided(array_idx, array, indices):
   return arr_out.displs, arr_out.values
 
 def any_in_range(array: ArrayLike, 
-                 start: Union[int, float],
-                 end: Union[int, float],
+                 start: Number,
+                 end: Number,
                  strict: bool = False) -> bool:
   """
   Return True if any element of array is in interval
@@ -331,8 +332,8 @@ def any_in_range(array: ArrayLike,
     else ((start <= np_array) & (np_array <= end)).any()
 
 def all_in_range(array: ArrayLike,
-                 start: Union[int, float],
-                 end: Union[int, float],
+                 start: Number,
+                 end: Number,
                  strict: bool = False) -> bool:
   """
   Return True if all the elements of array are in interval
@@ -342,7 +343,7 @@ def all_in_range(array: ArrayLike,
   return ((start <  np_array) & (np_array <  end)).all() if strict\
     else ((start <= np_array) & (np_array <= end)).all()
 
-def matmul_cart_vectors(vectors: List[ArrayLike], transform_matrix: ArrayLike) -> Tuple[ArrayLike, ...]:
+def matmul_cart_vectors(vectors: List[NDArray], transform_matrix: NDArray) -> Tuple[NDArray, ...]:
   """
   Apply the transformation matrix on another matrix composed with components of vectors and return each of the modified components of the vectors
   """
@@ -353,7 +354,7 @@ def matmul_cart_vectors(vectors: List[ArrayLike], transform_matrix: ArrayLike) -
   
   return tuple(r.reshape(v.shape, order='F') for r,v in zip(_res, vectors))
 
-def create_transform_matrix(revolution_axis: Tuple[float, float, float] = (0, 0, 1)) -> ArrayLike:  
+def create_transform_matrix(revolution_axis: Tuple[float, float, float] = (0, 0, 1)) -> NDArray:  
   """Create a transform matrix from any axis revolution and return the transformation matrix from the former basis toward the new basis.
 
   Input is any revolution axis but must have cartesian coordinates.
@@ -431,10 +432,10 @@ def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np
   homo_matrix[dim,dim] = 1
   
   return homo_matrix
-def transform_cart_matrix(vectors: ArrayLike, 
-                          translation: ArrayLike = np.zeros(3),
-                          rotation_center: ArrayLike = np.zeros(3), 
-                          rotation_angle: ArrayLike = np.zeros(3)) -> ArrayLike:
+def transform_cart_matrix(vectors: NDArray, 
+                          translation: NDArray = np.zeros(3),
+                          rotation_center: NDArray = np.zeros(3), 
+                          rotation_angle: NDArray = np.zeros(3)) -> NDArray:
   """
   Apply the defined cartesian transformation on concatenated components of vectors described by :
   [vx1 vx2 ... vxN]
@@ -447,10 +448,10 @@ def transform_cart_matrix(vectors: ArrayLike,
   homo_vector[0:3,:] = vectors
   return np.dot(homo_matrix, homo_vector)[0:3,:]
 
-def transform_cart_matrix_2d(vectors: ArrayLike,
-                             translation: ArrayLike = np.zeros(2),
-                             rotation_center: ArrayLike = np.zeros(2),
-                             rotation_angle: float = 0.) -> ArrayLike:
+def transform_cart_matrix_2d(vectors: NDArray,
+                             translation: NDArray = np.zeros(2),
+                             rotation_center: NDArray = np.zeros(2),
+                             rotation_angle: float = 0.) -> NDArray:
   """
   Apply the defined cartesian transformation on 2D concatenated components of vectors described by :
   [vx1 vx2 ... vxN]
@@ -462,12 +463,12 @@ def transform_cart_matrix_2d(vectors: ArrayLike,
   homo_vector[0:2,:] = vectors
   return np.dot(homo_matrix, homo_vector)[0:2,:]
 
-def transform_cart_vectors(vx: ArrayLike, 
-                           vy: ArrayLike,
-                           vz: ArrayLike,
-                           translation: ArrayLike = np.zeros(3), 
-                           rotation_center: ArrayLike = np.zeros(3),
-                           rotation_angle: ArrayLike = np.zeros(3)) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:
+def transform_cart_vectors(vx: NDArray, 
+                           vy: NDArray,
+                           vz: NDArray,
+                           translation: NDArray = np.zeros(3), 
+                           rotation_center: NDArray = np.zeros(3),
+                           rotation_angle: NDArray = np.zeros(3)) -> Tuple[NDArray, NDArray, NDArray]:
   """
   Apply the defined cartesian transformation on separated components of vectors and return a tuple with each of the modified components of the vectors
   """
@@ -489,11 +490,11 @@ def transform_cart_vectors(vx: ArrayLike,
 
 
 
-def transform_cart_vectors_2d(vx: ArrayLike, 
-                              vy: ArrayLike,
-                              translation: ArrayLike = np.zeros(2), 
-                              rotation_center: ArrayLike = np.zeros(2),
-                              rotation_angle: float = 0.) -> Tuple[ArrayLike, ArrayLike]:
+def transform_cart_vectors_2d(vx: NDArray, 
+                              vy: NDArray,
+                              translation: NDArray = np.zeros(2), 
+                              rotation_center: NDArray = np.zeros(2),
+                              rotation_angle: float = 0.) -> Tuple[NDArray, NDArray]:
   assert vx.shape == vy.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy,np.ones(vx.size)], order='F')
@@ -507,7 +508,7 @@ def transform_cart_vectors_2d(vx: ArrayLike,
     return (modified_components[0].reshape(vx.shape, order='F'), modified_components[1].reshape(vy.shape, order='F'))
 
 
-def safe_int_cast(array: ArrayLike, dtype: DTypeLike) -> ArrayLike:
+def safe_int_cast(array: NDArray, dtype: DTypeLike) -> NDArray:
   """ Util function to perfom I4 <--> I8 conversions with bounds test """
   if array.dtype == dtype:
     return array

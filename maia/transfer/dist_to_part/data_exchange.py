@@ -36,9 +36,9 @@ def dist_coords_to_part_coords(dist_zone: CGNSDistTree,
       PT.new_DataArray(data_name, shaped_data, parent=part_gc)
     PT.add_child(part_gc, PT.get_child_from_name(dist_gc, 'CoordinateTransform'))
 
-def dist_coords_to_part_coords_m(dist_zones: CGNSDistTree, 
-                                 part_zones_per_dom: CGNSPartTree,
-                                 comm: MPIComm) ->None:
+def dist_coords_to_part_coords_m(dist_zones: List[CGNSDistTree], 
+                                 part_zones_per_dom: List[List[CGNSPartTree]],
+                                 comm: MPIComm) -> None:
   """
   Same as dist_coords_to_part_coords, but with the multiblock version (only one collective call)
   """
@@ -135,8 +135,8 @@ def _dist_to_part_sollike(dist_zone: CGNSDistTree,
 def dist_sol_to_part_sol(dist_zone: CGNSDistTree, 
                          part_zones: List[CGNSPartTree], 
                          comm: MPIComm, 
-                         include: List =[],
-                         exclude: List =[]) -> None:
+                         include: List[str] =[],
+                         exclude: List[str] =[]) -> None:
   """
   Transfert all the data included in FlowSolution_t nodes from a distributed
   zone to the partitioned zones
@@ -147,8 +147,8 @@ def dist_sol_to_part_sol(dist_zone: CGNSDistTree,
 def dist_discdata_to_part_discdata(dist_zone: CGNSDistTree,
                                    part_zones: List[CGNSPartTree],
                                    comm: MPIComm, 
-                                   include: List = [],
-                                   exclude: List = []) -> None:
+                                   include: List[str] = [],
+                                   exclude: List[str] = []) -> None:
   """
   Transfert all the data included in DiscreteData_t nodes from a distributed
   zone to the partitioned zones
@@ -159,8 +159,8 @@ def dist_discdata_to_part_discdata(dist_zone: CGNSDistTree,
 def dist_gridmotion_to_part_gridmotion(dist_zone: CGNSDistTree,
                                        part_zones: List[CGNSPartTree],
                                        comm: MPIComm, 
-                                       include: List = [], 
-                                       exclude: List = []) -> None:
+                                       include: List[str] = [], 
+                                       exclude: List[str] = []) -> None:
   """
   Transfert all the data included in ArbitraryGridMotion_t nodes from a distributed
   zone to the partitioned zones
@@ -171,8 +171,8 @@ def dist_gridmotion_to_part_gridmotion(dist_zone: CGNSDistTree,
 def dist_dataset_to_part_dataset(dist_zone: CGNSDistTree, 
                                  part_zones: List[CGNSPartTree], 
                                  comm: MPIComm,
-                                 include: List = [], 
-                                 exclude: List = [])-> None:
+                                 include: List[str] = [], 
+                                 exclude: List[str] = [])-> None:
   """
   Transfert all the data included in BCDataSet_t/BCData_t nodes from a distributed
   zone to the partitioned zones
@@ -233,8 +233,8 @@ def dist_dataset_to_part_dataset(dist_zone: CGNSDistTree,
 def dist_subregion_to_part_subregion(dist_zone: CGNSDistTree,
                                      part_zones: List[CGNSPartTree],
                                      comm: MPIComm,
-                                     include: List = [], 
-                                     exclude: List = []) -> None:
+                                     include: List[str] = [], 
+                                     exclude: List[str] = []) -> None:
   """
   Transfert all the data included in ZoneSubRegion_t nodes from a distributed
   zone to the partitioned zones

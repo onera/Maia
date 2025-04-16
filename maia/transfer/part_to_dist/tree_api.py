@@ -46,8 +46,8 @@ def _part_zones_to_dist_zone(dist_zone: CGNSDistTree,
     elif tag == 'E':
       func(dist_zone, part_zones, comm, exclude=paths)
 
-def part_zones_to_dist_zone_only(dist_zone: CGNSTree,
-                                 part_zones: List[CGNSTree],
+def part_zones_to_dist_zone_only(dist_zone: CGNSDistTree,
+                                 part_zones: List[CGNSPartTree],
                                  comm: MPIComm,
                                  include_dict: Dict[str, List[str]]) -> None:
   """ Transfer the data fields specified in include_dict from the partitioned zones

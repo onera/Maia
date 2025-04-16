@@ -102,7 +102,7 @@ j ^            +----+----+----+----+----+      +-29-+-30-+-31-+-32-+-33-+
   """
 
 import numpy as np
-from maia.typing import List, Tuple, Union, ArrayLike
+from maia.typing import List, Tuple, Union, ArrayLike, DTypeLike, NDArray, Sequence
 from cmaia.utils import numbering as cnumbering
 
 def ijk_to_index_from_loc(i: Union[int, ArrayLike], 
@@ -311,10 +311,10 @@ def edgejIndex_to_ij(idx: Union[int, ArrayLike],
 ###############################################################################
 
 ###############################################################################
-def ngon_dconnectivity_from_gnum(bounds: Union[List[int], Tuple[int, ...]], 
-                                 n_cell: Union[List[int], Tuple[int, ...]], 
-                                 dtype: np.dtype
-                                 ) -> Tuple[ArrayLike, ArrayLike]:
+def ngon_dconnectivity_from_gnum(bounds: Sequence[int],
+                                 n_cell: Sequence[int],
+                                 dtype: DTypeLike,
+                                 ) -> Tuple[NDArray, NDArray]:
   """
   Generate a distributed ngon connectivity between the indicated face gnum ids for
   a zone of a given size.

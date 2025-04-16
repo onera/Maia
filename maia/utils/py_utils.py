@@ -2,7 +2,6 @@ from itertools import permutations, product
 from typing import List, TypeVar, Callable, Any, Sequence, Tuple, Optional
 
 T = TypeVar('T')
-U = TypeVar('U')
 
 def to_nested_list(l: List[T], counts: List[int]) -> List[List[T]]:
   """ Transform a flat list to a list of lists"""
@@ -125,7 +124,7 @@ def get_ordered_subset(subset: List[T], L: List[T]) -> Optional[Tuple[T, ...]]:
     if max([perm_l == extended_l[i:i+len(perm_l)] for i in range(len(L))]) == True:
       return perm
 
-def is_before(l: List[T], a: T, b: T) -> bool:
+def is_before(l: List, a: Any, b: Any) -> bool:
   """Return True is element a is present in list l before element b"""
   for e in l:
     if e==a:
@@ -155,7 +154,7 @@ def uniform_distribution_at(n_elt: int, i: int, n_interval: int) -> Tuple[int, i
 
   return inf,sup
 
-def unique_idx(seq: Sequence[T]) -> List[int]:
+def unique_idx(seq: Sequence) -> List[int]:
   """ Indirect unique of a sequence : return an array of size len(seq)
   storing an unique id for each element occuring in sequence
   """

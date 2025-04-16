@@ -10,7 +10,7 @@ from Pypdm.Pypdm import compute_weighted_distribution
 
 T = TypeVar('T')
 
-def gathering_distribution(i_rank: int, n_elt: int, comm: MPIComm) -> ArrayLike:
+def gathering_distribution(i_rank: int, n_elt: int, comm: MPIComm) -> NDArray:
   """
   """
   if   comm.Get_rank()  < i_rank: distrib = np.array([0    , 0    , n_elt ], dtype=npy_pdm_gnum_dtype)
@@ -18,7 +18,7 @@ def gathering_distribution(i_rank: int, n_elt: int, comm: MPIComm) -> ArrayLike:
   else                          : distrib = np.array([n_elt, n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
   return distrib
 
-def uniform_distribution(n_elt: int, comm: MPIComm) -> ArrayLike:
+def uniform_distribution(n_elt: int, comm: MPIComm) -> NDArray:
   """
   """
   u_dist = py_utils.uniform_distribution_at(n_elt, comm.Get_rank(), comm.Get_size())
@@ -28,7 +28,7 @@ def uniform_distribution(n_elt: int, comm: MPIComm) -> ArrayLike:
   proc_indices[2] = n_elt
   return proc_indices
 
-def dn_to_distribution(dn_elt: int, comm: MPIComm) -> ArrayLike:
+def dn_to_distribution(dn_elt: int, comm: MPIComm) -> NDArray:
   """
   """
   distri = np.zeros(3, dtype=npy_pdm_gnum_dtype)
@@ -38,10 +38,10 @@ def dn_to_distribution(dn_elt: int, comm: MPIComm) -> ArrayLike:
   comm.Bcast(distri[2:], root=comm.Get_size()-1)
   return distri
 
-def distribution_from_gnum(gnum_list: List[ArrayLike], 
+def distribution_from_gnum(gnum_list: List[NDArray], 
                            comm: MPIComm, 
                            weights: bool = False,
-                           full: bool = False) -> ArrayLike:
+                           full: bool = False) -> NDArray:
   """
   Create a distribution including all the provided gnums. 
   If weights=True, the distribution try to put the same number of ids on each rank.
@@ -61,7 +61,7 @@ def distribution_from_gnum(gnum_list: List[ArrayLike],
     distri = uniform_distribution(global_max, comm)
     return partial_to_full_distribution(distri, comm) if full else distri
 
-def partial_to_full_distribution(partial_distrib: ArrayLike, comm: MPIComm) -> ArrayLike:
+def partial_to_full_distribution(partial_distrib: NDArray, comm: MPIComm) -> NDArray:
   """
   Compute the full distribution array from the partials distribution
   arrays. 
@@ -81,12 +81,12 @@ def partial_to_full_distribution(partial_distrib: ArrayLike, comm: MPIComm) -> A
   np.cumsum(full_distrib, out=full_distrib)
   return full_distrib
 
-def full_to_partial_distribution(full_distrib: ArrayLike, comm: MPIComm) -> ArrayLike:
+def full_to_partial_distribution(full_distrib: NDArray, comm: MPIComm) -> NDArray:
   return full_distrib[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
 
 def gather_and_shift(value: Union[int, float, ArrayLike],
                      comm: MPIComm, 
-                     dtype: Optional[np.dtype] = None) -> ArrayLike:
+                     dtype: Optional[np.dtype] = None) -> NDArray:
   if dtype is None:
     value = np.asarray(value)
     dtype = value.dtype
@@ -99,25 +99,25 @@ def gather_and_shift(value: Union[int, float, ArrayLike],
   np.cumsum(distrib, out=distrib)
   return distrib
 
-def arrays_max(array_list: List[ArrayLike], comm: MPIComm) -> int:
+def arrays_max(array_list: List[NDArray], comm: MPIComm) -> int:
   if len(array_list) > 0:
     local_max = max([array.max(initial=0) for array in array_list])
   else:
     local_max = 0
   return comm.allreduce(local_max, MPI.MAX)
 
-def any_true(L: List[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
+def any_true(L: Sequence[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
   return comm.allreduce(py_utils.any_true(L, f), op=MPI.LOR)
 
-def all_true(L: List[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
+def all_true(L: Sequence[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
   return comm.allreduce(py_utils.all_true(L, f), op=MPI.LAND)
 
-def exists_anywhere(trees: List[CGNSTree], node_path: str, comm: MPIComm) -> bool:
+def exists_anywhere(trees: List[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
   return any_true(trees, 
                   lambda t: PT.get_node_from_path(t, node_path) is not None,
                   comm)
 
-def exists_everywhere(trees: List[CGNSTree], node_path: str, comm: MPIComm) -> bool:
+def exists_everywhere(trees: List[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
   exists_loc = True #Allow True if list is empty
   for tree in trees:
     exists_loc = exists_loc and (PT.get_node_from_path(tree, node_path) is not None)

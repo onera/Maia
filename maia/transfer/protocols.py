@@ -6,12 +6,14 @@ import Pypdm.Pypdm        as PDM
 
 import maia
 from maia.utils import par_utils, np_utils
-from maia.typing import MPIComm, ArrayLike, Dict, List, Any, Optional, Callable, TypeVar
+from maia.typing import MPIComm, ArrayLike, Dict, List, Any, Optional, Callable, NDArray, Union, Tuple
 
 from . import _protocols
 from ._protocols import GlobalIndexer, GlobalMultiIndexer
 
-T = TypeVar('T')
+# Type alias to designate a single array or dictionnary of arrays
+DistData = Union[NDArray, Dict[str, NDArray]]
+PartData = Union[List[NDArray], Dict[str, List[NDArray]]]
 
 def _check_dict_keys(data_dict: Dict[str, Any], comm: MPIComm) -> None:
   if comm.Get_size() == 0:
@@ -21,7 +23,7 @@ def _check_dict_keys(data_dict: Dict[str, Any], comm: MPIComm) -> None:
   if not comm.allreduce(is_same, MPI.LAND):
     raise KeyError("Exchanged data keys must be identical on all ranks")
 
-def auto_expand_distri(distri: ArrayLike, comm: MPIComm) -> ArrayLike:
+def auto_expand_distri(distri: NDArray, comm: MPIComm) -> NDArray:
   """ Return a full distribution from a full or partial distribution """
   if distri.size == 3 and comm.Get_size() != 2:
     # Distri is partial
@@ -33,8 +35,8 @@ def auto_expand_distri(distri: ArrayLike, comm: MPIComm) -> ArrayLike:
     #Distri is already full
     return distri
 
-def BlockToBlock(distri_in: ArrayLike,
-                 distri_out: ArrayLike,
+def BlockToBlock(distri_in: NDArray,
+                 distri_out: NDArray,
                  comm: MPIComm):
   """
   Create a PDM BlockToBlock object, with auto gnum conversion
@@ -49,8 +51,8 @@ def BlockToBlock(distri_in: ArrayLike,
   else:
     return _protocols.BlockToBlock(_full_distri_in, _full_distri_out, comm)
 
-def BlockToPart(distri: ArrayLike,
-                ln_to_gn_list: List[np.ndarray],
+def BlockToPart(distri: NDArray,
+                ln_to_gn_list: List[NDArray],
                 comm: MPIComm,
                 legacy: bool = False):
   """
@@ -68,8 +70,8 @@ def BlockToPart(distri: ArrayLike,
     else:
       return GlobalIndexer(full_distri, ln_to_gn_list, comm)
 
-def PartToBlock(distri: ArrayLike,
-                ln_to_gn_list: List[np.ndarray],
+def PartToBlock(distri: NDArray,
+                ln_to_gn_list: List[NDArray],
                 comm: MPIComm, *,
                 weight: bool = False,
                 keep_multiple: bool = False,
@@ -100,8 +102,8 @@ def PartToBlock(distri: ArrayLike,
     else:
       return GlobalIndexer(_full_distri, ln_to_gn_list, comm)
 
-def PartToPart(gnum1: List[np.ndarray],
-               gnum2: List[np.ndarray],
+def PartToPart(gnum1: List[NDArray],
+               gnum2: List[NDArray],
                comm: MPIComm):
   """
   Create a simplified PDM PartToPart object, where the gnum of the two partitioned views
@@ -115,10 +117,10 @@ def PartToPart(gnum1: List[np.ndarray],
   return PDM.PartToPart(comm, _part1_lngn, _part2_lngn, _part1_to_part2_idx, _part1_lngn)
 
 
-def block_to_block(data_in: Dict[str, ArrayLike],
-                   distri_in: ArrayLike,
-                   distri_out: ArrayLike,
-                   comm: MPIComm) -> Dict[str, ArrayLike]:
+def block_to_block(data_in: DistData,
+                   distri_in: NDArray,
+                   distri_out: NDArray,
+                   comm: MPIComm) ->DistData:
   """
   Create and exchange using a BlockToBlock object.
   Allow single field or dict of fields
@@ -135,11 +137,11 @@ def block_to_block(data_in: Dict[str, ArrayLike],
 
   return block_data_out
 
-def block_to_part(dist_data: Dict[str, ArrayLike],
-                  distri: ArrayLike,
-                  ln_to_gn_list: List[np.ndarray],
+def block_to_part(dist_data: DistData,
+                  distri: NDArray,
+                  ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  legacy: bool = False) -> Dict[str, List[ArrayLike]]:
+                  legacy: bool = False) -> PartData:
   """
   Create and exchange using a BlockToPart object.
   Allow single field or dict of fields
@@ -158,12 +160,13 @@ def block_to_part(dist_data: Dict[str, ArrayLike],
 
   return part_data
 
-def block_to_part_strided(dist_stride: ArrayLike,
-                          dist_data: Dict[str, ArrayLike],
-                          distri: ArrayLike,
-                          ln_to_gn_list: List[np.ndarray],
+
+def block_to_part_strided(dist_stride: NDArray,
+                          dist_data: DistData,
+                          distri: NDArray,
+                          ln_to_gn_list: List[NDArray],
                           comm: MPIComm,
-                          legacy: bool = False) -> Dict[str, List[ArrayLike]]:
+                          legacy: bool = False) -> Tuple[NDArray, PartData]:
   """
   Create and exchange using a BlockToPart object with variable stride.
   Allow single field or dict of fields
@@ -193,12 +196,12 @@ def block_to_part_strided(dist_stride: ArrayLike,
 
   return part_stride, part_data
 
-def part_to_block(part_data: Dict[str, List[ArrayLike]],
-                  distri: ArrayLike,
-                  ln_to_gn_list: List[np.ndarray],
+def part_to_block(part_data: PartData,
+                  distri: NDArray,
+                  ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[ArrayLike, ArrayLike], ArrayLike]] = None,
-                  **kwargs: Any) -> Dict[str, ArrayLike]:
+                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  **kwargs: Any) -> DistData:
   """
   Create and exchange using a PartToBlock object.
   Allow single field or dict of fields
@@ -224,10 +227,10 @@ def part_to_block(part_data: Dict[str, List[ArrayLike]],
     dist_data = _exchange_one(part_data)  
   return dist_data
 
-def part_to_part(send_data: Dict[str, List[ArrayLike]],
+def part_to_part(send_data: PartData,
                  gnum1: List[np.ndarray],
                  gnum2: List[np.ndarray],
-                 comm: MPIComm) -> Dict[str, List[ArrayLike]]:
+                 comm: MPIComm) -> PartData:
   """
   Create and exchange using a PartToPart object with basic "id-to-id" indirection.
   Allow single field or dict of fields
@@ -235,11 +238,11 @@ def part_to_part(send_data: Dict[str, List[ArrayLike]],
   _, recv_data = part_to_part_strided(1, send_data, gnum1, gnum2, comm)
   return recv_data
 
-def part_to_part_strided(send_stride: List[ArrayLike],
-                         send_data: Dict[str, List[ArrayLike]],
-                         gnum1: List[np.ndarray],
-                         gnum2: List[np.ndarray],
-                         comm: MPIComm) -> Dict[str, List[ArrayLike]]:
+def part_to_part_strided(send_stride: List[NDArray],
+                         send_data: PartData,
+                         gnum1: List[NDArray],
+                         gnum2: List[NDArray],
+                         comm: MPIComm) -> Tuple[NDArray, PartData]:
   """
   Create and exchange using a PartToPart object with basic "id-to-id" indirection.
   Allow single field or dict of fields
@@ -266,28 +269,28 @@ def part_to_part_strided(send_stride: List[ArrayLike],
   return recv_stride, recv_data
 
 
-def reduce_sum(dist_data: ArrayLike, dist_stride: ArrayLike) -> ArrayLike:
+def reduce_sum(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
   """
   Function that sum all data sharing the same global number
   """
   indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.add.reduceat(dist_data, indices)
 
-def reduce_max(dist_data: ArrayLike, dist_stride: ArrayLike) -> ArrayLike:
+def reduce_max(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
   """
   Function that return the maximum of all data sharing the same global number
   """
   indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.maximum.reduceat(dist_data, indices)
 
-def reduce_min(dist_data: ArrayLike, dist_stride: ArrayLike) -> ArrayLike:
+def reduce_min(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
   """
   Function that return the minimum of all data sharing the same global number
   """
   indices = np_utils.sizes_to_indices(dist_stride)[:-1]
   return np.minimum.reduceat(dist_data, indices)
 
-def reduce_mean(dist_data: ArrayLike, dist_stride: ArrayLike) -> ArrayLike:
+def reduce_mean(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
   """
   Function that return the mean of all data sharing the same global number
   """

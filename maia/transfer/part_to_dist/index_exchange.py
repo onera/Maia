@@ -15,8 +15,8 @@ LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell',
              'IEdgeCenter': 'Edge', 'JEdgeCenter': 'Edge',
              'IFaceCenter': 'Face', 'JFaceCenter': 'Face', 'KFaceCenter': 'Face'}
 
-def create_part_pl_gnum_unique(part_zones: CGNSPartTree, 
-                               node_path: CGNSTree,
+def create_part_pl_gnum_unique(part_zones: List[CGNSPartTree], 
+                               node_path: CGNSPath,
                                comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node, assuming that entity in
@@ -45,8 +45,8 @@ def create_part_pl_gnum_unique(part_zones: CGNSPartTree,
       PT.new_DataArray('Index', np.arange(start, start+size_per_part[offset], dtype=pdm_gnum_dtype), parent=distri_ud)
 
 def create_part_pl_gnum(dist_zone: CGNSDistTree, 
-                        part_zones: CGNSPartTree, 
-                        node_path: CGNSTree,
+                        part_zones: List[CGNSPartTree], 
+                        node_path: CGNSPath,
                         comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node, even if entity in
@@ -100,8 +100,8 @@ def create_part_pl_gnum(dist_zone: CGNSDistTree,
       i_zone += 1
 
 def create_part_pr_gnum(dist_zone: CGNSDistTree, 
-                        part_zones: CGNSPartTree,
-                        node_path: CGNSTree, 
+                        part_zones: List[CGNSPartTree],
+                        node_path: CGNSPath, 
                         comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node containing a partitioned point range
@@ -145,8 +145,8 @@ def create_part_pr_gnum(dist_zone: CGNSDistTree,
       i_zone += 1
 
 def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
-                       part_zones: CGNSPartTree,
-                       node_path: CGNSTree, 
+                       part_zones: List[CGNSPartTree],
+                       node_path: CGNSPath, 
                        comm: MPIComm, 
                        allow_mult: bool = False) -> None:
   """
@@ -216,11 +216,11 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
 
 
 def _part_triplet_to_dist_triplet(
-  ptriplet: List[int], 
+  ptriplet: NDArray, 
   loc: str,
-  ln_to_gn: Dict[int, int],
-  pvtx_size: Tuple[int,int,int],
-  dvtx_size: Tuple[int, int, int]) -> Tuple[Union[int,Any], Union[int, Any], Union[int, Any]]:
+  ln_to_gn: NDArray,
+  pvtx_size: Tuple[int, ...],
+  dvtx_size: Tuple[int, ...]) -> Tuple[NDArray, ...]:
     
   """ Convert a structured partitioned (local) i,j,k triplet to the corresponding
   global triplet in the distributed block """

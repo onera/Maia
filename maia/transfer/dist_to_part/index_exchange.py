@@ -10,8 +10,9 @@ from maia.transfer  import utils    as te_utils
 from maia.typing    import *
 
 
-def collect_distributed_pl(dist_zone: CGNSDistTree, query_list: List[List[str]],
-                           filter_loc: Optional[List[str]] = None) -> List[np.ndarray]:
+def collect_distributed_pl(dist_zone: CGNSDistTree, 
+                           query_list: List[Any],
+                           filter_loc: Optional[List[str]] = None) -> List[NDArray]:
   """
   Search and collect all the pointList values found under the nodes
   matching one of the query of query_list
@@ -46,7 +47,7 @@ def collect_distributed_pl(dist_zone: CGNSDistTree, query_list: List[List[str]],
 
 
 def create_part_pointlists(dist_zone: CGNSDistTree, 
-                           p_zone: CGNSTree,
+                           p_zone: CGNSPartTree,
                            p_groups: Dict[str, int],
                            pl_pathes: List[str], 
                            locations: List[str]) -> None:
