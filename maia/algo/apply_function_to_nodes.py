@@ -1,5 +1,5 @@
+from maia.typing import *
 import maia.pytree as PT
-from maia.typing import CGNSTree, Callable, Iterator, Any, TypeVar
 
 T = TypeVar('T')
 

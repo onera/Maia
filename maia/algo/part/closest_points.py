@@ -1,11 +1,10 @@
 import numpy as np
 import Pypdm.Pypdm as PDM
 
+from maia.typing import *
 import maia.pytree        as PT
-
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-from maia.typing                 import *
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.utils                  import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks

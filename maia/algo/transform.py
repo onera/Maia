@@ -1,15 +1,14 @@
 import numpy as np
 
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
-from maia.typing import   CGNSTree, MPIComm, ArrayLike, List, Tuple, Dict, Optional, Union
 from maia.utils           import py_utils, np_utils, par_utils, pr_utils
 from maia.utils.numbering import range_to_slab          as HFR2S
 from maia.transfer import protocols as EP
 from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
-
 from .geometry import _compute_elements_center
 
 def _to_xyz(r: ArrayLike, theta: ArrayLike, z: ArrayLike) -> Tuple[ArrayLike, ArrayLike, ArrayLike]:

@@ -1,19 +1,18 @@
 import numpy as np
+
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-import Pypdm.Pypdm as PDM
-
-from maia.typing    import CGNSTree, MPIComm, List, Dict, Tuple
 from maia           import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils     import np_utils, py_utils, par_utils, as_pdm_gnum
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.factory   import dist_from_part     as DFP
-
 from maia.algo                  import dist             as MAD
-
 from maia.transfer              import protocols as EP
 from maia.transfer.dist_to_part import index_exchange   as IBTP
+
+import Pypdm.Pypdm as PDM
 
 def _get_shifted_arrays(arrays_per_dom, comm):
   shifted_per_dom = []

@@ -2,6 +2,7 @@ import numpy as np
 from re import sub
 from Pypdm import Pypdm as PDM
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.sids   as sids
 import maia.pytree.maia   as MT
@@ -13,7 +14,6 @@ from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
-from maia.typing    import *
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def _append_or_create(d, key, val):

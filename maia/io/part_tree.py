@@ -1,5 +1,7 @@
 import os
+
 import maia
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.utils  as PTu
 import maia.pytree.maia   as MT
@@ -11,7 +13,6 @@ from maia.pytree.maia.check_tree import check_cgns_part_tree
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
 
-from maia.typing import *
 
 if _LEGACY_IO:
   import Converter.Filter as Filter

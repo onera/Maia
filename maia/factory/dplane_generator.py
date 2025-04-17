@@ -1,11 +1,11 @@
 import numpy as np
-import Pypdm.Pypdm as PDM
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
-from maia.typing import CGNSTree, MPIComm, Tuple, Any, List, Optional
+import Pypdm.Pypdm as PDM
 
 # --------------------------------------------------------------------------
 def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,

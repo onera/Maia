@@ -1,9 +1,9 @@
-from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.typing import CGNSTree
-
 import numpy as np
+
 import maia
+from maia.typing import *
 import maia.pytree as PT
+from maia.algo.apply_function_to_nodes import zones_iterator
 from maia.pytree.maia.check_tree import check_cgns_full_tree
 from maia.utils import np_utils
 

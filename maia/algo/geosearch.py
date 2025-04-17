@@ -1,3 +1,4 @@
+from   maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -5,8 +6,8 @@ from .dist import closest_points as dist_closest
 from .part import closest_points as part_closest
 from .dist import localize as dist_localize
 from .part import localize as part_localize
-from maia.typing  import *
 from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
+from typing import overload
 
 def is_distributed(tree):
   for zone in PT.get_all_Zone_t(tree):

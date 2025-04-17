@@ -1,13 +1,13 @@
-import numpy              as np
-import Pypdm.Pypdm        as PDM
+import numpy as np
 
+from maia.typing    import *
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils    as te_utils
-from maia.typing    import *
+import Pypdm.Pypdm as PDM
 
 
 def collect_distributed_pl(dist_zone: CGNSDistTree, 

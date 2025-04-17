@@ -1,21 +1,19 @@
 import numpy as np
 from mpi4py import MPI
 
-import Pypdm.Pypdm as PDM
-
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.typing                 import *
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.transfer               import utils as te_utils
 from maia.utils                  import vstride as vs
-
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils  import get_point_cloud
 from .connectivity_utils import cell_vtx_connectivity, PDM_connectivity_transpose
+import Pypdm.Pypdm as PDM
 
 def _get_part_data_ngon(part_zone: CGNSTree) -> List[np.ndarray]:
   dim = PT.Zone.CellDimension(part_zone)

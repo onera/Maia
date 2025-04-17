@@ -1,13 +1,13 @@
 import numpy as np
-import Pypdm.Pypdm as PDM
+
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-
 from maia.utils      import np_utils, as_pdm_gnum, layouts
-from maia.typing     import CGNSTree, MPIComm, List, Tuple
 
 from .geometry       import _compute_elements_center
 from .multidom_gnum  import _get_shifted_arrays
+import Pypdm.Pypdm as PDM
 
 def _get_zone_ln_to_gn_from_loc(zone: CGNSTree, location: str) -> np.ndarray:
   """ Wrapper to get the expected lngn value 

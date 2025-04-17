@@ -1,15 +1,13 @@
 import numpy as np
 from mpi4py import MPI
 
-
-import Pypdm.Pypdm        as PDM
-
 import maia
+from maia.typing import *
 from maia.utils import par_utils, np_utils
-from maia.typing import MPIComm, ArrayLike, Dict, List, Any, Optional, Callable, NDArray, Union, Tuple
 
 from . import _protocols
 from ._protocols import GlobalIndexer, GlobalMultiIndexer
+import Pypdm.Pypdm  as PDM
 
 # Type alias to designate a single array or dictionnary of arrays
 DistData = Union[NDArray, Dict[str, NDArray]]

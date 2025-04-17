@@ -1,7 +1,8 @@
+import numpy as np
+
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.typing import *
-import numpy as np
 
 from .dist import ngon_tools as dist_ngon_tools
 from .part import ngon_tools as part_ngon_tools

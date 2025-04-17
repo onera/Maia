@@ -1,17 +1,16 @@
 import numpy as np
-import Pypdm.Pypdm as PDM
 
+import maia
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.pytree.sids import elements_utils as EU
-
-import maia
 from maia.utils import np_utils, par_utils, layouts
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
-from maia.typing import *
 
 from .dline_generator import generate_dist_line
+import Pypdm.Pypdm as PDM
 
 _is_iterable = lambda obj: hasattr(obj, '__len__')
 

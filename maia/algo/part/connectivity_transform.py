@@ -1,7 +1,7 @@
 import numpy as np
 
+from maia.typing import *
 import maia.pytree as PT
-from maia.typing import CGNSTree
 from cmaia.part_algo import enforce_pe_left_parent
 
 def enforce_boundary_pe_left(zone_node: CGNSTree) -> None:

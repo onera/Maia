@@ -1,10 +1,9 @@
 import numpy   as np
 
+from maia.typing import *
 import maia.pytree        as PT
-
 from maia.utils     import np_utils, s_numbering, pr_utils
 from maia.transfer  import utils as te_utils
-from maia.typing import CGNSTree, CGNSPartTree, MPIComm, List, Callable, Tuple
 
 from .point_cloud_utils import create_sub_numbering
 from maia.pytree.maia.check_tree import check_cgns_part_tree

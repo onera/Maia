@@ -1,9 +1,9 @@
+import numpy as np
 import warnings
 import numbers
-import numpy as np
-from maia.typing import List, Tuple, Optional, Union, Any, ArrayLike, DTypeLike, NDArray
 from numbers import Number, Integral
 
+from maia.typing import *
 import cmaia.utils as cutils
 from cmaia.utils import layouts
 

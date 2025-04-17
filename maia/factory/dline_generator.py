@@ -1,10 +1,10 @@
+import numpy as np
+
 import maia
+from maia.typing import *
 import maia.pytree as PT
 from   maia.utils  import par_utils
 from   maia        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-
-import numpy as np
-from maia.typing import CGNSTree, MPIComm, Union
 
 def generate_dist_line(n_point: Union[int, np.ndarray], 
                        start: np.ndarray,

@@ -1,14 +1,13 @@
-import time
-import mpi4py.MPI as MPI
 import numpy as np
+import mpi4py.MPI as MPI
+import time
 
-
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 
 from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
-from maia.typing   import CGNSTree, MPIComm, List, Any, Optional, Union, CGNSPartTree
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.factory.partitioning import part_bound_orient as PBO

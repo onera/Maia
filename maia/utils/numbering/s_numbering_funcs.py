@@ -102,13 +102,14 @@ j ^            +----+----+----+----+----+      +-29-+-30-+-31-+-32-+-33-+
   """
 
 import numpy as np
-from maia.typing import List, Tuple, Union, ArrayLike, DTypeLike, NDArray, Sequence
+
+from maia.typing import *
 from cmaia.utils import numbering as cnumbering
 
-def ijk_to_index_from_loc(i: Union[int, ArrayLike], 
-                          j: Union[int, ArrayLike],
-                          k: Union[int, ArrayLike],
-                          loc: str, n_vtx: List[int]) -> Union[int, ArrayLike]:
+def ijk_to_index_from_loc(i: Union[int, NDArray], 
+                          j: Union[int, NDArray],
+                          k: Union[int, NDArray],
+                          loc: str, n_vtx: List[int]) -> Union[int, NDArray]:
   """Dispatch ijk to index for 3D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -123,11 +124,11 @@ def ijk_to_index_from_loc(i: Union[int, ArrayLike],
     return ijk_to_facekIndex(i,j,k,n_cell,n_vtx)
   raise ValueError(f"Unsupported location '{loc}'.")
 
-def index_to_ijk_from_loc(idx: Union[int, ArrayLike], 
+def index_to_ijk_from_loc(idx: Union[int, NDArray], 
                           loc: str,
-                          n_vtx: List[int]) -> Tuple[Union[int, ArrayLike],
-                                                     Union[int, ArrayLike],
-                                                     Union[int, ArrayLike]]:
+                          n_vtx: List[int]) -> Tuple[Union[int, NDArray],
+                                                     Union[int, NDArray],
+                                                     Union[int, NDArray]]:
   """Dispatch index to ijk for 3D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -142,9 +143,9 @@ def index_to_ijk_from_loc(idx: Union[int, ArrayLike],
     return facekIndex_to_ijk(idx, n_cell, n_vtx)
   raise ValueError(f"Unsupported location '{loc}'.")
 
-def ij_to_index_from_loc(i: Union[int, ArrayLike],
-                         j: Union[int, ArrayLike], 
-                         loc: str, n_vtx: List[int]) -> Union[int, ArrayLike]:
+def ij_to_index_from_loc(i: Union[int, NDArray],
+                         j: Union[int, NDArray], 
+                         loc: str, n_vtx: List[int]) -> Union[int, NDArray]:
   """Dispatch ij to index for 2D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -157,10 +158,10 @@ def ij_to_index_from_loc(i: Union[int, ArrayLike],
     return ij_to_edgejIndex(i,j,n_cell,n_vtx)
   raise ValueError(f"Unsupported location '{loc}'.")
 
-def index_to_ij_from_loc(idx: Union[int, ArrayLike],
+def index_to_ij_from_loc(idx: Union[int, NDArray],
                          loc: str,
-                         n_vtx: List[int]) -> Tuple[Union[int, ArrayLike],
-                                                    Union[int, ArrayLike]]:
+                         n_vtx: List[int]) -> Tuple[Union[int, NDArray],
+                                                    Union[int, NDArray]]:
   """Dispatch index to ij for 2D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -175,35 +176,34 @@ def index_to_ij_from_loc(idx: Union[int, ArrayLike],
 
 ## 3D funcs
 
-def ijk_to_index(i: Union[int, ArrayLike], 
-                 j: Union[int, ArrayLike],
-                 k: Union[int, ArrayLike],
-                 n_elmt: Union[List[int], Tuple[int, ...]]) -> Union[int, ArrayLike]:
+def ijk_to_index(i: Union[int, NDArray], 
+                 j: Union[int, NDArray],
+                 k: Union[int, NDArray],
+                 n_elmt: Sequence[int]) -> Union[int, NDArray]:
   """ (I,J,K) -> Idx for cells or vertices """
   return i + (j-1)*n_elmt[0] + (k-1)*n_elmt[0]*n_elmt[1]
 
-def index_to_ijk(idx: Union[int, ArrayLike], 
-                 n_elmt: Union[List[int], 
-                 Tuple[int, ...]]
-                 ) -> Tuple[Union[int, ArrayLike], Union[int, ArrayLike], Union[int, ArrayLike]]:
+def index_to_ijk(idx: Union[int, NDArray], 
+                 n_elmt: Sequence[int]
+                 ) -> Tuple[Union[int, NDArray], Union[int, NDArray], Union[int, NDArray]]:
   """ Idx -> (I,J,K) for cells or vertices """
   k = ((idx - 1) // (n_elmt[0]*n_elmt[1])) + 1
   j = (idx - (k-1)*(n_elmt[0]*n_elmt[1]) - 1) // n_elmt[0] + 1
   i = idx - (j-1)*n_elmt[0] - (k-1)*(n_elmt[0]*n_elmt[1])
   return i,j,k
 
-def ijk_to_faceiIndex(i: Union[int, ArrayLike], 
-                      j: Union[int, ArrayLike], 
-                      k: Union[int, ArrayLike], 
-                      n_cell: Union[List[int], Tuple[int, ...]], 
-                      n_vtx: Union[List[int], Tuple[int, ...]]) -> Union[int, ArrayLike]:
+def ijk_to_faceiIndex(i: Union[int, NDArray], 
+                      j: Union[int, NDArray], 
+                      k: Union[int, NDArray], 
+                      n_cell: Sequence[int], 
+                      n_vtx: Sequence[int]) -> Union[int, NDArray]:
   """ (I,J,K) -> Idx for I-normal faces """
   return i + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_cell[1]
 
 def faceiIndex_to_ijk(
-  idx: Union[int, ArrayLike], 
-  n_cell: Union[List[int], Tuple[int, ...]],
-  n_vtx: Union[List[int], Tuple[int, ...]]) -> Tuple[Union[int, ArrayLike], Union[int, ArrayLike], Union[int, ArrayLike]]:
+  idx: Union[int, NDArray], 
+  n_cell: Sequence[int],
+  n_vtx: Sequence[int]) -> Tuple[Union[int, NDArray], Union[int, NDArray], Union[int, NDArray]]:
   """ Idx -> (I,J,K) for I-normal faces """
   k = ((idx - 1) // (n_vtx[0]*n_cell[1])) + 1
   j = (idx - (k-1)*(n_vtx[0]*n_cell[1]) - 1) // n_vtx[0] + 1
@@ -211,19 +211,19 @@ def faceiIndex_to_ijk(
   return i,j,k
 
 def ijk_to_facejIndex(
-  i: Union[int, ArrayLike], 
-  j: Union[int, ArrayLike], 
-  k: Union[int, ArrayLike], 
-  n_cell: Union[List[int], Tuple[int, ...]], n_vtx: Union[List[int], Tuple[int, ...]]) -> Union[int, ArrayLike]:
+  i: Union[int, NDArray], 
+  j: Union[int, NDArray], 
+  k: Union[int, NDArray], 
+  n_cell: Sequence[int], n_vtx: Sequence[int]) -> Union[int, NDArray]:
   """ (I,J,K) -> Idx for J-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   return i + (j-1)*n_cell[0] + (k-1)*n_vtx[1]*n_cell[0] + nbFacesi
 
-def facejIndex_to_ijk(idx: Union[int, ArrayLike],
-                      n_cell: Union[List[int], Tuple[int, ...]], 
-                      n_vtx: Union[List[int], Tuple[int, ...]]) -> Tuple[Union[int, ArrayLike],
-                                                                         Union[int, ArrayLike],
-                                                                         Union[int, ArrayLike]]:
+def facejIndex_to_ijk(idx: Union[int, NDArray],
+                      n_cell: Sequence[int], 
+                      n_vtx: Sequence[int]) -> Tuple[Union[int, NDArray],
+                                                                         Union[int, NDArray],
+                                                                         Union[int, NDArray]]:
   """ Idx -> (I,J,K) for J-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   k = ((idx - 1 - nbFacesi) // (n_vtx[1]*n_cell[0])) + 1
@@ -231,22 +231,22 @@ def facejIndex_to_ijk(idx: Union[int, ArrayLike],
   i = idx - (j-1)*n_cell[0] - (k-1)*(n_vtx[1]*n_cell[0]) - nbFacesi
   return i,j,k
 
-def ijk_to_facekIndex(i: Union[int, ArrayLike],
-                      j: Union[int, ArrayLike],
-                      k: Union[int, ArrayLike], 
-                      n_cell: Union[List[int], Tuple[int, ...]], 
-                      n_vtx: Union[List[int], Tuple[int, ...]]) -> Union[int, ArrayLike]:
+def ijk_to_facekIndex(i: Union[int, NDArray],
+                      j: Union[int, NDArray],
+                      k: Union[int, NDArray], 
+                      n_cell: Sequence[int], 
+                      n_vtx: Sequence[int]) -> Union[int, NDArray]:
   """ (I,J,K) -> Idx for K-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   nbFacesj = n_vtx[1]*n_cell[0]*n_cell[2]
   return i + (j-1)*n_cell[0] + (k-1)*n_cell[0]*n_cell[1] + nbFacesi + nbFacesj
 
-def facekIndex_to_ijk(idx: Union[int, ArrayLike], 
+def facekIndex_to_ijk(idx: Union[int, NDArray], 
                       n_cell: Union[List[int],
                       Tuple[int, ...]],
-                      n_vtx: Union[List[int], Tuple[int, ...]]) -> Tuple[Union[int, ArrayLike], 
-                                                                         Union[int, ArrayLike], 
-                                                                         Union[int, ArrayLike]]:
+                      n_vtx: Sequence[int]) -> Tuple[Union[int, NDArray], 
+                                                                         Union[int, NDArray], 
+                                                                         Union[int, NDArray]]:
   """ Idx -> (I,J,K) for K-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   nbFacesj = n_vtx[1]*n_cell[0]*n_cell[2]
@@ -258,49 +258,49 @@ def facekIndex_to_ijk(idx: Union[int, ArrayLike],
 
 ## 2D funcs
 
-def ij_to_index(i: Union[int, ArrayLike], 
-                j: Union[int, ArrayLike], 
-                n_elmt: Union[List[int], Tuple[int, ...]]) -> Union[int, ArrayLike]:
+def ij_to_index(i: Union[int, NDArray], 
+                j: Union[int, NDArray], 
+                n_elmt: Sequence[int]) -> Union[int, NDArray]:
   """ (I,J) -> Idx for cells or vertices """
   return i + (j-1)*n_elmt[0]
 
-def index_to_ij(idx: Union[int, ArrayLike],
-                n_elmt: Union[List[int], Tuple[int, ...]]) -> Tuple[Union[int, ArrayLike],
-                                                                    Union[int, ArrayLike]]:
+def index_to_ij(idx: Union[int, NDArray],
+                n_elmt: Sequence[int]) -> Tuple[Union[int, NDArray],
+                                                                    Union[int, NDArray]]:
   """ Idx -> (I,J) for cells or vertices """
   j = (idx-1) // n_elmt[0] + 1
   i = idx - (j-1)*n_elmt[0]
   return i,j
 
-def ij_to_edgeiIndex(i: Union[int, ArrayLike], 
-                     j: Union[int, ArrayLike],
-                     n_cell: Union[List[int], Tuple[int, ...]], 
-                     n_vtx: Union[List[int], Tuple[int, ...]]) -> Union[int, ArrayLike]:
+def ij_to_edgeiIndex(i: Union[int, NDArray], 
+                     j: Union[int, NDArray],
+                     n_cell: Sequence[int], 
+                     n_vtx: Sequence[int]) -> Union[int, NDArray]:
   """ (I,J) -> Idx for I-normal 2D edges """
   return i + (j-1)*n_vtx[0]
 
-def edgeiIndex_to_ij(idx: Union[int, ArrayLike], 
-                     n_cell: Union[List[int], Tuple[int, ...]],
-                     n_vtx: Union[List[int], Tuple[int, ...]]) -> Tuple[Union[int, ArrayLike],
-                                                                        Union[int, ArrayLike]]:
+def edgeiIndex_to_ij(idx: Union[int, NDArray], 
+                     n_cell: Sequence[int],
+                     n_vtx: Sequence[int]) -> Tuple[Union[int, NDArray],
+                                                                        Union[int, NDArray]]:
   """ Idx -> (I,J) for I-normal 2D edges """
   j = (idx - 1) // n_vtx[0] + 1
   i = idx - (j-1)*n_vtx[0]
   return i,j
 
-def ij_to_edgejIndex(i: Union[int, ArrayLike],
-                     j: Union[int, ArrayLike], 
-                     n_cell: Union[List[int], Tuple[int, ...]], 
-                     n_vtx: Union[List[int], Tuple[int, ...]]) -> Union[int, ArrayLike]:
+def ij_to_edgejIndex(i: Union[int, NDArray],
+                     j: Union[int, NDArray], 
+                     n_cell: Sequence[int], 
+                     n_vtx: Sequence[int]) -> Union[int, NDArray]:
   """ (I,J) -> Idx for J-normal 2D edges """
   nbEdgei = n_vtx[0]*n_cell[1]
   return i + (j-1)*n_cell[0] + nbEdgei
 
-def edgejIndex_to_ij(idx: Union[int, ArrayLike], 
+def edgejIndex_to_ij(idx: Union[int, NDArray], 
                      n_cell: Union[List[int], 
                      Tuple[int, ...]],
-                     n_vtx: Union[List[int], Tuple[int, ...]]) -> Tuple[Union[int, ArrayLike], 
-                                                                        Union[int, ArrayLike]]:
+                     n_vtx: Sequence[int]) -> Tuple[Union[int, NDArray], 
+                                                                        Union[int, NDArray]]:
   """ Idx -> (I,J) for J-normal 2D edges """
   nbEdgei = n_vtx[0]*n_cell[1]
   j = (idx - 1 - nbEdgei) // n_cell[0] + 1

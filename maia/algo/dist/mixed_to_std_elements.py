@@ -1,14 +1,13 @@
-import mpi4py.MPI as mpi
 import numpy as np
-from maia.typing import List, Optional, Any
+import mpi4py.MPI as mpi
 
 import maia
+from maia.typing import *
 from maia               import pytree        as PT
 from maia.pytree        import maia          as MT
 from maia.transfer      import protocols     as MTP
 from maia.utils         import par_utils     as MUPar
 from maia.utils.ndarray import np_utils
-from maia.typing        import CGNSTree, CGNSDistTree, MPIComm
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 import maia.pytree.sids.elements_utils    as MPSEU
 

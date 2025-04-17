@@ -1,3 +1,4 @@
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 from maia.utils    import par_utils
@@ -5,7 +6,6 @@ from maia.transfer import utils     as te_utils,\
                           protocols as EP
 
 from maia.transfer.part_to_dist import index_exchange as IPTB
-from maia.typing import *
 
 import Pypdm.Pypdm as PDM
 

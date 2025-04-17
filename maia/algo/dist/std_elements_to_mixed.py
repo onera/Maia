@@ -1,10 +1,10 @@
-import mpi4py.MPI as mpi
 import numpy as np
+import mpi4py.MPI as mpi
 
+from maia.typing import *
 from maia            import pytree        as PT
 from maia.transfer   import protocols     as MTP
 from maia.utils      import par_utils     as MUPar
-from maia.typing     import CGNSDistTree, MPIComm
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:

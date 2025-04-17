@@ -1,7 +1,6 @@
 import numpy as np
-from typing import List, Optional, Tuple
-from maia.typing import CGNSTree, MPIComm, CGNSPath, NDArray
 
+from maia.typing import *
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT

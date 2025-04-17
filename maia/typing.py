@@ -1,9 +1,21 @@
-from maia.pytree.typing import *
-from typing import NewType
-from mpi4py import MPI
+import typing
+from typing import (
+    Tuple, List, Dict, Optional, Any, Callable, Union, Iterator, NamedTuple,
+    TypeVar, Generic, Type, Protocol, Sequence, Set, Literal,
+    TextIO, Iterable)
+
+from os import PathLike
+from mpi4py.MPI import Comm as MPIComm
+from maia.pytree.typing import CGNSTree, CGNSPath
+from numpy.typing import NDArray
 
 
-MPIComm = MPI.Comm
+import numpy as np
+try: #Require numpy >= 1.20
+  from numpy.typing import ArrayLike, DTypeLike
+except ImportError:  #pragma: no cover
+  ArrayLike = Any
+  DTypeLike = Any
 
-CGNSDistTree = NewType('CGNSDistTree', CGNSTree)  
-CGNSPartTree = NewType('CGNSPartTree', CGNSTree)  
+CGNSDistTree = typing.NewType('CGNSDistTree', CGNSTree)  
+CGNSPartTree = typing.NewType('CGNSPartTree', CGNSTree)  

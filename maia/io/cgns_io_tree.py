@@ -1,14 +1,15 @@
 _LEGACY_IO  = False
+import mpi4py.MPI as MPI
 import warnings
 import os
 import time
-import mpi4py.MPI as MPI
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
-from maia.typing                import *
+
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity

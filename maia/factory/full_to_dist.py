@@ -1,13 +1,14 @@
 import numpy as np
 
-import maia.pytree        as PT
-import maia.pytree.maia   as MT
+from maia.typing import *
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
-from maia.typing      import *
 from maia.pytree.maia.check_tree import check_cgns_full_tree
+from typing import overload
 
 def distribute_pl_node(node: CGNSTree, 
                        comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:

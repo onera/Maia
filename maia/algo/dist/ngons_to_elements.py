@@ -1,11 +1,11 @@
 import numpy as np
 
 import maia
-
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 from maia.pytree.sids import elements_utils as EU
-from maia.typing import CGNSTree, CGNSDistTree, MPIComm
+
 
 from maia.utils     import np_utils, par_utils, vstride
 from maia.transfer  import protocols as EP

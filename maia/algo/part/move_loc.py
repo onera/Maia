@@ -1,10 +1,10 @@
 import numpy as np
-import maia
-import maia.pytree as PT
 
+import maia
+from maia.typing import *
+import maia.pytree as PT
 from maia.utils import np_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
-from maia.typing import CGNSTree, CGNSPartTree, MPIComm, List, Any
 
 from . import multidom_gnum
 from . import connectivity_utils

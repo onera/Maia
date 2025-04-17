@@ -4,7 +4,6 @@ from maia.pytree.meta   import begin_api_export, end_api_export
 from maia.pytree import walk as W
 from maia.pytree import node as N
 from maia.pytree import sids as S
-import maia.pytree as PT
 from maia.utils import vstride as vs
 
 begin_api_export()

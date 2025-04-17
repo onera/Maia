@@ -1,10 +1,10 @@
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
 from maia.algo.dist import matching_jns_tools as MJT
-from maia.typing    import *
 
 import numpy as np
 from maia.pytree.maia.check_tree import check_cgns_dist_tree

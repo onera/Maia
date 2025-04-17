@@ -1,21 +1,22 @@
-import mpi4py.MPI as MPI
 import numpy      as np
+import mpi4py.MPI as MPI
 
 import maia
-import maia.pytree                      as PT
-import maia.pytree.maia                 as MT
-import Pypdm.Pypdm                      as PDM
-from maia                     import npy_pdm_gnum_dtype    as pdm_gnum_dtype
-from maia.transfer            import protocols             as EP
-from maia.utils               import par_utils, np_utils, vstride
-from maia.utils.parallel      import algo as par_algo
+from maia.typing import *
+import maia.pytree           as PT
+import maia.pytree.maia      as MT
+import Pypdm.Pypdm           as PDM
+from maia                    import npy_pdm_gnum_dtype    as pdm_gnum_dtype
+from maia.transfer           import protocols             as EP
+from maia.utils              import par_utils, np_utils, vstride
+from maia.utils.parallel     import algo as par_algo
 
 from .merge_ids      import merge_distributed_ids
 from .vertex_list    import face_ids_to_vtx_ids
 from .geometry.utils import get_local_coordinates
+
 from maia.algo.part  import closest_points as CLO
 from maia.algo.dist  import merge_jn       as MJN
-from maia.typing     import CGNSDistTree, MPIComm, Any
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 

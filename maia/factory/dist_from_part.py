@@ -1,7 +1,8 @@
+import numpy as np
 from mpi4py import MPI
-import numpy      as np
 import operator
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -12,7 +13,6 @@ from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.transfer.part_to_dist import tree_api           as part_to_dist
 from maia.utils                 import py_utils, par_utils, np_utils
 from maia                       import npy_pdm_gnum_dtype as pdm_dtype
-from maia.typing import *
 from maia.pytree.maia.check_tree import check_cgns_part_tree
 from maia.pytree.graph.algo import step
 class UDDCollector:

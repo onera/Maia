@@ -1,22 +1,22 @@
-from mpi4py import MPI
 import numpy as np
+from mpi4py import MPI
 import Pypdm.Pypdm as PDM
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.typing                 import *
 from maia.utils                  import py_utils, np_utils
 from maia.utils                  import logging as mlog
 from maia.utils                  import vstride as vs
 from maia.transfer               import utils as te_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 
 from .import point_cloud_utils as PCU
 from .import multidom_gnum     as MDG
 from .import localize as LOC
 from .import closest_points as CLO
-from maia.pytree.maia.check_tree import check_cgns_part_tree
 
 class Interpolator:
   """ Low level class to perform interpolations """

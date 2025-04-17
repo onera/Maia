@@ -1,10 +1,10 @@
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols   as EP
 from maia.utils     import par_utils
-from maia.typing    import CGNSDistTree, MPIComm, List
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def conformize_jn_pair(dist_tree: CGNSDistTree,

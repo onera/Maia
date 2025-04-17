@@ -1,6 +1,7 @@
-from mpi4py import MPI
 import numpy as np
+from mpi4py import MPI
 
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
@@ -9,7 +10,6 @@ from maia.algo.dist import ngon_tools
 from maia.transfer  import protocols as EP
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import logging as mlog
-from maia.typing    import CGNSDistTree, MPIComm, Literal
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'

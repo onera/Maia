@@ -1,10 +1,9 @@
 import numpy as np
-import time
 from mpi4py import MPI
+import time
 
+from maia.typing import *
 import maia.pytree as PT
-
-from maia.typing    import *
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
@@ -13,14 +12,15 @@ from maia.utils     import logging as mlog
 
 from maia.transfer.dist_to_part import data_exchange  as BTP
 from maia.transfer.dist_to_part import tree_api       as dist_to_part
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
+from maia.pytree.graph.algo import step
 
 from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
 from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
 from .load_balancing import balancing_quality
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
-from maia.pytree.graph.algo import step
+
 class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
   def __init__(self):

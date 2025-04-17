@@ -1,30 +1,24 @@
-import time
-from mpi4py import MPI
 import numpy as np
+from mpi4py import MPI
+import time
 import warnings
 
-
-
-import Pypdm.Pypdm as PDM
-
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-
-
-from maia        import npy_pdm_gnum_dtype as pdm_dtype
+from maia import npy_pdm_gnum_dtype as pdm_dtype
 
 from maia.utils                      import np_utils
 from maia.utils                      import logging as mlog
 from maia.transfer                   import protocols as EP
 from maia.transfer                   import utils as tr_utils
 from maia.factory.dist_from_part     import discover_nodes_from_matching
-from maia.typing                     import *
-
 from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import _compute_elements_center
+from maia.pytree.maia.check_tree     import check_cgns_part_tree
 
 from .point_cloud_utils              import get_point_cloud
-from maia.pytree.maia.check_tree     import check_cgns_part_tree
+import Pypdm.Pypdm as PDM
 
 BC_WALLS = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
 

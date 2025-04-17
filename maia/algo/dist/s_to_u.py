@@ -1,4 +1,6 @@
 import numpy              as np
+
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -6,7 +8,6 @@ from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering, pr_utils
 from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
-from maia.typing          import *
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from maia.algo.dist.matching_jns_tools import gc_is_reference
 

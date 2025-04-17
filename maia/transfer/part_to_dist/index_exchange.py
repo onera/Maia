@@ -1,8 +1,8 @@
+import numpy as np
 from mpi4py import MPI
-import numpy              as np
 
+from maia.typing import *
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.typing         import *
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT

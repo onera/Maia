@@ -1,5 +1,5 @@
+from maia.typing import *
 from cmaia.utils.logging import log, add_logger, turn_on, turn_off
-from maia.typing import Union, Any
 
 
 def add_printer_to_logger(logger_name: str, printer: Union[str, Any]) -> None:

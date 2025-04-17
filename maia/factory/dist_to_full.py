@@ -1,7 +1,7 @@
+from maia.typing import *
 import maia.pytree as PT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
-from maia.typing import CGNSTree, CGNSDistTree, MPIComm, Optional
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def _reshape_S_arrays(tree: CGNSTree) -> None:

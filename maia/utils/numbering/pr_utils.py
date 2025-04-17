@@ -1,5 +1,6 @@
 import numpy as np
-from maia.typing import List, ArrayLike, NDArray
+
+from maia.typing import *
 import maia.pytree as PT
 
 from .s_numbering_funcs import ijk_to_index_from_loc, ij_to_index_from_loc

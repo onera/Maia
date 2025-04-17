@@ -1,13 +1,11 @@
 import numpy as np
-import Pypdm.Pypdm as PDM 
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.typing import CGNSTree, CGNSDistTree, MPIComm, Optional
-
 from maia.utils     import par_utils, layouts
-
 from .dcube_generator import _dmesh_nodal_to_cgns_zone
+import Pypdm.Pypdm as PDM
 
 def dsphere_vol_nodal_generate(n_vtx: int, 
                                radius: float, 

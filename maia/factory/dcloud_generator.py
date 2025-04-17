@@ -1,13 +1,12 @@
 import numpy as np
-import Pypdm.Pypdm as PDM 
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
 from maia.utils import par_utils, layouts
-from maia.typing import *
-
+import Pypdm.Pypdm as PDM 
 
 # --------------------------------------------------------------------------
 def _dcloud_to_cgns(dpoint_cloud: Dict[str, int], 

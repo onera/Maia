@@ -1,8 +1,9 @@
 import numpy as np
+
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.typing import CGNSTree, MPIComm, Optional, Union, Any, ArrayLike
 from .dist import geometry as dist_geometry
 from .part import geometry as part_geometry
 

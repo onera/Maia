@@ -1,12 +1,12 @@
 import numpy as np
 
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.transfer import protocols as EP
 from maia.utils import np_utils, par_utils
 from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.typing import CGNSDistTree, MPIComm, Optional
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:

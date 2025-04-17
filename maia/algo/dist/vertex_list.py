@@ -1,10 +1,11 @@
-import mpi4py.MPI as MPI
 import numpy as np
+import mpi4py.MPI as MPI
 import itertools
 
-import Pypdm.Pypdm        as PDM
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+import Pypdm.Pypdm  as PDM
 
 from maia       import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, vstride
@@ -12,7 +13,7 @@ from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, vstride
 from maia.algo.dist             import matching_jns_tools as MJT
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from maia.transfer import protocols as EP
-from maia.typing   import CGNSDistTree, MPIComm, List, Tuple, Optional
+
 
 def shifted_eso(ngon):
   eso = PT.get_node_from_path(ngon, 'ElementStartOffset')[1]

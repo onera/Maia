@@ -1,17 +1,16 @@
-import numpy              as np
-import maia.pytree        as PT
-import maia.pytree.maia   as MT
-from maia.typing import CGNSDistTree, MPIComm, Optional
+import numpy as np
 
 import maia
-import Pypdm.Pypdm as PDM
+from maia.typing import *
+import maia.pytree        as PT
+import maia.pytree.maia   as MT
 from maia.utils import np_utils, par_utils, layouts
 
 from maia.algo.dist   import remove_element as RME
 from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh_nodal
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
-
+import Pypdm.Pypdm as PDM
 
 def raise_if_possible_overflow(n_elt, n_rank):
   max_int = 2**31 - 1

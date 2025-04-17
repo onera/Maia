@@ -1,12 +1,12 @@
 from typing import (
     Tuple, List, Dict, Optional, Any, Callable, Union, Iterator, NamedTuple,
     TypeVar, Generic, Type, Protocol, runtime_checkable, Sequence, Set, Literal,
-    TextIO, Iterable, overload
-)
-from os import PathLike
-import numpy as np
+    TextIO, Iterable, overload)
 
+from os import PathLike
 from numpy.typing import NDArray
+
+import numpy as np
 try: #Require numpy >= 1.20
   from numpy.typing import ArrayLike, DTypeLike
 except ImportError:  #pragma: no cover

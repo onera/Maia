@@ -1,7 +1,7 @@
 import numpy as np
 
+from maia.typing import *
 import maia.pytree as PT
-from maia.typing import CGNSTree, ArrayLike
 from typing import Dict, List, Optional, Tuple, Any
 from maia.utils import np_utils
 from maia.utils import vstride as vs
