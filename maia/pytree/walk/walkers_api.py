@@ -1,11 +1,9 @@
 from maia.pytree.typing import *
-from maia.pytree.meta   import begin_api_export, end_api_export
 from maia.pytree.meta   import CGNSNodeFromPredicateNotFoundError
 
 from maia.pytree.predicate     import auto_predicate, auto_predicates, \
                                       match_name, match_label, match_value, match_name_label
 
-begin_api_export()
 
 from .node_walker   import NodeWalker
 from .nodes_walker  import NodesWalker
@@ -724,5 +722,3 @@ def iterNodesFromPredicates(root, predicate, *args, **kwargs):
   return iter_nodes_from_predicates(root, predicate, *args, **kwargs)
 # ---------------------------------------------------------------------------- #
 
-
-end_api_export()

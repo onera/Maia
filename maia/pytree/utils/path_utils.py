@@ -1,5 +1,4 @@
 from maia.pytree.typing import *
-from maia.pytree.meta   import begin_api_export, end_api_export
 
 from maia.pytree                  import predicate
 from maia.pytree.walk.walkers_api import predicates_to_paths
@@ -10,7 +9,7 @@ __VALUE__    = 1
 __CHILDREN__ = 2
 __LABEL__    = 3
 
-begin_api_export()
+#begin_api_export()
 
 
 def path_head(path:str, i:int=-1) -> str:
@@ -67,4 +66,4 @@ def paths_to_tree(paths:List[str], root_name='CGNSTree') -> CGNSTree:
       node = next_node
   return path_tree
 
-end_api_export()
+#end_api_export()

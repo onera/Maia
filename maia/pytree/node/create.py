@@ -1,10 +1,9 @@
 from maia.pytree.typing import *
-from maia.pytree.meta import begin_api_export, end_api_export
 from maia.pytree import walk
 from .           import access as NA
 
 
-begin_api_export()
+#begin_api_export()
 
 UNSET = Ellipsis
 
@@ -163,4 +162,4 @@ def deep_copy(t:CGNSTree) -> CGNSTree:
     out[2].append(deep_copy(child))
   return out
 
-end_api_export()
+#end_api_export()

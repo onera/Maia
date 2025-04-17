@@ -4,7 +4,6 @@ import math
 import itertools
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import begin_api_export, end_api_export
 from maia.pytree.meta   import check_is_label, check_in_labels, for_all_methods
 
 from maia.pytree         import node as N
@@ -12,7 +11,6 @@ from maia.pytree         import walk as W
 from . import elements_utils as EU
 from . import utils
 
-begin_api_export()
 
 # Custom NamedTuple list
 class PeriodicValues(NamedTuple):
@@ -1106,5 +1104,3 @@ class PointList:
   def n_elem(point_list_node:CGNSTree) -> int:
     return N.get_value(point_list_node).shape[1]
 
-
-end_api_export()

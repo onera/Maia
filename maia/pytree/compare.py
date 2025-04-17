@@ -1,10 +1,11 @@
 import numpy as np
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import api_export
 
 import maia.pytree as PT
 from maia.pytree.graph.cgns import step, zip_depth_first_search
+
+__all__ = ['is_same_node', 'is_same_tree', 'diff_tree']
 
 class DiffReport(NamedTuple):
   """ A NamedTuple storing the output of :func:`~maia.pytree.diff_tree`
@@ -63,7 +64,6 @@ def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) 
   else:
     return np.array_equal(n0[1], n1[1])
 
-@api_export
 def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
   Compare two nodes.
@@ -101,7 +101,6 @@ class same_tree_visitor:
     else:
       return step.into
 
-@api_export
 def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
   Compare recursively two trees.
@@ -273,7 +272,6 @@ class diff_tree_visitor:
     self.warn_report += warn_report
     return next_step
 
-@api_export
 def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = None) -> DiffReport:
   """ Report the differences between two trees.
 

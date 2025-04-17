@@ -1,7 +1,6 @@
 import warnings
 import numpy as np
 from maia.pytree.typing import *
-from maia.pytree.meta import begin_api_export, end_api_export
 
 from maia.pytree.cgns_keywords import cgns_to_dtype
 
@@ -16,7 +15,7 @@ def _check_parent_label(node, parent, allowed_list):
           f" is not SIDS compliant. Admissible parent labels are {allowed_list}."
     warnings.warn(msg, RuntimeWarning, stacklevel=3)
 
-begin_api_export()
+#begin_api_export()
 
 # Specialized
 def new_CGNSTree(*, version:float=4.2):
@@ -990,4 +989,4 @@ def new_ReferenceState(name:str = 'ReferenceState',
     new_DataArray(field_name, field_val, parent=ref_state)
   return ref_state
 
-end_api_export()
+#end_api_export()

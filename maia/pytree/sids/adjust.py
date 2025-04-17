@@ -2,13 +2,11 @@ import warnings
 import numpy as np
 
 from maia.pytree.typing import *
-from maia.pytree.meta import api_export
 import maia.pytree as PT
 
 IS_RELATED_ZSR = lambda n : PT.get_label(n) == 'ZoneSubRegion_t' \
                         and PT.get_child_from_name(n, 'BCRegionName') is not None
 
-@api_export
 def enforceDonorAsPath(tree:CGNSTree):
   """ Force the GCs to indicate their opposite zone under the form BaseName/ZoneName """
   predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
@@ -18,7 +16,6 @@ def enforceDonorAsPath(tree:CGNSTree):
       PT.set_value(gc, PT.GridConnectivity.ZoneDonorPath(gc, base_n))
 
 
-@api_export
 def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
   """ Move the data fields from ZoneSubRegion nodes to their related BC node, if existing.
   
@@ -76,7 +73,6 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
       if mode == 'move':
         PT.rm_children_from_label(zsr_n, 'DataArray_t')
 
-@api_export
 def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
   """ Move the data fields to ZoneSubRegion nodes from their related BC node, if existing.
   

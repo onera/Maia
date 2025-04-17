@@ -5,7 +5,6 @@ import warnings
 from maia.pytree.typing import *
 
 import maia.pytree.cgns_keywords as CGK
-from maia.pytree.meta import begin_api_export, end_api_export
 
 from . import check
 
@@ -94,7 +93,7 @@ def _np_to_string(array):
     return [_np_to_string(array[:,:,i]) for i in range(array.shape[2])]
   raise ValueError(f"Incorrect dimension for bytes array: {array.ndim}")
 
-begin_api_export()
+#begin_api_export()
 
 def get_name(node:CGNSTree) -> str:
   """
@@ -335,4 +334,4 @@ def set_label(node:CGNSTree, label:str):
   else:
     raise ValueError("Unvalid label for node")
 
-end_api_export()
+#end_api_export()

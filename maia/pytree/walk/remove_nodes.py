@@ -1,5 +1,4 @@
 from maia.pytree.typing import *
-from maia.pytree.meta   import begin_api_export, end_api_export
 
 from maia.pytree.predicate import match_name, match_label, match_value, match_name_label
 from maia.pytree.utils     import path_head, path_tail
@@ -34,7 +33,6 @@ def _rm_nodes_from_predicate__(parent, predicate):
   for ichild in reversed(results):
     del parent[__CHILDREN__][ichild]
 
-begin_api_export()
 
 def rm_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool]):
   """
@@ -210,5 +208,3 @@ def pop_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
         node = parent[2].pop(i)
         break
   return node
-
-end_api_export()
