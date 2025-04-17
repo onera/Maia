@@ -1,4 +1,5 @@
 import warnings
+import numpy as np
 from maia.pytree.typing import *
 from maia.pytree.meta import begin_api_export, end_api_export
 

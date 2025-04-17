@@ -1,6 +1,6 @@
 import maia.pytree.maia as MT
 import maia.pytree      as PT
-from   maia.typing import CGNSTree, List, Optional
+from   maia.typing import *
     
 def is_cgns_part_tree(tree: CGNSTree) -> bool:
     """Determine if the CGNS tree represents a partitioned tree.

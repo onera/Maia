@@ -1,20 +1,21 @@
+# Standard types
 from typing import (
-    Tuple, List, Dict, Optional, Any, Callable, Union, Iterator, NamedTuple,
-    TypeVar, Generic, Type, Protocol, runtime_checkable, Sequence, Set, Literal,
-    TextIO, Iterable, overload)
+  Any,
+  Callable,
+  Dict,
+  Iterable,
+  Iterator,
+  List,
+  NamedTuple,
+  Optional,
+  TextIO,
+  Tuple,
+  Union
+)
 
-from os import PathLike
-from numpy.typing import NDArray
+# Third party types
+from numpy.typing import NDArray, ArrayLike, DTypeLike
 
-import numpy as np
-try: #Require numpy >= 1.20
-  from numpy.typing import ArrayLike, DTypeLike
-except ImportError:  #pragma: no cover
-  ArrayLike = Any
-  DTypeLike = Any
-
-# Base CGNS types
-CGNSTree = Tuple[str, Optional[np.ndarray], List["CGNSTree"], str]
-
-# Path and filter types
+# Define maia.pytree specific types
+CGNSTree = Tuple[str, Optional[NDArray], List["CGNSTree"], str]
 CGNSPath = str

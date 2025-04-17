@@ -1,7 +1,6 @@
 import sys
 import numpy       as np
 from pathlib import Path
-from typing import TextIO
 
 from maia.pytree.typing import *
 from maia.pytree.meta import api_export

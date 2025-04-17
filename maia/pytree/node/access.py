@@ -4,11 +4,6 @@ import warnings
 
 from maia.pytree.typing import *
 
-if sys.version_info.major == 3 and sys.version_info.major < 8:
-  from collections.abc import Iterable  # < py38
-else:
-  from typing import Iterable
-
 import maia.pytree.cgns_keywords as CGK
 from maia.pytree.meta import begin_api_export, end_api_export
 

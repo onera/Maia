@@ -1,10 +1,6 @@
-import sys
-if sys.version_info.major == 3 and sys.version_info.major < 8:
-  from collections.abc import Iterable  # < py38
-else:
-  from typing import Iterable
-
 import numpy as np
+
+from maia.pytree.typing import *
 
 from maia.pytree.meta import begin_api_export, end_api_export
 import maia.pytree as PT
