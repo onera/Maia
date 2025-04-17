@@ -1,5 +1,5 @@
 from maia.pytree.typing import *
-from maia.pytree.meta   import CGNSNodeFromPredicateNotFoundError
+from maia.pytree.meta   import CGNSNodeNotFoundError
 
 from maia.pytree.predicate     import auto_predicate, auto_predicates, \
                                       match_name, match_label, match_value, match_name_label
@@ -85,13 +85,9 @@ def get_child_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs):
 # > Generic version
 def request_node_from_predicate(root:CGNSTree, predicate, *args, **kwargs) -> CGNSTree:
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
-  default = kwargs.pop('default', None)
-  node = get_node_from_predicate(root, predicate, *args, **kwargs)
-  if node is not None:
+  if (node := get_node_from_predicate(root, predicate, *args, **kwargs)) is not None:
     return node
-  if default:
-    return default
-  raise CGNSNodeFromPredicateNotFoundError(root, predicate)
+  raise CGNSNodeNotFoundError(root, predicate)
 
 # > Specialized versions
 def request_child_from_predicate(root:CGNSTree, predicate, **kwargs):
@@ -530,13 +526,10 @@ def get_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
       return
   return node
 
-def request_node_from_path(root:CGNSTree, path:str, default:CGNSTree=None) -> CGNSTree:
-  node = get_node_from_path(root, path)
-  if node is not None:
+def request_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
+  if (node := get_node_from_path(root, path)) is not None:
     return node
-  if default:
-    return default
-  raise CGNSNodeFromPredicateNotFoundError(root, path)
+  raise CGNSNodeNotFoundError(root, path)
 
 def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
   """ Return the list of all the Zone_t nodes found in input tree

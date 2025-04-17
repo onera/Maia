@@ -5,7 +5,7 @@ import maia.pytree           as PT
 import maia.pytree.yaml      as PTy
 import maia.pytree.predicate as PTp
 
-from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
+from maia.pytree.meta import CGNSNodeNotFoundError
 
 yt = """
 Zone Zone_t:
@@ -35,9 +35,8 @@ def test_get_node_from_predicate():
 def test_request_node_from_predicate():
   assert PT.request_node_from_predicate(basic_tree, 'bc2') is not None
   assert PT.requestNodeFromPredicate(basic_tree, 'bc2') == PT.request_node_from_predicate(basic_tree, 'bc2')
-  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeNotFoundError):
     PT.request_node_from_predicate(basic_tree, 'bc8')
-  assert PT.request_node_from_predicate(basic_tree, 'bc8', default=basic_tree)[0] == "Zone"
 
 def test_get_nodes_from_predicate():
 
@@ -160,9 +159,8 @@ def test_request_child_from_predicate():
   node = PT.request_child_from_predicate(bc1, lambda n: PTp.match_name(n, 'FamilyName'))
   assert node is not None
   assert PT.get_name(node) == 'FamilyName'
-  node_default = PT.request_child_from_predicate(bc1, lambda n: PTp.match_name(n, 'NonExist'), default=bc1)
-  assert node_default == bc1
-  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
+  
+  with pytest.raises(CGNSNodeNotFoundError):
       PT.request_child_from_predicate(bc1, 'NonExist')
 
 def test_request_child_from_name():
@@ -170,7 +168,7 @@ def test_request_child_from_name():
   node = PT.request_child_from_name(bc2, 'FamilyName')
   assert node is not None
   assert PT.get_name(node) == 'FamilyName'
-  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeNotFoundError):
       PT.request_child_from_name(bc2, 'NonExist')
 
 def test_request_child_from_label():
@@ -178,7 +176,7 @@ def test_request_child_from_label():
   node = PT.request_child_from_label(bc2, 'FamilyName_t')
   assert node is not None
   assert PT.get_label(node) == 'FamilyName_t'
-  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeNotFoundError):
     PT.request_child_from_label(bc2, 'NonExistLabel')
 
 def test_request_child_from_value():
@@ -186,9 +184,7 @@ def test_request_child_from_value():
   node = PT.request_child_from_value(bc1, 'BC1')
   assert node is not None
   assert PT.get_value(node) == 'BC1'
-  node_default = PT.request_child_from_value(bc1, 'NonExist', default=bc1)
-  assert node_default == bc1
-  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeNotFoundError):
     PT.request_child_from_value(bc1, 'NonExist')
 
 def test_request_child_from_name_and_label():
@@ -196,7 +192,7 @@ def test_request_child_from_name_and_label():
   node = PT.request_child_from_name_and_label(bc1, 'FamilyName', 'FamilyName_t')
   assert node is not None
   assert PT.get_name(node) == 'FamilyName'
-  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeNotFoundError):
     PT.request_child_from_name_and_label(bc1, 'NonExist', 'FamilyName_t')
 
 # ---------------------------------------------------------------------------
