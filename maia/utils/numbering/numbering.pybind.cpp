@@ -190,7 +190,6 @@ void edge_dconnectivity_from_gnum(g_num begin, g_num endI, g_num endJ,
   gedge = endI - ne_i; //Global number of jface
   for (int i = endI - begin; i < endJ - begin; ++i) {
     g_num line_nb  = (gedge-1) / n_cell[0];
-    g_num plane_nb = (gedge-1) / nb_edge_j;
     bool is_min_bnd  = gedge < n_vtx[0];
     bool is_max_bnd  = gedge > nb_edge_j - n_vtx[0] + 1;
     bool is_internal = !is_min_bnd & !is_max_bnd;
