@@ -62,7 +62,7 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
     for zsr_n in PT.get_children_from_predicate(zone, IS_RELATED_ZSR):
 
       zsr_name = PT.get_name(zsr_n)
-      bc_n = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
+      bc_n = PT.request_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
       
       bcdataset_n = PT.update_child(bc_n, f'{zsr_name}', 'BCDataSet_t', 'UserDefined')
       bcdata_n = PT.update_child(bcdataset_n, 'DirichletData', 'BCData_t')
@@ -121,7 +121,7 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
     for zsr_n in PT.get_children_from_predicate(zone, IS_RELATED_ZSR):
 
       zsr_name = PT.get_name(zsr_n)
-      bc_n = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
+      bc_n = PT.request_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
 
       is_full_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' \
                             and PT.get_child_from_name(n, 'PointList') is None \

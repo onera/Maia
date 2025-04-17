@@ -7,7 +7,7 @@ from .           import access as NA
 
 UNSET = Ellipsis
 
-def new_node(name:str='Node', label:str='UserDefinedData_t', value:Any=None, children:List[CGNSTree]=[], parent:CGNSTree=None) -> CGNSTree:
+def new_node(name:str='Node', label:str='UserDefinedData_t', value:Any=None, children:List[CGNSTree]=[], parent:Optional[CGNSTree]=None) -> CGNSTree:
   """ Create a new CGNS node
 
   If ``parent`` is not None, this node is appended as a child to the parent node.

@@ -18,7 +18,7 @@ def _flatten(items):
     else:
       yield x
 
-def _convert_value(value):
+def _convert_value(value) -> Optional[NDArray]:
   """
   Convert a Python input to a compliant pyCGNS value
   """
