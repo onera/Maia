@@ -1,21 +1,33 @@
 import pytest_parallel
-import mpi4py.MPI as MPI
 
-from maia.io.utils import create_parent_folder
+import maia.utils.test_utils as TU
 
-from pathlib import Path
-
-class LogCapture:
-  def __init__(self):
-    self.msg = ''
-  def log(self, msg):
-    self.msg = self.msg + msg
+from maia.io import utils
 
 
 @pytest_parallel.mark.parallel([1,2])
 def test_create_parent_folder(comm):
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+  filename = tmp_dir / 'TESTDIR' / 'mycgns.cgns'
 
-  filename = Path('toto') /'mycgns.cgns'
-  create_parent_folder(comm, filename)
-
+  # Basic test
+  assert not filename.parent.exists()
+  utils.create_parent_folder(filename, comm)
   assert filename.parent.exists()
+  assert not filename.exists() # Only parent dir is created by function, not the file itself
+
+  # Test with exising dir
+  utils.create_parent_folder(filename, comm)
+  assert filename.parent.exists()
+
+  # TODO This one does not work
+  #filename = tmp_dir / 'OTHERTESTDIR' / 'SUBDIR' / 'mycgns.cgns'
+  #create_parent_folder(filename, comm)
+  #assert filename.parent()
+
+
+  # Check w/o dir (nothing should happen)
+  filename = 'mycgns.cgns'
+  utils.create_parent_folder(filename, comm)
+
+  TU.rm_collective_dir(tmp_dir, comm)

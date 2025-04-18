@@ -1,5 +1,4 @@
 _LEGACY_IO  = False
-import warnings
 import os
 import time
 import mpi4py.MPI as MPI
@@ -11,6 +10,7 @@ import maia.utils.logging as mlog
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity
+from .utils                     import create_parent_folder
 
 if _LEGACY_IO:
   from . import _hdf_io_cass as _hdf_io
@@ -18,8 +18,6 @@ else:
   from . import _hdf_io_h5py as _hdf_io
 
 from maia.factory     import full_to_dist
-
-from maia.io.utils import create_parent_folder
 
 def load_size_tree(filename, comm):
   return _hdf_io.load_size_tree(filename, comm)
@@ -46,6 +44,7 @@ def write_tree(tree, filename, links=[]):
         :end-before: #write_tree@end
         :dedent: 2
   """
+  create_parent_folder(filename, MPI.COMM_SELF)
   filename = str(filename)
   _hdf_io.write_full(filename, tree, links=links)
 
@@ -211,7 +210,7 @@ def dist_tree_to_file(dist_tree, filename, comm, links=[]):
   filename = str(filename)
 
   # Check if folder exists
-  create_parent_folder(comm,filename)
+  create_parent_folder(filename, comm)
 
   hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links)
@@ -240,8 +239,8 @@ def write_trees(tree, filename, comm, links=[]):
         :dedent: 2
   """
   # Give to each process a filename
+  create_parent_folder(filename, comm)
   filename = str(filename)
-  create_parent_folder(comm, filename)
   base_name, extension = os.path.splitext(filename)
   base_name += f"_{comm.Get_rank()}"
   _filename = base_name + extension
