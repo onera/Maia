@@ -1,11 +1,9 @@
 from mpi4py import MPI
-import numpy as np
 
 import maia.pytree        as PT
 
 from maia.utils                  import py_utils
 from maia.utils                  import logging as mlog
-from maia.utils                  import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .import point_cloud_utils as PCU
@@ -13,7 +11,7 @@ from .import multidom_gnum     as MDG
 from .import localize       as LOC
 from .import closest_points as CLO
 
-from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt
+from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 
 def create_src_to_tgt(src_parts_per_dom,
@@ -75,39 +73,12 @@ def create_src_to_tgt(src_parts_per_dom,
     _, closest_out_inv = CLO._mdom_closest_points(src_clouds, tgt_clouds, comm, n_pts=n_closest_pt, reverse=True, need_shift=tgt_need_shift)
 
 
-  dist2weight = lambda V : vs.from_displs(V.displs, 1. / np.maximum(V.values, 1E-20))
   all_located_inv = py_utils.to_flat_list(location_out_inv)
   all_closest_inv = py_utils.to_flat_list(closest_out_inv)
+
   #Phase 3 : Combine Location & Closest results if both method were used
-  if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
-    if src_loc == "CellCenter":
-      tgt_in_src_gnum = [data['points_gnum_shifted'] for data in all_located_inv]
-      tgt_in_src_wght = None
-    elif src_loc == "Vertex":
-      tgt_in_src_gnum = [data['points_gnum_shifted@VTX'] for data in all_located_inv]
-      tgt_in_src_wght = [data['points_weights@VTX'] for data in all_located_inv]
-        
-  elif strategy == 'Closest':
-    tgt_in_src_gnum = [data['tgt_in_src_shifted'] for data in all_closest_inv]
-    tgt_in_src_wght = [dist2weight(data['tgt_in_src_dist2']) for data in all_closest_inv]
-
-  else:
-    tgt_in_src_gnum = []
-    tgt_in_src_wght = []
-    for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
-      clo_tgt_in_src_gnum = res_clo['tgt_in_src_shifted']
-      clo_tgt_in_scr_wght = dist2weight(res_clo['tgt_in_src_dist2'])
-
-      if src_loc=="CellCenter":
-        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted']
-        loc_tgt_in_src_wght = vs.from_displs(loc_src_to_tgt_gnum.displs, np.ones(loc_src_to_tgt_gnum.dsize))
-      elif src_loc=="Vertex":
-        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted@VTX']
-        loc_tgt_in_src_wght = res_loc['points_weights@VTX']
-        
-      tgt_in_src_gnum.append(vs.concatenate([loc_src_to_tgt_gnum, clo_tgt_in_src_gnum], vs.INNER_AXIS))
-      tgt_in_src_wght.append(vs.concatenate([loc_tgt_in_src_wght, clo_tgt_in_scr_wght], vs.INNER_AXIS))
-
+  _strategy = 'Location' if (strategy == 'LocationAndClosest' and n_tot_unlocated == 0) else strategy
+  tgt_in_src_gnum, tgt_in_src_wght = _combine_geo_results(all_located_inv, all_closest_inv, _strategy, src_loc)
 
   # Finalize: add src and tgt gnum (shifted and as flat data)
   _, src_lngn_per_dom = MDG.get_shifted_ln_to_gn_from_loc(src_parts_per_dom, src_loc, comm)
@@ -116,11 +87,11 @@ def create_src_to_tgt(src_parts_per_dom,
   src_to_tgt = {
     'src_gnum' : py_utils.to_flat_list(src_lngn_per_dom),
     'tgt_gnum' : py_utils.to_flat_list(tgt_lngn_per_dom),
-    'target_gnum' : tgt_in_src_gnum
+    'src_to_tgt' : tgt_in_src_gnum
     }
 
   if tgt_in_src_wght is not None:
-    src_to_tgt['target_weight'] = tgt_in_src_wght
+    src_to_tgt['src_to_tgt_weight'] = tgt_in_src_wght
 
   return src_to_tgt
 
@@ -155,7 +126,7 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
 
 def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options):
   """
-  Distributed implementation of maia.algo.interpolate
+  Partitioned implementation of maia.algo.interpolate
   """
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())

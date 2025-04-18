@@ -37,6 +37,44 @@ def _cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_weight, n_vtx):
 
   return vtx_to_tgt_vs, vtx_to_weight
 
+def _combine_geo_results(all_located_inv, all_closest_inv, strategy, src_loc):
+  """
+  Extract the srt to tgt data from location and closest point results depending on
+  strategy (closest or location or both)
+  """
+  dist2weight = lambda V : vs.from_displs(V.displs, 1. / np.maximum(V.values, 1E-20))
+  if strategy == 'Location':
+    if src_loc=="CellCenter":
+      tgt_in_src_gnum = [data['points_gnum_shifted'] for data in all_located_inv]
+      tgt_in_src_wght = None
+    elif src_loc=="Vertex":
+      tgt_in_src_gnum = [data['points_gnum_shifted@VTX'] for data in all_located_inv]
+      tgt_in_src_wght = [data['points_weights@VTX'] for data in all_located_inv]
+        
+  elif strategy == 'Closest':
+    tgt_in_src_gnum = [data['tgt_in_src_shifted'] for data in all_closest_inv]
+    tgt_in_src_wght = [dist2weight(data['tgt_in_src_dist2']) for data in all_closest_inv]
+    
+  else:
+    tgt_in_src_gnum = []
+    tgt_in_src_wght = []
+
+    for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
+      clo_tgt_in_src_gnum = res_clo['tgt_in_src_shifted']
+      clo_tgt_in_scr_wght = dist2weight(res_clo['tgt_in_src_dist2'])
+
+      if src_loc=="CellCenter":
+        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted']
+        loc_tgt_in_src_wght = vs.from_displs(loc_src_to_tgt_gnum.displs, np.ones(loc_src_to_tgt_gnum.dsize))
+      elif src_loc=="Vertex":
+        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted@VTX']
+        loc_tgt_in_src_wght = res_loc['points_weights@VTX']
+
+      tgt_in_src_gnum.append(vs.concatenate([loc_src_to_tgt_gnum, clo_tgt_in_src_gnum], vs.INNER_AXIS))
+      tgt_in_src_wght.append(vs.concatenate([loc_tgt_in_src_wght, clo_tgt_in_scr_wght], vs.INNER_AXIS))
+
+  return tgt_in_src_gnum, tgt_in_src_wght
+
 
 class Interpolator:
   """ Low level class to perform interpolations.
@@ -65,21 +103,19 @@ class Interpolator:
     self.PTP = PDM.PartToPart(comm,
                               src_to_tgt['src_gnum'],
                               src_to_tgt['tgt_gnum'],
-                              [a.displs for a in src_to_tgt['target_gnum']],
-                              [a.values for a in src_to_tgt['target_gnum']])
+                              [a.displs for a in src_to_tgt['src_to_tgt']],
+                              [a.values for a in src_to_tgt['src_to_tgt']])
 
     self.referenced_nums = self.PTP.get_referenced_lnum2()
     self.sending_gnums = self.PTP.get_gnum1_come_from()
 
     # Send weight to targets partitions (if available, some strategy does not use weights)
-    if 'target_weight' in src_to_tgt:
-      _weight = [a.values for a in src_to_tgt['target_weight']]
+    if 'src_to_tgt_weight' in src_to_tgt:
+      _weight = [a.values for a in src_to_tgt['src_to_tgt_weight']]
       request = self.PTP.iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART1_TO_PART2,
                                _weight)
       _, self.tgt_weight = self.PTP.wait(request)
-
-
 
 
   def _reduce_single_val(self, i_part, data):

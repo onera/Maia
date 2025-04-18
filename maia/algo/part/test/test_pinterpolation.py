@@ -175,11 +175,11 @@ def test_create_src_to_tgt(comm):
   tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in zones]]
   excp_target = np.array([1,2,3,4]) if comm.Get_rank() == 0 else np.array([5,6,7,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm)
-  assert (src_to_tgt['target_gnum'][0].displs == [0,1,2,3,4]).all()
-  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Closest')
-  assert (src_to_tgt['target_gnum'][0].displs == [0,1,2,3,4]).all()
-  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
@@ -187,11 +187,11 @@ def test_create_src_to_tgt(comm):
       cx[1] += .5
   excp_target = np.array([2,1,3,4]) if comm.Get_rank() == 0 else np.array([6,5,8,7])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='LocationAndClosest')
-  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
 
   excp_target = np.array([2,3]) if comm.Get_rank() == 0 else np.array([6,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Location')
-  assert (src_to_tgt['target_gnum'][0].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
 
 
 

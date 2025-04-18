@@ -4,16 +4,16 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.utils                  import logging as mlog
-from maia.utils                  import vstride as vs
-from maia.transfer               import protocols as EP
-
-from maia.algo.part import point_cloud_utils as PCU
+from maia.utils    import logging as mlog
+from maia.transfer import protocols as EP
 
 from .import localize       as LOC
 from .import closest_points as CLO
 
-from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt
+from .import point_cloud_utils as PCU
+
+from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
+
 
 
 def get_shifted_gnum_from_loc(zones, loc):
@@ -76,7 +76,7 @@ def create_src_to_tgt(src_dom,
                                                          data['points_weights'].values,      
                                                          vtx_gnum.size)
         part_data = {'points_gnum_shifted@VTX' : vtx_to_tgt,
-                    'points_weights@VTX'       : vtx_to_weight}
+                     'points_weights@VTX'      : vtx_to_weight}
         # Careful : vertex case, the "fake partition"  vertices are not equal to the implicit distributed vertices
         # (they are local and reordered). Thus we need to move the vtx output on the distributed vtx view
         # This exchange is done with append mode because we want to merge the located data coming from different
@@ -90,8 +90,8 @@ def create_src_to_tgt(src_dom,
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
 
     # We hook midlevel API to filter some target points (the one already located)
-    src_clouds = [LOC.get_point_cloud(zone, comm, src_loc) for zone in src_dom]
-    tgt_clouds = [LOC.get_point_cloud(zone, comm, tgt_loc) for zone in tgt_dom]
+    src_clouds = [PCU.get_point_cloud(zone, comm, src_loc) for zone in src_dom]
+    tgt_clouds = [PCU.get_point_cloud(zone, comm, tgt_loc) for zone in tgt_dom]
     tgt_need_shift = False
     if strategy != 'Closest':
       tgt_need_shift = True
@@ -99,39 +99,12 @@ def create_src_to_tgt(src_dom,
 
     _, closest_out_inv = CLO._mdom_closest_points(src_clouds, tgt_clouds, comm, n_pts=n_closest_pt, reverse=True, need_shift=tgt_need_shift)
 
-  dist2weight = lambda V : vs.from_displs(V.displs, 1. / np.maximum(V.values, 1E-20))
   all_located_inv = location_out_inv
   all_closest_inv = closest_out_inv
+
   #Phase 3 : Combine Location & Closest results if both method were used
-  if strategy == 'Location' or (strategy == 'LocationAndClosest' and n_tot_unlocated == 0):
-    if src_loc=="CellCenter":
-      tgt_in_src_gnum = [data['points_gnum_shifted'] for data in all_located_inv]
-      tgt_in_src_wght = None
-    elif src_loc=="Vertex":
-      tgt_in_src_gnum = [data['points_gnum_shifted@VTX'] for data in all_located_inv]
-      tgt_in_src_wght = [data['points_weights@VTX'] for data in all_located_inv]
-        
-  elif strategy == 'Closest':
-    tgt_in_src_gnum = [data['tgt_in_src_shifted'] for data in all_closest_inv]
-    tgt_in_src_wght = [dist2weight(data['tgt_in_src_dist2']) for data in all_closest_inv]
-    
-  else:
-    tgt_in_src_gnum = []
-    tgt_in_src_wght = []
-
-    for res_loc, res_clo in zip(all_located_inv, all_closest_inv):
-      clo_tgt_in_src_gnum = res_clo['tgt_in_src_shifted']
-      clo_tgt_in_scr_wght = dist2weight(res_clo['tgt_in_src_dist2'])
-
-      if src_loc=="CellCenter":
-        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted']
-        loc_tgt_in_src_wght = vs.from_displs(loc_src_to_tgt_gnum.displs, np.ones(loc_src_to_tgt_gnum.dsize))
-      elif src_loc=="Vertex": # Move results of mesh location from cell to vtx
-        loc_src_to_tgt_gnum = res_loc['points_gnum_shifted@VTX']
-        loc_tgt_in_src_wght = res_loc['points_weights@VTX']
-
-      tgt_in_src_gnum.append(vs.concatenate([loc_src_to_tgt_gnum, clo_tgt_in_src_gnum], vs.INNER_AXIS))
-      tgt_in_src_wght.append(vs.concatenate([loc_tgt_in_src_wght, clo_tgt_in_scr_wght], vs.INNER_AXIS))
+  _strategy = 'Location' if (strategy == 'LocationAndClosest' and n_tot_unlocated == 0) else strategy
+  tgt_in_src_gnum, tgt_in_src_wght = _combine_geo_results(all_located_inv, all_closest_inv, _strategy, src_loc)
 
   # Finalize: add src and tgt gnum (shifted and as flat data)
 
@@ -141,11 +114,11 @@ def create_src_to_tgt(src_dom,
   src_to_tgt = {
     'src_gnum' : all_src_lngn,
     'tgt_gnum' : all_tgt_lngn,
-    'target_gnum' : tgt_in_src_gnum
+    'src_to_tgt' : tgt_in_src_gnum
     }
 
   if tgt_in_src_wght is not None:
-    src_to_tgt['target_weight'] = tgt_in_src_wght
+    src_to_tgt['src_to_tgt_weight'] = tgt_in_src_wght
 
   return src_to_tgt
 

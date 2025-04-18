@@ -27,10 +27,10 @@ def test_cell_tgt_to_vtx_tgt():
   # Logs detail
   # active_cell = [1,1, 2, 4,4,4]
   # active_cell_vtx = [3,9,5, 3,9,5,   3,5,2,1,   10,2,3, 10,2,3, 10,2,3] (counts = [3,3,4,3,3,3])
-  # vtx_to_tgt_n = [1,4,6,0,3,0,0,0,2,3,0,0] (taille 12 = n_vtx) <-- nb apparition des sommets
-  # cell_tgt_extended = [11,11,11, 9,9,9, 101,101,101,101, 6,6,6, 2,2,2, 1,1,1] <-- each tgt point is repeted
-  #  times the number of vertex in the src cell
-  # sort_idx = [9,14,8,11,17,0,6,3,12,15,18,2,5,7,4,1,13,10,16] <-- Ordre de selection pour trier selon ordre sommets
+  # vtx_to_tgt_n = [1,4,6,0,3,0,0,0,2,3,0,0] (size = n_vtx = 12) <-- nb of apparition for each vertex
+  # cell_tgt_extended = [11,11,11, 9,9,9, 101,101,101,101, 6,6,6, 2,2,2, 1,1,1] <-- each tgt point is repeted times
+  #                                                                              the number of vertex in the src cell
+  # sort_idx = [9,14,8,11,17,0,6,3,12,15,18,2,5,7,4,1,13,10,16] <-- Selection order to sort following vertices order
 
 def test_interpolator_reductions():
   class Empty: #Used to create a interpolator like object
