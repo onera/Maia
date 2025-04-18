@@ -6,6 +6,7 @@ from typing import (
   Iterable,
   Iterator,
   List,
+  Literal,
   NamedTuple,
   Optional,
   TextIO,

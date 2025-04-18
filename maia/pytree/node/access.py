@@ -227,7 +227,7 @@ def get_children(node:CGNSTree) -> List[CGNSTree]:
   """
   return node[2]
 
-def add_child(node:CGNSTree, child:CGNSTree):
+def add_child(node:CGNSTree, child:Optional[CGNSTree]):
   """ Append a child node to the children list of a CGNSNode.
 
   Args:
