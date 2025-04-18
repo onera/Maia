@@ -18,6 +18,7 @@ Developpement version
 - Update Periodic_t values in cartesian ↔ cylindrical conversions
 - localize_points: allow source mesh to be structured
 - Allow distributed meshes in localize_points and find_closest_points
+- Allow distributed meshes in interpolation
 - convert_s_to_u: manage 2D input meshes and add standard elements output mode
 
 🐞 Fixes

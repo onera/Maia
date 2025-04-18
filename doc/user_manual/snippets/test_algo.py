@@ -354,7 +354,7 @@ def test_interpolate():
   src_sol = maia.pytree.new_FlowSolution('FlowSolution', loc='CellCenter', parent=zone)
   PT.new_DataArray("Field", numpy.random.rand(PT.Zone.n_cell(zone)), parent=src_sol)
 
-  maia.algo.part.interpolate(part_tree_src, part_tree_tgt, comm,\
+  maia.algo.interpolate(part_tree_src, part_tree_tgt, comm,\
       ['FlowSolution'], 'Vertex')
   tgt_sol = PT.get_node_from_name(part_tree_tgt, 'FlowSolution')
   assert tgt_sol is not None and PT.Subset.GridLocation(tgt_sol) == 'Vertex'

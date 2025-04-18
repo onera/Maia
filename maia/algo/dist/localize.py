@@ -6,14 +6,13 @@ import maia.pytree.maia   as MT
 
 from maia          import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils    import py_utils, np_utils, par_utils
-from maia.utils    import vstride as vs
 
 from maia.transfer import protocols as EP
 
 from maia.algo.indexing                import pe_to_nface, ngon_to_edge_pe, get_pe_local
-from maia.algo.dist.geometry           import _compute_elements_center
 from maia.algo.dist.ngon_tools         import PDM_dfacecell_to_dcellface
 from maia.algo.dist.connectivity_utils import entity_vtx_connectivity_elt, cell_vtx_connectivity_S
+from maia.algo.dist.point_cloud_utils  import get_point_cloud
 
 from maia.algo.part.localize import _mdom_mesh_location as _mdom_mesh_location_part
 
@@ -138,43 +137,6 @@ def minimal_partitioning(zone, comm, use_geom=False):
     part_data.insert(2, pvtx_coords)
   return part_data
 
-
-def get_point_cloud(zone, comm, location):
-  """
-  If location == Vertex, return the (interlaced) coordinates of vertices 
-  and vertex global numbering of a partitioned zone
-  If location == Center, compute and return the (interlaced) coordinates of
-  cell centers and cell global numbering of a partitioned zone
-  """
-  vtx_distri   = MT.get_distribution(zone, 'Vertex')[1]
-  cell_distri  = MT.get_distribution(zone, 'Cell')[1]
-
-  if location == 'Vertex':
-    vtx_ln_to_gn = np.arange(vtx_distri[0], vtx_distri[1], dtype=pdm_gnum_dtype) + 1
-    coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(zone)]
-    vtx_coords   = np_utils.interweave_arrays(coords)
-    return vtx_coords, vtx_ln_to_gn
-
-  elif location == 'CellCenter':
-    cell_distri   = MT.get_distribution(zone, 'Cell')[1]
-    cell_ln_to_gn = np.arange(cell_distri[0], cell_distri[1], dtype=pdm_gnum_dtype) + 1
-    center_cell = _compute_elements_center(zone, 'CellCenter', comm)
-    return center_cell, cell_ln_to_gn
-  
-  else: #Try to catch a container with the given name
-    container = PT.get_child_from_name(zone, location)
-    if container:
-      assert PT.get_child_from_name(container, 'PointList') is None
-      assert PT.get_child_from_name(container, 'PointRange') is None
-      coords = [PT.get_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
-      int_coords = np_utils.interweave_arrays(coords)
-      if PT.Subset.GridLocation(container) == 'Vertex':
-        ln_to_gn = np.arange(vtx_distri[0], vtx_distri[1], dtype=pdm_gnum_dtype) + 1
-      elif PT.Subset.GridLocation(container) == 'CellCenter':
-        ln_to_gn = np.arange(cell_distri[0], cell_distri[1], dtype=pdm_gnum_dtype) + 1
-      return int_coords, ln_to_gn
-
-  raise RuntimeError("Unknow location or node")
 
 
 def _mdom_mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):

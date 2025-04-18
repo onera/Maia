@@ -21,8 +21,8 @@ class Test_closest_points:
            (np.array([.75,.25,.25, .75,.75,.25]), np.array([2,4], pdm_gnum_dtype))]
       }
   tgt_clouds_per_rank = {
-      0 : [(np.array([.6,.9,0]), np.array([2], pdm_gnum_dtype)), (np.array([1.6,.9,0]), np.array([4], pdm_gnum_dtype))],
-      1 : [(np.array([.6,.9,0, .6,.9,.8, 1.2, 0.1, 0.1]), np.array([1,3,5], pdm_gnum_dtype))]
+      0 : [(np.array([.6,.9,0]), np.array([2], pdm_gnum_dtype)), (np.array([1.6,.9,0]), np.array([14], pdm_gnum_dtype))],
+      1 : [(np.array([.6,.9,0, .6,.9,.8, 1.2, 0.1, 0.1]), np.array([1,13,5], pdm_gnum_dtype))]
       }
 
   def test_empty_tgt(self, comm):
@@ -35,19 +35,19 @@ class Test_closest_points:
     tgt_clouds = self.tgt_clouds_per_rank[comm.Get_rank()]
 
     if reverse:
-      tgt_data, src_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=True)
+      tgt_data, src_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=True, need_shift=True)
     else:
-      tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False)
+      tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False, need_shift=True)
 
     if comm.Get_rank() == 0:
       expected_tgt_data = [{'closest_src_gnum' : [4], 'closest_src_distance' : [0.1075]},
                            {'closest_src_gnum' : [4], 'closest_src_distance' : [0.8075]}]
-      expected_src_data = [{'tgt_in_src' : vs.from_counts([0,0,0,1], [3]), 
+      expected_src_data = [{'tgt_in_src' : vs.from_counts([0,0,0,1], [13]), 
                             'tgt_in_src_dist2' : vs.from_counts([0,0,0,1], [0.0475])}]
     elif comm.Get_rank() == 1:
       expected_tgt_data = [{'closest_src_gnum' : [4,8,2], 'closest_src_distance' : [0.1075, 0.0475, 0.2475]}]
       expected_src_data = [{'tgt_in_src' : vs.from_counts([0,0], []), 'tgt_in_src_dist2' : vs.from_counts([0,0],[])},
-                           {'tgt_in_src' : vs.from_counts([1,3], [5,1,2,4]), 'tgt_in_src_dist2' : vs.from_counts([1,3], [0.2475, 0.1075, 0.1075, 0.8075])}]
+                           {'tgt_in_src' : vs.from_counts([1,3], [5,1,2,14]), 'tgt_in_src_dist2' : vs.from_counts([1,3], [0.2475, 0.1075, 0.1075, 0.8075])}]
 
     for i_part, expct_data in enumerate(expected_tgt_data):
       for key in expct_data:
@@ -61,7 +61,7 @@ class Test_closest_points:
     src_clouds = self.src_clouds_per_rank[comm.Get_rank()]
     tgt_clouds = self.tgt_clouds_per_rank[comm.Get_rank()]
 
-    tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=3)
+    tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=3, need_shift=True)
 
     if comm.Get_rank() == 0:
       expected_tgt_data = [{'closest_src_gnum' : [2,3,4], 'closest_src_distance' : [0.5075, 0.2075, 0.1075]},

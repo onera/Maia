@@ -2,11 +2,9 @@ import pytest
 import pytest_parallel
 import numpy as np
 
-import Pypdm.Pypdm as PDM
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.utils import vstride as vs
 
 import maia
 from maia              import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -17,27 +15,7 @@ from maia.algo.part import interpolation as ITP
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
 
-def test_cell_tgt_to_vtx_tgt():
-  n_vtx = 12
-  cell_vtx = vs.array([[5,7,1,6], [3,9,5], [3,5,2,1], [10,4,8], [10,2,3]], dtype=np.int32)
-  cell_tgt = vs.array([[],        [11,9],  [101],     [],       [6,2,1]], dtype=pdm_gnum_dtype)
-  cell_vtx_wgt = np.array([3,9,5, 3,9,5, 3,5,2,1, 10,2,3, 10,2,3, 10,2,3], dtype=np.float64)*0.1
 
-  expctd_vtx_to_tgt = vs.array([[101], [1,2,6,101], [1,2,6,9,11,101], [], [9,11,101], [], 
-                                [], [], [9,11], [1,2,6], [],[]], dtype=pdm_gnum_dtype)
-  expctd_vtx_to_tgt_wgt = vs.from_displs(expctd_vtx_to_tgt.displs,
-    np.array([1, 2,2,2,2, 3,3,3,3,3,3, 5,5,5, 9,9, 10,10,10], dtype=np.float64)*0.1)
-  # Vtx 2 appears in cells 3 & 5. Thoses cells have localized tgt ids 101,6,2,1 in them, so we
-  # expect to get tgt 101,6,2 and 1 for vtx2
-
-  vtx_to_tgt, vtx_to_tgt_wgt = ITP._cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_wgt, n_vtx)
-
-  # The order of `vtx_to_tgt` does not matter and is not specified by the algorithm,
-  # so whatever we get, we can order it before checking it
-  vtx_to_tgt = vs.sort(vtx_to_tgt, vs.INNER_AXIS)
-
-  assert vs.array_equal(vtx_to_tgt, expctd_vtx_to_tgt)
-  assert vs.array_equal(vtx_to_tgt_wgt, expctd_vtx_to_tgt_wgt)
 
 src_part_0 = f"""
 ZoneU Zone_t [[18,4,0]]:
@@ -197,11 +175,11 @@ def test_create_src_to_tgt(comm):
   tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in zones]]
   excp_target = np.array([1,2,3,4]) if comm.Get_rank() == 0 else np.array([5,6,7,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm)
-  assert (src_to_tgt[0]['target_gnum'].displs == [0,1,2,3,4]).all()
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Closest')
-  assert (src_to_tgt[0]['target_gnum'].displs == [0,1,2,3,4]).all()
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].displs == [0,1,2,3,4]).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
 
   for tgt_zones in tgt_parts_per_dom:
     for tgt_zone in tgt_zones:
@@ -209,67 +187,45 @@ def test_create_src_to_tgt(comm):
       cx[1] += .5
   excp_target = np.array([2,1,3,4]) if comm.Get_rank() == 0 else np.array([6,5,8,7])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='LocationAndClosest')
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
 
   excp_target = np.array([2,3]) if comm.Get_rank() == 0 else np.array([6,8])
   src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, strategy='Location')
-  assert (src_to_tgt[0]['target_gnum'].values == excp_target).all()
+  assert (src_to_tgt['src_to_tgt'][0].values == excp_target).all()
 
-def test_interpolator_reductions():
-  class Empty: #Used to create a interpolator like object
-    pass
-  fake_interpolator = Empty()
 
-  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,1,2,3])}]
-  data = np.array([1,2,3], np.int32)
-  out = ITP.Interpolator._reduce_single_val(fake_interpolator, 0, data)
-  assert np.array_equal(out, data)
-
-  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,4,6])}]
-  fake_interpolator.tgt_weight = [1./np.array([1,1,1E-20,1,3,1])]
-  data = np.array([1,2, 10,11, 20,30], np.float64)
-  out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
-  assert (out == np.array([1.5, 10., 27.5])).all()
-
-  fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,5,6])}]
-  fake_interpolator.tgt_weight = [1./np.array([1,1, 1E-20,1,3, 1])]
-  data = np.array([1,2, 10,11,20, 30], np.float64)
-  out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
-  assert (out == np.array([1.5, 10., 30.0])).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_interpolate_fields(comm):
   if comm.Get_rank() == 0:
-    pt = src_part_0
+    pt = src_part_0.replace("ZoneU", "ZoneU.P0.N0")
     expected_sol = np.array([2.,2.,2.,3.,3.,3.,3.,3.,3., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   else:
-    pt = src_part_1
+    pt = src_part_1.replace("ZoneU", "ZoneU.P1.N0")
     expected_sol = np.array([6.,6.,6.,8.,8.,8.,8.,8.,8., 2.,2.,2.,3.,3.,3.,3.,3.,3.])
   part_tree = PT.yaml.to_cgns_tree(pt)
+  src_tree = part_tree
 
-  src_parts_per_dom = [PT.get_all_Zone_t(part_tree)]
-  tgt_parts_per_dom = [[PT.deep_copy(zone) for zone in PT.get_all_Zone_t(part_tree)]]
-  for tgt_zones in tgt_parts_per_dom:
-    for tgt_zone in tgt_zones:
-      cx = PT.get_node_from_name(tgt_zone, 'CoordinateX')
-      cy = PT.get_node_from_name(tgt_zone, 'CoordinateY')
-      cz = PT.get_node_from_name(tgt_zone, 'CoordinateZ')
-      cx[1] += .55
-      cy[1] += .05
-      cz[1] -= .05
+  tgt_tree = PT.deep_copy(src_tree)
+  for tgt_zone in PT.get_all_Zone_t(tgt_tree):
+    cx = PT.get_node_from_name(tgt_zone, 'CoordinateX')
+    cy = PT.get_node_from_name(tgt_zone, 'CoordinateY')
+    cz = PT.get_node_from_name(tgt_zone, 'CoordinateZ')
+    cx[1] += .55
+    cy[1] += .05
+    cz[1] -= .05
 
-  src_to_tgt = ITP.create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, 'CellCenter', 'Vertex')
-  interpolator = ITP.Interpolator(src_parts_per_dom, tgt_parts_per_dom, src_to_tgt, 'CellCenter', 'Vertex', comm)
+  interpolator = ITP.create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'Vertex')
   interpolator.exchange_fields('MySolution')
 
-  for tgt_zones in tgt_parts_per_dom:
-    for tgt_zone in tgt_zones:
-      fs = PT.get_node_from_name(tgt_zone, 'MySolution')
-      assert PT.Subset.GridLocation(fs) == 'Vertex'
-      assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
+  for tgt_zone in PT.get_all_Zone_t(tgt_tree):
+    fs = PT.get_node_from_name(tgt_zone, 'MySolution')
+    assert PT.Subset.GridLocation(fs) == 'Vertex'
+    assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
+
 
 @pytest_parallel.mark.parallel(2)
-class Test_interpolation_api():
+def test_interpolation_api(comm):
   src_zone_0 = PT.yaml.to_node(src_part_0)
   src_zone_1 = PT.yaml.to_node(src_part_1)
   tgt_zone_0 = PT.yaml.to_node(tgt_part_0)
@@ -279,60 +235,39 @@ class Test_interpolation_api():
   # - For 10 to 18 (middle) : 1 2 2 4 3 3 4 3 3
   # - For 19 to 27 (top)    : 5 6 6 7 8 8  7 8 8
   expected_vtx_sol = [ np.array([1., 1, 5, 2, 4, 3, 2, 4, 3, 6, 7, 8]),
-                       np.array([4., 4, 7, 8, 8, 4, 3, 3, 4, 3, 3, 3, 3, 7, 8, 8]),
-                       np.array([2., 3, 3, 2, 6, 2, 3, 3, 2, 3, 3, 3, 3, 6, 8, 8])]
+                      np.array([4., 4, 7, 8, 8, 4, 3, 3, 4, 3, 3, 3, 3, 7, 8, 8]),
+                      np.array([2., 3, 3, 2, 6, 2, 3, 3, 2, 3, 3, 3, 3, 6, 8, 8])]
   expected_cell_sol = [ np.array([1., 5.]),
                         np.array([7., 8., 4.]),
                         np.array([2., 6., 3.])]
-  all_zones = [src_zone_0, src_zone_1, tgt_zone_0, tgt_zone_1, tgt_zone_2]
 
-  def test_interpolate_from_parts_per_dom(self,comm):
-    if comm.Get_rank() == 0:
-      src_parts_per_dom = [[self.src_zone_0]]
-      tgt_parts_per_dom = [[self.tgt_zone_0, self.tgt_zone_1]]
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1]]
-    elif comm.Get_rank() == 1:
-      src_parts_per_dom = [[self.src_zone_1]]
-      tgt_parts_per_dom = [[self.tgt_zone_2]]
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in [2]]
+  src_tree = PT.new_CGNSTree()
+  src_base = PT.new_CGNSBase(parent=src_tree)
+  tgt_tree = PT.new_CGNSTree()
+  tgt_base = PT.new_CGNSBase(parent=tgt_tree)
 
-    ITP.interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, \
-        ['MySolution'], 'Vertex', strategy='Closest')
+  if comm.Get_rank() == 0:
+    src_zone_0[0] = 'Source.P0.N0'
+    tgt_zone_0[0] = 'Target.P0.N0'
+    tgt_zone_1[0] = 'Target.P0.N1'
+    tgt_zone_2[0] = 'Target.P0.N2'
+    PT.add_child(src_base, src_zone_0)
+    PT.add_child(tgt_base, tgt_zone_0)
+    PT.add_child(tgt_base, tgt_zone_1)
+    PT.add_child(tgt_base, tgt_zone_2)
+    expected_vtx_sol = [expected_vtx_sol[k] for k in [0,1,2]]
+  elif comm.Get_rank() == 1:
+    src_zone_1[0] = 'Source.P1.N0'
+    PT.add_child(src_base, src_zone_1)
+    expected_vtx_sol = [expected_vtx_sol[k] for k in []]
 
-    for tgt_zones in tgt_parts_per_dom:
-      for i_tgt, tgt_zone in enumerate(tgt_zones):
-        fs = PT.get_child_from_name(tgt_zone, 'MySolution')
-        assert PT.Subset.GridLocation(fs) == 'Vertex'
-        assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+  maia.algo.interpolate(src_tree, tgt_tree, comm, \
+      ['MySolution'], 'Vertex', strategy='Closest')
 
-  def test_interpolate_from_dom_part_trees(self,comm):
-    src_tree = PT.new_CGNSTree()
-    src_base = PT.new_CGNSBase(parent=src_tree)
-    tgt_tree = PT.new_CGNSTree()
-    tgt_base = PT.new_CGNSBase(parent=tgt_tree)
-
-    if comm.Get_rank() == 0:
-      self.src_zone_0[0] = 'Source.P0.N0'
-      self.tgt_zone_0[0] = 'Target.P0.N0'
-      self.tgt_zone_1[0] = 'Target.P0.N1'
-      self.tgt_zone_2[0] = 'Target.P0.N2'
-      PT.add_child(src_base, self.src_zone_0)
-      PT.add_child(tgt_base, self.tgt_zone_0)
-      PT.add_child(tgt_base, self.tgt_zone_1)
-      PT.add_child(tgt_base, self.tgt_zone_2)
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in [0,1,2]]
-    elif comm.Get_rank() == 1:
-      self.src_zone_1[0] = 'Source.P1.N0'
-      PT.add_child(src_base, self.src_zone_1)
-      expected_vtx_sol = [self.expected_vtx_sol[k] for k in []]
-
-    ITP.interpolate(src_tree, tgt_tree, comm, \
-        ['MySolution'], 'Vertex', strategy='Closest')
-
-    for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
-      fs = PT.get_child_from_name(tgt_zone, 'MySolution')
-      assert PT.Subset.GridLocation(fs) == 'Vertex'
-      assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
+  for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
+    fs = PT.get_child_from_name(tgt_zone, 'MySolution')
+    assert PT.Subset.GridLocation(fs) == 'Vertex'
+    assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("strategy", ['Closest', 'LocationAndClosest'])
@@ -399,9 +334,9 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
     gnum     = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
     PT.new_FlowSolution('FS', loc="Vertex", fields={'gnum':gnum, 'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
 
-  interpolator = maia.algo.part.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
-                                                    strategy=strategy,
-                                                    n_closest_pt=1)
+  interpolator = maia.algo.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
+                                               strategy=strategy,
+                                               n_closest_pt=1)
   interpolator.exchange_fields('FS', ITP.Interpolator._reduce_weighted_mean)
 
   # > Check result

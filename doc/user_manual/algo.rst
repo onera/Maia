@@ -87,7 +87,6 @@ Mesh extractions
 Interpolations
 ^^^^^^^^^^^^^^
 
-.. autofunction:: maia.algo.part.interpolate
 .. autofunction:: maia.algo.part.centers_to_nodes
 .. autofunction:: maia.algo.part.nodes_to_centers
 
@@ -112,6 +111,10 @@ Geometric calculations
 .. autofunction:: maia.algo.find_closest_points
 .. autofunction:: maia.algo.compute_elements_center
 .. autofunction:: maia.algo.compute_elements_measure
+
+Interpolations
+^^^^^^^^^^^^^^
+.. autofunction:: maia.algo.interpolate
 
 Connectivities conversions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
