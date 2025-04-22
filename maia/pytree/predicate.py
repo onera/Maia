@@ -9,22 +9,24 @@ from   maia.pytree      import node as N
 from   maia.pytree      import sids as S
 from   maia.pytree.node import check
 
-__NAME__     = 0
-__VALUE__    = 1
-__CHILDREN__ = 2
-__LABEL__    = 3
-
 def match_name(n:CGNSTree, name: str) -> bool:
-  return fnmatch.fnmatch(n[__NAME__], name)
+  return fnmatch.fnmatch(n[0], name)
 
 def match_value(n:CGNSTree, value) -> bool:
-  return np.array_equal(n[__VALUE__], N.access._convert_value(value))
+  if n[1] is None:
+    return value is None
+  elif value is None: #value is None and node[1] is not None
+    return False
+  else:
+    _value = N.access._convert_value(value)
+    assert _value is not None
+    return np.array_equal(n[1], _value)
 
 def match_str_label(n:CGNSTree, label:str) -> bool:
-  return fnmatch.fnmatch(n[__LABEL__], label)
+  return fnmatch.fnmatch(n[3], label)
 
 def match_cgk_label(n:CGNSTree, label) -> bool:
-  return n[__LABEL__] == label.name
+  return n[3] == label.name
 
 def match_label(n:CGNSTree, label):
   return match_cgk_label(n, label) if isinstance(label, CGK.Label) else match_str_label(n, label)
@@ -49,11 +51,14 @@ def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
   """
   from maia.pytree import get_node_from_predicate, iter_nodes_from_predicate
   family_name_n = get_node_from_predicate(n, 'FamilyName_t', depth=[1,1])
-  if family_name_n and fnmatch.fnmatch(N.get_value(family_name_n), target_family):
-    return True
+  if family_name_n:
+    assert isinstance(fam_val:=N.get_value(family_name_n), str)
+    if fnmatch.fnmatch(fam_val, target_family):
+      return True
   if allow_additional:
     for additional_family_n in iter_nodes_from_predicate(n, 'AdditionalFamilyName_t', depth=[1,1]):
-      if fnmatch.fnmatch(N.get_value(additional_family_n), target_family):
+      assert isinstance(fam_val:=N.get_value(additional_family_n), str)
+      if fnmatch.fnmatch(fam_val, target_family):
         return True
   return False
 

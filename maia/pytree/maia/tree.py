@@ -11,7 +11,7 @@ from maia.utils          import np_utils, py_utils
 from maia.utils.parallel import algo as par_algo
 
 # Note : these two will probably go elsewhere in maia or directly in PDM
-def _encode(strings):
+def _encode(strings:List[str]) -> Tuple[NDArray[np.int32], NDArray[np.int8]]:
   bstrings = [s.encode() for s in strings]
   stride = np.array([len(bs) for bs in bstrings], np.int32)
 
@@ -23,7 +23,7 @@ def _encode(strings):
 
   return stride, buff
 
-def _decode(stride, buff):
+def _decode(stride:NDArray[np.int32], buff:NDArray[np.int8]) -> List[str]:
   stride_idx = np_utils.sizes_to_indices(stride)
   return [bytes(buff[stride_idx[i]:stride_idx[i+1]]).decode() for i in range(stride.size)]
 
@@ -44,9 +44,9 @@ def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
 
   PT.enforceDonorAsPath(part_tree)
   is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_gc]
+  gc_predicates:Predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_gc]
   gcs = PT.get_children_from_predicates(part_tree, gc_predicates)
-  zones_path_wanted = [PT.get_value(gc) for gc in gcs]
+  zones_path_wanted:List[str] = [PT.get_value(gc) for gc in gcs] #type:ignore #(gc values should be str)
 
   zone_gnum = par_algo.compute_gnum(zones_path_ini + zones_path_wanted, comm)
   cur_zone_gnum, wanted_zone_gnum = py_utils.to_nested_list(zone_gnum, (len(zones_path_ini), len(zones_path_wanted)))
@@ -58,7 +58,7 @@ def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
 
   # Update tree
   for i, path in enumerate(zones_path_ini):
-    zone = PT.get_node_from_path(part_tree, path)
+    zone = PT.request_node_from_path(part_tree, path)
     PT.set_name(zone, path_tail(new_names[i]))
   for gc, new_name in zip(gcs, recv_names):
     PT.set_value(gc, new_name)

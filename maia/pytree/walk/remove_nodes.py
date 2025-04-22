@@ -5,33 +5,28 @@ from maia.pytree.utils     import path_head, path_tail
 
 from .walkers_api import get_node_from_path
 
-# Keys to access CGNSTree values
-__NAME__     = 0
-__VALUE__    = 1
-__CHILDREN__ = 2
-__LABEL__    = 3
 
 def _rm_nodes_from_predicate_with_level__(parent, predicate, depth, level=1):
   results = []
-  for ichild, child in enumerate(parent[__CHILDREN__]):
+  for ichild, child in enumerate(parent[2]):
     if predicate(child):
       results.append(ichild)
     else:
       if level < depth:
         _rm_nodes_from_predicate_with_level__(child, predicate, depth, level=level+1)
   for ichild in reversed(results):
-    del parent[__CHILDREN__][ichild]
+    del parent[2][ichild]
 
 
 def _rm_nodes_from_predicate__(parent, predicate):
   results = []
-  for ichild, child in enumerate(parent[__CHILDREN__]):
+  for ichild, child in enumerate(parent[2]):
     if predicate(child):
       results.append(ichild)
     else:
       _rm_nodes_from_predicate__(child, predicate)
   for ichild in reversed(results):
-    del parent[__CHILDREN__][ichild]
+    del parent[2][ichild]
 
 
 def rm_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool]):
@@ -39,11 +34,11 @@ def rm_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], b
   Remove the children of root node satisfying Predicate function
   """
   results = []
-  for ichild, child in enumerate(root[__CHILDREN__]):
+  for ichild, child in enumerate(root[2]):
     if predicate(child):
       results.append(ichild)
   for ichild in reversed(results):
-    del root[__CHILDREN__][ichild]
+    del root[2][ichild]
 
 def rm_children_from_name(root:CGNSTree, name:str):
   """Specialization of rm_children_from_predicate with embedded predicate match_name"""
@@ -169,7 +164,7 @@ def rm_nodes_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs):
 
 
 
-def rm_node_from_path(root:CGNSTree, path:str):
+def rm_node_from_path(root:CGNSTree, path:str) -> None:
   """ Remove the node in input tree matching the given path.
 
   A path is a str containing a full list of names, separated by ``'/'``, leading
@@ -193,7 +188,10 @@ def rm_node_from_path(root:CGNSTree, path:str):
   """
   pop_node_from_path(root, path)
 
-def pop_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
+def pop_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
+  parent:Optional[CGNSTree] = None
+  node:Optional[CGNSTree] = None
+
   if not '/' in path:
     parent = root
     name = path
@@ -201,7 +199,6 @@ def pop_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
     parent = get_node_from_path(root, path_head(path))
     name = path_tail(path)
 
-  node = None
   if parent is not None:
     for i, child in enumerate(parent[2]):
       if child[0] == name:

@@ -29,5 +29,5 @@ def element_pdm_type(n:int)->int:
 def cgns_elt_name_to_pdm_element_type(name:str)->int:
     return cgns_to_pdm[name]
 
-def pdm_elt_name_to_cgns_element_type(pdm_id:str)->int:
+def pdm_elt_name_to_cgns_element_type(pdm_id:int)->str:
     return pdm_to_cgns[pdm_id]

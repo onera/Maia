@@ -20,7 +20,7 @@ class DiffReport(NamedTuple):
   errors:str
   warnings:str
 
-CompFunction = Callable[[List[Tuple[CGNSTree,CGNSTree]]], DiffReport]
+CompFunction = Callable[[List[CGNSTree], List[CGNSTree]], DiffReport]
 
 # --------------------------------------------------------------------------
 # BASIC COMPARISON
@@ -60,9 +60,9 @@ def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) 
   elif not is_same_value_shape(n0, n1):
     return False
   elif n0[1].dtype.kind == 'f':
-    return np.allclose(n0[1], n1[1], rtol=0, atol=abs_tol)
+    return np.allclose(n0[1], n1[1], rtol=0, atol=abs_tol) #type:ignore[arg-type] #(nodes are not None, because of is_same_value_type)
   else:
-    return np.array_equal(n0[1], n1[1])
+    return np.array_equal(n0[1], n1[1]) #type:ignore[arg-type] #(nodes are not None, because of is_same_value_type)
 
 def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
@@ -272,7 +272,7 @@ class diff_tree_visitor:
     self.warn_report += warn_report
     return next_step
 
-def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = None) -> DiffReport:
+def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type:bool = True, comp:Optional[CompFunction] = None) -> DiffReport:
   """ Report the differences between two trees.
 
   This function is similar to :func:`is_same_tree`, but returns a full report of differences between

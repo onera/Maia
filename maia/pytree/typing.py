@@ -9,8 +9,10 @@ from typing import (
   Literal,
   NamedTuple,
   Optional,
+  Sequence,
   TextIO,
   Tuple,
+  Type,
   Union
 )
 
@@ -20,3 +22,6 @@ from numpy.typing import NDArray, ArrayLike, DTypeLike
 # Define maia.pytree specific types
 CGNSTree = Tuple[str, Optional[NDArray], List["CGNSTree"], str]
 CGNSPath = str
+
+Predicate = Union[str, Callable[[CGNSTree], bool]]
+Predicates = Union[str, List[Predicate]]

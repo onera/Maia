@@ -11,8 +11,6 @@ from .nodes_walker  import NodesWalker
 from .node_walkers  import NodeWalkers
 from .nodes_walkers import NodesWalkers
 
-Predicate = Union[str, Callable[[CGNSTree], bool]]
-Predicates = Union[str, List[Predicate]]
 
 # ---------------------------------------------------------------------------- #
 # API for NodeWalker
@@ -475,7 +473,7 @@ def iter_nodes_from_names(root:CGNSTree, names:List[str], **kwargs) -> Iterator[
 
 def iter_nodes_from_names(root:CGNSTree, names:List[str], ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_name"""
-  predicates:Predicates = [lambda n,name=name : match_name(n, name) for name in names]
+  predicates:Predicates = [lambda n,name=name : match_name(n, name) for name in names] #type:ignore[misc] #(can not infer lambda)
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -499,7 +497,7 @@ def iter_nodes_from_labels(root:CGNSTree, labels:List[str], **kwargs) -> Iterato
 
 def iter_nodes_from_labels(root:CGNSTree, labels:List[str], ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_label"""
-  predicates:Predicates = [lambda n,label=label : match_label(n, label) for label in labels]
+  predicates:Predicates = [lambda n,label=label : match_label(n, label) for label in labels] #type:ignore[misc] #(can not infer lambda)
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -523,7 +521,7 @@ def iter_nodes_from_values(root:CGNSTree, values, **kwargs) -> Iterator[CGNSTree
 
 def iter_nodes_from_values(root:CGNSTree, values, ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_value"""
-  predicates:Predicates = [lambda n,value=value : match_value(n, value) for value in values]
+  predicates:Predicates = [lambda n,value=value : match_value(n, value) for value in values] #type:ignore[misc] #(can not infer lambda)
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -548,7 +546,7 @@ def iter_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[
 def iter_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_name_label"""
   assert len(names) == len(labels)
-  predicates:Predicates = [lambda n,name=name,label=label : match_name_label(n, name, label) for name,label in zip(names, labels)]
+  predicates:Predicates = [lambda n,name=name,label=label : match_name_label(n, name, label) for name,label in zip(names, labels)] #type:ignore[misc] #(can not infer lambda)
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -629,7 +627,7 @@ def get_nodes_from_names(root:CGNSTree, names:List[str], **kwargs) -> List[CGNST
 
 def get_nodes_from_names(root:CGNSTree, names:List[str], ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_name"""
-  predicates:Predicates = [lambda n,name=name : match_name(n, name) for name in names]
+  predicates:Predicates = [lambda n,name=name : match_name(n, name) for name in names] #type:ignore[misc] #(can not infer lambda)
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -653,7 +651,7 @@ def get_nodes_from_labels(root:CGNSTree, labels:List[str], **kwargs) -> List[CGN
 
 def get_nodes_from_labels(root:CGNSTree, labels:List[str], ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_label"""
-  predicates:Predicates = [lambda n,label=label : match_label(n, label) for label in labels]
+  predicates:Predicates = [lambda n,label=label : match_label(n, label) for label in labels] #type:ignore[misc] #(can not infer lambda)
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -677,7 +675,7 @@ def get_nodes_from_values(root:CGNSTree, values, **kwargs) -> List[CGNSTree]: ..
 
 def get_nodes_from_values(root:CGNSTree, values, ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_value"""
-  predicates:Predicates = [lambda n,value=value : match_value(n, value) for value in values]
+  predicates:Predicates = [lambda n,value=value : match_value(n, value) for value in values] #type:ignore[misc] #(can not infer lambda)
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -702,7 +700,7 @@ def get_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[s
 def get_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_name_label"""
   assert len(names) == len(labels)
-  predicates:Predicates = [lambda n,name=name,label=label : match_name_label(n, name, label) for name,label in zip(names, labels)]
+  predicates:Predicates = [lambda n,name=name,label=label : match_name_label(n, name, label) for name,label in zip(names, labels)] #type:ignore[misc] #(can not infer lambda)
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -753,7 +751,7 @@ def get_node_from_path(root:CGNSTree, path:CGNSPath) -> Optional[CGNSTree]:
     try:
       node = next((c for c in node[2] if c[0] == name))
     except StopIteration:
-      return
+      return None
   return node
 
 def request_node_from_path(root:CGNSTree, path:CGNSPath) -> CGNSTree:
@@ -898,12 +896,11 @@ def predicates_to_path(root:CGNSTree, predicates) -> Optional[str]:
   An utility function searching descendants matching predicates,
   and returning the path of the first matching nodes (instead of the node itself)
   """
-  # TODO : get_node_from_predicates is strangly defined, it returns a tuple of None instaed of None if node is not found
   nodes = get_node_from_predicates(root, predicates, depth=[1,1], ancestors=True)
   if None in nodes:
     return None
   else:
-    return '/'.join([n[0] for n in nodes])
+    return '/'.join([n[0] for n in nodes]) #type:ignore #(all nodes are not None)
 # ---------------------------------------------------------------------------- #
 
 # ---------------------------------------------------------------------------- #

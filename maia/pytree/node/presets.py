@@ -682,15 +682,15 @@ def new_Axisymmetry(*,
   """
   node = new_node('Axisymmetry', 'Axisymmetry_t', parent=parent)
   if reference_point is not None:
-    assert len(reference_point) == 2
+    assert len(np.asarray(reference_point)) == 2
     new_DataArray("AxisymmetryReferencePoint", reference_point, dtype="R4", parent=node)
   if axis_vector is not None:
-    assert len(axis_vector) == 2
+    assert len(np.asarray(axis_vector)) == 2
     new_DataArray("AxisymmetryAxisVector", axis_vector, dtype="R4", parent=node)
   _check_parent_label(node, parent, ['CGNSBase_t'])
   return node
 
-def new_DataArray(name:str, value:ArrayLike, *, dtype:Optional[DTypeLike]=None, parent:Optional[CGNSTree]=None):
+def new_DataArray(name:str, value:ArrayLike, *, dtype:Optional[str]=None, parent:Optional[CGNSTree]=None):
   """ Create a DataArray_t node
 
   The datatype of the DataArray can be enforced with the ``dtype`` parameter, which
@@ -703,7 +703,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:Optional[DTypeLike]=None, 
   Args:
     name (str): Name of the created data array node
     value (ArrayLike) : value of the data array
-    dtype (DTypeLike) : If used, cast ``value`` to the specified type
+    dtype (str) : If used, cast ``value`` to the specified type
     parent (CGNSTree): Node to which created data array should be attached
   Example:
     >>> node = PT.new_DataArray('Data', [1,2,3])
@@ -720,6 +720,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:Optional[DTypeLike]=None, 
     Periodic_t ReferenceState_t RigidGridMotion_t ThermalConductivityModel_t ThermalRelaxationModel_t TurbulenceClosure_t \
     TurbulenceModel_t UserDefinedData_t ViscosityModel_t ZoneIterativeData_t ZoneSubRegion_t".split()
 
+  _value = None
   if dtype is not None:
     _dtype = cgns_to_dtype[dtype]
     _value = np.asarray(value, dtype=_dtype)

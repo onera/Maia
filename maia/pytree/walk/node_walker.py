@@ -10,7 +10,7 @@ class NodeWalker:
 
   def __init__(self, root,
                      predicate,
-                     search: str=NodeParser.DEFAULT,
+                     search=NodeParser.DEFAULT,
                      depth=None,
                      sort=FORWARD):
     """

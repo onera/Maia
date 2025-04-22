@@ -22,7 +22,7 @@ def test_update_node():
   create.update_node(node, 'NewName', value=[6.])
   assert NA.get_name(node) ==  'NewName'
   assert NA.get_value(node) == np.array([6.])
-  create.update_node(node, ..., 'BC_t')
+  create.update_node(node, create.UNSET, 'BC_t')
   assert NA.get_name(node)  == 'NewName'
   assert NA.get_label(node) == 'BC_t'
   with pytest.raises(Exception):

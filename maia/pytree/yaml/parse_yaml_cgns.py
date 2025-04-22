@@ -132,7 +132,7 @@ def to_node(yaml_stream) -> CGNSTree:
     └───PointList IndexArray_t I4 [[1 2 3]]
   """
   if yaml_stream=="":
-    return None
+    raise ValueError
   else:
     nodes = to_nodes(yaml_stream)
     assert len(nodes) == 1, f"Cannot convert yaml tree with {len(nodes)} to single CGNS node. Use to_nodes"

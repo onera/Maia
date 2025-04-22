@@ -9,7 +9,7 @@ IS_RELATED_ZSR = lambda n : PT.get_label(n) == 'ZoneSubRegion_t' \
 
 def enforceDonorAsPath(tree:CGNSTree):
   """ Force the GCs to indicate their opposite zone under the form BaseName/ZoneName """
-  predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+  predicates:Predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
   for base in PT.iter_all_CGNSBase_t(tree):
     base_n = PT.get_name(base)
     for gc in PT.iter_children_from_predicates(base, predicates):
@@ -135,13 +135,14 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
 
         for fld_n in PT.get_children_from_predicates(bc_ds, "BCData_t/DataArray_t"):
           PT.rm_children_from_name(zsr_n, PT.get_name(fld_n))
-          if PT.get_value(fld_n).size == 1 and (bc_size:=PT.Subset.n_elem(bc_n)) != 1: # Auto extend scalar data
+          fld_val = PT.get_value(fld_n, raw=True)
+          assert fld_val is not None, f"Found DataArray with None value: {PT.get_name(fld_n)}"
+          if fld_val.size == 1 and (bc_size:=PT.Subset.n_elem(bc_n)) != 1: # Auto extend scalar data
             if mode == 'view':
               msg = f"On ZoneSubRegion '{zsr_name}', can not create a view of scalar data '{fld_n[0]}'" \
                     f" from BCDataSet '{bc_ds[0]}', a copy is done instead"
               warnings.warn(msg, stacklevel=2)
             fld_n = PT.shallow_copy(fld_n)
-            fld_val = PT.get_value(fld_n)
             PT.set_value(fld_n, fld_val*np.ones(bc_size, fld_val.dtype))
 
           PT.add_child(zsr_n, copy_or_view(fld_n))

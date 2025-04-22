@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import warnings
+from typing import overload
 
 from maia.pytree.typing import *
 
@@ -60,20 +61,21 @@ def _convert_value(value) -> Optional[NDArray]:
         # WARNING: string numpy is limited to rank=2
         assert max([len(v) for v in _flatten(value)]) <= _CGNS_STR_SIZE
         size = _CGNS_STR_SIZE
-        if isinstance(value[0], str):
-          v = np.empty( (size,len(value) ), dtype='c', order='F')
+        _value = list(value) # List is need to use [] operator
+        if isinstance(_value[0], str):
+          v = np.empty( (size,len(_value) ), dtype='c', order='F')
           for c, i in enumerate(value):
             s = min(len(i),size)
             v[:,c] = ' '
             v[0:s,c] = i[0:s]
           result = v
         else:
-          v = np.empty( (size,max([len(v) for v in value]),len(value)), dtype='c', order='F')
+          v = np.empty( (size,max([len(v) for v in value]),len(_value)), dtype='c', order='F')
           v[:,:,:] = ' '
-          for c in range(len(value)):
-            for d in range(len(value[c])):
-              s = min(len(value[c][d]),size)
-              v[0:s,d,c] = value[c][d][0:s]
+          for c in range(len(_value)):
+            for d in range(len(_value[c])):
+              s = min(len(_value[c][d]),size)
+              v[0:s,d,c] = _value[c][d][0:s]
           result = v
     except StopIteration:
       # empty iterable -> default to I4
@@ -126,11 +128,16 @@ def set_name(node:CGNSTree, name:str):
   if check.is_valid_name(name, check_len=False):
     if not check.is_valid_name(name, check_len=True):
       warnings.warn(f"Setting a CGNS node name to {name}, which is longer than 32 char", RuntimeWarning, stacklevel=2)
-    node[0] = name
+    node[0] = name #type: ignore[index]
   else:
     raise ValueError("Unvalid name for node")
 
-def get_value(node:CGNSTree, raw:bool=False) -> Union[None, np.ndarray, str, List[str]]:
+@overload
+def get_value(node:CGNSTree, raw:Literal[True]) -> Union[None, NDArray]: ...
+@overload
+def get_value(node:CGNSTree) -> Union[None, NDArray, str, List[str]]: ...
+
+def get_value(node:CGNSTree, raw:bool=False) -> Union[None, NDArray, str, List[str]]:
   """ Return the value of a CGNSNode
 
   If value is an array of characters, it returned as a (or a
@@ -212,7 +219,7 @@ def set_value(node:CGNSTree, value:Any):
     >>> node = PT.new_node('Node')
     >>> PT.set_value(node, [3,2,1])
   """
-  node[1] = _convert_value(value)
+  node[1] = _convert_value(value) #type: ignore[index]
 
 def get_children(node:CGNSTree) -> List[CGNSTree]:
   """ Return the list of children of a CGNSNode
@@ -290,12 +297,12 @@ def set_children(node:CGNSTree, children:List[CGNSTree]):
     0
   """
   children_bck = get_children(node)
-  node[2] = []
+  node[2] = [] #type: ignore[index]
   try:
     for child in children:
       add_child(node, child)
   except Exception as e:
-    node[2] = children_bck
+    node[2] = children_bck #type: ignore[index]
     raise e 
 
 def get_label(node:CGNSTree) -> str:
@@ -330,7 +337,7 @@ def set_label(node:CGNSTree, label:str):
   if check.is_valid_label(label, only_sids=False):
     if not check.is_valid_label(label, only_sids=True):
       warnings.warn(f"Setting a CGNS node label to {label}, which is not a SIDS label", RuntimeWarning, stacklevel=2)
-    node[3] = label
+    node[3] = label #type: ignore[index]
   else:
     raise ValueError("Unvalid label for node")
 
