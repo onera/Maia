@@ -21,10 +21,9 @@ def test_create_parent_folder(comm):
   assert filename.parent.exists()
 
   # TODO This one does not work
-  #filename = tmp_dir / 'OTHERTESTDIR' / 'SUBDIR' / 'mycgns.cgns'
-  #create_parent_folder(filename, comm)
-  #assert filename.parent()
-
+  filename = tmp_dir / 'OTHERTESTDIR' / 'SUBDIR' / 'mycgns.cgns'
+  utils.create_parent_folder(filename, comm)
+  assert filename.parent.exists()
 
   # Check w/o dir (nothing should happen)
   filename = 'mycgns.cgns'

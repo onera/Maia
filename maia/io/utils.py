@@ -6,5 +6,5 @@ def create_parent_folder(filename, comm):
   rank = comm.Get_rank()
   if rank == 0:
     parent_folder = Path(filename).parent
-    Path.mkdir(parent_folder, exist_ok=True)
+    Path.mkdir(parent_folder, parents = True, exist_ok=True)
   comm.barrier()
