@@ -3,14 +3,14 @@ import numpy as np
 from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.utils     import par_utils, layouts
+from maia.utils     import par_utils
 from .dcube_generator import _dmesh_nodal_to_cgns_zone
 import Pypdm.Pypdm as PDM
 
 def dsphere_vol_nodal_generate(n_vtx: int, 
                                radius: float, 
-                               origin: Optional[np.ndarray], 
-                               comm: MPIComm) -> CGNSTree:
+                               origin: Sequence[float],
+                               comm: MPIComm) -> CGNSDistTree:
   """ Generate a nodal (TETRA_4 + TRI_3) filled sphere """
   dmesh_nodal = PDM.sphere_vol_icosphere_gen_nodal(comm, n_vtx, *origin, radius)
 
@@ -40,14 +40,14 @@ def dsphere_vol_nodal_generate(n_vtx: int,
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
     PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
-    MT.newDistribution({'Index' : np.array(par_utils.dn_to_distribution(dn_face_bnd, comm))}, parent=bc_n)
+    MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree
 
 def dsphere_surf_nodal_generate(n_vtx: int, 
                                 radius: float, 
-                                origin: Optional[np.ndarray], 
-                                comm: MPIComm) -> CGNSTree:
+                                origin: Sequence[float],
+                                comm: MPIComm) -> CGNSDistTree:
   """ Generate a nodal (TRI_3) surfacic sphere """
   dmesh_nodal = PDM.sphere_surf_icosphere_gen_nodal(comm, n_vtx, *origin, radius)
 
@@ -64,7 +64,7 @@ def dsphere_surf_nodal_generate(n_vtx: int,
 def dsphere_hollow_nodal_generate(n_vtx: int, 
                                   radius_int: float, 
                                   radius_ext: float, 
-                                  origin: Optional[np.ndarray], 
+                                  origin: Sequence[float], 
                                   comm: MPIComm, 
                                   n_layer: int = 1, 
                                   geometric_ratio: float = 1) -> CGNSTree:
@@ -100,7 +100,7 @@ def dsphere_hollow_nodal_generate(n_vtx: int,
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
     PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
-    MT.newDistribution({'Index' : np.array(par_utils.dn_to_distribution(dn_face_bnd, comm))}, parent=bc_n)
+    MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree
 
@@ -110,8 +110,8 @@ def dsphere_hollow_nodal_generate(n_vtx: int,
 def generate_dist_sphere(m: int, 
                          cgns_elmt_name: str, 
                          comm: MPIComm, 
-                         origin: Optional[np.ndarray] = np.zeros(3), 
-                         radius: Optional[float] = 1.) -> CGNSDistTree:
+                         origin: Sequence[float] = (0., 0., 0.), 
+                         radius: float = 1.) -> CGNSDistTree:
   """Generate a distributed mesh with a spherical topology.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and

@@ -253,7 +253,7 @@ def add_child(node:CGNSTree, child:Optional[CGNSTree]):
     raise RuntimeError(f'Can not add child {child[0]} to node {node[0]}: a node with the same name already exists')
   node[2].append(child)
 
-def rm_child(node:CGNSTree, child:CGNSTree):
+def rm_child(node:CGNSTree, child:Optional[CGNSTree]):
   """ Remove the node ``child`` to the children list of node ``node``.
 
   Args:

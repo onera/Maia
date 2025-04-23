@@ -12,15 +12,17 @@ def _reshape_S_arrays(tree: CGNSTree) -> None:
     if PT.Zone.Type(zone) == "Structured":
       loc_to_shape = {'Vertex' : PT.Zone.VertexSize(zone), 'CellCenter' : PT.Zone.CellSize(zone)}
       for array in PT.get_nodes_from_predicates(zone, 'GridCoordinates_t/DataArray_t'):
-        array[1] = array[1].reshape(loc_to_shape['Vertex'], order='F')
+        assert (array_val:=array[1]) is not None
+        PT.set_value(array, array_val.reshape(loc_to_shape['Vertex'], order='F'))
       for container in PT.get_nodes_from_label(zone, 'FlowSolution_t'):
         wanted_shape = loc_to_shape[PT.Subset.GridLocation(container)]
         for array in PT.get_nodes_from_label(container, 'DataArray_t'):
-          array[1] = array[1].reshape(wanted_shape, order='F')
+          assert (array_val:=array[1]) is not None
+          PT.set_value(array, array_val.reshape(wanted_shape, order='F'))
 
 def dist_to_full_tree(dist_tree: CGNSDistTree, 
                       comm: MPIComm, 
-                      target: Optional[int] = 0) -> Optional[CGNSTree]:
+                      target: int = 0) -> Optional[CGNSTree]:
   """ Generate a standard (full) CGNS Tree from a distributed tree.
 
   The output tree can be used with sequential tools, but is no more compatible with
@@ -40,12 +42,13 @@ def dist_to_full_tree(dist_tree: CGNSDistTree,
         :dedent: 2
   """
   check_cgns_dist_tree(dist_tree)
-  full_tree = PT.deep_copy(dist_tree)
+  _dist_tree = CGNSDistTree(PT.deep_copy(dist_tree))
 
-  redistribute.redistribute_tree(full_tree, f'gather.{target}', comm)
+  redistribute.redistribute_tree(_dist_tree, f'gather.{target}', comm)
   if comm.Get_rank() == target:
-    _reshape_S_arrays(full_tree)
-    distribution_tree.clean_distribution_info(full_tree)
+    _reshape_S_arrays(_dist_tree)
+    distribution_tree.clean_distribution_info(_dist_tree)
+    full_tree = _dist_tree
   else:
     full_tree = None
 

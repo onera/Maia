@@ -155,7 +155,7 @@ def transform_affine(t: CGNSTree,
     vtx_mask = np.ones(PT.get_value(any_coord).shape, bool)
     transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
 
-def scale_mesh(t: CGNSTree, s: Union[float, np.ndarray] = 1.) -> None:
+def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
   """Rescale the GridCoordinates of the input mesh.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.

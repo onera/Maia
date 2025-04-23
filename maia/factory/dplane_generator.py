@@ -11,7 +11,7 @@ import Pypdm.Pypdm as PDM
 def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,
                     have_random: bool, init_random: int,
                     nx: int, ny: int,
-                    comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
+                    comm: MPIComm) -> CGNSDistTree:
   """
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree

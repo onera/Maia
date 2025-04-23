@@ -4,6 +4,7 @@ import time
 
 from maia.typing import *
 import maia.pytree as PT
+import maia.pytree.maia as MT
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
@@ -32,7 +33,7 @@ class UDDCollector:
       self.ud_paths.append(PT.utils.path_tail(path, 1))
       return step.over # Stop exploring this level after search
 
-def set_default(dist_tree: CGNSDistTree, comm: MPIComm) -> Dict[str, Any]:
+def set_default(dist_tree, comm):
 
   default_renum = {'cell_renum_method' : 'NONE',
                    'face_renum_method' : 'NONE',
@@ -66,7 +67,7 @@ def set_default(dist_tree: CGNSDistTree, comm: MPIComm) -> Dict[str, Any]:
 
 def partition_dist_tree(dist_tree: CGNSDistTree, 
                         comm: MPIComm, 
-                        **kwargs: Any) -> CGNSPartTree:
+                        **kwargs: Dict[str, Any]) -> CGNSPartTree:
   """Perform the partitioning operation: create a partitioned tree from the input distributed tree.
 
   Important:
@@ -128,9 +129,9 @@ def partition_dist_tree(dist_tree: CGNSDistTree,
   assert isinstance(zone_to_parts, dict)
   # > Call main function
   n_cell_tot = np.sum([PT.Zone.n_cell(z) for z in PT.get_all_Zone_t(dist_tree)])
-  is_point_cloud = PT.get_node_from_labels(dist_tree, 'CGNSBase_t/Zone_t/Elements_t') is None
+  is_point_cloud = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/Elements_t') is None
   if (n_cell_tot < comm.Get_size()) and (options['graph_part_tool'] != 'hilbert') and not is_point_cloud:
-	  raise ValueError("Only 'hilbert' as 'graph_part_tool' is allowed if n_procs > n_cells")
+    raise ValueError("Only 'hilbert' as 'graph_part_tool' is allowed if n_procs > n_cells")
 
   part_tree = _partitioning(dist_tree, zone_to_parts, comm, options)
   
@@ -140,8 +141,8 @@ def partition_dist_tree(dist_tree: CGNSDistTree,
     zone_paths = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
     n_cell_per_block = np.zeros(len(zone_paths), np.int32)
     for part_zone_path in PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
-      part_zone = PT.get_node_from_path(part_tree, part_zone_path)
-      idx = zone_paths.index(PT.maia.conv.get_part_prefix(part_zone_path))
+      part_zone = PT.request_node_from_path(part_tree, part_zone_path)
+      idx = zone_paths.index(MT.conv.get_part_prefix(part_zone_path))
       n_cell = PT.Zone.n_cell(part_zone) # If zone is a point cloud, use n_vtx
       n_cell_per_block[idx] = n_cell if n_cell > 0 else PT.Zone.n_vtx(part_zone)
     if comm.Get_rank() == 0:
@@ -238,7 +239,7 @@ def _partitioning(dist_tree: CGNSDistTree,
   if has_u_zones:
     base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
     for base, u_parts in base_to_parts_u.items():
-      part_base = PT.get_child_from_name(part_tree, base)
+      part_base = PT.request_child_from_name(part_tree, base)
       for u_part in u_parts:
         if not part_options['preserve_orientation']:
           CNT.enforce_boundary_pe_left(u_part)

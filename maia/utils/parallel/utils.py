@@ -107,10 +107,10 @@ def arrays_max(array_list: List[NDArray], comm: MPIComm) -> int:
     local_max = 0
   return comm.allreduce(local_max, MPI.MAX)
 
-def any_true(L: Sequence[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
+def any_true(L: Iterable[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
   return comm.allreduce(py_utils.any_true(L, f), op=MPI.LOR)
 
-def all_true(L: Sequence[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
+def all_true(L: Iterable[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
   return comm.allreduce(py_utils.all_true(L, f), op=MPI.LAND)
 
 def exists_anywhere(trees: List[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:

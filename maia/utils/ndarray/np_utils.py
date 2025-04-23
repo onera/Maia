@@ -84,14 +84,14 @@ def sizes_to_indices(nb_array: NDArray, dtype: Optional[DTypeLike] = None) -> ND
   np.cumsum(nb_array, out=offset_array[1:])
   return offset_array
 
-def shift_nonzeros(array: NDArray, shift: Number) -> None:
+def shift_nonzeros(array: NDArray, shift: Union[int, float, np.generic]) -> None:
   """
   Add the scalar value shift to the element of array that are not
   equal to 0 (inplace)
   """
   array += shift * (array != 0)
 
-def shift_absvalue(array: NDArray, shift: Number) -> None:
+def shift_absvalue(array: NDArray, shift: Union[int, float, np.generic]) -> None:
   """
   Add the scalar value shift to the element of array
   regardless of their sign

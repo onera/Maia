@@ -54,7 +54,6 @@ class Test_bct_to_partitions_bounds():
     assert parts[2] == [[15, 23], [0, 10], [0,5]]
     assert parts[3] == [[23, 30], [0, 10], [0,5]]
 
-  def test_3d_unweighted(self):
     tree  = [[[1], [1]], [[2]]]
     wtree = [[[.2], [.1]], [[.5,.2]]]
     dims = [10, 10, 10]

@@ -9,8 +9,7 @@ from maia.utils import par_utils, layouts
 import Pypdm.Pypdm as PDM 
 
 # --------------------------------------------------------------------------
-def _dcloud_to_cgns(dpoint_cloud: Dict[str, int], 
-                    comm: MPIComm):
+def _dcloud_to_cgns(dpoint_cloud: Dict[str, Any], comm: MPIComm):
   """
   """
   # > Generate dist_tree
@@ -28,10 +27,10 @@ def _dcloud_to_cgns(dpoint_cloud: Dict[str, int],
   return dist_zone
 
 # --------------------------------------------------------------------------
-def dpoint_cloud_cartesian_generate(n_vtx: Union[int, Tuple[int, ...],List[int]],
-                                    coord_min: List[float],
-                                    coord_max: List[float], 
-                                    comm: MPIComm) -> Tuple[str, Optional[Any], List[CGNSTree], str]:
+def dpoint_cloud_cartesian_generate(n_vtx: Union[int, Sequence[int]],
+                                    coord_min: Sequence[float],
+                                    coord_max: Sequence[float],
+                                    comm: MPIComm) -> CGNSDistTree:
   """
   This function calls paradigm to generate a distributed set of points a cloud of points, in a cartesian grid, and
   return a CGNS PyTree
@@ -124,11 +123,11 @@ def dpoint_cloud_random_generate(n_g_pts: int,
 
   return dist_tree
 
-def generate_dist_points(n_vtx: Union[int, np.ndarray], 
+def generate_dist_points(n_vtx: Union[int, Sequence[int]], 
                          zone_type: str, 
                          comm: MPIComm, 
-                         origin: Optional[np.ndarray] = np.zeros(3), 
-                         max_coords: Optional[np.ndarray] = np.ones(3)) -> CGNSDistTree:
+                         origin: Sequence[float] = (0,0,0),
+                         max_coords: Sequence[float] = (1,1,1)) -> CGNSDistTree:
   """Generate a distributed mesh including only cartesian points.
   
   Returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
@@ -164,6 +163,7 @@ def generate_dist_points(n_vtx: Union[int, np.ndarray],
 
   if zone_type in ["Unstructured", "U"]:
     for base in PT.iter_all_CGNSBase_t(dist_tree):
+      assert base[1] is not None
       base[1].fill(base[1][1]) # Update cell_dim to be == to phydim (no proper def in S)
       for zone in PT.iter_all_Zone_t(base):
         zsize = np.array([[PT.Zone.n_vtx(zone), 0, 0]], order='F', dtype=pdm_gnum_dtype)

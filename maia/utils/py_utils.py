@@ -4,7 +4,7 @@ from maia.typing import *
 
 T = TypeVar('T')
 
-def to_nested_list(l, counts: Sequence[int]):
+def to_nested_list(l, counts: Iterable[int]):
   """ Transform a flat list to a list of lists"""
   assert len(l) == sum(counts)
   nested = list()
@@ -14,7 +14,7 @@ def to_nested_list(l, counts: Sequence[int]):
     r_idx += n_elts
   return nested
 
-def to_flat_list(nested_list: List[List[T]]) -> List[T]:
+def to_flat_list(nested_list: Iterable[Iterable[T]]) -> List[T]:
   """ Transform a list of list to a flat list"""
   return [obj for l in nested_list for obj in l]
 
@@ -135,10 +135,10 @@ def is_before(l: List, a: Any, b: Any) -> bool:
       return False
   return False
 
-def any_true(iterable: Sequence[T], predicate: Callable[[T], bool]) -> bool:
+def any_true(iterable: Iterable[T], predicate: Callable[[T], bool]) -> bool:
   return any(predicate(elem) for elem in iterable)
 
-def all_true(iterable: Sequence[T], predicate: Callable[[T], bool]) -> bool:
+def all_true(iterable: Iterable[T], predicate: Callable[[T], bool]) -> bool:
   return all(predicate(elem) for elem in iterable)
 
 def uniform_distribution_at(n_elt: int, i: int, n_interval: int) -> Tuple[int, int]:

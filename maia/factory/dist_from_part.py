@@ -2,7 +2,9 @@ import numpy as np
 from mpi4py import MPI
 import operator
 
-from maia.typing import *
+from maia.pytree.typing import Predicates
+from maia.typing        import *
+
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -18,8 +20,8 @@ from maia.pytree.graph.algo import step
 class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
   def __init__(self) -> None:
-    self.ud_paths = list()
-  def pre(self, nodes: CGNSTree) ->Optional[str]:
+    self.ud_paths:List[str] = list()
+  def pre(self, nodes: List[CGNSTree]):
     last = nodes[-1]
     if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) not in [':CGNS#GlobalNumbering', ':CGNS#LocalNumbering']:
       path = "/".join([PT.get_name(n) for n in nodes])
@@ -34,7 +36,7 @@ class UDDCollector:
 
 def discover_nodes_from_matching(dist_node: CGNSTree,
                                  part_nodes: List[CGNSTree],
-                                 queries: List[str],
+                                 queries: Predicates,
                                  comm: MPIComm,
                                  child_list: List[str] = [],
                                  get_value: Union[str, List[bool]] = "ancestors",
@@ -123,7 +125,7 @@ def get_parts_per_blocks(part_tree: CGNSPartTree,
     parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
   return parts_per_dom
 
-def _get_joins_dist_tree(parts_per_dom: CGNSTree, comm: MPIComm) -> CGNSTree:
+def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSTree]], comm: MPIComm) -> CGNSTree:
   """
   """
   is_face_intra_gc = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
@@ -139,7 +141,7 @@ def _get_joins_dist_tree(parts_per_dom: CGNSTree, comm: MPIComm) -> CGNSTree:
     dist_zone = PT.update_child(dist_base, dist_zone_name, 'Zone_t')
 
     PT.new_child(dist_zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
-    PT.maia.newDistribution(parent=dist_zone) # Needed to call relevant function nace_to_pe later
+    MT.newDistribution(parent=dist_zone) # Needed to call relevant function nace_to_pe later
     # Elements are needed only if there are some FaceCenter jns
     if par_utils.any_true(part_zones, has_face_intra_gc, comm):
       _recover_elements(dist_zone, part_zones, comm)
@@ -154,28 +156,26 @@ def get_joins_dist_tree(part_tree: CGNSPartTree, comm:MPIComm) -> CGNSTree:
   return _get_joins_dist_tree(parts_per_dom, comm)
 
 def _recover_dist_block_size(part_zones: List[CGNSTree], 
-                             comm: MPIComm) -> List[int]:
+                             comm: MPIComm) -> NDArray:
   """
   Recover the size of a distributed block from its partitions.
   
   Args:
     part_zones: List of partitioned zones
     comm: MPI communicator
-  
-  Returns:
-    List of block sizes
   """
   intra1to1 = lambda n: PT.get_label(n) == 'GridConnectivity1to1_t' and MT.conv.is_intra_gc(PT.get_name(n))
 
   # Collect zone size and pr+opposite zone thought partitioning jns
-  zones_to_size = {}
-  zones_to_join = {}
+  zones_to_size:Dict[str, Tuple[int, ...]] = {}
+  zones_to_join:Dict[str, List[CGNSTree]] = {}
   for part_zone in part_zones:
     zone_name = PT.get_name(part_zone)
     zones_to_size[zone_name] = PT.Zone.CellSize(part_zone)
     zones_to_join[zone_name] = []
     for intra_jn in PT.iter_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', intra1to1]):
       donor_path = PT.get_value(intra_jn)
+      assert isinstance(donor_path, str)
       donor_zone = donor_path if not '/' in donor_path else donor_path.split('/')[1]
       light_jn = PT.new_GridConnectivity1to1(donor_name=donor_zone,
                                              point_range=PT.Subset.getPatch(intra_jn)[1])
@@ -202,7 +202,8 @@ def _recover_dist_block_size(part_zones: List[CGNSTree],
       while keep_going:
         # Iterate jns and select one to continue in same axis/direction
         for jn in zones_to_join_g[current]:
-          pr = PT.get_child_from_name(jn, 'PointRange')[1]
+          pr_n = PT.request_child_from_name(jn, 'PointRange')
+          assert (pr := pr_n[1]) is not None
           if PT.Subset.normal_axis(jn) == axis and oper(pr[axis,0], 1):
             current = PT.get_value(jn)
             d_zone_dims[axis,1] += zones_to_size_g[current][axis]
@@ -250,7 +251,7 @@ def _recover_elements(dist_zone: CGNSTree,
       if has_edge: #2D with Edge + NGON or Edge only or NGON only
         assert all([PT.Zone.CellDimension(zone) == 2 for zone in part_zones])
         edge_name = elt_names[elt_kinds.index('BAR_2')]
-        edge_elts = [PT.get_child_from_name(part_zone, edge_name) for part_zone in part_zones]
+        edge_elts = [PT.request_child_from_name(part_zone, edge_name) for part_zone in part_zones]
         # For EdgeElements, we call part_ngon_to_dist_ngon which manages ParentElements node
         # We need to create ElementStartOffset array to do that
         for edge_elt in edge_elts:
@@ -258,8 +259,9 @@ def _recover_elements(dist_zone: CGNSTree,
         IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, edge_name, comm)
         for edge_elt in edge_elts:
           PT.rm_children_from_name(edge_elt, 'ElementStartOffset') # Cleanup
-        dist_edge_elt = PT.get_child_from_name(dist_zone, edge_name)
-        dist_edge_elt[1][0] = 3
+        dist_edge_elt = PT.request_child_from_name(dist_zone, edge_name)
+        assert (dist_edge_elt_val:=dist_edge_elt[1]) is not None
+        dist_edge_elt_val[0] = 3
         PT.rm_node_from_path(dist_edge_elt, 'ElementStartOffset')
         PT.rm_node_from_path(dist_edge_elt, ':CGNS#Distribution/ElementConnectivity')
       if has_ngon:
@@ -278,7 +280,8 @@ def _recover_elements(dist_zone: CGNSTree,
             edge_range += ngon_range[1]
             edge_pe = PT.get_child_from_name(dist_edge, 'ParentElements')
             if edge_pe is not None:
-              np_utils.shift_nonzeros(edge_pe[1], -PT.Element.Size(dist_edge))
+              assert (edge_pe_val := edge_pe[1]) is not None
+              np_utils.shift_nonzeros(edge_pe_val, -PT.Element.Size(dist_edge))
 
     elif cell_dim == 3: #3D with NGON + NFACE or NGON only
       from maia.algo                  import pe_to_nface, nface_to_pe
@@ -290,7 +293,8 @@ def _recover_elements(dist_zone: CGNSTree,
         to_copy = lambda n : PT.get_name(n) in ['ElementConnectivity', 'ParentElements']
         for zone in _part_zones:
           for node in PT.get_children_from_predicates(zone, ['Elements_t', to_copy]):
-            node[1] = node[1].copy()
+            assert (node_val := node[1]) is not None
+            PT.set_value(node, node_val.copy())
         PBO.preserve_orientation(_part_zones, comm)
       for zone in _part_zones:
         if not has_nface:
@@ -310,8 +314,9 @@ def _recover_elements(dist_zone: CGNSTree,
         dist_nf_range += dist_ng_range[1]
       elif ordering == -1: # NFACE first
         dist_ng_range += dist_nf_range[1]
-        nface_ec = PT.get_child_from_name(dist_nf, 'ElementConnectivity')[1]
-        np_utils.shift_absvalue(nface_ec, dist_nf_range[1])
+        nface_ec = PT.request_child_from_name(dist_nf, 'ElementConnectivity')
+        assert (nface_ec_val := nface_ec[1]) is not None
+        np_utils.shift_absvalue(nface_ec_val, dist_nf_range[1])
       if has_pe:
         nface_to_pe(dist_zone, comm)
       if not has_nface:
@@ -337,14 +342,14 @@ def _recover_elements(dist_zone: CGNSTree,
     if n_increase > 0:
       for elt in elt_nodes:
         dim_shift = sum(n_elt_per_dim[:PT.Element.Dimension(elt)])
-        ER = PT.get_child_from_name(elt, 'ElementRange')
-        ER[1] += dim_shift
+        ER = PT.Element.Range(elt)
+        ER += dim_shift
 
     else:
       for elt in elt_nodes:
         dim_shift = sum(n_elt_per_dim[PT.Element.Dimension(elt)+1:])
-        ER = PT.get_child_from_name(elt, 'ElementRange')
-        ER[1] += dim_shift
+        ER = PT.Element.Range(elt)
+        ER += dim_shift
 
 def _recover_BC(dist_zone: CGNSTree, 
                 part_zones: List[CGNSTree], 
@@ -357,7 +362,7 @@ def _recover_BC(dist_zone: CGNSTree,
     part_zones: List of partitioned zones
     comm: MPI communicator
   """
-  bc_predicate = ['ZoneBC_t', 'BC_t']
+  bc_predicate:Predicates = ['ZoneBC_t', 'BC_t']
 
   discover_nodes_from_matching(dist_zone, part_zones, bc_predicate, comm,
         child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'AdditionalFamilyName_t'], get_value='all')
@@ -380,7 +385,7 @@ def _recover_GC(dist_zone: CGNSTree, part_zones: List[CGNSTree], comm: MPIComm) 
   is_gc       = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   is_gc_intra = lambda n: is_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
 
-  gc_predicate = ['ZoneGridConnectivity_t', is_gc_intra]
+  gc_predicate:Predicates = ['ZoneGridConnectivity_t', is_gc_intra]
 
   discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
@@ -389,11 +394,12 @@ def _recover_GC(dist_zone: CGNSTree, part_zones: List[CGNSTree], comm: MPIComm) 
 
   #After GC discovery, cleanup donor name suffix
   for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
-    val = PT.get_value(jn)
+    assert isinstance(val := PT.get_value(jn), str)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
     if PT.GridConnectivity.is1to1(jn):
-      gc_donor_name = PT.get_child_from_name(jn, 'GridConnectivityDonorName')
-      PT.set_value(gc_donor_name, MT.conv.get_split_prefix(PT.get_value(gc_donor_name)))
+      gc_donor_name_n = PT.request_child_from_name(jn, 'GridConnectivityDonorName')
+      assert isinstance(gc_donor_name := PT.get_value(gc_donor_name_n), str)
+      PT.set_value(gc_donor_name_n, MT.conv.get_split_prefix(gc_donor_name))
 
   # Index exchange
   for gc_path in PT.predicates_to_paths(dist_zone, gc_predicate):
@@ -402,10 +408,10 @@ def _recover_GC(dist_zone: CGNSTree, part_zones: List[CGNSTree], comm: MPIComm) 
     elif PT.Zone.Type(dist_zone) == 'Structured':
       zgc_name, gc_name = gc_path.split('/')
       part_gcs = [PT.get_nodes_from_predicates(part, [zgc_name, gc_name+'*']) for part in part_zones]
-      part_gcs = py_utils.to_flat_list(part_gcs)
-      if par_utils.exists_everywhere(part_gcs, 'PointRange', comm):
+      part_gcs_flat = py_utils.to_flat_list(part_gcs)
+      if par_utils.exists_everywhere(part_gcs_flat, 'PointRange', comm):
         IPTB.part_pr_to_dist_pr(dist_zone, part_zones, gc_path, comm, True)
-      elif par_utils.exists_everywhere(part_gcs, 'PointList', comm):
+      elif par_utils.exists_everywhere(part_gcs_flat, 'PointList', comm):
         IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
 
 def _recover_base_iterative_data(dist_tree: CGNSDistTree, 
@@ -433,7 +439,7 @@ def _recover_base_iterative_data(dist_tree: CGNSDistTree,
       # If base does not exists, we dont have data -> work on ranks having data
       subcomm = comm.Split(part_base is None)
       if part_base is not None:
-        p_it_data = PT.get_child_from_label(part_base, 'BaseIterativeData_t')
+        p_it_data = PT.request_child_from_label(part_base, 'BaseIterativeData_t')
         p_z_pointers = PT.get_child_from_name(p_it_data, 'ZonePointers')
         d_it_data = PT.deep_copy(p_it_data)
         if p_z_pointers is not None:
@@ -515,7 +521,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
   _recover_base_iterative_data(dist_tree, part_tree, comm)
 
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    dist_zone = PT.get_node_from_path(dist_tree, dist_zone_path)
+    dist_zone = PT.request_node_from_path(dist_tree, dist_zone_path)
 
     part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
 
@@ -537,6 +543,8 @@ def recover_dist_tree(part_tree: CGNSPartTree,
         face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
         face_distri = par_utils.distribution_from_gnum(face_lngn_list, comm)
         MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
+    else:
+      raise AssertionError("Wrong zone type")
     PT.set_value(dist_zone, d_zone_dims)
 
     # > Create vertex distribution and exchange vertex coordinates
@@ -549,10 +557,11 @@ def recover_dist_tree(part_tree: CGNSPartTree,
 
     root = comm.allreduce(owner, MPI.MAX) # Find a rank knowing partitioned data for this zone
     coords_name, transform_n = comm.bcast((coords_name, transform_n), root)
+    assert coords_name is not None
 
     d_grid_co = PT.new_GridCoordinates('GridCoordinates', parent=dist_zone)
     for coord in coords_name:
-      PT.new_DataArray(coord, value=None, parent=d_grid_co)
+      PT.new_node(coord, 'DataArray_t', value=None, parent=d_grid_co)
     PT.add_child(d_grid_co, transform_n)
     PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 
@@ -573,7 +582,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
 
     part_to_dist._part_zones_to_dist_zone(dist_zone, part_zones, comm, filter)
     is_empty_cont = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'BCDataSet_t'] \
-                           and PT.maia.getDistribution(n) is None
+                           and MT.getDistribution(n) is None
     PT.rm_children_from_predicate(dist_zone, is_empty_cont)
     for dist_bc in PT.iter_children_from_labels(dist_zone, ['ZoneBC_t', 'BC_t']):
       PT.rm_children_from_predicate(dist_bc, is_empty_cont)
