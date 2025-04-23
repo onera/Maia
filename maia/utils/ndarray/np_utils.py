@@ -1,7 +1,6 @@
 import numpy as np
 import warnings
-import numbers
-from numbers import Number, Integral
+from numbers import Number
 
 from maia.typing import *
 import cmaia.utils as cutils
@@ -62,7 +61,7 @@ def concatenate_np_arrays(arrays: List[NDArray],
       raise ValueError("Can not concatenate empty list of arrays if dtype is not provided")
     return np.zeros(1, np.int32), np.empty(0, dtype)
 
-  merged_idx = sizes_to_indices([array.shape[-1] for array in arrays], dtype=np.int32)
+  merged_idx = sizes_to_indices(np.array([array.shape[-1] for array in arrays]), dtype=np.int32)
   stacked = np.hstack(arrays)
   if dtype is not None:
     stacked = safe_int_cast(stacked, dtype)
@@ -155,15 +154,16 @@ def arange_with_jumps(multi_interval: NDArray, jumps: NDArray) -> NDArray:
   return multi_arange(multi_interval[ :-1][~jumps],
                       multi_interval[1:  ][~jumps])
 
-def repeated_arange(counts: Union[Integral, NDArray],
+def repeated_arange(counts: Union[int, NDArray],
                     start: int = 0, 
                     stop: Optional[int] = None,
                     step: int = 1, 
                     dtype: Optional[DTypeLike] = None) -> NDArray:
   if stop is None:
+    assert isinstance(counts, np.ndarray)
     stop = start+counts.size
   else:
-    assert isinstance(counts, numbers.Integral) or stop-start == step*counts.size
+    assert isinstance(counts, int) or stop-start == step*counts.size
   return np.repeat(np.arange(start, stop, step, dtype), counts)
 
 def jagged_merge(idx1: NDArray, array1: NDArray, idx2: NDArray, array2: NDArray) -> Tuple[NDArray, NDArray]:
@@ -191,7 +191,7 @@ def roll_from(array: NDArray,
 
   return np.roll(array, -start_idx) if not reverse else np.roll(array[::-1], start_idx + 1)
 
-def others_mask(array: NDArray, ids: NDArray) -> NDArray:
+def others_mask(array: NDArray, ids: ArrayLike) -> NDArray:
   """
   Return a mask usefull to access elements of array whose local index *are not* in ids array
   """
@@ -275,7 +275,7 @@ def sort_by_stride(array_idx: ArrayLike,
     arr_out = vs.sort(arr_in, vs.INNER_AXIS)
     return arr_out.values
 
-def make_unique_by_stride(array_idx: ArrayLike, array: ArrayLike) -> NDArray:
+def make_unique_by_stride(array_idx: ArrayLike, array: ArrayLike) -> Tuple[NDArray, NDArray]:
   """
   Take a strided input array, and create a new one without repetitions
   within each interval.
@@ -328,8 +328,9 @@ def any_in_range(array: ArrayLike,
   [start, end]. In is large by defaut and strict is strict==True
   """
   np_array = np.asarray(array)
-  return ((start <  np_array) & (np_array <  end)).any() if strict\
+  np_result = ((start <  np_array) & (np_array <  end)).any() if strict \
     else ((start <= np_array) & (np_array <= end)).any()
+  return bool(np_result)
 
 def all_in_range(array: ArrayLike,
                  start: Number,
@@ -340,8 +341,9 @@ def all_in_range(array: ArrayLike,
   [start, end]. In is large by defaut and strict is strict==True
   """
   np_array = np.asarray(array)
-  return ((start <  np_array) & (np_array <  end)).all() if strict\
+  np_result = ((start <  np_array) & (np_array <  end)).all() if strict\
     else ((start <= np_array) & (np_array <= end)).all()
+  return bool(np_result)
 
 def matmul_cart_vectors(vectors: List[NDArray], transform_matrix: NDArray) -> Tuple[NDArray, ...]:
   """
@@ -371,19 +373,19 @@ def create_transform_matrix(revolution_axis: Tuple[float, float, float] = (0, 0,
   """
   assert not (np.array_equal(np.array(revolution_axis), np.zeros(3)))
 
-  revolution_axis = np.asarray(revolution_axis)
-  revolution_axis = revolution_axis / np.linalg.norm(revolution_axis)
+  revolution_axis_np = np.asarray(revolution_axis)
+  revolution_axis_np = revolution_axis_np / np.linalg.norm(revolution_axis_np)
 
-  if revolution_axis[0] != 0:
-    revolution_axis_bis = np.array([-revolution_axis[1]/revolution_axis[0], 1, 0])
-  elif revolution_axis[1] != 0:
-    revolution_axis_bis = np.array([0, -revolution_axis[2]/revolution_axis[1], 1])
-  elif revolution_axis[2] != 0:
-    revolution_axis_bis = np.array([1, 0, -revolution_axis[1]/revolution_axis[2]])
+  if revolution_axis_np[0] != 0:
+    revolution_axis_bis = np.array([-revolution_axis_np[1]/revolution_axis_np[0], 1, 0])
+  elif revolution_axis_np[1] != 0:
+    revolution_axis_bis = np.array([0, -revolution_axis_np[2]/revolution_axis_np[1], 1])
+  elif revolution_axis_np[2] != 0:
+    revolution_axis_bis = np.array([1, 0, -revolution_axis_np[1]/revolution_axis_np[2]])
   
-  revolution_axis_ter = np.cross(revolution_axis, revolution_axis_bis)
+  revolution_axis_ter = np.cross(revolution_axis_np, revolution_axis_bis)
 
-  transform_matrix = np.array([revolution_axis, revolution_axis_bis, revolution_axis_ter], order='F')
+  transform_matrix = np.array([revolution_axis_np, revolution_axis_bis, revolution_axis_ter], order='F')
      
   return transform_matrix
 

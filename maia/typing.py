@@ -20,7 +20,7 @@ from typing import (
 
 # Third party types
 from os           import PathLike
-from mpi4py.MPI   import Comm as MPIComm
+from mpi4py.MPI   import Intracomm as MPIComm
 from numpy.typing import NDArray, ArrayLike, DTypeLike
 
 # Reexport Pytree types

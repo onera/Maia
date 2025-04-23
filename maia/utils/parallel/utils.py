@@ -85,17 +85,17 @@ def partial_to_full_distribution(partial_distrib: NDArray, comm: MPIComm) -> NDA
 def full_to_partial_distribution(full_distrib: NDArray, comm: MPIComm) -> NDArray:
   return full_distrib[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
 
-def gather_and_shift(value: Union[int, float, ArrayLike],
+def gather_and_shift(value: Union[int, np.integer],
                      comm: MPIComm, 
-                     dtype: Optional[np.dtype] = None) -> NDArray:
+                     dtype: Optional[DTypeLike] = None) -> NDArray:
   if dtype is None:
-    value = np.asarray(value)
-    dtype = value.dtype
+    _value = np.asarray(value)
+    dtype = _value.dtype
   else:
-    value = np.asarray(value, dtype=dtype)
+    _value = np.asarray(value, dtype=dtype)
   distrib = np.empty(comm.Get_size()+1, dtype)
   distrib_view = distrib[1:]
-  comm.Allgather(value, distrib_view)
+  comm.Allgather(_value, distrib_view)
   distrib[0]   = 0
   np.cumsum(distrib, out=distrib)
   return distrib

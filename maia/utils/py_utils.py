@@ -1,9 +1,10 @@
 from itertools import permutations, product
-from typing import List, TypeVar, Callable, Any, Sequence, Tuple, Optional
+
+from maia.typing import *
 
 T = TypeVar('T')
 
-def to_nested_list(l: List[T], counts: List[int]) -> List[List[T]]:
+def to_nested_list(l, counts: Sequence[int]):
   """ Transform a flat list to a list of lists"""
   assert len(l) == sum(counts)
   nested = list()
@@ -24,7 +25,7 @@ def bucket_split(l: List[T],
   """ Dispatch the elements of list l into n sublists, according to the result of function f """
   if size is None: 
     size = max(f(e) for e in l) + 1
-  result = [ [] for i in range(size)]
+  result:List[List[T]] = [ [] for i in range(size)]
   for e in l:
     result[f(e)].append(e)
   if compress:
@@ -54,7 +55,7 @@ def find_tensor_names(names: List[str], axis: List[str]) -> List[str]:
 
   # For tensor, we will search only diagonal components
   to_index = {f'{a}{a}':i for i,a in enumerate(axis)} 
-  suffix_names = [set() for _ in to_index]
+  suffix_names:List[Set] = [set() for _ in to_index]
 
   for name in names:
     for suffix, index in to_index.items():
@@ -80,7 +81,7 @@ def find_vector_names(names: List[str], axis: List[str]) -> List[str]:
   names = [name for name in names if len(name) > 1]
 
   to_index = {a:i for i,a in enumerate(axis)}
-  suffix_names = [set() for _ in to_index]
+  suffix_names:List[Set] = [set() for _ in to_index]
 
   for name in names:
     for suffix, index in to_index.items():
@@ -123,6 +124,7 @@ def get_ordered_subset(subset: List[T], L: List[T]) -> Optional[Tuple[T, ...]]:
     perm_l = list(perm)
     if max([perm_l == extended_l[i:i+len(perm_l)] for i in range(len(L))]) == True:
       return perm
+  return None
 
 def is_before(l: List, a: Any, b: Any) -> bool:
   """Return True is element a is present in list l before element b"""

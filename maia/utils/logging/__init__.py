@@ -16,20 +16,22 @@ def size_to_str(size: int) -> str:
   i = 0
   if size < 1000: #Corner case with no decimal
     return "{0}".format(size)
-  while(size > 1000.):
-      size /= 1000.
+  fsize = float(size)
+  while(fsize > 1000.):
+      fsize /= 1000.
       i += 1
-  return "{0:.1f}{1}".format(size, units[i])
+  return "{0:.1f}{1}".format(fsize, units[i])
 
 def bsize_to_str(size: int) -> str:
   units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"]
   i = 0
   if size < 1000: #Corner case with no decimal
     return "{0}B".format(size)
-  while (size > 1024.):
-    size /= 1024.
+  fsize = float(size)
+  while (fsize > 1024.):
+    fsize /= 1024.
     i += 1
-  return f"{size:.1f}{units[i]}"
+  return f"{fsize:.1f}{units[i]}"
 
 def info(msg: str) -> None:
   log("maia", msg)

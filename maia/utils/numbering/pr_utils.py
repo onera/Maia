@@ -72,6 +72,33 @@ def unroll_pr(pr: NDArray) -> NDArray:
 
   return out
 
+def _ijk_to_func(idx_arrays:Sequence[NDArray], loc:str, n_vtx_S:List[int], order:str) -> NDArray:
+  """
+  Wraps the relevant ijk_to_func depening of dimension and location, and call it in a vectorial way
+  """
+  dim = len(n_vtx_S)
+  assert len(idx_arrays) == len(n_vtx_S)
+  assert order in ['F', 'C']
+
+  if dim == 3:
+    i_idx, j_idx, k_idx = idx_arrays
+    if order == 'F':
+      return ijk_to_index_from_loc(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1), loc, n_vtx_S).flatten()
+    else: # Order = 'C'
+      return ijk_to_index_from_loc(i_idx.reshape(-1,1,1), j_idx.reshape(-1,1), k_idx, loc, n_vtx_S).flatten()
+  elif dim == 2:
+    i_idx, j_idx = idx_arrays
+    if order == 'F':
+      return ij_to_index_from_loc(i_idx, j_idx.reshape(-1,1), loc, n_vtx_S).flatten()
+    else: # Order = 'C'
+      return ij_to_index_from_loc(i_idx.reshape(-1,1), j_idx, loc, n_vtx_S).flatten()
+  elif dim == 1:
+    i_idx = idx_arrays[0]
+    return i_idx
+  else:
+    raise AssertionError(f"Invalid 'n_vtx_S' argument ({n_vtx_S})")
+
+
 def compute_pointList_from_pointRanges(sub_pr_list: List[NDArray],
                                        n_vtx_S: List[int],
                                        loc: str,
@@ -83,36 +110,6 @@ def compute_pointList_from_pointRanges(sub_pr_list: List[NDArray],
   Note that the pointRange intervals can be reverted (start > end) as it occurs in GC nodes.
   """
 
-  n_cell_S = [nv - 1 for nv in n_vtx_S]
-
-  dim = len(n_vtx_S)
-
-  # The lambda func ijk_to_func redirect to the good indexing function depending
-  # on the output grid location
-  if dim == 3:
-    ijk_to_func = lambda i,j,k : ijk_to_index_from_loc(i,j,k, loc, n_vtx_S)
-  elif dim == 2:
-    ijk_to_func = lambda i,j : ij_to_index_from_loc(i,j, loc, n_vtx_S)
-  elif dim == 1:
-    ijk_to_func = lambda i : i
-  else:
-    raise AssertionError(f"Invalid 'n_vtx_S' argument ({n_vtx_S})")
-
-  # The lambda func ijk_to_vect_func is a wrapping to ijk_to_func (and so to the good indexing func)
-  # but with args expressed as numpy arrays : this allow vectorial call of indexing function as if we did an
-  # imbricated loop
-  if dim == 3:
-    if order == 'F':
-      ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1), k_idx.reshape(-1,1,1))
-    elif order == 'C':
-      ijk_to_vect_func = lambda i_idx, j_idx, k_idx : ijk_to_func(i_idx.reshape(-1,1,1), j_idx.reshape(-1,1), k_idx)
-  elif dim == 2:
-    if order == 'F':
-      ijk_to_vect_func = lambda i_idx, j_idx : ijk_to_func(i_idx, j_idx.reshape(-1,1))
-    elif order == 'C':
-      ijk_to_vect_func = lambda i_idx, j_idx : ijk_to_func(i_idx.reshape(-1,1), j_idx)
-  elif dim == 1:
-    ijk_to_vect_func = lambda i_idx : ijk_to_func(i_idx)
 
   sub_range_sizes = [(np.abs(pr[:,1] - pr[:,0]) + 1).prod() for pr in sub_pr_list]
   dtype = sub_pr_list[0].dtype if len(sub_pr_list) > 0 else int
@@ -128,7 +125,7 @@ def compute_pointList_from_pointRanges(sub_pr_list: List[NDArray],
     for l in range(pr.shape[0]):
       np_idx_arrays.append(np.arange(pr[l,0], pr[l,1] + inc[l], inc[l]))
 
-    point_list[0][counter:counter+sub_range_sizes[ipr]] = ijk_to_vect_func(*np_idx_arrays).flatten()
+    point_list[0][counter:counter+sub_range_sizes[ipr]] = _ijk_to_func(np_idx_arrays, loc, n_vtx_S, order)
     counter += sub_range_sizes[ipr]
 
   return point_list

@@ -3,6 +3,9 @@ import itertools
 import operator
 import numpy as np
 
+from       typing import Union
+from numpy.typing import ArrayLike
+
 from cmaia.utils import vstride as _vstride
 
 from enum import Enum
@@ -197,6 +200,11 @@ class VStrideArray:
     """ Modify the requested block; size and dtype of val should be consistant"""
     #assert val.dtype == self.dtype
     self.__getitem__(key)[:] = val
+
+  def __iter__(self):
+    # This method is not mandatory, but type checkers requiert it
+    for i in range(len(self)):
+      yield self[i]
 
   # BOILERPLATE part to overload classical operators
   def __numeric_iop__(self, other, op):
@@ -818,7 +826,7 @@ def delete(array, indices):
   values = array.values[extended_mask]
   return VStrideArray(None, counts, values)
 
-def insert(array:VStrideArray, indices, values:VStrideArray):
+def insert(array:VStrideArray, indices, values:Union[VStrideArray, ArrayLike]):
   """ Insert new elements in the input *VS array*.
 
   The indices where the new block(s) are insered must be
@@ -826,7 +834,7 @@ def insert(array:VStrideArray, indices, values:VStrideArray):
   must be provided as a :class:`VStrideArray` of length ``len(indices)``. 
   Its datatype will be converted if needed to match :attr:`array.dtype`.
 
-  If ``indices`` is a scalar value, then a single 1d array_like object is allowed for
+  If ``indices`` is a scalar value, then a single 1d array_like object is expected for
   ``values``.
 
   A new object is returned.
@@ -850,9 +858,11 @@ def insert(array:VStrideArray, indices, values:VStrideArray):
   if isinstance(indices, (int, np.integer)):
     if not (0 <= indices and indices <= len(array)):
       raise IndexError(f"Index {indices} is out of bounds for array of size {len(array)}")
-    counts = np.insert(array.counts, indices, len(values))
-    values = np.insert(array.values, array.displs[indices], values)
-    return VStrideArray(None, counts, values) 
+    assert not isinstance(values, VStrideArray)
+    _values = np.asarray(values)
+    new_counts = np.insert(array.counts, indices, len(_values))
+    new_values = np.insert(array.values, array.displs[indices], _values)
+    return VStrideArray(None, new_counts, new_values) 
 
   else:
     assert isinstance(values, VStrideArray)
@@ -864,9 +874,9 @@ def insert(array:VStrideArray, indices, values:VStrideArray):
     
     values_len     = np.array([len(v) for v in values], array.counts.dtype)
     extented_pos   = np.repeat(array.displs[indices], values_len)
-    counts = np.insert(array.counts, indices, values_len)
-    values = np.insert(array.values, extented_pos, values.values)
-    return VStrideArray(None, counts, values)
+    new_counts = np.insert(array.counts, indices, values_len)
+    new_values = np.insert(array.values, extented_pos, values.values)
+    return VStrideArray(None, new_counts, new_values)
 
 
 
@@ -1008,7 +1018,7 @@ def unique(array: VStrideArray, axis:Axis):
     displs, values = _vstride.make_unique_by_stride(array.displs, array.values)
     return VStrideArray(displs, None, values)
   elif axis == OUTER_AXIS:
-    raise NotImplemented
+    raise NotImplementedError
 
   else:
     raise ValueError(_UNVALID_AXIS_MSG)
