@@ -17,25 +17,25 @@ from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_
 if _LEGACY_IO:
   from . import _hdf_io_cass as _hdf_io
 else:
-  from . import _hdf_io_h5py as _hdf_io
+  from . import _hdf_io_h5py as _hdf_io #type:ignore[no-redef]
 
 from maia.factory     import full_to_dist
 
-def load_size_tree(filename: PathLike, 
+def load_size_tree(filename: Union[str, PathLike], 
                    comm: MPIComm) -> CGNSTree:
-  return _hdf_io.load_size_tree(filename, comm)
+  return _hdf_io.load_size_tree(str(filename), comm)
 
-def load_partial(filename: PathLike, 
-                 dist_tree: CGNSDistTree, 
+def load_partial(filename: str, 
+                 dist_tree: CGNSTree, 
                  hdf_filter: Dict[str, Any], 
                  comm: MPIComm) -> None:
   if _LEGACY_IO:
     _hdf_io.load_partial(filename, dist_tree, hdf_filter, comm)
   else:
-    _hdf_io.load_partial(filename, dist_tree, hdf_filter)
+    _hdf_io.load_partial(filename, dist_tree, hdf_filter) #type:ignore[call-arg] #(signature mismatch)
 
 def write_tree(tree: CGNSTree, 
-               filename: PathLike,
+               filename: Union[str, PathLike],
                links: List[List[str]] = []) -> None:
   """write_tree(tree, filename, links=[])
   
@@ -55,7 +55,7 @@ def write_tree(tree: CGNSTree,
   filename = str(filename)
   _hdf_io.write_full(filename, tree, links=links)
 
-def read_tree(filename: PathLike) -> CGNSTree:
+def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
   """read_tree(filename)
   
   Sequential load of a CGNS file. 
@@ -73,7 +73,7 @@ def read_tree(filename: PathLike) -> CGNSTree:
   else:
     return _hdf_io.read_full(filename)
 
-def read_links(filename: PathLike) -> List[List[str]]:
+def read_links(filename: Union[str, PathLike]) -> List[List[str]]:
   """read_links(filename)
   
   Detect the links embedded in a CGNS file. 
@@ -88,10 +88,11 @@ def read_links(filename: PathLike) -> List[List[str]]:
   """
   filename = str(filename)
 
-  return _hdf_io.read_links(filename)
+  assert not _LEGACY_IO, "Not implemented for legacy IO"
+  return _hdf_io.read_links(filename) #type:ignore[attr-defined] #(Only av. on h5py io)
 
-def load_tree_from_filter(filename: PathLike, 
-                          dist_tree: CGNSDistTree, 
+def load_tree_from_filter(filename: str,
+                          dist_tree: CGNSTree, 
                           comm: MPIComm, 
                           hdf_filter: Dict[str, Any]) -> None:
   """
@@ -107,7 +108,7 @@ def load_tree_from_filter(filename: PathLike,
   unlock_at_least_one = True
   while(len(hdf_filter_with_func) > 0 and unlock_at_least_one ):
     # Update if you can
-    next_hdf_filter = dict()
+    next_hdf_filter:Dict[str, Any] = dict()
     unlock_at_least_one = False
     for key, f in hdf_filter_with_func.items():
       try:
@@ -133,7 +134,7 @@ def load_tree_from_filter(filename: PathLike,
     mlog.error(f"ElementConnectivity arrays of NFACE_n elements have been recomputed "\
                f"because they were wrongly defined (missing orientations)")
 
-def save_tree_from_filter(filename: PathLike, 
+def save_tree_from_filter(filename: str,
                           dist_tree: CGNSDistTree, 
                           comm: MPIComm, 
                           hdf_filter: Dict[str, Any], 
@@ -143,7 +144,7 @@ def save_tree_from_filter(filename: PathLike,
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
   hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() if not isinstance(value, list)}
 
-  next_hdf_filter = dict()
+  next_hdf_filter:Dict[str, Any] = dict()
   for key, f in hdf_filter_with_func.items():
     f(hdf_filter_with_dim)
 
@@ -154,7 +155,7 @@ def save_tree_from_filter(filename: PathLike,
   _hdf_io.write_partial(filename, saving_dist_tree, hdf_filter_with_dim, links, comm)
 
 def fill_size_tree(tree: CGNSTree, 
-                   filename: PathLike, 
+                   filename: Union[str, PathLike], 
                    comm: MPIComm) -> None:
   filename = str(filename)
   add_distribution_info(tree, comm)
@@ -166,7 +167,7 @@ def fill_size_tree(tree: CGNSTree,
   PT.rm_nodes_from_name(tree, '*#Size')
 
 
-def file_to_dist_tree(filename: PathLike, comm: MPIComm) -> CGNSDistTree:
+def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDistTree:
   """file_to_dist_tree(filename, comm)
   
   Distributed load of a CGNS file.
@@ -189,8 +190,9 @@ def file_to_dist_tree(filename: PathLike, comm: MPIComm) -> CGNSDistTree:
     dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
 
   else:
-    dist_tree = load_size_tree(filename, comm)
-    fill_size_tree(dist_tree, filename, comm)
+    size_tree = load_size_tree(filename, comm)
+    fill_size_tree(size_tree, filename, comm)
+    dist_tree = CGNSDistTree(size_tree)
 
   end = time.time()
   dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
@@ -201,7 +203,7 @@ def file_to_dist_tree(filename: PathLike, comm: MPIComm) -> CGNSDistTree:
   return dist_tree
 
 def dist_tree_to_file(dist_tree: CGNSDistTree, 
-                      filename: PathLike, 
+                      filename: Union[str, PathLike], 
                       comm: MPIComm, 
                       links: List[List[str]] = []) -> None:
   """dist_tree_to_file(dist_tree, filename, comm, links=[])
@@ -218,7 +220,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
   """
   check_cgns_dist_tree(dist_tree)
   if links:
-    dist_tree = PT.shallow_copy(dist_tree)
+    dist_tree = CGNSDistTree(PT.shallow_copy(dist_tree))
     for link in links: # Links override data, so delete data
       PT.rm_node_from_path(dist_tree, link[3])
 
@@ -234,7 +236,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
   mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
 def write_trees(tree: CGNSTree, 
-                filename: PathLike, 
+                filename: Union[str, PathLike], 
                 comm: MPIComm, 
                 links: List[List[str]] = []) -> None:
   """write_trees(tree, filename, comm, links=[])

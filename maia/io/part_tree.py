@@ -2,10 +2,11 @@ import os
 
 import maia
 from maia.typing import *
+from maia.pytree.typing import Predicate
 import maia.pytree        as PT
-import maia.pytree.utils  as PTu
 import maia.pytree.maia   as MT
 
+import maia.pytree.utils  as PTu
 import maia.utils.logging as mlog
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from maia.factory.partitioning import compute_nosplit_weights
@@ -13,6 +14,9 @@ from maia.pytree.maia.check_tree import check_cgns_part_tree
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
 
+def get_str_value(node:CGNSTree) -> str:
+  assert isinstance(value := PT.get_value(node), str)
+  return value
 
 if _LEGACY_IO:
   import Converter.Filter as Filter
@@ -39,7 +43,7 @@ def enforce_maia_naming(part_tree: CGNSPartTree,
 
   # Unsplitted joins should not be renamed (since zone prefix does not change) 
   # --> protect them
-  is_unsplit_gc = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.get_value(n).endswith('P?.N?')
+  is_unsplit_gc:Predicate = lambda n : PT.get_label(n) == 'GridConnectivity_t' and get_str_value(n).endswith('P?.N?')
   gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_unsplit_gc]
   unsplit_gcs = PT.get_children_from_predicates(part_tree, gc_predicates)
   for gc in unsplit_gcs:
@@ -56,7 +60,7 @@ def enforce_maia_naming(part_tree: CGNSPartTree,
   gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_intra_gc]
   for _, zone, _, gc in PT.get_children_from_predicates(part_tree, gc_predicates, ancestors=True):
     cur_proc, cur_part = MT.conv.get_part_suffix(PT.get_name(zone))
-    opp_proc, opp_part = MT.conv.get_part_suffix(PT.get_value(gc))
+    opp_proc, opp_part = MT.conv.get_part_suffix(get_str_value(gc))
     PT.set_name(gc, MT.conv.name_intra_gc(cur_proc, cur_part, opp_proc, opp_part))
     donor_name = PT.get_node_from_name(gc, 'GridConnectivityDonorName')
     if donor_name is not None:
@@ -64,24 +68,24 @@ def enforce_maia_naming(part_tree: CGNSPartTree,
 
 
 def _read_part_from_name(tree: CGNSTree, 
-                         filename: PathLike, 
+                         filename: Union[str, PathLike], 
                          comm: MPIComm) -> List[CGNSPath]:
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
-  max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
+  max_proc = max([MT.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
   if max_proc != comm.Get_size():
     mlog.error(f"Reading with {comm.Get_size()} procs file {filename} written for {max_proc} procs")
-  return [path for path in zones_path if PT.maia.conv.get_part_suffix(path)[0] == comm.Get_rank()]
+  return [path for path in zones_path if MT.conv.get_part_suffix(path)[0] == comm.Get_rank()]
 
 def _read_part_from_size(tree: CGNSTree, 
-                         filename: PathLike,
+                         filename: Union[str, PathLike],
                          comm: MPIComm) -> List[CGNSPath]:
   zones_path = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
-  max_proc = max([PT.maia.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
+  max_proc = max([MT.conv.get_part_suffix(path)[0] for path in zones_path]) + 1
   mlog.warning(f"Ignoring procs affectation when reading file {filename} written for {max_proc} procs")
   return [path for path in compute_nosplit_weights(tree, comm)]
 
 
-def file_to_part_tree(filename: PathLike, 
+def file_to_part_tree(filename: Union[str, PathLike], 
                       comm: MPIComm, 
                       redispatch: bool = False) -> CGNSPartTree:
   """file_to_part_tree(filename, comm, redispatch=False)
@@ -143,7 +147,7 @@ def file_to_part_tree(filename: PathLike,
 
     nodes =  Filter.readNodesFromPaths(filename, to_read)
     for path, node in zip(to_read, nodes):
-      base = PT.get_node_from_path(tree, PTu.path_head(path))
+      base = PT.request_node_from_path(tree, PTu.path_head(path))
       PT.add_child(base, node)
   else:
     # Remove zones not going to this rank
@@ -173,7 +177,7 @@ def file_to_part_tree(filename: PathLike,
 
 
 def part_tree_to_file(part_tree: CGNSPartTree, 
-                      filename: PathLike, 
+                      filename: Union[str, PathLike], 
                       comm: MPIComm, 
                       single_file: bool = False, 
                       links: List[List[str]] = []) -> None:
@@ -227,7 +231,7 @@ def part_tree_to_file(part_tree: CGNSPartTree,
           fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
           for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
             _links = [link for link in links if link[3].startswith(zone_path)]
-            zone = PT.shallow_copy(PT.get_node_from_path(part_tree, zone_path))
+            zone = PT.shallow_copy(PT.request_node_from_path(part_tree, zone_path))
             for link in _links: # Remove nodes to be linked
               PT.rm_node_from_path(zone, PT.utils.path_tail(link[3], 2))
             gid = open_from_path(fid, zone_path.split('/')[0])
@@ -246,6 +250,7 @@ def part_tree_to_file(part_tree: CGNSPartTree,
 
     _zone_links = comm.gather(zone_links, root=0)
     if rank == 0:
+      assert _zone_links is not None #For mypy
       zone_links  = [l for proc_links in _zone_links for l in proc_links] #Flatten gather result
       write_tree(top_tree, filename, links=zone_links)
 

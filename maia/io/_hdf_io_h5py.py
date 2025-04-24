@@ -66,18 +66,18 @@ def load_size_tree(filename, comm):
 
   return size_tree
 
-def load_partial(filename, dist_tree, hdf_filter):
+def load_partial(filename:str, dist_tree, hdf_filter):
   if not h5py.is_hdf5(filename):
     raise ValueError(f"{filename} is not a valid HDF5 file")
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
 
   for path, filter in hdf_filter.items():
     if isinstance(filter, (list, tuple)):
-      node = PT.get_node_from_path(dist_tree, path) 
+      node = PT.request_node_from_path(dist_tree, path) 
       gid = open_from_path(fid, path)
-      node[1] = load_data_partial(gid, filter)
+      PT.set_value(node, load_data_partial(gid, filter))
 
-def write_partial(filename, dist_tree, hdf_filter, links, comm):
+def write_partial(filename:str, dist_tree, hdf_filter, links, comm):
 
   if not h5py.get_config().mpi:
     msg = f"This h5py module ({h5py.__file__}) has been installed without MPI support. " \
@@ -101,7 +101,7 @@ def write_partial(filename, dist_tree, hdf_filter, links, comm):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR, fapl)
 
   for path, filter in hdf_filter.items():
-    array = PT.get_node_from_path(dist_tree, path)[1]
+    array = PT.request_node_from_path(dist_tree, path)[1]
     gid = open_from_path(fid, path)
     write_data_partial(gid, array, filter)
     gid.close()
@@ -132,7 +132,7 @@ def _write_links(filename, links):
       write_link(gid, local_node_name, target_file, target_node)
   fid.close()
 
-def write_full(filename, dist_tree, links=[]):
+def write_full(filename:str, dist_tree, links=[]):
   _dist_tree = PT.shallow_copy(dist_tree)
   for link in links: # Links override data, so delete data
     PT.rm_node_from_path(_dist_tree, link[3])

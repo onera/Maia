@@ -2,7 +2,7 @@ import numpy as np
 from mpi4py import MPI
 import operator
 
-from maia.pytree.typing import Predicates
+from maia.pytree.typing import Predicate, Predicates
 from maia.typing        import *
 
 import maia.pytree        as PT
@@ -38,7 +38,7 @@ def discover_nodes_from_matching(dist_node: CGNSTree,
                                  part_nodes: List[CGNSTree],
                                  queries: Predicates,
                                  comm: MPIComm,
-                                 child_list: List[str] = [],
+                                 child_list: Sequence[Predicate] = [],
                                  get_value: Union[str, List[bool]] = "ancestors",
                                  merge_rule: Callable[[str], str] = lambda path:path) -> None:
   """
