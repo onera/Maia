@@ -2,7 +2,6 @@ import numpy as np
 
 from maia.typing import *
 import maia.pytree as PT
-from typing import Dict, List, Optional, Tuple, Any
 from maia.utils import np_utils
 from maia.utils import vstride as vs
 
@@ -22,9 +21,9 @@ ELT_FACE_VTX = {'TETRA_4' : (np.array([3,3,3,3], np.int32),
                              np.array([1,4,3,2, 1,2,6,5 ,2,3,7,6, 3,4,8,7, 1,5,8,4, 5,6,7,8]) - 1)
                 }
 
-def compute_center_and_flux(local_coords: List[Optional [ArrayLike]],
-                            face_vtx_idx: np.ndarray,
-                            face_vtx_n: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def compute_center_and_flux(local_coords: List[Optional[NDArray]],
+                            face_vtx_idx: NDArray,
+                            face_vtx_n: NDArray) -> Tuple[NDArray, NDArray]:
   """
   Compute, for each face, the term nF|F| where nF is the unit outward normal
   and |F| the area of the face.
@@ -33,16 +32,16 @@ def compute_center_and_flux(local_coords: List[Optional [ArrayLike]],
   """
 
   # Filter void coords if phy_dim == 2
-  local_coords = [c for c in local_coords if c is not None]
+  local_coords_np = [c for c in local_coords if c is not None]
 
-  local_coords_next = [vs.roll(vs.from_displs(face_vtx_idx, coords), -1, vs.INNER_AXIS).values for coords in local_coords]
+  local_coords_next_np = [vs.roll(vs.from_displs(face_vtx_idx, coords), -1, vs.INNER_AXIS).values for coords in local_coords_np]
 
-  if len(local_coords) == 2 : # Complete with 0 if phy_dim == 2
-    local_coords.append(np.zeros_like(local_coords[0]))
-    local_coords_next.append(np.zeros_like(local_coords[0]))
+  if len(local_coords_np) == 2 : # Complete with 0 if phy_dim == 2
+    local_coords_np.append(np.zeros_like(local_coords_np[0]))
+    local_coords_next_np.append(np.zeros_like(local_coords_np[0]))
 
-  _local_coords      = np.stack(local_coords, axis=1)
-  _local_coords_next = np.stack(local_coords_next, axis=1)
+  _local_coords      = np.stack(local_coords_np, axis=1)
+  _local_coords_next = np.stack(local_coords_next_np, axis=1)
   center = np.add.reduceat(_local_coords, face_vtx_idx[:-1]) / face_vtx_n.reshape((-1,1))
 
   # Compute mean normal flux on each face : ½ || sum_i CV_i ⨯ CV_{i+1}|| (C := face center)
@@ -56,7 +55,7 @@ def compute_center_and_flux(local_coords: List[Optional [ArrayLike]],
 def update_container(zone: CGNSTree, 
                      container_name: str,
                      loc: str,
-                     fields: Dict[str, ArrayLike]={}) -> Optional[CGNSTree]:
+                     fields: Dict[str, ArrayLike]={}) -> CGNSTree:
   """ Utility to retrieve a container from its name, or create it """
   container = PT.get_child_from_name(zone, container_name)
   if container is not None: # Container exists

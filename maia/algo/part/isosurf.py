@@ -1,8 +1,9 @@
 import numpy as np
-import mpi4py.MPI as MPI
 import time
 
-from maia.typing import *
+from maia.typing        import *
+from maia.pytree.typing import Predicate
+
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
@@ -25,7 +26,7 @@ def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> No
   by a (Additional)FamilyName (at zone level) in the target base """
   copied_families = []
   for fam_node in PT.get_children_from_predicates(target_base, ['Zone_t', familyname_query]):
-    fam_name = PT.get_value(fam_node)
+    fam_name = PT.request_str_value(fam_node)
     if fam_name not in copied_families:
       copied_families.append(fam_name)
       family_node = PT.get_child_from_predicate(source_base, fam_name)
@@ -37,11 +38,11 @@ def exchange_field_one_domain(part_zones: List[CGNSTree],
                               containers_name: List[str], 
                               comm: MPIComm) -> None:
 
-  for container_name in containers_name :
+  for container_name in containers_name:
 
     # > Retrieve fields name + GridLocation + PointList if container
     #   is not know by every partition
-    mask_zone = ['MaskedZone', None, [], 'Zone_t']
+    mask_zone = PT.new_Zone('MaskedZone')
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
   
@@ -52,19 +53,20 @@ def exchange_field_one_domain(part_zones: List[CGNSTree],
       raise ValueError("[maia-isosurfaces] asked container for exchange is not in tree")
 
     # > Manage BC and GC ZSR
-    ref_zsr_node    = mask_container
+    ref_zsr_node:Optional[CGNSTree] = mask_container
     bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
     gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
     assert not (bc_descriptor_n and gc_descriptor_n)
     if bc_descriptor_n is not None:
-      bc_name      = PT.get_value(bc_descriptor_n)
+      bc_name      = PT.request_str_value(bc_descriptor_n)
       dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
       ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
     elif gc_descriptor_n is not None:
-      gc_name      = PT.get_value(gc_descriptor_n)
+      gc_name      = PT.request_str_value(gc_descriptor_n)
       dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
       ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
     
+    assert ref_zsr_node is not None
     gridLocation = PT.Subset.GridLocation(ref_zsr_node)
     partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
     assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
@@ -82,25 +84,32 @@ def exchange_field_one_domain(part_zones: List[CGNSTree],
                 ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
 
       if elt_n is not None :
-        part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
-        part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
+        part1_elt_gnum_n = MT.requestGlobalNumbering(elt_n, _gridLocation[gridLocation])
+        part1_ln_to_gn   = [PT.request_nd_value(part1_elt_gnum_n)]
       else :
         part1_elt_gnum_n = None
         part1_ln_to_gn   = []
 
       # > Link between part1 and part2
-      part1_maia_iso_zone = PT.get_child_from_name(iso_part_zone, "maia#surface_data")
+      part1_maia_iso_zone = PT.request_child_from_name(iso_part_zone, "maia#surface_data")
       if gridLocation=='Vertex' :
-        part1_weight        = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" )[1]]
-        part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   )[1]]
-        part1_to_part2_idx  = [PT.get_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    )[1]]
-      if gridLocation=='FaceCenter' :
+        part1_weight        = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" ))]
+        part1_to_part2      = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   ))]
+        part1_to_part2_idx  = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    ))]
+      elif gridLocation=='FaceCenter' :
         # Output should be edge located so check if iso surface locally has edge
-        part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges")[1]] if elt_n is not None else []
-        part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]     if elt_n is not None else []
-      if gridLocation=='CellCenter' :
-        part1_to_part2      = [PT.get_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum")[1]]
-        part1_to_part2_idx  = [np.arange(0, PT.get_value(part1_elt_gnum_n).size+1, dtype=np.int32)]
+        if elt_n is not None:
+          part1_to_part2      = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges"))] 
+          part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
+        else:
+          part1_to_part2      = []
+          part1_to_part2_idx  = []
+      elif gridLocation=='CellCenter' :
+        part1_to_part2      = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum"))]
+        part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
+      else:
+        raise RuntimeError("Wrong location")
+
 
     if iso_part_zone is None:
       part1_ln_to_gn     = []
@@ -111,9 +120,9 @@ def exchange_field_one_domain(part_zones: List[CGNSTree],
     # > Part2 (VOLUME) objects definition
     part2_ln_to_gn      = list()
     for part_zone in part_zones:
-      elt_n            = part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(part_zone, 'NGonElements')
-      part2_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _gridLocation[gridLocation])
-      part2_ln_to_gn.append(PT.get_value(part2_elt_gnum_n))
+      elt_n            = part_zone if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone)
+      part2_elt_gnum_n = MT.requestGlobalNumbering(elt_n, _gridLocation[gridLocation])
+      part2_ln_to_gn.append(PT.request_nd_value(part2_elt_gnum_n))
         
 
     # > P2P Object
@@ -144,12 +153,12 @@ def exchange_field_one_domain(part_zones: List[CGNSTree],
         fld_data = list()
         for i_part, part_zone in enumerate(part_zones) :
           fld_n = PT.get_node_from_path(part_zone,fld_path)
-          fld_data_tmp = PT.get_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
+          fld_data_tmp = PT.request_nd_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
           fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
       
       else :
-        fld_data = [PT.get_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
+        fld_data = [PT.request_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
         stride   = 1
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2
 
@@ -183,15 +192,16 @@ def exchange_field_one_domain(part_zones: List[CGNSTree],
       # Update global numbering in FS
       partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
       if iso_part_zone is not None and create_fs and len(partial_gnum)!=0:
-        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
+        MT.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
 
     # Remove node if is empty
     if FS_iso is not None and len(PT.get_children_from_label(FS_iso, 'DataArray_t'))==0:
+      assert iso_part_zone is not None
       PT.rm_child(iso_part_zone, FS_iso)
 
 
 def _exchange_field(part_tree: CGNSPartTree, 
-                    iso_part_tree: CGNSTree, 
+                    iso_part_tree: CGNSPartTree, 
                     containers_name: List[str], 
                     comm: MPIComm) -> None:
   """
@@ -211,10 +221,10 @@ def _exchange_field(part_tree: CGNSPartTree,
 
 def iso_surface_one_domain(part_zones: List[CGNSTree], 
                            iso_kind: str, 
-                           iso_params: Union[List[np.ndarray], List[float]], 
+                           iso_params: Union[List[NDArray], Sequence[float]], 
                            elt_type: str, 
                            graph_part_tool: str, 
-                           comm: MPIComm) -> Optional[CGNSTree]:
+                           comm: MPIComm) -> CGNSTree:
   """
   Compute isosurface in a zone
   """ 
@@ -224,7 +234,7 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
                        "QUADRIC" : PDM.IsoSurface.quadric_equation_set}
 
   PDM_iso_type = eval(f"PDM._PDM_ISO_SURFACE_KIND_{iso_kind}")
-  PDM_elt_type = PT.maia.pdm_elts.cgns_elt_name_to_pdm_element_type(elt_type)
+  PDM_elt_type = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elt_type)
 
   if iso_kind=="FIELD" : 
     assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)
@@ -258,14 +268,14 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
   # > GCs
   is_gc        = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
   isnt_gc_intra= lambda n: is_gc(n) and     PT.GridConnectivity.is1to1(n) and not MT.conv.is_intra_gc(PT.get_name(n))
-  is_unmatched = lambda n: is_gc(n) and not PT.GridConnectivity.is1to1(n)
+  is_unmatched:Predicate = lambda n: is_gc(n) and not PT.GridConnectivity.is1to1(n)
   gc_predicate = ['ZoneGridConnectivity_t', is_unmatched]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
   gc_predicate = ['ZoneGridConnectivity_t', isnt_gc_intra]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
   for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
-    val = PT.get_value(jn)
+    val = PT.request_str_value(jn)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
   gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t',is_gc])
   n_gdom_gcs = len(gdom_gcs_path)
@@ -273,17 +283,17 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
     cx, cy, cz = PT.Zone.coordinates(part_zone)
+    assert (cx is not None) and (cy is not None) and (cz is not None)
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
     ngon  = PT.Zone.NGonNode(part_zone)
     nface = PT.Zone.NFaceNode(part_zone)
 
-    cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset" )[1]
-    cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
-    face_vtx_idx  = PT.get_child_from_name(ngon, "ElementStartOffset" )[1]
-    face_vtx      = PT.get_child_from_name(ngon, "ElementConnectivity")[1]
+    cell_face = MT.Element.connectivity(nface)
+    face_vtx  = MT.Element.connectivity(ngon)
 
     vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+    assert (vtx_ln_to_gn is not None) and (face_ln_to_gn is not None) and (cell_ln_to_gn is not None)
 
     n_cell = cell_ln_to_gn.shape[0]
     n_face = face_ln_to_gn.shape[0]
@@ -293,9 +303,9 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
     # Partition definition for PDM object
     pdm_isos.part_set(i_part,
                       n_cell, n_face, n_edge, n_vtx,
-                      cell_face_idx, cell_face,
+                      cell_face.displs, cell_face.values,
                       None, None, None,
-                      face_vtx_idx , face_vtx     ,
+                      face_vtx.displs , face_vtx.values,
                       cell_ln_to_gn, face_ln_to_gn,
                       None,
                       vtx_ln_to_gn, vtx_coords)
@@ -306,7 +316,7 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
       for bnd_path in gdom_bcs_path:
         bnd_n = PT.get_node_from_path(part_zone, bnd_path)
         if bnd_n is not None:
-          all_bnd_pl.append(PT.get_value(PT.get_child_from_name(bnd_n, 'PointList')))
+          all_bnd_pl.append(PT.request_nd_value(PT.request_child_from_name(bnd_n, 'PointList')))
         else :
           all_bnd_pl.append(np.empty((1,0), np.int32))
       for bnd_path in gdom_gcs_path:
@@ -314,7 +324,8 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
         container_name, jn_name = bnd_path.split('/')
         bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'*'])
         if len(bnd_n_list) > 0:
-          all_bnd_pl.append(np_utils.concatenate_np_arrays([PT.get_node_from_name(bnd_n, 'PointList')[1] for bnd_n in bnd_n_list])[1])
+          pl_val_list = [PT.request_nd_value(PT.request_node_from_name(bnd_n, 'PointList')) for bnd_n in bnd_n_list]
+          all_bnd_pl.append(np_utils.concatenate_np_arrays(pl_val_list)[1])
         else:
           all_bnd_pl.append(np.empty((1,0), np.int32))
 
@@ -330,12 +341,13 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
   n_iso_elt = results['np_elt_ln_to_gn'].shape[0]
 
   # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
-  iso_part_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
+  iso_part_zone = PT.new_Zone(MT.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                               size=[[n_iso_vtx, n_iso_elt, 0]],
                               type='Unstructured')
 
   # > Grid coordinates
   cx, cy, cz      = layouts.interlaced_to_tuple_coords(results['np_vtx_coord'])
+  assert (cx is not None) and (cy is not None) and (cz is not None)
   iso_grid_coord  = PT.new_GridCoordinates(parent=iso_part_zone)
   PT.new_DataArray('CoordinateX', cx, parent=iso_grid_coord)
   PT.new_DataArray('CoordinateY', cy, parent=iso_grid_coord)
@@ -348,7 +360,7 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
                             erange=[1, n_iso_elt],
                             econn=results['np_elt_vtx'],
                             parent=iso_part_zone)
-    PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
+    MT.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
                                 'Sections': results['np_elt_ln_to_gn']}, parent=elt_n)
   else:
     ng_eso = results['np_elt_vtx_idx']
@@ -367,14 +379,14 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
                     erange=[1, nb_bar], 
                     econn=edge_data['np_edge_vtx'], 
                     parent=iso_part_zone)
-    PT.maia.newGlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+    MT.newGlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
 
     elt_n = PT.new_NGonElements('NGonElements',
                                  erange = [nb_bar+1, nb_bar+n_iso_elt],
                                  ec=ng_ec,
                                  eso=ng_eso,
                                  parent=iso_part_zone)
-    PT.maia.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=elt_n)
+    MT.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=elt_n)
   
   # Bnd edges
   if elt_type in ['TRI_3']:
@@ -387,11 +399,11 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
                               erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
                               econn=results_edge['bnd_edge_vtx'],
                               parent=iso_part_zone)
-      PT.maia.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
+      MT.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
     # > Create BC described by edges
-    gnum = PT.maia.getGlobalNumbering(bar_n, 'Element')[1] if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
+    gnum = PT.request_nd_value(MT.requestGlobalNumbering(bar_n, 'Element')) if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
     for i_group, bc_path in enumerate(gdom_bcs_path):
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
       edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
@@ -401,11 +413,11 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
       if partial_gnum.size != 0:
         zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')  
         bc_n = PT.new_BC(PT.utils.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+        MT.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
     for i_group, gc_path in enumerate(gdom_gcs_path):
       gc_name = PT.utils.path_tail(gc_path)
-      gc_val  = PT.get_value(PT.get_node_from_path(dist_zone, gc_path))
+      gc_val  = PT.get_value(PT.request_node_from_path(dist_zone, gc_path))
 
       i_group+=n_gdom_bcs
       
@@ -417,7 +429,7 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
       if edge_pl.size != 0:
         zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
         bc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-        PT.maia.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+        MT.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
 
   else:
@@ -425,7 +437,7 @@ def iso_surface_one_domain(part_zones: List[CGNSTree],
 
 
   # > LN to GN
-  PT.maia.newGlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
+  MT.newGlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
                               'Cell'   : results['np_elt_ln_to_gn'] }, parent=iso_part_zone)
 
   # > Link between vol and isosurf
@@ -453,7 +465,7 @@ def _iso_surface(part_tree: CGNSPartTree,
                  iso_val: float, 
                  elt_type: str, 
                  graph_part_tool: str, 
-                 comm: MPIComm) -> CGNSTree:
+                 comm: MPIComm) -> CGNSPartTree:
 
   fs_name, field_name = iso_field_path.split('/')
 
@@ -470,13 +482,13 @@ def _iso_surface(part_tree: CGNSPartTree,
     field_values = []
     for part_zone in part_zones:
       # Check : vertex centered solution (PDM_isosurf doesnt work with cellCentered field)
-      flowsol_node = PT.get_child_from_name(part_zone, fs_name)
-      field_node   = PT.get_child_from_name(flowsol_node, field_name)
+      flowsol_node = PT.request_child_from_name(part_zone, fs_name)
+      field_node   = PT.request_child_from_name(flowsol_node, field_name)
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
-      field_values.append(PT.get_value(field_node) - iso_val)
+      field_values.append(PT.request_nd_value(field_node) - iso_val)
 
     iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, graph_part_tool, comm)
-    PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
+    PT.set_name(iso_part_zone, MT.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
     if PT.Zone.n_cell(iso_part_zone)!=0:
       PT.add_child(iso_part_base,iso_part_zone)
 
@@ -486,9 +498,9 @@ def _iso_surface(part_tree: CGNSPartTree,
 
 
 def iso_surface(part_tree: CGNSPartTree, 
-                iso_field: str, 
+                iso_field: CGNSPath, 
                 comm: MPIComm, 
-                iso_val: Optional[float] = 0., 
+                iso_val: float = 0., 
                 containers_name: List[str] = [], 
                 **options: Any) -> CGNSPartTree:
   """ Create an isosurface from the provided field and value on the input partitioned tree.
@@ -557,10 +569,10 @@ def iso_surface(part_tree: CGNSPartTree,
 
 def _surface_from_equation(part_tree: CGNSPartTree, 
                            surface_type: str, 
-                           equation: List[float], 
+                           equation: Sequence[float], 
                            elt_type: str, 
                            graph_part_tool: str, 
-                           comm: MPIComm) -> CGNSTree:
+                           comm: MPIComm) -> CGNSPartTree:
 
   assert(surface_type in ["PLANE","SPHERE","ELLIPSE"])
   assert(elt_type     in ["TRI_3","QUAD_4","NGON_n"])
@@ -575,7 +587,7 @@ def _surface_from_equation(part_tree: CGNSPartTree,
     dom_base_name, dom_zone_name = domain_path.split('/')
     iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', [3-1,3])
     iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, graph_part_tool, comm)
-    PT.set_name(iso_part_zone, PT.maia.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
+    PT.set_name(iso_part_zone, MT.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
 
     if PT.Zone.n_cell(iso_part_zone)!=0:
       PT.add_child(iso_part_base,iso_part_zone)
@@ -586,7 +598,7 @@ def _surface_from_equation(part_tree: CGNSPartTree,
 
 
 def plane_slice(part_tree: CGNSPartTree, 
-                plane_eq: List[float], 
+                plane_eq: Sequence[float], 
                 comm: MPIComm, 
                 containers_name: List[str] = [], 
                 **options: Any) -> CGNSPartTree:
@@ -634,7 +646,7 @@ def plane_slice(part_tree: CGNSPartTree,
 
 
 def spherical_slice(part_tree: CGNSPartTree, 
-                    sphere_eq: List[float], 
+                    sphere_eq: Sequence[float], 
                     comm: MPIComm, 
                     containers_name: List[str] = [], 
                     **options: Any) -> CGNSPartTree:
@@ -683,10 +695,10 @@ def spherical_slice(part_tree: CGNSPartTree,
 
 
 def elliptical_slice(part_tree: CGNSPartTree, 
-                     ellipse_eq: List[float], 
+                     ellipse_eq: Sequence[float], 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
-                     **options: Any) -> CGNSTree:
+                     **options: Any) -> CGNSPartTree:
   """ Create a elliptical slice from the provided equation
   :math:`(x-x_0)^2/a^2 + (y-y_0)^2/b^2 + (z-z_0)^2/c^2 = R^2`
   on the input partitioned tree.

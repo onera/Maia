@@ -88,7 +88,7 @@ def _bar_pe_to_nface2d(zone, comm):
 
 
 
-def poly2d_convert_3dlike_to_std(dist_tree: CGNSDistTree, comm: MPIComm):
+def poly2d_convert_3dlike_to_std(dist_tree, comm):
   """
   Convert a "as for 3D" 2D polyedric tree (NFACE = face_edge, NGON = edge_vtx)
   to the cgns compliant vision (NGON = face_vtx, BAR = edge_vtx).

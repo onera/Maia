@@ -19,7 +19,7 @@ def apply_to_bases(f: Callable,
   if PT.get_label(t)=="CGNSBase_t":
     b_iter = [t]
   elif PT.get_label(t)=="CGNSTree_t":
-    b_iter = PT.iter_children_from_label(t, "CGNSBase_t")
+    b_iter = PT.get_children_from_label(t, "CGNSBase_t")
   else:
     raise Exception("function \""+f.__name__+"\"" \
                     " can only be applied to a \"CGNSBase_t\" or on a complete \"CGNSTree_t\"," \

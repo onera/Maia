@@ -9,7 +9,7 @@ from cmaia.utils import layouts
 _VS_MSG = "This function is deprecated in favor of the VStrideArray class " \
           "(https://numerics.gitlab-pages.onera.net/mesh/maia/dev/developer_manual/tools/vstride.html)"
 
-def interweave_arrays(array_list: List[NDArray]) -> NDArray:
+def interweave_arrays(array_list: Sequence[NDArray]) -> NDArray:
   #https://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
   first  = array_list[0]
   number = len(array_list)
@@ -76,7 +76,7 @@ def concatenate_point_list(point_lists: List[NDArray],
   arrays = [pl[0,:] for pl in point_lists]
   return concatenate_np_arrays(arrays, dtype)
 
-def sizes_to_indices(nb_array: NDArray, dtype: Optional[DTypeLike] = None) -> NDArray:
+def sizes_to_indices(nb_array: Union[NDArray, Sequence[int]], dtype: Optional[DTypeLike] = None) -> NDArray:
   """ Create and offset array from a size array """
   nptype = dtype if dtype else np.asarray(nb_array).dtype
   offset_array = np.empty(len(nb_array)+1, dtype=nptype)

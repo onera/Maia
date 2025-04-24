@@ -9,6 +9,8 @@ __all__ = [
   'get_name',
   'set_name',
   'get_value',
+  'request_str_value',
+  'request_nd_value',
   'get_value_type',
   'get_value_kind',
   'set_value',

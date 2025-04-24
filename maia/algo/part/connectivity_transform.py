@@ -21,15 +21,15 @@ def enforce_boundary_pe_left(zone_node: CGNSTree) -> None:
   if z_dim == 3:
     try:
       nface = PT.Zone.NFaceNode(zone_node)
-      enforce_pe_left_parent(PT.get_child_from_name(ngon, 'ElementStartOffset')[1],
-                             PT.get_child_from_name(ngon, 'ElementConnectivity')[1],
-                             PT.get_child_from_name(ngon, 'ParentElements')[1],
-                             PT.get_child_from_name(nface, 'ElementStartOffset')[1],
-                             PT.get_child_from_name(nface, 'ElementConnectivity')[1])
+      enforce_pe_left_parent(PT.request_child_from_name(ngon, 'ElementStartOffset')[1],
+                             PT.request_child_from_name(ngon, 'ElementConnectivity')[1],
+                             PT.request_child_from_name(ngon, 'ParentElements')[1],
+                             PT.request_child_from_name(nface, 'ElementStartOffset')[1],
+                             PT.request_child_from_name(nface, 'ElementConnectivity')[1])
     except RuntimeError: #3D, but no NFace
-      enforce_pe_left_parent(PT.get_child_from_name(ngon, 'ElementStartOffset')[1],
-                             PT.get_child_from_name(ngon, 'ElementConnectivity')[1],
-                             PT.get_child_from_name(ngon, 'ParentElements')[1])
+      enforce_pe_left_parent(PT.request_child_from_name(ngon, 'ElementStartOffset')[1],
+                             PT.request_child_from_name(ngon, 'ElementConnectivity')[1],
+                             PT.request_child_from_name(ngon, 'ParentElements')[1])
 
   elif z_dim == 2:
     bar_elts = [e for e in PT.iter_children_from_label(zone_node, 'Elements_t') if PT.Element.CGNSName(e) == 'BAR_2']
@@ -39,7 +39,7 @@ def enforce_boundary_pe_left(zone_node: CGNSTree) -> None:
       nedge = bar_elts[0]
       nedge_eso = 2*np.arange(PT.Element.Size(nedge)+1, dtype=np.int32)
       enforce_pe_left_parent(nedge_eso,
-                             PT.get_child_from_name(nedge, 'ElementConnectivity')[1],
-                             PT.get_child_from_name(nedge, 'ParentElements')[1])
+                             PT.request_child_from_name(nedge, 'ElementConnectivity')[1],
+                             PT.request_child_from_name(nedge, 'ParentElements')[1])
 
 

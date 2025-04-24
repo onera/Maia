@@ -36,7 +36,7 @@ def concatenate_subset_nodes(nodes: List[CGNSTree],
     #Use master node to understand queries and collect nodes
     for childs in PT.iter_children_from_predicates(master, data_query, ancestors=True):
       path =  '/'.join([PT.get_name(n) for n in childs])
-      data_to_merge = [PT.get_node_from_path(node, path)[1] for node in nodes]
+      data_to_merge = [PT.request_nd_value(PT.request_node_from_path(node, path)) for node in nodes]
       _, data_merged = np_utils.concatenate_np_arrays(data_to_merge)
 
       #Recreate structure (still using master infos) and add merged array
@@ -67,16 +67,18 @@ def concatenate_subset_nodes(nodes: List[CGNSTree],
       child = childs[-1]
       PT.new_child(parent, PT.get_name(child), PT.get_label(child), PT.get_value(child), children=PT.get_children(child))
 
-  newsize = PT.get_child_from_name(node, 'PointList')[1].shape[1]
+  val = PT.request_child_from_name(node, 'PointList')[1]
+  assert val is not None
+  newsize = val.shape[1]
   distri = par_utils.dn_to_distribution(newsize, comm)
   MT.newDistribution({'Index' : distri}, node)
 
   for bcds_n in PT.get_children_from_label(node, 'BCDataSet_t'):
     bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
     if bcds_pl_n is not None:
-      bcds_pl = PT.get_value(bcds_pl_n)[0]
+      bcds_pl = PT.request_nd_value(bcds_pl_n)[0]
       bcds_distrib = par_utils.dn_to_distribution(bcds_pl.size, comm)
-      PT.maia.newDistribution({'Index':bcds_distrib}, parent=bcds_n)
+      MT.newDistribution({'Index':bcds_distrib}, parent=bcds_n)
 
   return node
 
@@ -110,8 +112,8 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
 
   MJT.add_joins_donor_name(tree, comm)
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
-    jns_to_merge = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
-    perio_refs   = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
+    jns_to_merge:Dict[str, Dict] = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
+    perio_refs:Dict[str, List]   = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
     #Do a get here because tree is modified
     for zgc, jn in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', match_jns], ancestors=True):
       donor_path = PT.GridConnectivity.ZoneDonorPath(jn, PT.get_name(base))
@@ -119,13 +121,12 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
       if location.endswith('FaceCenter'):
         location = 'FaceCenter' # Map I,J,K FaceCenter to FaceCenter
       perio_node = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
-      is_periodic = perio_node is not None
       cur_jn_path = '/'.join([PT.get_name(node) for node in [base, zone, zgc, jn]])
       opp_jn_path = MJT.get_jn_donor_path(tree, cur_jn_path)
       key = min(cur_jn_path, opp_jn_path)
 
       #Manage periodic -- merge only if periodic values are identical
-      if is_periodic:
+      if perio_node is not None:
         found = False
         for i,ref in enumerate(perio_refs[location]):
           if PT.is_same_tree(perio_node, ref):
@@ -147,7 +148,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
       if suffix == '.I0':  opp_suffix = '.I1'
       elif suffix == '.I1':  opp_suffix = '.I0'
       else:  opp_suffix = suffix
-      opp_name_node = PT.get_child_from_name(jn, "GridConnectivityDonorName")
+      opp_name_node = PT.request_child_from_name(jn, "GridConnectivityDonorName")
       PT.set_value(opp_name_node, opp_jn_path.split('/')[1] + '.To.' + PT.get_name(zone) + opp_suffix)
 
       try:
@@ -170,8 +171,8 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
       for jn in PT.get_children_from_label(zgc, 'GridConnectivity_t'):
         if len(PT.get_children_from_name(zgc, PT.get_name(jn))) > 1:
           PT.set_name(jn, PT.get_name(jn) + '_' + PT.Subset.GridLocation(jn)[0])
-          opp_name_node = PT.get_child_from_name(jn, "GridConnectivityDonorName")
-          PT.set_value(opp_name_node, PT.get_value(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])
+          opp_name_node = PT.request_child_from_name(jn, "GridConnectivityDonorName")
+          PT.set_value(opp_name_node, PT.request_str_value(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])
   # If we have multiple periodic jns or intrazone periodics, we can not guarantee that GridConnectivityDonorName is
   # good so rebuild it
   perio_found = False
@@ -185,7 +186,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
 
 def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                       comm: MPIComm,
-                                      families: Optional[Union[str, List[str]]] = '*') -> None:
+                                      families: Union[Literal['*'], List[str]] = '*') -> None:
   """ For each family, gather the related BC nodes into a single BC.
 
   If the shorcut ``'*'`` is used for ``families`` argument,
@@ -227,10 +228,10 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
       families = list()
       for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t'):
         if PT.get_value(n) not in families:
-          families.append(PT.get_value(n))
+          families.append(PT.request_str_value(n))
 
     # > Merge bc nodes from a same family
-    zone_bc_n = PT.get_node_from_label(dist_zone, "ZoneBC_t")
+    zone_bc_n = PT.request_node_from_label(dist_zone, "ZoneBC_t")
     for family in families:
 
       # > Predicates to find family BCs
@@ -241,7 +242,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
       # > Go through family BCs gathering informations
       bc_nodes = list() ; bc_names = list() ; bc_ordin = list() 
       for i_bc, bc_n in enumerate(PT.get_nodes_from_predicates(dist_zone, [is_subset_container, is_subset])):
-        bc_pl  = PT.Subset.getPatch(bc_n)[1][0]
+        bc_pl  = PT.request_nd_value(PT.Subset.getPatch(bc_n))[0]
         bcds_n = PT.new_BCDataSet(":maia#concatenate", parent=bc_n)
         PT.new_BCData('DirichletData',
                       fields={'OriginalBCId':np.full(bc_pl.size, i_bc)},
@@ -252,9 +253,9 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         bc_name = PT.get_name(bc_n)
         is_zsr_rel_to_bc = lambda n: PT.get_label(n)=='ZoneSubRegion_t' and\
                                      PT.get_child_from_name(n, 'BCRegionName') is not None and\
-                        PT.get_value(PT.get_child_from_name(n, 'BCRegionName'))==bc_name 
+                        PT.get_value(PT.request_child_from_name(n, 'BCRegionName'))==bc_name 
         for zsr_bc_n in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
-          pl_n = PT.get_child_from_name(bc_n, 'PointList')
+          pl_n = PT.request_child_from_name(bc_n, 'PointList')
           PT.new_IndexArray(value=PT.get_value(pl_n), parent=zsr_bc_n)
           PT.new_GridLocation(PT.Subset.GridLocation(bc_n), zsr_bc_n)
           PT.rm_children_from_name(zsr_bc_n, 'BCRegionName')
@@ -262,13 +263,13 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         bc_nodes.append(bc_n)
         bc_names.append(bc_name)
         if ord_n is not None:
-          bc_ordin.append(str(PT.get_value(ord_n)[0]))
+          bc_ordin.append(str(PT.request_nd_value(ord_n)[0]))
 
         for path in PT.predicates_to_paths(bc_n, 'BCDataSet_t/BCData_t'):
           bcd_path = PT.utils.path_head(path, 2)
-          bcd_n = PT.get_node_from_path(bc_n, bcd_path)
+          bcd_n = PT.request_node_from_path(bc_n, bcd_path)
           if PT.get_child_from_name(bcd_n, 'OriginalBCId') is None:
-            array = PT.get_child_from_label(bcd_n, 'DataArray_t')[1]
+            array = PT.request_nd_value(PT.request_child_from_label(bcd_n, 'DataArray_t'))
             PT.new_DataArray('OriginalBCId', np.full(array.size, i_bc), parent=bcd_n)
 
         PT.rm_child(zone_bc_n, bc_n)
@@ -287,7 +288,7 @@ is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
 
 def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                         comm: MPIComm,
-                                        families: Optional[Union[str, List[str]]] = '*') -> None:
+                                        families: Union[Literal['*'], List[str]] = '*') -> None:
   """ For each given family, deconcatenate the related BC gathered with
   the concatenation service.
 
@@ -323,10 +324,10 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
       families = list()
       for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t'):
         if PT.get_value(n) not in families:
-          families.append(PT.get_value(n))
+          families.append(PT.request_str_value(n))
 
     # > Merge bc nodes from a same family
-    zone_bc_n = PT.get_child_from_label(dist_zone, "ZoneBC_t")
+    zone_bc_n = PT.request_child_from_label(dist_zone, "ZoneBC_t")
     for family in families:
 
       # > Predicates to find family BCs
@@ -341,21 +342,21 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
         raise NotImplementedError(f"Deconcatenation only works for BC_t nodes for now (predicate leads to {PT.get_label(concat_bc_n)} node)")
 
       # > Get concatenated BC node informations
-      concat_bc_type = PT.get_value(concat_bc_n)
+      concat_bc_type = PT.request_str_value(concat_bc_n)
       concat_bc_loc  = PT.Subset.GridLocation(concat_bc_n)
       concat_bc_fam_n = PT.get_child_from_label(concat_bc_n, 'FamilyName_t')
 
-      concat_bc_pl_n = PT.get_child_from_name(concat_bc_n, 'PointList')
-      concat_bc_pl   = PT.get_value(concat_bc_pl_n)[0]
+      concat_bc_pl_n = PT.request_child_from_name(concat_bc_n, 'PointList')
+      concat_bc_pl   = PT.request_nd_value(concat_bc_pl_n)[0]
 
-      concat_bc_id_n = PT.get_node_from_path(concat_bc_n, ':maia#concatenate/DirichletData/OriginalBCId')
+      concat_bc_id_n = PT.request_node_from_path(concat_bc_n, ':maia#concatenate/DirichletData/OriginalBCId')
       concat_bc_id   = PT.get_value(concat_bc_id_n)
       PT.rm_children_from_name(concat_bc_n, ':maia#concatenate')
 
-      orig_bc_names = PT.get_value(PT.get_node_from_name_and_label(concat_bc_n, 'BCNames', 'Descriptor_t')).split('\n')
+      orig_bc_names = PT.request_str_value(PT.request_node_from_name_and_label(concat_bc_n, 'BCNames', 'Descriptor_t')).split('\n')
       orig_bc_ordin_n = PT.get_node_from_name_and_label(concat_bc_n, 'BCOrdinal', 'Descriptor_t')
       if orig_bc_ordin_n is not None:
-        orig_bc_ordin = np.array(PT.get_value(orig_bc_ordin_n).split('\n'), dtype=np.int32)
+        orig_bc_ordin = np.array(PT.request_str_value(orig_bc_ordin_n).split('\n'), dtype=np.int32)
 
       PT.rm_child(zone_bc_n, concat_bc_n)
 
@@ -370,7 +371,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
                          loc=concat_bc_loc,
                          parent=zone_bc_n)
         if concat_bc_fam_n is not None:
-          PT.new_FamilyName(PT.get_value(concat_bc_fam_n), parent=bc_n)
+          PT.new_FamilyName(PT.request_str_value(concat_bc_fam_n), parent=bc_n)
         PT.maia.newDistribution({'Index':bc_distrib}, parent=bc_n)
         if orig_bc_ordin_n is not None:
           PT.new_node('Ordinal', 'Ordinal_t', orig_bc_ordin[bc_id], parent=bc_n)
@@ -380,15 +381,15 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
           bcds_n = nodes[0]
           bcd_n  = nodes[1]
 
-          bcds_type  = PT.get_value(bcds_n)
+          bcds_type  = PT.request_str_value(bcds_n)
           bcds_loc_n = PT.get_child_from_label(bcds_n, 'GridLocation_t')
           bcds_loc   = PT.BCDataSet.GridLocation(bcds_n, bc_n) if bcds_loc_n is not None else None
 
           bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
           if bcds_pl_n is not None:
-            bcds_pl = PT.get_value(bcds_pl_n)[0]
-            bcd_bc_id_n = PT.get_child_from_name_and_label(bcd_n, 'OriginalBCId', 'DataArray_t')
-            bcd_bc_id   = PT.get_value(bcd_bc_id_n)
+            bcds_pl = PT.request_nd_value(bcds_pl_n)[0]
+            bcd_bc_id_n = PT.request_child_from_name_and_label(bcd_n, 'OriginalBCId', 'DataArray_t')
+            bcd_bc_id   = PT.request_nd_value(bcd_bc_id_n)
             bcds_pl_ids = np.where(bcd_bc_id==bc_id)[0]
             bcds_pl = bcds_pl[bcds_pl_ids]
             bcds_distrib = par_utils.dn_to_distribution(bcds_pl.size, comm)
@@ -397,7 +398,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                          point_list=bcds_pl.reshape((1,-1), order='F'),
                                          loc=bcds_loc, parent=bc_n)
             PT.maia.newDistribution({'Index':bcds_distrib}, parent=bc_bcds_n)
-            fields = {PT.get_name(data_array_n):PT.get_value(data_array_n)[bcds_pl_ids]
+            fields = {PT.get_name(data_array_n):PT.request_nd_value(data_array_n)[bcds_pl_ids]
               for data_array_n in PT.get_children_from_label(bcd_n, 'DataArray_t')}
             bc_bcd_n = PT.new_BCData(PT.get_name(bcd_n), fields=fields, parent=bc_bcds_n)
             PT.rm_children_from_name(bc_bcd_n, 'OriginalBCId')
@@ -405,7 +406,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
             bcds_pl_ids = bc_pl_ids
             bc_bcds_n = PT.new_BCDataSet(PT.get_name(bcds_n), type=bcds_type,
                                          loc=bcds_loc, parent=bc_n)
-            fields = {PT.get_name(data_array_n):PT.get_value(data_array_n)[bcds_pl_ids]
+            fields = {PT.get_name(data_array_n):PT.request_nd_value(data_array_n)[bcds_pl_ids]
               for data_array_n in PT.get_children_from_label(bcd_n, 'DataArray_t')}
             bc_bcd_n = PT.new_BCData(PT.get_name(bcd_n), fields=fields, parent=bc_bcds_n)
             PT.rm_children_from_name(bc_bcd_n, 'OriginalBCId')

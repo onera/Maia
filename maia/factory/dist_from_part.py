@@ -125,7 +125,7 @@ def get_parts_per_blocks(part_tree: CGNSPartTree,
     parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
   return parts_per_dom
 
-def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSTree]], comm: MPIComm) -> CGNSTree:
+def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSTree]], comm: MPIComm) -> CGNSDistTree:
   """
   """
   is_face_intra_gc = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \

@@ -22,8 +22,7 @@ import Pypdm.Pypdm as PDM
 
 BC_WALLS = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
 
-def _are_same_perio_abs(first: Tuple[np.ndarray, np.ndarray, np.ndarray], 
-                        second: Tuple[np.ndarray, np.ndarray, np.ndarray]) -> bool:
+def _are_same_perio_abs(first: PT.PeriodicValues, second: PT.PeriodicValues) -> bool:
   """ Return True if the two periodic transformation are the same in absolute value"""
   first_center, first_angle, first_trans = first
   second_center, second_angle, second_trans = second
@@ -65,7 +64,7 @@ def detect_wall_families(tree: CGNSTree, bcwalls: List[str] = BC_WALLS) -> List[
   """
   fam_query = lambda n : PT.get_label(n) == 'Family_t' and \
                          PT.get_child_from_label(n, 'FamilyBC_t') is not None and \
-                         PT.get_value(PT.get_child_from_label(n, 'FamilyBC_t')) in bcwalls
+                         PT.get_value(PT.request_child_from_label(n, 'FamilyBC_t')) in bcwalls
   return [PT.get_name(family) for family in PT.iter_children_from_predicates(tree, ['CGNSBase_t', fam_query])]
 
 
@@ -91,18 +90,18 @@ class WallDistance:
     self.point_cloud = point_cloud
     self.out_fs_n  = out_fs_name
 
-    self._walldist = None
-    self._keep_alive = []
+    self._walldist:Any = None
+    self._keep_alive:List[Any] = []
     self._n_vtx_bnd_tot_idx  = [0]
     self._n_face_bnd_tot_idx = [0]
     self._n_face_orig_bnd_tot_idx = [0] # Exclude periodized patchs
     
     self.perio = perio
-    self.periodicities_per_group = {}
+    self.periodicities_per_group:Dict[int, List[PT.PeriodicValues]] = {}
     
   def _shift_id_and_push_in_global_list(self, 
-                                        parts_datas: List[List[np.ndarray]], 
-                                        all_parts_datas: List[List[np.ndarray]], 
+                                        parts_datas: List[List[NDArray]], 
+                                        all_parts_datas: List[List[NDArray]], 
                                         i_dom: int, 
                                         perio_ghost: bool) -> None:
 
@@ -137,10 +136,10 @@ class WallDistance:
     vtx_ln_to_gn_l.extend(vtx_ln_to_gn_z)
     
   def _dupl_shift_id_and_push_in_global_list(self, 
-                                             parts_datas: List[List[np.ndarray]], 
-                                             all_parts_datas: List[List[np.ndarray]], 
+                                             parts_datas: List[List[NDArray]], 
+                                             all_parts_datas: List[List[NDArray]], 
                                              i_dom: int, 
-                                             perio: Tuple[np.ndarray, np.ndarray, np.ndarray]) -> List[List[np.ndarray]]:
+                                             perio: PT.PeriodicValues) -> List[List[NDArray]]:
 
     vtx_bnd_z = parts_datas[3]
     vtx_bnd_dupl_z = []
@@ -164,11 +163,11 @@ class WallDistance:
     Setup the surfacic mesh for wall distance computing
     """
     #This will concatenate part data of all initial domains
-    face_vtx_bnd_l = []
-    face_vtx_bnd_idx_l = []
-    face_ln_to_gn_l = []
-    vtx_bnd_l = []
-    vtx_ln_to_gn_l = []
+    face_vtx_bnd_l:List[NDArray] = []
+    face_vtx_bnd_idx_l:List[NDArray] = []
+    face_ln_to_gn_l:List[NDArray] = []
+    vtx_bnd_l:List[NDArray] = []
+    vtx_ln_to_gn_l:List[NDArray] = []
 
     # These will be used at the end to recover the ClosestEltGnum in volumic mesh numbering  
     # We save this only for "real" domains (not for periodic ghost) because the link
@@ -197,7 +196,7 @@ class WallDistance:
             break
         parts_surf_to_dupl_l = [parts_datas]
         for perio_val in self.periodicities_per_group[group_num]:
-          perio_val_opp = (perio_val[0], -perio_val[1], -perio_val[2]) #Center, angle, translation
+          perio_val_opp = PT.PeriodicValues(perio_val[0], -perio_val[1], -perio_val[2]) #Center, angle, translation
 
           parts_surf_to_dupl_next_l = []
           for parts_surf_to_dupl in parts_surf_to_dupl_l:
@@ -248,14 +247,16 @@ class WallDistance:
 
     for i_part, part_zone in enumerate(part_zones):
 
-      vtx_coords = np_utils.interweave_arrays(PT.Zone.coordinates(part_zone))
+      coords = [c for c in PT.Zone.coordinates(part_zone) if c is not None]
+      assert len(coords) == 3, "PhyDim != 3 is not supported"
+      vtx_coords = np_utils.interweave_arrays(coords)
       face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(part_zone)
 
       nface = PT.Zone.NFaceNode(part_zone)
-      cell_face_idx = PT.get_value(PT.get_child_from_name(nface, 'ElementStartOffset'))
-      cell_face     = PT.get_value(PT.get_child_from_name(nface, 'ElementConnectivity'))
+      cell_face = MT.Element.connectivity(nface)
 
       vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = tr_utils.get_entities_numbering(part_zone)
+      assert (vtx_ln_to_gn is not None) and (face_ln_to_gn is not None) and (cell_ln_to_gn is not None)
 
       n_vtx  = vtx_ln_to_gn .shape[0]
       n_cell = cell_ln_to_gn.shape[0]
@@ -265,12 +266,12 @@ class WallDistance:
       assert(center_cell.size == 3*n_cell)
 
       # Keep numpy alive
-      for array in (cell_face_idx, cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
+      for array in (cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
           vtx_coords, vtx_ln_to_gn, center_cell):
         self._keep_alive.append(array)
 
       self._walldist.vol_mesh_part_set(i_part,
-                                       n_cell, cell_face_idx, cell_face, center_cell, cell_ln_to_gn,
+                                       n_cell, cell_face.displs, cell_face.values, center_cell, cell_ln_to_gn,
                                        n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
                                        n_vtx, vtx_coords, vtx_ln_to_gn)
 
@@ -458,8 +459,8 @@ def compute_projection_to(part_tree, bc_predicate, comm, point_cloud='CellCenter
 
 def compute_wall_distance(part_tree: CGNSPartTree,
                           comm: MPIComm,
-                          point_cloud: Optional[Union[Literal['CellCenter', 'Vertex'], str]] = 'CellCenter',
-                          out_fs_name: Optional[str] = 'WallDistance',
+                          point_cloud: Literal['CellCenter', 'Vertex'] = 'CellCenter',
+                          out_fs_name: str = 'WallDistance',
                           **options: Any) -> None:
   """Compute wall distances and add it in tree.
 
@@ -526,6 +527,6 @@ def compute_wall_distance(part_tree: CGNSPartTree,
   else:
     mlog.info(f"Wall distance computed ({end-start:.2f} s)")
     for zone in PT.iter_all_Zone_t(part_tree): #Rename Distance -> TurbulentDistance
-      node = PT.get_node_from_path(zone, out_fs_name+"/Distance")
+      node = PT.request_node_from_path(zone, out_fs_name+"/Distance")
       PT.set_name(node, 'TurbulentDistance')
 

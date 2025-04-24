@@ -1,12 +1,11 @@
-import mpi4py.MPI as MPI
 import numpy      as np
-from   maia.typing import List, Callable
 
-import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 import maia.transfer.protocols as MTP
-from   maia.typing import CGNSTree, CGNSDistTree, MPIComm
+
+from maia.typing        import *
+from maia.pytree.typing import Predicates
 
 from maia.io.distribution_tree   import interpret_policy
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
@@ -14,42 +13,45 @@ from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 # ---------------------------------------------------------------------------------------
 def redistribute_pl_node(node: CGNSTree,
-                         distribution: Callable[[int, MPIComm], np.ndarray],
+                         distribution: Callable[[int, MPIComm], NDArray],
                          comm: MPIComm) -> None:
   """
   Redistribute a standard node having a PointList (and its childs) over several processes,
   using a given distribution function. Mainly useful for unit tests. Node must be known by
   each process.
   """
-  distri_n = MT.getDistribution(node)
-  node_distrib = PT.get_child_from_name(distri_n, 'Index')[1]
+  distri_n = MT.requestDistribution(node)
+  node_distrib = MT.distribution_value(node, 'Index')
   new_distrib = distribution(node_distrib[2], comm)
   new_size = new_distrib[1] - new_distrib[0]
   MT.newDistribution({'Index' : new_distrib}, node)
 
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(node, 'IndexArray_t'):
-    idx_dimension = array_n[1].shape[0]
-    new_pl = np.empty((idx_dimension, new_size), order='F', dtype=array_n[1].dtype)
+    array = PT.request_nd_value(array_n)
+    idx_dimension = array.shape[0]
+    new_pl = np.empty((idx_dimension, new_size), order='F', dtype=array.dtype)
     for ip in range(idx_dimension):
-      new_pl[ip,:] = MTP.block_to_block(np.ascontiguousarray(array_n[1][ip]), node_distrib, new_distrib, comm)
-    array_n[1] = new_pl
+      new_pl[ip,:] = MTP.block_to_block(np.ascontiguousarray(array[ip]), node_distrib, new_distrib, comm)
+    PT.set_value(array_n, new_pl)
 
   # Standard Data Arrays
   for array_n in PT.iter_children_from_label(node, 'DataArray_t'):
-    array_n[1] = MTP.block_to_block(array_n[1], node_distrib, new_distrib, comm)
+    array = PT.request_nd_value(array_n)
+    PT.set_value(array_n, MTP.block_to_block(array, node_distrib, new_distrib, comm))
 
   # BCData_t arrays case : can be scalar or vector
   global_data_node = PT.get_child_from_name(distri_n, 'BCDataGlobal')
-  global_data_list = PT.get_value(global_data_node).split('\n') if global_data_node else []
+  global_data_list = PT.request_str_value(global_data_node).split('\n') if global_data_node else []
   has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
   bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)
-  bcds_without_pl_query = [bcds_without_pl, 'BCData_t', 'DataArray_t']
+  bcds_without_pl_query:Predicates = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_path in PT.predicates_to_paths(node, query):
-      array_n = PT.get_node_from_path(node, array_path)
+      array_n = PT.request_node_from_path(node, array_path)
       if not array_path in global_data_list:
-        array_n[1] = MTP.block_to_block(array_n[1], node_distrib, new_distrib, comm)
+        array = PT.request_nd_value(array_n)
+        PT.set_value(array_n, MTP.block_to_block(array, node_distrib, new_distrib, comm))
       
   #Additionnal treatement for subnodes with PL (eg bcdataset)
   has_pl = lambda n : PT.get_name(n) not in ['PointList', 'PointRange'] and has_subset(n)
@@ -61,8 +63,8 @@ def redistribute_pl_node(node: CGNSTree,
 
 # ---------------------------------------------------------------------------------------
 def redistribute_data_node(node: CGNSTree,
-                           distri: List[CGNSTree],
-                           new_distri: List[CGNSTree],
+                           distri: NDArray,
+                           new_distri: NDArray,
                            comm: MPIComm) -> None:
   """
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
@@ -71,14 +73,15 @@ def redistribute_data_node(node: CGNSTree,
   assert PT.get_node_from_name(node, 'PointList') is None
 
   for array in PT.iter_children_from_label(node, 'DataArray_t'):
-    array[1] = MTP.block_to_block(array[1], distri, new_distri, comm)
+    value = PT.request_nd_value(array)
+    PT.set_value(array, MTP.block_to_block(value, distri, new_distri, comm))
 
 # ---------------------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------------------
 def redistribute_elements_node(node: CGNSTree,
-                               distribution: Callable[[int, MPIComm], np.ndarray],
+                               distribution: Callable[[int, MPIComm], NDArray],
                                comm: MPIComm) -> None:
 
   assert PT.get_label(node) == 'Elements_t'
@@ -86,7 +89,7 @@ def redistribute_elements_node(node: CGNSTree,
   has_eso = PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']
 
   # Get element distribution
-  elt_distrib = MT.getDistribution(node, "Element")[1]
+  elt_distrib = MT.distribution_value(node, "Element")
   n_elt       = elt_distrib[2]
 
   # New element distribution
@@ -95,10 +98,10 @@ def redistribute_elements_node(node: CGNSTree,
 
   # > ElementStartOffset
   if has_eso :
-    ec_distrib     = MT.getDistribution(node, "ElementConnectivity")[1]
+    ec_distrib     = MT.distribution_value(node, "ElementConnectivity")
 
-    eso_n = PT.get_child_from_name(node, 'ElementStartOffset')
-    eso   = PT.get_value(eso_n)
+    eso_n = PT.request_child_from_name(node, 'ElementStartOffset')
+    eso   = PT.request_nd_value(eso_n)
 
     # To be consistent with initial distribution, send everything excepted last elt
     eso_wo_last = MTP.block_to_block(eso[:-1], elt_distrib, new_elt_distrib, comm)
@@ -136,15 +139,15 @@ def redistribute_elements_node(node: CGNSTree,
   MT.newDistribution(new_distrib, node)
 
   # > ElementConnectivity
-  ec_n    = PT.get_child_from_name(node, 'ElementConnectivity')
-  ec      = PT.get_value(ec_n)
+  ec_n    = PT.request_child_from_name(node, 'ElementConnectivity')
+  ec      = PT.request_nd_value(ec_n)
   new_ec  = MTP.block_to_block(ec, ec_distrib, new_ec_distrib, comm)
   PT.set_value(ec_n, new_ec)
 
   # > ParentElement
   pe_n    = PT.get_child_from_name(node, 'ParentElements')
   if pe_n is not None :
-    pe      = PT.get_value(pe_n)
+    pe      = PT.request_nd_value(pe_n)
     new_pe  = np.zeros((new_elt_distrib[1]-new_elt_distrib[0], pe.shape[1]), order='F', dtype=pe.dtype)
     for ip in range(pe.shape[1]):
       new_pe_tmp  = MTP.block_to_block(pe[:,ip], elt_distrib, new_elt_distrib, comm)
@@ -156,14 +159,14 @@ def redistribute_elements_node(node: CGNSTree,
 
 # ---------------------------------------------------------------------------------------
 def redistribute_zone(zone: CGNSTree,
-                      distribution: Callable[[int, MPIComm], np.ndarray],
+                      distribution: Callable[[int, MPIComm], NDArray],
                       comm: MPIComm) -> None:
 
   # Get distribution
-  old_distrib = {'Vertex' : MT.getDistribution(zone, "Vertex")[1],
-                 'Cell'   : MT.getDistribution(zone, "Cell")[1]}
+  old_distrib = {'Vertex' : MT.distribution_value(zone, "Vertex"),
+                 'Cell'   : MT.distribution_value(zone, "Cell")}
   if PT.Zone.Type(zone) == 'Structured' and PT.Zone.IndexDimension(zone) == 3:
-    old_distrib['Face'] = MT.getDistribution(zone, "Face")[1]
+    old_distrib['Face'] = MT.distribution_value(zone, "Face")
 
   # New distribution
   new_distrib = {'Vertex' : distribution(PT.Zone.n_vtx(zone) , comm),
@@ -199,7 +202,7 @@ def redistribute_zone(zone: CGNSTree,
     # Trick if related to an other node -> add pl
     matching_region_path = PT.Subset.ZSRExtent(zone_subregion, zone)
     if matching_region_path != PT.get_name(zone_subregion):
-      distri_node = PT.get_node_from_path(zone, matching_region_path + '/:CGNS#Distribution')
+      distri_node = PT.request_node_from_path(zone, matching_region_path + '/:CGNS#Distribution')
       PT.add_child(zone_subregion, PT.deep_copy(distri_node))
     redistribute_pl_node(zone_subregion, distribution, comm)
     if matching_region_path != PT.get_name(zone_subregion):

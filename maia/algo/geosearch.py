@@ -18,23 +18,23 @@ def is_distributed(tree):
 @overload
 def localize_points(src_tree: CGNSDistTree,
                     tgt_tree: CGNSDistTree,
-                    location: str = ({'CellCenter', 'Vertex'}),
-                    comm: Optional[MPIComm]= None, 
-                    **options: Dict[str, Any]) -> None:
+                    location: Literal['CellCenter', 'Vertex'],
+                    comm: MPIComm,
+                    **options) -> None:
   pass
 @overload
 def localize_points(src_tree: CGNSPartTree,
                     tgt_tree: CGNSPartTree,
-                    location: str = ({'CellCenter', 'Vertex'}),
-                    comm: Optional[MPIComm]= None, 
-                    **options: Dict[str, Any]) -> None:
+                    location: Literal['CellCenter', 'Vertex'],
+                    comm: MPIComm, 
+                    **options) -> None:
   pass
 
 def localize_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
                     tgt_tree: Union[CGNSDistTree, CGNSPartTree],
-                    location: str = ({'CellCenter', 'Vertex'}),
-                    comm: Optional[MPIComm]= None, 
-                    **options: Dict[str, Any]) -> None:
+                    location: Literal['CellCenter', 'Vertex'],
+                    comm: MPIComm, 
+                    **options) -> None:
   """Localize points between two trees.
 
   For all the points of the target tree matching the given location,
@@ -44,7 +44,7 @@ def localize_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
   Note that if the source tree is structured, the output gnum is still a scalar index
   and not a (i,j,k) triplet.
 
-  Localization can be parametred thought theUnion[CGNSDistTree, CGNSPartTree], options kwargs:
+  Localization can be parametred thought the options kwargs:
 
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for the method.
 
@@ -76,26 +76,26 @@ def localize_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
   else:
     check_cgns_part_tree(src_tree)
     check_cgns_part_tree(tgt_tree)
-    part_localize.localize_points(src_tree, tgt_tree, location, comm, **options)
+    part_localize.localize_points(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), location, comm, **options)
 
 @overload
 def find_closest_points(src_tree: CGNSDistTree,
                         tgt_tree: CGNSDistTree,
-                        location: str = ({'CellCenter', 'Vertex'}),
-                        comm: Optional[MPIComm]=None) -> None:
+                        location: Literal['CellCenter', 'Vertex'],
+                        comm: MPIComm) -> None:
   pass
 
 @overload 
 def find_closest_points(src_tree: CGNSPartTree,
                         tgt_tree: CGNSPartTree,
-                        location: str = ({'CellCenter', 'Vertex'}),
-                        comm: Optional[MPIComm]=None) -> None:
+                        location: Literal['CellCenter', 'Vertex'],
+                        comm: MPIComm) -> None:
   pass
 
 def find_closest_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
                         tgt_tree: Union[CGNSDistTree, CGNSPartTree],
-                        location: str = ({'CellCenter', 'Vertex'}),
-                        comm: Optional[MPIComm]=None) -> None:
+                        location: Literal['CellCenter', 'Vertex'],
+                        comm: MPIComm) -> None:
   """Find the closest points between two trees.
 
   For all points of the target tree matching the given location,
@@ -131,4 +131,4 @@ def find_closest_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
   else:
     check_cgns_part_tree(src_tree)
     check_cgns_part_tree(tgt_tree)
-    part_closest.find_closest_points(src_tree, tgt_tree, location, comm)
+    part_closest.find_closest_points(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), location, comm)

@@ -360,7 +360,7 @@ def new_BCDataSet(name:str = 'BCDataSet',
 
 
 def new_BCData(name:str,
-               fields:Dict[str, ArrayLike] = {},
+               fields:Mapping[str, ArrayLike] = {},
                parent:Optional[CGNSTree] = None):
   """ Create a BCData_t node
 
@@ -475,7 +475,7 @@ def new_Periodic(rotation_angle:ArrayLike = [0., 0., 0.],
       ]
   return new_node('Periodic', 'Periodic_t', None, childs, parent)
 
-def new_GridConnectivityProperty(periodic:Dict[str,ArrayLike]={}, parent:Optional[CGNSTree]=None):
+def new_GridConnectivityProperty(periodic:Mapping[str,ArrayLike]={}, parent:Optional[CGNSTree]=None):
   """ Create a GridConnectivityProperty node
 
   The main interest of this function is to add periodic information to a GC_t node;
@@ -732,7 +732,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:Optional[str]=None, parent
   return node
 
 
-def new_GridCoordinates(name:str='GridCoordinates', *, fields:Dict[str,ArrayLike]={}, parent:Optional[CGNSTree]=None):
+def new_GridCoordinates(name:str='GridCoordinates', *, fields:Mapping[str,ArrayLike]={}, parent:Optional[CGNSTree]=None):
   """ Create a GridCoordinates_t node
 
   Link to corresponding SIDS section:
@@ -759,7 +759,7 @@ def new_GridCoordinates(name:str='GridCoordinates', *, fields:Dict[str,ArrayLike
 def new_FlowSolution(name:str = 'FlowSolution',
                      *,
                      loc:Optional[str] = None,
-                     fields:Dict[str, ArrayLike] = {},
+                     fields:Mapping[str, ArrayLike] = {},
                      parent:Optional[CGNSTree] = None):
   """ Create a FlowSolution_t node
 
@@ -790,7 +790,7 @@ def new_FlowSolution(name:str = 'FlowSolution',
 def new_DiscreteData(name:str = 'DiscreteData',
                      *,
                      loc:Optional[str] = None,
-                     fields:Dict[str, ArrayLike] = {},
+                     fields:Mapping[str, ArrayLike] = {},
                      parent:Optional[CGNSTree] = None):
   """ Create a DiscreteData_t node
 
@@ -822,7 +822,7 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
                       bc_name:Optional[str] = None,
                       gc_name:Optional[str] = None,
                       family:Optional[str] = None,
-                      fields:Dict[str, ArrayLike] = {},
+                      fields:Mapping[str, ArrayLike] = {},
                       parent:Optional[CGNSTree] = None):
   """ Create a ZoneSubRegion_t node
 
@@ -976,7 +976,7 @@ def new_GasModel(value:str='Ideal',
 
 def new_ReferenceState(name:str = 'ReferenceState',
                        *,
-                       fields:Dict[str, ArrayLike] = {},
+                       fields:Mapping[str, ArrayLike] = {},
                        parent:Optional[CGNSTree] = None):
   """ Create a ReferenceState_t node
 

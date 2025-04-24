@@ -1,7 +1,7 @@
 import numpy as np
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import begin_api_export, end_api_export, for_all_methods, check_is_label
+from maia.pytree.meta   import begin_api_export, end_api_export, for_all_methods, check_is_label, CGNSNodeNotFoundError
 
 from maia.pytree import walk as W
 from maia.pytree import node as N
@@ -18,6 +18,18 @@ def getDistribution(node:CGNSTree, distri_name:Optional[str]=None) -> Optional[C
   return W.get_node_from_path(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
       else W.get_child_from_name(node, ':CGNS#Distribution')
 
+# Not really satisfying, I thing we should only rely on PT searches and
+# juste provide an alias for :CGNS#Distribution
+def requestDistribution(root:CGNSTree, distri_name:Optional[str]=None) -> CGNSTree:
+  node = getDistribution(root, distri_name)
+  if node is None:
+    raise CGNSNodeNotFoundError(root, ':CGNS#Distribution')
+  return node
+
+def distribution_value(root:CGNSTree, distri_name:str) -> NDArray:
+  node = requestDistribution(root, distri_name)
+  return N.request_nd_value(node)
+
 def getGlobalNumbering(node:CGNSTree, lngn_name:Optional[str]=None) -> Optional[CGNSTree]:
   """
   Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
@@ -25,7 +37,16 @@ def getGlobalNumbering(node:CGNSTree, lngn_name:Optional[str]=None) -> Optional[
   """
   return W.get_node_from_path(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
       else W.get_child_from_name(node, ':CGNS#GlobalNumbering')
-      
+
+# Not really satisfying, I thing we should only rely on PT searches and
+# juste provide an alias for :CGNS#GlobalNumbering
+def requestGlobalNumbering(root:CGNSTree, lngn_name:Optional[str]=None) -> CGNSTree:
+  node = getGlobalNumbering(root, lngn_name)
+  if node is None:
+    raise CGNSNodeNotFoundError(root, ':CGNS#GlobalNumbering')
+  return node
+
+
 def newDistribution(distributions:Dict[str, NDArray] = dict(), parent:Optional[CGNSTree]=None) -> CGNSTree:
   """
   Create and return a CGNSNode to be used to store distribution data

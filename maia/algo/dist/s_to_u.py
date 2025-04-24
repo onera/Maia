@@ -254,9 +254,9 @@ def zonedims_to_ngon(n_vtx_zone, comm, dtype=None):
 ###############################################################################
 def convert_s_to_u(
   dist_tree: CGNSDistTree,
-  connectivity: Literal['NGON_n', 'NFACE_n', 'HEXA_8', 'TETRA_4', 'PYRA_5', 'PENTA_6'],
+  connectivity: str,
   comm: MPIComm,
-  subset_loc: Optional[Dict[str, Union[str, List[str]]]] = {}) -> None:
+  subset_loc: Dict[str, Union[None, str, List[str]]] = {}) -> None:
   """Performs the destructuration of the input ``dist_tree``.
 
   Tree is modified in place: a NGON_n or HEXA_8 (not yet implemented)
@@ -287,7 +287,7 @@ def convert_s_to_u(
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
-  zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.get_node_from_path(dist_tree, path))
+  zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.request_node_from_path(dist_tree, path))
                               for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
 
   PT.update_child(dist_tree, 'CGNSLibraryVersion', 'CGNSLibraryVersion_t', 4.2)
@@ -297,7 +297,7 @@ def convert_s_to_u(
         continue
 
       elif PT.Zone.Type(zone) == 'Structured': #Zone is S -> convert it
-        zone_dims_s = PT.get_value(zone)
+        zone_dims_s = PT.request_nd_value(zone)
         zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
         n_vtx  = PT.Zone.VertexSize(zone)
       
@@ -308,7 +308,7 @@ def convert_s_to_u(
           patch = PT.get_child_from_predicate(flow_solution_s, lambda n: PT.get_name(n) in ['PointRange', 'PointList'])
           assert patch is None, f"Partial FlowSolution_t are not supported"
 
-        PT.add_child(zone, zonedims_to_ngon(n_vtx, comm, zone[1].dtype))
+        PT.add_child(zone, zonedims_to_ngon(n_vtx, comm, PT.request_nd_value(zone).dtype))
 
         loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'CellCenter': '#Cell'}
         zonebc_s = PT.get_child_from_label(zone, "ZoneBC_t")
@@ -352,12 +352,13 @@ def convert_s_to_u(
           is_abutt1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
             opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
-            opp_zone = PT.get_node_from_path(dist_tree, opp_zone_path)
+            opp_zone = PT.request_node_from_path(dist_tree, opp_zone_path)
             if PT.Zone.Type(opp_zone) != 'Unstructured':
               continue
             loc = PT.Subset.GridLocation(gc_s)
-            pl = PT.get_child_from_name(gc_s, 'PointList')[1]
-            pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path])
+            pl = PT.request_nd_value(PT.request_child_from_name(gc_s, 'PointList'))
+            pl_i, pl_j, pl_k = pl
+            pl_idx = s_numbering.ijk_to_index_from_loc(pl_i, pl_j, pl_k, loc, zone_path_to_vertex_size[zone_path])
             pl_idx = pl_idx.reshape((1,-1), order='F')
             if 'FaceCenter' in loc: #IFace, JFace or KFaceCenter -> FaceCenter
               PT.update_child(gc_s, 'GridLocation', value='FaceCenter')
@@ -367,7 +368,7 @@ def convert_s_to_u(
               opp_base_name = PT.utils.path_head(opp_zone_path,1)
               if PT.GridConnectivity.ZoneDonorPath(opp_jn, opp_base_name) == zone_path:
                 pld_n = PT.get_child_from_name(opp_jn, 'PointListDonor')
-                if pld_n is not None and np.array_equal(pld_n[1], pl):
+                if pld_n is not None and np.array_equal(PT.request_nd_value(pld_n), pl):
                    PT.update_child(opp_jn, 'PointListDonor', value=pl_idx)
                    break
             else:
@@ -379,7 +380,7 @@ def convert_s_to_u(
           PT.get_children(zonegc_s).extend(gc_u_list)
 
         # Face distribution does not exist on U meshes
-        distri = MT.getDistribution(zone)
+        distri = MT.requestDistribution(zone)
         PT.rm_children_from_name(distri, 'Face')
 
 ###############################################################################

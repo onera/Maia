@@ -15,7 +15,6 @@ from .merge_ids      import merge_distributed_ids
 from .vertex_list    import face_ids_to_vtx_ids
 from .geometry.utils import get_local_coordinates
 
-from maia.algo.part  import closest_points as CLO
 from maia.algo.dist  import merge_jn       as MJN
 from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
@@ -253,18 +252,18 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
   """
   check_cgns_dist_tree(dist_tree)
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    zone_n = PT.get_node_from_path(dist_tree, zone_path)
-    vtx_distri = PT.maia.get_distribution(zone_n, 'Vertex')[1]
+    zone_n = PT.request_node_from_path(dist_tree, zone_path)
+    vtx_distri = MT.distribution_value(zone_n, 'Vertex')
     
     pl_degen_faces_list = []
     for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):
       if PT.predicate.belongs_to_family(bc_n, degen_family):
-        pl_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(bc_n)))
+        pl_degen_faces_list.append(PT.request_nd_value(PT.Subset.getPatch(bc_n)))
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
       zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
-      zsr_extent_n = PT.get_node_from_path(zone_n, zsr_extent_path)
+      zsr_extent_n = PT.request_node_from_path(zone_n, zsr_extent_path)
       if PT.predicate.belongs_to_family(zsr_n, degen_family):
-        pl_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(zsr_extent_n)))
+        pl_degen_faces_list.append(PT.request_nd_value(PT.Subset.getPatch(zsr_extent_n)))
     if len(pl_degen_faces_list) == 0:
       continue
     

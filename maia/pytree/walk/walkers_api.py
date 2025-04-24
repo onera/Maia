@@ -833,7 +833,7 @@ def get_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> List[
   """
   return list(iter_all_subsets(root,filter_loc))
 
-def iter_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> Iterator[CGNSTree]:
+def iter_all_subsets(root:CGNSTree, filter_loc:Optional[Sequence[str]]=None) -> Iterator[CGNSTree]:
   """
   Search and iter on all the subsets nodes found under root
   If filter_loc list is not None, select only the subsets nodes of given

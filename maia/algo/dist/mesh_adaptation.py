@@ -54,7 +54,7 @@ def unpack_metric(dist_tree, metric_paths):
 
 
 def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree, 
-                           metric: Union[str, List[str]],
+                           metric: Union[None, str, List[str]],
                            comm: MPIComm, 
                            container_names: List[str],
                            constraints: Optional[str],
@@ -91,8 +91,8 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, container_names)
   tree_info = comm.bcast(tree_info, root=0)
-  input_base = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
-  input_zone = PT.get_child_from_label(input_base, 'Zone_t')
+  input_base = PT.request_child_from_label(dist_tree, 'CGNSBase_t')
+  input_zone = PT.request_child_from_label(input_base, 'Zone_t')
 
 
   # > CGNS to meshb conversion
@@ -111,12 +111,12 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
        constraints is not None:
        # Can happen if all BCs given, or with wrong BC names. If all BCs, maybe use `-no-surf` feflo option instead
        mlog.warning("Constraints argument given but has no effect.")
-    feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
+    str_feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
 
     mlog.info(f"Start mesh adaptation using Feflo...")
     start = time.time()
     
-    subprocess.run(feflo_command, shell=True, cwd=Path(tmp_dir))
+    subprocess.run(str_feflo_command, shell=True, cwd=Path(tmp_dir))
 
     end = time.time()
     mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s)")
@@ -133,8 +133,8 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
   # > Set names and copy base data
-  adapted_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
-  adapted_zone = PT.get_child_from_label(adapted_base, 'Zone_t')
+  adapted_base = PT.request_child_from_label(adapted_dist_tree, 'CGNSBase_t')
+  adapted_zone = PT.request_child_from_label(adapted_base, 'Zone_t')
   PT.set_name(adapted_base, PT.get_name(input_base))
   PT.set_name(adapted_zone, PT.get_name(input_zone))
 
@@ -148,6 +148,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
     adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
     input_bc   = PT.get_node_from_path(input_zone, bc_path)
     if input_bc is not None:
+      assert adapted_bc is not None
       PT.set_value(adapted_bc, PT.get_value(input_bc))
       for node in PT.get_nodes_from_predicate(input_bc, to_copy):
         PT.add_child(adapted_bc, node)
@@ -270,7 +271,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
 
 def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
-                          metric: Union[str, List[str]],
+                          metric: Union[None, str, List[str]],
                           comm: MPIComm,
                           container_names: List[str],
                           periodic: bool = False,

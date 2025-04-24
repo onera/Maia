@@ -13,12 +13,12 @@ is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
                             PT.Zone.Type(z) == 'Unstructured' and \
                             all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
 
-def iter_matching_zones(t: CGNSTree, cond: Any) -> Iterator[CGNSTree]:
+def iter_matching_zones(t: CGNSTree, cond: Callable[[CGNSTree], bool]) -> Iterator[CGNSTree]:
   for z in PT.iter_all_Zone_t(t):
     if cond(z):
       yield z
 
-def get_pe_local(node: CGNSTree) -> np.ndarray:
+def get_pe_local(node: CGNSTree) -> NDArray:
   """
   Shift the ParentElement array of a NGON or Edge node to have local (starting at 1)
   indices.
@@ -28,7 +28,7 @@ def get_pe_local(node: CGNSTree) -> np.ndarray:
   pe_n = PT.get_child_from_name(node, "ParentElements")
   if pe_n is None:
     raise RuntimeError(f"ParentElements node not found on node {node[0]}")
-  pe_val = pe_n[1]
+  pe_val = PT.request_nd_value(pe_n)
   if pe_val.size == 0:
     return pe_val
   else:
@@ -40,7 +40,7 @@ def get_pe_local(node: CGNSTree) -> np.ndarray:
 
 def pe_to_nface(t: CGNSTree,
                 comm: Optional[MPIComm] = None, 
-                removePE: Optional[bool] = False) -> None:
+                removePE: bool = False) -> None:
   """Create a NFace node from a NGon node with ParentElements.
 
   Input tree is modified inplace.
@@ -68,7 +68,7 @@ def pe_to_nface(t: CGNSTree,
 
 def nface_to_pe(t: CGNSTree, 
                 comm: Optional[MPIComm] = None, 
-                removeNFace: Optional[bool] = False) -> None:
+                removeNFace: bool = False) -> None:
   """Create a ParentElements node in the NGon node from a NFace node.
 
   Input tree is modified inplace.
@@ -87,7 +87,7 @@ def nface_to_pe(t: CGNSTree,
   """
   predicate = lambda z: is_poly_3d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
   for zone in iter_matching_zones(t, predicate):
-    if PT.maia.getDistribution(zone) is not None:
+    if MT.getDistribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.nface_to_pe(zone, comm, removeNFace)
     else:
@@ -96,7 +96,7 @@ def nface_to_pe(t: CGNSTree,
 
 def edge_pe_to_ngon(t: CGNSTree,
                     comm: MPIComm, 
-                    removePE: Optional[bool] = False) -> None:
+                    removePE: bool = False) -> None:
   """Create a NGon node from a Edge node with ParentElements.
 
   Input tree is modified inplace.
@@ -115,7 +115,7 @@ def edge_pe_to_ngon(t: CGNSTree,
   """
   predicate = lambda z: is_poly_2d_zone(z) and not PT.Zone.has_ngon_elements(z)
   for zone in iter_matching_zones(t, predicate):
-    if PT.maia.getDistribution(zone) is not None:
+    if MT.getDistribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.edge_pe_to_ngon(zone, comm, removePE)
     else:
@@ -123,7 +123,7 @@ def edge_pe_to_ngon(t: CGNSTree,
 
 def ngon_to_edge_pe(t: CGNSTree,
                     comm: MPIComm, 
-                    remove_NGon: Optional[bool] = False) -> None:
+                    remove_NGon: bool = False) -> None:
   """Create a ParentElements node in the EdgeElements node from a NGon node.
 
   Note that EdgeElement is supposed to exist and define all (including internal)
@@ -145,7 +145,7 @@ def ngon_to_edge_pe(t: CGNSTree,
   """
   predicate = lambda z: is_poly_2d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
   for zone in iter_matching_zones(t, predicate):
-    if PT.maia.getDistribution(zone) is not None:
+    if MT.getDistribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.ngon_to_edge_pe(zone, comm, remove_NGon)
     else:

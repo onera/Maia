@@ -23,9 +23,9 @@ class Interpolator:
   def __init__(self, 
                src_parts_per_dom: List[List[CGNSTree]], 
                tgt_parts_per_dom: List[List[CGNSTree]], 
-               src_to_tgt: List[Dict[str, np.ndarray]], 
-               input_loc: str, 
-               output_loc: str, 
+               src_to_tgt: Any,
+               input_loc: str,
+               output_loc: str,
                comm: MPIComm) -> None:
     self.src_parts = py_utils.to_flat_list(src_parts_per_dom) 
     self.tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom) 
@@ -67,14 +67,14 @@ class Interpolator:
       pass
 
 
-  def _reduce_single_val(self, i_part: int, data: np.ndarray) -> np.ndarray:
+  def _reduce_single_val(self, i_part: int, data: NDArray) -> NDArray:
     """
     A basic reduce function who take the first received value for each target
     """
     come_from_idx = self.sending_gnums[i_part]['come_from_idx']
     return data[come_from_idx[:-1]]
 
-  def _reduce_weighted_mean(self, i_part: int, data: np.ndarray) -> np.ndarray:
+  def _reduce_weighted_mean(self, i_part: int, data: NDArray) -> NDArray:
     """
     Compute a weighted mean of the received values.
     Usable only if weight are available in src_to_tgt dict
@@ -89,7 +89,7 @@ class Interpolator:
 
   def exchange_fields(self, 
                       container_name: str, 
-                      reduce_func: Callable[[int, np.ndarray], np.ndarray] = _reduce_weighted_mean) -> None:
+                      reduce_func: Callable[['Interpolator', int, NDArray], NDArray] = _reduce_weighted_mean) -> None:
     """
     For all fields found under container_name node,
     - Perform a part to part exchange
@@ -98,9 +98,9 @@ class Interpolator:
     """
 
     #Check that solutions are known on each source partition
-    fields_per_part = list()
+    fields_per_part:List[List[str]] = list()
     for src_part in self.src_parts:
-      container = PT.get_node_from_path(src_part, container_name)
+      container = PT.request_node_from_path(src_part, container_name)
       assert PT.Subset.GridLocation(container) == self.input_loc
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
       fields_per_part.append(fields_name)
@@ -110,6 +110,7 @@ class Interpolator:
     fields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
     if self.root is not None: # Some rank have no src partitions, share field names
       fields_names = self.comm.bcast(fields_names, root=self.root)
+    assert fields_names is not None
 
     #Cleanup target partitions
     for tgt_part in self.tgt_parts:
@@ -120,7 +121,7 @@ class Interpolator:
     src_field_dic = dict()
     for field_name in fields_names:
       field_path = container_name + '/' + field_name
-      src_field_dic[field_name] = [PT.get_node_from_path(part, field_path)[1] for part in self.src_parts]
+      src_field_dic[field_name] = [PT.request_node_from_path(part, field_path)[1] for part in self.src_parts]
 
     #Exchange
     for field_name, src_sol in src_field_dic.items():
@@ -146,11 +147,10 @@ class Interpolator:
           PT.update_child(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
 
 
-# vs.array is not accepteble by mypy, np.ndarray is puted 
-def _cell_tgt_to_vtx_tgt(cell_vtx: np.ndarray, 
-                         cell_tgt: np.ndarray,
-                         cell_vtx_weight:np.ndarray,
-                         n_vtx:int) -> Tuple[np.ndarray, np.ndarray]:
+def _cell_tgt_to_vtx_tgt(cell_vtx: vs.VStrideArray,
+                         cell_tgt: vs.VStrideArray,
+                         cell_vtx_weight:NDArray,
+                         n_vtx:int) -> Tuple[vs.VStrideArray, vs.VStrideArray]:
   """
   Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
   onto vtx->tgt information.
@@ -178,14 +178,14 @@ def _cell_tgt_to_vtx_tgt(cell_vtx: np.ndarray,
   return vtx_to_tgt_vs, vtx_to_weight
 
 
-def create_src_to_tgt(src_parts_per_dom,
-                      tgt_parts_per_dom,
-                      comm,
-                      src_loc = 'CellCenter',
-                      tgt_loc = 'CellCenter',
-                      strategy = 'Closest',
-                      loc_tolerance = 1E-6,
-                      n_closest_pt = 1):
+def create_src_to_tgt(src_parts_per_dom:List[List[CGNSTree]],
+                      tgt_parts_per_dom:List[List[CGNSTree]],
+                      comm:MPIComm,
+                      src_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',
+                      tgt_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',
+                      strategy:str = 'Closest',
+                      loc_tolerance:float = 1E-6,
+                      n_closest_pt:int = 1):
   """ Create a source to target indirection depending of the choosen strategy.
 
   This indirection can then be used to create an interpolator object.
@@ -210,16 +210,16 @@ def create_src_to_tgt(src_parts_per_dom,
       mlog.stat(f"[interpolation] Number of unlocated points for Location method is {n_tot_unlocated}")
 
 
-  all_closest_inv = list()
+  all_closest_inv:List[Dict[str, vs.VStrideArray]] = list()
   if strategy == 'Closest' or (strategy == 'LocationAndClosest' and n_tot_unlocated > 0):
 
     # > Setup source for closest point (with shift to manage multidomain)
-    _, src_clouds = PCU.get_shifted_point_clouds(src_parts_per_dom, src_loc, comm)
-    src_clouds = py_utils.to_flat_list(src_clouds)
+    _, src_clouds_nested = PCU.get_shifted_point_clouds(src_parts_per_dom, src_loc, comm)
+    src_clouds = py_utils.to_flat_list(src_clouds_nested)
 
     # > Setup target for closest point (with shift to manage multidomain)
-    _, tgt_clouds = PCU.get_shifted_point_clouds(tgt_parts_per_dom, tgt_loc, comm)
-    tgt_clouds = py_utils.to_flat_list(tgt_clouds)
+    _, tgt_clouds_nested = PCU.get_shifted_point_clouds(tgt_parts_per_dom, tgt_loc, comm)
+    tgt_clouds = py_utils.to_flat_list(tgt_clouds_nested)
 
     # > If we previously did a mesh location, we only treat unlocated points : create a sub global numbering
     if strategy != 'Closest':
@@ -284,7 +284,12 @@ def create_src_to_tgt(src_parts_per_dom,
 
 
 
-def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, containers_name, location, **options):
+def interpolate_from_parts_per_dom(src_parts_per_dom,
+                                   tgt_parts_per_dom,
+                                   comm,
+                                   containers_name,
+                                   location,
+                                   **options):
   """
   Low level interface for interpolation
   Input are a list of partitioned zones for each src domain, and a list of partitioned zone for each tgt
@@ -300,7 +305,7 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
     return
   try:
     first_part = next(part for dom in src_parts_per_dom for part in dom)
-    input_loc = PT.Subset.GridLocation(PT.get_child_from_name(first_part, containers_name[0]))
+    input_loc = PT.Subset.GridLocation(PT.request_child_from_name(first_part, containers_name[0]))
   except StopIteration:
     input_loc = ''
   input_loc = comm.allreduce(input_loc, op=MPI.MAX)
@@ -314,9 +319,9 @@ def interpolate_from_parts_per_dom(src_parts_per_dom, tgt_parts_per_dom, comm, c
 def interpolate(src_tree: CGNSPartTree,
                 tgt_tree: CGNSPartTree, 
                 comm: MPIComm,
-                containers_name: Union[List,str], 
-                location: str = ({'CellCenter', 'Vertex'}),
-                **options: Dict[str, Any]) -> None:
+                containers_name: List[str], 
+                location: Literal['CellCenter', 'Vertex'],
+                **options) -> None:
   """Interpolate fields between two partitionned trees.
 
   This function can transfer CellCenter or Vertex located fields, but not both
@@ -371,10 +376,10 @@ def create_interpolator(
   src_tree: CGNSPartTree, 
   tgt_tree: CGNSPartTree,
   comm: MPIComm, 
-  src_location: str,
-  location: str,
-  **options: Dict[str, Any]
-) -> None:
+  src_location: Literal['CellCenter', 'Vertex'],
+  location: Literal['CellCenter', 'Vertex'],
+  **options
+) -> Interpolator:
   """Same as interpolate, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange
   fields without recomputing the src_to_tgt indirection (geometry must remain the same).

@@ -1,5 +1,6 @@
 import numpy as np
 import Pypdm.Pypdm as PDM
+from typing import overload
 
 from maia.typing import *
 import maia.pytree        as PT
@@ -11,14 +12,29 @@ from maia.factory.dist_from_part import get_parts_per_blocks
 from maia.pytree.maia.check_tree import check_cgns_part_tree
 from .point_cloud_utils import get_point_cloud
 
+PointCloud = Tuple[NDArray, NDArray]
+Result = Dict[str, NDArray]
+InvResult = Dict[str, vs.VStrideArray]
 
-def _closest_points(src_clouds: List[Tuple[np.ndarray, np.ndarray]], 
-                    tgt_clouds: List[Tuple[np.ndarray, np.ndarray]], 
+@overload
+def _closest_points(src_clouds: List[PointCloud],
+                    tgt_clouds: List[PointCloud],
+                    comm: MPIComm, 
+                    n_pts: int, 
+                    reverse: Literal[False]) -> List[Result]: ...
+@overload
+def _closest_points(src_clouds: List[PointCloud],
+                    tgt_clouds: List[PointCloud],
+                    comm: MPIComm, 
+                    n_pts: int, 
+                    reverse: Literal[True]) -> Tuple[List[Result], List[InvResult]]: ...
+
+def _closest_points(src_clouds: List[PointCloud],
+                    tgt_clouds: List[PointCloud],
                     comm: MPIComm, 
                     n_pts: int = 1, 
-                    reverse: bool = False) -> Union[List[Dict[str, np.ndarray]],
-                                                    Tuple[List[Dict[str, np.ndarray]],
-                                                    List[Dict[str, np.ndarray]]]]:
+                    reverse: bool = False) -> Union[List[Result],
+                                                    Tuple[List[Result], List[InvResult]]]:
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists of tuples (coords, lngn)
@@ -52,7 +68,11 @@ def _closest_points(src_clouds: List[Tuple[np.ndarray, np.ndarray]],
   else:
     return all_closest
 
-def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
+def _mdom_closest_points(src_clouds_per_dom:List[List[PointCloud]], 
+                         tgt_clouds_per_dom:List[List[PointCloud]],
+                         comm:MPIComm,
+                         reverse:bool) -> Union[List[List[Result]],
+                                                Tuple[List[List[Result]], List[List[InvResult]]]]:
 
   n_clouds_per_dom_src = [len(parts) for parts in src_clouds_per_dom]
   n_clouds_per_dom_tgt = [len(parts) for parts in tgt_clouds_per_dom]
@@ -76,34 +96,56 @@ def _mdom_closest_points(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse):
   tgt_clouds = py_utils.to_flat_list(tgt_clouds_per_dom)
   src_clouds = py_utils.to_flat_list(src_clouds_per_dom)
 
-  result = _closest_points(src_clouds, tgt_clouds, comm, 1, reverse)
+  if reverse:
+    direct_result, inv_result = _closest_points(src_clouds, tgt_clouds, comm, 1, True)
+  else:
+    direct_result = _closest_points(src_clouds, tgt_clouds, comm, 1, False)
 
   # Shift back result
-  direct_result = result[0] if reverse else result
   for tgt_result in direct_result:
-    gnum_shifted = tgt_result.pop('closest_src_gnum')
-    tgt_result['closest_src_gnum'], tgt_result['domain'] = np_utils.shifted_to_local(gnum_shifted, src_offset)
+    src_gnum_shifted = tgt_result.pop('closest_src_gnum')
+    tgt_result['closest_src_gnum'], tgt_result['domain'] = np_utils.shifted_to_local(src_gnum_shifted, src_offset)
   if reverse:
-    for src_result in result[1]:
+    for src_result in inv_result:
       gnum_shifted = src_result.pop('tgt_in_src')
       ini_gnum, domain =  np_utils.shifted_to_local(gnum_shifted.values, tgt_offset)
       src_result['tgt_in_src'] = vs.from_displs(gnum_shifted.displs, ini_gnum)
       src_result['domain'] = vs.from_displs(gnum_shifted.displs, domain)
   # Reshape output to list of lists (as input domains)
   if reverse:
-    return py_utils.to_nested_list(result[0], n_clouds_per_dom_tgt),\
-           py_utils.to_nested_list(result[1], n_clouds_per_dom_src) 
+    return py_utils.to_nested_list(direct_result, n_clouds_per_dom_tgt),\
+           py_utils.to_nested_list(inv_result, n_clouds_per_dom_src) 
   else:
-    return py_utils.to_nested_list(result, n_clouds_per_dom_tgt)
+    return py_utils.to_nested_list(direct_result, n_clouds_per_dom_tgt)
+
+@overload
+def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
+                         tgt_parts_per_dom: List[List[CGNSTree]], 
+                         src_location: str, 
+                         tgt_location: str, 
+                         comm: MPIComm, 
+                         reverse:Literal[False]) -> List[List[Result]]: ...
+@overload
+def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
+                         tgt_parts_per_dom: List[List[CGNSTree]], 
+                         src_location: str, 
+                         tgt_location: str, 
+                         comm: MPIComm) -> List[List[Result]]: ...
+@overload
+def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
+                         tgt_parts_per_dom: List[List[CGNSTree]], 
+                         src_location: str, 
+                         tgt_location: str, 
+                         comm: MPIComm, 
+                         reverse:Literal[True]) -> Tuple[List[List[Result]], List[List[InvResult]]]: ...
 
 def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
                          tgt_parts_per_dom: List[List[CGNSTree]], 
                          src_location: str, 
                          tgt_location: str, 
                          comm: MPIComm, 
-                         reverse: bool = False) -> Union[List[List[Dict[str, np.ndarray]]],
-                                                         Tuple[List[List[Dict[str, np.ndarray]]],
-                                                         List[List[Dict[str, np.ndarray]]]]]:
+                         reverse: bool = False) -> Union[List[List[Result]],
+                                                         Tuple[List[List[Result]], List[List[InvResult]]]]:
   src_clouds = [[get_point_cloud(part, src_location) for part in src_parts] \
           for src_parts in src_parts_per_dom]
   tgt_clouds = [[get_point_cloud(part, tgt_location) for part in tgt_parts] \

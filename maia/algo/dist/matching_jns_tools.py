@@ -1,6 +1,9 @@
 import mpi4py.MPI as MPI
 import numpy as np
 
+from maia.typing import *
+from maia.pytree.typing import Predicates
+
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
@@ -160,7 +163,8 @@ def update_jn_name(dist_tree, jn_path, new_name):
   PT.set_name(cur_jn, new_name)
   PT.set_value(opp_gc_name_n, new_name)
   
-def get_matching_jns(dist_tree, select_func=None):
+def get_matching_jns(dist_tree:CGNSTree, 
+                     select_func:Callable[[CGNSTree], bool] = lambda n: True) -> List[Tuple[CGNSPath, CGNSPath]]:
   """
   Return the list of pairs of matching jns
   """
@@ -172,7 +176,7 @@ def get_matching_jns(dist_tree, select_func=None):
                          and PT.GridConnectivity.is1to1(n) \
                          and select_func(n)
 
-  query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]
+  query:Predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]
 
   # Retrieve interfaces pathes and call function
   jn_pairs = []

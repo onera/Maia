@@ -9,10 +9,10 @@ from .part import geometry as part_geometry
 
 
 def _compute_elements_center(zone: CGNSTree, 
-                             dim: int, 
+                             dim: Union[Literal['CellCenter'], int],
                              comm: Optional[MPIComm] = None,
                              element_indices: Optional[ArrayLike] = None,
-                             elements_loc: Optional[str] = None) -> np.ndarray:
+                             elements_loc: Optional[str] = None) -> NDArray:
   """Dispatch centers computing according to zone dimension and 
   requested dimension
   If element_indices is not None, a PointList like array is expected; center
@@ -25,8 +25,8 @@ def _compute_elements_center(zone: CGNSTree,
     return part_geometry._compute_elements_center(zone, dim, element_indices, elements_loc)
 
 def _compute_elements_measure(zone: CGNSTree,
-                              dim: int,
-                              comm: Optional[MPIComm] = None) -> None:
+                              dim: Union[Literal['CellCenter'], int],
+                              comm: Optional[MPIComm] = None) -> NDArray:
   """Dispatch measure computing according to zone dimension and 
   requested dimension """
   if MT.getDistribution(zone) is not None:
@@ -37,7 +37,7 @@ def _compute_elements_measure(zone: CGNSTree,
   
 
 def compute_elements_center(t: CGNSTree,
-                            dim: Union[int, str],
+                            dim: Union[Literal['CellCenter'], int],
                             comm: Optional[MPIComm] = None) -> None:
   """Compute the centers of the specified mesh entity.
 
@@ -91,7 +91,7 @@ def compute_elements_center(t: CGNSTree,
       part_geometry.compute_elements_center(zone, dim)
 
 def compute_elements_measure(t: CGNSTree,
-                             dim: Union[int, str],
+                             dim: Union[Literal['CellCenter'], int],
                              comm: Optional[MPIComm] = None) -> None:
   """Compute the length, area or volume of the specified mesh entity.
 

@@ -9,7 +9,7 @@ from .geometry       import _compute_elements_center
 from .multidom_gnum  import _get_shifted_arrays
 import Pypdm.Pypdm as PDM
 
-def _get_zone_ln_to_gn_from_loc(zone: CGNSTree, location: str) -> np.ndarray:
+def _get_zone_ln_to_gn_from_loc(zone: CGNSTree, location: str) -> NDArray:
   """ Wrapper to get the expected lngn value 
   
   Args:
@@ -20,10 +20,10 @@ def _get_zone_ln_to_gn_from_loc(zone: CGNSTree, location: str) -> np.ndarray:
     Global numbering array for the specified location
   """
   _loc = location.replace('Center', '')
-  ln_to_gn = as_pdm_gnum(PT.get_value(MT.getGlobalNumbering(zone, _loc)))
+  ln_to_gn = as_pdm_gnum(PT.request_nd_value(MT.requestGlobalNumbering(zone, _loc)))
   return ln_to_gn
 
-def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[np.ndarray, np.ndarray]:
+def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[NDArray, NDArray]:
   """
   If location == Vertex, return the (interlaced) coordinates of vertices 
   and vertex global numbering of a partitioned zone
@@ -43,7 +43,9 @@ def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[np.nd
     RuntimeError: If location is unknown or node not found
   """
   if location == 'Vertex':
-    coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(zone)]
+    cx,cy,cz = PT.Zone.coordinates(zone)
+    assert (cx is not None) and (cy is not None) and (cz is not None)
+    coords = [c.reshape(-1, order='F') for c in [cx,cy,cz]]
     vtx_coords   = np_utils.interweave_arrays(coords)
     vtx_ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, location)
     return vtx_coords, vtx_ln_to_gn
@@ -56,7 +58,7 @@ def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[np.nd
   else: #Try to catch a container with the given name
     container = PT.get_child_from_name(zone, location)
     if container:
-      coords = [PT.get_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
+      coords = [PT.request_nd_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
       int_coords = np_utils.interweave_arrays(coords)
       ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, PT.Subset.GridLocation(container))
       return int_coords, ln_to_gn
@@ -65,7 +67,7 @@ def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[np.nd
 
 def get_shifted_point_clouds(parts_per_dom: List[List[CGNSTree]], 
                              location: str,
-                             comm: MPIComm) -> Tuple[int, List[List[Tuple[np.ndarray, np.ndarray]]]]:
+                             comm: MPIComm) -> Tuple[NDArray, List[List[Tuple[NDArray, NDArray]]]]:
   """ Wraps get_point_cloud around multiple domains,
   shifting lngn with previous values
   
@@ -93,9 +95,9 @@ def get_shifted_point_clouds(parts_per_dom: List[List[CGNSTree]],
     clouds_per_dom.append(list(zip(dom_coords, dom_lngns)))
   return offset, clouds_per_dom
 
-def extract_sub_cloud(coords: np.ndarray, 
-                      lngn: np.ndarray,
-                      indices: int) -> Tuple[np.ndarray, np.ndarray]:
+def extract_sub_cloud(coords: NDArray, 
+                      lngn: NDArray,
+                      indices: NDArray) -> Tuple[NDArray, NDArray]:
   """
   Extract coordinates and lngn from a list of indices, starting at 0.
   
@@ -113,7 +115,7 @@ def extract_sub_cloud(coords: np.ndarray,
   sub_coords = layouts.extract_from_indices(coords, indices, 3, 0)
   return sub_coords, sub_lngn
 
-def create_sub_numbering(lngn_l: List[np.ndarray], comm: MPIComm) -> List[np.ndarray]:
+def create_sub_numbering(lngn_l: List[NDArray], comm: MPIComm) -> List[NDArray]:
   """
   Create a new compact, starting at 1 numbering from a list of
   gnums.

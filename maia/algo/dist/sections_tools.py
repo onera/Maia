@@ -33,7 +33,7 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   check_cgns_dist_tree(dist_tree)
   for zone in zones_iterator(dist_tree):
 
-    to_gather = {}
+    to_gather:Dict[str, List[CGNSTree]] = {}
     for elt in PT.get_children_from_label(zone, 'Elements_t'):
       if (kind := PT.Element.CGNSName(elt)) in to_gather:
         to_gather[kind].append(elt)
@@ -66,8 +66,8 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         ec_to_merge = []
         for elt in elts:
           end = start + PT.Element.Size(elt)
-          distri = MT.getDistribution(elt, 'Element')[1]
-          ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
+          distri = MT.distribution_value(elt, 'Element')
+          ec = PT.request_child_from_name(elt, 'ElementConnectivity')[1]
           distri_out = distri.copy()
           distri_out[0] = max(min(merged_distri[0], end), start) - start
           distri_out[1] = max(min(merged_distri[1], end), start) - start
@@ -95,7 +95,7 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
     
 
 
-def reorder_sections(tree, permutation):
+def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[CGNSTree]]) -> None:
   """ Reorder the sections of the input tree by appling the permutation
   function on each zone, and update all the DataArray/IndexArray refering to it.
 
@@ -125,26 +125,29 @@ def reorder_sections(tree, permutation):
       offset[pos] = cur - PT.Element.Range(elts_cur_ord[pos])[0]    # Cur == new ElementRange[0] for this elt, so offset is new - old
       cur += PT.Element.Size(elt)
     assert None not in offset
-    offset = np.array(offset)
+    offset = np.array(offset) #type:ignore[assignment] #(reuse same var)
 
 
     cur_idx = np_utils.sizes_to_indices([PT.Element.Size(e) for e in PT.Zone.get_ordered_elements(zone)]) # NB assert elt start at 1
 
     # Renumber elt data (Range, ParentElements, ElementConnectivity (if needed))
     for i,elt in enumerate(elts_cur_ord):
-      PT.get_child_from_name(elt, 'ElementRange')[1] += offset[i]
+      erange = PT.Element.Range(elt)
+      erange += offset[i]
       
       # Special case of NFace (connectivity is signed, and does not indicates vertices)
       if PT.Element.CGNSName(elt) == 'NFACE_n':
-        ec = PT.get_child_from_name(elt, 'ElementConnectivity')
-        sign = np.sign(ec[1])
-        val  = np.abs(ec[1])
+        ec = PT.request_child_from_name(elt, 'ElementConnectivity')
+        ec_val = PT.request_nd_value(ec)
+        sign = np.sign(ec_val)
+        val  = np.abs(ec_val)
         r = np.searchsorted(cur_idx, val)
-        ec[1][:] = sign*(val + offset[r-1])
+        ec_val[:] = sign*(val + offset[r-1])
 
       if (pe := PT.get_child_from_name(elt, 'ParentElements')) is not None:
-        r = np.searchsorted(cur_idx, pe[1])
-        pe[1] += offset[r-1] * (pe[1] > 0)
+        pe_val = PT.request_nd_value(pe)
+        r = np.searchsorted(cur_idx, pe_val)
+        pe_val += offset[r-1] * (pe_val > 0)
 
     # Renumber PointLists
     opp_zone_paths = []
@@ -154,13 +157,14 @@ def reorder_sections(tree, permutation):
 
       if (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
         # PointRange may cross several sections, so we extend it
-        distri = PT.get_value(distri_n) if (distri_n := MT.getDistribution(subset, 'Index')) is not None else None
-        pl = np_utils.single_dim_pr_to_pl(pr[1], distri)
-        PT.update_node(pr, 'PointList', 'IndexArray_t', pl)
+        distri = PT.request_nd_value(distri_n) if (distri_n := MT.getDistribution(subset, 'Index')) is not None else None
+        new_pl = np_utils.single_dim_pr_to_pl(PT.request_nd_value(pr), distri)
+        PT.update_node(pr, 'PointList', 'IndexArray_t', new_pl)
 
-      pl = PT.get_child_from_name(subset, 'PointList')
-      r = np.searchsorted(cur_idx, pl[1])
-      pl[1] += offset[r-1]
+      pl = PT.request_child_from_name(subset, 'PointList')
+      pl_value = PT.request_nd_value(pl)
+      r = np.searchsorted(cur_idx, pl_value)
+      pl_value += offset[r-1]
 
       if PT.get_label(subset) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(subset):
         opp_zone_paths.append(PT.GridConnectivity.ZoneDonorPath(subset, PT.get_name(base)))
@@ -169,19 +173,20 @@ def reorder_sections(tree, permutation):
     cur_zone_path = f'{PT.get_name(base)}/{PT.get_name(zone)}'
     for opp_zone_path in set(opp_zone_paths):
       opp_base_name = PT.utils.path_head(opp_zone_path)
-      opp_zone = PT.get_node_from_path(tree, opp_zone_path)
+      opp_zone = PT.request_node_from_path(tree, opp_zone_path)
       is_gc_to_update = lambda n : PT.get_label(n) == 'GridConnectivity_t' and \
                                    PT.GridConnectivity.is1to1(n) and \
                                    PT.Subset.GridLocation(n) != 'Vertex' and \
                                    PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path
       for gc in PT.get_children_from_predicates(opp_zone, ['ZoneGridConnectivity_t', is_gc_to_update]):
-        pld = PT.get_child_from_name(gc, 'PointListDonor')
-        r = np.searchsorted(cur_idx, pld[1])
-        pld[1] += offset[r-1]
+        pld = PT.request_child_from_name(gc, 'PointListDonor')
+        pld_value = PT.request_nd_value(pld)
+        r = np.searchsorted(cur_idx, pld_value)
+        pld_value += offset[r-1]
       
       
 def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree, 
-                                  reverse: Optional[bool] = False) -> None:
+                                  reverse: bool = False) -> None:
   """ Reorder the Elements_t sections of the input tree according to their dimension.
 
   By default, Elements_t nodes are sorted in increasing dimension order (1D, then 2D, then 3D).

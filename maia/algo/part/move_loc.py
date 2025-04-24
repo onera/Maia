@@ -14,8 +14,8 @@ import Pypdm.Pypdm as PDM
 
 class CenterToNode:
 
-  def __init__(self, tree: CGNSTree, comm: MPIComm, 
-               idw_power: int = 1, cross_domain: bool = True) -> Any:
+  def __init__(self, tree: CGNSPartTree, comm: MPIComm, 
+               idw_power: int = 1, cross_domain: bool = True):
 
     self.parts    = []
     self.weights  = []
@@ -26,7 +26,8 @@ class CenterToNode:
 
     gnum_list   = []
     for i_dom, zone_path in enumerate(parts_per_dom):
-      dim = PT.get_value(PT.get_child_from_name(tree, PT.utils.path_head(zone_path)))[0]
+      dist_base = PT.request_child_from_name(tree, PT.utils.path_head(zone_path))
+      dim = PT.request_nd_value(dist_base)[0]
       for i_part, zone in enumerate(parts_per_dom[zone_path]):
 
           n_vtx = PT.Zone.n_vtx(zone)
@@ -35,6 +36,7 @@ class CenterToNode:
           
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
+          assert (cx is not None) and (cy is not None) and (cz is not None)
           if PT.Zone.Type(zone)=='Structured' : 
             cx = cx.flatten()
             cy = cy.flatten()
@@ -70,7 +72,7 @@ class CenterToNode:
     #Check that solutions are known on each source partition
     fields_per_part = list()
     for part in self.parts:
-      container = PT.get_node_from_path(part, container_name)
+      container = PT.request_node_from_path(part, container_name)
       assert PT.Subset.GridLocation(container) == 'CellCenter'
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
     fields_per_part.append(fields_name)
@@ -81,7 +83,7 @@ class CenterToNode:
     asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      cell_fields[field_name] = [asflat(PT.get_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
+      cell_fields[field_name] = [asflat(PT.request_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
@@ -103,7 +105,7 @@ class CenterToNode:
         PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
-  def __init__(self, tree: CGNSTree, comm: MPIComm, idw_power: int = 1) -> None:
+  def __init__(self, tree: CGNSPartTree, comm: MPIComm, idw_power: int = 1) -> None:
 
     self.parts        = []
     self.weights      = []
@@ -111,9 +113,10 @@ class NodeToCenter:
     self.cell_vtx     = []
 
     for base in PT.get_all_CGNSBase_t(tree):
-      dim = PT.get_value(base)[0]
+      dim = PT.request_nd_value(base)[0]
       for p_zone in PT.get_all_Zone_t(base):
         cx,cy,cz = PT.Zone.coordinates(p_zone)
+        assert (cx is not None) and (cy is not None) and (cz is not None)
         if PT.Zone.Type(p_zone)=='Structured' : 
            cx = cx.flatten()
            cy = cy.flatten()
@@ -144,14 +147,14 @@ class NodeToCenter:
       weights      = self.weights   [i_part]
       weightssum   = self.weightssum[i_part]
 
-      container = PT.get_node_from_path(part, container_name)
+      container = PT.request_node_from_path(part, container_name)
       assert PT.Subset.GridLocation(container) == 'Vertex'
 
       PT.rm_children_from_name(part, f'{container_name}#Cell')
       fs_out = PT.new_FlowSolution(f'{container_name}#Cell', loc='CellCenter', parent=part)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
-        data_in = PT.get_value(array) 
+        data_in = PT.request_nd_value(array) 
         shape = data_in.shape
         if len(shape) != 1 :
            data_in=data_in.flatten(order='F')

@@ -45,7 +45,7 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
   is_valid_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, required_name) is None
   ds_arrays = PT.get_children_from_predicates(bc_n, [is_valid_bcds, 'BCData_t', 'DataArray_t'])
   for ds_array in ds_arrays:
-    PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_value(ds_array), parent=zsr_bc_n)
+    PT.new_DataArray(name=PT.get_name(ds_array), value=PT.request_nd_value(ds_array), parent=zsr_bc_n)
   if len(ds_arrays) != 0:
     there_is_dataset = True
     # PL and Location is needed for data exchange, but this should be done in ZSR func
@@ -55,9 +55,9 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
 
 
 class Extractor:
-  def __init__(self,part_tree: CGNSPartTree,patch: Dict[str, Any],
+  def __init__(self,part_tree: CGNSPartTree,patch: List[List[NDArray]],
                location: str,comm: MPIComm,
-               graph_part_tool: str = "hilbert") -> Union[None, int]:
+               graph_part_tool: str = "hilbert") -> None:
     """Initialize an extractor object to perform extraction of a part of a mesh"""
     self.part_tree     = part_tree
     self.exch_tool_box = dict()
@@ -142,14 +142,14 @@ class Extractor:
 
     # Copy Families existing on extracted tree
     is_family_name = lambda n :  PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
-    found_family_name = set([PT.get_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
+    found_family_name = set([PT.request_str_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
     for family_name in sorted(found_family_name):
       fam_node = PT.get_node_from_name_and_label(part_tree, family_name, 'Family_t', depth=2)
       if fam_node is not None:
         PT.add_child(extract_base, PT.deep_copy(fam_node))
     self.extract_tree = extract_tree
 
-  def exchange_fields(self, fs_container: Dict[str, Any]) -> None:
+  def exchange_fields(self, fs_container: List[str]) -> None:
     """Exchange fields between partitions"""
     if self.location == '': # Nothing to do if extract_tree is None
       return
@@ -157,7 +157,7 @@ class Extractor:
     exchange_fld_func(self.part_tree,  self.extract_tree , self.dim, self.exch_tool_box,\
           fs_container, self.comm)
 
-  def get_extract_part_tree(self) -> CGNSTree:
+  def get_extract_part_tree(self) -> CGNSPartTree:
     """Return the extracted part tree"""
     return self.extract_tree
 
@@ -167,7 +167,7 @@ def _extract_part_from_zsr(part_tree: CGNSPartTree,
                            comm: MPIComm,
                            transfer_dataset: bool = True,
                            containers_name: List[str] = [],
-                           **options: Any) -> CGNSTree:
+                           **options: Any) -> Tuple[CGNSPartTree, Optional[int]]:
   """Internal function to extract part from ZoneSubRegion"""
   extractor = _create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
@@ -187,8 +187,10 @@ def _extract_part_from_zsr(part_tree: CGNSPartTree,
 
 
 def extract_part_from_zsr(part_tree: CGNSPartTree,
-                          zsr_name: str,comm: MPIComm,
-                          transfer_dataset: bool = True, containers_name: List[str] = [],
+                          zsr_name: str,
+                          comm: MPIComm,
+                          transfer_dataset: bool = True,
+                          containers_name: List[str] = [],
                           **options: Any) -> CGNSPartTree:
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
@@ -265,6 +267,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   # Get zones by domains
 
   graph_part_tool = options.get("graph_part_tool", "hilbert")
+  assert isinstance(graph_part_tool, str)
 
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
@@ -278,8 +281,8 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
       if zsr_node is not None:
         #Follow BC or GC link
         related_node = PT.Subset.ZSRExtent(zsr_node, part_zone)
-        zsr_node     = PT.get_node_from_path(part_zone, related_node)
-        patch_domain.append(PT.Subset.getPatch(zsr_node)[1])
+        zsr_node     = PT.request_node_from_path(part_zone, related_node)
+        patch_domain.append(PT.request_nd_value(PT.Subset.getPatch(zsr_node)))
         location = PT.Subset.GridLocation(zsr_node)
       else: # ZSR does not exists on this partition
         patch_domain.append(np.empty((1,0), np.int32))
@@ -333,7 +336,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
 
   # Local copy of the part_tree to add ZSR 
   l_containers_name = [name for name in containers_name]
-  local_part_tree   = PT.shallow_copy(part_tree)
+  local_part_tree   = CGNSPartTree(PT.shallow_copy(part_tree))
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # Adding ZSR to tree
@@ -375,7 +378,7 @@ def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
   """Create an extractor object from a BC name"""
   check_cgns_part_tree(part_tree)
   # Local copy of the part_tree to add ZSR 
-  local_part_tree   = PT.shallow_copy(part_tree)
+  local_part_tree   = CGNSPartTree(PT.shallow_copy(part_tree))
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # Adding ZSR to tree
@@ -393,7 +396,7 @@ def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
 
 
 def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
-                                 comm: MPIComm) -> Tuple[CGNSTree, Dict[str, Any]]:
+                                 comm: MPIComm) -> Tuple[CGNSPartTree, List[CGNSPath]]:
   """Internal function to prepare extraction from a family name"""
   
   has_struct_zone = any(PT.Zone.Type(zone) == 'Structured' for zone in PT.get_all_Zone_t(part_tree))
@@ -401,7 +404,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
     raise RuntimeError(f'extract_part_from_family function is not implemented for Structured meshes.')
 
   # Local copy of the part_tree to add ZSR 
-  local_part_tree   = PT.shallow_copy(part_tree)
+  local_part_tree   = CGNSPartTree(PT.shallow_copy(part_tree))
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # > Discover family related nodes
@@ -411,26 +414,31 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
   zsr_has_regionname = lambda n: PT.get_label(n)=="ZoneSubRegion_t" and \
                                 (PT.get_child_from_name(n, 'BCRegionName')               is not None or \
                                  PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None)
-  fam_to_node_paths = lambda zone, family_name: PT.predicates_to_paths(zone, [lambda n: PT.get_label(n)=='ZoneSubRegion_t' and in_fam]) + \
-                                                PT.predicates_to_paths(zone, ['ZoneBC_t', in_fam])
 
 
   fam_node_paths = list()
   for domain, part_zones in part_tree_per_dom.items():
+    # Create a "fake" dist zone including:
+    #   - ZSR belonging to provided family, 
+    #   - BC  belonging to the provided family OR referenced by a previoulsy found ZSR
+    #   - GC  referenced by a previously found ZSR
     dist_zone = PT.new_Zone('Zone')
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneSubRegion_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
-    region_node_names = list()
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, [lambda n : PT.get_label(n) == 'ZoneSubRegion_t' and in_fam(n)],
+                                                comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
+    region_node_names:List[str] = list()
     for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
-      region_node = PT.get_child_from_predicate(zsr_with_regionname_n, is_regionname)
-      region_node_names.append(PT.get_value(region_node))
+      region_node = PT.request_child_from_predicate(zsr_with_regionname_n, is_regionname)
+      region_node_names.append(PT.request_str_value(region_node))
     child_list = ['AdditionalFamilyName_t', 'FamilyName_t', 'GridLocation_t']
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', lambda n: in_fam(n) or bc_gc_in_fam(n)], comm, get_value='leaf', child_list=child_list)
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneGridConnectivity_t', bc_gc_in_fam], comm, get_value='leaf', child_list=child_list)
 
-    fam_node_paths.extend(fam_to_node_paths(dist_zone, family_name))
+    # Add selected ZSR and BCs to fam_node_paths
+    fam_node_paths.extend(PT.predicates_to_paths(dist_zone, [lambda n : PT.get_label(n) == "ZoneSubRegion_t"]))
+    fam_node_paths.extend(PT.predicates_to_paths(dist_zone, ['ZoneBC_t', in_fam]))
 
     gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')
-    location = [PT.get_value(n) for n in gl_nodes]
+    location = [PT.request_str_value(n) for n in gl_nodes]
     if len(set(location)) > 1:
       # Not checking subregion extents, possible ?
       raise ValueError(f"Specified family refers to nodes with different GridLocation value : {set(location)}.")
@@ -446,15 +454,15 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
 
           if PT.get_label(fam_node)=="ZoneSubRegion_t":
             related_path = PT.Subset.ZSRExtent(fam_node, part_zone)
-            fam_node = PT.get_node_from_path(part_zone, related_path)
+            fam_node = PT.request_node_from_path(part_zone, related_path)
 
-          pl_n = PT.get_child_from_name(fam_node, 'PointList')
-          fam_pl.append(PT.get_value(pl_n))
+          pl_n = PT.request_child_from_name(fam_node, 'PointList')
+          fam_pl.append(PT.request_nd_value(pl_n))
 
-      fam_pl = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
-      if fam_pl.size!=0:
-        fam_pl = np.unique(fam_pl, axis=1) # If pl.size == 0, this line fails with numpy 1.17
-        PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl, loc=location[0], parent=part_zone)
+      fam_pl_cat = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
+      if fam_pl_cat.size!=0:
+        fam_pl_cat = np.unique(fam_pl_cat, axis=1) # If pl.size == 0, this line fails with numpy 1.17
+        PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl_cat, loc=location[0], parent=part_zone)
 
   return local_part_tree, fam_node_paths
 

@@ -190,8 +190,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
     for zbc in PT.iter_children_from_label(dist_zone, 'ZoneBC_t'):
       for bc in PT.get_children_from_label(zbc, 'BC_t'):
         for bcds in PT.get_children_from_predicate(bc, lambda n : PT.get_label(n) == 'BCDataSet_t' and is_subset(n)):
-          bcds[0] = f'__maia::isBCDS#@#{bc[0]}#@#{bcds[0]}'
-          bcds[3] = 'BC_t'
+          PT.update_node(bcds, name=f'__maia::isBCDS#@#{bc[0]}#@#{bcds[0]}', label='BC_t')
           PT.add_child(zbc, bcds)
         PT.rm_children_from_name(bc, '__maia::isBCDS#@#*')
     # GC case is specific (they have their own container)
@@ -213,7 +212,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
   is_zone     = lambda n : PT.get_label(n) == 'Zone_t'
   is_zone_elt = lambda n : is_zone(n) and PT.Zone.Type(n) == 'Unstructured' and not PT.Zone.has_ngon_elements(n)
   for base in PT.iter_all_CGNSBase_t(dist_tree):
-    extract_dim = PT.get_value(base)[0]
+    extract_dim = PT.request_nd_value(base)[0]
     zones_u = PT.get_children_from_predicate(base, is_zone_elt)
 
     for zone in zones_u: #Raise if overflow is probable
@@ -247,17 +246,16 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
       elif PT.get_name(zbc) != '__maia::isSubset':
         for bcds in PT.get_nodes_from_name(zbc, '__maia::isBCDS*'):
           _, bc_name, ds_name = bcds[0].split('#@#')
-          bc = PT.get_child_from_name(zbc, bc_name)
-          bcds[0] = ds_name
-          bcds[3] = 'BCDataSet_t'
+          bc = PT.request_child_from_name(zbc, bc_name)
+          PT.update_node(bcds, name=ds_name, label='BCDataSet_t')
           if bc is not None: # BC may have been removed (eg. EdgeCenter BCs)
             PT.add_child(bc, bcds)
         PT.rm_children_from_label(zbc, 'BCDataSet_t')
     # > Subsets
-    container = PT.get_child_from_name(dist_zone, '__maia::isSubset')
+    container = PT.request_child_from_name(dist_zone, '__maia::isSubset')
     for node in PT.get_children(container):
-      old_label = PT.get_child_from_name(node, '__maia::initialLabel')
-      PT.set_label(node, PT.get_value(old_label))
+      old_label = PT.request_child_from_name(node, '__maia::initialLabel')
+      PT.set_label(node, PT.request_str_value(old_label))
       PT.rm_child(node, old_label)
       PT.add_child(dist_zone, node)
     PT.rm_child(dist_zone, container)
@@ -266,7 +264,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
   
 def convert_elements_to_ngon(dist_tree: CGNSDistTree,
                              comm: MPIComm,
-                             stable_sort: Optional[bool] = False) -> None:
+                             stable_sort: bool = False) -> None:
   """
   Transform an element based connectivity into a polyedric (NGon based)
   connectivity.
