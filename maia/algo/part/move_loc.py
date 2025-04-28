@@ -170,7 +170,7 @@ class NodeToCenter:
 def centers_to_nodes(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
-                     **options: Any) -> None:
+                     **options) -> None:
   """ Create Vertex located FlowSolution_t from CellCenter located FlowSolution_t.
 
   Interpolation is based on Inverse Distance Weighting 
@@ -211,7 +211,7 @@ def centers_to_nodes(part_tree: CGNSPartTree,
 def nodes_to_centers(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
-                     **options: Any) -> None:
+                     **options) -> None:
   """ Create CellCenter located FlowSolution_t from Vertex located FlowSolution_t.
 
   Interpolation is based on Inverse Distance Weighting 

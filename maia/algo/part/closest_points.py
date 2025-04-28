@@ -161,6 +161,8 @@ def find_closest_points(src_tree: CGNSPartTree,
   """
   Partitionned implementation of maia.algo.find_closest_points
   """
+  check_cgns_part_tree(src_tree)
+  check_cgns_part_tree(tgt_tree)
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())

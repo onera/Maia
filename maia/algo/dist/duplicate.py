@@ -327,7 +327,7 @@ def duplicate_family_from_periodic_jns(dist_tree: CGNSDistTree,
                                        family_name: str,
                                        dupl_nb: int,
                                        comm: MPIComm,
-                                       **kwargs: Any) -> None:
+                                       **kwargs) -> None:
   """Duplicate zones belonging to the specified family.
 
   This is a shortcut for :func:`duplicate_from_periodic_jns` with autodetection of:
@@ -361,7 +361,7 @@ def duplicate_family_from_periodic_jns(dist_tree: CGNSDistTree,
 def duplicate_family_from_rotation_jns_to_360(dist_tree: CGNSDistTree,
                                               family_name: str,
                                               comm: MPIComm,
-                                              **kwargs: Any) -> None:
+                                              **kwargs) -> None:
   """Reconstitute a circular mesh from an angular section of the geometry for zones
   belonging to the provided family"""
   check_cgns_dist_tree(dist_tree)

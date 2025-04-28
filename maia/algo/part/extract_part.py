@@ -191,7 +191,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
                           comm: MPIComm,
                           transfer_dataset: bool = True,
                           containers_name: List[str] = [],
-                          **options: Any) -> CGNSPartTree:
+                          **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
 
@@ -297,7 +297,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
 def create_extractor_from_zsr(part_tree: CGNSPartTree,
                               zsr_path : str, 
                               comm: MPIComm, 
-                              **options: Dict[str,Any]) -> Extractor:
+                              **options) -> Extractor:
   """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
   check_cgns_part_tree(part_tree)
@@ -312,7 +312,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
                               comm: MPIComm,
                               transfer_dataset: Optional[bool] = True, 
                               containers_name: List[str] = [],
-                              **options: Any) -> CGNSPartTree:
+                              **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
 
@@ -374,7 +374,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
   return extract_tree
 
 def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
-                                  comm: MPIComm,**options: Any) -> Extractor:
+                                  comm: MPIComm,**options) -> Extractor:
   """Create an extractor object from a BC name"""
   check_cgns_part_tree(part_tree)
   # Local copy of the part_tree to add ZSR 
@@ -472,7 +472,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
                              comm: MPIComm,
                              transfer_dataset: bool = True,
                              containers_name: List[str] = [],
-                             **options: Any) -> CGNSPartTree:
+                             **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided family name from the input volumic
   partitioned tree.
   
@@ -552,7 +552,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
 
   
 def create_extractor_from_family(part_tree: CGNSPartTree, family_name: str,
-                                 comm: MPIComm, **options: Any) -> Extractor:
+                                 comm: MPIComm, **options) -> Extractor:
   """Create an extractor object from a family name"""
   check_cgns_part_tree(part_tree)
   local_part_tree, _ = _prepare_extract_from_family(part_tree, family_name, comm)

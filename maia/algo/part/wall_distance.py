@@ -459,7 +459,7 @@ def compute_projection_to(part_tree, bc_predicate, comm, point_cloud='CellCenter
 
 def compute_wall_distance(part_tree: CGNSPartTree,
                           comm: MPIComm,
-                          point_cloud: Literal['CellCenter', 'Vertex'] = 'CellCenter',
+                          point_cloud: str = 'CellCenter',
                           out_fs_name: str = 'WallDistance',
                           **options: Any) -> None:
   """Compute wall distances and add it in tree.

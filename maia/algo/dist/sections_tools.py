@@ -185,8 +185,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
         pld_value += offset[r-1]
       
       
-def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree, 
-                                  reverse: bool = False) -> None:
+def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree, reverse: bool = False) -> None:
   """ Reorder the Elements_t sections of the input tree according to their dimension.
 
   By default, Elements_t nodes are sorted in increasing dimension order (1D, then 2D, then 3D).

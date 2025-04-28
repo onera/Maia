@@ -379,7 +379,7 @@ def connect_1to1_families(dist_tree: CGNSDistTree,
                           families: Tuple[str, str],
                           comm: MPIComm,
                           periodic: Optional[Dict[str, NDArray]] = None,
-                          **options: Any) -> None:
+                          **options) -> None:
   """Find the matching faces between cgns nodes belonging to the two provided families.
 
   For each one of the two families, all the BC_t or GridConnectivity_t nodes related to the family

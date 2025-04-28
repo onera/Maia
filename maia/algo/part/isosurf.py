@@ -502,7 +502,7 @@ def iso_surface(part_tree: CGNSPartTree,
                 comm: MPIComm, 
                 iso_val: float = 0., 
                 containers_name: List[str] = [], 
-                **options: Any) -> CGNSPartTree:
+                **options) -> CGNSPartTree:
   """ Create an isosurface from the provided field and value on the input partitioned tree.
 
   Isosurface is returned as an independant (2d) partitioned CGNSTree. 
@@ -601,7 +601,7 @@ def plane_slice(part_tree: CGNSPartTree,
                 plane_eq: Sequence[float], 
                 comm: MPIComm, 
                 containers_name: List[str] = [], 
-                **options: Any) -> CGNSPartTree:
+                **options) -> CGNSPartTree:
   """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
 
@@ -649,7 +649,7 @@ def spherical_slice(part_tree: CGNSPartTree,
                     sphere_eq: Sequence[float], 
                     comm: MPIComm, 
                     containers_name: List[str] = [], 
-                    **options: Any) -> CGNSPartTree:
+                    **options) -> CGNSPartTree:
   """ Create a spherical slice from the provided equation
   :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
   on the input partitioned tree.

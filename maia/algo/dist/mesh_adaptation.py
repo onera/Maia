@@ -276,7 +276,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
                           container_names: List[str],
                           periodic: bool = False,
                           feflo_opts: str = "",
-                          **options: Any) -> CGNSDistTree:
+                          **options) -> CGNSDistTree:
   """Run a mesh adaptation step using *Feflo.a* software.
 
   Important:

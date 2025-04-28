@@ -20,15 +20,13 @@ def localize_points(src_tree: CGNSDistTree,
                     tgt_tree: CGNSDistTree,
                     location: Literal['CellCenter', 'Vertex'],
                     comm: MPIComm,
-                    **options) -> None:
-  pass
+                    **options) -> None: ...
 @overload
 def localize_points(src_tree: CGNSPartTree,
                     tgt_tree: CGNSPartTree,
                     location: Literal['CellCenter', 'Vertex'],
                     comm: MPIComm, 
-                    **options) -> None:
-  pass
+                    **options) -> None: ...
 
 def localize_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
                     tgt_tree: Union[CGNSDistTree, CGNSPartTree],
@@ -82,15 +80,12 @@ def localize_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
 def find_closest_points(src_tree: CGNSDistTree,
                         tgt_tree: CGNSDistTree,
                         location: Literal['CellCenter', 'Vertex'],
-                        comm: MPIComm) -> None:
-  pass
-
+                        comm: MPIComm) -> None: ...
 @overload 
 def find_closest_points(src_tree: CGNSPartTree,
                         tgt_tree: CGNSPartTree,
                         location: Literal['CellCenter', 'Vertex'],
-                        comm: MPIComm) -> None:
-  pass
+                        comm: MPIComm) -> None: ...
 
 def find_closest_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
                         tgt_tree: Union[CGNSDistTree, CGNSPartTree],

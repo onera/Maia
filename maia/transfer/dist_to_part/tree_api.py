@@ -118,8 +118,6 @@ def dist_tree_to_part_tree_all(dist_tree: CGNSDistTree,
         :end-before: #dist_tree_to_part_tree_all@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
-  check_cgns_part_tree(part_tree)
   dist_tree_to_part_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  
 #Possible improvement : dist_tree_to_part_tree only and all API with global paths

@@ -123,8 +123,6 @@ def part_tree_to_dist_tree_all(dist_tree: CGNSDistTree,
     part_tree (CGNSPartTree): Partitioned tree to transfer from
     comm      (MPIComm)     : MPI communicator
   """
-  check_cgns_dist_tree(dist_tree)
-  check_cgns_part_tree(part_tree)
   _recover_base_iterative_data(dist_tree, part_tree, comm)
   part_tree_to_dist_tree_only_labels(dist_tree, part_tree, LABELS, comm)
  

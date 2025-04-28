@@ -95,7 +95,7 @@ def nface_to_pe(t: CGNSTree,
 
 
 def edge_pe_to_ngon(t: CGNSTree,
-                    comm: MPIComm, 
+                    comm: Optional[MPIComm], 
                     removePE: bool = False) -> None:
   """Create a NGon node from a Edge node with ParentElements.
 
@@ -122,7 +122,7 @@ def edge_pe_to_ngon(t: CGNSTree,
       part_ngon_tools.edge_pe_to_ngon(zone, removePE)
 
 def ngon_to_edge_pe(t: CGNSTree,
-                    comm: MPIComm, 
+                    comm: Optional[MPIComm], 
                     remove_NGon: bool = False) -> None:
   """Create a ParentElements node in the EdgeElements node from a NGon node.
 
