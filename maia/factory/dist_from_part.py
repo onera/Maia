@@ -103,7 +103,7 @@ def discover_nodes_from_matching(dist_node: CGNSTree,
           PT.add_child(ancestor, child)
 
 def get_parts_per_blocks(part_tree: CGNSPartTree, 
-                         comm: MPIComm) -> Dict[str, List[CGNSTree]]:
+                         comm: MPIComm) -> Dict[str, List[CGNSPartTree]]:
   """
   Return a dict of the partitioned zones found in part_tree, sorted by initial domain.
   From the partitioned trees, retrieve the paths of the distributed blocks
@@ -125,7 +125,7 @@ def get_parts_per_blocks(part_tree: CGNSPartTree,
     parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
   return parts_per_dom
 
-def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSTree]], comm: MPIComm) -> CGNSDistTree:
+def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSPartTree]], comm: MPIComm) -> CGNSDistTree:
   """
   """
   is_face_intra_gc = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
@@ -138,7 +138,7 @@ def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSTree]], comm: MPIComm
   for dist_zone_path, part_zones in parts_per_dom.items():
     dist_base_name, dist_zone_name = dist_zone_path.split('/')
     dist_base = PT.update_child(dist_tree, dist_base_name, 'CGNSBase_t')
-    dist_zone = PT.update_child(dist_base, dist_zone_name, 'Zone_t')
+    dist_zone = CGNSDistTree(PT.update_child(dist_base, dist_zone_name, 'Zone_t'))
 
     PT.new_child(dist_zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
     MT.newDistribution(parent=dist_zone) # Needed to call relevant function nace_to_pe later
@@ -149,13 +149,13 @@ def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSTree]], comm: MPIComm
 
   return dist_tree
 
-def get_joins_dist_tree(part_tree: CGNSPartTree, comm:MPIComm) -> CGNSTree:
+def get_joins_dist_tree(part_tree: CGNSPartTree, comm:MPIComm) -> CGNSDistTree:
   """ Recreate a dist tree containing only original jns from
   the partitioned tree (with PL). Only for U blocks !"""
   parts_per_dom = get_parts_per_blocks(part_tree, comm)
   return _get_joins_dist_tree(parts_per_dom, comm)
 
-def _recover_dist_block_size(part_zones: List[CGNSTree], 
+def _recover_dist_block_size(part_zones: List[CGNSPartTree], 
                              comm: MPIComm) -> NDArray:
   """
   Recover the size of a distributed block from its partitions.
@@ -213,8 +213,8 @@ def _recover_dist_block_size(part_zones: List[CGNSTree],
   d_zone_dims[:,0] = d_zone_dims[:,1] + 1 # Update vertices
   return d_zone_dims
 
-def _recover_elements(dist_zone: CGNSTree, 
-                      part_zones: List[CGNSTree], 
+def _recover_elements(dist_zone: CGNSDistTree, 
+                      part_zones: Sequence[CGNSPartTree], 
                       comm: MPIComm) -> None:
   """
   Recover elements information for a distributed zone from its partitions.
@@ -351,8 +351,8 @@ def _recover_elements(dist_zone: CGNSTree,
         ER = PT.Element.Range(elt)
         ER += dim_shift
 
-def _recover_BC(dist_zone: CGNSTree, 
-                part_zones: List[CGNSTree], 
+def _recover_BC(dist_zone: CGNSDistTree, 
+                part_zones: List[CGNSPartTree], 
                 comm: MPIComm) -> None:
   """
   Recover BC information for a distributed zone from its partitions.
@@ -373,7 +373,7 @@ def _recover_BC(dist_zone: CGNSTree,
     elif PT.Zone.Type(dist_zone) == 'Structured':
       IPTB.part_pr_to_dist_pr(dist_zone, part_zones, bc_path, comm)
 
-def _recover_GC(dist_zone: CGNSTree, part_zones: List[CGNSTree], comm: MPIComm) -> None:
+def _recover_GC(dist_zone: CGNSDistTree, part_zones: List[CGNSPartTree], comm: MPIComm) -> None:
   """
   Recover GridConnectivity information for a distributed zone from its partitions.
   
@@ -521,7 +521,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
   _recover_base_iterative_data(dist_tree, part_tree, comm)
 
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    dist_zone = PT.request_node_from_path(dist_tree, dist_zone_path)
+    dist_zone = CGNSDistTree(PT.request_node_from_path(dist_tree, dist_zone_path))
 
     part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
 
@@ -574,6 +574,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     
     # To mimic partitioning behaviour, we create here the geometric support of containers
     # (such as ZoneSubRegion) without transfering fields
+    filter: Dict[str, Tuple[Literal['I', 'E'], List[CGNSPath]]]
     filter = {'FlowSolution_t'         : ('I', ['*/']),
               'DiscreteData_t'         : ('I', ['*/']),
               'ZoneSubRegion_t'        : ('I', ['*/']),

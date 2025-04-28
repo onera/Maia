@@ -195,7 +195,7 @@ def _partitioning(dist_tree: CGNSDistTree,
 
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  part_tree = PT.new_CGNSTree()
+  part_tree = CGNSPartTree(PT.new_CGNSTree())
   dist_zones_S = []
   part_zones_S = []
   for dist_base in PT.iter_all_CGNSBase_t(dist_tree):
@@ -223,7 +223,7 @@ def _partitioning(dist_tree: CGNSDistTree,
       else:
         s_parts = []
       part_zones_S.append(s_parts)
-      dist_zones_S.append(zone)
+      dist_zones_S.append(CGNSDistTree(zone))
 
   # Transfert coords for S zones, all at once to avoid multiple block_to_parts
   BTP.dist_coords_to_part_coords_m(dist_zones_S, part_zones_S, comm)

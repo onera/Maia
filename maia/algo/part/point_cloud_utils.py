@@ -65,7 +65,7 @@ def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[NDArr
 
   raise RuntimeError("Unknow location or node")
 
-def get_shifted_point_clouds(parts_per_dom: List[List[CGNSTree]], 
+def get_shifted_point_clouds(parts_per_dom: List[List[CGNSPartTree]], 
                              location: str,
                              comm: MPIComm) -> Tuple[NDArray, List[List[Tuple[NDArray, NDArray]]]]:
   """ Wraps get_point_cloud around multiple domains,

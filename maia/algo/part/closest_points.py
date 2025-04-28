@@ -119,28 +119,28 @@ def _mdom_closest_points(src_clouds_per_dom:List[List[PointCloud]],
     return py_utils.to_nested_list(direct_result, n_clouds_per_dom_tgt)
 
 @overload
-def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
-                         tgt_parts_per_dom: List[List[CGNSTree]], 
+def _find_closest_points(src_parts_per_dom: List[List[CGNSPartTree]], 
+                         tgt_parts_per_dom: List[List[CGNSPartTree]], 
                          src_location: str, 
                          tgt_location: str, 
                          comm: MPIComm, 
                          reverse:Literal[False]) -> List[List[Result]]: ...
 @overload
-def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
-                         tgt_parts_per_dom: List[List[CGNSTree]], 
+def _find_closest_points(src_parts_per_dom: List[List[CGNSPartTree]], 
+                         tgt_parts_per_dom: List[List[CGNSPartTree]], 
                          src_location: str, 
                          tgt_location: str, 
                          comm: MPIComm) -> List[List[Result]]: ...
 @overload
-def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
-                         tgt_parts_per_dom: List[List[CGNSTree]], 
+def _find_closest_points(src_parts_per_dom: List[List[CGNSPartTree]], 
+                         tgt_parts_per_dom: List[List[CGNSPartTree]], 
                          src_location: str, 
                          tgt_location: str, 
                          comm: MPIComm, 
                          reverse:Literal[True]) -> Tuple[List[List[Result]], List[List[InvResult]]]: ...
 
-def _find_closest_points(src_parts_per_dom: List[List[CGNSTree]], 
-                         tgt_parts_per_dom: List[List[CGNSTree]], 
+def _find_closest_points(src_parts_per_dom: List[List[CGNSPartTree]], 
+                         tgt_parts_per_dom: List[List[CGNSPartTree]], 
                          src_location: str, 
                          tgt_location: str, 
                          comm: MPIComm, 

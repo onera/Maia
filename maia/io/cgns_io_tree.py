@@ -220,7 +220,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
   """
   check_cgns_dist_tree(dist_tree)
   if links:
-    dist_tree = CGNSDistTree(PT.shallow_copy(dist_tree))
+    dist_tree = PT.shallow_copy(dist_tree)
     for link in links: # Links override data, so delete data
       PT.rm_node_from_path(dist_tree, link[3])
 

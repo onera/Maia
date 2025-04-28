@@ -22,7 +22,7 @@ def _get_shifted_arrays(arrays_per_dom:List[List[NDArray]], comm:MPIComm) -> Tup
     shifted_per_dom.append([array + offset[i_dom] for array in arrays]) # Shift (with copy)
   return offset, shifted_per_dom
 
-def get_shifted_ln_to_gn_from_loc(parts_per_dom: Iterable[List[CGNSTree]], 
+def get_shifted_ln_to_gn_from_loc(parts_per_dom: Iterable[List[CGNSPartTree]], 
                                   location: str, 
                                   comm: MPIComm) -> Tuple[NDArray, List[List[NDArray]]]:
   """ Wraps _get_zone_ln_to_gn_from_loc around multiple domains,
@@ -33,7 +33,7 @@ def get_shifted_ln_to_gn_from_loc(parts_per_dom: Iterable[List[CGNSTree]],
     lngns_per_dom.append([_get_zone_ln_to_gn_from_loc(part, location) for part in part_zones])
   return _get_shifted_arrays(lngns_per_dom, comm)
 
-def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSTree]], 
+def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]], 
                       comm: MPIComm, 
                       merge_jns: bool = True) -> List[List[NDArray]]:
 

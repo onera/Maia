@@ -241,8 +241,8 @@ def merge_zones(dist_tree: CGNSDistTree,
   for base_n in to_remove:
     PT.rm_children_from_name(dist_tree, base_n)
 
-def _merge_zones(tree: CGNSTree, comm: MPIComm, 
-                 subset_merge_strategy: str='name') -> CGNSTree:
+def _merge_zones(tree: CGNSDistTree, comm: MPIComm, 
+                 subset_merge_strategy: str='name') -> CGNSDistTree:
   """
   Tree must contain *only* the zones to merge. We use a tree instead of a list of zone because it's easier
   to retrieve opposites zones througt joins. Interface beetween zones shall be described by faces
@@ -287,7 +287,7 @@ def _merge_zones(tree: CGNSTree, comm: MPIComm,
           PT.add_child(fake_zbc, gc)
 
   # JNs to external zones must be excluded from vertex list computing
-  tree_vl = CGNSDistTree(PT.shallow_copy(tree))
+  tree_vl = PT.shallow_copy(tree)
   for base, zone in PT.get_children_from_predicates(tree_vl, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     for zgc, gc in PT.get_children_from_predicates(zone, gc_query, ancestors=True):
       if PT.GridConnectivity.ZoneDonorPath(gc, PT.get_name(base)) not in zone_to_id:

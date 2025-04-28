@@ -21,8 +21,8 @@ from .import closest_points as CLO
 class Interpolator:
   """ Low level class to perform interpolations """
   def __init__(self, 
-               src_parts_per_dom: List[List[CGNSTree]], 
-               tgt_parts_per_dom: List[List[CGNSTree]], 
+               src_parts_per_dom: List[List[CGNSPartTree]], 
+               tgt_parts_per_dom: List[List[CGNSPartTree]], 
                src_to_tgt: Any,
                input_loc: str,
                output_loc: str,
@@ -178,8 +178,8 @@ def _cell_tgt_to_vtx_tgt(cell_vtx: vs.VStrideArray,
   return vtx_to_tgt_vs, vtx_to_weight
 
 
-def create_src_to_tgt(src_parts_per_dom:List[List[CGNSTree]],
-                      tgt_parts_per_dom:List[List[CGNSTree]],
+def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
+                      tgt_parts_per_dom:List[List[CGNSPartTree]],
                       comm:MPIComm,
                       src_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',
                       tgt_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',

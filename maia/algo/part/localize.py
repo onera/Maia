@@ -247,7 +247,7 @@ def _mdom_mesh_location(src_parts_per_dom:List[List[PartData]],
   else:
     return py_utils.to_nested_list(direct_result, n_part_per_dom_tgt)
 
-def _collect_source(src_parts_per_dom:List[List[CGNSTree]]) -> List[List[PartData]]:
+def _collect_source(src_parts_per_dom:List[List[CGNSPartTree]]) -> List[List[PartData]]:
   connectivity_t = None
   src_parts = []
   for src_part_zones in src_parts_per_dom:
@@ -269,7 +269,7 @@ def _collect_source(src_parts_per_dom:List[List[CGNSTree]]) -> List[List[PartDat
 
   return src_parts
 
-def _collect_target(tgt_parts_per_dom:List[List[CGNSTree]], location:str) -> List[List[PointCloud]]:
+def _collect_target(tgt_parts_per_dom:List[List[CGNSPartTree]], location:str) -> List[List[PointCloud]]:
   return [[get_point_cloud(part, location) for part in tgt_parts] \
           for tgt_parts in tgt_parts_per_dom]
 
@@ -277,24 +277,24 @@ def _collect_target(tgt_parts_per_dom:List[List[CGNSTree]], location:str) -> Lis
 
 @overload
 def _localize_points(
-  src_parts_per_dom: List[List[CGNSTree]], 
-  tgt_parts_per_dom: List[List[CGNSTree]], 
+  src_parts_per_dom: List[List[CGNSPartTree]], 
+  tgt_parts_per_dom: List[List[CGNSPartTree]], 
   location: str,
   comm: MPIComm, 
   reverse: Literal[False],
   loc_tolerance: float) -> List[List[Result]]: ...
 @overload
 def _localize_points(
-  src_parts_per_dom: List[List[CGNSTree]], 
-  tgt_parts_per_dom: List[List[CGNSTree]], 
+  src_parts_per_dom: List[List[CGNSPartTree]], 
+  tgt_parts_per_dom: List[List[CGNSPartTree]], 
   location: str,
   comm: MPIComm, 
   reverse: Literal[True],
   loc_tolerance: float) -> Tuple[List[List[Result]], List[List[InvResult]]]: ...
 
 def _localize_points(
-  src_parts_per_dom: List[List[CGNSTree]], 
-  tgt_parts_per_dom: List[List[CGNSTree]], 
+  src_parts_per_dom: List[List[CGNSPartTree]], 
+  tgt_parts_per_dom: List[List[CGNSPartTree]], 
   location: str,
   comm: MPIComm, 
   reverse: bool = False, 

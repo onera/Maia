@@ -336,7 +336,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
 
   # Local copy of the part_tree to add ZSR 
   l_containers_name = [name for name in containers_name]
-  local_part_tree   = CGNSPartTree(PT.shallow_copy(part_tree))
+  local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # Adding ZSR to tree
@@ -378,7 +378,7 @@ def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
   """Create an extractor object from a BC name"""
   check_cgns_part_tree(part_tree)
   # Local copy of the part_tree to add ZSR 
-  local_part_tree   = CGNSPartTree(PT.shallow_copy(part_tree))
+  local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # Adding ZSR to tree
@@ -404,7 +404,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
     raise RuntimeError(f'extract_part_from_family function is not implemented for Structured meshes.')
 
   # Local copy of the part_tree to add ZSR 
-  local_part_tree   = CGNSPartTree(PT.shallow_copy(part_tree))
+  local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # > Discover family related nodes

@@ -1,7 +1,8 @@
+from typing import TypeVar
+
 from maia.pytree.typing import *
 from maia.pytree import walk
 from .           import access as NA
-
 
 #begin_api_export()
 
@@ -115,7 +116,10 @@ def update_child(parent:CGNSTree, name:str, label:Union[str, _UNSET]=UNSET, valu
   update_node(node, UNSET, label, value, children)
   return node
 
-def shallow_copy(t:CGNSTree) -> CGNSTree:
+# For shallow|depp_copy, we allow generic type to preserve input tree kind
+Tree = TypeVar('Tree', bound=CGNSTree)
+
+def shallow_copy(t:Tree) -> Tree:
   """ Create a shallow copy of the input tree.
 
   Values of the nodes are not copied, but only known
@@ -134,12 +138,12 @@ def shallow_copy(t:CGNSTree) -> CGNSTree:
     >>> PT.get_value(zone)
     array([[18, 8, 0]], dtype=int32)
   """
-  out:CGNSTree = [NA.get_name(t), NA.get_value(t, raw=True), [], NA.get_label(t)] #type: ignore[assignment]
+  out:Tree = [NA.get_name(t), NA.get_value(t, raw=True), [], NA.get_label(t)] #type: ignore[assignment]
   for child in NA.get_children(t):
-    out[2].append(shallow_copy(child))
+    out[2].append(shallow_copy(child)) #type:ignore #(mypy is lost ?)
   return out
 
-def deep_copy(t:CGNSTree) -> CGNSTree:
+def deep_copy(t:Tree) -> Tree:
   """ Create a deep copy of the input tree.
 
   Values of the nodes are copied, and both trees
@@ -156,12 +160,12 @@ def deep_copy(t:CGNSTree) -> CGNSTree:
     >>> PT.get_value(zone)
     array([[9, 4, 0]], dtype=int32)
   """
-  out = new_node(NA.get_name(t), NA.get_label(t))
+  out:Tree = new_node(NA.get_name(t), NA.get_label(t)) #type: ignore[assignment]
   _val = NA.get_value(t, raw=True)
   if _val is not None:
     out[1] = _val.copy(order='K') #type: ignore[index]
   for child in NA.get_children(t):
-    out[2].append(deep_copy(child))
+    out[2].append(deep_copy(child)) #type:ignore
   return out
 
 #end_api_export()

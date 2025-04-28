@@ -33,7 +33,7 @@ def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> No
       PT.add_child(target_base, family_node)
 
 
-def exchange_field_one_domain(part_zones: List[CGNSTree], 
+def exchange_field_one_domain(part_zones: List[CGNSPartTree], 
                               iso_part_zone: Optional[CGNSTree], 
                               containers_name: List[str], 
                               comm: MPIComm) -> None:
@@ -219,7 +219,7 @@ def _exchange_field(part_tree: CGNSPartTree,
 
 
 
-def iso_surface_one_domain(part_zones: List[CGNSTree], 
+def iso_surface_one_domain(part_zones: List[CGNSPartTree], 
                            iso_kind: str, 
                            iso_params: Union[List[NDArray], Sequence[float]], 
                            elt_type: str, 

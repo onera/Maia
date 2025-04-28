@@ -42,7 +42,7 @@ def dist_to_full_tree(dist_tree: CGNSDistTree,
         :dedent: 2
   """
   check_cgns_dist_tree(dist_tree)
-  _dist_tree = CGNSDistTree(PT.deep_copy(dist_tree))
+  _dist_tree = PT.deep_copy(dist_tree)
 
   redistribute.redistribute_tree(_dist_tree, f'gather.{target}', comm)
   if comm.Get_rank() == target:
