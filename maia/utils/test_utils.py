@@ -14,7 +14,7 @@ def create_collective_tmp_dir(comm):
   Create a unique temporary directory and return its path
   """
   if comm.Get_rank()==0:
-    tmp_test_dir = tempfile.mkdtemp()
+    tmp_test_dir = tempfile.mkdtemp(dir=os.getcwd())
   else:
     tmp_test_dir = ""
   return Path(comm.bcast(tmp_test_dir,root=0))
