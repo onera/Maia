@@ -10,6 +10,7 @@ from maia.factory.partitioning import compute_nosplit_weights
 
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
+from .utils        import create_parent_folder
 
 if _LEGACY_IO:
   import Converter.Filter as Filter
@@ -197,6 +198,8 @@ def part_tree_to_file(part_tree, filename, comm, single_file=False, links=[]):
   # Recover base data and families
   is_not_zone = lambda n : PT.get_label(n) != 'Zone_t'
   discover_nodes_from_matching(top_tree, [part_tree], 'CGNSBase_t', comm, get_value='all', child_list=[is_not_zone])
+
+  create_parent_folder(filename, comm)
 
   if single_file:
     # Sequential write seems to be faster than collective io -- see 01d84da7 for other methods

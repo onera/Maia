@@ -9,6 +9,9 @@ calls are performed by the python module `h5py <https://www.h5py.org/>`_.
 Note that both the hdf5 library and the h5py module must have
 been installed on your computer with parallel support. 
 
+All the IO functions accept ``str`` or ``Path`` objects for ``filename`` argument.
+For write operations, intermediate directories are created if they do not already exist.
+
 .. _user_man_dist_io:
 
 Distributed IO

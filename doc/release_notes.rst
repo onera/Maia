@@ -20,6 +20,7 @@ Developpement version
 - Allow distributed meshes in localize_points and find_closest_points
 - Allow distributed meshes in interpolation
 - convert_s_to_u: manage 2D input meshes and add standard elements output mode
+- IO functions: automatically create non existing folders in writting functions
 
 🐞 Fixes
 ^^^^^^^^
