@@ -113,12 +113,12 @@ def any_true(L: Iterable[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
 def all_true(L: Iterable[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
   return comm.allreduce(py_utils.all_true(L, f), op=MPI.LAND)
 
-def exists_anywhere(trees: List[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
+def exists_anywhere(trees: Sequence[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
   return any_true(trees, 
                   lambda t: PT.get_node_from_path(t, node_path) is not None,
                   comm)
 
-def exists_everywhere(trees: List[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
+def exists_everywhere(trees: Sequence[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
   exists_loc = True #Allow True if list is empty
   for tree in trees:
     exists_loc = exists_loc and (PT.get_node_from_path(tree, node_path) is not None)

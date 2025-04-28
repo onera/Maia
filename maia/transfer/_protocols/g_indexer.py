@@ -4,7 +4,7 @@ import pickle
 
 from cmaia.utils import layouts, vstride
 
-from typing       import List, Tuple, Any, Optional
+from typing       import List, Tuple, Any, Optional, Sequence
 from numpy.typing import NDArray
 NDArrayInt = NDArray[np.integer]
 Buffer = NDArray[Any] 
@@ -54,7 +54,7 @@ class GlobalMultiIndexer:
 
   """
 
-  def __init__(self, distri: NDArrayInt, g_idx_l: List[NDArrayInt], comm: MPI.Comm):
+  def __init__(self, distri: NDArrayInt, g_idx_l: Sequence[NDArrayInt], comm: MPI.Comm):
     """ Generalization of :func:`GlobalIndexer.__init__` for multi index access.
 
     Args:
@@ -95,7 +95,7 @@ class GlobalMultiIndexer:
     self.part_write_pos  = sorting_idx_l # Position where accessed data should be put to have it in MPI order
 
     self._empty_dist = (np.diff(distri)==0).any() # True if at least one rank has dn == 0
-    self._empty_part = None                       # True if at least one rank has len(g_idx) == 0
+    self._empty_part:Optional[bool] = None                       # True if at least one rank has len(g_idx) == 0
 
   @property
   def empty_dist(self) -> bool:
@@ -104,6 +104,7 @@ class GlobalMultiIndexer:
   def empty_part(self) -> bool:
     if self._empty_part is None:
       self._empty_part = self.comm.allreduce(len(self.pn) == 0, MPI.LOR)
+    assert self._empty_part is not None
     return self._empty_part
 
 
@@ -406,8 +407,8 @@ class GlobalMultiIndexer:
         raise ValueError(f"Invalid size of output counts (expected {self.dn}, got {counts_out.size})")
       if buff_out.size - counts_out.sum() != 0:
         raise ValueError(f"Invalid size of output distributed buffer (expected {counts_out.sum()}, got {buff_out.size})")
-      cnts_dtype = counts_out.dtype
-      data_dtype = buff_out.dtype
+      cnts_dtype = counts_out.dtype.str
+      data_dtype = buff_out.dtype.str
       # Retrieve _counts_out from counts_out seems not possible because of data erasion, we will recompute it 
 
 

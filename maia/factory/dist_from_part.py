@@ -35,7 +35,7 @@ class UDDCollector:
       return step.over # Stop exploring this level after search
 
 def discover_nodes_from_matching(dist_node: CGNSTree,
-                                 part_nodes: List[CGNSTree],
+                                 part_nodes: Sequence[CGNSTree],
                                  queries: Predicates,
                                  comm: MPIComm,
                                  child_list: Sequence[Predicate] = [],

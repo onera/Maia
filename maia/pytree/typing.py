@@ -25,4 +25,4 @@ CGNSTree = Tuple[str, Optional[NDArray], List["CGNSTree"], str]
 CGNSPath = str
 
 Predicate = Union[str, Callable[[CGNSTree], bool]]
-Predicates = Union[str, List[Predicate]]
+Predicates = Union[str, Sequence[Predicate]]

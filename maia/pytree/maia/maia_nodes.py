@@ -46,6 +46,10 @@ def requestGlobalNumbering(root:CGNSTree, lngn_name:Optional[str]=None) -> CGNST
     raise CGNSNodeNotFoundError(root, ':CGNS#GlobalNumbering')
   return node
 
+def globalnumbering_value(root:CGNSTree, lngn_name:str) -> NDArray:
+  node = requestGlobalNumbering(root, lngn_name)
+  return N.request_nd_value(node)
+
 
 def newDistribution(distributions:Dict[str, NDArray] = dict(), parent:Optional[CGNSTree]=None) -> CGNSTree:
   """

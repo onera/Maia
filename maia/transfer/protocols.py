@@ -1,5 +1,6 @@
 import numpy as np
 from mpi4py import MPI
+from typing import overload
 
 import maia
 from maia.typing import *
@@ -10,8 +11,9 @@ from ._protocols import GlobalIndexer, GlobalMultiIndexer
 import Pypdm.Pypdm  as PDM
 
 # Type alias to designate a single array or dictionnary of arrays
-DistData = Union[NDArray, Dict[str, NDArray]]
-PartData = Union[List[NDArray], Dict[str, List[NDArray]]]
+T = TypeVar('T', bound=np.generic)
+DistData = Union[NDArray[T], Dict[str, NDArray[T]]]
+PartData = Union[List[NDArray[T]], Dict[str, List[NDArray[T]]]]
 
 def _check_dict_keys(data_dict: Dict[str, Any], comm: MPIComm) -> None:
   if comm.Get_size() == 0:
@@ -68,7 +70,7 @@ def BlockToPart(distri: NDArray,
     else:
       return GlobalIndexer(full_distri, ln_to_gn_list, comm)
 
-def PartToBlock(distri: NDArray,
+def PartToBlock(distri: Optional[NDArray],
                 ln_to_gn_list: List[NDArray],
                 comm: MPIComm, *,
                 weight: bool = False,
@@ -114,11 +116,21 @@ def PartToPart(gnum1: List[NDArray],
 
   return PDM.PartToPart(comm, _part1_lngn, _part2_lngn, _part1_to_part2_idx, _part1_lngn)
 
+@overload
+def block_to_block(data_in: NDArray[T],
+                   distri_in: NDArray,
+                   distri_out: NDArray,
+                   comm: MPIComm) -> NDArray[T]: ...
+@overload
+def block_to_block(data_in: Dict[str, NDArray[T]],
+                   distri_in: NDArray,
+                   distri_out: NDArray,
+                   comm: MPIComm) -> Dict[str, NDArray[T]]: ...
 
 def block_to_block(data_in: DistData,
                    distri_in: NDArray,
                    distri_out: NDArray,
-                   comm: MPIComm) ->DistData:
+                   comm: MPIComm) -> DistData:
   """
   Create and exchange using a BlockToBlock object.
   Allow single field or dict of fields
@@ -134,6 +146,19 @@ def block_to_block(data_in: DistData,
     block_data_out = BTB.exchange_field(data_in)
 
   return block_data_out
+
+@overload
+def block_to_part(dist_data: NDArray[T],
+                  distri: NDArray,
+                  ln_to_gn_list: List[NDArray],
+                  comm: MPIComm,
+                  legacy: bool = False) -> List[NDArray[T]]: ...
+@overload
+def block_to_part(dist_data: Dict[str, NDArray[T]],
+                  distri: NDArray,
+                  ln_to_gn_list: List[NDArray],
+                  comm: MPIComm,
+                  legacy: bool = False) -> Dict[str, List[NDArray[T]]]: ...
 
 def block_to_part(dist_data: DistData,
                   distri: NDArray,
@@ -158,6 +183,20 @@ def block_to_part(dist_data: DistData,
 
   return part_data
 
+@overload
+def block_to_part_strided(dist_stride: NDArray,
+                          dist_data: NDArray[T],
+                          distri: NDArray,
+                          ln_to_gn_list: List[NDArray],
+                          comm: MPIComm,
+                          legacy: bool = False) -> Tuple[NDArray, List[NDArray[T]]]: ...
+@overload
+def block_to_part_strided(dist_stride: NDArray,
+                          dist_data: Dict[str, NDArray[T]],
+                          distri: NDArray,
+                          ln_to_gn_list: List[NDArray],
+                          comm: MPIComm,
+                          legacy: bool = False) -> Tuple[NDArray, Dict[str, List[NDArray[T]]]]: ...
 
 def block_to_part_strided(dist_stride: NDArray,
                           dist_data: DistData,
@@ -225,9 +264,20 @@ def part_to_block(part_data: PartData,
     dist_data = _exchange_one(part_data)  
   return dist_data
 
+@overload
+def part_to_part(send_data: List[NDArray[T]],
+                 gnum1: List[NDArray],
+                 gnum2: List[NDArray],
+                 comm: MPIComm) -> List[NDArray[T]]: ...
+@overload
+def part_to_part(send_data: Dict[str, List[NDArray[T]]],
+                 gnum1: List[NDArray],
+                 gnum2: List[NDArray],
+                 comm: MPIComm) -> Dict[str, List[NDArray[T]]]: ...
+
 def part_to_part(send_data: PartData,
-                 gnum1: List[np.ndarray],
-                 gnum2: List[np.ndarray],
+                 gnum1: List[NDArray],
+                 gnum2: List[NDArray],
                  comm: MPIComm) -> PartData:
   """
   Create and exchange using a PartToPart object with basic "id-to-id" indirection.
@@ -236,7 +286,20 @@ def part_to_part(send_data: PartData,
   _, recv_data = part_to_part_strided(1, send_data, gnum1, gnum2, comm)
   return recv_data
 
-def part_to_part_strided(send_stride: List[NDArray],
+@overload
+def part_to_part_strided(send_stride: Union[int, List[NDArray]],
+                         send_data: List[NDArray[T]],
+                         gnum1: List[NDArray],
+                         gnum2: List[NDArray],
+                         comm: MPIComm) -> Tuple[NDArray, List[NDArray[T]]]: ...
+@overload
+def part_to_part_strided(send_stride: Union[int, List[NDArray]],
+                         send_data: Dict[str,List[NDArray[T]]],
+                         gnum1: List[NDArray],
+                         gnum2: List[NDArray],
+                         comm: MPIComm) -> Tuple[NDArray, Dict[str,List[NDArray[T]]]]: ...
+
+def part_to_part_strided(send_stride: Union[int, List[NDArray]],
                          send_data: PartData,
                          gnum1: List[NDArray],
                          gnum2: List[NDArray],
@@ -264,7 +327,7 @@ def part_to_part_strided(send_stride: List[NDArray],
                         send_data,
                         send_stride)
     recv_stride, recv_data = PTP.wait(request)
-  return recv_stride, recv_data
+  return recv_stride, recv_data #type:ignore[return-value] #(return None for debug)
 
 
 def reduce_sum(dist_data: NDArray, dist_stride: NDArray) -> NDArray:

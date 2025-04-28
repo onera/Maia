@@ -31,15 +31,16 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
         if pl_n is not None:
-          pl_raw = pl_n[1]
+          pl_raw = PT.request_nd_value(pl_n)
           if PT.Zone.Type(dist_zone) == 'Structured':
-            idx = s_numbering.ijk_to_index_from_loc(*pl_raw, loc, PT.Zone.VertexSize(dist_zone))
+            assert pl_raw.shape[0] == 3
+            idx = s_numbering.ijk_to_index_from_loc(pl_raw[0], pl_raw[1], pl_raw[2], loc, PT.Zone.VertexSize(dist_zone))
             point_lists.append(idx.reshape((1,-1), order='F'))
           else:
             point_lists.append(pl_raw)
         elif pr_n is not None and PT.Zone.Type(dist_zone) == 'Unstructured':
-          pr = PT.get_value(pr_n)
-          distrib = PT.get_value(MT.getDistribution(node, 'Index'))
+          pr = PT.request_nd_value(pr_n)
+          distrib = MT.distribution_value(node, 'Index')
           point_lists.append(np_utils.single_dim_pr_to_pl(pr, distrib))
         # else:
           # point_lists.append(np.empty((1,0), dtype=np.int32, order='F'))
@@ -48,7 +49,7 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
 
 def create_part_pointlists(dist_zone: CGNSDistTree, 
                            p_zone: CGNSPartTree,
-                           p_groups: Dict[str, int],
+                           p_groups: Dict[str, NDArray],
                            pl_pathes: List[str], 
                            locations: List[str]) -> None:
   i_pl = 0
@@ -65,7 +66,7 @@ def create_part_pointlists(dist_zone: CGNSDistTree,
           beg_pl = p_groups['npZSRGroupIdx'][i_pl]
           end_pl = p_groups['npZSRGroupIdx'][i_pl+1]
           if beg_pl != end_pl:
-            ancestor = p_zone
+            ancestor:CGNSTree = p_zone
             for parent in ancestors:
               ancestor = PT.update_child(ancestor, PT.get_name(parent), PT.get_label(parent), PT.get_value(parent))
             p_node = PT.update_child(ancestor, PT.get_name(node), PT.get_label(node), PT.get_value(node))
@@ -74,15 +75,15 @@ def create_part_pointlists(dist_zone: CGNSDistTree,
             if PT.Zone.Type(p_zone) == 'Structured':
               pl_value = s_numbering.index_to_ijk_from_loc(pl_raw, loc, PT.Zone.VertexSize(p_zone))
             else:
-              pl_value = pl_raw.reshape((1,-1), order='F')
+              pl_value = pl_raw.reshape((1,-1), order='F') #type:ignore[assignment] #(reuse same var)
             PT.update_child(p_node, 'PointList', 'IndexArray_t', pl_value)
             MT.newGlobalNumbering({'Index': p_groups['npZSRGroupLNToGN'][beg_pl:end_pl]}, p_node)
             # A corner case specific to BCDataSet : we can have a partitioned BCDS/PointList even if BC/PointList
             # was empty. In this case, we must create here an PointList (empty) and GridLoc for the parent BC
             if PT.get_label(p_node) == 'BCDataSet_t' and PT.get_child_from_name(ancestor, 'PointList') is None:
-              d_ancestor = PT.get_node_from_path(dist_zone, '/'.join([PT.get_name(n) for n in ancestors]))
+              d_ancestor = PT.request_node_from_path(dist_zone, '/'.join([PT.get_name(n) for n in ancestors]))
               d_ancestor_loc = PT.Subset.GridLocation(d_ancestor)
-              d_ancestor_pl = PT.get_child_from_name(d_ancestor, 'PointList')[1]
+              d_ancestor_pl = PT.request_nd_value(PT.request_child_from_name(d_ancestor, 'PointList'))
               PT.new_IndexArray('PointList', np.empty((d_ancestor_pl.shape[0],0), np.int32, order='F'), parent=ancestor)
               PT.new_GridLocation(d_ancestor_loc, ancestor)
               MT.newGlobalNumbering({'Index' : np.empty(0, pdm_gnum_dtype)}, parent=ancestor)

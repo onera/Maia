@@ -2,8 +2,9 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
-import maia.transfer as TE
-from   maia.typing import *
+from maia.transfer import utils as tr_utils
+from   maia.typing        import *
+from   maia.pytree.typing import Predicates
 from . import data_exchange
 
 __all__ = ['dist_zone_to_part_zones_only',
@@ -23,7 +24,7 @@ FUNCS = [data_exchange.dist_sol_to_part_sol,
 def _dist_zone_to_part_zones(dist_zone: CGNSDistTree,
                              part_zones: List[CGNSPartTree],
                              comm: MPIComm,
-                             filter_dict: Dict[str, Tuple[Literal['I', 'E'], List[str]]]) -> None:
+                             filter_dict: Dict[str, Tuple[Literal['I', 'E'], List[CGNSPath]]]) -> None:
   """
   Low level API to transfert data fields from the distributed zone to the partitioned zones.
   filter_dict must a dict containing, for each label defined in LABELS, a tuple (flag, paths):
@@ -43,7 +44,7 @@ def _dist_zone_to_part_zones(dist_zone: CGNSDistTree,
 def dist_zone_to_part_zones_only(dist_zone: CGNSDistTree,
                                  part_zones: List[CGNSPartTree],
                                  comm: MPIComm,
-                                 include_dict: Dict[str, List[str]]) -> None:
+                                 include_dict: Dict[str, List[CGNSPath]]) -> None:
   """ Transfer the data fields specified in include_dict from a distributed zone
   to the corresponding partitioned zones.
 
@@ -56,6 +57,7 @@ def dist_zone_to_part_zones_only(dist_zone: CGNSDistTree,
   check_cgns_dist_tree(dist_zone)
   for part_zone in part_zones:
     check_cgns_part_tree(part_zone)
+  filter_dict: Dict[str, Tuple[Literal['I', 'E'], List[CGNSPath]]]
   filter_dict = {label : ('I', include_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : includeall -> exclude nothing
   filter_dict.update({label : ('E', []) for label in LABELS if filter_dict[label][1] == ['*']})
@@ -64,7 +66,7 @@ def dist_zone_to_part_zones_only(dist_zone: CGNSDistTree,
 def dist_zone_to_part_zones_all(dist_zone: CGNSDistTree,
                                 part_zones: List[CGNSPartTree],
                                 comm: MPIComm,
-                                exclude_dict: Dict[str, List[str]] = {}) -> None:
+                                exclude_dict: Dict[str, List[CGNSPath]] = {}) -> None:
   """ Transfer all the data fields, excepted those specified in exclude_dict,
   from a distributed zone to the corresponding partitioned zones.
 
@@ -77,6 +79,7 @@ def dist_zone_to_part_zones_all(dist_zone: CGNSDistTree,
   check_cgns_dist_tree(dist_zone)
   for part_zone in part_zones:
     check_cgns_part_tree(part_zone)
+  filter_dict: Dict[str, Tuple[Literal['I', 'E'], List[CGNSPath]]]
   filter_dict = {label : ('E', exclude_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : excludeall -> include nothing
   filter_dict.update({label : ('I', []) for label in LABELS if filter_dict[label][1] == ['*']})
@@ -100,8 +103,8 @@ def dist_tree_to_part_tree_only_labels(dist_tree: CGNSDistTree,
   assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
-    p_zones = TE.utils.get_partitioned_zones(part_tree, PT.get_name(d_base) + '/' + PT.get_name(d_zone))
-    dist_zone_to_part_zones_only(d_zone, p_zones, comm, include_dict)
+    p_zones = tr_utils.get_partitioned_zones(part_tree, PT.get_name(d_base) + '/' + PT.get_name(d_zone))
+    dist_zone_to_part_zones_only(CGNSDistTree(d_zone), p_zones, comm, include_dict)
 
 def dist_tree_to_part_tree_all(dist_tree: CGNSDistTree,
                                part_tree: CGNSPartTree,
@@ -123,7 +126,7 @@ def dist_tree_to_part_tree_all(dist_tree: CGNSDistTree,
 
 def dist_tree_to_part_tree_copy(dist_tree: CGNSDistTree,
                                 part_tree: CGNSPartTree,
-                                predicates: Union[str,List[str]],
+                                predicates: Predicates,
                                 comm: MPIComm) -> None:
   """ Copy nodes matching the input predicates chain from dist_tree to part_tree
 
@@ -146,15 +149,15 @@ def dist_tree_to_part_tree_copy(dist_tree: CGNSDistTree,
     # so we update the correponding name to include wildcard *
     names = path.split('/')
     if len(names) >= 2:
-      if PT.get_label(PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 2))) == 'Zone_t':
+      if PT.get_label(PT.request_node_from_path(dist_tree, PT.utils.path_head(path, 2))) == 'Zone_t':
         names[1] += '.P*.N*'
     # Same for GC_t nodes
     if len(names) >= 4:
-      if PT.get_label(PT.get_node_from_path(dist_tree, PT.utils.path_head(path, 4))) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
+      if PT.get_label(PT.request_node_from_path(dist_tree, PT.utils.path_head(path, 4))) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
         names[3] += '.*'
 
     # Now copy dist_node to partitioned tree
-    dist_node = PT.get_node_from_path(dist_tree, path)
+    dist_node = PT.request_node_from_path(dist_tree, path)
     if len(names) > 1:
       for part_node in PT.get_children_from_names(part_tree, names[:-1]):
         PT.rm_children_from_name(part_node, names[-1])

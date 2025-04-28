@@ -178,11 +178,11 @@ ZoneU Zone_t [[6,0,0]]:
   ZSRWithPL ZoneSubRegion_t:
     GridLocation GridLocation_t "Vertex":
     PointList IndexArray_t [[2]]:
-""".format(dtype)
+"""
   pt = """
 ZoneU.P1.N0 Zone_t [[3,0,0]]:
   ZoneType ZoneType_t "Unstructured":
-""".format(dtype)
+"""
 
   dist_zone = PT.yaml.to_node(dt)
   part_zone = PT.yaml.to_node(pt)

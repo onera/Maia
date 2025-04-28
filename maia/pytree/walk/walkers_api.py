@@ -1,4 +1,4 @@
-from typing import overload
+from typing import overload, TypeVar
 from maia.pytree.typing import *
 from maia.pytree.meta   import CGNSNodeNotFoundError
 
@@ -759,7 +759,12 @@ def request_node_from_path(root:CGNSTree, path:CGNSPath) -> CGNSTree:
     return node
   raise CGNSNodeNotFoundError(root, path)
 
-def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
+
+# For get|iter_all_Zone|Base_t, we allow generic type to preserve input
+# tree kind
+
+Tree = TypeVar('Tree', bound=CGNSTree)
+def get_all_Zone_t(root:Tree) -> List[Tree]:
   """ Return the list of all the Zone_t nodes found in input tree
 
   This function is SIDS aware, and will only search nodes in relevant places.
@@ -784,17 +789,16 @@ def get_all_Zone_t(root:CGNSTree) -> List[CGNSTree]:
   """
   return list(iter_all_Zone_t(root))
 
-def iter_all_Zone_t(root:CGNSTree) -> Iterator[CGNSTree]:
+def iter_all_Zone_t(root:Tree) -> Iterator[Tree]:
   root_label = root[3]
   if root_label == 'Zone_t':
     yield root
-  elif root_label == 'CGNSBase_t':
-    yield from iter_children_from_label(root, 'Zone_t')
-  elif root_label == 'CGNSTree_t':
-    yield from iter_children_from_labels(root, ['CGNSBase_t', 'Zone_t'])
+  else:
+    for base in iter_all_CGNSBase_t(root):
+      yield from iter_children_from_label(base, 'Zone_t') #type:ignore[misc] #(iter_children is not generic)
   
 
-def get_all_CGNSBase_t(root:CGNSTree) -> List[CGNSTree]:
+def get_all_CGNSBase_t(root:Tree) -> List[Tree]:
   """ Return the list of all the CGNSBase_t nodes found in input tree
 
   This function is SIDS aware, and will only search nodes in relevant places.
@@ -818,11 +822,11 @@ def get_all_CGNSBase_t(root:CGNSTree) -> List[CGNSTree]:
   """
   return list(iter_all_CGNSBase_t(root))
 
-def iter_all_CGNSBase_t(root:CGNSTree) -> Iterator[CGNSTree]:
+def iter_all_CGNSBase_t(root:Tree) -> Iterator[Tree]:
   if root[3] == 'CGNSBase_t':
     yield root
   elif root[3] == 'CGNSTree_t':
-    yield from iter_children_from_label(root, 'CGNSBase_t')
+    yield from iter_children_from_label(root, 'CGNSBase_t') #type:ignore[misc] #(iter_children is not generic)
 
 def get_all_subsets(root:CGNSTree, filter_loc:Optional[List[str]]=None) -> List[CGNSTree]:
   """
