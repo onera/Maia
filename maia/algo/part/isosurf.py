@@ -15,7 +15,6 @@ from maia.factory.partitioning import part_bound_orient as PBO
 from maia.utils    import np_utils, layouts
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
-from maia.pytree.maia.check_tree import check_cgns_part_tree
 
 import Pypdm.Pypdm as PDM
 
@@ -545,7 +544,7 @@ def iso_surface(part_tree: CGNSPartTree,
       :end-before: #compute_iso_surface@end
       :dedent: 2
   """
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
   elt_type        = options.get("elt_type", "TRI_3")
@@ -624,7 +623,7 @@ def plane_slice(part_tree: CGNSPartTree,
       :end-before: #compute_plane_slice@end
       :dedent: 2
   """
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
   elt_type        = options.get("elt_type", "TRI_3")
@@ -673,7 +672,7 @@ def spherical_slice(part_tree: CGNSPartTree,
       :end-before: #compute_spherical_slice@end
       :dedent: 2
   """
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
   elt_type        = options.get("elt_type", "TRI_3")

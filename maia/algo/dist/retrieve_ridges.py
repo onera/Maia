@@ -11,7 +11,6 @@ from   maia.transfer                     import protocols as EP
 from   maia.utils                        import np_utils, par_utils, as_pdm_gnum
 from   maia.utils                        import logging as mlog
 from   maia.typing                       import *
-from   maia.pytree.maia.check_tree       import check_cgns_dist_tree
 
 def replace_bc_identifiers(zone:CGNSTree, bc_identifiers:List[Union[str, List[str]]]) -> List[List[str]]:
   """
@@ -114,7 +113,7 @@ def find_ridges(dist_tree: CGNSDistTree,
         :end-before: #retrieve_ridges@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   for zone in PT.iter_all_Zone_t(dist_tree):
 
     assert PT.Zone.CellDimension(zone)>1

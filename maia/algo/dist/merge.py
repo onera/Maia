@@ -14,7 +14,6 @@ from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def _append_or_create(d, key, val):
   try:
@@ -29,7 +28,7 @@ def merge_all_zones_from_families(dist_tree: CGNSDistTree,
                                   comm: MPIComm,
                                   **kwargs) -> None:
   """Apply merge_zones_from_family to each family of the tree"""
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   family_names = [PT.get_name(node) for node in \
           PT.iter_nodes_from_label(dist_tree, 'Family_t', depth=2)]
   for family_name in family_names:
@@ -60,7 +59,7 @@ def merge_zones_from_family(dist_tree: CGNSDistTree,
         :end-before: #merge_zones_from_family@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   match_fam = lambda m: PT.get_child_from_label(m, 'FamilyName_t') is not None and \
                         PT.request_str_value(PT.request_child_from_label(m, 'FamilyName_t')) == family_name
 
@@ -92,7 +91,7 @@ def merge_connected_zones(dist_tree: CGNSDistTree,
         :end-before: #merge_connected_zones@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   MJT.add_joins_donor_name(dist_tree, comm)
   grouped_zone_paths = PT.Tree.find_connected_zones(dist_tree)
 
@@ -143,7 +142,7 @@ def merge_zones(dist_tree: CGNSDistTree,
         :end-before: #merge_zones@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   # Transform wildcard into concrete path
   replace_super_wildcard = lambda p: '*/*' if p == '*' else p
   zone_paths = [replace_super_wildcard(p) for p in zone_paths]

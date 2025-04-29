@@ -1,4 +1,5 @@
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from maia.typing        import *
 from maia.pytree.typing import Predicates
@@ -6,7 +7,6 @@ from maia.pytree.typing import Predicates
 from maia.transfer import utils as tr_utils
 from . import data_exchange
 from maia.factory.dist_from_part import _recover_base_iterative_data, discover_nodes_from_matching
-from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 
 __all__ = ['part_zones_to_dist_zone_only',
            'part_zones_to_dist_zone_all',
@@ -61,9 +61,9 @@ def part_zones_to_dist_zone_only(dist_zone: CGNSDistTree,
     comm: MPI communicator
     include_dict: Dictionary mapping labels to paths to include
   """
-  check_cgns_dist_tree(dist_zone)
+  MT.check_cgns_dist_tree(dist_zone)
   for part_zone in part_zones:
-    check_cgns_part_tree(part_zone)
+    MT.check_cgns_part_tree(part_zone)
   filter_dict: Dict[str, Tuple[Literal['I', 'E'], List[CGNSPath]]]
   filter_dict = {label : ('I', include_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : includeall -> exclude nothing
@@ -83,9 +83,9 @@ def part_zones_to_dist_zone_all(dist_zone: CGNSDistTree,
     comm: MPI communicator
     exclude_dict: Dictionary mapping labels to paths to exclude
   """
-  check_cgns_dist_tree(dist_zone)
+  MT.check_cgns_dist_tree(dist_zone)
   for part_zone in part_zones:
-    check_cgns_part_tree(part_zone)
+    MT.check_cgns_part_tree(part_zone)
   filter_dict: Dict[str, Tuple[Literal['I', 'E'], List[CGNSPath]]]
   filter_dict = {label : ('E', exclude_dict.get(label, [])) for label in LABELS}
   #Manage joker ['*'] : excludeall -> include nothing
@@ -105,8 +105,8 @@ def part_tree_to_dist_tree_only_labels(dist_tree: CGNSDistTree,
     labels: List of labels to transfer
     comm: MPI communicator
   """
-  check_cgns_dist_tree(dist_tree)
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_part_tree(part_tree)
   assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
@@ -146,8 +146,8 @@ def part_tree_to_dist_tree_copy(dist_tree: CGNSDistTree,
         :end-before: #part_tree_to_dist_tree_copy@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_part_tree(part_tree)
   assert isinstance(predicates, (list, str))
   single_pred = '/' not in predicates if isinstance(predicates, str) else len(predicates) == 1
   if single_pred:

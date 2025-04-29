@@ -9,13 +9,6 @@ from .part import interpolation as part_interpolation
 
 from .interpolation_utils import Interpolator
 
-from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
-
-def is_distributed(tree):
-  for zone in PT.get_all_Zone_t(tree):
-    if MT.getDistribution(zone) is not None:
-      return True
-  return False
 
 @overload
 def interpolate(src_tree:CGNSDistTree,
@@ -82,20 +75,12 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
         :end-before: #interpolate@end
         :dedent: 2
   """
-  src_dist = is_distributed(src_tree)
-  tgt_dist = is_distributed(tgt_tree)
-
-  if src_dist ^ tgt_dist:
-    raise ValueError("Source and target tree must be both distributed or partitioned")
-
-  if src_dist:
-    check_cgns_dist_tree(src_tree)
-    check_cgns_dist_tree(tgt_tree)
+  if MT.is_cgns_dist_tree(src_tree) and MT.is_cgns_dist_tree(tgt_tree):
     dist_interpolation.interpolate(src_tree, tgt_tree, comm, containers_name, location, **options)
-  else:
-    check_cgns_part_tree(src_tree)
-    check_cgns_part_tree(tgt_tree)
+  elif MT.is_cgns_part_tree(src_tree) and MT.is_cgns_part_tree(tgt_tree):
     part_interpolation.interpolate(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), comm, containers_name, location, **options)
+  else:
+    raise ValueError("Source and target tree must be both distributed or partitioned")
 
 
 
@@ -125,17 +110,10 @@ def create_interpolator(src_tree:Union[CGNSDistTree, CGNSPartTree],
   of doing interpolations. Interpolator can be called multiple time to exchange
   fields without recomputing the src_to_tgt indirection (geometry must remain the same).
   """
-  src_dist = is_distributed(src_tree)
-  tgt_dist = is_distributed(tgt_tree)
-
-  if src_dist ^ tgt_dist:
-    raise ValueError("Source and target tree must be both distributed or partitioned")
-
-  if src_dist:
-    check_cgns_dist_tree(src_tree)
-    check_cgns_dist_tree(tgt_tree)
+  if MT.is_cgns_dist_tree(src_tree) and MT.is_cgns_dist_tree(tgt_tree):
     return dist_interpolation.create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options)
-  else:
-    check_cgns_part_tree(src_tree)
-    check_cgns_part_tree(tgt_tree)
+  elif MT.is_cgns_part_tree(src_tree) and MT.is_cgns_part_tree(tgt_tree):
     return part_interpolation.create_interpolator(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), comm, src_location, tgt_location, **options)
+  else:
+    raise ValueError("Source and target tree must be both distributed or partitioned")
+    

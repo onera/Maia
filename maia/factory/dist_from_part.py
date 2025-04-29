@@ -15,7 +15,6 @@ from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.transfer.part_to_dist import tree_api           as part_to_dist
 from maia.utils                 import py_utils, par_utils, np_utils
 from maia                       import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.maia.check_tree import check_cgns_part_tree
 from maia.pytree.graph.algo import step
 class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
@@ -489,7 +488,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
         :end-before: #recover_dist_tree@end
         :dedent: 2
   """
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_part_tree(part_tree)
   i_rank = comm.Get_rank()
   n_rank = comm.Get_size()
 

@@ -4,7 +4,6 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.typing import *
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
@@ -415,7 +414,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
         :end-before: #convert_s_to_u@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 

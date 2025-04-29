@@ -1,19 +1,13 @@
-from   maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+
+from   maia.typing import *
+from        typing import overload
 
 from .dist import closest_points as dist_closest
 from .part import closest_points as part_closest
 from .dist import localize as dist_localize
 from .part import localize as part_localize
-from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
-from typing import overload
-
-def is_distributed(tree):
-  for zone in PT.get_all_Zone_t(tree):
-    if MT.getDistribution(zone) is not None:
-      return True
-  return False
 
 @overload
 def localize_points(src_tree: CGNSDistTree,
@@ -61,20 +55,13 @@ def localize_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
         :end-before: #localize_points@end
         :dedent: 2
   """
-  src_dist = is_distributed(src_tree)
-  tgt_dist = is_distributed(tgt_tree)
-
-  if src_dist ^ tgt_dist:
-    raise ValueError("Source and target tree must be both distributed or partitioned")
   
-  if src_dist:
-    check_cgns_dist_tree(src_tree)
-    check_cgns_dist_tree(tgt_tree)
+  if MT.is_cgns_dist_tree(src_tree) and MT.is_cgns_dist_tree(tgt_tree):
     dist_localize.localize_points(src_tree, tgt_tree, location, comm, **options)
-  else:
-    check_cgns_part_tree(src_tree)
-    check_cgns_part_tree(tgt_tree)
+  elif MT.is_cgns_part_tree(src_tree) and MT.is_cgns_part_tree(tgt_tree):
     part_localize.localize_points(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), location, comm, **options)
+  else:
+    raise ValueError("Source and target tree must be both distributed or partitioned")
 
 @overload
 def find_closest_points(src_tree: CGNSDistTree,
@@ -113,17 +100,9 @@ def find_closest_points(src_tree: Union[CGNSDistTree, CGNSPartTree],
         :end-before: #find_closest_points@end
         :dedent: 2
   """
-  src_dist = is_distributed(src_tree)
-  tgt_dist = is_distributed(tgt_tree)
-
-  if src_dist ^ tgt_dist:
-    raise ValueError("Source and target tree must be both distributed or partitioned")
-  
-  if src_dist:
-    check_cgns_dist_tree(src_tree)
-    check_cgns_dist_tree(tgt_tree)
+  if MT.is_cgns_dist_tree(src_tree) and MT.is_cgns_dist_tree(tgt_tree):
     dist_closest.find_closest_points(src_tree, tgt_tree, location, comm)
-  else:
-    check_cgns_part_tree(src_tree)
-    check_cgns_part_tree(tgt_tree)
+  elif MT.is_cgns_part_tree(src_tree) and MT.is_cgns_part_tree(tgt_tree):
     part_closest.find_closest_points(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), location, comm)
+  else:
+    raise ValueError("Source and target tree must be both distributed or partitioned")

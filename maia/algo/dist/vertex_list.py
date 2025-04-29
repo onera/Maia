@@ -11,7 +11,6 @@ from maia       import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, vstride
 
 from maia.algo.dist             import matching_jns_tools as MJT
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from maia.transfer import protocols as EP
 
 
@@ -275,7 +274,7 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
   Return the two index arrays and the partial distribution array, which is
   identical for both of them
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   jn = PT.request_node_from_path(dist_tree, jn_path)
   assert PT.Subset.GridLocation(jn) == 'FaceCenter'
 
@@ -478,7 +477,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
         :end-before: #generate_jns_vertex_list@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   #Build join ids to identify opposite joins
   MJT.add_joins_donor_name(dist_tree, comm)
 

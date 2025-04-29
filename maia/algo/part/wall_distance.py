@@ -15,7 +15,6 @@ from maia.transfer                   import utils as tr_utils
 from maia.factory.dist_from_part     import discover_nodes_from_matching
 from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import _compute_elements_center
-from maia.pytree.maia.check_tree     import check_cgns_part_tree
 
 from .point_cloud_utils              import get_point_cloud
 import Pypdm.Pypdm as PDM
@@ -497,7 +496,7 @@ def compute_wall_distance(part_tree: CGNSPartTree,
         :end-before: #compute_wall_distance@end
         :dedent: 2
   """
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_part_tree(part_tree)
   start = time.time()
   
   # Retrieve Wall Families (warning -- if we have a Family_t appearing under two bases 

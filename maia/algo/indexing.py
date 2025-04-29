@@ -6,7 +6,6 @@ import maia.pytree.maia   as MT
 
 from .dist import ngon_tools as dist_ngon_tools
 from .part import ngon_tools as part_ngon_tools
-from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 
 is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
 is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \

@@ -13,7 +13,6 @@ from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh
 from maia.transfer import protocols as EP
 
 from .subset_tools import convert_subset_as_facelist
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 PointCloud = Dict[str, Any]
 
@@ -417,7 +416,7 @@ def connect_1to1_families(dist_tree: CGNSDistTree,
         :end-before: #recover1to1@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   is_subset_container = lambda n: PT.get_label(n) in ['ZoneBC_t', 'ZoneGridConnectivity_t']
   is_subset           = lambda n: PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
 

@@ -1,8 +1,10 @@
 from maia.typing import *
-import maia.pytree as PT
+
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def _reshape_S_arrays(tree: CGNSTree) -> None:
   """ Some structured arrays (under FlowSolution_t, GridCoordinates_t) have been
@@ -41,7 +43,7 @@ def dist_to_full_tree(dist_tree: CGNSDistTree,
         :end-before: #dist_to_full_tree@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   _dist_tree = PT.deep_copy(dist_tree)
 
   redistribute.redistribute_tree(_dist_tree, f'gather.{target}', comm)

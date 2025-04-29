@@ -9,7 +9,6 @@ import maia.pytree.maia as MT
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
-from maia.pytree.maia.check_tree import check_cgns_full_tree
 from typing import overload
 
 def get_np_value(node:CGNSTree) -> NDArray:
@@ -284,7 +283,7 @@ def full_to_dist_tree(full_tree: Optional[CGNSTree],
         :dedent: 2
   """
   if full_tree is not None:
-    check_cgns_full_tree(full_tree)
+    MT.check_cgns_full_tree(full_tree)
   if owner is not None:
     dist_tree = _broadcast_full_to_dist(full_tree, comm, owner)
     redistribute.redistribute_tree(dist_tree, 'uniform', comm)

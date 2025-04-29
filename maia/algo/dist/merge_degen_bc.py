@@ -16,7 +16,6 @@ from .vertex_list    import face_ids_to_vtx_ids
 from .geometry.utils import get_local_coordinates
 
 from maia.algo.dist  import merge_jn       as MJN
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 
 def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
@@ -251,7 +250,7 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
         :end-before: #remove_degen_faces_from_family@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     zone_n = PT.request_node_from_path(dist_tree, zone_path)
     vtx_distri = MT.distribution_value(zone_n, 'Vertex')

@@ -4,12 +4,12 @@ from typing import overload
 
 from maia.typing import *
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.utils                  import vstride as vs
 from maia.factory.dist_from_part import get_parts_per_blocks
-from maia.pytree.maia.check_tree import check_cgns_part_tree
 from .point_cloud_utils import get_point_cloud, create_sub_numbering
 
 PointCloud = Tuple[NDArray, NDArray]
@@ -196,8 +196,8 @@ def find_closest_points(src_tree: CGNSPartTree,
   """
   Partitioned implementation of maia.algo.find_closest_points
   """
-  check_cgns_part_tree(src_tree)
-  check_cgns_part_tree(tgt_tree)
+  MT.check_cgns_part_tree(src_tree)
+  MT.check_cgns_part_tree(tgt_tree)
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())

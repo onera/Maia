@@ -13,7 +13,6 @@ from maia.utils     import logging as mlog
 
 from maia.transfer.dist_to_part import data_exchange  as BTP
 from maia.transfer.dist_to_part import tree_api       as dist_to_part
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from maia.pytree.graph.algo import step
 
 from .load_balancing import setup_partition_weights as SPW
@@ -93,7 +92,7 @@ def partition_dist_tree(dist_tree: CGNSDistTree,
         :end-before: #partition_dist_tree@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   options = set_default(dist_tree, comm)
   subkeys = ['reordering'] #Key for which we have sub dicts
 

@@ -5,7 +5,6 @@ from typing import overload
 from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from   maia.pytree.maia.check_tree import check_cgns_part_tree
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils                  import py_utils, np_utils, par_utils
@@ -321,8 +320,8 @@ def localize_points(src_tree: CGNSPartTree,
   """
   Partitioned implementation of maia.algo.localize_points
   """
-  check_cgns_part_tree(src_tree)
-  check_cgns_part_tree(tgt_tree)
+  MT.check_cgns_part_tree(src_tree)
+  MT.check_cgns_part_tree(tgt_tree)
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())

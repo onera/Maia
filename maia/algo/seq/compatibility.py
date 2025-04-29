@@ -3,8 +3,7 @@ import numpy as np
 import maia
 from maia.typing import *
 import maia.pytree as PT
-from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.pytree.maia.check_tree import check_cgns_full_tree
+import maia.pytree.maia as MT
 from maia.utils import np_utils
 
 def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
@@ -49,8 +48,8 @@ def enforce_ngon_pe_local(full_tree: CGNSTree) -> None:
         :dedent: 2
 
   """
-  check_cgns_full_tree(full_tree)
-  for zone in zones_iterator(full_tree):
+  MT.check_cgns_full_tree(full_tree)
+  for zone in PT.iter_all_Zone_t(full_tree):
     try:
       ngon_node = PT.Zone.NGonNode(zone)
     except RuntimeError: #If no NGon, go to next zone
@@ -74,7 +73,7 @@ def poly_new_to_old(full_tree: CGNSTree, full_onera_compatibility: bool = True) 
         :end-before: #poly_new_to_old@end
         :dedent: 2
   """
-  check_cgns_full_tree(full_tree)
+  MT.check_cgns_full_tree(full_tree)
   cg_version_node = PT.request_child_from_label(full_tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 3.1)
   for z in PT.get_all_Zone_t(full_tree):
@@ -135,7 +134,7 @@ def poly_old_to_new(full_tree: CGNSTree) -> None:
         :end-before: #poly_old_to_new@end
         :dedent: 2
   """
-  check_cgns_full_tree(full_tree)
+  MT.check_cgns_full_tree(full_tree)
   cg_version_node = PT.request_child_from_label(full_tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 4.2)
   for z in PT.get_all_Zone_t(full_tree):

@@ -7,7 +7,6 @@ import maia.pytree.maia as MT
 
 from maia.transfer   import protocols     as MTP
 from maia.utils      import par_utils     as MUPar
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
     """
@@ -26,7 +25,7 @@ def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
           :end-before: #convert_elements_to_mixed@end
           :dedent: 2
     """
-    check_cgns_dist_tree(dist_tree)
+    MT.check_cgns_dist_tree(dist_tree)
     rank = comm.Get_rank()
     for zone in PT.get_all_Zone_t(dist_tree):
         part_data_ec = []

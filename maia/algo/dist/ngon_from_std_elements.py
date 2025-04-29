@@ -9,7 +9,6 @@ from maia.utils import np_utils, par_utils, layouts
 from maia.algo.dist   import remove_element as RME
 from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh_nodal
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 import Pypdm.Pypdm as PDM
 
 def raise_if_possible_overflow(n_elt, n_rank):
@@ -296,7 +295,7 @@ def convert_elements_to_ngon(dist_tree: CGNSDistTree,
         :end-before: #convert_elements_to_ngon@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   # If tree has MIXED elements, first convert Mixed -> Elts
   is_mixed = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'MIXED'
   has_mixed = PT.get_node_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', is_mixed]) is not None

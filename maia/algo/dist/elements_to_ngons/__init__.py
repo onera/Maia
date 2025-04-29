@@ -1,11 +1,12 @@
+import maia.pytree as PT
 import cmaia.dist_algo as cdist_algo
-from maia.algo.apply_function_to_nodes import apply_to_bases,apply_to_zones
 
 from maia.utils import require_cpp20
 
 @require_cpp20
 def generate_interior_faces_and_parents(dist_tree,comm):
-  apply_to_zones(cdist_algo.generate_interior_faces_and_parents, dist_tree, comm)
+  for zone in PT.iter_all_Zone_t(dist_tree):
+    cdist_algo.generate_interior_faces_and_parents(zone, comm)
 
 @require_cpp20
 def elements_to_ngons(dist_tree,comm):
@@ -25,4 +26,5 @@ def elements_to_ngons(dist_tree,comm):
     dist_tree  (CGNSDistTree): Tree with an element-based connectivity
     comm       (`MPIComm`)   : MPI communicator
   """
-  apply_to_zones(cdist_algo.elements_to_ngons, dist_tree, comm)
+  for zone in PT.iter_all_Zone_t(dist_tree):
+    cdist_algo.elements_to_ngons(zone, comm)

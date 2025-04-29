@@ -3,13 +3,13 @@ import numpy as np
 import maia
 from maia.typing import *
 import maia.pytree as PT
+import maia.pytree.maia as MT
 from maia.utils import np_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from . import multidom_gnum
 from . import connectivity_utils
 from . import geometry
-from maia.pytree.maia.check_tree import check_cgns_part_tree
 import Pypdm.Pypdm as PDM
 
 class CenterToNode:
@@ -202,7 +202,7 @@ def centers_to_nodes(part_tree: CGNSPartTree,
         :end-before: #centers_to_nodes@end
         :dedent: 2
   """
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_part_tree(part_tree)
   C2N = CenterToNode(part_tree, comm, **options)
 
   for container_name in containers_name:
@@ -239,7 +239,7 @@ def nodes_to_centers(part_tree: CGNSPartTree,
         :end-before: #nodes_to_centers@end
         :dedent: 2
   """
-  check_cgns_part_tree(part_tree)
+  MT.check_cgns_part_tree(part_tree)
   N2C = NodeToCenter(part_tree, comm, **options)
 
   for container_name in containers_name:

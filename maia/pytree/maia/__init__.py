@@ -3,3 +3,4 @@ from .           import pdm_elts
 from .           import metrics
 from .maia_nodes import *
 from .tree       import *
+from .check_tree import *

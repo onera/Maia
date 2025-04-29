@@ -1,9 +1,7 @@
-import numpy as np
 
 from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
-from maia.algo.apply_function_to_nodes import zones_iterator
 from .dist import geometry as dist_geometry
 from .part import geometry as part_geometry
 
@@ -18,7 +16,7 @@ def _compute_elements_center(zone: CGNSTree,
   If element_indices is not None, a PointList like array is expected; center
   will be computed for the specified elements.
   """
-  if MT.getDistribution(zone) is not None:
+  if MT.is_cgns_dist_tree(zone):
     assert comm is not None
     return dist_geometry._compute_elements_center(zone, dim, comm, element_indices, elements_loc)
   else:
@@ -29,7 +27,7 @@ def _compute_elements_measure(zone: CGNSTree,
                               comm: Optional[MPIComm] = None) -> NDArray:
   """Dispatch measure computing according to zone dimension and 
   requested dimension """
-  if MT.getDistribution(zone) is not None:
+  if MT.is_cgns_dist_tree(zone):
     assert comm is not None
     return dist_geometry._compute_elements_measure(zone, dim, comm)
   else:
@@ -82,9 +80,9 @@ def compute_elements_center(t: CGNSTree,
         :dedent: 2
   """
 
-  for zone in zones_iterator(t):
+  for zone in PT.iter_all_Zone_t(t):
     
-    if MT.getDistribution(zone) is not None:
+    if MT.is_cgns_dist_tree(zone):
       assert comm is not None
       dist_geometry.compute_elements_center(zone, dim, comm)
     else:
@@ -125,9 +123,9 @@ def compute_elements_measure(t: CGNSTree,
         :dedent: 2
   """
 
-  for zone in zones_iterator(t):
+  for zone in PT.iter_all_Zone_t(t):
     
-    if MT.getDistribution(zone) is not None:
+    if MT.is_cgns_dist_tree(zone):
       assert comm is not None
       dist_geometry.compute_elements_measure(zone, dim, comm)
     else:

@@ -6,8 +6,6 @@ import maia.pytree.maia as MT
 
 from maia.transfer import protocols as EP
 from maia.utils import np_utils, par_utils
-from maia.algo.apply_function_to_nodes import zones_iterator
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """ Gather the Element_t sections of same ElementType into a single one.
@@ -30,8 +28,8 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         :end-before: #concatenate_elt_sections@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
-  for zone in zones_iterator(dist_tree):
+  MT.check_cgns_dist_tree(dist_tree)
+  for zone in PT.iter_all_Zone_t(dist_tree):
 
     to_gather:Dict[str, List[CGNSTree]] = {}
     for elt in PT.get_children_from_label(zone, 'Elements_t'):
@@ -204,7 +202,7 @@ def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree, reverse: bool = False
         :end-before: #reorder_elt_sections_from_dim@end
         :dedent: 2
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   # This is to break tie between 2 elements of same dimension
   base_elts = ['NODE', 'BAR', 'TRI', 'QUAD', 'NGON', 'TETRA', 'PYRA', 'PENTA', 'HEXA', 'NFACE']
   sign = -1 if reverse else 1 # To have increasing of decreasing dim order

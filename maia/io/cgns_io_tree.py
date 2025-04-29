@@ -7,7 +7,6 @@ from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
@@ -219,7 +218,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
     links   (list)           : List of links to create (see SIDS-to-Python guide)
     comm     (MPIComm)       : MPI communicator
   """
-  check_cgns_dist_tree(dist_tree)
+  MT.check_cgns_dist_tree(dist_tree)
   if links:
     dist_tree = PT.shallow_copy(dist_tree)
     for link in links: # Links override data, so delete data

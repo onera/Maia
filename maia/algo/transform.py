@@ -6,7 +6,6 @@ import maia.pytree.maia as MT
 from maia.utils           import py_utils, np_utils, par_utils, pr_utils
 from maia.utils.numbering import range_to_slab          as HFR2S
 from maia.transfer import protocols as EP
-from maia.algo.apply_function_to_nodes import zones_iterator
 
 from maia.utils import logging as mlog
 from .geometry import _compute_elements_center
@@ -200,7 +199,7 @@ def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
   scaling = 3 * [s] if isinstance(s, (int, float)) else s 
   fields_found = False
   is_container = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
-  for zone in zones_iterator(t):
+  for zone in PT.iter_all_Zone_t(t):
     for grid_co in PT.get_children_from_label(zone, 'GridCoordinates_t'):
       for idir, dir in enumerate(['X', 'Y', 'Z']):
         node = PT.get_child_from_name(grid_co, f'Coordinate{dir}')
@@ -341,7 +340,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
   non_axis_idx=[0,1,2]
   non_axis_idx.pop(axis_idx)
 
-  for zone in zones_iterator(t):
+  for zone in PT.iter_all_Zone_t(t):
 
     transform_matrix_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
     coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
@@ -434,7 +433,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
   non_axis_idx=[0,1,2]
   non_axis_idx.pop(axis_idx)
 
-  for zone in zones_iterator(t):
+  for zone in PT.iter_all_Zone_t(t):
 
     transform_matrix_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')
     coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
@@ -525,7 +524,7 @@ def auxiliary_coords_system(t: CGNSTree,
         :dedent: 2
   """
 
-  for zone in zones_iterator(t):
+  for zone in PT.iter_all_Zone_t(t):
 
     # Assert that CoordinateTransform is the same for all GridCoordinates_t nodes
     coord_transform_n = PT.get_child_from_predicates(zone, 'GridCoordinates_t/CoordinateTransform')

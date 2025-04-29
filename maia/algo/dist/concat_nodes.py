@@ -3,11 +3,9 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
-from maia.algo.apply_function_to_nodes import zones_iterator
 from maia.algo.dist import matching_jns_tools as MJT
 
 import numpy as np
-from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def concatenate_subset_nodes(nodes: List[CGNSTree],
                              comm: MPIComm,
@@ -218,8 +216,8 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
       :dedent: 2
 
   """
-  check_cgns_dist_tree(dist_tree)
-  for dist_zone in zones_iterator(dist_tree):
+  MT.check_cgns_dist_tree(dist_tree)
+  for dist_zone in PT.iter_all_Zone_t(dist_tree):
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
 
@@ -314,8 +312,8 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
       :dedent: 2
 
   """
-  check_cgns_dist_tree(dist_tree)
-  for dist_zone in zones_iterator(dist_tree):
+  MT.check_cgns_dist_tree(dist_tree)
+  for dist_zone in PT.iter_all_Zone_t(dist_tree):
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
 
