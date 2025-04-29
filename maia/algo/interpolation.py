@@ -1,8 +1,15 @@
+from maia.typing import *
+from      typing import overload
+
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from .dist import interpolation as dist_interpolation
 from .part import interpolation as part_interpolation
+
+from .interpolation_utils import Interpolator
+
+from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 
 def is_distributed(tree):
   for zone in PT.get_all_Zone_t(tree):
@@ -10,7 +17,27 @@ def is_distributed(tree):
       return True
   return False
 
-def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
+@overload
+def interpolate(src_tree:CGNSDistTree,
+                tgt_tree:CGNSDistTree,
+                comm:MPIComm,
+                containers_name:List[str],
+                location:Literal['CellCenter', 'Vertex'],
+                **options) -> None: ...
+@overload
+def interpolate(src_tree:CGNSPartTree,
+                tgt_tree:CGNSPartTree,
+                comm:MPIComm,
+                containers_name:List[str],
+                location:Literal['CellCenter', 'Vertex'],
+                **options) -> None: ...
+
+def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
+                tgt_tree:Union[CGNSDistTree, CGNSPartTree],
+                comm:MPIComm,
+                containers_name:List[str],
+                location:Literal['CellCenter', 'Vertex'],
+                **options) -> None:
   """Interpolate fields between two trees.
 
   This function can transfer CellCenter or Vertex located fields, but not both
@@ -62,13 +89,37 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
     raise ValueError("Source and target tree must be both distributed or partitioned")
 
   if src_dist:
+    check_cgns_dist_tree(src_tree)
+    check_cgns_dist_tree(tgt_tree)
     dist_interpolation.interpolate(src_tree, tgt_tree, comm, containers_name, location, **options)
   else:
-    part_interpolation.interpolate(src_tree, tgt_tree, comm, containers_name, location, **options)
+    check_cgns_part_tree(src_tree)
+    check_cgns_part_tree(tgt_tree)
+    part_interpolation.interpolate(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), comm, containers_name, location, **options)
 
 
 
-def create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options):
+@overload
+def create_interpolator(src_tree:CGNSDistTree,
+                        tgt_tree:CGNSDistTree,
+                        comm:MPIComm,
+                        src_location:Literal['CellCenter', 'Vertex'],
+                        tgt_location:Literal['CellCenter', 'Vertex'],
+                        **options) -> Interpolator: ...
+@overload
+def create_interpolator(src_tree:CGNSPartTree,
+                        tgt_tree:CGNSPartTree,
+                        comm:MPIComm,
+                        src_location:Literal['CellCenter', 'Vertex'],
+                        tgt_location:Literal['CellCenter', 'Vertex'],
+                        **options) -> Interpolator: ...
+
+def create_interpolator(src_tree:Union[CGNSDistTree, CGNSPartTree],
+                        tgt_tree:Union[CGNSDistTree, CGNSPartTree],
+                        comm:MPIComm,
+                        src_location:Literal['CellCenter', 'Vertex'],
+                        tgt_location:Literal['CellCenter', 'Vertex'],
+                        **options) -> Interpolator:
   """
   Same as interpolate, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange
@@ -81,6 +132,10 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **
     raise ValueError("Source and target tree must be both distributed or partitioned")
 
   if src_dist:
+    check_cgns_dist_tree(src_tree)
+    check_cgns_dist_tree(tgt_tree)
     return dist_interpolation.create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options)
   else:
-    return part_interpolation.create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **options)
+    check_cgns_part_tree(src_tree)
+    check_cgns_part_tree(tgt_tree)
+    return part_interpolation.create_interpolator(CGNSPartTree(src_tree), CGNSPartTree(tgt_tree), comm, src_location, tgt_location, **options)

@@ -15,8 +15,11 @@ from ._protocols import GlobalIndexer, GlobalMultiIndexer, ReduceOp
 
 # Type alias to designate a single array or dictionnary of arrays
 T = TypeVar('T', bound=np.generic)
-DistData = Union[NDArray[T], Dict[str, NDArray[T]]]
-PartData = Union[List[NDArray[T]], Dict[str, List[NDArray[T]]]]
+BasicDistData = Union[NDArray[T], Dict[str, NDArray[T]]]
+BasicPartData = Union[List[NDArray[T]], Dict[str, List[NDArray[T]]]]
+
+DistData = Union[NDArray[T], vs.VStrideArray, Mapping[str, Union[NDArray[T], vs.VStrideArray]]]
+PartData = Union[List[NDArray[T]], List[vs.VStrideArray], Mapping[str, Union[List[NDArray[T]], List[vs.VStrideArray]]]]
 
 def _check_dict_keys(data_dict: Dict[str, Any], comm: MPIComm) -> None:
   if comm.Get_size() == 0:
@@ -129,10 +132,10 @@ def block_to_block(data_in: Dict[str, NDArray[T]],
                    distri_out: NDArray,
                    comm: MPIComm) -> Dict[str, NDArray[T]]: ...
 
-def block_to_block(data_in: DistData,
+def block_to_block(data_in: BasicDistData,
                    distri_in: NDArray,
                    distri_out: NDArray,
-                   comm: MPIComm) -> DistData:
+                   comm: MPIComm) -> BasicDistData:
   """
   Create and exchange using a BlockToBlock object.
   Allow single field or dict of fields
@@ -149,6 +152,13 @@ def block_to_block(data_in: DistData,
 
   return block_data_out
 
+
+@overload
+def block_to_part(dist_data: vs.VStrideArray,
+                  distri: NDArray,
+                  ln_to_gn_list: List[NDArray],
+                  comm: MPIComm,
+                  legacy: bool = False) -> List[vs.VStrideArray]: ...
 @overload
 def block_to_part(dist_data: NDArray[T],
                   distri: NDArray,
@@ -156,17 +166,17 @@ def block_to_part(dist_data: NDArray[T],
                   comm: MPIComm,
                   legacy: bool = False) -> List[NDArray[T]]: ...
 @overload
-def block_to_part(dist_data: Dict[str, NDArray[T]],
+def block_to_part(dist_data: DistData,
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  legacy: bool = False) -> Dict[str, List[NDArray[T]]]: ...
+                  legacy: bool = False) -> Any: ...
 
 def block_to_part(dist_data: DistData,
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  legacy: bool = False) -> PartData:
+                  legacy: bool = False) -> Any:
   """
   Create and exchange using a BlockToPart object.
   Allow single field or dict of fields
@@ -269,10 +279,10 @@ def part_to_part(send_data: Dict[str, List[NDArray[T]]],
                  gnum2: List[NDArray],
                  comm: MPIComm) -> Dict[str, List[NDArray[T]]]: ...
 
-def part_to_part(send_data: PartData,
+def part_to_part(send_data: BasicPartData,
                  gnum1: List[NDArray],
                  gnum2: List[NDArray],
-                 comm: MPIComm) -> PartData:
+                 comm: MPIComm) -> BasicPartData:
   """
   Create and exchange using a PartToPart object with basic "id-to-id" indirection.
   Allow single field or dict of fields
@@ -294,10 +304,10 @@ def part_to_part_strided(send_stride: Union[int, List[NDArray]],
                          comm: MPIComm) -> Tuple[NDArray, Dict[str,List[NDArray[T]]]]: ...
 
 def part_to_part_strided(send_stride: Union[int, List[NDArray]],
-                         send_data: PartData,
+                         send_data: BasicPartData,
                          gnum1: List[NDArray],
                          gnum2: List[NDArray],
-                         comm: MPIComm) -> Tuple[NDArray, PartData]:
+                         comm: MPIComm) -> Tuple[NDArray, BasicPartData]:
   """
   Create and exchange using a PartToPart object with basic "id-to-id" indirection.
   Allow single field or dict of fields

@@ -455,8 +455,8 @@ class GlobalMultiIndexer:
         raise ValueError(f"Invalid size of output counts (expected {self.dn}, got {counts_out_ini.size})")
       if buff_out_ini.size - counts_out_ini.sum() != 0:
         raise ValueError(f"Invalid size of output distributed buffer (expected {counts_out_ini.sum()}, got {buff_out_ini.size})")
-      cnts_dtype = counts_out_ini.dtype
-      data_dtype = buff_out_ini.dtype
+      cnts_dtype = counts_out_ini.dtype.str
+      data_dtype = buff_out_ini.dtype.str
       # Retrieve _counts_out from counts_out seems not possible because of data erasion, we will recompute it 
 
 

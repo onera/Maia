@@ -9,6 +9,7 @@ from typing import (
   Iterator,
   List,
   Literal,
+  Mapping,
   NamedTuple,
   Optional,
   Sequence,
