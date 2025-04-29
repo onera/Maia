@@ -12,11 +12,11 @@ class NodesWalker:
 
   def __init__(self, root,
                      predicate,
-                     search: str=NodesIterator.DEFAULT,
-                     explore: str='shallow',
+                     search=NodesIterator.DEFAULT,
+                     explore='shallow',
                      depth=None,
                      sort=FORWARD,
-                     caching: bool=False):
+                     caching=False):
     """
     Hold all the manner to explore and parse the CGNS Tree
 

@@ -9,8 +9,8 @@ def test_empty_tree():
   nodes = parse_yaml_cgns.to_nodes(yt)
   assert nodes == []
 
-  node = parse_yaml_cgns.to_node(yt)
-  assert node is None
+  with pytest.raises(ValueError):
+    parse_yaml_cgns.to_node(yt)
 
   complete_t = parse_yaml_cgns.to_cgns_tree(yt)
   assert complete_t == ["CGNSTree",None,[['CGNSLibraryVersion', np.array([4.2], np.float32), [], 'CGNSLibraryVersion_t']],"CGNSTree_t"]

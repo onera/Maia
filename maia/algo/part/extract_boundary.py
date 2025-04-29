@@ -1,15 +1,16 @@
 import numpy   as np
 
+from maia.typing import *
 import maia.pytree        as PT
-
+import maia.pytree.maia   as MT
 from maia.utils     import np_utils, s_numbering, pr_utils
 from maia.transfer  import utils as te_utils
 
 from .point_cloud_utils import create_sub_numbering
-
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 
-def _struct2d_connectivity(zone):
+def _struct2d_connectivity(zone: CGNSTree) -> Tuple[NDArray, NDArray]:
   n_vtx_i, n_vtx_j = PT.Zone.VertexSize(zone)
   n_vtx = n_vtx_i*n_vtx_j
   nf_i = n_vtx_i * (n_vtx_j-1)
@@ -37,17 +38,17 @@ def _struct2d_connectivity(zone):
   #ymax[1::2] = tmp
   return edge_vtx_idx, edge_vtx
 
-def _struct3d_connectivity(zone):
+def _struct3d_connectivity(zone: CGNSTree) -> Tuple[NDArray, NDArray]:
   nf_i, nf_j, nf_k = PT.Zone.FaceSize(zone)
   n_face_tot = nf_i + nf_j + nf_k
 
-  bounds = np.array([0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k], np.int32)
+  bounds = [b + 1 for b in [0, nf_i, nf_i + nf_j, nf_i + nf_j + nf_k]]
 
   face_vtx_idx = 4*np.arange(0, n_face_tot+1, dtype=np.int32)
-  face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds+1, PT.Zone.VertexSize(zone), dtype=np.int32)
+  face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds, PT.Zone.VertexSize(zone), dtype=np.int32)
   return face_vtx_idx, face_vtx
 
-def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
+def _pr_to_face_pl(n_vtx_zone: Tuple[int, ...], pr: NDArray, input_loc: str) -> NDArray:
   """
   Transform a (partitioned) PointRange pr of any location input_loc into a PointList
   supported by the faces or edges. n_vtx_zone is the number of vertices of the zone to which the
@@ -78,7 +79,7 @@ def _pr_to_face_pl(n_vtx_zone, pr, input_loc):
 
   return pl
 
-def _extract_sub_connectivity(array_idx, array, sub_elts):
+def _extract_sub_connectivity(array_idx: NDArray, array: NDArray, sub_elts: NDArray) -> Tuple[NDArray, ...]:
   """
   From an idx+array mother->child connectivity (eg face->vtx or cell->face) and a list of
   mother element ids (starting at 1), create a sub connectivity involving only these mothers.
@@ -99,7 +100,7 @@ def _extract_sub_connectivity(array_idx, array, sub_elts):
   return sub_array_idx, sub_array, child_ids
 
 
-def extract_faces_mesh(zone, face_ids):
+def extract_faces_mesh(zone: CGNSTree, face_ids: NDArray) -> Tuple[NDArray, ...]:
   """
   Extract a sub mesh from a U or S zone and a (flat) list of face ids to extract :
   create the sub ngon connectivity and extract the coordinates of vertices 
@@ -110,17 +111,16 @@ def extract_faces_mesh(zone, face_ids):
   # NGon Extraction
   if PT.Zone.Type(zone) == 'Unstructured':
     if PT.Zone.has_ngon_elements(zone):
-      bnd_elts = PT.maia.Zone.EdgeNode(zone) if zone_dim == 2 else PT.Zone.NGonNode(zone)
-      if zone_dim == 2:
-        face_vtx_idx = 2*np.arange(PT.Element.Size(bnd_elts)+1, dtype=np.int32)
-      else:
-        face_vtx_idx = PT.get_child_from_name(bnd_elts, 'ElementStartOffset')[1]
-      face_vtx     = PT.get_child_from_name(bnd_elts, 'ElementConnectivity')[1]
+      bnd_elts = MT.Zone.EdgeNode(zone) if zone_dim == 2 else PT.Zone.NGonNode(zone)
+      _face_vtx = MT.Element.connectivity(bnd_elts)
+      face_vtx_idx = _face_vtx.displs
+      face_vtx = _face_vtx.values
     else: # Zone has std elements
       sections_2d = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
       elem_size_list = [PT.Element.Size(elt) for elt in sections_2d]
       face_n_vtx_list = [PT.Element.NVtx(elt) for elt in sections_2d]
-      _, face_vtx = np_utils.concatenate_np_arrays([PT.get_node_from_name(elt, 'ElementConnectivity')[1] for elt in sections_2d], dtype=np.int32)
+      elem_cnt_list = [PT.request_nd_value(PT.request_node_from_name(elt, 'ElementConnectivity')) for elt in sections_2d]
+      _, face_vtx = np_utils.concatenate_np_arrays(elem_cnt_list, dtype=np.int32)
       face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_size_list), dtype=np.int32)
   elif PT.Zone.Type(zone) == 'Structured':
     # For S zone, create a NGon connectivity
@@ -134,6 +134,7 @@ def extract_faces_mesh(zone, face_ids):
   
   # Vertex extraction
   cx, cy, cz = PT.Zone.coordinates(zone)
+  assert (cx is not None) and (cy is not None) and (cz is not None)
   if PT.Zone.Type(zone) == 'Unstructured':
     ex_cx = cx[vtx_ids-1]
     ex_cy = cy[vtx_ids-1]
@@ -150,7 +151,9 @@ def extract_faces_mesh(zone, face_ids):
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
 
-def extract_surf_from_bc(part_zones, bc_predicate, comm):
+def extract_surf_from_bc(part_zones: List[CGNSTree], 
+                         bc_predicate: Callable[[CGNSTree], bool], 
+                         comm: MPIComm) -> Tuple[List[NDArray], ...]:
   """
   From a list of partitioned zones (coming from the same initial domain), get the list
   of faces (or edge, depending on zone dimension)
@@ -160,7 +163,8 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
 
   Return lists (of size n_part) of sub face_vtx connectivity, sub vtx coordinates and global numberings
   """
-
+  for part_zone in part_zones:
+    check_cgns_part_tree(part_zone)
   bc_face_vtx_l     = []
   bc_face_vtx_idx_l = []
   bc_coords_l       = []
@@ -170,40 +174,42 @@ def extract_surf_from_bc(part_zones, bc_predicate, comm):
     zone_dim = PT.Zone.CellDimension(zone)
     wanted_loc = 'EdgeCenter' if zone_dim == 2 else 'FaceCenter'
     is_relevant_bc = lambda n: PT.get_label(n) == 'BC_t' and bc_predicate(n)
+    bc_face_ids:List[NDArray]
     if PT.Zone.Type(zone) == 'Unstructured':
       bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: is_relevant_bc(n) and PT.Subset.GridLocation(n) == wanted_loc])
-      bc_face_ids = [PT.get_child_from_name(bc_node, 'PointList')[1][0] for bc_node in bc_nodes]
+      bc_face_ids = [PT.request_nd_value(PT.request_child_from_name(bc_node, 'PointList'))[0] for bc_node in bc_nodes]
     else:
       n_vtx_z = PT.Zone.VertexSize(zone)
       bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', is_relevant_bc])
-      bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.get_child_from_name(bc_node, 'PointRange')[1], PT.Subset.GridLocation(bc_node))[0] \
+      bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.request_nd_value(PT.request_child_from_name(bc_node, 'PointRange')), PT.Subset.GridLocation(bc_node))[0] \
           for bc_node in bc_nodes]
 
-    _, bc_face_ids = np_utils.concatenate_np_arrays(bc_face_ids, np.int32)
+    _, bc_face_ids_cat = np_utils.concatenate_np_arrays(bc_face_ids, np.int32)
     # Shift the bc_face_ids to make it start a 1
     if PT.Zone.Type(zone) == 'Unstructured':
       try:
-        bc_face_ids -= (PT.Zone.get_elt_range_per_dim(zone)[PT.Zone.CellDimension(zone)-1][0] - 1)
+        bc_face_ids_cat -= (PT.Zone.get_elt_range_per_dim(zone)[PT.Zone.CellDimension(zone)-1][0] - 1)
       except Exception:
         raise RuntimeError("Unable to extract unordered faces")
 
-    cx, cy, cz, bc_face_vtx_idx, bc_face_vtx, bc_vtx_ids = extract_faces_mesh(zone, bc_face_ids)
+    cx, cy, cz, bc_face_vtx_idx, bc_face_vtx, bc_vtx_ids = extract_faces_mesh(zone, bc_face_ids_cat)
 
     ex_coords = np_utils.interweave_arrays([cx, cy, cz])
     bc_coords_l.append(ex_coords)
     bc_face_vtx_l.append(bc_face_vtx)
     bc_face_vtx_idx_l.append(bc_face_vtx_idx)
 
-    vtx_ln_to_gn_zone = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
+    vtx_ln_to_gn_zone = PT.request_nd_value(MT.requestGlobalNumbering(zone, 'Vertex'))
 
     if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
       elt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
-      face_ln_to_gn_zone = np.concatenate([PT.maia.getGlobalNumbering(elt, "Sections")[1] \
-              for elt in elt_2d_nodes]) if len(elt_2d_nodes) else np.empty(0, dtype=pdm_dtype)
+      elt_2d_gnums = [PT.request_nd_value(MT.requestGlobalNumbering(elt, "Sections")) for elt in elt_2d_nodes]
+      face_ln_to_gn_zone = np.concatenate(elt_2d_gnums) if len(elt_2d_nodes) else np.empty(0, dtype=pdm_dtype)
     else:
       face_ln_to_gn_zone = te_utils.get_entities_numbering(zone)[zone_dim-1] # Face if dim==3; Edge if dim == 2
+      assert (face_ln_to_gn_zone) is not None
 
-    parent_face_lngn_l.append(face_ln_to_gn_zone[bc_face_ids-1])
+    parent_face_lngn_l.append(face_ln_to_gn_zone[bc_face_ids_cat-1])
     parent_vtx_lngn_l .append(vtx_ln_to_gn_zone[bc_vtx_ids-1]  )
 
   # Compute extracted gnum from parents

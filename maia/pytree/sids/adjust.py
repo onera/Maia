@@ -2,23 +2,20 @@ import warnings
 import numpy as np
 
 from maia.pytree.typing import *
-from maia.pytree.meta import api_export
 import maia.pytree as PT
 
 IS_RELATED_ZSR = lambda n : PT.get_label(n) == 'ZoneSubRegion_t' \
                         and PT.get_child_from_name(n, 'BCRegionName') is not None
 
-@api_export
 def enforceDonorAsPath(tree:CGNSTree):
   """ Force the GCs to indicate their opposite zone under the form BaseName/ZoneName """
-  predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+  predicates:Predicates = ['Zone_t', 'ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
   for base in PT.iter_all_CGNSBase_t(tree):
     base_n = PT.get_name(base)
     for gc in PT.iter_children_from_predicates(base, predicates):
       PT.set_value(gc, PT.GridConnectivity.ZoneDonorPath(gc, base_n))
 
 
-@api_export
 def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
   """ Move the data fields from ZoneSubRegion nodes to their related BC node, if existing.
   
@@ -65,7 +62,7 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
     for zsr_n in PT.get_children_from_predicate(zone, IS_RELATED_ZSR):
 
       zsr_name = PT.get_name(zsr_n)
-      bc_n = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
+      bc_n = PT.request_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
       
       bcdataset_n = PT.update_child(bc_n, f'{zsr_name}', 'BCDataSet_t', 'UserDefined')
       bcdata_n = PT.update_child(bcdataset_n, 'DirichletData', 'BCData_t')
@@ -76,7 +73,6 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
       if mode == 'move':
         PT.rm_children_from_label(zsr_n, 'DataArray_t')
 
-@api_export
 def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
   """ Move the data fields to ZoneSubRegion nodes from their related BC node, if existing.
   
@@ -125,7 +121,7 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
     for zsr_n in PT.get_children_from_predicate(zone, IS_RELATED_ZSR):
 
       zsr_name = PT.get_name(zsr_n)
-      bc_n = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
+      bc_n = PT.request_node_from_path(zone, PT.Subset.ZSRExtent(zsr_n, zone))
 
       is_full_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' \
                             and PT.get_child_from_name(n, 'PointList') is None \
@@ -139,13 +135,14 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
 
         for fld_n in PT.get_children_from_predicates(bc_ds, "BCData_t/DataArray_t"):
           PT.rm_children_from_name(zsr_n, PT.get_name(fld_n))
-          if PT.get_value(fld_n).size == 1 and (bc_size:=PT.Subset.n_elem(bc_n)) != 1: # Auto extend scalar data
+          fld_val = PT.get_value(fld_n, raw=True)
+          assert fld_val is not None, f"Found DataArray with None value: {PT.get_name(fld_n)}"
+          if fld_val.size == 1 and (bc_size:=PT.Subset.n_elem(bc_n)) != 1: # Auto extend scalar data
             if mode == 'view':
               msg = f"On ZoneSubRegion '{zsr_name}', can not create a view of scalar data '{fld_n[0]}'" \
                     f" from BCDataSet '{bc_ds[0]}', a copy is done instead"
               warnings.warn(msg, stacklevel=2)
             fld_n = PT.shallow_copy(fld_n)
-            fld_val = PT.get_value(fld_n)
             PT.set_value(fld_n, fld_val*np.ones(bc_size, fld_val.dtype))
 
           PT.add_child(zsr_n, copy_or_view(fld_n))

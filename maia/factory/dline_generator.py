@@ -1,11 +1,17 @@
-import maia
-import maia.pytree as PT
-from   maia.utils  import par_utils
-from   maia        import npy_pdm_gnum_dtype as pdm_gnum_dtype
-
 import numpy as np
 
-def generate_dist_line(n_point, start, end, comm):
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
+from maia.typing import *
+
+from maia.utils  import par_utils
+from maia        import npy_pdm_gnum_dtype as pdm_gnum_dtype
+
+def generate_dist_line(n_point: int,
+                       start: Sequence[float],
+                       end: Sequence[float],
+                       comm: MPIComm) -> CGNSDistTree:
   """
   Generate distributed straight line between start and end coordinates
   discretized with n_points.
@@ -20,9 +26,7 @@ def generate_dist_line(n_point, start, end, comm):
   """
   phy_dim     = len(start)
 
-  if not isinstance(n_point, int):
-    assert len(n_point) == 1
-    n_point = n_point[0]
+  assert isinstance(n_point, int)
 
   dist_tree = PT.new_CGNSTree()
   dist_base = PT.new_CGNSBase(cell_dim=1, phy_dim=phy_dim, parent=dist_tree)
@@ -50,7 +54,7 @@ def generate_dist_line(n_point, start, end, comm):
   dist_zone = PT.new_Zone(f'Line', type='Unstructured', size=np.array([[n_point,n_point-1,0]], dtype=pdm_gnum_dtype), parent=dist_base)
   PT.new_GridCoordinates(fields=coords, parent=dist_zone)
   elmt_n = PT.new_Elements('BAR_2', type='BAR_2', erange=[1,n_point-1], econn=ec, parent=dist_zone)
-  PT.maia.newDistribution({"Element":bar_distrib}, parent=elmt_n)
-  PT.maia.newDistribution({"Vertex":vtx_distrib, "Cell":bar_distrib}, parent=dist_zone)
+  MT.newDistribution({"Element":bar_distrib}, parent=elmt_n)
+  MT.newDistribution({"Vertex":vtx_distrib, "Cell":bar_distrib}, parent=dist_zone)
 
   return dist_tree

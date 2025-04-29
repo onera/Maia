@@ -6,7 +6,7 @@ from enum import Enum
 from cmaia.utils import layouts, vstride
 
 # Typing
-from typing       import List, Tuple, Any
+from typing       import List, Tuple, Any, Optional, Sequence
 from numpy.typing import NDArray
 NDArrayInt = NDArray[np.integer]
 Buffer = NDArray[Any] 
@@ -114,7 +114,7 @@ class GlobalMultiIndexer:
 
   """
 
-  def __init__(self, distri: NDArrayInt, g_idx_l: List[NDArrayInt], comm: MPI.Comm):
+  def __init__(self, distri: NDArrayInt, g_idx_l: Sequence[NDArrayInt], comm: MPI.Comm):
     """ Generalization of :func:`GlobalIndexer.__init__` for multi index access.
 
     Args:
@@ -155,7 +155,7 @@ class GlobalMultiIndexer:
     self.part_write_pos  = sorting_idx_l # Position where accessed data should be put to have it in MPI order
 
     self._empty_dist = (np.diff(distri)==0).any() # True if at least one rank has dn == 0
-    self._empty_part = None                       # True if at least one rank has len(g_idx) == 0
+    self._empty_part:Optional[bool] = None        # True if at least one rank has len(g_idx) == 0
 
   @property
   def empty_dist(self) -> bool:
@@ -164,10 +164,11 @@ class GlobalMultiIndexer:
   def empty_part(self) -> bool:
     if self._empty_part is None:
       self._empty_part = self.comm.allreduce(len(self.pn) == 0, MPI.LOR)
+    assert self._empty_part is not None
     return self._empty_part
 
 
-  def take(self, dist_data: List, local_data_l:List[List]=None, /) -> List[List]:
+  def take(self, dist_data: List, local_data_l:Optional[List[List]]=None, /) -> List[List]:
     """ Generalization of :func:`GlobalIndexer.take` for multi index access.
 
     Args:
@@ -200,7 +201,7 @@ class GlobalMultiIndexer:
 
     return local_data_l
 
-  def put(self, local_data_l: List[List], dist_data:List=None, /) -> List:
+  def put(self, local_data_l: List[List], dist_data:Optional[List]=None, /) -> List:
     """ Generalization of :func:`GlobalIndexer.put` for multi index access.
 
     Args:
@@ -231,7 +232,7 @@ class GlobalMultiIndexer:
       r_start += size
     return dist_data
 
-  def Take(self, dist_data: Buffer, local_data_l: List[Buffer]=None, /, count=1) -> List[Buffer]:
+  def Take(self, dist_data: Buffer, local_data_l: Optional[List[Buffer]]=None, /, count=1) -> List[Buffer]:
     """ Generalization of :func:`GlobalIndexer.Take` for multi index access.
 
     Args:
@@ -282,7 +283,7 @@ class GlobalMultiIndexer:
 
     return local_data_l
 
-  def Put(self, local_data_l: List[Buffer], dist_data:Buffer=None, /, count=1, *, reduce:ReduceOp=None) -> Buffer:
+  def Put(self, local_data_l: List[Buffer], dist_data:Optional[Buffer]=None, /, count=1, *, reduce:Optional[ReduceOp]=None) -> Buffer:
     """ Generalization of :func:`GlobalIndexer.Put` for multi index access.
 
     Args:
@@ -345,7 +346,7 @@ class GlobalMultiIndexer:
     return dist_data
 
 
-  def Take_v(self, dist_data: VBuffer, local_data_l: List[VBuffer]=None, /) -> List[VBuffer]:
+  def Take_v(self, dist_data: VBuffer, local_data_l: Optional[List[VBuffer]]=None, /) -> List[VBuffer]:
     """ Generalization of :func:`GlobalIndexer.Take_v` for multi index access.
 
     Args:
@@ -419,7 +420,7 @@ class GlobalMultiIndexer:
 
     return local_data_l
 
-  def Put_v(self, local_data_l: List[VBuffer], dist_data: VBuffer=None, /, *, extend=False) -> VBuffer:
+  def Put_v(self, local_data_l: List[VBuffer], dist_data: Optional[VBuffer]=None, /, *, extend=False) -> VBuffer:
     """ Generalization of :func:`GlobalIndexer.Put_v` for multi index access.
 
     Args:
@@ -562,7 +563,7 @@ class GlobalIndexer:
     self.GIndexer_m = GlobalMultiIndexer(distri, [g_idx], comm)
     self.GIndexer_m._empty_part = False
 
-  def take(self, dist_data:List, local_data:List=None, /) -> List:
+  def take(self, dist_data:List, local_data:Optional[List]=None, /) -> List:
     """ ``take`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -579,7 +580,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.take(dist_data, local_data_l)[0]
 
-  def put(self, local_data: List, dist_data:List=None, /) -> List:
+  def put(self, local_data: List, dist_data:Optional[List]=None, /) -> List:
     """ ``put`` implementation for generic Python objects 
     
     Exchanged data are serialized using ``pickle`` module, which has
@@ -604,7 +605,7 @@ class GlobalIndexer:
     """
     return self.GIndexer_m.put([local_data], dist_data)
 
-  def Take(self, dist_data:Buffer, local_data:Buffer=None, /, count=1) -> Buffer:
+  def Take(self, dist_data:Buffer, local_data:Optional[Buffer]=None, /, count=1) -> Buffer:
     """ ``take`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*dn`, where :math:`c` is a
@@ -629,7 +630,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take(dist_data, local_data_l, count)[0]
 
-  def Put(self, local_data: Buffer, dist_data:Buffer=None, /, count=1, *, reduce=None) -> Buffer:
+  def Put(self, local_data: Buffer, dist_data:Optional[Buffer]=None, /, count=1, *, reduce=None) -> Buffer:
     """ ``put`` implementation for buffer-like objects 
 
     Input buffer must be of size :math:`c*pn`, where :math:`c` is a
@@ -670,7 +671,7 @@ class GlobalIndexer:
     """
     return self.GIndexer_m.Put([local_data], dist_data, count, reduce=reduce)
 
-  def Take_v(self, dist_data: VBuffer, local_data: VBuffer=None, /) -> VBuffer:
+  def Take_v(self, dist_data: VBuffer, local_data: Optional[VBuffer]=None, /) -> VBuffer:
     """ ``take`` implementation for variable buffer-like objects 
 
     The input variable buffer is described by a tuple of two objects:
@@ -704,7 +705,7 @@ class GlobalIndexer:
     local_data_l = [local_data] if local_data is not None else None
     return self.GIndexer_m.Take_v(dist_data, local_data_l)[0]
 
-  def Put_v(self, local_data: VBuffer, dist_data:VBuffer = None, /, *, extend=False) -> VBuffer:
+  def Put_v(self, local_data: VBuffer, dist_data:Optional[VBuffer] = None, /, *, extend=False) -> VBuffer:
     """ ``put`` implementation for variable buffer-like objects 
 
     The variable input buffer is described by a tuple of two objects:

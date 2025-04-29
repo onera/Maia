@@ -29,11 +29,11 @@ dtypes = (np.int8,
           np.complex128,)
 
 try:
-    from cmaia.pytree.cgns_keywords import *
+    from cmaia.pytree.cgns_keywords import * #type:ignore[import-not-found]
 except ImportError:
   from ._cgns_keywords import *
 
 try:
-  from cmaia.pytree import cgns_names as Name
+  from cmaia.pytree import cgns_names as Name #type:ignore[import-not-found]
 except ImportError:
     from . import _cgns_names as Name

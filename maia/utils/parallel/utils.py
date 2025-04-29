@@ -1,6 +1,7 @@
-from mpi4py import MPI
 import numpy as np
+from mpi4py import MPI
 
+from maia.typing import *
 import maia.pytree as PT
 
 from maia.utils import py_utils
@@ -8,7 +9,9 @@ from maia       import npy_pdm_gnum_dtype
 
 from Pypdm.Pypdm import compute_weighted_distribution
 
-def gathering_distribution(i_rank, n_elt, comm):
+T = TypeVar('T')
+
+def gathering_distribution(i_rank: int, n_elt: int, comm: MPIComm) -> NDArray:
   """
   """
   if   comm.Get_rank()  < i_rank: distrib = np.array([0    , 0    , n_elt ], dtype=npy_pdm_gnum_dtype)
@@ -16,7 +19,7 @@ def gathering_distribution(i_rank, n_elt, comm):
   else                          : distrib = np.array([n_elt, n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
   return distrib
 
-def uniform_distribution(n_elt, comm):
+def uniform_distribution(n_elt: int, comm: MPIComm) -> NDArray:
   """
   """
   u_dist = py_utils.uniform_distribution_at(n_elt, comm.Get_rank(), comm.Get_size())
@@ -26,7 +29,7 @@ def uniform_distribution(n_elt, comm):
   proc_indices[2] = n_elt
   return proc_indices
 
-def dn_to_distribution(dn_elt, comm):
+def dn_to_distribution(dn_elt: int, comm: MPIComm) -> NDArray:
   """
   """
   distri = np.zeros(3, dtype=npy_pdm_gnum_dtype)
@@ -36,7 +39,10 @@ def dn_to_distribution(dn_elt, comm):
   comm.Bcast(distri[2:], root=comm.Get_size()-1)
   return distri
 
-def distribution_from_gnum(gnum_list, comm, weights=False, full=False):
+def distribution_from_gnum(gnum_list: List[NDArray], 
+                           comm: MPIComm, 
+                           weights: bool = False,
+                           full: bool = False) -> NDArray:
   """
   Create a distribution including all the provided gnums. 
   If weights=True, the distribution try to put the same number of ids on each rank.
@@ -56,7 +62,7 @@ def distribution_from_gnum(gnum_list, comm, weights=False, full=False):
     distri = uniform_distribution(global_max, comm)
     return partial_to_full_distribution(distri, comm) if full else distri
 
-def partial_to_full_distribution(partial_distrib, comm):
+def partial_to_full_distribution(partial_distrib: NDArray, comm: MPIComm) -> NDArray:
   """
   Compute the full distribution array from the partials distribution
   arrays. 
@@ -76,41 +82,43 @@ def partial_to_full_distribution(partial_distrib, comm):
   np.cumsum(full_distrib, out=full_distrib)
   return full_distrib
 
-def full_to_partial_distribution(full_distrib, comm):
+def full_to_partial_distribution(full_distrib: NDArray, comm: MPIComm) -> NDArray:
   return full_distrib[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
 
-def gather_and_shift(value, comm, dtype=None):
+def gather_and_shift(value: Union[int, np.integer],
+                     comm: MPIComm, 
+                     dtype: Optional[DTypeLike] = None) -> NDArray:
   if dtype is None:
-    value = np.asarray(value)
-    dtype = value.dtype
+    _value = np.asarray(value)
+    dtype = _value.dtype
   else:
-    value = np.asarray(value, dtype=dtype)
+    _value = np.asarray(value, dtype=dtype)
   distrib = np.empty(comm.Get_size()+1, dtype)
   distrib_view = distrib[1:]
-  comm.Allgather(value, distrib_view)
+  comm.Allgather(_value, distrib_view)
   distrib[0]   = 0
   np.cumsum(distrib, out=distrib)
   return distrib
 
-def arrays_max(array_list, comm):
+def arrays_max(array_list: List[NDArray], comm: MPIComm) -> int:
   if len(array_list) > 0:
     local_max = max([array.max(initial=0) for array in array_list])
   else:
     local_max = 0
   return comm.allreduce(local_max, MPI.MAX)
 
-def any_true(L, f, comm):
+def any_true(L: Iterable[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
   return comm.allreduce(py_utils.any_true(L, f), op=MPI.LOR)
 
-def all_true(L, f, comm):
+def all_true(L: Iterable[T], f: Callable[[T], bool], comm: MPIComm) -> bool:
   return comm.allreduce(py_utils.all_true(L, f), op=MPI.LAND)
 
-def exists_anywhere(trees, node_path, comm):
+def exists_anywhere(trees: Sequence[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
   return any_true(trees, 
                   lambda t: PT.get_node_from_path(t, node_path) is not None,
                   comm)
 
-def exists_everywhere(trees, node_path, comm):
+def exists_everywhere(trees: Sequence[CGNSTree], node_path: CGNSPath, comm: MPIComm) -> bool:
   exists_loc = True #Allow True if list is empty
   for tree in trees:
     exists_loc = exists_loc and (PT.get_node_from_path(tree, node_path) is not None)

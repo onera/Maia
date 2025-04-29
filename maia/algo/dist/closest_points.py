@@ -8,12 +8,12 @@ from maia.algo.part.closest_points import _mdom_closest_points as _mdom_closest_
 
 def _mdom_closest_points(src_clouds, tgt_clouds, comm, **kwargs):
 
-  reverse = kwargs.get('reverse', False)
+  reverse = kwargs.pop('reverse', False)
   # Add a level in list to mimic partitions
   tgt_clouds_per_dom = [[c] for c in tgt_clouds]
   src_clouds_per_dom = [[c] for c in src_clouds]
 
-  result = _mdom_closest_points_part(src_clouds_per_dom, tgt_clouds_per_dom, comm, **kwargs)
+  result = _mdom_closest_points_part(src_clouds_per_dom, tgt_clouds_per_dom, comm, reverse, **kwargs)
 
   # Remove intermediate level
   if reverse:

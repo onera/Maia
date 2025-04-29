@@ -1,3 +1,5 @@
+from maia.pytree.typing import *
+
 elements_properties = [
 #CGNS_Id, ElementName        ,  dim, nVtx,nEdge,nFace, refElt
     ("Null"                  , None, None, None, None,   None),
@@ -66,10 +68,10 @@ def element_name(n:int) -> str:
 def cgns_name_to_id(name:str) -> int:
   return [EP[0] for EP in elements_properties].index(name)
 
-def element_dim(n:int) -> int:
+def element_dim(n:int) -> Optional[int]:
   assert n < len(elements_properties)
   return elements_properties[n][1]
 
-def element_number_of_nodes(n:int) -> int:
+def element_number_of_nodes(n:int) -> Optional[int]:
   assert n < len(elements_properties)
   return elements_properties[n][2]

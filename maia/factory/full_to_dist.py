@@ -1,13 +1,22 @@
 import numpy as np
 
-import maia.pytree        as PT
-import maia.pytree.maia   as MT
+from maia.typing        import *
+from maia.pytree.typing import Predicates
+
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from maia.io          import distribution_tree
 from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
+from maia.pytree.maia.check_tree import check_cgns_full_tree
+from typing import overload
 
-def distribute_pl_node(node, comm):
+def get_np_value(node:CGNSTree) -> NDArray:
+  assert (value := node[1]) is not None
+  return value
+
+def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   """
   Distribute a standard node having a PointList (and its childs) over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
@@ -15,23 +24,25 @@ def distribute_pl_node(node, comm):
   dist_node = PT.deep_copy(node)
   n_elem = PT.Subset.n_elem(dist_node)
   distri = par_utils.uniform_distribution(n_elem, comm)
-
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(dist_node, 'IndexArray_t'):
-    array_n[1] = array_n[1][:, distri[0]:distri[1]]
+    array = get_np_value(array_n)
+    PT.set_value(array_n, array[:, distri[0]:distri[1]])
   # Standard Data Arrays
   for array_n in PT.iter_children_from_label(dist_node, 'DataArray_t'):
-    array_n[1] = array_n[1][distri[0]:distri[1]]
+    array = get_np_value(array_n)
+    PT.set_value(array_n, array[distri[0]:distri[1]])
   # BCData_t arrays case : can be scalar or vector
   has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
   bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)
-  bcds_without_pl_query = [bcds_without_pl, 'BCData_t', 'DataArray_t']
+  bcds_without_pl_query:Predicates = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   global_arrays_list = []
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_path in PT.predicates_to_paths(dist_node, query):
-      array_n = PT.get_node_from_path(dist_node, array_path)
-      if array_n[1].size != 1:
-        array_n[1] = array_n[1][distri[0]:distri[1]]
+      array_n = PT.request_node_from_path(dist_node, array_path)
+      array = get_np_value(array_n)
+      if array.size != 1:
+        PT.set_value(array_n, array[distri[0]:distri[1]])
       else:
         global_arrays_list.append(array_path)
 
@@ -39,7 +50,7 @@ def distribute_pl_node(node, comm):
   has_pl = lambda n : PT.get_name(n) not in ['PointList', 'PointRange'] and has_subset(n)
   for child in [node for node in PT.get_children(dist_node) if has_pl(node)]:
     dist_child = distribute_pl_node(child, comm)
-    child[2] = dist_child[2]
+    PT.set_children(child, PT.get_children(dist_child))
 
   distri_n = MT.newDistribution({'Index' : distri}, dist_node)
   if len(global_arrays_list) > 0:
@@ -47,7 +58,7 @@ def distribute_pl_node(node, comm):
 
   return dist_node
 
-def distribute_data_node(node, comm):
+def distribute_data_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   """
   Distribute a standard node having arrays supported by allCells or allVertices over several processes,
   using uniform distribution. Mainly useful for unit tests. Node must be know by each process.
@@ -57,16 +68,17 @@ def distribute_data_node(node, comm):
 
   for child in PT.get_children(node):
     if PT.get_label(child) == 'DataArray_t':
-      distri = par_utils.uniform_distribution(child[1].size, comm)
+      val = get_np_value(child)
+      distri = par_utils.uniform_distribution(val.size, comm)
       PT.new_DataArray(PT.get_name(child),
-                      (child[1].reshape(-1, order='F')[distri[0] : distri[1]]).copy(),
+                      (val.reshape(-1, order='F')[distri[0] : distri[1]]).copy(),
                       parent=dist_node) 
     else:
       PT.add_child(dist_node, PT.deep_copy(child))
 
   return dist_node
 
-def distribute_element_node(node, comm):
+def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   """
   Distribute a standard element node over several processes, using uniform distribution.
   Mainly useful for unit tests. Node must be know by each process.
@@ -78,26 +90,28 @@ def distribute_element_node(node, comm):
   distri = par_utils.uniform_distribution(n_elem, comm)
   MT.newDistribution({'Element' : distri}, dist_node)
 
-  ec = PT.get_child_from_name(dist_node, 'ElementConnectivity')
+  ec_n = PT.request_child_from_name(dist_node, 'ElementConnectivity')
+  ec = get_np_value(ec_n)
   if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
-    eso = PT.get_child_from_name(dist_node, 'ElementStartOffset')
-    distri_ec = eso[1][[distri[0], distri[1], -1]]
-    ec[1] = ec[1][distri_ec[0] : distri_ec[1]]
-    eso[1] = eso[1][distri[0]:distri[1]+1]
-
+    eso_n = PT.request_child_from_name(dist_node, 'ElementStartOffset')
+    eso = get_np_value(eso_n)
+    distri_ec = eso[[distri[0], distri[1], -1]]
+    PT.set_value(ec_n, ec[distri_ec[0] : distri_ec[1]])
+    PT.set_value(eso_n, eso[distri[0]:distri[1]+1])
     MT.newDistribution({'ElementConnectivity' : np_utils.safe_int_cast(distri_ec, distri.dtype)}, dist_node)
   else:
     n_vtx = PT.Element.NVtx(node)
-    ec[1] = ec[1][n_vtx*distri[0] : n_vtx*distri[1]]
+    PT.set_value(ec_n, ec[n_vtx*distri[0] : n_vtx*distri[1]])
     MT.newDistribution({'ElementConnectivity' : n_vtx*distri}, dist_node)
   
-  pe = PT.get_child_from_name(dist_node, 'ParentElements')
-  if pe is not None:
-    pe[1] = (pe[1][distri[0] : distri[1]]).copy(order='F') #Copy is needed to have contiguous memory
+  pe_n = PT.get_child_from_name(dist_node, 'ParentElements')
+  if pe_n is not None:
+    pe = get_np_value(pe_n)
+    PT.set_value(pe_n, (pe[distri[0] : distri[1]]).copy(order='F')) #Copy is needed to have contiguous memory
   
   return dist_node
 
-def _distribute_tree(tree, comm):
+def _distribute_tree(tree: CGNSTree, comm: MPIComm) -> CGNSDistTree:
   """
   Distribute a standard cgns tree over several processes, using uniform distribution.
   Mainly useful for unit tests. Tree must be know by each process.
@@ -169,9 +183,11 @@ def _distribute_tree(tree, comm):
       PT.rm_child(zone, zone_subregion)
       PT.add_child(zone, dist_zone_subregion)
 
-  return dist_tree
+  return CGNSDistTree(dist_tree)
 
-def _broadcast_full_to_dist(tree, comm, owner):
+def _broadcast_full_to_dist(tree: Optional[CGNSTree],
+                            comm: MPIComm, 
+                            owner: int) -> CGNSDistTree:
   """
   Create a distributed tree from a full tree holded by only one proc.
   """
@@ -180,6 +196,7 @@ def _broadcast_full_to_dist(tree, comm, owner):
       'BC_t', 'BCDataSet_t', 'BCData_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
 
   if comm.Get_rank() == owner:
+    assert tree is not None
     is_da_container = lambda n: PT.get_label(n) in da_container
     is_data_array   = lambda n: PT.get_label(n) == 'DataArray_t' and not PT.get_name(n).endswith('#Size')
 
@@ -188,29 +205,34 @@ def _broadcast_full_to_dist(tree, comm, owner):
     for zone in PT.iter_all_Zone_t(dist_tree):
       for container in PT.iter_nodes_from_predicate(zone, is_da_container, explore='deep'):
         for node in PT.get_children_from_predicate(container, 'DataArray_t'):
+          assert (node_val := node[1]) is not None
           if PT.get_name(node) != 'ParentElements':
-            node[1] = node[1].reshape((-1), order='F')
-          scalar_ds = PT.get_label(container) == 'BCData_t' and PT.get_value(node).size == 1
+            PT.set_value(node, node_val.reshape((-1), order='F'))
+          scalar_ds = PT.get_label(container) == 'BCData_t' and node_val.size == 1
           if not scalar_ds:
-            PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node[1].shape, parent=container)
+            PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node_val.shape, parent=container)
         for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
-          PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node[1].shape, parent=container)
+          assert (node_val := node[1]) is not None
+          PT.new_node(PT.get_name(node)+'#Size', 'DataArray_t', node_val.shape, parent=container)
 
     # Prepare disttree for other rank: data are empty arrays. #Size node already added
     send_size_tree = PT.shallow_copy(dist_tree)
     for zone in PT.iter_all_Zone_t(send_size_tree):
       for container in PT.iter_nodes_from_predicate(zone, is_da_container, explore='deep'):
         for node in PT.get_children_from_predicate(container, is_data_array):
+          assert (node_val := node[1]) is not None
           # Be carefull with PE
           if PT.get_name(node) == 'ParentElements':
-            PT.set_value(node, np.empty((0,2), dtype=node[1].dtype, order='F'))
-          elif PT.get_label(container) == 'BCData_t' and PT.get_value(node).size == 1:
+            PT.set_value(node, np.empty((0,2), dtype=node_val.dtype, order='F'))
+          elif PT.get_label(container) == 'BCData_t' and node_val.size == 1:
             pass # skip scalar BCDS   
           else:
-            PT.set_value(node, np.empty(0, dtype=node[1].dtype))
+            PT.set_value(node, np.empty(0, dtype=node_val.dtype))
         for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
-          index_dimension = PT.get_child_from_name(container, PT.get_name(node)+'#Size')[1][0]
-          PT.set_value(node, np.empty((index_dimension,0), dtype=node[1].dtype, order='F'))
+          index_dimension_n = PT.request_child_from_name(container, PT.get_name(node)+'#Size')
+          index_dimension = index_dimension_n[1][0] #type:ignore[index] #(Node is created before, should not be None)
+          assert (node_val := node[1]) is not None
+          PT.set_value(node, np.empty((index_dimension,0), dtype=node_val.dtype, order='F'))
   else:
     send_size_tree = None
 
@@ -223,16 +245,24 @@ def _broadcast_full_to_dist(tree, comm, owner):
       for elt in PT.get_children_from_label(zone, 'Elements_t'):
         eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
         if eso_n is not None:
-          ec_size = PT.get_child_from_name(elt, 'ElementConnectivity#Size')[1]
-          eso_n[1] = (comm.Get_rank() > owner) * np.array(ec_size, dtype=eso_n[1].dtype)
+          assert (eso_val := eso_n[1]) is not None
+          ec_size = PT.request_child_from_name(elt, 'ElementConnectivity#Size')[1]
+          PT.set_value(eso_n, (comm.Get_rank() > owner) * np.array(ec_size, dtype=eso_val.dtype))
 
   # Create Distribution nodes from Size nodes
   distribution_tree.add_distribution_info(dist_tree, comm, f'gather.{owner}')
   PT.rm_nodes_from_name(dist_tree, '*#Size')
 
-  return dist_tree
+  return CGNSDistTree(dist_tree)
 
-def full_to_dist_tree(tree, comm, owner=None):
+@overload
+def full_to_dist_tree(full_tree: CGNSTree, comm: MPIComm, owner: None) -> CGNSDistTree: ...
+@overload
+def full_to_dist_tree(full_tree: Optional[CGNSTree], comm: MPIComm, owner: Optional[int]) -> CGNSDistTree: ...
+
+def full_to_dist_tree(full_tree: Optional[CGNSTree],
+                      comm: MPIComm, 
+                      owner: Optional[int] = None) -> CGNSDistTree:
   """ Generate a distributed tree from a standard (full) CGNS Tree.
 
   Input tree can be defined on a single process (using ``owner = rank_id``),
@@ -241,7 +271,7 @@ def full_to_dist_tree(tree, comm, owner=None):
   In both cases, output distributed tree will be equilibrated over all the processes.
 
   Args:
-    tree       (CGNSTree) : Full (not distributed) tree.
+    full_tree   (CGNSTree) : Full (not distributed) tree.
     comm        (MPIComm) : MPI communicator
     owner (int, optional) : MPI rank holding the input tree. Defaults to None.
   Returns:
@@ -253,11 +283,13 @@ def full_to_dist_tree(tree, comm, owner=None):
         :end-before: #full_to_dist_tree@end
         :dedent: 2
   """
-
+  if full_tree is not None:
+    check_cgns_full_tree(full_tree)
   if owner is not None:
-    dist_tree = _broadcast_full_to_dist(tree, comm, owner)
+    dist_tree = _broadcast_full_to_dist(full_tree, comm, owner)
     redistribute.redistribute_tree(dist_tree, 'uniform', comm)
     return dist_tree
   else:
-    return _distribute_tree(tree, comm)
+    assert full_tree is not None
+    return _distribute_tree(full_tree, comm)
 

@@ -1,17 +1,17 @@
-import mpi4py.MPI as mpi
-
 import numpy as np
 
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
 import maia
-from maia               import pytree        as PT
-from maia.pytree        import maia          as MT
+from maia.typing import *
 from maia.transfer      import protocols     as MTP
 from maia.utils         import par_utils     as MUPar
 from maia.utils.ndarray import np_utils
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 import maia.pytree.sids.elements_utils    as MPSEU
 
-def collect_pl_nodes(root, filter_loc=None):
+def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> List[CGNSTree]:
   """
   Search and collect all the pointList nodes found in subsets found
   under root
@@ -26,16 +26,15 @@ def collect_pl_nodes(root, filter_loc=None):
     pr_n = PT.get_child_from_name(node, 'PointRange')
     if pl_n is not None:
       pointlist_nodes.append(pl_n)
-    elif pr_n is not None and PT.get_value(pr_n).shape[0] == 1:
-      pr = PT.get_value(pr_n)
-      distrib = PT.get_value(PT.maia.getDistribution(node, 'Index'))
+    elif pr_n is not None and (pr:=PT.request_nd_value(pr_n)).shape[0] == 1:
+      distrib = MT.distribution_value(node, 'Index')
       pl = np_utils.single_dim_pr_to_pl(pr, distrib)
       new_pl_n = PT.new_node(name='PointList', value=pl, label='IndexArray_t', parent=node)
       PT.rm_nodes_from_label(node,'IndexRange_t')
       pointlist_nodes.append(new_pl_n)
   return pointlist_nodes
 
-def convert_mixed_to_elements(dist_tree, comm):
+def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
     """
     Transform a mixed connectivity into an element based connectivity.
     
@@ -43,8 +42,8 @@ def convert_mixed_to_elements(dist_tree, comm):
     and the PointList are updated.
   
     Args:
-      dist_tree  (CGNSTree): Tree with connectivity described by mixed elements
-      comm       (`MPIComm`) : MPI communicator
+      dist_tree  (CGNSDistTree): Tree with connectivity described by mixed elements
+      comm       (`MPIComm`)   : MPI communicator
   
     Example:
         .. literalinclude:: snippets/test_algo.py
@@ -52,20 +51,21 @@ def convert_mixed_to_elements(dist_tree, comm):
           :end-before: #convert_mixed_to_elements@end
           :dedent: 2
     """
+    check_cgns_dist_tree(dist_tree)
     rank = comm.Get_rank()
     size = comm.Get_size()
 
     for zone in PT.get_all_Zone_t(dist_tree):
-        elem_types = {} # For each element type: dict id of mixed node -> number of elts
-        ec_per_elem_type_loc = {}
+        elem_types:Dict[int, Dict[int, int]] = {} # For each element type: dict id of mixed node -> number of elts
+        ec_per_elem_type_loc:Dict[int, List[NDArray]] = {}
         
         # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
             assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']  
             if PT.Element.CGNSName(element) != 'MIXED':                       
-                elem_ec  = PT.get_child_from_name(element,'ElementConnectivity')[1]
-                elem_distri = MT.get_distribution(element, 'Element')[1]
+                elem_ec  = PT.request_nd_value(PT.request_child_from_name(element,'ElementConnectivity'))
+                elem_distri = MT.distribution_value(element, 'Element')
                 elem_type = PT.Element.Type(element)
                 elem_size = elem_distri[1] - elem_distri[0]
                 if elem_type not in elem_types.keys():
@@ -77,21 +77,21 @@ def convert_mixed_to_elements(dist_tree, comm):
                     ec_per_elem_type_loc[elem_type] = [elem_ec]
 
             else:
-                elem_ec  = PT.get_child_from_name(element,'ElementConnectivity')[1]
-                elem_eso = PT.get_child_from_name(element,'ElementStartOffset')[1]
-                elem_eso_loc = elem_eso[:-1]-elem_eso[0]
-                elem_types_tab = elem_ec[elem_eso_loc]
+                elem_cnt = MT.Element.connectivity(element)
+                elem_eso_loc = elem_cnt.displs[:-1]
+                elem_types_tab = elem_cnt.values[elem_eso_loc]
                 elem_types_loc, nb_elems_per_types_loc = np.unique(elem_types_tab,return_counts=True)
                 for e, elem_type in enumerate(elem_types_loc):
                     if elem_type not in elem_types.keys():
                         elem_types[elem_type] = {}
                     elem_types[elem_type][elem_pos] = nb_elems_per_types_loc[e]
                     nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
-                    ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_ec.dtype)
+                    assert nb_nodes_per_elem is not None
+                    ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_cnt.dtype)
                     # Retrive start idx of mixed elements having this type
-                    indices = np.intersect1d(np.where(elem_ec==elem_type),elem_eso_loc, assume_unique=True)
+                    indices = np.intersect1d(np.where(elem_cnt.values==elem_type),elem_eso_loc, assume_unique=True)
                     for n in range(nb_nodes_per_elem):
-                        ec_per_type[n::nb_nodes_per_elem] = elem_ec[indices+n+1]
+                        ec_per_type[n::nb_nodes_per_elem] = elem_cnt.values[indices+n+1]
                     try:
                         ec_per_elem_type_loc[elem_type].append(ec_per_type)
                     except KeyError:
@@ -112,12 +112,12 @@ def convert_mixed_to_elements(dist_tree, comm):
         #    decreased dimensions : 3D->2D->1D->0D
         #    Without this limitation, replace the following lines by:
         #        `key_types = np.array(list(all_types.keys()),dtype=np.int32)`
-        key_types = sorted(all_types.keys(), key=MPSEU.element_dim, reverse=True)
+        key_types = sorted(all_types.keys(), key=MPSEU.element_dim, reverse=True) #type:ignore #(element_dim does not return None on std elements)
         
         
         # 4/ Create old to new element numbering (to update PointList/PointRange)
         #    and old to new cell numbering (to update CellCenter FlowSolution)
-        cell_dim = max([MPSEU.element_dim(k) for k in key_types])
+        cell_dim = max([MPSEU.element_dim(k) for k in key_types]) #type:ignore #(element_dim does not return None on std elements)
         ln_to_gn_element_list = []
         ln_to_gn_cell_list = []
         old_to_new_element_numbering_list = []
@@ -125,7 +125,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         nb_elem_prev_element_t_nodes = 0
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
             is_std_elt = PT.Element.CGNSName(element) != 'MIXED'
-            elem_distrib = MT.getDistribution(element, 'Element')[1]
+            elem_distrib = MT.distribution_value(element, 'Element')
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             nb_cell_loc = 0
             for et in elem_types:
@@ -134,8 +134,8 @@ def convert_mixed_to_elements(dist_tree, comm):
                         nb_cell_loc += elem_types[et][elem_pos]
                     except KeyError:
                         pass
-            elem_ec  = PT.get_child_from_name(element, 'ElementConnectivity')[1]
-            elem_eso = PT.get_child_from_name(element, 'ElementStartOffset')
+            elem_ec  = PT.request_nd_value(PT.request_child_from_name(element, 'ElementConnectivity'))
+            elem_eso = PT.request_child_from_name(element, 'ElementStartOffset')
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_ec.dtype)
             old_to_new_cell_numbering    = np.zeros(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
             ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) + 1\
@@ -154,6 +154,7 @@ def convert_mixed_to_elements(dist_tree, comm):
                         all_cell_pos[elem_type] = np.arange(nb_elem_loc) if PT.Element.Type(element) == elem_type else np.empty(0, int)
                         
             else:
+                assert elem_eso[1] is not None
                 elem_ec_type_pos = elem_ec[elem_eso[1][:-1]-elem_eso[1][0]] # Type of each element
                 all_elem_pos = {}
                 all_non_cell_pos = []
@@ -254,7 +255,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         filter_loc = ['EdgeCenter','FaceCenter','CellCenter']
         pl_list = collect_pl_nodes(zone,filter_loc)
         
-        ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.get_value(pl)[0]) for pl in pl_list]
+        ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.request_nd_value(pl)[0]) for pl in pl_list]
             
         old_to_new_pl_list = MTP.part_to_part(old_to_new_element_numbering_list, ln_to_gn_element_list, ln_to_gn_pl_list, comm)
 
@@ -266,7 +267,7 @@ def convert_mixed_to_elements(dist_tree, comm):
         
         # 7a. Redistribute old_to_new_cell_numbering to be coherent with
         #     cells distribution
-        cells_distrib = MT.getDistribution(zone, 'Cell')[1]
+        cells_distrib = MT.distribution_value(zone, 'Cell')
         cells_distrib_f = MUPar.partial_to_full_distribution(cells_distrib, comm)
 
         GI_cell = MTP.GlobalMultiIndexer(cells_distrib_f, ln_to_gn_cell_list, comm)
@@ -280,6 +281,6 @@ def convert_mixed_to_elements(dist_tree, comm):
                           and PT.get_child_from_name(n, 'PointList') is None
 
         for node in PT.get_children_from_predicates(zone, [is_fs_cc, 'DataArray_t']):
-            data = PT.get_value(node)
+            data = PT.request_nd_value(node)
             GI_fs.Put(data, data) # Inplace
 

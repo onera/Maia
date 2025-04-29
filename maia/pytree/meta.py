@@ -6,33 +6,33 @@ from maia.pytree.typing import *
 import maia.pytree as PT
 
 
-class CGNSNodeFromPredicateNotFoundError(Exception):
-    """
-    Attributes:
-        node (List): CGNS node
-        name (str): Name of the CGNS Name
-    """
-    def __init__(self, node: List, predicate):
-        self.node = node
-        self.predicate = predicate
-        super().__init__()
+class CGNSNodeNotFoundError(Exception):
+  """
+  Attributes:
+    node (List): CGNS node
+    name (str): Name of the CGNS Name
+  """
+  def __init__(self, node, predicate):
+    self.node = node
+    self.predicate = predicate
+    super().__init__()
 
-    def __str__(self):
-        return f"Unable to find the predicate '{self.predicate}' from the CGNS node '[n:{PT.get_name(self.node)}, ..., l:{PT.get_label(self.node)}]"
+  def __str__(self):
+    return f"Unable to find a node matching predicate '{self.predicate}' from the root '{PT.get_name(self.node)}'"
 
 class CGNSLabelNotEqualError(Exception):
-    """
-    Attributes:
-        node (List): CGNS node
-        label (str): Name of the CGNS Label
-    """
-    def __init__(self, node: List, label: str):
-        self.node  = node
-        self.label = label
-        super().__init__()
+  """
+  Attributes:
+    node (List): CGNS node
+    label (str): Name of the CGNS Label
+  """
+  def __init__(self, node, label):
+    self.node  = node
+    self.label = label
+    super().__init__()
 
-    def __str__(self):
-        return f"Expected a CGNS node with label '{self.label}', '[n:{PT.get_name(self.node)}, ..., l:{PT.get_label(self.node)}]' found here."
+  def __str__(self):
+    return f"Node '{PT.get_name(self.node)}' has label {PT.get_label(self.node)} instead of {self.label}"
 
 
 def check_is_label(label, n=0):

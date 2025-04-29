@@ -77,8 +77,10 @@ def test_poly_new_to_old_only_interleave(poly_tree_new):
 def test_poly_new_to_old_2d():
   tree = maia.factory.generate_dist_block(3, "TRI_3", MPI.COMM_SELF)
   maia.algo.dist.convert_elements_to_ngon(tree, MPI.COMM_SELF)
-  maia.algo.seq.poly_new_to_old(tree)
-  ngon = PT.get_node_from_name(tree, "NGonElements")
+  ftree = maia.factory.dist_to_full_tree(tree, MPI.COMM_SELF)
+  
+  maia.algo.seq.poly_new_to_old(ftree)
+  ngon = PT.get_node_from_name(ftree, "NGonElements")
   ngon_ec = PT.get_value(PT.get_child_from_name(ngon,"ElementConnectivity"))
   assert (ngon_ec == np.array([3, 1,2,4, 3, 4,2,5, 3, 5,2,3, 3, 5,3,6, 3, 4,5,7, 3, 7,5,8, 3, 8,5,6, 3, 8,6,9])).all()
 

@@ -421,6 +421,7 @@ def test_part_subregion_to_dist_subregion(comm, from_api):
   if comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -446,6 +447,7 @@ ZoneU Zone_t [[6,0,0]]:
   """.format(dtype)
     pt = """
   ZoneU.P0.N0 Zone_t [[3,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -469,6 +471,7 @@ ZoneU Zone_t [[6,0,0]]:
   elif comm.Get_rank() == 1:
     dt = """
 ZoneU Zone_t [[6,0,0]]:
+  :CGNS#Distribution UserDefinedData_t: # Fake partition to avoid check
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -494,6 +497,7 @@ ZoneU Zone_t [[6,0,0]]:
   """.format(dtype)
     pt = """
   ZoneU.P1.N0 Zone_t [[3,0,0]]:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZGC ZoneGridConnectivity_t:
       GC.0 GridConnectivity_t:
         PointList IndexArray_t [[1, 108]]:
@@ -545,6 +549,7 @@ def test_part_dataset_to_dist_dataset(comm, from_api):
   if comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -563,6 +568,7 @@ ZoneU Zone_t:
   """.format(dtype)
     pt = """
   ZoneU.P0.N0 Zone_t:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -576,6 +582,7 @@ ZoneU Zone_t:
   elif comm.Get_rank() == 1:
     dt = """
 ZoneU Zone_t:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -594,6 +601,7 @@ ZoneU Zone_t:
   """.format(dtype)
     pt = """
   ZoneU.P1.N0 Zone_t:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -638,6 +646,7 @@ def test_part_dataset_to_dist_dataset_filter(comm):
   if comm.Get_rank() == 0:
     dt = """
 ZoneU Zone_t:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -656,6 +665,7 @@ ZoneU Zone_t:
   """.format(dtype)
     pt = """
   ZoneU.P0.N0 Zone_t:
+    CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":
@@ -669,6 +679,7 @@ ZoneU Zone_t:
   elif comm.Get_rank() == 1:
     dt = """
 ZoneU Zone_t:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   ZBC ZoneBC_t:
     BC BC_t:
       GridLocation GridLocation_t "FaceCenter":
@@ -687,6 +698,7 @@ ZoneU Zone_t:
   """.format(dtype)
     pt = """
   ZoneU.P1.N0 Zone_t:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
     ZBC ZoneBC_t:
       BC BC_t:
         GridLocation GridLocation_t "FaceCenter":

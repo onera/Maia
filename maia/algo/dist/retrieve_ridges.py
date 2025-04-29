@@ -3,15 +3,17 @@ import Pypdm.Pypdm as PDM
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from   maia                              import npy_pdm_gnum_dtype as pdm_dtype
-from   maia.algo.apply_function_to_nodes import zones_iterator
-from   maia.algo.dist.adaptation_utils   import apply_offset_to_elts
 from   maia.algo.dist.extract_part       import extract_elmt_connectivity_from_pl
+from   maia.transfer                     import protocols as EP
 from   maia.utils                        import np_utils, par_utils, as_pdm_gnum
 from   maia.utils                        import logging as mlog
+from   maia.typing                       import *
+from   maia.pytree.maia.check_tree       import check_cgns_dist_tree
 
-def replace_bc_identifiers(zone, bc_identifiers):
+def replace_bc_identifiers(zone:CGNSTree, bc_identifiers:List[Union[str, List[str]]]) -> List[List[str]]:
   """
   For a given bc_identifiers, replace BC families with associated BC names from given zone. 
   """
@@ -66,7 +68,7 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
   data_stri = np.array([len(parents[k-1]) for k in full_idx], np.int32)
   _, data   = np_utils.concatenate_np_arrays([parents[k-1] for k in full_idx], dtype=np.int32)
 
-  out_stri, out = maia.transfer.protocols.part_to_part_strided([data_stri], [data], [full_idx], [none_idx], comm)
+  out_stri, out = EP.part_to_part_strided([data_stri], [data], [full_idx], [none_idx], comm)
 
   # > Store parent groups info
   r_idx = 0
@@ -78,7 +80,9 @@ def share_parent_bc_info(dedge_distrib, dgroup_edges,
   return parents
 
 
-def find_ridges(dist_tree, bc_identifiers, comm) -> None:
+def find_ridges(dist_tree: CGNSDistTree,
+                bc_identifiers: Union[Literal['ALL_BCS'], List[Union[str, List[str]]]],
+                comm: MPIComm) -> None:
   """Retrieve the edges delimiting specified BC surfaces of a volumic mesh.
 
   Tree is modified inplace: Elements_t nodes containing resulting edge elements
@@ -100,9 +104,9 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
     each BC constitutes an independant group.
 
   Args:
-    dist_tree      (CGNSTree): Unstructured distributed tree, starting at Zone_t level or higher.
-    bc_identifiers (list): List of BC groups bounded by searched edges (see above)
-    comm           (MPIComm) : MPI communicator
+    dist_tree      (CGNSDistTree): Unstructured distributed tree, starting at Zone_t level or higher.
+    bc_identifiers (list)        : List of BC groups bounded by searched edges (see above)
+    comm           (MPIComm)     : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -110,25 +114,26 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
         :end-before: #retrieve_ridges@end
         :dedent: 2
   """
-
-  for zone in zones_iterator(dist_tree):
+  check_cgns_dist_tree(dist_tree)
+  for zone in PT.iter_all_Zone_t(dist_tree):
 
     assert PT.Zone.CellDimension(zone)>1
 
-    zone_dtype = PT.get_value(zone).dtype
+    zone_dtype = PT.request_nd_value(zone).dtype
 
     # > Transform bc_identifiers onto list of list of BCs
-    if bc_identifiers=='ALL_BCS':
+    if bc_identifiers == 'ALL_BCS':
       bc_identifiers = [[PT.get_name(bc)] for bc in PT.get_nodes_from_label(zone, 'BC_t')]
     replaced_bc_identifiers = replace_bc_identifiers(zone, bc_identifiers)
 
     # > Make unique PL for each group
-    bc_pls = []
+    groups_cat_pl:List[NDArray] = []
     for bc_names in replaced_bc_identifiers:
-      bcs = [PT.get_node_from_predicates(zone, f'ZoneBC_t/{bc_name}')  for bc_name in bc_names]
-      bc_pls.append([PT.get_child_from_name(bc, 'PointList')[1] for bc in bcs])
-    bc_pls = [np_utils.concatenate_point_list(pls)[1] for pls in bc_pls]
-    dgrp_face_idx, pl = np_utils.concatenate_np_arrays(bc_pls)
+      bcs = [PT.request_node_from_name_and_label(zone, bc_name, 'BC_t')  for bc_name in bc_names]
+      group_pls = [PT.request_nd_value(PT.request_child_from_name(bc, 'PointList')) for bc in bcs]
+      groups_cat_pl.append(np_utils.concatenate_point_list(group_pls)[1])
+
+    dgrp_face_idx, pl = np_utils.concatenate_np_arrays(groups_cat_pl)
 
     # > Get connectivity of surfacic elements and transfer it to pl "partition" for PDM
     elmt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[2]
@@ -181,7 +186,7 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
                             econn=dridge_vtx.astype(zone_dtype, copy=False),
                             parent=zone)
     dedges_partial_distrib = par_utils.full_to_partial_distribution(distrib_ridge, comm)
-    PT.maia.new_distribution({'Element':dedges_partial_distrib}, parent=elt_n)
+    MT.new_distribution({'Element':dedges_partial_distrib}, parent=elt_n)
 
 
     # > Création des BCs EdgeCenter (une par face parent group) + descriptor qui stocke parent 1 et parent 2
@@ -197,7 +202,7 @@ def find_ridges(dist_tree, bc_identifiers, comm) -> None:
                             point_list=pl.reshape((1,-1), order='F').astype(zone_dtype, copy=False),
                             loc='EdgeCenter',
                             parent=zbc_n)
-      PT.maia.new_distribution({'Index':par_utils.dn_to_distribution(pl.size, comm)}, parent=bc_egde_n)
+      MT.new_distribution({'Index':par_utils.dn_to_distribution(pl.size, comm)}, parent=bc_egde_n)
       values = []
       for val in [bc_identifiers[k-1] for k in bc_edge]:
         if isinstance(val, str):

@@ -1,16 +1,17 @@
 import numpy as np
-import Pypdm.Pypdm as PDM
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.utils import np_utils, par_utils
+import Pypdm.Pypdm as PDM
 
 # --------------------------------------------------------------------------
-def dplane_generate(xmin, xmax, ymin, ymax,
-                    have_random, init_random,
-                    nx, ny,
-                    comm):
+def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,
+                    have_random: bool, init_random: int,
+                    nx: int, ny: int,
+                    comm: MPIComm) -> CGNSDistTree:
   """
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree

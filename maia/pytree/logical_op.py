@@ -1,7 +1,8 @@
 from maia.pytree.typing import *
-from maia.pytree.meta import begin_api_export, end_api_export
 
 import maia.pytree as PT
+
+__all__ = ['union', 'intersection', 'difference']
 
 def _add_children_to_node_from_another(node1, node2):
   for child2 in node2[2]:
@@ -51,7 +52,7 @@ def _rm_common_children(node1, node2, comp_func):
     if child2 is not None:
       _rm_common_children(child1, child2, comp_func)
 
-begin_api_export()
+#begin_api_export()
 
 def union(*trees:CGNSTree) -> CGNSTree:
   """ Create a new tree from the union of the input trees.
@@ -209,4 +210,4 @@ def difference(t1:CGNSTree, t2:CGNSTree,
   _rm_common_children(diff_nodes, t2, comp_func)
   return diff_nodes
 
-end_api_export()
+#end_api_export()

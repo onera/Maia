@@ -1,16 +1,11 @@
 import sys
 import numpy as np
 import warnings
+from typing import overload
 
 from maia.pytree.typing import *
 
-if sys.version_info.major == 3 and sys.version_info.major < 8:
-  from collections.abc import Iterable  # < py38
-else:
-  from typing import Iterable
-
 import maia.pytree.cgns_keywords as CGK
-from maia.pytree.meta import begin_api_export, end_api_export
 
 from . import check
 
@@ -24,7 +19,7 @@ def _flatten(items):
     else:
       yield x
 
-def _convert_value(value):
+def _convert_value(value) -> Optional[NDArray]:
   """
   Convert a Python input to a compliant pyCGNS value
   """
@@ -66,20 +61,21 @@ def _convert_value(value):
         # WARNING: string numpy is limited to rank=2
         assert max([len(v) for v in _flatten(value)]) <= _CGNS_STR_SIZE
         size = _CGNS_STR_SIZE
-        if isinstance(value[0], str):
-          v = np.empty( (size,len(value) ), dtype='c', order='F')
+        _value = list(value) # List is need to use [] operator
+        if isinstance(_value[0], str):
+          v = np.empty( (size,len(_value) ), dtype='c', order='F')
           for c, i in enumerate(value):
             s = min(len(i),size)
             v[:,c] = ' '
             v[0:s,c] = i[0:s]
           result = v
         else:
-          v = np.empty( (size,max([len(v) for v in value]),len(value)), dtype='c', order='F')
+          v = np.empty( (size,max([len(v) for v in value]),len(_value)), dtype='c', order='F')
           v[:,:,:] = ' '
-          for c in range(len(value)):
-            for d in range(len(value[c])):
-              s = min(len(value[c][d]),size)
-              v[0:s,d,c] = value[c][d][0:s]
+          for c in range(len(_value)):
+            for d in range(len(_value[c])):
+              s = min(len(_value[c][d]),size)
+              v[0:s,d,c] = _value[c][d][0:s]
           result = v
     except StopIteration:
       # empty iterable -> default to I4
@@ -99,7 +95,7 @@ def _np_to_string(array):
     return [_np_to_string(array[:,:,i]) for i in range(array.shape[2])]
   raise ValueError(f"Incorrect dimension for bytes array: {array.ndim}")
 
-begin_api_export()
+#begin_api_export()
 
 def get_name(node:CGNSTree) -> str:
   """
@@ -132,11 +128,16 @@ def set_name(node:CGNSTree, name:str):
   if check.is_valid_name(name, check_len=False):
     if not check.is_valid_name(name, check_len=True):
       warnings.warn(f"Setting a CGNS node name to {name}, which is longer than 32 char", RuntimeWarning, stacklevel=2)
-    node[0] = name
+    node[0] = name #type: ignore[index]
   else:
     raise ValueError("Unvalid name for node")
 
-def get_value(node:CGNSTree, raw:bool=False) -> Union[None, np.ndarray, str, List[str]]:
+@overload
+def get_value(node:CGNSTree, raw:Literal[True]) -> Union[None, NDArray]: ...
+@overload
+def get_value(node:CGNSTree) -> Union[None, NDArray, str, List[str]]: ...
+
+def get_value(node:CGNSTree, raw:bool=False) -> Union[None, NDArray, str, List[str]]:
   """ Return the value of a CGNSNode
 
   If value is an array of characters, it returned as a (or a
@@ -156,6 +157,16 @@ def get_value(node:CGNSTree, raw:bool=False) -> Union[None, np.ndarray, str, Lis
     return _np_to_string(raw_val)
   else:
     return raw_val
+
+def request_str_value(node:CGNSTree) -> str:
+  val = get_value(node)
+  assert isinstance(val, str), f"Value of node {node[0]} was expected to be a string, but is {val}"
+  return val
+
+def request_nd_value(node:CGNSTree) -> NDArray: 
+  val = node[1]
+  assert val is not None, f"Value of node {node[0]} was not expected to be None"
+  return val
 
 def get_value_type(node:CGNSTree) -> str:
   """ Return the value type of a CGNSNode 
@@ -218,7 +229,7 @@ def set_value(node:CGNSTree, value:Any):
     >>> node = PT.new_node('Node')
     >>> PT.set_value(node, [3,2,1])
   """
-  node[1] = _convert_value(value)
+  node[1] = _convert_value(value) #type: ignore[index]
 
 def get_children(node:CGNSTree) -> List[CGNSTree]:
   """ Return the list of children of a CGNSNode
@@ -233,7 +244,7 @@ def get_children(node:CGNSTree) -> List[CGNSTree]:
   """
   return node[2]
 
-def add_child(node:CGNSTree, child:CGNSTree):
+def add_child(node:CGNSTree, child:Optional[CGNSTree]):
   """ Append a child node to the children list of a CGNSNode.
 
   Args:
@@ -252,7 +263,7 @@ def add_child(node:CGNSTree, child:CGNSTree):
     raise RuntimeError(f'Can not add child {child[0]} to node {node[0]}: a node with the same name already exists')
   node[2].append(child)
 
-def rm_child(node:CGNSTree, child:CGNSTree):
+def rm_child(node:CGNSTree, child:Optional[CGNSTree]):
   """ Remove the node ``child`` to the children list of node ``node``.
 
   Args:
@@ -296,12 +307,12 @@ def set_children(node:CGNSTree, children:List[CGNSTree]):
     0
   """
   children_bck = get_children(node)
-  node[2] = []
+  node[2] = [] #type: ignore[index]
   try:
     for child in children:
       add_child(node, child)
   except Exception as e:
-    node[2] = children_bck
+    node[2] = children_bck #type: ignore[index]
     raise e 
 
 def get_label(node:CGNSTree) -> str:
@@ -336,8 +347,8 @@ def set_label(node:CGNSTree, label:str):
   if check.is_valid_label(label, only_sids=False):
     if not check.is_valid_label(label, only_sids=True):
       warnings.warn(f"Setting a CGNS node label to {label}, which is not a SIDS label", RuntimeWarning, stacklevel=2)
-    node[3] = label
+    node[3] = label #type: ignore[index]
   else:
     raise ValueError("Unvalid label for node")
 
-end_api_export()
+#end_api_export()

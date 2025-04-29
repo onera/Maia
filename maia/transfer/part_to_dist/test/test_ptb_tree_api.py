@@ -14,11 +14,13 @@ class Test_IterativeData:
   dist_tree = PT.yaml.to_cgns_tree("""
   Base CGNSBase_t:
     Zone Zone_t:
+     :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
   """)
   part_trees = [
     PT.yaml.to_cgns_tree("""
     Base CGNSBase_t:
       Zone.P0.N0 Zone_t:
+        :CGNS#GlobalNumbering UserDefinedData_t: #  Fake partition to avoid check
         ZoneIterativeData ZoneIterativeData_t:
           FlowSolutionPointers DataArray_t ["FS0", "FS1"]:
       BaseIterativeData BaseIterativeData_t [2]:
@@ -27,6 +29,7 @@ class Test_IterativeData:
     PT.yaml.to_cgns_tree("""
     Base CGNSBase_t:
       Zone.P1.N0 Zone_t:
+        :CGNS#GlobalNumbering UserDefinedData_t: #  Fake partition to avoid check
         ZoneIterativeData ZoneIterativeData_t:
           FlowSolutionPointers DataArray_t ["FS0", "FS1"]:
       BaseIterativeData BaseIterativeData_t [2]:

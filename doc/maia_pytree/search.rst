@@ -153,7 +153,18 @@ of criteria used to compare at each level :
 >>> for pr in PT.get_nodes_from_predicates(node, [is_bc, is_pr]):
 >>>   # Do something with pr nodes
 
+All the functions allowing chained search take an additional boolean parameter ``ancestors``.
+If this parameter is ``True``, the function return tuple(s) of nodes instead of just the terminal node(s).
+This tuple is of size ``len(conditions)`` and contains all the intermediate results.
+The default value of ``ancestors`` is ``False``.
 
+>>> for bc, loc in PT.get_nodes_from_predicates(node, 
+...                                             'BC_t/GridLocation_t',
+...                                             ancestors=True):
+...   print(PT.get_name(bc), PT.get_value(loc))
+BC1 Vertex
+BC1 FaceCenter
+BC2 Vertex
 
 
 Fine tuning searches
@@ -189,18 +200,7 @@ See API reference for the full list.
   >>> PT.get_nodes_from_label(node, 'BC*_t', explore='deep')
   # Return nodes BC1, BCDataSet and BC2
 
-- ``ancestors`` (bool): *Advanced -- Apply to get_..._from_predicates functions* 
 
-  If ``True``, return tuple of nodes instead of the terminal node. Tuple is of size 
-  ``len(conditions)`` and contains all the intermediate results. Default is ``False``.
-
-  >>> for bc, loc in PT.get_nodes_from_predicates(node, 
-  ...                                             'BC_t/GridLocation_t',
-  ...                                             ancestors=True):
-  ...   print(PT.get_name(bc), PT.get_value(loc))
-  BC1 Vertex
-  BC1 FaceCenter
-  BC2 Vertex
 
 
 

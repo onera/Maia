@@ -121,14 +121,8 @@ def test_coordinates_3D(axis):
     assert np.allclose(c3, [0.5,0.5,0.5])
 
 def test_ZoneType():
-  #With numpy arrays
   zone_u = N.new_Zone('ZoneU', type='Unstructured')
   zone_s = N.new_Zone('ZoneS', type='Structured')
-  assert SIDS.Zone.Type(zone_u) == 'Unstructured'
-  assert SIDS.Zone.Type(zone_s) == 'Structured'
-  #With strings
-  W.get_child_from_label(zone_u, 'ZoneType_t')[1] = 'Unstructured'
-  W.get_child_from_label(zone_s, 'ZoneType_t')[1] = 'Structured'
   assert SIDS.Zone.Type(zone_u) == 'Unstructured'
   assert SIDS.Zone.Type(zone_s) == 'Structured'
 
@@ -171,8 +165,9 @@ def test_ElementDimension():
   assert SIDS.Element.Dimension(N.new_node("Toto", "Elements_t", [34, 0])) == 3
 
 def test_ElementNVtx():
-  assert SIDS.Element.NVtx(N.new_node("Toto", "Elements_t", [22, 0])) == None
   assert SIDS.Element.NVtx(N.new_node("Toto", "Elements_t", [42, 0])) == 15
+  with pytest.raises(AssertionError):
+    assert SIDS.Element.NVtx(N.new_node("Toto", "Elements_t", [22, 0])) == None
 
 def test_GridLocation():
   bc_no_loc = N.new_BC()
@@ -266,7 +261,7 @@ def test_has_ngon_elements():
   N.new_Elements('ElemB', type='NGON_n', erange=[1, 11], parent=zone)
   assert SIDS.Zone.has_ngon_elements(zone)
 
-def test_has_ngon_elements():
+def test_has_nface_elements():
   zone = N.new_Zone()
   N.new_Elements('ElemA', type='NGON_n', erange=[1, 11], parent=zone)
   assert not SIDS.Zone.has_nface_elements(zone)

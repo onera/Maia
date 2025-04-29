@@ -1,10 +1,28 @@
-from typing import Tuple, List, Dict, Optional, Any, Callable, Union, Iterator, NamedTuple
-import numpy as np
+# Standard types
+from typing import (
+  Any,
+  Callable,
+  Dict,
+  Iterable,
+  Iterator,
+  List,
+  Literal,
+  Mapping,
+  NamedTuple,
+  Optional,
+  Sequence,
+  TextIO,
+  Tuple,
+  Type,
+  Union
+)
 
-try: #Require numpy >= 1.20
-  from numpy.typing import ArrayLike, DTypeLike
-except ImportError:  #pragma: no cover
-  ArrayLike = Any
-  DTypeLike = Any
+# Third party types
+from numpy.typing import NDArray, ArrayLike, DTypeLike
 
-CGNSTree = Tuple[str, Optional[np.ndarray], List["CGNSTree"], str]
+# Define maia.pytree specific types
+CGNSTree = Tuple[str, Optional[NDArray], List["CGNSTree"], str]
+CGNSPath = str
+
+Predicate = Union[str, Callable[[CGNSTree], bool]]
+Predicates = Union[str, Sequence[Predicate]]

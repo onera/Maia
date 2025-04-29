@@ -6,6 +6,7 @@ import maia
 import maia.pytree        as PT
 import maia.pytree.utils  as PTu
 import maia.utils.logging as mlog
+from   maia.typing import CGNSDistTree, MPIComm, List, Optional, Union, Any
 
 from maia.io.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
 from maia.algo.dist.matching_jns_tools import add_joins_donor_name, get_matching_jns
@@ -13,7 +14,7 @@ from maia.algo.dist.adaptation_utils import convert_vtx_gcs_as_face_bcs,\
                                             deplace_periodic_patch,\
                                             retrieve_initial_domain,\
                                             rm_feflo_added_elt
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def unpack_metric(dist_tree, metric_paths):
   """
@@ -52,9 +53,13 @@ def unpack_metric(dist_tree, metric_paths):
   return metric_nodes
 
 
-def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts, tmp_dir):
-  
-
+def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree, 
+                           metric: Union[None, str, List[str]],
+                           comm: MPIComm, 
+                           container_names: List[str],
+                           constraints: Optional[str],
+                           feflo_opts: str,
+                           tmp_dir: str) -> CGNSDistTree:
   # > Create tmp directory
   tmp_repo   = Path(tmp_dir)
 
@@ -86,8 +91,8 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, container_names)
   tree_info = comm.bcast(tree_info, root=0)
-  input_base = PT.get_child_from_label(dist_tree, 'CGNSBase_t')
-  input_zone = PT.get_child_from_label(input_base, 'Zone_t')
+  input_base = PT.request_child_from_label(dist_tree, 'CGNSBase_t')
+  input_zone = PT.request_child_from_label(input_base, 'Zone_t')
 
 
   # > CGNS to meshb conversion
@@ -106,12 +111,12 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
        constraints is not None:
        # Can happen if all BCs given, or with wrong BC names. If all BCs, maybe use `-no-surf` feflo option instead
        mlog.warning("Constraints argument given but has no effect.")
-    feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
+    str_feflo_command  = ' '.join(feflo_command) # Split + join to remove useless spaces
 
     mlog.info(f"Start mesh adaptation using Feflo...")
     start = time.time()
     
-    subprocess.run(feflo_command, shell=True, cwd=Path(tmp_dir))
+    subprocess.run(str_feflo_command, shell=True, cwd=Path(tmp_dir))
 
     end = time.time()
     mlog.info(f"Feflo mesh adaptation completed ({end-start:.2f} s)")
@@ -128,8 +133,8 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
   # > Set names and copy base data
-  adapted_base = PT.get_child_from_label(adapted_dist_tree, 'CGNSBase_t')
-  adapted_zone = PT.get_child_from_label(adapted_base, 'Zone_t')
+  adapted_base = PT.request_child_from_label(adapted_dist_tree, 'CGNSBase_t')
+  adapted_zone = PT.request_child_from_label(adapted_base, 'Zone_t')
   PT.set_name(adapted_base, PT.get_name(input_base))
   PT.set_name(adapted_zone, PT.get_name(input_zone))
 
@@ -143,6 +148,7 @@ def _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints
     adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
     input_bc   = PT.get_node_from_path(input_zone, bc_path)
     if input_bc is not None:
+      assert adapted_bc is not None
       PT.set_value(adapted_bc, PT.get_value(input_bc))
       for node in PT.get_nodes_from_predicate(input_bc, to_copy):
         PT.add_child(adapted_bc, node)
@@ -264,7 +270,13 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
 
 
-def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], periodic=False, feflo_opts="", **options):
+def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
+                          metric: Union[None, str, List[str]],
+                          comm: MPIComm,
+                          container_names: List[str],
+                          periodic: bool = False,
+                          feflo_opts: str = "",
+                          **options) -> CGNSDistTree:
   """Run a mesh adaptation step using *Feflo.a* software.
 
   Important:
@@ -308,7 +320,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], periodic=
   periodic 1to1 GridConnectivity_t nodes in dist_tree will be used to perform mesh adaptation.
 
   Args:
-    dist_tree      (CGNSTree)    : Distributed tree to be adapted. Only U-Elements
+    dist_tree      (CGNSDistTree): Distributed tree to be adapted. Only U-Elements
       single zone trees are managed.
     metric         (str or list) : Path(s) to metric fields (see above)
     comm           (MPIComm)     : MPI communicator
@@ -336,7 +348,7 @@ def adapt_mesh_with_feflo(dist_tree, metric, comm, container_names=[], periodic=
         :end-before: #adapt_with_feflo@end
         :dedent: 2
   """
-
+  check_cgns_dist_tree(dist_tree)
   tmp_dir = options.get('tmp_dir', './TMP_adapt_dir')
   constraints = options.get('constraints', None)
 

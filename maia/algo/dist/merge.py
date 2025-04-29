@@ -2,17 +2,19 @@ import numpy as np
 from re import sub
 from Pypdm import Pypdm as PDM
 
+from maia.typing import *
+from maia.pytree.typing import Predicates
 import maia.pytree        as PT
-import maia.pytree.sids   as sids
 import maia.pytree.maia   as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import py_utils, np_utils, par_utils, as_pdm_gnum, logging
+from maia.utils import np_utils, par_utils, as_pdm_gnum, logging
 
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 def _append_or_create(d, key, val):
   try:
@@ -23,23 +25,29 @@ def _append_or_create(d, key, val):
 def camel_case(s):
   return sub(r"(_|-)+", " ", s).title().replace(" ", "")
 
-def merge_all_zones_from_families(tree, comm, **kwargs):
+def merge_all_zones_from_families(dist_tree: CGNSDistTree,
+                                  comm: MPIComm,
+                                  **kwargs) -> None:
   """Apply merge_zones_from_family to each family of the tree"""
+  check_cgns_dist_tree(dist_tree)
   family_names = [PT.get_name(node) for node in \
-          PT.iter_nodes_from_label(tree, 'Family_t', depth=2)]
+          PT.iter_nodes_from_label(dist_tree, 'Family_t', depth=2)]
   for family_name in family_names:
-    merge_zones_from_family(tree, family_name, comm, **kwargs)
+    merge_zones_from_family(dist_tree, family_name, comm, **kwargs)
 
-def merge_zones_from_family(tree, family_name, comm, **kwargs):
+def merge_zones_from_family(dist_tree: CGNSDistTree,
+                            family_name: str,
+                            comm: MPIComm,
+                            **kwargs) -> None:
   """Merge the zones belonging to the given family into a single one.
 
   See :func:`merge_zones` for full documentation.
 
   Args:
-    tree (CGNSTree): Input distributed tree
-    family_name (str): Name of the family (read from ``FamilyName_t`` node)
+    dist_tree (CGNSDistTree): Input distributed tree
+    family_name (str)       : Name of the family (read from ``FamilyName_t`` node)
         used to select the zones.
-    comm (MPIComm) : MPI communicator
+    comm (MPIComm)          : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path
 
   See also:
@@ -52,26 +60,29 @@ def merge_zones_from_family(tree, family_name, comm, **kwargs):
         :end-before: #merge_zones_from_family@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   match_fam = lambda m: PT.get_child_from_label(m, 'FamilyName_t') is not None and \
-                        PT.get_value(PT.get_child_from_label(m, 'FamilyName_t')) == family_name
+                        PT.request_str_value(PT.request_child_from_label(m, 'FamilyName_t')) == family_name
 
   is_zone_with_fam = lambda n: PT.get_label(n) == 'Zone_t' and match_fam(n)
 
-  zone_paths = PT.predicates_to_paths(tree, ['CGNSBase_t', is_zone_with_fam])
+  zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_zone_with_fam])
   if zone_paths:
     base_name = zone_paths[0].split('/')[0]
     zone_name = camel_case(family_name)
     if zone_name == family_name:
       zone_name = zone_name.lower()
-    merge_zones(tree, zone_paths, comm, output_path=f'{base_name}/{zone_name}', **kwargs)
+    merge_zones(dist_tree, zone_paths, comm, output_path=f'{base_name}/{zone_name}', **kwargs)
 
-def merge_connected_zones(tree, comm, **kwargs):
+def merge_connected_zones(dist_tree: CGNSDistTree, 
+                          comm: MPIComm, 
+                          **kwargs) -> None:
   """Detect all the zones connected through 1to1 matching jns and merge them.
 
   See :func:`merge_zones` for full documentation.
   
   Args:
-    tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSDistTree): Input distributed tree
     comm (MPIComm) : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path
 
@@ -81,16 +92,22 @@ def merge_connected_zones(tree, comm, **kwargs):
         :end-before: #merge_connected_zones@end
         :dedent: 2
   """
-  MJT.add_joins_donor_name(tree, comm)
-  grouped_zone_paths = PT.Tree.find_connected_zones(tree)
+  check_cgns_dist_tree(dist_tree)
+  MJT.add_joins_donor_name(dist_tree, comm)
+  grouped_zone_paths = PT.Tree.find_connected_zones(dist_tree)
 
   for i, zone_paths in enumerate(grouped_zone_paths):
     zone_paths_u = [path for path in zone_paths \
-        if sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured']
+        if PT.Zone.Type(PT.request_node_from_path(dist_tree, path)) == 'Unstructured']
     base = zone_paths[0].split('/')[0]
-    merge_zones(tree, zone_paths_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
+    merge_zones(dist_tree, zone_paths_u, comm, output_path=f'{base}/mergedZone{i}', **kwargs)
 
-def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', concatenate_jns=True):
+def merge_zones(dist_tree: CGNSDistTree, 
+                zone_paths: List[CGNSPath],
+                comm: MPIComm, 
+                output_path: Optional[str] = None,
+                subset_merge: str = 'name', 
+                concatenate_jns: bool = True) -> None:
   """Merge the given zones into a single one.
 
   Input tree is modified inplace : original zones will be removed from the tree and replaced
@@ -111,7 +128,7 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
   to merge must have a FaceCenter location.
 
   Args:
-    tree (CGNSTree): Input distributed tree
+    dist_tree (CGNSDistTree): Input distributed tree
     zone_paths (list of str): List of path (BaseName/ZoneName) of the zones to merge.
         Wildcard ``*`` are allowed in BaseName and/or ZoneName.
     comm       (MPIComm): MPI communicator
@@ -126,69 +143,71 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
         :end-before: #merge_zones@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   # Transform wildcard into concrete path
   replace_super_wildcard = lambda p: '*/*' if p == '*' else p
   zone_paths = [replace_super_wildcard(p) for p in zone_paths]
-  zone_paths = PT.utils.concretize_paths(tree, zone_paths, ['CGNSBase_t', 'Zone_t'])
+  zone_paths = PT.utils.concretize_paths(dist_tree, zone_paths, ['CGNSBase_t', 'Zone_t'])
 
-  assert all([sids.Zone.Type(PT.get_node_from_path(tree, path)) == 'Unstructured' for path in zone_paths])
+  assert all([PT.Zone.Type(PT.request_node_from_path(dist_tree, path)) == 'Unstructured' for path in zone_paths])
   #Those one will be needed for jn recovering
-  MJT.add_joins_donor_name(tree, comm)
+  MJT.add_joins_donor_name(dist_tree, comm)
 
   #Force full donor name, otherwise it is hard to reset jns
-  sids.enforceDonorAsPath(tree)
+  PT.enforceDonorAsPath(dist_tree)
 
   # We create a tree including only the zones to merge to speed up some operations
   masked_tree = PT.new_CGNSTree()
   for zone_path in zone_paths:
     base_n, zone_n = zone_path.split('/')
     masked_base = PT.update_child(masked_tree, base_n, 'CGNSBase_t')
-    PT.add_child(masked_base, PT.get_node_from_path(tree, zone_path))
+    PT.add_child(masked_base, PT.get_node_from_path(dist_tree, zone_path))
 
     #Remove from input tree at the same time
-    PT.rm_node_from_path(tree, zone_path)
+    PT.rm_node_from_path(dist_tree, zone_path)
 
   #Merge zones
   merged_zone = _merge_zones(masked_tree, comm, subset_merge)
 
   #Add output
   if output_path is None:
-    output_base = PT.get_node_from_path(tree, zone_paths[0].split('/')[0])
+    output_base = PT.get_node_from_path(dist_tree, zone_paths[0].split('/')[0])
   else:
-    output_base = PT.get_node_from_path(tree, output_path.split('/')[0])
+    output_base = PT.get_node_from_path(dist_tree, output_path.split('/')[0])
     if output_base is None:
-      output_base = PT.new_CGNSBase(output_path.split('/')[0], cell_dim=3, phy_dim=3, parent=tree)
+      output_base = PT.new_CGNSBase(output_path.split('/')[0], cell_dim=3, phy_dim=3, parent=dist_tree)
     PT.set_name(merged_zone, output_path.split('/')[1])
+  assert output_base is not None
   PT.add_child(output_base, merged_zone)
 
   #First we have to retrieve PLDonor for external jn and update opposite zones
   merged_zone_path = PT.get_name(output_base) + '/' + PT.get_name(merged_zone)
   jn_to_pl = {}
-  for jn_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
-    gc = PT.get_node_from_path(tree, jn_path)
+  for jn_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity_t'):
+    gc = PT.request_node_from_path(dist_tree, jn_path)
     if PT.GridConnectivity.is1to1(gc):
       jn_to_pl[jn_path] = \
-          (PT.get_child_from_name(gc, 'PointList')[1], PT.get_child_from_name(gc, 'PointListDonor')[1], MT.getDistribution(gc))
+          (PT.request_child_from_name(gc, 'PointList')[1], PT.request_child_from_name(gc, 'PointListDonor')[1], MT.getDistribution(gc))
 
   # Update opposite names when going to opp zone (intrazone have been caried before)
   for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
     if PT.GridConnectivity.is1to1(gc) and PT.get_value(gc) not in zone_paths:
-      opp_path = MJT.get_jn_donor_path(tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
-      opp_gc = PT.get_node_from_path(tree, opp_path)
-      opp_gc_donor_name = PT.get_child_from_name(opp_gc, 'GridConnectivityDonorName') #TODO factorize
+      opp_path = MJT.get_jn_donor_path(dist_tree, f"{merged_zone_path}/{zgc[0]}/{gc[0]}")
+      opp_gc = PT.request_node_from_path(dist_tree, opp_path)
+      opp_gc_donor_name = PT.request_child_from_name(opp_gc, 'GridConnectivityDonorName') #TODO factorize
       PT.set_value(opp_gc_donor_name, gc[0])
   #Now all donor names are OK
 
-  for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
+  for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     is_merged_zone = zone_path == merged_zone_path
-    zone = PT.get_node_from_path(tree, zone_path)
+    zone = PT.request_node_from_path(dist_tree, zone_path)
     for zgc, gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
       #Update name and PL
       if PT.get_value(gc) in zone_paths: #Can be: jn from non concerned zone to merged zones or periodic from merged zones
         PT.set_value(gc, merged_zone_path)
         jn_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
         if PT.GridConnectivity.is1to1(gc):
-          jn_path_opp= MJT.get_jn_donor_path(tree, jn_path)
+          jn_path_opp= MJT.get_jn_donor_path(dist_tree, jn_path)
           # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
           # merged zone
           if not is_merged_zone or jn_path_opp < jn_path:
@@ -198,16 +217,16 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
             PT.add_child(gc, jn_to_pl[jn_path_opp][2])
 
   if concatenate_jns:
-    GN.concatenate_jns(tree, comm)
+    GN.concatenate_jns(dist_tree, comm)
 
   # Transfert some nodes on the merged zone, only if they exist everywhere and have same value
   merge_me = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
   if len(zone_paths) > 0:
-    zone = PT.get_node_from_path(masked_tree, zone_paths[0])
+    zone = PT.request_node_from_path(masked_tree, zone_paths[0])
     common = {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
                for n in PT.iter_children_from_predicate(zone, merge_me)}
     for zone_path in zone_paths[1:]:
-      zone = PT.get_node_from_path(masked_tree, zone_path)
+      zone = PT.request_node_from_path(masked_tree, zone_path)
       # Use set intersection to eliminate nodes that does not appear on this zone
       common = common & {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
                          for n in PT.iter_children_from_predicate(zone, merge_me)}
@@ -216,13 +235,14 @@ def merge_zones(tree, zone_paths, comm, output_path=None, subset_merge='name', c
 
   # Cleanup empty bases
   to_remove = []
-  for base in PT.get_children_from_label(tree, 'CGNSBase_t'):
+  for base in PT.get_children_from_label(dist_tree, 'CGNSBase_t'):
     if len(PT.get_children_from_label(base, 'Zone_t')) == 0:
       to_remove.append(PT.get_name(base))
   for base_n in to_remove:
-    PT.rm_children_from_name(tree, base_n)
+    PT.rm_children_from_name(dist_tree, base_n)
 
-def _merge_zones(tree, comm, subset_merge_strategy='name'):
+def _merge_zones(tree: CGNSDistTree, comm: MPIComm, 
+                 subset_merge_strategy: str='name') -> CGNSDistTree:
   """
   Tree must contain *only* the zones to merge. We use a tree instead of a list of zone because it's easier
   to retrieve opposites zones througt joins. Interface beetween zones shall be described by faces
@@ -231,10 +251,10 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   n_zone = len(zone_paths)
   zones = PT.get_all_Zone_t(tree)
-  assert min([sids.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
+  assert min([PT.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
 
   expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones])
-  output_dtype = PT.get_value(zones[0]).dtype
+  output_dtype = PT.request_nd_value(zones[0]).dtype
   if expected_elt_tot > np.iinfo(np.int32).max:
     if pdm_dtype == np.int32:
       msg = f"_merge_zones would overflow this I4 production of maia/ParaDiGM. "\
@@ -249,14 +269,14 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
 
   is_perio = lambda n : PT.get_child_from_label(n, 'GridConnectivityProperty_t') is not None
-  gc_query = ['ZoneGridConnectivity_t', \
-                lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-                and sids.Subset.GridLocation(n) == 'FaceCenter']
+  gc_query:Predicates = ['ZoneGridConnectivity_t', \
+                         lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+                         and PT.Subset.GridLocation(n) == 'FaceCenter']
 
   # Move non 1to1 GC_t to ZoneBC since they have no PointListDonor
   is_not_1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and not PT.GridConnectivity.is1to1(n)
   for zone_path in zone_paths:
-    zone = PT.get_node_from_path(tree, zone_path)
+    zone = PT.request_node_from_path(tree, zone_path)
     for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
       non_abutting = PT.get_children_from_predicate(zgc, is_not_1to1)
       if len(non_abutting) > 0:
@@ -275,12 +295,12 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   VL.generate_jns_vertex_list(tree_vl, comm, have_isolated_faces=True)
   #Reput in tree
   for zone_path in zone_paths:
-    zone    = PT.get_node_from_path(tree, zone_path)
-    zone_vl = PT.get_node_from_path(tree_vl, zone_path)
+    zone    = PT.request_node_from_path(tree, zone_path)
+    zone_vl = PT.request_node_from_path(tree_vl, zone_path)
     for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
-      zgc_vl = PT.get_child_from_name(zone_vl, PT.get_name(zgc))
+      zgc_vl = PT.request_child_from_name(zone_vl, PT.get_name(zgc))
       for gc_vl in PT.get_children_from_predicate(zgc_vl, lambda n: PT.get_label(n) == 'GridConnectivity_t' \
-          and sids.Subset.GridLocation(n) == 'Vertex'):
+          and PT.Subset.GridLocation(n) == 'Vertex'):
         PT.add_child(zgc, gc_vl)
   
   # Collect interface data
@@ -303,16 +323,16 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
       if PT.get_child_from_name(gc, '__maia_merge__') is not None and gc_path < gc_path_opp:
         interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
 
-        pl  = as_pdm_gnum(PT.get_child_from_name(gc, 'PointList')[1][0])
-        pld = as_pdm_gnum(PT.get_child_from_name(gc, 'PointListDonor')[1][0])
+        pl  = as_pdm_gnum(PT.request_nd_value(PT.request_child_from_name(gc, 'PointList'))[0])
+        pld = as_pdm_gnum(PT.request_nd_value(PT.request_child_from_name(gc, 'PointListDonor'))[0])
 
         interface_dn_f.append(pl.size)
         interface_ids_f.append(np_utils.interweave_arrays([pl,pld]))
 
         # Find corresponding vertex
-        gc_vtx = PT.get_child_from_name(zgc, f'{PT.get_name(gc)}#Vtx')
-        pl_v  = PT.get_child_from_name(gc_vtx, 'PointList')[1][0]
-        pld_v = PT.get_child_from_name(gc_vtx, 'PointListDonor')[1][0]
+        gc_vtx = PT.request_child_from_name(zgc, f'{PT.get_name(gc)}#Vtx')
+        pl_v  = PT.request_nd_value(PT.request_child_from_name(gc_vtx, 'PointList'))[0]
+        pld_v = PT.request_nd_value(PT.request_child_from_name(gc_vtx, 'PointListDonor'))[0]
         interface_dn_v.append(pl_v.size)
         interface_ids_v.append(np_utils.interweave_arrays([pl_v,pld_v]))
 
@@ -332,14 +352,14 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
 
   # Collect distributions
   entities = ['Vertex', 'Face', 'Cell']
-  blocks_distri_l = {entity : [] for entity in entities}
-  selected_l      = {entity : [] for entity in entities}
+  blocks_distri_l:Dict[str, List[NDArray]] = {entity : [] for entity in entities}
+  selected_l:Dict[str, List[NDArray]]      = {entity : [] for entity in entities}
   for zone in zones:
     for entity in entities:
       if entity == 'Face':
-        distri = as_pdm_gnum(MT.getDistribution(sids.Zone.NGonNode(zone), 'Element')[1])
+        distri = as_pdm_gnum(MT.distribution_value(PT.Zone.NGonNode(zone), 'Element'))
       else:
-        distri = as_pdm_gnum(MT.getDistribution(zone, entity)[1])
+        distri = as_pdm_gnum(MT.distribution_value(zone, entity))
       blocks_distri_l[entity].append(par_utils.partial_to_full_distribution(distri, comm))
       selected_l[entity].append(np.arange(distri[0], distri[1], dtype=pdm_dtype)+1)
   
@@ -363,7 +383,7 @@ def _merge_zones(tree, comm, subset_merge_strategy='name'):
   pass
 
 
-  loc_without_pl = lambda n, loc : sids.Subset.GridLocation(n) == loc and PT.get_node_from_name(n, 'PointList') is None
+  loc_without_pl = lambda n, loc : PT.Subset.GridLocation(n) == loc and PT.get_node_from_name(n, 'PointList') is None
   # Merge all mesh data
   vtx_data_queries = [
                       ['GridCoordinates_t'],
@@ -507,7 +527,7 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   """
   #In each case, we need to collect all the nodes, since some can be absent of a given zone
   has_pl = lambda n : PT.get_child_from_name(n, 'PointList') is not None
-  jn_to_keep = lambda n : PT.get_label(n) == 'GridConnectivity_t' and sids.Subset.GridLocation(n) == 'FaceCenter'\
+  jn_to_keep = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.Subset.GridLocation(n) == 'FaceCenter'\
       and PT.get_child_from_name(n, '__maia_merge__') is None
 
   #Order : FlowSolution/DiscreteData/ZoneSubRegion, BC, BCDataSet, GridConnectivity_t, 
@@ -533,7 +553,7 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       #Copy PL when related to bc/gc to avoid specific treatement
       if PT.get_child_from_name(zsr, 'BCRegionName') is not None or \
          PT.get_child_from_name(zsr, 'GridConnectivityRegionName') is not None:
-        related = PT.get_node_from_path(zone, sids.Subset.ZSRExtent(zsr, zone))
+        related = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone))
         PT.add_child(zsr, PT.get_child_from_name(related, 'PointList'))
 
   i_query = 0
@@ -555,7 +575,7 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       master_zone = zones[master_idx]
       master_nodes = PT.get_child_from_predicates(master_zone, query, ancestors=True)
       
-      location = sids.Subset.GridLocation(subset_nodes[master_idx])
+      location = PT.Subset.GridLocation(subset_nodes[master_idx])
       mbm = all_mbm[location.split('Center')[0]]
       merged_pl = _merge_pl_data(mbm, zones, subset_nodes, location, rules, comm)
       # Enforce zone dtype for output PL
@@ -620,7 +640,7 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
     if loc == 'Vertex': 
       distri_ptb = MT.getDistribution(zone, 'Vertex')[1]
     elif loc == 'FaceCenter':
-      distri_ptb = MT.getDistribution(sids.Zone.NGonNode(zone), 'Element')[1]
+      distri_ptb = MT.getDistribution(PT.Zone.NGonNode(zone), 'Element')[1]
     elif loc == 'CellCenter':
       distri_ptb = MT.getDistribution(zone, 'Cell')[1]
     if node is not None:
@@ -740,12 +760,12 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
 
   # Create working data
   for zone_path, dom_id in zone_to_id.items():
-    ngon_node = sids.Zone.NGonNode(PT.get_node_from_path(tree, zone_path))
+    ngon_node = PT.Zone.NGonNode(PT.get_node_from_path(tree, zone_path))
     pe_bck = PT.get_child_from_name(ngon_node, 'ParentElements')[1]
     pe = pe_bck.copy()
     # If NGon are first, then PE indexes cell, we must shift : PDM expect cell starting at 1
-    if sids.Element.Range(ngon_node)[0] == 1:
-      np_utils.shift_nonzeros(pe, -sids.Element.Size(ngon_node))
+    if PT.Element.Range(ngon_node)[0] == 1:
+      np_utils.shift_nonzeros(pe, -PT.Element.Size(ngon_node))
     PT.new_DataArray('UpdatedPE', pe, parent=ngon_node)
     PT.new_DataArray('PEDomain',  dom_id * np.ones_like(pe_bck, dtype=np.int32), parent=ngon_node)
 
@@ -757,7 +777,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     base_n = zone_path_send.split('/')[0]
     dom_id_send = zone_to_id[zone_path_send]
     zone_send = PT.get_node_from_path(tree, zone_path_send)
-    ngon_send = sids.Zone.NGonNode(zone_send)
+    ngon_send = PT.Zone.NGonNode(zone_send)
     face_distri_send = MT.getDistribution(ngon_send, 'Element')[1]
     pe_send          = PT.get_child_from_name(ngon_send, 'UpdatedPE')[1]
 
@@ -774,7 +794,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
       # Get send data on the opposite zone and update PE
       zone_path = PT.GridConnectivity.ZoneDonorPath(gc, base_n)
       zone = PT.get_node_from_path(tree, zone_path)
-      ngon_node = sids.Zone.NGonNode(zone)
+      ngon_node = PT.Zone.NGonNode(zone)
       pe      = PT.get_child_from_name(ngon_node, 'UpdatedPE')[1]
       pe_dom  = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
       face_distri = MT.getDistribution(ngon_node, 'Element')[1]
@@ -793,7 +813,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
   pe_stride_l = []
   pe_dom_l = []
   for zone_path in zone_paths:
-    ngon_node = sids.Zone.NGonNode(PT.get_node_from_path(tree, zone_path))
+    ngon_node = PT.Zone.NGonNode(PT.get_node_from_path(tree, zone_path))
     eso    = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
     pe     = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'UpdatedPE')[1])
     pe_dom = PT.get_child_from_name(ngon_node, 'PEDomain')[1]

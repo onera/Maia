@@ -59,7 +59,7 @@ FamilyBC FamilyBC_t:
   walker.search = "bfs"
   assert walker()[0] == "SomeData" #Explore level first
 
-def test_sort():
+def test_order():
   node = parse_yaml_cgns.to_node(yt)
   predicate = lambda n: PT.get_label(n) == "DataArray_t"
 

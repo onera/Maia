@@ -1,6 +1,6 @@
 import warnings
+import numpy as np
 from maia.pytree.typing import *
-from maia.pytree.meta import begin_api_export, end_api_export
 
 from maia.pytree.cgns_keywords import cgns_to_dtype
 
@@ -15,7 +15,7 @@ def _check_parent_label(node, parent, allowed_list):
           f" is not SIDS compliant. Admissible parent labels are {allowed_list}."
     warnings.warn(msg, RuntimeWarning, stacklevel=3)
 
-begin_api_export()
+#begin_api_export()
 
 # Specialized
 def new_CGNSTree(*, version:float=4.2):
@@ -29,10 +29,10 @@ def new_CGNSTree(*, version:float=4.2):
     CGNSTree CGNSTree_t
     └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
   """
-  version = new_node('CGNSLibraryVersion', 'CGNSLibraryVersion_t', value=version)
-  return new_node('CGNSTree', label='CGNSTree_t', children=[version])
+  version_n = new_node('CGNSLibraryVersion', 'CGNSLibraryVersion_t', value=version)
+  return new_node('CGNSTree', label='CGNSTree_t', children=[version_n])
 
-def new_CGNSBase(name:str='Base', *, cell_dim:int=3, phy_dim:int=3, parent:CGNSTree=None):
+def new_CGNSBase(name:str='Base', *, cell_dim:int=3, phy_dim:int=3, parent:Optional[CGNSTree]=None):
   """ Create a CGNSBase_t node
 
   Link to corresponding SIDS section:
@@ -52,7 +52,7 @@ def new_CGNSBase(name:str='Base', *, cell_dim:int=3, phy_dim:int=3, parent:CGNST
   _check_parent_label(node, parent, ['CGNSTree_t'])
   return node
 
-def new_Family(name:str='Family', *, family_bc:str=None, parent:CGNSTree=None):
+def new_Family(name:str='Family', *, family_bc:Optional[str]=None, parent:Optional[CGNSTree]=None):
   """ Create a Family_t node
 
   Link to corresponding SIDS section:
@@ -74,7 +74,7 @@ def new_Family(name:str='Family', *, family_bc:str=None, parent:CGNSTree=None):
     new_FamilyBC(family_bc, family)
   return family
 
-def new_FamilyName(family_name:str, as_additional='', parent:CGNSTree=None):
+def new_FamilyName(family_name:str, as_additional='', parent:Optional[CGNSTree]=None):
   """ Create a FamilyName_t or an AdditionalFamilyName_t node
 
   Args:
@@ -99,7 +99,7 @@ def new_FamilyName(family_name:str, as_additional='', parent:CGNSTree=None):
   _check_parent_label(node, parent, ['Family_t', 'UserDefinedData_t', 'ZoneSubRegion_t', 'BC_t', 'Zone_t'])
   return node
 
-def new_FamilyBC(family_bc:str, parent:CGNSTree=None):
+def new_FamilyBC(family_bc:str, parent:Optional[CGNSTree]=None):
   allowed_bc = """Null UserDefined BCAxisymmetricWedge BCDegenerateLine BCDegeneratePoint BCDirichlet BCExtrapolate
   BCFarfield BCGeneral BCInflow BCInflowSubsonic BCInflowSupersonic BCNeumann BCOutflow BCOutflowSubsonic
   BCOutflowSupersonic BCSymmetryPlane BCSymmetryPolar BCTunnelInflow BCTunnelOutflow BCWall BCWallInviscid
@@ -107,7 +107,7 @@ def new_FamilyBC(family_bc:str, parent:CGNSTree=None):
   assert family_bc in allowed_bc
   return new_node('FamilyBC', 'FamilyBC_t', family_bc, [], parent)
 
-def new_Zone(name:str='Zone', *, type:str='Null', size:ArrayLike=None, family:str=None, parent:CGNSTree=None):
+def new_Zone(name:str='Zone', *, type:str='Null', size:Optional[ArrayLike]=None, family:Optional[str]=None, parent:Optional[CGNSTree]=None):
   """ Create a Zone_t node
 
   Note that the size array will not be reshaped and must consequently match the expected layout
@@ -144,10 +144,10 @@ def new_Zone(name:str='Zone', *, type:str='Null', size:ArrayLike=None, family:st
 def new_Elements(name:str='Elements',
                  type:str='Null',
                  *,
-                 erange:ArrayLike=None,
-                 econn:ArrayLike=None,
-                 pe:ArrayLike = None,
-                 parent:CGNSTree=None):
+                 erange:Optional[ArrayLike]=None,
+                 econn:Optional[ArrayLike]=None,
+                 pe:Optional[ArrayLike]=None,
+                 parent:Optional[CGNSTree]=None):
   """ Create an Element_t node
 
   This function is designed to create standard elements.
@@ -190,12 +190,12 @@ def new_Elements(name:str='Elements',
 
 def new_NGonElements(name:str = 'NGonElements',
                      *,
-                     erange:ArrayLike = None,
-                     eso:ArrayLike = None,
-                     ec:ArrayLike = None,
-                     pe:ArrayLike = None,
-                     pepos:ArrayLike = None,
-                     parent:CGNSTree = None):
+                     erange:Optional[ArrayLike] = None,
+                     eso:Optional[ArrayLike] = None,
+                     ec:Optional[ArrayLike] = None,
+                     pe:Optional[ArrayLike] = None,
+                     pepos:Optional[ArrayLike] = None,
+                     parent:Optional[CGNSTree] = None):
   """ Create an Element_t node describing a NGON_n connectivity
 
   Link to corresponding SIDS section:
@@ -218,7 +218,7 @@ def new_NGonElements(name:str = 'NGonElements',
     ├───ElementStartOffset DataArray_t I4 [ 0  3  6  9 12]
     └───ElementConnectivity DataArray_t I4 (12,)
   """
-  elem = new_Elements(name, 22, erange=erange, parent=parent)
+  elem = new_Elements(name, 'NGON_n', erange=erange, parent=parent)
   names = ['ElementStartOffset', 'ElementConnectivity', 'ParentElements', 'ParentElementsPosition']
   for name, val in zip(names, [eso, ec, pe, pepos]):
     if val is not None:
@@ -227,10 +227,10 @@ def new_NGonElements(name:str = 'NGonElements',
 
 def new_NFaceElements(name:str = 'NFaceElements',
                       *,
-                      erange:ArrayLike = None,
-                      eso:ArrayLike = None,
-                      ec:ArrayLike = None,
-                      parent:CGNSTree = None):
+                      erange:Optional[ArrayLike] = None,
+                      eso:Optional[ArrayLike] = None,
+                      ec:Optional[ArrayLike] = None,
+                      parent:Optional[CGNSTree] = None):
   """ Create an Element_t node describing a NFACE_n connectivity
 
   Link to corresponding SIDS section:
@@ -250,13 +250,13 @@ def new_NFaceElements(name:str = 'NFaceElements',
     ├───ElementStartOffset DataArray_t I4 [0 4]
     └───ElementConnectivity DataArray_t I4 [1 2 3 4]
   """
-  elem = new_Elements(name, 23, erange=erange, parent=parent)
+  elem = new_Elements(name, 'NFACE_n', erange=erange, parent=parent)
   for name, val in zip(['ElementStartOffset', 'ElementConnectivity'], [eso, ec]):
     if val is not None:
       new_DataArray(name, val, parent=elem)
   return elem
 
-def new_ZoneBC(parent:CGNSTree=None):
+def new_ZoneBC(parent:Optional[CGNSTree]=None):
   """ Create a ZoneBC_t node
 
   Args:
@@ -269,11 +269,11 @@ def new_ZoneBC(parent:CGNSTree=None):
 def new_BC(name:str = 'BC',
            type:str='Null',
            *,
-           point_range:ArrayLike = None,
-           point_list:ArrayLike = None,
-           loc:str = None,
-           family:str = None,
-           parent:CGNSTree = None):
+           point_range:Optional[ArrayLike] = None,
+           point_list:Optional[ArrayLike] = None,
+           loc:Optional[str] = None,
+           family:Optional[str] = None,
+           parent:Optional[CGNSTree] = None):
   """ Create a BC_t node
 
   The patch defining the BC must be provided using either ``point_range`` or
@@ -322,10 +322,10 @@ def new_BC(name:str = 'BC',
 def new_BCDataSet(name:str = 'BCDataSet',
                   type:str='Null',
                   *,
-                  point_range:ArrayLike = None,
-                  point_list:ArrayLike = None,
-                  loc:str = None,
-                  parent:CGNSTree = None):
+                  point_range:Optional[ArrayLike] = None,
+                  point_list:Optional[ArrayLike] = None,
+                  loc:Optional[str] = None,
+                  parent:Optional[CGNSTree] = None):
   """ Create a BCDataSet_t node
 
   Link to corresponding SIDS section:
@@ -360,8 +360,8 @@ def new_BCDataSet(name:str = 'BCDataSet',
 
 
 def new_BCData(name:str,
-               fields:Dict[str, ArrayLike] = {},
-               parent:CGNSTree = None):
+               fields:Mapping[str, ArrayLike] = {},
+               parent:Optional[CGNSTree] = None):
   """ Create a BCData_t node
 
   Link to corresponding SIDS section:
@@ -390,7 +390,7 @@ def new_BCData(name:str,
   return bcdata
 
 
-def new_ZoneGridConnectivity(name:str='ZoneGridConnectivity', parent:CGNSTree=None):
+def new_ZoneGridConnectivity(name:str='ZoneGridConnectivity', parent:Optional[CGNSTree]=None):
   """ Create a ZoneGridConnectivity_t node
 
   Args:
@@ -402,15 +402,15 @@ def new_ZoneGridConnectivity(name:str='ZoneGridConnectivity', parent:CGNSTree=No
   return node
 
 def new_GridConnectivity(name:str = 'GC',
-                         donor_name:str = None,
+                         donor_name:Optional[str] = None,
                          type:str = 'Null',
                          *,
-                         loc:str = None,
-                         point_range:ArrayLike = None,
-                         point_range_donor:ArrayLike = None,
-                         point_list:ArrayLike = None,
-                         point_list_donor:ArrayLike = None,
-                         parent:CGNSTree = None):
+                         loc:Optional[str] = None,
+                         point_range:Optional[ArrayLike] = None,
+                         point_range_donor:Optional[ArrayLike] = None,
+                         point_list:Optional[ArrayLike] = None,
+                         point_list_donor:Optional[ArrayLike] = None,
+                         parent:Optional[CGNSTree] = None):
   """ Create a GridConnectivity_t node
 
   The patch defining the GC must be provided using either ``point_range`` or
@@ -459,7 +459,7 @@ def new_GridConnectivity(name:str = 'GC',
     new_IndexArray('PointListDonor', value=point_list_donor, parent=gc)
   return gc
 
-def new_GridConnectivityType(type:str="Null", parent:CGNSTree=None):
+def new_GridConnectivityType(type:str="Null", parent:Optional[CGNSTree]=None):
   allowed_gc = "Null UserDefined Overset Abutting Abutting1to1".split()
   assert type in allowed_gc
   return new_node('GridConnectivityType', 'GridConnectivityType_t', type, [], parent)
@@ -467,7 +467,7 @@ def new_GridConnectivityType(type:str="Null", parent:CGNSTree=None):
 def new_Periodic(rotation_angle:ArrayLike = [0., 0., 0.],
                  rotation_center:ArrayLike = [0., 0., 0.],
                  translation:ArrayLike = [0.,0.,0],
-                 parent:CGNSTree = None):
+                 parent:Optional[CGNSTree] = None):
   childs = [
       new_DataArray('RotationAngle', rotation_angle),
       new_DataArray('RotationCenter', rotation_center),
@@ -475,7 +475,7 @@ def new_Periodic(rotation_angle:ArrayLike = [0., 0., 0.],
       ]
   return new_node('Periodic', 'Periodic_t', None, childs, parent)
 
-def new_GridConnectivityProperty(periodic:Dict[str,ArrayLike]={}, parent:CGNSTree=None):
+def new_GridConnectivityProperty(periodic:Mapping[str,ArrayLike]={}, parent:Optional[CGNSTree]=None):
   """ Create a GridConnectivityProperty node
 
   The main interest of this function is to add periodic information to a GC_t node;
@@ -508,12 +508,12 @@ def new_GridConnectivityProperty(periodic:Dict[str,ArrayLike]={}, parent:CGNSTre
   return gc_props
 
 def new_GridConnectivity1to1(name:str = 'GC',
-                            donor_name:str = None,
+                            donor_name:Optional[str] = None,
                             *,
-                            point_range:ArrayLike = None,
-                            point_range_donor:ArrayLike = None,
-                            transform:ArrayLike = None,
-                            parent:CGNSTree = None):
+                            point_range:Optional[ArrayLike] = None,
+                            point_range_donor:Optional[ArrayLike] = None,
+                            transform:Optional[ArrayLike] = None,
+                            parent:Optional[CGNSTree] = None):
   """ Create a GridConnectivity1to1_t node
 
   GridConnectivity1to1_t are reserved for structured zones. See
@@ -548,7 +548,7 @@ def new_GridConnectivity1to1(name:str = 'GC',
     new_IndexRange('PointRangeDonor', value=point_range_donor, parent=gc)
   return gc
 
-def new_IndexArray(name:str='PointList', value:ArrayLike=None, parent:CGNSTree=None):
+def new_IndexArray(name:str='PointList', value:Optional[ArrayLike]=None, parent:Optional[CGNSTree]=None):
   """ Create an IndexArray_t node
 
   Note that the value array will not be reshaped and must consequently match the expected layout
@@ -572,7 +572,7 @@ def new_IndexArray(name:str='PointList', value:ArrayLike=None, parent:CGNSTree=N
   _check_parent_label(node, parent, allowed_parents)
   return node
 
-def new_IndexRange(name:str='PointRange', value:ArrayLike=None, parent:CGNSTree=None):
+def new_IndexRange(name:str='PointRange', value:Optional[ArrayLike]=None, parent:Optional[CGNSTree]=None):
   """ Create an IndexRange_t node
 
   Note that if needed, the value array will be reshaped to the expected layout
@@ -602,7 +602,7 @@ def new_IndexRange(name:str='PointRange', value:ArrayLike=None, parent:CGNSTree=
   _check_parent_label(node, parent, allowed_parents)
   return node
 
-def new_GridLocation(loc:str, parent:CGNSTree=None):
+def new_GridLocation(loc:str, parent:Optional[CGNSTree]=None):
   """ Create a GridLocation_t node
 
   Link to corresponding SIDS section:
@@ -624,7 +624,11 @@ def new_GridLocation(loc:str, parent:CGNSTree=None):
   _check_parent_label(node, parent, allowed_parents)
   return node
 
-def new_BaseIterativeData(name:str='BaseIterativeData', *, time_values:ArrayLike=None, iter_values:ArrayLike=None, parent:CGNSTree=None):
+def new_BaseIterativeData(name:str='BaseIterativeData',
+                          *, 
+                          time_values:Optional[ArrayLike]=None,
+                          iter_values:Optional[ArrayLike]=None,
+                          parent:Optional[CGNSTree]=None):
   """ Create a BaseIterativeData_t node
 
   Link to corresponding SIDS section:
@@ -644,16 +648,21 @@ def new_BaseIterativeData(name:str='BaseIterativeData', *, time_values:ArrayLike
   node = new_node(name, 'BaseIterativeData_t', parent=parent)
   n_steps = 0
   if time_values is not None:
-    tv = new_DataArray("TimeValues", time_values, parent=node)
-    n_steps = tv[1].size
+    tv_n = new_DataArray("TimeValues", time_values, parent=node)
+    assert (tv := tv_n[1]) is not None
+    n_steps = tv.size
   if iter_values is not None:
-    tv = new_DataArray("IterationValues", iter_values, parent=node)
-    n_steps = tv[1].size
+    iv_n = new_DataArray("IterationValues", iter_values, parent=node)
+    assert (iv:=iv_n[1]) is not None
+    n_steps = iv.size
   NA.set_value(node, n_steps)
   _check_parent_label(node, parent, ['CGNSBase_t'])
   return node
 
-def new_Axisymmetry(*, reference_point:ArrayLike=None, axis_vector:ArrayLike=None, parent:CGNSTree=None):
+def new_Axisymmetry(*,
+                    reference_point:Optional[ArrayLike]=None,
+                    axis_vector:Optional[ArrayLike]=None,
+                    parent:Optional[CGNSTree]=None):
   """ Create a Axisymmetry_t node
 
   Link to corresponding SIDS section:
@@ -673,15 +682,15 @@ def new_Axisymmetry(*, reference_point:ArrayLike=None, axis_vector:ArrayLike=Non
   """
   node = new_node('Axisymmetry', 'Axisymmetry_t', parent=parent)
   if reference_point is not None:
-    assert len(reference_point) == 2
+    assert len(np.asarray(reference_point)) == 2
     new_DataArray("AxisymmetryReferencePoint", reference_point, dtype="R4", parent=node)
   if axis_vector is not None:
-    assert len(axis_vector) == 2
+    assert len(np.asarray(axis_vector)) == 2
     new_DataArray("AxisymmetryAxisVector", axis_vector, dtype="R4", parent=node)
   _check_parent_label(node, parent, ['CGNSBase_t'])
   return node
 
-def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGNSTree=None):
+def new_DataArray(name:str, value:ArrayLike, *, dtype:Optional[str]=None, parent:Optional[CGNSTree]=None):
   """ Create a DataArray_t node
 
   The datatype of the DataArray can be enforced with the ``dtype`` parameter, which
@@ -694,7 +703,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGN
   Args:
     name (str): Name of the created data array node
     value (ArrayLike) : value of the data array
-    dtype (DTypeLike) : If used, cast ``value`` to the specified type
+    dtype (str) : If used, cast ``value`` to the specified type
     parent (CGNSTree): Node to which created data array should be attached
   Example:
     >>> node = PT.new_DataArray('Data', [1,2,3])
@@ -711,6 +720,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGN
     Periodic_t ReferenceState_t RigidGridMotion_t ThermalConductivityModel_t ThermalRelaxationModel_t TurbulenceClosure_t \
     TurbulenceModel_t UserDefinedData_t ViscosityModel_t ZoneIterativeData_t ZoneSubRegion_t".split()
 
+  _value = None
   if dtype is not None:
     _dtype = cgns_to_dtype[dtype]
     _value = np.asarray(value, dtype=_dtype)
@@ -722,7 +732,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:DTypeLike=None, parent:CGN
   return node
 
 
-def new_GridCoordinates(name:str='GridCoordinates', *, fields:Dict[str,ArrayLike]={}, parent:CGNSTree=None):
+def new_GridCoordinates(name:str='GridCoordinates', *, fields:Mapping[str,ArrayLike]={}, parent:Optional[CGNSTree]=None):
   """ Create a GridCoordinates_t node
 
   Link to corresponding SIDS section:
@@ -748,9 +758,9 @@ def new_GridCoordinates(name:str='GridCoordinates', *, fields:Dict[str,ArrayLike
 
 def new_FlowSolution(name:str = 'FlowSolution',
                      *,
-                     loc:str = None,
-                     fields:Dict[str, ArrayLike] = {},
-                     parent:CGNSTree = None):
+                     loc:Optional[str] = None,
+                     fields:Mapping[str, ArrayLike] = {},
+                     parent:Optional[CGNSTree] = None):
   """ Create a FlowSolution_t node
 
   Link to corresponding SIDS section:
@@ -779,9 +789,9 @@ def new_FlowSolution(name:str = 'FlowSolution',
 
 def new_DiscreteData(name:str = 'DiscreteData',
                      *,
-                     loc:str = None,
-                     fields:Dict[str, ArrayLike] = {},
-                     parent:CGNSTree = None):
+                     loc:Optional[str] = None,
+                     fields:Mapping[str, ArrayLike] = {},
+                     parent:Optional[CGNSTree] = None):
   """ Create a DiscreteData_t node
 
   Link to corresponding SIDS section:
@@ -806,14 +816,14 @@ def new_DiscreteData(name:str = 'DiscreteData',
 
 def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
                       *,
-                      loc:str = None,
-                      point_range:ArrayLike = None,
-                      point_list:ArrayLike = None,
-                      bc_name:str = None,
-                      gc_name:str = None,
-                      family:str = None,
-                      fields:Dict[str, ArrayLike] = {},
-                      parent:CGNSTree = None):
+                      loc:Optional[str] = None,
+                      point_range:Optional[ArrayLike] = None,
+                      point_list:Optional[ArrayLike] = None,
+                      bc_name:Optional[str] = None,
+                      gc_name:Optional[str] = None,
+                      family:Optional[str] = None,
+                      fields:Mapping[str, ArrayLike] = {},
+                      parent:Optional[CGNSTree] = None):
   """ Create a ZoneSubRegion_t node
 
   The patch defining the ZoneSubRegion must be provided using one of ``point_range``,
@@ -871,9 +881,9 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
   return zsr
 
 def new_UserDefinedData(name:str = 'UserDefined',
-                        value:ArrayLike = None,
+                        value:Optional[ArrayLike] = None,
                         *,
-                        parent:CGNSTree = None):
+                        parent:Optional[CGNSTree] = None):
   """ Create a UserDefinedData_t node
 
   Link to corresponding SIDS section:
@@ -890,9 +900,9 @@ def new_UserDefinedData(name:str = 'UserDefined',
   """
   return new_node(name, label='UserDefinedData_t', value=value, parent=parent)
 
-def new_ViscosityModel(value='SutherlandLaw',
+def new_ViscosityModel(value:str='SutherlandLaw',
                        *,
-                       parent=None):
+                       parent:Optional[CGNSTree]=None):
   """ Create a ViscosityModel_t node
 
   Link to corresponding SIDS section:
@@ -909,10 +919,10 @@ def new_ViscosityModel(value='SutherlandLaw',
   assert value in ['Null', 'UserDefined', 'Constant', 'PowerLaw', 'SutherlandLaw']
   return new_node('ViscosityModel', label='ViscosityModel_t', value=value, parent=parent)
 
-def new_Descriptor(name='Descriptor',
-                   value='',
+def new_Descriptor(name:str='Descriptor',
+                   value:str='',
                    *,
-                   parent=None):
+                   parent:Optional[CGNSTree]=None):
   """ Create a Descriptor_t node
 
   Link to corresponding SIDS section:
@@ -930,7 +940,7 @@ def new_Descriptor(name='Descriptor',
   assert is_valid_one_dimensional_string(value)
   return new_node(name, label='Descriptor_t', value=value, parent=parent)
 
-def new_FlowEquationSet(parent=None):
+def new_FlowEquationSet(parent:Optional[CGNSTree]=None):
   """ Create a FlowEquationSet_t node
 
   Link to corresponding SIDS section:
@@ -945,9 +955,9 @@ def new_FlowEquationSet(parent=None):
   """
   return new_node('FlowEquationSet', label='FlowEquationSet_t', parent=parent)
 
-def new_GasModel(value='Ideal',
+def new_GasModel(value:str='Ideal',
                  *,
-                 parent=None):
+                 parent:Optional[CGNSTree]=None):
   """ Create a GasModel_t node
 
   Link to corresponding SIDS section:
@@ -965,9 +975,9 @@ def new_GasModel(value='Ideal',
   return new_node('GasModel', label='GasModel_t', value=value, parent=parent)
 
 def new_ReferenceState(name:str = 'ReferenceState',
-                      *,
-                      fields:Dict[str, ArrayLike] = {},
-                      parent:CGNSTree = None):
+                       *,
+                       fields:Mapping[str, ArrayLike] = {},
+                       parent:Optional[CGNSTree] = None):
   """ Create a ReferenceState_t node
 
   Link to corresponding SIDS section:
@@ -989,4 +999,4 @@ def new_ReferenceState(name:str = 'ReferenceState',
     new_DataArray(field_name, field_val, parent=ref_state)
   return ref_state
 
-end_api_export()
+#end_api_export()

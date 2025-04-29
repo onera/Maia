@@ -1,13 +1,15 @@
-import mpi4py.MPI as mpi
-
 import numpy as np
 
-from maia            import pytree        as PT
+from maia.typing import *
+
+import maia.pytree      as PT
+import maia.pytree.maia as MT
+
 from maia.transfer   import protocols     as MTP
 from maia.utils      import par_utils     as MUPar
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
-
-def convert_elements_to_mixed(dist_tree, comm):
+def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
     """
     Transform an element based connectivity into a mixed connectivity.
     
@@ -15,8 +17,8 @@ def convert_elements_to_mixed(dist_tree, comm):
     Note that the original ordering of elements is preserved.
   
     Args:
-      dist_tree  (CGNSTree): Tree with connectivity described by standard elements
-      comm       (`MPIComm`) : MPI communicator
+      dist_tree  (CGNSDistTree): Tree with connectivity described by standard elements
+      comm       (`MPIComm`)   : MPI communicator
   
     Example:
         .. literalinclude:: snippets/test_algo.py
@@ -24,8 +26,8 @@ def convert_elements_to_mixed(dist_tree, comm):
           :end-before: #convert_elements_to_mixed@end
           :dedent: 2
     """
+    check_cgns_dist_tree(dist_tree)
     rank = comm.Get_rank()
-    
     for zone in PT.get_all_Zone_t(dist_tree):
         part_data_ec = []
         part_data_eso = []
@@ -39,19 +41,19 @@ def convert_elements_to_mixed(dist_tree, comm):
         for element in PT.Zone.get_ordered_elements(zone):
             assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']
             
-            elem_type = PT.get_value(element)[0]
+            elem_type = PT.Element.Type(element)
             elem_er = PT.Element.Range(element)
-            elem_ec = PT.get_child_from_name(element,'ElementConnectivity')[1]
-            elem_distrib = PT.maia.getDistribution(element, 'Element')[1]
+            elem_ec = PT.request_nd_value(PT.request_child_from_name(element,'ElementConnectivity'))
+            elem_distrib = MT.distribution_value(element, 'Element')
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
 
             if PT.Element.CGNSName(element) == 'MIXED':
-                eso = PT.get_child_from_name(element, 'ElementStartOffset')[1]
+                eso = PT.request_nd_value(PT.request_child_from_name(element, 'ElementStartOffset'))
                 mixed_partial_ec = elem_ec
                 mixed_partial_eso = eso[:-1] + nb_nodes_prev
                 stride_ec = np.diff(eso).astype(int, copy=False)
                 #nb_nodes_prev += elem_ec.size
-                nb_nodes_prev += PT.maia.getDistribution(element, 'ElementConnectivity')[1][2]
+                nb_nodes_prev += MT.distribution_value(element, 'ElementConnectivity')[2]
                 
             else: 
                 nb_nodes_per_elem = PT.Element.NVtx(element)
@@ -102,4 +104,4 @@ def convert_elements_to_mixed(dist_tree, comm):
         mixed = PT.new_Elements('Mixed','MIXED',erange=[1,nb_elem_prev],econn=dist_data_ec,parent=zone)
         eso = PT.new_DataArray('ElementStartOffset',dist_data_eso,parent=mixed)
         distri_ec = np.array((dist_data_eso[0],dist_data_eso[-1],nb_nodes_prev),dtype=elem_distrib.dtype)
-        PT.maia.newDistribution({'Element' : elem_distrib, 'ElementConnectivity' : distri_ec}, parent=mixed)
+        MT.newDistribution({'Element' : elem_distrib, 'ElementConnectivity' : distri_ec}, parent=mixed)

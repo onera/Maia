@@ -81,7 +81,7 @@ def parse_yaml_dict(yaml_dict):
     t += [[name,value,children,label]]
   return t
 
-def to_nodes(yaml_stream) -> CGNSTree:
+def to_nodes(yaml_stream) -> List[CGNSTree]:
   """ Convert a yaml stream into a list of python CGNSTree.
 
   This function is similar to :func:`to_node`, but allows
@@ -132,7 +132,7 @@ def to_node(yaml_stream) -> CGNSTree:
     └───PointList IndexArray_t I4 [[1 2 3]]
   """
   if yaml_stream=="":
-    return None
+    raise ValueError
   else:
     nodes = to_nodes(yaml_stream)
     assert len(nodes) == 1, f"Cannot convert yaml tree with {len(nodes)} to single CGNS node. Use to_nodes"

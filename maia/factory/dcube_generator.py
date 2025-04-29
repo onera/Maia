@@ -1,20 +1,18 @@
 import numpy as np
-import Pypdm.Pypdm as PDM
 
+import maia
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from maia.pytree.sids import elements_utils as EU
-
-import maia
 from maia.utils import np_utils, par_utils, layouts
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
 
 from .dline_generator import generate_dist_line
+import Pypdm.Pypdm as PDM
 
-_is_iterable = lambda obj: hasattr(obj, '__len__')
-
-def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
+def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm: MPIComm, elt_min_dim: int =0) -> CGNSTree:
 
   g_dims  = dmesh_nodal.dmesh_nodal_get_g_dims()
   n_vtx   = g_dims['n_vtx_abs']
@@ -58,7 +56,10 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm, elt_min_dim=0):
     
 
 # --------------------------------------------------------------------------
-def dcube_generate(n_vtx, edge_length, origin, comm):
+def dcube_generate(n_vtx: int,
+                   edge_length: float,
+                   origin: Tuple[float, float, float],
+                   comm: MPIComm) -> CGNSDistTree:
   """
   This function calls paradigm to generate a distributed mesh of a cube, and
   return a CGNS PyTree
@@ -122,7 +123,12 @@ def dcube_generate(n_vtx, edge_length, origin, comm):
   return dist_tree
 
 # --------------------------------------------------------------------------
-def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_ridges=False):
+def dcube_nodal_generate(n_vtx: Union[int, Sequence[int]], 
+                         edge_length: float,
+                         origin: Sequence[float],
+                         cgns_elmt_name: str,
+                         comm: MPIComm, 
+                         get_ridges: bool=False) -> CGNSDistTree:
   """
   This function calls paradigm to generate a distributed mesh of a cube with various type of elements, and
   return a CGNS PyTree
@@ -131,6 +137,7 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
   t_elmt = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
   cgns_elt_index = [prop[0] for prop in EU.elements_properties].index(cgns_elmt_name)
   cell_dim = EU.element_dim(cgns_elt_index)
+  assert cell_dim is not None
 
   # Manage 2D meshes with 2D PhyDim
   phy_dim = 3
@@ -142,8 +149,8 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   if isinstance(n_vtx, int):
     n_vtx = [n_vtx, n_vtx, n_vtx]
-  if phy_dim==2 and len(n_vtx)==2:
-    n_vtx = n_vtx+[1]
+  elif phy_dim==2 and len(n_vtx)==2:
+    n_vtx = list(n_vtx)+[1]
   assert len(n_vtx) == 3
 
   dcube = PDM.DCubeNodalGenerator(*n_vtx, edge_length, *origin, t_elmt, 1, comm)
@@ -193,15 +200,20 @@ def dcube_nodal_generate(n_vtx, edge_length, origin, cgns_elmt_name, comm, get_r
 
   return dist_tree
 
-def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'):
+def dcube_struct_generate(n_vtx: Union[int, Sequence[int]], 
+                          edge_length: Union[float, Sequence[float]], 
+                          origin: Sequence[float],
+                          comm: MPIComm, 
+                          bc_location: str='Vertex') -> CGNSDistTree:
   max_coords = np.asarray(origin).copy() + np.asarray(edge_length)
 
   dist_tree = maia.factory.generate_dist_points(n_vtx, "Structured", comm, origin, max_coords)
-  dist_base = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
-  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  dist_base = PT.request_node_from_label(dist_tree, 'CGNSBase_t')
+  dist_zone = PT.request_node_from_label(dist_tree, 'Zone_t')
 
   # Update zone dims
-  zone_dims = PT.get_value(dist_zone)
+  zone_dims = PT.get_value(dist_zone, raw=True)
+  assert zone_dims is not None
   cell_dim = zone_dims.shape[0]
   for dim in range(cell_dim):
     zone_dims[dim,1] = zone_dims[dim, 0] - 1
@@ -211,7 +223,7 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'
     zone_dims = zone_dims[:-1,:]
     cell_dim -= 1
   # Update
-  dist_base[1][0] = cell_dim
+  dist_base[1][0] = cell_dim #type:ignore[index] #(base value is not None)
   PT.set_value(dist_zone, zone_dims)
 
   # Update Cell distribution and add face distribution
@@ -246,7 +258,11 @@ def dcube_struct_generate(n_vtx, edge_length, origin, comm, bc_location='Vertex'
   return dist_tree
 
 
-def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=1.):
+def generate_dist_block(n_vtx: Union[int, Sequence[int]],
+                        cgns_elmt_name: str,
+                        comm: MPIComm,
+                        origin: Sequence[float] = (0,0,0), 
+                        length: Union[float, Sequence[float], List[Sequence[float]]] = 1.) -> CGNSDistTree:
   """Generate a distributed mesh with a block shape (line, parallelogram or parallelepiped). 
   
   This function returns a distributed CGNSTree containing a single :cgns:`CGNSBase_t` and
@@ -263,21 +279,21 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=
     and produces an unstructured 1d, 2d or 3d zone with corresponding standard elements.
 
   The `CGNS physical dimension <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase>`_
-  :math:`d_\phi` is deduced from the shape of the ``origin`` parameter. Note that the physical dimension must be
+  :math:`d_\\phi` is deduced from the shape of the ``origin`` parameter. Note that the physical dimension must be
   upper or equal to the cell dimension.
 
   The number of vertices in each direction is given by ``n_vtx`` parameter, which is a tuple of 
   size :math:`d_m`. If a scalar is provided, its value is broadcasted to a uniform tuple.
 
   Lastly, the geometric size and the position of the zone is computed from the combination of ``origin`` and
-  ``length`` parameters. The first one, which is an array of size :math:`d_\phi`, set the position of the
+  ``length`` parameters. The first one, which is an array of size :math:`d_\\phi`, set the position of the
   'first vertex' of the zone. The length parameter can be either:
 
   - a scalar, which leads to a line, a square or a cube aligned with the canonical axes. Its length is
     then the same in each direction;
   - a tuple of size :math:`d_m`, which leads to a line, a rectangle or a rectangular cuboid aligned with
     the canonical axes. Its length is then equal to the specified value in each direction;
-  - a list of :math:`d_m` vectors, each one of size :math:`d_\phi`. In this case, the generated line, parallelogram
+  - a list of :math:`d_m` vectors, each one of size :math:`d_\\phi`. In this case, the generated line, parallelogram
     or parallelepiped is no more aligned with the canonical axes, but with the provided basis.
     Its length is equal to the norm of the basis vector in each direction.
 
@@ -304,7 +320,7 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=
   # > Retrive entry dimensions
   phy_dim = len(origin)
   if cgns_elmt_name in ['Structured', 'S']:
-    if _is_iterable(n_vtx):
+    if isinstance(n_vtx, Iterable):
       cell_dim = len(n_vtx)
       for k in n_vtx[::-1]:
         if k != 1:
@@ -321,70 +337,73 @@ def generate_dist_block(n_vtx, cgns_elmt_name, comm, origin=np.zeros(3), length=
 
   # > Convert length to full vector
   need_matrix = False
+  need_scaling = False
   # Special case of BAR_2 : we allow [l1,l2,l3] to be converted in [[l1,l2,l3]]
-  if cgns_elmt_name == 'BAR_2' and _is_iterable(length) and not _is_iterable(length[0]) and len(length) == phy_dim:
-    length = [length]
+  if cgns_elmt_name == 'BAR_2' and isinstance(length, Iterable) and not isinstance(length[0], Iterable) and len(length) == phy_dim:
+    length = [length] #type:ignore[assignment] #(length is of kind Sequence[float])
 
-  if not _is_iterable(length): # Scalar case : extend to tuple case
+  if not isinstance(length, Iterable): # Scalar case : extend to tuple case
     need_scaling = length != 1.
-    length = np.full(cell_dim, length, dtype=np.float64)
-  else:
-    if not _is_iterable(length[0]): # tuple case
-      assert len(length) == cell_dim, f"length argument is a tuple (case 2), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
-      need_scaling = True
-    else:
-      msg_outer = f"length argument is a list of tuple (case 3), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
-      msg_inner = f"length argument is a list of tuple (case 3), but the size of each tuple is not equal to PhysicalDimension ({[len(ld) for ld in length]}) vs {phy_dim})"
-      assert len(length) == cell_dim, msg_outer
-      assert all([len(ld) == phy_dim for ld in length]), msg_inner
+    #length = np.full(cell_dim, length, dtype=np.float64)
+    length = cell_dim * [float(length)]
+  elif not isinstance(length[0], Iterable): # tuple case
+    assert len(length) == cell_dim, f"length argument is a tuple (case 2), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
+    need_scaling = True
+  else: # List of Sequence case
+    inner_lens = [len(ld) for ld in length] #type:ignore[arg-type] #(ld is of type Sequence[float])
+    msg_outer = f"length argument is a list of tuple (case 3), but its size is not equal to CellDimension ({len(length)} vs {cell_dim})"
+    msg_inner = f"length argument is a list of tuple (case 3), but the size of each tuple is not equal to PhysicalDimension ({inner_lens}) vs {phy_dim})"
+    assert len(length) == cell_dim, msg_outer
+    assert all([l == phy_dim for l in inner_lens]), msg_inner
 
-      need_matrix = True
-
-  origin = np.asarray(origin, float)
+    need_matrix = True
 
   # First case manage correctly origin / length --> direct return of disttree
+  # For BAR_2 we have lenght = List[Sequence[float]] (need_matrix=True) or Sequence[float] (size 1) (need_matrix=False)
   if cgns_elmt_name in ["BAR_2"]:
-    end = origin.copy()
-    if need_matrix:
-      end += length[0]
+    if isinstance(length[0], Iterable):
+      end = [c + length[0][i] for i,c in enumerate(origin)]
     else:
-      end[0] += length[0]
-    return generate_dist_line(n_vtx, origin, end, comm)
+      end = [c + (i==0)*length[0] for i,c in enumerate(origin)]
+    _n_vtx = n_vtx[0] if isinstance(n_vtx, Iterable) else n_vtx
+    return generate_dist_line(_n_vtx, origin, end, comm)
   
   # Structured case manage case 2, but not general case --> generate unit mesh in general case to rescale afterward
   elif cgns_elmt_name in ["Structured", "S"]:
     if not need_matrix:
-      _length = np.zeros(phy_dim)
-      _length[:cell_dim] = length
+      _length:List[float] = list(length) + [0.] * (phy_dim-cell_dim) #type:ignore[assignment] #(not need_matrix => single list)
       return dcube_struct_generate(n_vtx, _length, origin, comm)
     else:
-      dist_tree = dcube_struct_generate(n_vtx, 1., np.zeros(phy_dim), comm)
+      dist_tree = dcube_struct_generate(n_vtx, 1., phy_dim*[0.], comm)
 
   # Other cases do not manage anything: use origin=0., length=1. (unit mesh), and rescale afterward
   elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
-    dist_tree = dcube_generate(n_vtx, 1., np.zeros(phy_dim), comm)
+    if not isinstance(n_vtx, int):
+      raise NotImplementedError("Poly/NFACE_n generation does not supports variable number of vertices")
+    dist_tree = dcube_generate(n_vtx, 1., (0,0,0), comm)
     if cgns_elmt_name.upper() == "NFACE_N":
       for zone in PT.get_all_Zone_t(dist_tree):
         maia.algo.pe_to_nface(zone, comm, removePE=True)
   else:
-    dist_tree = dcube_nodal_generate(n_vtx, 1., np.zeros(phy_dim), cgns_elmt_name, comm)
+    dist_tree = dcube_nodal_generate(n_vtx, 1., [0.]*phy_dim, cgns_elmt_name, comm)
 
   # > Apply scaling and transform
   if need_matrix:
     matrix = np.eye(phy_dim)
     matrix[:,0:cell_dim] = np.asarray(length).T
     zone = PT.get_all_Zone_t(dist_tree)[0]
-    coords = [PT.get_node_from_path(zone, f'GridCoordinates/Coordinate{dir}') for dir in 'XYZ']
-    tr_coords = np_utils.matmul_cart_vectors([PT.get_value(c) for c in coords[0:phy_dim]], matrix)
+    coords = [PT.request_node_from_path(zone, f'GridCoordinates/Coordinate{dir}') for dir in 'XYZ'[0:phy_dim]]
+    coords_val:List[NDArray] = [PT.get_value(c) for c in coords] #type:ignore #(coords should not be None)
+    tr_coords = np_utils.matmul_cart_vectors(coords_val, matrix)
     for coord_n, new_c in zip(coords, tr_coords):
       PT.set_value(coord_n, new_c)
   elif need_scaling:
-    scale_length = [l for l in length] + [1.]*(3-cell_dim)
+    scale_length:List[float] = list(length) + [1.]*(3-cell_dim) #type:ignore[assignment] #(need_scaling => single list)
     maia.algo.scale_mesh(dist_tree, scale_length)
 
   for dim, coord_name in enumerate(['CoordinateX', 'CoordinateY', 'CoordinateZ'][:phy_dim]):
-    coord_n = PT.get_node_from_name(dist_tree, coord_name)
-    coord = PT.get_value(coord_n)+origin[dim]
-    PT.set_value(coord_n, coord)
+    coord_n = PT.request_node_from_name(dist_tree, coord_name)
+    assert (coord_val:=PT.get_value(coord_n, True)) is not None
+    PT.set_value(coord_n, coord_val+origin[dim])
 
   return dist_tree

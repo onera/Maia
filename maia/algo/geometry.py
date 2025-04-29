@@ -1,12 +1,18 @@
+import numpy as np
+
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 from maia.algo.apply_function_to_nodes import zones_iterator
-
 from .dist import geometry as dist_geometry
 from .part import geometry as part_geometry
 
 
-def _compute_elements_center(zone, dim, comm=None, element_indices=None, elements_loc=None):
+def _compute_elements_center(zone: CGNSTree, 
+                             dim: Union[Literal['CellCenter'], int],
+                             comm: Optional[MPIComm] = None,
+                             element_indices: Optional[ArrayLike] = None,
+                             elements_loc: Optional[str] = None) -> NDArray:
   """Dispatch centers computing according to zone dimension and 
   requested dimension
   If element_indices is not None, a PointList like array is expected; center
@@ -18,7 +24,9 @@ def _compute_elements_center(zone, dim, comm=None, element_indices=None, element
   else:
     return part_geometry._compute_elements_center(zone, dim, element_indices, elements_loc)
 
-def _compute_elements_measure(zone, dim, comm=None):
+def _compute_elements_measure(zone: CGNSTree,
+                              dim: Union[Literal['CellCenter'], int],
+                              comm: Optional[MPIComm] = None) -> NDArray:
   """Dispatch measure computing according to zone dimension and 
   requested dimension """
   if MT.getDistribution(zone) is not None:
@@ -28,7 +36,9 @@ def _compute_elements_measure(zone, dim, comm=None):
     return part_geometry._compute_elements_measure(zone, dim)
   
 
-def compute_elements_center(t, dim, comm=None):
+def compute_elements_center(t: CGNSTree,
+                            dim: Union[Literal['CellCenter'], int],
+                            comm: Optional[MPIComm] = None) -> None:
   """Compute the centers of the specified mesh entity.
 
   The mesh entity on which centers are computed must be specified using
@@ -63,7 +73,7 @@ def compute_elements_center(t, dim, comm=None):
   Args:
     t    (CGNSTree)            : Tree starting at Zone_t level or higher
     dim  (int or 'CellCenter') : Entity on which centers are computed (see above)
-    comm       (MPIComm)       : MPI communicator, mandatory only for distributed trees
+    comm (MPIComm)             : MPI communicator, mandatory only for distributed trees
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -80,7 +90,9 @@ def compute_elements_center(t, dim, comm=None):
     else:
       part_geometry.compute_elements_center(zone, dim)
 
-def compute_elements_measure(t, dim, comm=None):
+def compute_elements_measure(t: CGNSTree,
+                             dim: Union[Literal['CellCenter'], int],
+                             comm: Optional[MPIComm] = None) -> None:
   """Compute the length, area or volume of the specified mesh entity.
 
   As for :func:`compute_elements_center`, the mesh entity on which measures

@@ -4,7 +4,6 @@ import math
 import itertools
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import begin_api_export, end_api_export
 from maia.pytree.meta   import check_is_label, check_in_labels, for_all_methods
 
 from maia.pytree         import node as N
@@ -12,13 +11,12 @@ from maia.pytree         import walk as W
 from . import elements_utils as EU
 from . import utils
 
-begin_api_export()
 
 # Custom NamedTuple list
 class PeriodicValues(NamedTuple):
-  RotationCenter:np.ndarray
-  RotationAngle:np.ndarray
-  Translation:np.ndarray
+  RotationCenter:NDArray
+  RotationAngle:NDArray
+  Translation:NDArray
   def asdict(self, snake_case=False):
     if snake_case:
       return  {'rotation_center' : self.RotationCenter,
@@ -28,23 +26,33 @@ class PeriodicValues(NamedTuple):
       return self._asdict()
     
 class CartesianCoordinates(NamedTuple):
-  CoordinateX:Optional[np.ndarray]
-  CoordinateY:Optional[np.ndarray]
-  CoordinateZ:Optional[np.ndarray]
+  CoordinateX:Optional[NDArray]
+  CoordinateY:Optional[NDArray]
+  CoordinateZ:Optional[NDArray]
 class CylindricalCoordinates(NamedTuple):
-  CoordinateR:Optional[np.ndarray]
-  CoordinateTheta:Optional[np.ndarray]
-  CoordinateZ:Optional[np.ndarray]
+  CoordinateR:Optional[NDArray]
+  CoordinateTheta:Optional[NDArray]
+  CoordinateZ:Optional[NDArray]
 class SphericalCoordinates(NamedTuple):
-  CoordinateR:Optional[np.ndarray]
-  CoordinateTheta:Optional[np.ndarray]
-  CoordinatePhi:Optional[np.ndarray]
+  CoordinateR:Optional[NDArray]
+  CoordinateTheta:Optional[NDArray]
+  CoordinatePhi:Optional[NDArray]
 class AuxiliaryCoordinates(NamedTuple):
-  CoordinateXi:Optional[np.ndarray]
-  CoordinateEta:Optional[np.ndarray]
-  CoordinateZeta:Optional[np.ndarray]
+  CoordinateXi:Optional[NDArray]
+  CoordinateEta:Optional[NDArray]
+  CoordinateZeta:Optional[NDArray]
 
 Coordinates = Union[CartesianCoordinates, CylindricalCoordinates, SphericalCoordinates, AuxiliaryCoordinates]
+
+def _get_str_value(node:CGNSTree) -> str:
+  val = N.get_value(node)
+  assert isinstance(val, str), f"Value of node {node[0]} was expected to be a string, but is {val}"
+  return val
+
+def _get_np_value(node:CGNSTree) -> NDArray:
+  val = node[1]
+  assert val is not None, f"Value of node {node[0]} was not expected to be None"
+  return val
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("CGNSTree_t"))
@@ -86,7 +94,7 @@ class Tree:
     
     for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
       group     = [zone_path]
-      zone = PT.get_node_from_path(tree, zone_path)
+      zone = PT.request_node_from_path(tree, zone_path)
       for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', matching_gcs]):
         opp_zone_path = GridConnectivity.ZoneDonorPath(gc, zone_path.split('/')[0])
         utils.append_unique(group, opp_zone_path)
@@ -98,7 +106,7 @@ class Tree:
         if zone_path in group:
           groups_to_merge.append(i)
       if groups_to_merge != []:
-        new_group = []
+        new_group:List[str] = []
         for i in groups_to_merge[::-1]: #Reverse loop to pop without changing idx
           zones_paths = connected_zones.pop(i)
           for z_p in zones_paths:
@@ -123,12 +131,12 @@ class Tree:
       - second list contains the paths of joins related to this value
     """
     import maia.pytree as PT
-    perio_values = list()
-    perio_jns = list()
+    perio_values:List[PeriodicValues] = list()
+    perio_jns:List[List[str]] = list()
     is_jn_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
             and PT.GridConnectivity.isperiodic(n)
     for jn_path in PT.predicates_to_paths(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_jn_perio]):
-      jn = PT.get_node_from_path(tree, jn_path)
+      jn = PT.request_node_from_path(tree, jn_path)
       perio = PT.GridConnectivity.periodic_values(jn)
       for i_perio, perio_value in enumerate(perio_values):
         if all([np.allclose(a,b,rtol,atol) for a,b in zip(perio_value, perio)]):
@@ -160,10 +168,10 @@ class Zone:
       >>> PT.Zone.IndexDimension(zone)
       1
     """
-    return N.get_value(zone_node).shape[0]
+    return _get_np_value(zone_node).shape[0]
 
   @staticmethod
-  def VertexSize(zone_node:CGNSTree) -> Tuple[int]:
+  def VertexSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
     Return the number of vertices per direction of a Zone_t node
 
@@ -176,10 +184,10 @@ class Zone:
       >>> PT.Zone.VertexSize(zone)
       (11, 6, 2)
     """
-    return tuple(N.get_value(zone_node)[:,0])
+    return tuple(_get_np_value(zone_node)[:,0])
 
   @staticmethod
-  def CellSize(zone_node:CGNSTree) -> Tuple[int]:
+  def CellSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
     Return the number of cells per direction of a Zone_t node
 
@@ -192,10 +200,10 @@ class Zone:
       >>> PT.Zone.CellSize(zone)
       (10,)
     """
-    return tuple(N.get_value(zone_node)[:,1])
+    return tuple(_get_np_value(zone_node)[:,1])
 
   @staticmethod
-  def FaceSize(zone_node:CGNSTree) -> Tuple[int]:
+  def FaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
     Return the number of faces per direction of a Zone_t node
 
@@ -219,14 +227,15 @@ class Zone:
       n_face = tuple(math.prod(func(zone_node)) for func in dirfacesize)
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
-      er = W.get_child_from_name(ngon_node, 'ElementRange')[1]
+      er = W.request_child_from_name(ngon_node, 'ElementRange')[1]
+      assert er is not None
       n_face = (er[1] - er[0] + 1,)
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
     return n_face
 
   @staticmethod
-  def IFaceSize(zone_node:CGNSTree) -> Tuple[int]:
+  def IFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
     Return the number of I normal faces in each direction for a structured Zone_t node
 
@@ -247,7 +256,7 @@ class Zone:
     vtx_size  = Zone.VertexSize(zone_node)
     cell_size = Zone.CellSize(zone_node)
     dim = len(vtx_size)
-    n_iface = (vtx_size[0],)
+    n_iface:Tuple[int,...] = (vtx_size[0],)
     if dim > 1:
       n_iface = n_iface + (cell_size[1],)
     if dim > 2:
@@ -255,7 +264,7 @@ class Zone:
     return n_iface
     
   @staticmethod
-  def JFaceSize(zone_node:CGNSTree) -> Tuple[int]:
+  def JFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
     Return the number of J normal faces in each direction for a structured Zone_t node
 
@@ -276,13 +285,13 @@ class Zone:
     cell_size = Zone.CellSize(zone_node)
     dim = len(vtx_size)
     assert 2 <= dim
-    n_jface = (cell_size[0], vtx_size[1])
+    n_jface:Tuple[int,...] = (cell_size[0], vtx_size[1])
     if dim == 3:
       n_jface = n_jface + (cell_size[2],)
     return n_jface
     
   @staticmethod
-  def KFaceSize(zone_node:CGNSTree) -> Tuple[int]:
+  def KFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
     Return the number of K normal faces in each direction for a structured Zone_t node
 
@@ -350,7 +359,7 @@ class Zone:
       >>> PT.Zone.VertexBoundarySize(zone)
       (0, 0)
     """
-    return tuple(N.get_value(zone_node)[:,2])
+    return tuple(_get_np_value(zone_node)[:,2])
 
   @staticmethod
   def Type(zone_node:CGNSTree) -> str:
@@ -366,8 +375,8 @@ class Zone:
       >>> PT.Zone.Type(zone)
       'Unstructured'
     """
-    zone_type_node = W.get_child_from_label(zone_node, "ZoneType_t")
-    return N.get_value(zone_type_node)
+    zone_type_node = W.request_child_from_label(zone_node, "ZoneType_t")
+    return _get_str_value(zone_type_node)
 
   @staticmethod
   def n_vtx(zone_node:CGNSTree) -> int:
@@ -470,7 +479,7 @@ class Zone:
     return W.get_child_from_predicate(zone_node, predicate) is not None
 
   @staticmethod
-  def coordinates(zone_node:CGNSTree, name:str=None) -> Coordinates:
+  def coordinates(zone_node:CGNSTree, name:Optional[str]=None) -> Coordinates:
     """ Return the coordinate arrays of the Zone_t node
 
     Cartesian, cylindrical, spherical and auxiliary coordinates are supported.
@@ -496,7 +505,7 @@ class Zone:
         else W.get_child_from_name_and_label(zone_node, name, "GridCoordinates_t")
     if grid_coord_node is None:
       raise RuntimeError(f"Unable to find GridCoordinates_t node in {N.get_name(zone_node)}.")
-    
+    factory:Type[Coordinates]
     if W.get_child_from_name(grid_coord_node, "CoordinateX") is not None:
       factory = CartesianCoordinates
     elif W.get_child_from_name(grid_coord_node, "CoordinateXi") is not None:
@@ -512,11 +521,11 @@ class Zone:
     return factory._make([val_or_none(W.get_child_from_name(grid_coord_node, key)) for key in factory._fields])
 
   @staticmethod
-  def ngon_connectivity(zone_node:CGNSTree) -> List[np.ndarray]:
+  def ngon_connectivity(zone_node:CGNSTree) -> Tuple[Optional[NDArray], Optional[NDArray], Optional[NDArray]]:
     ngon_node = Zone.NGonNode(zone_node)
-    face_vtx_idx = N.get_value(W.get_child_from_name(ngon_node, "ElementStartOffset"))
-    face_vtx     = N.get_value(W.get_child_from_name(ngon_node, "ElementConnectivity"))
-    ngon_pe      = N.get_value(W.get_child_from_name(ngon_node, "ParentElements"))
+    face_vtx_idx = N.get_value(W.request_child_from_name(ngon_node, "ElementStartOffset"), True)
+    face_vtx     = N.get_value(W.request_child_from_name(ngon_node, "ElementConnectivity"), True)
+    ngon_pe      = N.get_value(W.request_child_from_name(ngon_node, "ParentElements"), True)
     return face_vtx_idx, face_vtx, ngon_pe
 
   @staticmethod
@@ -689,7 +698,7 @@ class Element:
       >>> PT.Element.Type(elt)
       10
     """
-    return int(elt_node[1][0])
+    return int(_get_np_value(elt_node)[0])
 
   @staticmethod
   def CGNSName(elt_node:CGNSTree) -> str:
@@ -719,7 +728,9 @@ class Element:
       >>> PT.Element.Dimension(elt)
       2
     """
-    return EU.element_dim(Element.Type(elt_node))
+    dim = EU.element_dim(Element.Type(elt_node))
+    assert dim is not None, "Input element does not have valid dimension"
+    return dim
 
   @staticmethod
   def NVtx(elt_node:CGNSTree) -> int:
@@ -734,10 +745,12 @@ class Element:
       >>> PT.Element.NVtx(elt)
       5
     """
-    return EU.element_number_of_nodes(Element.Type(elt_node))
+    n_vtx = EU.element_number_of_nodes(Element.Type(elt_node))
+    assert n_vtx is not None, "Input element does not have valid number of vertices"
+    return n_vtx
 
   @staticmethod
-  def Range(elt_node:CGNSTree) -> np.ndarray:
+  def Range(elt_node:CGNSTree) -> NDArray:
     """ Return the value of the ElementRange of an Element_t node
 
     Args:
@@ -749,7 +762,7 @@ class Element:
       >>> PT.Element.Range(elt)
       array([21, 40], dtype=int32)
     """
-    return W.get_child_from_name(elt_node,"ElementRange")[1]
+    return _get_np_value(W.request_child_from_name(elt_node,"ElementRange"))
 
   @staticmethod
   def Size(elt_node:CGNSTree) -> int:
@@ -787,12 +800,12 @@ class GridConnectivity:
     """
     if N.get_label(gc_node) == 'GridConnectivity1to1_t':
       return 'Abutting1to1'
-    elif N.get_label(gc_node) == 'GridConnectivity_t':
+    else:
       gc_type_n = W.get_child_from_name(gc_node, 'GridConnectivityType')
-      return N.get_value(gc_type_n) if gc_type_n is not None else 'Overset'
+      return _get_str_value(gc_type_n) if gc_type_n is not None else 'Overset'
 
   @staticmethod
-  def Transform(gc_node:CGNSTree, as_matrix=False) -> np.ndarray:
+  def Transform(gc_node:CGNSTree, as_matrix=False) -> NDArray:
     """ Return the Transform specification of a GridConnectivity1to1 node.
 
     Args:
@@ -809,7 +822,7 @@ class GridConnectivity:
              [ 0,  1,  0]])
     """
     transform_node = W.get_child_from_name(gc_node, 'Transform')
-    transform = transform_node[1] if transform_node is not None else np.array([1,2,3], np.int32)
+    transform = _get_np_value(transform_node) if transform_node is not None else np.array([1,2,3], np.int32)
     if as_matrix:
       del_f = lambda x,y : (np.abs(x) == np.abs(y)).astype(int) # del(x−y) ≡ +1 if |x| = |y|
       del_matrix = del_f(transform, np.array([[k+1] for k in range(transform.size)]))
@@ -865,7 +878,7 @@ class GridConnectivity:
                      Translation=array([1., 0., 0.], dtype=float32))
     """
     perio_node = W.get_node_from_label(gc_node, "Periodic_t", depth=[2,2])
-    return PeriodicValues._make([W.get_child_from_name(perio_node, key)[1] if perio_node else None
+    return PeriodicValues._make([W.request_child_from_name(perio_node, key)[1] if perio_node else None
                                  for key in PeriodicValues._fields])
 
   @staticmethod
@@ -882,7 +895,7 @@ class GridConnectivity:
       >>> PT.GridConnectivity.ZoneDonorPath(gc, 'Base')
       'OtherBase/OppZone'
     """
-    opp = N.get_value(gc_node)
+    opp = _get_str_value(gc_node)
     return opp if '/' in opp else cur_base_name + '/' + opp
 
 
@@ -909,7 +922,7 @@ class Subset:
     pl = W.get_child_from_name(subset_node, 'PointList')
     pr = W.get_child_from_name(subset_node, 'PointRange')
     assert (pl is None) ^ (pr is None)
-    return pl if pl is not None else pr
+    return pl if pl is not None else pr #type: ignore
 
   @staticmethod
   def n_elem(subset_node:CGNSTree) -> int:
@@ -949,7 +962,7 @@ class Subset:
       msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
             ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
       warnings.warn(msg, RuntimeWarning, stacklevel=3)
-    return N.get_value(grid_loc_n) if grid_loc_n else 'Vertex'
+    return _get_str_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
   @staticmethod
   def normal_axis(subset_node:CGNSTree) -> int:
@@ -975,7 +988,8 @@ class Subset:
     else:
       pr_node = W.get_child_from_name(subset_node, 'PointRange')
       if pr_node is not None:
-        cst_axis = (pr_node[1][:,0] == pr_node[1][:,1])
+        pr_val = _get_np_value(pr_node)
+        cst_axis = (pr_val[:,0] == pr_val[:,1])
         if cst_axis.sum() == 1: #Ambiguity can be resolved
           return np.nonzero(cst_axis)[0][0]
         else:
@@ -1024,7 +1038,7 @@ class Subset:
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("BCDataSet_t"))
-class BCDataSet(Subset):
+class BCDataSet:
 
   @staticmethod
   def GridLocation(bcds_node:CGNSTree, bc_node:CGNSTree) -> str:
@@ -1048,7 +1062,7 @@ class BCDataSet(Subset):
       'FaceCenter'
     """
     grid_loc_n = W.get_child_from_label(bcds_node, 'GridLocation_t')
-    return N.get_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
+    return _get_str_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
 
   @staticmethod
   def getPatch(bcds_node:CGNSTree, bc_node:CGNSTree) -> CGNSTree:
@@ -1078,7 +1092,7 @@ class BCDataSet(Subset):
       return Subset.getPatch(bc_node)
     else:
       assert (pl is None) ^ (pr is None)
-      return pl if pl is not None else pr
+      return pl if pl is not None else pr #type:ignore
 
 
 # --------------------------------------------------------------------------
@@ -1086,11 +1100,11 @@ class BCDataSet(Subset):
 class PointRange:
 
   @staticmethod
-  def SizePerIndex(point_range_node:CGNSTree) -> np.ndarray:
+  def SizePerIndex(point_range_node:CGNSTree) -> NDArray:
     """
     Allow point_range to be inverted (PR[:,1] < PR[:,0]) as it can occurs in struct GCs
     """
-    pr_values = point_range_node[1]
+    pr_values = _get_np_value(point_range_node)
     return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
 
   @staticmethod
@@ -1104,7 +1118,6 @@ class PointList:
 
   @staticmethod
   def n_elem(point_list_node:CGNSTree) -> int:
-    return N.get_value(point_list_node).shape[1]
+    pl_values = _get_np_value(point_list_node)
+    return pl_values.shape[1]
 
-
-end_api_export()

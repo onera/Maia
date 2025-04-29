@@ -168,8 +168,8 @@ def balance_multizone_tree(tree, comm, only_uniform=False):
       zone_path, nb_elmt_per_zone[zone_path], proc_elmts[izone], n_part[izone], tn_part[izone], zone_pc, proc_pc))
   LOG.info('')
   tot_pc = np.around(100*sum(proc_elmts)/sum(nb_elmt_per_zone.values()))
-  LOG.info(' '*4 + "       Total {1:9d} : {2:9d} {3:>5} {4:>6}  {5:>6}  {6:>6}".format(
-    zone_path, sum(nb_elmt_per_zone.values()), sum(proc_elmts), sum(n_part), sum(tn_part), tot_pc, 100))
+  LOG.info(' '*4 + "       Total {0:9d} : {1:9d} {2:>5} {3:>6}  {4:>6}  {5:>6}".format(
+    sum(nb_elmt_per_zone.values()), sum(proc_elmts), sum(n_part), sum(tn_part), tot_pc, 100))
   LOG.info(' '*2 + "------------------------------------------------------------------ " )
   # ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 

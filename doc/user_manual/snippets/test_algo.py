@@ -474,11 +474,12 @@ def test_poly_old_to_new():
 
 def test_enforce_ngon_pe_local():
   #enforce_ngon_pe_local@start
-  from mpi4py import MPI
   import maia
+  from   maia.utils.test_utils import mesh_dir
+
   import maia.pytree as PT
 
-  tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_WORLD)
+  tree = maia.io.read_tree(mesh_dir/'U_ATB_45.yaml')
   zone = PT.get_node_from_label(tree, 'Zone_t')
   n_cell = PT.Zone.n_cell(zone)
 

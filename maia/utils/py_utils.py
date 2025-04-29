@@ -1,6 +1,10 @@
 from itertools import permutations, product
 
-def to_nested_list(l, counts):
+from maia.typing import *
+
+T = TypeVar('T')
+
+def to_nested_list(l, counts: Iterable[int]):
   """ Transform a flat list to a list of lists"""
   assert len(l) == sum(counts)
   nested = list()
@@ -10,45 +14,48 @@ def to_nested_list(l, counts):
     r_idx += n_elts
   return nested
 
-def to_flat_list(nested_list):
+def to_flat_list(nested_list: Iterable[Iterable[T]]) -> List[T]:
   """ Transform a list of list to a flat list"""
   return [obj for l in nested_list for obj in l]
 
-def bucket_split(l, f, compress=False, size=None):
+def bucket_split(l: List[T], 
+                 f: Callable[[T], int],
+                 compress: bool = False,
+                 size: Optional[int] = None) -> List[List[T]]:
   """ Dispatch the elements of list l into n sublists, according to the result of function f """
   if size is None: 
     size = max(f(e) for e in l) + 1
-  result = [ [] for i in range(size)]
+  result:List[List[T]] = [ [] for i in range(size)]
   for e in l:
     result[f(e)].append(e)
   if compress:
     result = [sub_l for sub_l in result if sub_l]
   return result
 
-def is_subset_l(subset, L):
+def is_subset_l(subset: List[T], L: List[T]) -> bool:
   """Return True is subset list is included in L, allowing looping"""
   extended_l = list(L) + list(L)[:len(subset)-1]
   return max([subset == extended_l[i:i+len(subset)] for i in range(len(L))])
 
-def append_unique(L, item):
+def append_unique(L: List[T], item: T) -> None:
   """ Add an item in a list only if not already present"""
   if item not in L:
     L.append(item)
 
-def loop_from(L, i):
+def loop_from(L: List[T], i: int):
   """ Iterator over a list L, starting from element i (wrapping around at the end)"""
   assert 0 <= i and i < len(L)
   yield from L[i:]
   yield from L[:i]
 
-def find_tensor_names(names, axis):
+def find_tensor_names(names: List[str], axis: List[str]) -> List[str]:
   """ Return the name of the fields appearing to be a tensor """
   assert len(axis) >= 1
   names = [name for name in names if len(name) > 2] #Exclude crazy cases
 
   # For tensor, we will search only diagonal components
   to_index = {f'{a}{a}':i for i,a in enumerate(axis)} 
-  suffix_names = [set() for _ in to_index]
+  suffix_names:List[Set] = [set() for _ in to_index]
 
   for name in names:
     for suffix, index in to_index.items():
@@ -60,7 +67,7 @@ def find_tensor_names(names, axis):
   common = suffix_names[0].intersection(*suffix_names[1:])
   return sorted(common)
 
-def find_vector_names(names, axis):
+def find_vector_names(names: List[str], axis: List[str]) -> List[str]:
   """ Return the name of the fields appearing to be a vector """
   assert len(axis) >= 1
 
@@ -74,7 +81,7 @@ def find_vector_names(names, axis):
   names = [name for name in names if len(name) > 1]
 
   to_index = {a:i for i,a in enumerate(axis)}
-  suffix_names = [set() for _ in to_index]
+  suffix_names:List[Set] = [set() for _ in to_index]
 
   for name in names:
     for suffix, index in to_index.items():
@@ -86,19 +93,19 @@ def find_vector_names(names, axis):
   common = suffix_names[0].intersection(*suffix_names[1:])
   return sorted(common)
 
-def find_cartesian_vector_names(names, phy_dim=3):
+def find_cartesian_vector_names(names: List[str], phy_dim: int = 3) -> List[str]:
   return find_vector_names(names, ['X', 'Y', 'Z'][:phy_dim])
 
-def find_auxiliary_vector_names(names, phy_dim=3):
+def find_auxiliary_vector_names(names: List[str], phy_dim: int = 3) -> List[str]:
   return find_vector_names(names, ['Xi', 'Eta', 'Zeta'][:phy_dim])
 
-def find_cylindric_vector_names(names, phy_dim=3):
+def find_cylindric_vector_names(names: List[str], phy_dim: int = 3) -> List[str]:
   return find_vector_names(names, ['R', 'Theta', 'Z'][:phy_dim])
 
-def find_spherical_vector_names(names, phy_dim=3):
+def find_spherical_vector_names(names: List[str], phy_dim: int = 3) -> List[str]:
   return find_vector_names(names, ['R', 'Theta', 'Phi'][:phy_dim])
 
-def get_ordered_subset(subset, L):
+def get_ordered_subset(subset: List[T], L: List[T]) -> Optional[Tuple[T, ...]]:
   """
   Check is one of the permutations of subset exists in L, allowing looping
   Return the permutation if existing, else None
@@ -117,8 +124,9 @@ def get_ordered_subset(subset, L):
     perm_l = list(perm)
     if max([perm_l == extended_l[i:i+len(perm_l)] for i in range(len(L))]) == True:
       return perm
+  return None
 
-def is_before(l, a, b):
+def is_before(l: List, a: Any, b: Any) -> bool:
   """Return True is element a is present in list l before element b"""
   for e in l:
     if e==a:
@@ -127,13 +135,13 @@ def is_before(l, a, b):
       return False
   return False
 
-def any_true(iterable, predicate):
+def any_true(iterable: Iterable[T], predicate: Callable[[T], bool]) -> bool:
   return any(predicate(elem) for elem in iterable)
 
-def all_true(iterable, predicate):
+def all_true(iterable: Iterable[T], predicate: Callable[[T], bool]) -> bool:
   return all(predicate(elem) for elem in iterable)
 
-def uniform_distribution_at(n_elt, i, n_interval):
+def uniform_distribution_at(n_elt: int, i: int, n_interval: int) -> Tuple[int, int]:
   """
   """
   step      = n_elt // n_interval
@@ -148,7 +156,7 @@ def uniform_distribution_at(n_elt, i, n_interval):
 
   return inf,sup
 
-def unique_idx(seq):
+def unique_idx(seq: Sequence) -> List[int]:
   """ Indirect unique of a sequence : return an array of size len(seq)
   storing an unique id for each element occuring in sequence
   """
@@ -171,7 +179,7 @@ def unique_idx(seq):
 
   
 
-def str_to_bools(size, key):
+def str_to_bools(size: int, key: str) -> List[bool]:
   """
   Convert a keyword into a list of booleens of the given size
   """
@@ -186,6 +194,6 @@ def str_to_bools(size, key):
   else:
     raise ValueError(f"key must be one of {{'none', 'all', 'ancestors' or 'leaf'}}")
 
-def overlap_size(start1, end1, start2, end2):
+def overlap_size(start1: int, end1: int, start2: int, end2: int) -> int:
   """ Number of common elements for two given intervals """
   return max(min(end1, end2) - max(start1, start2), 0)

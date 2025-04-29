@@ -9,12 +9,15 @@ from   maia.utils         import np_utils
 from   .extract_part_s    import exchange_field_s, extract_part_one_domain_s
 from   .extract_part_u    import exchange_field_u, extract_part_one_domain_u
 from   .extraction_utils  import LOC_TO_DIM
+from   maia.typing        import *
+from   maia.pytree.maia.check_tree import check_cgns_part_tree
 
 import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-def get_stats(extract_tree, dim, comm):
+def get_stats(extract_tree: CGNSTree, dim: int,
+              comm: MPIComm) -> Tuple[str, int, int]:
     elts_kind = ['vtx', 'edges', 'faces', 'cells'][dim]
     if dim == 0:
       n_cell = sum([PT.Zone.n_vtx(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
@@ -24,7 +27,8 @@ def get_stats(extract_tree, dim, comm):
     return elts_kind, n_cell, n_cell_all
 
 
-def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
+def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
+                         zone_type: str) -> bool:
 
   if zone_type=='Structured':
     unwanted_type = 'IndexArray_t'
@@ -41,7 +45,7 @@ def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
   is_valid_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, required_name) is None
   ds_arrays = PT.get_children_from_predicates(bc_n, [is_valid_bcds, 'BCData_t', 'DataArray_t'])
   for ds_array in ds_arrays:
-    PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_value(ds_array), parent=zsr_bc_n)
+    PT.new_DataArray(name=PT.get_name(ds_array), value=PT.request_nd_value(ds_array), parent=zsr_bc_n)
   if len(ds_arrays) != 0:
     there_is_dataset = True
     # PL and Location is needed for data exchange, but this should be done in ZSR func
@@ -49,12 +53,12 @@ def set_transfer_dataset(bc_n, zsr_bc_n, zone_type):
       PT.add_child(zsr_bc_n, PT.get_child_from_name(bc_n, name))
   return there_is_dataset
 
-class Extractor:
-  def __init__( self,
-                part_tree, patch, location, comm,
-                # equilibrate=True,
-                graph_part_tool="hilbert"):
 
+class Extractor:
+  def __init__(self,part_tree: CGNSPartTree,patch: List[List[NDArray]],
+               location: str,comm: MPIComm,
+               graph_part_tool: str = "hilbert") -> None:
+    """Initialize an extractor object to perform extraction of a part of a mesh"""
     self.part_tree     = part_tree
     self.exch_tool_box = dict()
     self.comm          = comm
@@ -138,27 +142,33 @@ class Extractor:
 
     # Copy Families existing on extracted tree
     is_family_name = lambda n :  PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
-    found_family_name = set([PT.get_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
+    found_family_name = set([PT.request_str_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
     for family_name in sorted(found_family_name):
       fam_node = PT.get_node_from_name_and_label(part_tree, family_name, 'Family_t', depth=2)
       if fam_node is not None:
         PT.add_child(extract_base, PT.deep_copy(fam_node))
     self.extract_tree = extract_tree
 
-  def exchange_fields(self, fs_container):
+  def exchange_fields(self, fs_container: List[str]) -> None:
+    """Exchange fields between partitions"""
     if self.location == '': # Nothing to do if extract_tree is None
       return
     exchange_fld_func = exchange_field_s if self.is_struct else exchange_field_u
     exchange_fld_func(self.part_tree,  self.extract_tree , self.dim, self.exch_tool_box,\
           fs_container, self.comm)
 
-  def get_extract_part_tree(self) :
+  def get_extract_part_tree(self) -> CGNSPartTree:
+    """Return the extracted part tree"""
     return self.extract_tree
 
 
-def _extract_part_from_zsr(part_tree, zsr_name, comm,
-                           transfer_dataset=True,
-                           containers_name=[], **options):
+def _extract_part_from_zsr(part_tree: CGNSPartTree, 
+                           zsr_name: str,
+                           comm: MPIComm,
+                           transfer_dataset: bool = True,
+                           containers_name: List[str] = [],
+                           **options: Any) -> Tuple[CGNSPartTree, Optional[int]]:
+  """Internal function to extract part from ZoneSubRegion"""
   extractor = _create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
   l_containers_name = [name for name in containers_name]
@@ -176,9 +186,12 @@ def _extract_part_from_zsr(part_tree, zsr_name, comm,
   return extract_tree, extractor.dim
 
 
-def extract_part_from_zsr(part_tree, zsr_name, comm,
-                          transfer_dataset=True,
-                          containers_name=[], **options):
+def extract_part_from_zsr(part_tree: CGNSPartTree,
+                          zsr_name: str,
+                          comm: MPIComm,
+                          transfer_dataset: bool = True,
+                          containers_name: List[str] = [],
+                          **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
 
@@ -194,7 +207,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
     extracted tree.
 
   Args:
-    part_tree       (CGNSTree)    : Partitioned tree from which extraction is computed. U-Elts
+    part_tree       (CGNSPartTree): Partitioned tree from which extraction is computed. U-Elts
       connectivities are *not* managed.
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
@@ -226,6 +239,7 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
       :end-before:  #extract_from_zsr@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
   extract_tree, dim = _extract_part_from_zsr(part_tree, zsr_name, comm,
                                              transfer_dataset=transfer_dataset,
@@ -245,10 +259,15 @@ def extract_part_from_zsr(part_tree, zsr_name, comm,
   return extract_tree
 
 
-def _create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
+def _create_extractor_from_zsr(part_tree: CGNSPartTree, 
+                               zsr_path: str,
+                               comm: MPIComm,
+                               **options: Dict[str,Any]) -> Extractor:
+  """Create an extractor object from a ZoneSubRegion path"""
   # Get zones by domains
 
   graph_part_tool = options.get("graph_part_tool", "hilbert")
+  assert isinstance(graph_part_tool, str)
 
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
@@ -262,8 +281,8 @@ def _create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
       if zsr_node is not None:
         #Follow BC or GC link
         related_node = PT.Subset.ZSRExtent(zsr_node, part_zone)
-        zsr_node     = PT.get_node_from_path(part_zone, related_node)
-        patch_domain.append(PT.Subset.getPatch(zsr_node)[1])
+        zsr_node     = PT.request_node_from_path(part_zone, related_node)
+        patch_domain.append(PT.request_nd_value(PT.Subset.getPatch(zsr_node)))
         location = PT.Subset.GridLocation(zsr_node)
       else: # ZSR does not exists on this partition
         patch_domain.append(np.empty((1,0), np.int32))
@@ -275,22 +294,25 @@ def _create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
   return Extractor(part_tree, patch, location, comm,
                    graph_part_tool=graph_part_tool)
 
-def create_extractor_from_zsr(part_tree, zsr_path, comm, **options):
+def create_extractor_from_zsr(part_tree: CGNSPartTree,
+                              zsr_path : str, 
+                              comm: MPIComm, 
+                              **options) -> Extractor:
   """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
-
+  check_cgns_part_tree(part_tree)
   extractor = _create_extractor_from_zsr(part_tree, zsr_path, comm, **options)
   if extractor.location == '':
     mlog.warning(f"ZoneSubRegion \"{zsr_path}\" does not exist in input tree, "
                  f"an empty extractor is returned from create_extractor_from_zsr")
   return extractor
 
-
-
-def extract_part_from_bc_name(part_tree, bc_name, comm,
-                              transfer_dataset=True,
-                              containers_name=[],
-                              **options):
+def extract_part_from_bc_name(part_tree: CGNSPartTree,
+                              bc_name: str,
+                              comm: MPIComm,
+                              transfer_dataset: Optional[bool] = True, 
+                              containers_name: List[str] = [],
+                              **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
 
@@ -309,6 +331,7 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
       :end-before:  #extract_from_bc_name@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
 
   # Local copy of the part_tree to add ZSR 
@@ -350,9 +373,10 @@ def extract_part_from_bc_name(part_tree, bc_name, comm,
 
   return extract_tree
 
-def create_extractor_from_bc_name(part_tree, bc_name, comm, **options):
-  """Same as extract_part_from_bc_name, but return the extractor object."""
-  
+def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
+                                  comm: MPIComm,**options) -> Extractor:
+  """Create an extractor object from a BC name"""
+  check_cgns_part_tree(part_tree)
   # Local copy of the part_tree to add ZSR 
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
@@ -371,7 +395,9 @@ def create_extractor_from_bc_name(part_tree, bc_name, comm, **options):
   return extractor
 
 
-def _prepare_extract_from_family(part_tree, family_name, comm):
+def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
+                                 comm: MPIComm) -> Tuple[CGNSPartTree, List[CGNSPath]]:
+  """Internal function to prepare extraction from a family name"""
   
   has_struct_zone = any(PT.Zone.Type(zone) == 'Structured' for zone in PT.get_all_Zone_t(part_tree))
   if comm.allreduce(has_struct_zone, MPI.LOR):
@@ -388,26 +414,31 @@ def _prepare_extract_from_family(part_tree, family_name, comm):
   zsr_has_regionname = lambda n: PT.get_label(n)=="ZoneSubRegion_t" and \
                                 (PT.get_child_from_name(n, 'BCRegionName')               is not None or \
                                  PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None)
-  fam_to_node_paths = lambda zone, family_name: PT.predicates_to_paths(zone, [lambda n: PT.get_label(n)=='ZoneSubRegion_t' and in_fam]) + \
-                                                PT.predicates_to_paths(zone, ['ZoneBC_t', in_fam])
 
 
   fam_node_paths = list()
   for domain, part_zones in part_tree_per_dom.items():
+    # Create a "fake" dist zone including:
+    #   - ZSR belonging to provided family, 
+    #   - BC  belonging to the provided family OR referenced by a previoulsy found ZSR
+    #   - GC  referenced by a previously found ZSR
     dist_zone = PT.new_Zone('Zone')
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneSubRegion_t' and in_fam], comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
-    region_node_names = list()
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, [lambda n : PT.get_label(n) == 'ZoneSubRegion_t' and in_fam(n)],
+                                                comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
+    region_node_names:List[str] = list()
     for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
-      region_node = PT.get_child_from_predicate(zsr_with_regionname_n, is_regionname)
-      region_node_names.append(PT.get_value(region_node))
+      region_node = PT.request_child_from_predicate(zsr_with_regionname_n, is_regionname)
+      region_node_names.append(PT.request_str_value(region_node))
     child_list = ['AdditionalFamilyName_t', 'FamilyName_t', 'GridLocation_t']
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', lambda n: in_fam(n) or bc_gc_in_fam(n)], comm, get_value='leaf', child_list=child_list)
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneGridConnectivity_t', bc_gc_in_fam], comm, get_value='leaf', child_list=child_list)
 
-    fam_node_paths.extend(fam_to_node_paths(dist_zone, family_name))
+    # Add selected ZSR and BCs to fam_node_paths
+    fam_node_paths.extend(PT.predicates_to_paths(dist_zone, [lambda n : PT.get_label(n) == "ZoneSubRegion_t"]))
+    fam_node_paths.extend(PT.predicates_to_paths(dist_zone, ['ZoneBC_t', in_fam]))
 
     gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')
-    location = [PT.get_value(n) for n in gl_nodes]
+    location = [PT.request_str_value(n) for n in gl_nodes]
     if len(set(location)) > 1:
       # Not checking subregion extents, possible ?
       raise ValueError(f"Specified family refers to nodes with different GridLocation value : {set(location)}.")
@@ -423,23 +454,25 @@ def _prepare_extract_from_family(part_tree, family_name, comm):
 
           if PT.get_label(fam_node)=="ZoneSubRegion_t":
             related_path = PT.Subset.ZSRExtent(fam_node, part_zone)
-            fam_node = PT.get_node_from_path(part_zone, related_path)
+            fam_node = PT.request_node_from_path(part_zone, related_path)
 
-          pl_n = PT.get_child_from_name(fam_node, 'PointList')
-          fam_pl.append(PT.get_value(pl_n))
+          pl_n = PT.request_child_from_name(fam_node, 'PointList')
+          fam_pl.append(PT.request_nd_value(pl_n))
 
-      fam_pl = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
-      if fam_pl.size!=0:
-        fam_pl = np.unique(fam_pl, axis=1) # If pl.size == 0, this line fails with numpy 1.17
-        PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl, loc=location[0], parent=part_zone)
+      fam_pl_cat = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
+      if fam_pl_cat.size!=0:
+        fam_pl_cat = np.unique(fam_pl_cat, axis=1) # If pl.size == 0, this line fails with numpy 1.17
+        PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl_cat, loc=location[0], parent=part_zone)
 
   return local_part_tree, fam_node_paths
 
 
-def extract_part_from_family(part_tree, family_name, comm,
-                             transfer_dataset=True,
-                             containers_name=[],
-                             **options):
+def extract_part_from_family(part_tree: CGNSPartTree, 
+                             family_name: str, 
+                             comm: MPIComm,
+                             transfer_dataset: bool = True,
+                             containers_name: List[str] = [],
+                             **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided family name from the input volumic
   partitioned tree.
   
@@ -461,6 +494,7 @@ def extract_part_from_family(part_tree, family_name, comm,
       :end-before:  #extract_from_family@end
       :dedent: 2
   """
+  check_cgns_part_tree(part_tree)
   start = time.time()
 
   local_part_tree, fam_node_paths = _prepare_extract_from_family(part_tree, family_name, comm)
@@ -517,9 +551,10 @@ def extract_part_from_family(part_tree, family_name, comm,
 
 
   
-def create_extractor_from_family(part_tree, family_name, comm, **options):
-  """Same as extract_part_from_family, but return the extractor object."""
-
+def create_extractor_from_family(part_tree: CGNSPartTree, family_name: str,
+                                 comm: MPIComm, **options) -> Extractor:
+  """Create an extractor object from a family name"""
+  check_cgns_part_tree(part_tree)
   local_part_tree, _ = _prepare_extract_from_family(part_tree, family_name, comm)
 
   extractor = _create_extractor_from_zsr(local_part_tree, f"__{family_name}", comm, **options)

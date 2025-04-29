@@ -1,8 +1,8 @@
+import numpy as np
 from mpi4py import MPI
-import numpy              as np
 
+from maia.typing import *
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
-
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT
@@ -16,7 +16,9 @@ LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell',
              'IEdgeCenter': 'Edge', 'JEdgeCenter': 'Edge',
              'IFaceCenter': 'Face', 'JFaceCenter': 'Face', 'KFaceCenter': 'Face'}
 
-def create_part_pl_gnum_unique(part_zones, node_path, comm):
+def create_part_pl_gnum_unique(part_zones: List[CGNSPartTree], 
+                               node_path: CGNSPath,
+                               comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node, assuming that entity in
   this node are not duplicated over partitions.
@@ -27,7 +29,7 @@ def create_part_pl_gnum_unique(part_zones, node_path, comm):
   n_elems = np.empty(len(part_zones), dtype=np.int32)
   for i_zone, p_zone in enumerate(part_zones):
     node = PT.get_node_from_path(p_zone, node_path)
-    n_elems[i_zone] = PT.get_child_from_name(node, 'PointList')[1].shape[1] if node else 0
+    n_elems[i_zone] = PT.request_nd_value(PT.request_child_from_name(node, 'PointList')).shape[1] if node else 0
 
   # Exchange
   shifted_part = par_utils.gather_and_shift(len(part_zones), comm, dtype=np.int32)
@@ -43,7 +45,10 @@ def create_part_pl_gnum_unique(part_zones, node_path, comm):
       distri_ud = MT.newGlobalNumbering(parent=node)
       PT.new_DataArray('Index', np.arange(start, start+size_per_part[offset], dtype=pdm_gnum_dtype), parent=distri_ud)
 
-def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
+def create_part_pl_gnum(dist_zone: CGNSDistTree, 
+                        part_zones: List[CGNSPartTree], 
+                        node_path: CGNSPath,
+                        comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node, even if entity in
   this node appears in accross multiple partitions.
@@ -58,13 +63,13 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
     node = PT.get_node_from_path(p_zone, node_path)
     if node:
       if is_bcds := PT.get_label(node) == 'BCDataSet_t':
-        bc_parent = PT.get_node_from_path(p_zone, PT.utils.path_head(node_path))
+        bc_parent = PT.request_node_from_path(p_zone, PT.utils.path_head(node_path))
       location = PT.BCDataSet.GridLocation(node, bc_parent) if is_bcds else PT.Subset.GridLocation(node)
       if location == 'Vertex':
-        ln_to_gn = PT.get_value(MT.getGlobalNumbering(p_zone, 'Vertex'))
+        ln_to_gn = MT.globalnumbering_value(p_zone, 'Vertex')
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
-      part_pl = PT.get_child_from_name(node, 'PointList')[1][0]
+      part_pl = PT.request_nd_value(PT.request_child_from_name(node, 'PointList'))[0]
       ln_to_gn_list.append(ln_to_gn[part_pl-1])
 
   blk_distri_f = par_utils.distribution_from_gnum(ln_to_gn_list, comm, full=True)
@@ -95,7 +100,10 @@ def create_part_pl_gnum(dist_zone, part_zones, node_path, comm):
       PT.new_DataArray('Index', part_lngn[i_zone], parent=distri_ud)
       i_zone += 1
 
-def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
+def create_part_pr_gnum(dist_zone: CGNSDistTree, 
+                        part_zones: List[CGNSPartTree],
+                        node_path: CGNSPath, 
+                        comm: MPIComm) -> None:
   """
   Create a global numbering index for a given node containing a partitioned point range
   """
@@ -110,10 +118,10 @@ def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
       if loc == 'FaceCenter':
         raise RuntimeError(f"Wrong location for node {node_path} (FaceCenter). Please use one of [IFaceCenter, JFaceCenter, KFaceCenter]")
 
-      ln_to_gn_all = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
+      ln_to_gn_all = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
 
       # Get entity local numbering as full list
-      part_pr = PT.get_child_from_name(node, 'PointRange')[1]
+      part_pr = PT.request_nd_value(PT.request_child_from_name(node, 'PointRange'))
       i_ar = np.arange(part_pr[0][0], part_pr[0][1]+1) #creation pointlist
       if idx_dim == 1:
         local_num = i_ar
@@ -137,7 +145,11 @@ def create_part_pr_gnum(dist_zone, part_zones, node_path, comm):
       MT.newGlobalNumbering({'Index': index_gnum[i_zone]}, parent=node)
       i_zone += 1
 
-def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False):
+def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
+                       part_zones: List[CGNSPartTree],
+                       node_path: CGNSPath, 
+                       comm: MPIComm, 
+                       allow_mult: bool = False) -> None:
   """
   Create a distributed point list for the node specified by its node_path
   from the partitioned point lists.
@@ -159,35 +171,35 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
     for part_zone in part_zones:
       ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
       if ancestor_n is not None:
-        ln_to_gn_list.extend([PT.get_value(MT.getGlobalNumbering(node, 'Index')) \
+        ln_to_gn_list.extend([MT.globalnumbering_value(node, 'Index') \
             for node in PT.get_children_from_predicate(ancestor_n, name_predicate)])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
-    ln_to_gn_list = [PT.get_node_from_path(part_zone, gn_path)[1] for part_zone in part_zones \
+    ln_to_gn_list = [PT.request_nd_value(PT.request_node_from_path(part_zone, gn_path)) for part_zone in part_zones \
         if PT.get_node_from_path(part_zone, gn_path) is not None]
 
   distri   = par_utils.distribution_from_gnum(ln_to_gn_list, comm)
   distri_f = par_utils.partial_to_full_distribution(distri, comm)
   GI = EP.GlobalMultiIndexer(distri_f, [gn-1 for gn in ln_to_gn_list], comm)
 
-  idx_dim = 1 if PT.Zone.Type(dist_zone) == 'Unstructured' else dist_zone[1].shape[0]
+  idx_dim = 1 if PT.Zone.Type(dist_zone) == 'Unstructured' else PT.request_nd_value(dist_zone).shape[0]
   keys = ['pl_i', 'pl_j', 'pl_k'][:idx_dim]
-  part_pl_list = {key: [] for key in keys}
+  part_pl_list:Dict[str, List[NDArray]] = {key: [] for key in keys}
 
   for part_zone in part_zones:
     ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
     if ancestor_n:
       for node in PT.iter_children_from_predicate(ancestor_n, name_predicate):
-        part_pl = PT.get_child_from_name(node, 'PointList')[1]
+        part_pl = PT.request_nd_value(PT.request_child_from_name(node, 'PointList'))
         loc = PT.BCDataSet.GridLocation(node, ancestor_n) if PT.get_label(node) == 'BCDataSet_t' else PT.Subset.GridLocation(node)
         if PT.Zone.Type(part_zone) == 'Unstructured':
           if loc == 'Vertex':
-            ln_to_gn = PT.get_value(MT.getGlobalNumbering(part_zone, 'Vertex'))
+            ln_to_gn = MT.globalnumbering_value(part_zone, 'Vertex')
           else:
             ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
           part_pl_list['pl_i'].append(ln_to_gn[part_pl[0]-1])
         else:
-          ln_to_gn = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
+          ln_to_gn = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
           ijk_glob = _part_triplet_to_dist_triplet(part_pl, loc, ln_to_gn, PT.Zone.VertexSize(part_zone), PT.Zone.VertexSize(dist_zone))
           for i, key in enumerate(keys):
             part_pl_list[key].append(ijk_glob[i])
@@ -196,15 +208,16 @@ def part_pl_to_dist_pl(dist_zone, part_zones, node_path, comm, allow_mult=False)
   dist_pl = []
   for key in keys: #This factorize U and S PL shapes
     dist_pl.append(GI.Put(part_pl_list[key]))
-  dist_pl = np.asarray(dist_pl, order='F')
-  pl = PT.new_IndexArray(value=dist_pl, parent=dist_node)
+  dist_pl_np = np.asarray(dist_pl, order='F')
+  pl = PT.new_IndexArray(value=dist_pl_np, parent=dist_node)
   assert pl[1].ndim == 2 and pl[1].shape[0] == idx_dim
 
   # Add distribution in dist_node
   MT.newDistribution({'Index' : distri}, parent=dist_node)
 
 
-def _part_triplet_to_dist_triplet(ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size):
+def _part_triplet_to_dist_triplet( ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size):
+    
   """ Convert a structured partitioned (local) i,j,k triplet to the corresponding
   global triplet in the distributed block """
   pcell_size = tuple(k-1 for k in pvtx_size)

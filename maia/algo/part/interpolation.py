@@ -2,9 +2,13 @@ from mpi4py import MPI
 
 import maia.pytree        as PT
 
+from maia.typing import *
+
 from maia.utils                  import py_utils
 from maia.utils                  import logging as mlog
+from maia.utils.ndarray.vstride  import VStrideArray
 from maia.factory.dist_from_part import get_parts_per_blocks
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 
 from .import point_cloud_utils as PCU
 from .import multidom_gnum     as MDG
@@ -14,14 +18,14 @@ from .import closest_points as CLO
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 
-def create_src_to_tgt(src_parts_per_dom,
-                      tgt_parts_per_dom,
-                      comm,
-                      src_loc = 'CellCenter',
-                      tgt_loc = 'CellCenter',
-                      strategy = 'Closest',
-                      loc_tolerance = 1E-6,
-                      n_closest_pt = 1):
+def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
+                      tgt_parts_per_dom:List[List[CGNSPartTree]],
+                      comm:MPIComm,
+                      src_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',
+                      tgt_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',
+                      strategy:str = 'Closest',
+                      loc_tolerance:float = 1E-6,
+                      n_closest_pt:int = 1):
   """ Create a source to target indirection depending of the choosen strategy.
 
   This indirection can then be used to create an interpolator object.
@@ -29,8 +33,8 @@ def create_src_to_tgt(src_parts_per_dom,
 
   assert strategy in ['LocationAndClosest', 'Location', 'Closest']
 
-  location_out_inv = [] # Init to avoid unbound error
-  closest_out_inv  = []
+  location_out_inv:List[List[Dict[str, VStrideArray]]] = [] # Init to avoid unbound error
+  closest_out_inv:List[List[Dict[str, VStrideArray]]]  = []
 
   #Phase 1 -- localisation
   if strategy != 'Closest':
@@ -70,7 +74,7 @@ def create_src_to_tgt(src_parts_per_dom,
       tgt_clouds = [[PCU.extract_sub_cloud(*cloud, location_out[i][j]['unlocated_ids']) for j,cloud in enumerate(clouds)] \
         for i, clouds in enumerate(tgt_clouds)]
 
-    _, closest_out_inv = CLO._mdom_closest_points(src_clouds, tgt_clouds, comm, n_pts=n_closest_pt, reverse=True, need_shift=tgt_need_shift)
+    _, closest_out_inv = CLO._mdom_closest_points(src_clouds, tgt_clouds, comm, True, n_pts=n_closest_pt, need_shift=tgt_need_shift)
 
 
   all_located_inv = py_utils.to_flat_list(location_out_inv)
@@ -98,10 +102,17 @@ def create_src_to_tgt(src_parts_per_dom,
 
 
 
-def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
+def interpolate(src_tree:CGNSPartTree,
+                tgt_tree:CGNSPartTree,
+                comm:MPIComm,
+                containers_name:List[str],
+                location:Literal['CellCenter', 'Vertex'],
+                **options) -> None:
   """
   Partitioned implementation of maia.algo.interpolate
   """
+  check_cgns_part_tree(src_tree)
+  check_cgns_part_tree(tgt_tree)
   # Early return if containers_name is empty
   assert isinstance(containers_name, list)
   if len(containers_name) == 0:
@@ -110,13 +121,15 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   # Guess location of input fields using first input zone
   try:
     first_part = next(PT.iter_all_Zone_t(src_tree))
-    input_loc = PT.Subset.GridLocation(PT.get_child_from_name(first_part, containers_name[0]))
+    input_loc = PT.Subset.GridLocation(PT.request_child_from_name(first_part, containers_name[0]))
   except StopIteration:
     input_loc = ''
   input_loc = comm.allreduce(input_loc, op=MPI.MAX)
+  assert input_loc in ['CellCenter', 'Vertex']
+  _input_loc:Literal['CellCenter', 'Vertex'] = input_loc #type:ignore[assignment]
 
   # Create interpolator
-  interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)
+  interpolator = create_interpolator(src_tree, tgt_tree, comm, _input_loc, location, **options)
 
   # Exchange fields
   for container_name in containers_name:
@@ -124,14 +137,21 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
 
 
 
-def create_interpolator(src_tree, tgt_tree, comm, src_location, location, **options):
+def create_interpolator(src_tree:CGNSPartTree,
+                        tgt_tree:CGNSPartTree,
+                        comm:MPIComm,
+                        src_location:Literal['CellCenter', 'Vertex'],
+                        tgt_location:Literal['CellCenter', 'Vertex'],
+                        **options) -> Interpolator:
   """
   Partitioned implementation of maia.algo.interpolate
   """
+  check_cgns_part_tree(src_tree)
+  check_cgns_part_tree(tgt_tree)
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
-  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, location, **options)
+  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, tgt_location, **options)
   src_parts = py_utils.to_flat_list(src_parts_per_dom)
   tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom)
-  return Interpolator(src_parts, tgt_parts, src_to_tgt, src_location, location, comm)
+  return Interpolator(src_parts, tgt_parts, src_to_tgt, src_location, tgt_location, comm)

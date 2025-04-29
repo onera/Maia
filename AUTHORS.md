@@ -19,3 +19,4 @@ Alain Hervault
 Nicolas Dellinger
 Thomas Hennion
 Romain Paris
+Amira Mehri

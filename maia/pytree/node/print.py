@@ -1,10 +1,8 @@
 import sys
 import numpy       as np
 from pathlib import Path
-from typing import TextIO
 
 from maia.pytree.typing import *
-from maia.pytree.meta import api_export
 import maia.pytree.cgns_keywords as CGK
 import maia.pytree.walk as W
 
@@ -163,45 +161,44 @@ def print_node(node, depth, is_last_child, line_prefix, plabel, cst_props, out_l
     sons_w = "child" if n_sons == 1 else "children"
     out_lines.append(f"{line_prefix}╵╴╴╴ ({n_sons} {sons_w} masked)\n")
 
-@api_export
 def to_string(tree:CGNSTree, 
               *, 
               verbose:bool=False,
               max_depth:int=1000,
               colors:bool=False,
-              print_if:Callable[[CGNSTree], bool]=lambda n: True):
+              print_if:Callable[[CGNSTree], bool]=lambda n: True) -> List[str]:
   # TODO : Keeping 1 level of children with print_if is complicated, 
   # maybe update if later using graph iterators
+  # For now we hack tree structure by temporary adding a flag in node value to mark nodes to be removed
   masked_tree = shallow_copy(tree)
   for node in W.iter_nodes_from_predicate(masked_tree, lambda n: True, explore='deep'):
-    node[1] = (node[1], print_if(node))
+    node[1] = (node[1], print_if(node)) #type:ignore[index]
   # Remove nodes having a False value and no child
   n_nodes_prev = _n_nodes(masked_tree)
   n_nodes      = -1 # Init loop
   while (n_nodes != n_nodes_prev):
-    W.rm_nodes_from_predicate(masked_tree, lambda n: len(NA.get_children(n)) == 0 and not n[1][1])
+    W.rm_nodes_from_predicate(masked_tree, lambda n: len(NA.get_children(n)) == 0 and not n[1][1]) #type:ignore[index]
     n_nodes_prev = n_nodes
     n_nodes      = _n_nodes(masked_tree)
   for node in W.iter_nodes_from_predicate(masked_tree, lambda n: True, explore='deep'):
-    node[1] = node[1][0]
+    node[1] = node[1][0] #type:ignore[index]
    
 
   print_traits = {'max_depth' : max_depth,
                   'colors'    : colors,
                   'verbose'   : verbose}
 
-  out_lines = []
+  out_lines:List[str] = []
   print_node(masked_tree, 0, False, "", "", print_traits, out_lines)
   return out_lines
 
-@api_export
 def print_tree(tree:CGNSTree, 
                out:TextIO =sys.stdout,
                *, 
                verbose:bool=False,
                max_depth:int=1000,
                colors:bool=True,
-               print_if:Callable[[CGNSTree], bool]=lambda n: True):
+               print_if:Callable[[CGNSTree], bool]=lambda n: True) -> None:
   """
   print_tree(tree, out=sys.stdout, **kwargs)
 

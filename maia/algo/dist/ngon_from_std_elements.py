@@ -1,15 +1,15 @@
-import numpy              as np
-
-import maia.pytree        as PT
-import maia.pytree.maia   as MT
+import numpy as np
 
 import maia
+from maia.typing import *
+import maia.pytree        as PT
+import maia.pytree.maia   as MT
 from maia.utils import np_utils, par_utils, layouts
 
 from maia.algo.dist   import remove_element as RME
 from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh_nodal
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 import Pypdm.Pypdm as PDM
 
 def raise_if_possible_overflow(n_elt, n_rank):
@@ -158,7 +158,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   PT.rm_nodes_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
 
-def generate_ngon_from_std_elements(dist_tree, comm):
+def generate_ngon_from_std_elements(dist_tree: CGNSDistTree, 
+                                    comm: MPIComm) -> None:
   """
   Transform an element based connectivity into a polyedric (NGon based)
   connectivity.
@@ -173,8 +174,8 @@ def generate_ngon_from_std_elements(dist_tree, comm):
   This function also works on 2d meshes.
 
   Args:
-    dist_tree  (CGNSTree): Tree with connectivity described by standard elements
-    comm       (`MPIComm`) : MPI communicator
+    dist_tree  (CGNSDistTree): Tree with connectivity described by standard elements
+    comm       (`MPIComm`)   : MPI communicator
   """
   MJT.add_joins_donor_name(dist_tree, comm)
 
@@ -189,8 +190,7 @@ def generate_ngon_from_std_elements(dist_tree, comm):
     for zbc in PT.iter_children_from_label(dist_zone, 'ZoneBC_t'):
       for bc in PT.get_children_from_label(zbc, 'BC_t'):
         for bcds in PT.get_children_from_predicate(bc, lambda n : PT.get_label(n) == 'BCDataSet_t' and is_subset(n)):
-          bcds[0] = f'__maia::isBCDS#@#{bc[0]}#@#{bcds[0]}'
-          bcds[3] = 'BC_t'
+          PT.update_node(bcds, name=f'__maia::isBCDS#@#{bc[0]}#@#{bcds[0]}', label='BC_t')
           PT.add_child(zbc, bcds)
         PT.rm_children_from_name(bc, '__maia::isBCDS#@#*')
     # GC case is specific (they have their own container)
@@ -212,7 +212,7 @@ def generate_ngon_from_std_elements(dist_tree, comm):
   is_zone     = lambda n : PT.get_label(n) == 'Zone_t'
   is_zone_elt = lambda n : is_zone(n) and PT.Zone.Type(n) == 'Unstructured' and not PT.Zone.has_ngon_elements(n)
   for base in PT.iter_all_CGNSBase_t(dist_tree):
-    extract_dim = PT.get_value(base)[0]
+    extract_dim = PT.request_nd_value(base)[0]
     zones_u = PT.get_children_from_predicate(base, is_zone_elt)
 
     for zone in zones_u: #Raise if overflow is probable
@@ -246,24 +246,25 @@ def generate_ngon_from_std_elements(dist_tree, comm):
       elif PT.get_name(zbc) != '__maia::isSubset':
         for bcds in PT.get_nodes_from_name(zbc, '__maia::isBCDS*'):
           _, bc_name, ds_name = bcds[0].split('#@#')
-          bc = PT.get_child_from_name(zbc, bc_name)
-          bcds[0] = ds_name
-          bcds[3] = 'BCDataSet_t'
+          bc = PT.request_child_from_name(zbc, bc_name)
+          PT.update_node(bcds, name=ds_name, label='BCDataSet_t')
           if bc is not None: # BC may have been removed (eg. EdgeCenter BCs)
             PT.add_child(bc, bcds)
         PT.rm_children_from_label(zbc, 'BCDataSet_t')
     # > Subsets
-    container = PT.get_child_from_name(dist_zone, '__maia::isSubset')
+    container = PT.request_child_from_name(dist_zone, '__maia::isSubset')
     for node in PT.get_children(container):
-      old_label = PT.get_child_from_name(node, '__maia::initialLabel')
-      PT.set_label(node, PT.get_value(old_label))
+      old_label = PT.request_child_from_name(node, '__maia::initialLabel')
+      PT.set_label(node, PT.request_str_value(old_label))
       PT.rm_child(node, old_label)
       PT.add_child(dist_zone, node)
     PT.rm_child(dist_zone, container)
 
   MJT.copy_donor_subset(dist_tree)
-
-def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
+  
+def convert_elements_to_ngon(dist_tree: CGNSDistTree,
+                             comm: MPIComm,
+                             stable_sort: bool = False) -> None:
   """
   Transform an element based connectivity into a polyedric (NGon based)
   connectivity.
@@ -278,8 +279,8 @@ def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
   (:func:`convert_mixed_to_elements` is called under the hood).
 
   Args:
-    dist_tree  (CGNSTree): Tree with connectivity described by standard elements
-    comm       (`MPIComm`) : MPI communicator
+    dist_tree  (CGNSDistTree): Tree with connectivity described by standard elements
+    comm       (`MPIComm`)   : MPI communicator
     stable_sort (bool, optional) : If True, 2D elements described in the
       elements section keep their original id. Defaults to False.
 
@@ -295,6 +296,7 @@ def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
         :end-before: #convert_elements_to_ngon@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   # If tree has MIXED elements, first convert Mixed -> Elts
   is_mixed = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'MIXED'
   has_mixed = PT.get_node_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', is_mixed]) is not None
@@ -307,6 +309,6 @@ def convert_elements_to_ngon(dist_tree, comm, stable_sort=False):
   else:
     generate_ngon_from_std_elements(dist_tree, comm)
 
-  lib_version = PT.get_child_from_name(dist_tree, 'CGNSLibraryVersion')
-  if PT.get_value(lib_version)[0] < 4:
+  lib_version = PT.request_child_from_name(dist_tree, 'CGNSLibraryVersion')
+  if PT.request_nd_value(lib_version)[0] < 4:
     PT.set_value(lib_version, 4.2)

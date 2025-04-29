@@ -22,7 +22,7 @@ def elements_to_ngons(dist_tree,comm):
   See details :ref:`here <elements_to_ngons_impl>`
 
   Args:
-    dist_tree  (CGNSTree): Tree with an element-based connectivity
-    comm       (`MPIComm`): MPI communicator
+    dist_tree  (CGNSDistTree): Tree with an element-based connectivity
+    comm       (`MPIComm`)   : MPI communicator
   """
   apply_to_zones(cdist_algo.elements_to_ngons, dist_tree, comm)

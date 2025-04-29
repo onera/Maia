@@ -1,20 +1,21 @@
 import numpy as np
 
 import maia
+from maia.typing import *
 import maia.pytree as PT
-
 from maia.utils import np_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from . import multidom_gnum
 from . import connectivity_utils
 from . import geometry
-
+from maia.pytree.maia.check_tree import check_cgns_part_tree
 import Pypdm.Pypdm as PDM
 
 class CenterToNode:
 
-  def __init__(self, tree, comm, idw_power=1, cross_domain=True):
+  def __init__(self, tree: CGNSPartTree, comm: MPIComm, 
+               idw_power: int = 1, cross_domain: bool = True):
 
     self.parts    = []
     self.weights  = []
@@ -25,7 +26,8 @@ class CenterToNode:
 
     gnum_list   = []
     for i_dom, zone_path in enumerate(parts_per_dom):
-      dim = PT.get_value(PT.get_child_from_name(tree, PT.utils.path_head(zone_path)))[0]
+      dist_base = PT.request_child_from_name(tree, PT.utils.path_head(zone_path))
+      dim = PT.request_nd_value(dist_base)[0]
       for i_part, zone in enumerate(parts_per_dom[zone_path]):
 
           n_vtx = PT.Zone.n_vtx(zone)
@@ -34,6 +36,7 @@ class CenterToNode:
           
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
+          assert (cx is not None) and (cy is not None) and (cz is not None)
           if PT.Zone.Type(zone)=='Structured' : 
             cx = cx.flatten()
             cy = cy.flatten()
@@ -64,12 +67,12 @@ class CenterToNode:
     self.gmean = PDM.GlobalMean(gnum_list, comm)
 
 
-  def move_fields(self, container_name):
+  def move_fields(self, container_name: str) -> None:
 
     #Check that solutions are known on each source partition
     fields_per_part = list()
     for part in self.parts:
-      container = PT.get_node_from_path(part, container_name)
+      container = PT.request_node_from_path(part, container_name)
       assert PT.Subset.GridLocation(container) == 'CellCenter'
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
     fields_per_part.append(fields_name)
@@ -80,7 +83,7 @@ class CenterToNode:
     asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      cell_fields[field_name] = [asflat(PT.get_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
+      cell_fields[field_name] = [asflat(PT.request_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
@@ -102,7 +105,7 @@ class CenterToNode:
         PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
-  def __init__(self, tree, comm, idw_power=1):
+  def __init__(self, tree: CGNSPartTree, comm: MPIComm, idw_power: int = 1) -> None:
 
     self.parts        = []
     self.weights      = []
@@ -110,9 +113,10 @@ class NodeToCenter:
     self.cell_vtx     = []
 
     for base in PT.get_all_CGNSBase_t(tree):
-      dim = PT.get_value(base)[0]
+      dim = PT.request_nd_value(base)[0]
       for p_zone in PT.get_all_Zone_t(base):
         cx,cy,cz = PT.Zone.coordinates(p_zone)
+        assert (cx is not None) and (cy is not None) and (cz is not None)
         if PT.Zone.Type(p_zone)=='Structured' : 
            cx = cx.flatten()
            cy = cy.flatten()
@@ -135,7 +139,7 @@ class NodeToCenter:
         self.cell_vtx.append(cell_vtx)
           
 
-  def move_fields(self, container_name):
+  def move_fields(self, container_name: str) -> None:
 
     for i_part, part in enumerate(self.parts):
       cell_vtx_idx = self.cell_vtx  [i_part].displs
@@ -143,14 +147,14 @@ class NodeToCenter:
       weights      = self.weights   [i_part]
       weightssum   = self.weightssum[i_part]
 
-      container = PT.get_node_from_path(part, container_name)
+      container = PT.request_node_from_path(part, container_name)
       assert PT.Subset.GridLocation(container) == 'Vertex'
 
       PT.rm_children_from_name(part, f'{container_name}#Cell')
       fs_out = PT.new_FlowSolution(f'{container_name}#Cell', loc='CellCenter', parent=part)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
-        data_in = PT.get_value(array) 
+        data_in = PT.request_nd_value(array) 
         shape = data_in.shape
         if len(shape) != 1 :
            data_in=data_in.flatten(order='F')
@@ -163,7 +167,10 @@ class NodeToCenter:
 
 
 
-def centers_to_nodes(tree, comm, containers_name=[], **options):
+def centers_to_nodes(part_tree: CGNSPartTree, 
+                     comm: MPIComm, 
+                     containers_name: List[str] = [], 
+                     **options) -> None:
   """ Create Vertex located FlowSolution_t from CellCenter located FlowSolution_t.
 
   Interpolation is based on Inverse Distance Weighting 
@@ -179,7 +186,7 @@ def centers_to_nodes(tree, comm, containers_name=[], **options):
     apply to internal partitioning interfaces, which are always crossed.
 
   Args:
-    tree      (CGNSTree): Partionned tree
+    part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
     **options: Options related to interpolation, see above.
@@ -195,12 +202,16 @@ def centers_to_nodes(tree, comm, containers_name=[], **options):
         :end-before: #centers_to_nodes@end
         :dedent: 2
   """
-  C2N = CenterToNode(tree, comm, **options)
+  check_cgns_part_tree(part_tree)
+  C2N = CenterToNode(part_tree, comm, **options)
 
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
-def nodes_to_centers(tree, comm, containers_name=[], **options):
+def nodes_to_centers(part_tree: CGNSPartTree, 
+                     comm: MPIComm, 
+                     containers_name: List[str] = [], 
+                     **options) -> None:
   """ Create CellCenter located FlowSolution_t from Vertex located FlowSolution_t.
 
   Interpolation is based on Inverse Distance Weighting 
@@ -212,7 +223,7 @@ def nodes_to_centers(tree, comm, containers_name=[], **options):
   - ``idw_power`` (float, default = 1) -- Power to which the cell-vertex distance is elevated.
 
   Args:
-    tree      (CGNSTree): Partionned tree
+    part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
     containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
     **options: Options related to interpolation, see above.
@@ -228,7 +239,8 @@ def nodes_to_centers(tree, comm, containers_name=[], **options):
         :end-before: #nodes_to_centers@end
         :dedent: 2
   """
-  N2C = NodeToCenter(tree, comm, **options)
+  check_cgns_part_tree(part_tree)
+  N2C = NodeToCenter(part_tree, comm, **options)
 
   for container_name in containers_name:
     N2C.move_fields(container_name)

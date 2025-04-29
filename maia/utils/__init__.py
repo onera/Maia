@@ -11,6 +11,8 @@ from .parallel  import utils    as par_utils
 from .ndarray   import np_utils as np_utils
 from .ndarray   import vstride
 
+from maia.typing import *
+
 def require_cpp20(f):
   """ A decorator checking if Maia has been compiled with CXX20 """
   @wraps(f)
@@ -21,6 +23,6 @@ def require_cpp20(f):
     return f(*args, **kwargs)
   return inner
 
-def as_pdm_gnum(array):
+def as_pdm_gnum(array:NDArray):
   import Pypdm.Pypdm as PDM
   return np_utils.safe_int_cast(array, PDM.npy_pdm_gnum_dtype)

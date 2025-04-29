@@ -1,3 +1,4 @@
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 from maia.utils    import par_utils
@@ -8,7 +9,9 @@ from maia.transfer.part_to_dist import index_exchange as IPTB
 
 import Pypdm.Pypdm as PDM
 
-def dist_coords_to_part_coords(dist_zone, part_zones, comm):
+def dist_coords_to_part_coords(dist_zone: CGNSDistTree, 
+                               part_zones: List[CGNSPartTree],
+                               comm: MPIComm) -> None:
   """
   Transfert all the data included in GridCoordinates_t nodes from a distributed
   zone to the partitioned zones
@@ -18,9 +21,9 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
 
   #Get data
   dist_data = dict()
-  dist_gc = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
+  dist_gc = PT.request_child_from_label(dist_zone, "GridCoordinates_t")
   for grid_co in PT.iter_children_from_predicate(dist_gc, lambda n: PT.get_label(n) == 'DataArray_t' and PT.get_name(n) != 'CoordinateTransform'):
-    dist_data[PT.get_name(grid_co)] = grid_co[1] #Prevent np->scalar conversion
+    dist_data[PT.get_name(grid_co)] = PT.request_nd_value(grid_co)
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   part_data = EP.block_to_part(dist_data, distribution_vtx, [lngn-1 for lngn in vtx_lntogn_list], comm)
@@ -33,7 +36,9 @@ def dist_coords_to_part_coords(dist_zone, part_zones, comm):
       PT.new_DataArray(data_name, shaped_data, parent=part_gc)
     PT.add_child(part_gc, PT.get_child_from_name(dist_gc, 'CoordinateTransform'))
 
-def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
+def dist_coords_to_part_coords_m(dist_zones: List[CGNSDistTree], 
+                                 part_zones_per_dom: List[List[CGNSPartTree]],
+                                 comm: MPIComm) -> None:
   """
   Same as dist_coords_to_part_coords, but with the multiblock version (only one collective call)
   """
@@ -41,7 +46,7 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
   part_lngn = []
   vtx_offset = 0
 
-  dist_data = dict()
+  dist_data:Dict[str, List[NDArray]] = dict()
   for dist_zone, part_zones in zip(dist_zones, part_zones_per_dom):
     dist_gc_transform = PT.get_node_from_predicates(dist_zone, "GridCoordinates_t/CoordinateTransform")    
 
@@ -52,15 +57,15 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
         except KeyError:
           dist_data[dist_gc_name] = [dist_gc_node]
 
-    vtx_distrib = MT.getDistribution(dist_zone, 'Vertex')[1]
+    vtx_distrib = MT.distribution_value(dist_zone, 'Vertex')
     block_distris.append(par_utils.partial_to_full_distribution(vtx_distrib, comm))
 
     # Collect and shift LNToGN
     for part_zone in part_zones:
-      part_lngn.append(MT.getGlobalNumbering(part_zone, 'Vertex')[1] + vtx_offset)
+      part_lngn.append(MT.globalnumbering_value(part_zone, 'Vertex') + vtx_offset)
       part_gc = PT.new_GridCoordinates('GridCoordinates', parent=part_zone)
       for dist_gc_name in dist_data.keys():
-        PT.new_DataArray(dist_gc_name, None, parent=part_gc)
+        PT.new_DataArray(dist_gc_name, None, parent=part_gc) #type:ignore[arg-type] #(will be replaced)
       PT.add_child(part_gc, dist_gc_transform)
 
     vtx_offset += PT.Zone.n_vtx(dist_zone)
@@ -75,19 +80,22 @@ def dist_coords_to_part_coords_m(dist_zones, part_zones_per_dom, comm):
     for part_zone in part_zones:
       part_gc = PT.get_child_from_label(part_zone, "GridCoordinates_t")
       for data_name, data in part_data.items():
-        part_gc_node = PT.get_child_from_name(part_gc, data_name)
+        part_gc_node = PT.request_child_from_name(part_gc, data_name)
         shaped_data = data[i_part].reshape(PT.Zone.VertexSize(part_zone), order='F')
         PT.update_node(part_gc_node, value=shaped_data)
       i_part += 1
 
 
-def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
+def _dist_to_part_sollike(dist_zone: CGNSDistTree, 
+                          part_zones: List[CGNSPartTree], 
+                          mask_tree: CGNSTree,
+                          comm: MPIComm) -> None:
   """
   Shared code for FlowSolution_t and DiscreteData_t
   """
   #Get distribution
   for mask_sol in PT.get_children(mask_tree):
-    d_sol = PT.get_child_from_name(dist_zone, PT.get_name(mask_sol)) #True container
+    d_sol = PT.request_child_from_name(dist_zone, PT.get_name(mask_sol)) #True container
     location = PT.Subset.GridLocation(d_sol)
     has_pl   = PT.get_child_from_name(d_sol, 'PointList') is not None
     if has_pl:
@@ -104,7 +112,8 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
 
     #Get data
     fields = [PT.get_name(n) for n in PT.get_children(mask_sol)]
-    dist_data = {field : PT.get_child_from_name(d_sol, field)[1] for field in fields}
+    dist_data = {field : PT.request_nd_value(PT.request_child_from_name(d_sol, field)) \
+                 for field in fields}
 
     #Exchange
     part_data = EP.block_to_part(dist_data, distribution, [lngn-1 for lngn in lntogn_list], comm)
@@ -112,9 +121,10 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
     for ipart, part_zone in enumerate(part_zones):
       #Skip void flow solution (can occur with point lists)
       if lntogn_list[ipart].size > 0:
+        shape: Tuple[int, ...]
         if has_pl:
-          p_sol = PT.get_child_from_name(part_zone, PT.get_name(d_sol))
-          shape = PT.get_child_from_name(p_sol, 'PointList')[1].shape[1]
+          p_sol = PT.request_child_from_name(part_zone, PT.get_name(d_sol))
+          shape = (PT.request_nd_value(PT.request_child_from_name(p_sol, 'PointList')).shape[1],)
         else:
           p_sol = PT.update_child(part_zone, PT.get_name(d_sol), PT.get_label(d_sol), PT.get_value(d_sol))
           PT.update_child(p_sol, 'GridLocation', 'GridLocation_t', location)
@@ -124,7 +134,11 @@ def _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm):
           shaped_data = data[ipart].reshape(shape, order='F')
           PT.new_DataArray(data_name, shaped_data, parent=p_sol)
 
-def dist_sol_to_part_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_sol_to_part_sol(dist_zone: CGNSDistTree, 
+                         part_zones: List[CGNSPartTree], 
+                         comm: MPIComm, 
+                         include: List[str] = [],
+                         exclude: List[str] = []) -> None:
   """
   Transfert all the data included in FlowSolution_t nodes from a distributed
   zone to the partitioned zones
@@ -132,7 +146,11 @@ def dist_sol_to_part_sol(dist_zone, part_zones, comm, include=[], exclude=[]):
   mask_tree = te_utils.create_mask_tree(dist_zone, ['FlowSolution_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
-def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_discdata_to_part_discdata(dist_zone: CGNSDistTree,
+                                   part_zones: List[CGNSPartTree],
+                                   comm: MPIComm, 
+                                   include: List[str] = [],
+                                   exclude: List[str] = []) -> None:
   """
   Transfert all the data included in DiscreteData_t nodes from a distributed
   zone to the partitioned zones
@@ -140,7 +158,11 @@ def dist_discdata_to_part_discdata(dist_zone, part_zones, comm, include=[], excl
   mask_tree = te_utils.create_mask_tree(dist_zone, ['DiscreteData_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
-def dist_gridmotion_to_part_gridmotion(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_gridmotion_to_part_gridmotion(dist_zone: CGNSDistTree,
+                                       part_zones: List[CGNSPartTree],
+                                       comm: MPIComm, 
+                                       include: List[str] = [], 
+                                       exclude: List[str] = []) -> None:
   """
   Transfert all the data included in ArbitraryGridMotion_t nodes from a distributed
   zone to the partitioned zones
@@ -148,7 +170,11 @@ def dist_gridmotion_to_part_gridmotion(dist_zone, part_zones, comm, include=[], 
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ArbitraryGridMotion_t', 'DataArray_t'], include, exclude)
   _dist_to_part_sollike(dist_zone, part_zones, mask_tree, comm)
 
-def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_dataset_to_part_dataset(dist_zone: CGNSDistTree, 
+                                 part_zones: List[CGNSPartTree], 
+                                 comm: MPIComm,
+                                 include: List[str] = [], 
+                                 exclude: List[str] = [])-> None:
   """
   Transfert all the data included in BCDataSet_t/BCData_t nodes from a distributed
   zone to the partitioned zones
@@ -158,17 +184,17 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
     mask_tree = te_utils.create_mask_tree(d_zbc, labels, include, exclude)
     for mask_bc in PT.get_children(mask_tree):
       bc_path = PT.get_name(d_zbc) + '/' + PT.get_name(mask_bc)
-      d_bc = PT.get_node_from_path(dist_zone, bc_path) #True BC
+      d_bc = PT.request_node_from_path(dist_zone, bc_path) #True BC
       for mask_dataset in PT.get_children(mask_bc):
         ds_path = bc_path + '/' + PT.get_name(mask_dataset)
-        d_dataset = PT.get_node_from_path(dist_zone, ds_path) #True DataSet
+        d_dataset = PT.request_node_from_path(dist_zone, ds_path) #True DataSet
         #If dataset has its own PointList, we must override bc distribution and lngn
         has_own_distri = MT.getDistribution(d_dataset) is not None
         if has_own_distri:
-          distri_node  = MT.getDistribution(d_dataset)
+          distri_node  = MT.requestDistribution(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
-          distri_node  = MT.getDistribution(d_bc)
+          distri_node  = MT.requestDistribution(d_bc)
           if not par_utils.exists_anywhere(part_zones, bc_path+'/:CGNS#GlobalNumbering/Index', comm):
             # For structured zones, gnum are not created during partitioning so add it now
             assert PT.Zone.Type(dist_zone) == "Structured"
@@ -176,17 +202,17 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
-        dist_data = {data_path : PT.get_node_from_path(d_dataset, data_path)[1] \
+        dist_data = {data_path : PT.request_nd_value(PT.request_node_from_path(d_dataset, data_path)) \
                      for data_path in data_paths}
         # Filter global / local data
         global_arrays_node = PT.get_child_from_name(distri_node, 'BCDataGlobal')
-        global_arrays_list = PT.get_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
+        global_arrays_list = PT.request_str_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
         as_path = lambda path : path if has_own_distri else f"{PT.get_name(d_dataset)}/{path}" #Add DS name if required, to search in global_arrays_list  
         dist_data_loc  = {path: data for path, data in dist_data.items() if as_path(path) not in global_arrays_list}
         dist_data_glob = {path: data for path, data in dist_data.items() if as_path(path)     in global_arrays_list}
 
         #Exchange (local data)
-        distribution = PT.get_child_from_name(distri_node, 'Index')[1]
+        distribution = PT.request_nd_value(PT.request_child_from_name(distri_node, 'Index'))
         part_data = EP.block_to_part(dist_data_loc, distribution, [lngn-1 for lngn in lngn_list], comm)
 
         #Put part data in tree
@@ -195,25 +221,30 @@ def dist_dataset_to_part_dataset(dist_zone, part_zones, comm, include=[], exclud
           # Skip void bcs
           if lngn_list[ipart].size > 0:
             # Create dataset if no existing
+            assert part_bc is not None
             part_ds = PT.update_child(part_bc, PT.get_name(d_dataset), PT.get_label(d_dataset), PT.get_value(d_dataset))
             # Add data
-            for data_name, data in part_data.items():
+            for data_name, p_data in part_data.items():
               container_name, field_name = data_name.split('/')
               p_container = PT.update_child(part_ds, container_name, 'BCData_t')
-              PT.new_DataArray(field_name, data[ipart], parent=p_container)
-            for data_name, data in dist_data_glob.items(): # Copy global data
+              PT.new_DataArray(field_name, p_data[ipart], parent=p_container)
+            for data_name, d_data in dist_data_glob.items(): # Copy global data
               container_name, field_name = data_name.split('/')
               p_container = PT.update_child(part_ds, container_name, 'BCData_t')
-              PT.new_DataArray(field_name, data.copy(), parent=p_container)
+              PT.new_DataArray(field_name, d_data.copy(), parent=p_container)
 
-def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], exclude=[]):
+def dist_subregion_to_part_subregion(dist_zone: CGNSDistTree,
+                                     part_zones: List[CGNSPartTree],
+                                     comm: MPIComm,
+                                     include: List[str] = [], 
+                                     exclude: List[str] = []) -> None:
   """
   Transfert all the data included in ZoneSubRegion_t nodes from a distributed
   zone to the partitioned zones
   """
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
   for mask_zsr in PT.get_children(mask_tree):
-    d_zsr = PT.get_child_from_name(dist_zone, PT.get_name(mask_zsr)) #True ZSR
+    d_zsr = PT.request_child_from_name(dist_zone, PT.get_name(mask_zsr)) #True ZSR
     # Search matching region
     matching_region_path = PT.Subset.ZSRExtent(d_zsr, dist_zone)
     matching_region = PT.get_node_from_path(dist_zone, matching_region_path)
@@ -222,7 +253,8 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
     #Get distribution and dist data
     distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
     fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
-    dist_data = {field : PT.get_child_from_name(d_zsr, field)[1] for field in fields}
+    dist_data = {field : PT.request_nd_value(PT.request_child_from_name(d_zsr, field)) \
+                  for field in fields}
 
     if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
       # Joins have been split so search multiple part nodes
@@ -230,7 +262,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
       lngn_list    = list()
       for i_part, part_zone in enumerate(part_zones):
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
-          lngn_list.append(PT.get_value(MT.getGlobalNumbering(node, 'Index')))
+          lngn_list.append(MT.globalnumbering_value(node, 'Index'))
     else:
       if not par_utils.exists_anywhere(part_zones, matching_region_path+'/:CGNS#GlobalNumbering/Index', comm):
         # For structured zones, gnum are not created during partitioning so add it now
@@ -251,7 +283,7 @@ def dist_subregion_to_part_subregion(dist_zone, part_zones, comm, include=[], ex
           # Get corresponding part ZSR
           good_zsr = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' \
                                and PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None \
-                               and PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node)
+                               and PT.get_value(PT.request_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node)
           p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
           for field_name, data in part_data.items():
             PT.new_DataArray(field_name, data[i_pseudo_part], parent=p_zsr)

@@ -1,9 +1,10 @@
 import numpy as np
-import time
 from mpi4py import MPI
+import time
 
+from maia.typing import *
 import maia.pytree as PT
-
+import maia.pytree.maia as MT
 from maia import pdm_has_ptscotch, pdm_has_parmetis
 from maia.algo.dist import matching_jns_tools     as MJT
 from maia.algo.part import connectivity_transform as CNT
@@ -12,6 +13,8 @@ from maia.utils     import logging as mlog
 
 from maia.transfer.dist_to_part import data_exchange  as BTP
 from maia.transfer.dist_to_part import tree_api       as dist_to_part
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
+from maia.pytree.graph.algo import step
 
 from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
@@ -19,7 +22,6 @@ from .split_U import part_all_zones as partU
 from .post_split import post_partitioning as post_split
 from .load_balancing import balancing_quality
 
-from maia.pytree.graph.algo import step
 class UDDCollector:
   """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
   def __init__(self):
@@ -63,7 +65,9 @@ def set_default(dist_tree, comm):
 
   return default
 
-def partition_dist_tree(dist_tree, comm, **kwargs):
+def partition_dist_tree(dist_tree: CGNSDistTree, 
+                        comm: MPIComm, 
+                        **kwargs: Dict[str, Any]) -> CGNSPartTree:
   """Perform the partitioning operation: create a partitioned tree from the input distributed tree.
 
   Important:
@@ -77,11 +81,11 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
   to their dimension (either increasing or decreasing).
 
   Args:
-    dist_tree (CGNSTree): Distributed tree
-    comm      (MPIComm) : MPI communicator
-    **kwargs  : Partitioning options
+    dist_tree (CGNSDistTree): Distributed tree
+    comm      (MPIComm)     : MPI communicator
+    **kwargs                : Partitioning options
   Returns:
-    CGNSTree: partitioned cgns tree
+    CGNSTree                : partitioned cgns tree
 
   Example:
       .. literalinclude:: snippets/test_factory.py
@@ -89,7 +93,7 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
         :end-before: #partition_dist_tree@end
         :dedent: 2
   """
-
+  check_cgns_dist_tree(dist_tree)
   options = set_default(dist_tree, comm)
   subkeys = ['reordering'] #Key for which we have sub dicts
 
@@ -125,9 +129,9 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
   assert isinstance(zone_to_parts, dict)
   # > Call main function
   n_cell_tot = np.sum([PT.Zone.n_cell(z) for z in PT.get_all_Zone_t(dist_tree)])
-  is_point_cloud = PT.get_node_from_labels(dist_tree, 'CGNSBase_t/Zone_t/Elements_t') is None
+  is_point_cloud = PT.get_node_from_predicates(dist_tree, 'CGNSBase_t/Zone_t/Elements_t') is None
   if (n_cell_tot < comm.Get_size()) and (options['graph_part_tool'] != 'hilbert') and not is_point_cloud:
-	  raise ValueError("Only 'hilbert' as 'graph_part_tool' is allowed if n_procs > n_cells")
+    raise ValueError("Only 'hilbert' as 'graph_part_tool' is allowed if n_procs > n_cells")
 
   part_tree = _partitioning(dist_tree, zone_to_parts, comm, options)
   
@@ -137,8 +141,8 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
     zone_paths = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
     n_cell_per_block = np.zeros(len(zone_paths), np.int32)
     for part_zone_path in PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
-      part_zone = PT.get_node_from_path(part_tree, part_zone_path)
-      idx = zone_paths.index(PT.maia.conv.get_part_prefix(part_zone_path))
+      part_zone = PT.request_node_from_path(part_tree, part_zone_path)
+      idx = zone_paths.index(MT.conv.get_part_prefix(part_zone_path))
       n_cell = PT.Zone.n_cell(part_zone) # If zone is a point cloud, use n_vtx
       n_cell_per_block[idx] = n_cell if n_cell > 0 else PT.Zone.n_vtx(part_zone)
     if comm.Get_rank() == 0:
@@ -169,10 +173,10 @@ def partition_dist_tree(dist_tree, comm, **kwargs):
 
   return part_tree
 
-def _partitioning(dist_tree,
-                  dzone_to_weighted_parts,
-                  comm,
-                  part_options):
+def _partitioning(dist_tree: CGNSDistTree,
+                  dzone_to_weighted_parts: Dict[str, List[float]],
+                  comm: MPIComm,
+                  part_options: Dict[str, Any]) -> CGNSPartTree:
 
   intra_jn = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
                         and PT.maia.conv.is_intra_gc(PT.get_name(n))
@@ -191,7 +195,7 @@ def _partitioning(dist_tree,
 
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  part_tree = PT.new_CGNSTree()
+  part_tree = CGNSPartTree(PT.new_CGNSTree())
   dist_zones_S = []
   part_zones_S = []
   for dist_base in PT.iter_all_CGNSBase_t(dist_tree):
@@ -219,7 +223,7 @@ def _partitioning(dist_tree,
       else:
         s_parts = []
       part_zones_S.append(s_parts)
-      dist_zones_S.append(zone)
+      dist_zones_S.append(CGNSDistTree(zone))
 
   # Transfert coords for S zones, all at once to avoid multiple block_to_parts
   BTP.dist_coords_to_part_coords_m(dist_zones_S, part_zones_S, comm)
@@ -235,7 +239,7 @@ def _partitioning(dist_tree,
   if has_u_zones:
     base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
     for base, u_parts in base_to_parts_u.items():
-      part_base = PT.get_child_from_name(part_tree, base)
+      part_base = PT.request_child_from_name(part_tree, base)
       for u_part in u_parts:
         if not part_options['preserve_orientation']:
           CNT.enforce_boundary_pe_left(u_part)

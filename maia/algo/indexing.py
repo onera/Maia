@@ -1,20 +1,24 @@
+import numpy as np
+
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
 from .dist import ngon_tools as dist_ngon_tools
 from .part import ngon_tools as part_ngon_tools
+from maia.pytree.maia.check_tree import check_cgns_dist_tree, check_cgns_part_tree
 
 is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
 is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
                             PT.Zone.Type(z) == 'Unstructured' and \
                             all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
 
-def iter_matching_zones(t, cond):
+def iter_matching_zones(t: CGNSTree, cond: Callable[[CGNSTree], bool]) -> Iterator[CGNSTree]:
   for z in PT.iter_all_Zone_t(t):
     if cond(z):
       yield z
 
-def get_pe_local(node):
+def get_pe_local(node: CGNSTree) -> NDArray:
   """
   Shift the ParentElement array of a NGON or Edge node to have local (starting at 1)
   indices.
@@ -24,7 +28,7 @@ def get_pe_local(node):
   pe_n = PT.get_child_from_name(node, "ParentElements")
   if pe_n is None:
     raise RuntimeError(f"ParentElements node not found on node {node[0]}")
-  pe_val = pe_n[1]
+  pe_val = PT.request_nd_value(pe_n)
   if pe_val.size == 0:
     return pe_val
   else:
@@ -34,13 +38,15 @@ def get_pe_local(node):
     else:
       return pe_val
 
-def pe_to_nface(t, comm=None, removePE=False):
+def pe_to_nface(t: CGNSTree,
+                comm: Optional[MPIComm] = None, 
+                removePE: bool = False) -> None:
   """Create a NFace node from a NGon node with ParentElements.
 
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t          (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm       (MPIComm) : MPI communicator, mandatory only for distributed zones
     remove_PE  (bool, optional): If True, remove the ParentElements node.
       Defaults to False.
@@ -53,20 +59,22 @@ def pe_to_nface(t, comm=None, removePE=False):
   """
   predicate = lambda z: is_poly_3d_zone(z) and not PT.Zone.has_nface_elements(z)
   for zone in iter_matching_zones(t, predicate):
-    if PT.maia.getDistribution(zone) is not None:
+    if MT.getDistribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.pe_to_nface(zone, comm, removePE)
     else:
       part_ngon_tools.pe_to_nface(zone, removePE)
 
 
-def nface_to_pe(t, comm=None, removeNFace=False):
+def nface_to_pe(t: CGNSTree, 
+                comm: Optional[MPIComm] = None, 
+                removeNFace: bool = False) -> None:
   """Create a ParentElements node in the NGon node from a NFace node.
 
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
     removeNFace (bool, optional): If True, remove the NFace node.
       Defaults to False.
@@ -79,20 +87,22 @@ def nface_to_pe(t, comm=None, removeNFace=False):
   """
   predicate = lambda z: is_poly_3d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
   for zone in iter_matching_zones(t, predicate):
-    if PT.maia.getDistribution(zone) is not None:
+    if MT.getDistribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.nface_to_pe(zone, comm, removeNFace)
     else:
       part_ngon_tools.nface_to_pe(zone, removeNFace)
 
 
-def edge_pe_to_ngon(t, comm=None, removePE=False):
+def edge_pe_to_ngon(t: CGNSTree,
+                    comm: Optional[MPIComm], 
+                    removePE: bool = False) -> None:
   """Create a NGon node from a Edge node with ParentElements.
 
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t          (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm       (MPIComm) : MPI communicator, mandatory only for distributed zones
     remove_PE  (bool, optional): If True, remove the ParentElements node.
       Defaults to False.
@@ -105,13 +115,15 @@ def edge_pe_to_ngon(t, comm=None, removePE=False):
   """
   predicate = lambda z: is_poly_2d_zone(z) and not PT.Zone.has_ngon_elements(z)
   for zone in iter_matching_zones(t, predicate):
-    if PT.maia.getDistribution(zone) is not None:
+    if MT.getDistribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.edge_pe_to_ngon(zone, comm, removePE)
     else:
       part_ngon_tools.edge_pe_to_ngon(zone, removePE)
 
-def ngon_to_edge_pe(t, comm, remove_NGon=False):
+def ngon_to_edge_pe(t: CGNSTree,
+                    comm: Optional[MPIComm], 
+                    remove_NGon: bool = False) -> None:
   """Create a ParentElements node in the EdgeElements node from a NGon node.
 
   Note that EdgeElement is supposed to exist and define all (including internal)
@@ -120,7 +132,7 @@ def ngon_to_edge_pe(t, comm, remove_NGon=False):
   Input tree is modified inplace.
 
   Args:
-    t           (CGNSTree): Distributed or Partitioned tree starting at Zone_t level or higher.
+    t           (CGNSTree): Distributed, Partitioned or Full tree starting at Zone_t level or higher.
     comm        (MPIComm) : MPI communicator, mandatory only for distributed zones
     removeNFace (bool, optional): If True, remove the NGon node.
       Defaults to False.
@@ -133,7 +145,7 @@ def ngon_to_edge_pe(t, comm, remove_NGon=False):
   """
   predicate = lambda z: is_poly_2d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
   for zone in iter_matching_zones(t, predicate):
-    if PT.maia.getDistribution(zone) is not None:
+    if MT.getDistribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.ngon_to_edge_pe(zone, comm, remove_NGon)
     else:

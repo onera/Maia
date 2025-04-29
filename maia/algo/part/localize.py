@@ -1,28 +1,35 @@
 import numpy as np
 from mpi4py import MPI
+from typing import overload
 
-import Pypdm.Pypdm as PDM
-
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from   maia.pytree.maia.check_tree import check_cgns_part_tree
 
 from maia                        import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils                  import py_utils, np_utils, par_utils
 from maia.transfer               import utils as te_utils
 from maia.utils                  import vstride as vs
-
 from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils  import get_point_cloud
 from .connectivity_utils import cell_vtx_connectivity, PDM_connectivity_transpose
+import Pypdm.Pypdm as PDM
 
-def _get_part_data_ngon(part_zone):
+PointCloud = Tuple[NDArray, NDArray]
+PartData = Tuple[int, str, List[NDArray]]
+Result = Dict[str, NDArray]
+InvResult = Dict[str, vs.VStrideArray]
+
+def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
   dim = PT.Zone.CellDimension(part_zone)
   cx, cy, cz = PT.Zone.coordinates(part_zone)
+  assert (cx is not None) and  (cy is not None) and (cz is not None)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
-  vtx_ln_to_gn  = MT.getGlobalNumbering(part_zone, 'Vertex')[1]
-  cell_ln_to_gn = MT.getGlobalNumbering(part_zone, 'Cell')[1]
+  vtx_ln_to_gn  = PT.request_nd_value(MT.requestGlobalNumbering(part_zone, 'Vertex'))
+  cell_ln_to_gn = PT.request_nd_value(MT.requestGlobalNumbering(part_zone, 'Cell'))
 
   if dim == 3:
     ngon  = PT.Zone.NGonNode(part_zone)
@@ -31,7 +38,7 @@ def _get_part_data_ngon(part_zone):
     face_vtx  = MT.Element.connectivity(ngon)
     cell_face = MT.Element.connectivity(nface)
 
-    face_ln_to_gn = MT.getGlobalNumbering(ngon, 'Element')[1]
+    face_ln_to_gn = PT.request_nd_value(MT.requestGlobalNumbering(ngon, 'Element'))
 
     return [cell_face.displs, cell_face.values, cell_ln_to_gn, \
         face_vtx.displs, face_vtx.values, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
@@ -40,8 +47,8 @@ def _get_part_data_ngon(part_zone):
     edge  = MT.Zone.EdgeNode(part_zone)
     ngon  = PT.Zone.NGonNode(part_zone)
 
-    edge_pe  = PT.get_child_from_name(edge, "ParentElements")[1].reshape(-1, order='C') # Numpy will copy
-    edge_vtx = PT.get_child_from_name(edge, "ElementConnectivity")[1]
+    edge_pe  = PT.request_nd_value(PT.request_child_from_name(edge, "ParentElements")).reshape(-1, order='C') # Numpy will copy
+    edge_vtx = PT.request_nd_value(PT.request_child_from_name(edge, "ElementConnectivity"))
 
     # Convert edge_pe to face_edge
     if PT.Element.Range(ngon)[0] != 1:
@@ -54,23 +61,47 @@ def _get_part_data_ngon(part_zone):
     face_edge = PDM_connectivity_transpose(PT.Element.Size(ngon), edge_face)
 
     return [face_edge.displs, face_edge.values, cell_ln_to_gn, edge_vtx, vtx_coords, vtx_ln_to_gn]
+
+  else:
+    raise RuntimeError("Unsupported dimension")
                 
 
 
-def _get_part_data_elts(part_zone):
+def _get_part_data_elts(part_zone: CGNSTree) -> List[NDArray]:
   # Actually works for elt of S meshes, for which we rebuild cell_vtx connectivity
-  coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(part_zone)]
+  cx, cy, cz = PT.Zone.coordinates(part_zone)
+  assert (cx is not None) and  (cy is not None) and (cz is not None)
+  coords = [c.reshape(-1, order='F') for c in [cx,cy,cz]]
   vtx_coords = np_utils.interweave_arrays(coords)
 
   dim = PT.Zone.CellDimension(part_zone)
   cell_vtx = cell_vtx_connectivity(part_zone, dim)
 
   vtx_ln_to_gn, _, _, cell_ln_to_gn = te_utils.get_entities_numbering(part_zone)
+  assert (vtx_ln_to_gn is not None) and (cell_ln_to_gn is not None)
 
   return [cell_vtx.displs, cell_vtx.values, cell_ln_to_gn, vtx_coords, vtx_ln_to_gn]
     
 
-def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-6):
+@overload
+def _mesh_location(src_parts: List[PartData],
+                   tgt_clouds: List[PointCloud],
+                   comm: MPIComm, 
+                   reverse: Literal[False],
+                   loc_tolerance: float) -> List[Result]: ...
+@overload
+def _mesh_location(src_parts: List[PartData],
+                   tgt_clouds: List[PointCloud],
+                   comm: MPIComm, 
+                   reverse:Literal[True],
+                   loc_tolerance: float) -> Tuple[List[Result], List[InvResult]]: ...
+
+def _mesh_location(src_parts: List[PartData],
+                   tgt_clouds: List[PointCloud],
+                   comm: MPIComm, 
+                   reverse: bool,
+                   loc_tolerance: float = 1E-6) -> Union[List[Result],
+                                                         Tuple[List[Result], List[InvResult]]]:
   """ Wrapper of PDM mesh location
   For now, only 1 domain is supported so we expect source parts and target clouds
   as flat lists :
@@ -134,7 +165,12 @@ def _mesh_location(src_parts, tgt_clouds, comm, reverse=False, loc_tolerance=1E-
   else:
     return all_target_data
 
-def _mdom_mesh_location(src_parts_per_dom, tgt_clouds_per_dom, comm, reverse=False, loc_tolerance=1E-6):
+def _mdom_mesh_location(src_parts_per_dom:List[List[PartData]], 
+                        tgt_clouds_per_dom:List[List[PointCloud]], 
+                        comm:MPIComm, 
+                        reverse:bool,
+                        loc_tolerance:float =1E-6) -> Union[List[List[Result]],
+                                                            Tuple[List[List[Result]], List[List[InvResult]]]]:
   """
   Wraps _mesh_location with multidomain support (with shifts)
   Input are similar to _mesh_location, but with nested lists by domains
@@ -182,7 +218,10 @@ def _mdom_mesh_location(src_parts_per_dom, tgt_clouds_per_dom, comm, reverse=Fal
       for loc, array_idx in locs.items():
         src_part[2][array_idx] += src_offsets[loc][i_domain]
 
-  result = _mesh_location(src_parts, tgt_clouds, comm, reverse, loc_tolerance)
+  if reverse:
+    direct_result, inv_result = _mesh_location(src_parts, tgt_clouds, comm, True, loc_tolerance)
+  else:
+    direct_result = _mesh_location(src_parts, tgt_clouds, comm, False, loc_tolerance)
 
   # Shift back source data
   for i_domain, src_parts_domain in enumerate(src_parts_per_dom):
@@ -191,13 +230,12 @@ def _mdom_mesh_location(src_parts_per_dom, tgt_clouds_per_dom, comm, reverse=Fal
         src_part[2][array_idx] -= src_offsets[loc][i_domain]
 
   # Shift results and get domain ids
-  direct_result = result[0] if reverse else result
   for tgt_result in direct_result:
     tgt_result['location_shifted'] = tgt_result.pop('location') #Rename key
     tgt_result['location'], tgt_result['domain'] = np_utils.shifted_to_local(
         tgt_result['location_shifted'], src_offsets['Cell'])
   if reverse:
-    for src_result in result[1]:
+    for src_result in inv_result:
       src_result['points_gnum_shifted'] = src_result.pop('points_gnum') #Rename key
       ini_gnum, domain = np_utils.shifted_to_local(src_result['points_gnum_shifted'].values, tgt_offset)
       src_result['points_gnum'] = vs.from_displs(src_result['points_gnum_shifted'].displs, ini_gnum)
@@ -205,12 +243,12 @@ def _mdom_mesh_location(src_parts_per_dom, tgt_clouds_per_dom, comm, reverse=Fal
   
   # Reshape output to list of lists (as input domains)
   if reverse:
-    return py_utils.to_nested_list(result[0], n_part_per_dom_tgt),\
-           py_utils.to_nested_list(result[1], n_part_per_dom_src)
+    return py_utils.to_nested_list(direct_result, n_part_per_dom_tgt),\
+           py_utils.to_nested_list(inv_result, n_part_per_dom_src)
   else:
-    return py_utils.to_nested_list(result, n_part_per_dom_tgt)
+    return py_utils.to_nested_list(direct_result, n_part_per_dom_tgt)
 
-def _collect_source(src_parts_per_dom):
+def _collect_source(src_parts_per_dom:List[List[CGNSPartTree]]) -> List[List[PartData]]:
   connectivity_t = None
   src_parts = []
   for src_part_zones in src_parts_per_dom:
@@ -232,13 +270,38 @@ def _collect_source(src_parts_per_dom):
 
   return src_parts
 
-def _collect_target(tgt_parts_per_dom, location):
+def _collect_target(tgt_parts_per_dom:List[List[CGNSPartTree]], location:str) -> List[List[PointCloud]]:
   return [[get_point_cloud(part, location) for part in tgt_parts] \
           for tgt_parts in tgt_parts_per_dom]
 
 
-def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
-    reverse=False, loc_tolerance=1E-6):
+
+@overload
+def _localize_points(
+  src_parts_per_dom: List[List[CGNSPartTree]], 
+  tgt_parts_per_dom: List[List[CGNSPartTree]], 
+  location: str,
+  comm: MPIComm, 
+  reverse: Literal[False],
+  loc_tolerance: float) -> List[List[Result]]: ...
+@overload
+def _localize_points(
+  src_parts_per_dom: List[List[CGNSPartTree]], 
+  tgt_parts_per_dom: List[List[CGNSPartTree]], 
+  location: str,
+  comm: MPIComm, 
+  reverse: Literal[True],
+  loc_tolerance: float) -> Tuple[List[List[Result]], List[List[InvResult]]]: ...
+
+def _localize_points(
+  src_parts_per_dom: List[List[CGNSPartTree]], 
+  tgt_parts_per_dom: List[List[CGNSPartTree]], 
+  location: str,
+  comm: MPIComm, 
+  reverse: bool = False, 
+  loc_tolerance: float = 1E-6) -> Union[List[List[Result]],
+                                        Tuple[List[List[Result]], List[List[InvResult]]]]:
+
   """ Intermediate API who do not place output in tree.
   Inputs are list of size n_domain_src (resp. tgt) containing partitioned zones (resp. clouds)
   for each domain 
@@ -250,10 +313,16 @@ def _localize_points(src_parts_per_dom, tgt_parts_per_dom, location, comm, \
 
 
 
-def localize_points(src_tree, tgt_tree, location, comm, **options):
+def localize_points(src_tree: CGNSPartTree, 
+                    tgt_tree: CGNSPartTree, 
+                    location: str, 
+                    comm: MPIComm, 
+                    **options) -> None:
   """
   Partitioned implementation of maia.algo.localize_points
   """
+  check_cgns_part_tree(src_tree)
+  check_cgns_part_tree(tgt_tree)
   _src_parts_per_dom = get_parts_per_blocks(src_tree, comm)
   src_parts_per_dom = list(_src_parts_per_dom.values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())

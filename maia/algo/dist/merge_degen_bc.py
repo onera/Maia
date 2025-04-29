@@ -1,22 +1,23 @@
-import mpi4py.MPI as MPI
 import numpy      as np
+import mpi4py.MPI as MPI
 
 import maia
-import maia.pytree                      as PT
-import maia.pytree.maia                 as MT
-
-from maia                     import npy_pdm_gnum_dtype    as pdm_gnum_dtype
-from maia.transfer            import protocols             as EP
-from maia.utils               import par_utils, np_utils, vstride
-from maia.utils.parallel      import algo as par_algo
+from maia.typing import *
+import maia.pytree           as PT
+import maia.pytree.maia      as MT
+import Pypdm.Pypdm           as PDM
+from maia                    import npy_pdm_gnum_dtype    as pdm_gnum_dtype
+from maia.transfer           import protocols             as EP
+from maia.utils              import par_utils, np_utils, vstride
+from maia.utils.parallel     import algo as par_algo
 
 from .merge_ids      import merge_distributed_ids
 from .vertex_list    import face_ids_to_vtx_ids
 from .geometry.utils import get_local_coordinates
-from maia.algo.part  import closest_points as CLO
-from maia.algo.dist  import merge_jn       as MJN
 
-import Pypdm.Pypdm as PDM
+from maia.algo.dist  import merge_jn       as MJN
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
+
 
 def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
   """
@@ -224,7 +225,9 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   MJN._update_pl_pld_in_jn(dist_tree, zone_path)
 
 # ------------------------------------------------------------------------------------------
-def remove_degen_faces_from_family(dist_tree, degen_family, comm):
+def remove_degen_faces_from_family(dist_tree: CGNSDistTree, 
+                                   degen_family: str, 
+                                   comm: MPIComm) -> None:
   """
   Remove the specified degenerated faces in the input tree.
 
@@ -238,9 +241,9 @@ def remove_degen_faces_from_family(dist_tree, degen_family, comm):
     - Only U-NGon meshes are managed in this function.
 
   Args:
-    dist_tree  (CGNSTree): Input distributed tree, with U-NGon connectivies
+    dist_tree  (CGNSDistTree) : Input distributed tree, with U-NGon connectivies
     degen_family (str): Name of the family refering to the degenerated faces
-    comm       (`MPIComm`) : MPI communicator
+    comm       (`MPIComm`)    : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -248,20 +251,20 @@ def remove_degen_faces_from_family(dist_tree, degen_family, comm):
         :end-before: #remove_degen_faces_from_family@end
         :dedent: 2
   """
-  
+  check_cgns_dist_tree(dist_tree)
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    zone_n = PT.get_node_from_path(dist_tree, zone_path)
-    vtx_distri = PT.maia.get_distribution(zone_n, 'Vertex')[1]
+    zone_n = PT.request_node_from_path(dist_tree, zone_path)
+    vtx_distri = MT.distribution_value(zone_n, 'Vertex')
     
     pl_degen_faces_list = []
     for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):
       if PT.predicate.belongs_to_family(bc_n, degen_family):
-        pl_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(bc_n)))
+        pl_degen_faces_list.append(PT.request_nd_value(PT.Subset.getPatch(bc_n)))
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
       zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
-      zsr_extent_n = PT.get_node_from_path(zone_n, zsr_extent_path)
+      zsr_extent_n = PT.request_node_from_path(zone_n, zsr_extent_path)
       if PT.predicate.belongs_to_family(zsr_n, degen_family):
-        pl_degen_faces_list.append(PT.get_value(PT.Subset.getPatch(zsr_extent_n)))
+        pl_degen_faces_list.append(PT.request_nd_value(PT.Subset.getPatch(zsr_extent_n)))
     if len(pl_degen_faces_list) == 0:
       continue
     

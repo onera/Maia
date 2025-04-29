@@ -27,7 +27,7 @@ class Test_closest_points:
 
   def test_empty_tgt(self, comm):
     src_clouds = self.src_clouds_per_rank[comm.Get_rank()]
-    assert CLO._closest_points(src_clouds, [], comm) == []
+    assert CLO._closest_points(src_clouds, [], comm, False) == []
 
   @pytest.mark.parametrize("reverse", [False, True])
   def test_standard(self, reverse, comm):
@@ -35,9 +35,9 @@ class Test_closest_points:
     tgt_clouds = self.tgt_clouds_per_rank[comm.Get_rank()]
 
     if reverse:
-      tgt_data, src_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=True, need_shift=True)
+      tgt_data, src_data = CLO._closest_points(src_clouds, tgt_clouds, comm, True, n_pts=1, need_shift=True)
     else:
-      tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=1, reverse=False, need_shift=True)
+      tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, False, n_pts=1, need_shift=True)
 
     if comm.Get_rank() == 0:
       expected_tgt_data = [{'closest_src_gnum' : [4], 'closest_src_distance' : [0.1075]},
@@ -61,7 +61,7 @@ class Test_closest_points:
     src_clouds = self.src_clouds_per_rank[comm.Get_rank()]
     tgt_clouds = self.tgt_clouds_per_rank[comm.Get_rank()]
 
-    tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, n_pts=3, need_shift=True)
+    tgt_data = CLO._closest_points(src_clouds, tgt_clouds, comm, False, n_pts=3, need_shift=True)
 
     if comm.Get_rank() == 0:
       expected_tgt_data = [{'closest_src_gnum' : [2,3,4], 'closest_src_distance' : [0.5075, 0.2075, 0.1075]},

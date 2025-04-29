@@ -1,21 +1,20 @@
 import numpy as np
 
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
-
-import Pypdm.Pypdm as PDM
 
 from maia           import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.utils     import np_utils, py_utils, par_utils, as_pdm_gnum
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.factory   import dist_from_part     as DFP
-
 from maia.algo                  import dist             as MAD
-
 from maia.transfer              import protocols as EP
 from maia.transfer.dist_to_part import index_exchange   as IBTP
 
-def _get_shifted_arrays(arrays_per_dom, comm):
+import Pypdm.Pypdm as PDM
+
+def _get_shifted_arrays(arrays_per_dom:List[List[NDArray]], comm:MPIComm) -> Tuple[NDArray, List[List[NDArray]]]:
   shifted_per_dom = []
   offset = np.zeros(len(arrays_per_dom)+1, dtype=pdm_gnum_dtype)
   for i_dom, arrays in enumerate(arrays_per_dom):
@@ -23,7 +22,9 @@ def _get_shifted_arrays(arrays_per_dom, comm):
     shifted_per_dom.append([array + offset[i_dom] for array in arrays]) # Shift (with copy)
   return offset, shifted_per_dom
 
-def get_shifted_ln_to_gn_from_loc(parts_per_dom, location, comm):
+def get_shifted_ln_to_gn_from_loc(parts_per_dom: Iterable[List[CGNSPartTree]], 
+                                  location: str, 
+                                  comm: MPIComm) -> Tuple[NDArray, List[List[NDArray]]]:
   """ Wraps _get_zone_ln_to_gn_from_loc around multiple domains,
   shifting lngn with previous values"""
   from .point_cloud_utils import _get_zone_ln_to_gn_from_loc
@@ -32,7 +33,9 @@ def get_shifted_ln_to_gn_from_loc(parts_per_dom, location, comm):
     lngns_per_dom.append([_get_zone_ln_to_gn_from_loc(part, location) for part in part_zones])
   return _get_shifted_arrays(lngns_per_dom, comm)
 
-def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
+def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]], 
+                      comm: MPIComm, 
+                      merge_jns: bool = True) -> List[List[NDArray]]:
 
   # Get gnum shifted for vertices
   vtx_mdom_offsets, shifted_lngn = get_shifted_ln_to_gn_from_loc(parts_per_dom.values(), 'Vertex', comm)
@@ -54,12 +57,12 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   tree_has_face_gc = False
   face_loc_query = lambda n : PT.get_label(n) == 'GridLocation_t' and PT.get_value(n) == 'FaceCenter'
   for dom_name, parts in parts_per_dom.items():
-    dist_zone = PT.get_node_from_path(dist_tree_jn, dom_name)
+    dist_zone = PT.request_node_from_path(dist_tree_jn, dom_name)
     has_face_gc = PT.get_node_from_predicate(dist_zone, face_loc_query) is not None
     if has_face_gc:
       # Vtx gnum is needed for face->vtx conversion.
       # Connectivities should have been already added by _get_joins_dist_tree
-      vtx_lngn_l  = [MT.getGlobalNumbering(part, 'Vertex')[1] for part in parts]
+      vtx_lngn_l = [PT.request_nd_value(MT.requestGlobalNumbering(part, 'Vertex')) for part in parts]
       vtx_distri  = par_utils.distribution_from_gnum(vtx_lngn_l, comm)
 
       MT.newDistribution({'Vertex' : vtx_distri}, parent=dist_zone)
@@ -72,7 +75,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
     # We need to put vtx joins on partitioned trees, but recovering donor
     # and order is useless
     for dom_name, parts in parts_per_dom.items():
-      dist_zone = PT.get_node_from_path(dist_tree_jn, dom_name)
+      dist_zone = PT.request_node_from_path(dist_tree_jn, dom_name)
       IBTP.dist_pl_to_part_pl(dist_zone, parts, ['ZoneGridConnectivity_t/GridConnectivity_t'], 'Vertex', comm)
 
 
@@ -91,8 +94,8 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
 
     if gc_path_cur < gc_path_opp:
 
-      pl  = as_pdm_gnum(PT.get_node_from_path(dist_tree_jn, gc_path_cur+'/PointList')[1][0])
-      pld = as_pdm_gnum(PT.get_node_from_path(dist_tree_jn, gc_path_opp+"/PointList")[1][0])
+      pl  = as_pdm_gnum(PT.request_nd_value(PT.request_node_from_path(dist_tree_jn, gc_path_cur+'/PointList'))[0])
+      pld = as_pdm_gnum(PT.request_nd_value(PT.request_node_from_path(dist_tree_jn, gc_path_opp+"/PointList"))[0])
 
       interface_dn_v.append(pl.size)
       interface_ids_v.append(np_utils.interweave_arrays([pl,pld]))
@@ -117,9 +120,9 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   vtx_ggnum_parts = []
   for vtx_mdom_offset, parts in zip(vtx_mdom_offsets, parts_per_dom.values()):
     for part in parts:
-      vtx_gnum = as_pdm_gnum(MT.getGlobalNumbering(part, 'Vertex')[1])
+      vtx_gnum = as_pdm_gnum(PT.request_nd_value(MT.requestGlobalNumbering(part, 'Vertex')))
       for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
-        pl = PT.get_child_from_name(gc, 'PointList')[1][0]
+        pl = PT.request_nd_value(PT.request_child_from_name(gc, 'PointList'))[0]
         vtx_ggnum_parts.append(vtx_gnum[pl-1] + vtx_mdom_offset) #Domain gnum on part side
 
   # Create PTP : indirection part1topart2 is just the identity
@@ -131,7 +134,7 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   for shifted_lngn_dom, parts in zip(shifted_lngn, parts_per_dom.values()):
     for shifted_lngn_part, part in zip(shifted_lngn_dom, parts):
       for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
-        pl = PT.get_child_from_name(gc, 'PointList')[1][0]
+        pl = PT.request_nd_value(PT.request_child_from_name(gc, 'PointList'))[0]
         # We received id starting at 1 so shift it to the end of the internal gc gnums
         shifted_lngn_part[pl-1] = vtx_group_id_recv[count] + vtx_mdom_offsets[-1]
         count += 1
@@ -139,7 +142,6 @@ def get_mdom_gnum_vtx(parts_per_dom, comm, merge_jns=True):
   # Finally we just have to fill holes
   from .point_cloud_utils import create_sub_numbering
   shifted_lngn_contiguous = create_sub_numbering(py_utils.to_flat_list(shifted_lngn), comm)
-  shifted_lngn_contiguous = py_utils.to_nested_list(shifted_lngn_contiguous, 
-      [len(parts) for parts in parts_per_dom.values()])
-  return shifted_lngn_contiguous
+  n_parts_per_dom = [len(parts) for parts in parts_per_dom.values()]
+  return py_utils.to_nested_list(shifted_lngn_contiguous, n_parts_per_dom)
 

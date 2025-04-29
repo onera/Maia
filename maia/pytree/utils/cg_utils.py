@@ -1,15 +1,9 @@
-import sys
-if sys.version_info.major == 3 and sys.version_info.major < 8:
-  from collections.abc import Iterable  # < py38
-else:
-  from typing import Iterable
-
 import numpy as np
 
-from maia.pytree.meta import begin_api_export, end_api_export
+from maia.pytree.typing import *
 import maia.pytree as PT
 
-begin_api_export()
+#begin_api_export()
 
 # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
 def flatten_cgns(items):
@@ -51,4 +45,4 @@ def gc_transform_window(gc, window):
 
 
 
-end_api_export()
+#end_api_export()

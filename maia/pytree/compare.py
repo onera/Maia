@@ -1,10 +1,11 @@
 import numpy as np
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import api_export
 
 import maia.pytree as PT
 from maia.pytree.graph.cgns import step, zip_depth_first_search
+
+__all__ = ['is_same_node', 'is_same_tree', 'diff_tree']
 
 class DiffReport(NamedTuple):
   """ A NamedTuple storing the output of :func:`~maia.pytree.diff_tree`
@@ -19,7 +20,7 @@ class DiffReport(NamedTuple):
   errors:str
   warnings:str
 
-CompFunction = Callable[[List[Tuple[CGNSTree,CGNSTree]]], DiffReport]
+CompFunction = Callable[[List[CGNSTree], List[CGNSTree]], DiffReport]
 
 # --------------------------------------------------------------------------
 # BASIC COMPARISON
@@ -59,11 +60,10 @@ def is_same_value(n0: CGNSTree, n1: CGNSTree, abs_tol:float=0., type_tol=False) 
   elif not is_same_value_shape(n0, n1):
     return False
   elif n0[1].dtype.kind == 'f':
-    return np.allclose(n0[1], n1[1], rtol=0, atol=abs_tol)
+    return np.allclose(n0[1], n1[1], rtol=0, atol=abs_tol) #type:ignore[arg-type] #(nodes are not None, because of is_same_value_type)
   else:
-    return np.array_equal(n0[1], n1[1])
+    return np.array_equal(n0[1], n1[1]) #type:ignore[arg-type] #(nodes are not None, because of is_same_value_type)
 
-@api_export
 def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
   Compare two nodes.
@@ -72,8 +72,8 @@ def is_same_node(node1:CGNSTree, node2:CGNSTree, abs_tol:float=0, type_tol=False
   Note that no check is performed on their children.
 
   Args:
-    t1 (CGNSTree): first tree
-    t2 (CGNSTree): second tree
+    node1 (CGNSTree): first tree
+    node2 (CGNSTree): second tree
     abs_tol (float) : absolute tolerance used for value comparison, performed by ``np.allclose`` function
     type_tol (bool): if True, allow comparaison of compatible but different types (I4/I8 or R4/R8).
       Otherwise, nodes are considered to differ.
@@ -101,7 +101,6 @@ class same_tree_visitor:
     else:
       return step.into
 
-@api_export
 def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
   Compare recursively two trees.
@@ -273,8 +272,7 @@ class diff_tree_visitor:
     self.warn_report += warn_report
     return next_step
 
-@api_export
-def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type = True, comp:CompFunction = None) -> DiffReport:
+def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type:bool = True, comp:Optional[CompFunction] = None) -> DiffReport:
   """ Report the differences between two trees.
 
   This function is similar to :func:`is_same_tree`, but returns a full report of differences between

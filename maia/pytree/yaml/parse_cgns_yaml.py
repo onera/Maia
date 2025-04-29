@@ -4,7 +4,7 @@ from maia.pytree.typing import *
 import maia.pytree.node as N
 import maia.pytree.cgns_keywords as CGK
 
-def generate_line(node, lines, ident=0, line_max=120):
+def generate_line(node:CGNSTree, lines:List[str], ident:int=0, line_max:int=120):
   """
   Recursive function Writting a single line in yaml format for a CGNSNode : depending of line_max value,
   line will be formated as
@@ -46,7 +46,7 @@ def generate_line(node, lines, ident=0, line_max=120):
     first_line = f"{' '*ident}{N.get_name(node)} {N.get_label(node)}:\n{' '*(ident+2)}{value_type} : "
     data_line = ''
     count = len(f"{' '*(ident+2)}{value_type} : ")
-    values = value.split(',')
+    values = value.split(',') #type:ignore #(if value_type is not None, then value is not None)
     for i, val in enumerate(values):
       data_line += f"{val}," 
       count += len(val)+1
@@ -79,7 +79,7 @@ def to_yaml(t:CGNSTree, max_line_size=120, write_root=True) -> List[str]:
       ZoneType ZoneType_t 'Unstructured':
       FamilyName FamilyName_t 'ROW':
   """
-  lines = []
+  lines:List[str] = []
   if write_root:
     generate_line(t, lines=lines, line_max=max_line_size)
   else:

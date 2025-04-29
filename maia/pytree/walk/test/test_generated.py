@@ -8,7 +8,7 @@ from maia.pytree.cgns_keywords import Label as CGL
 
 import maia.pytree           as PT
 import maia.pytree.predicate as PTp
-from maia.pytree.meta import CGNSNodeFromPredicateNotFoundError
+from maia.pytree.meta import CGNSNodeNotFoundError
 
 
 yt = """
@@ -81,7 +81,7 @@ def test_generated_walkers():
   assert PT.get_nodes_from_name_and_label(tree, "Index_iii", "IndexArray_t") == \
          PT.get_nodes_from_predicate(tree, lambda n: PT.get_label(n) == "IndexArray_t" and PT.get_name(n) == "Index_iii")
 
-  with pytest.raises(CGNSNodeFromPredicateNotFoundError):
+  with pytest.raises(CGNSNodeNotFoundError):
     PT.request_node_from_name(tree, "Zzz")
 
   assert PT.get_child_from_name(tree, "ZoneI") is None
@@ -122,8 +122,6 @@ def test_get_node_from_path():
 def test_request_node_from_path():
   tree = PT.yaml.to_cgns_tree(yt)
   assert PT.request_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
-  default = PT.new_node("Default", value="Null")
-  assert PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3', default=default) == default
   assert PT.request_node_from_path(tree, '') == tree
   with pytest.raises(Exception):
    PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3')

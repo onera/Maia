@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Developpement version
 ---------------------
 
+💡 New Features
+^^^^^^^^^^^^^^^
+- Support for type hints
+
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - Manage preexisting std / mixed Elements_t nodes in std ↔ mixed conversion

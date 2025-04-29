@@ -1,16 +1,16 @@
 import numpy as np
 
 import maia
-
+from maia.typing import *
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 from maia.pytree.sids import elements_utils as EU
 
+
 from maia.utils     import np_utils, par_utils, vstride
 from maia.transfer  import protocols as EP
 from maia.algo.dist import matching_jns_tools as MJT
-
-
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 from cmaia.algo import combine_to_tetra, combine_to_pyra, \
                        combine_to_penta, combine_to_hexa
 
@@ -24,34 +24,35 @@ is_cell_full_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'Discr
                                     PT.get_child_from_name(n, 'PointRange') is None and \
                                     PT.Subset.GridLocation(n) == 'CellCenter'
 
-def _collected_shifted_pl(zone, loc, shift):
+def _collected_shifted_pl(zone:CGNSTree, loc:str, shift:int):
   all_pl = []
   for subset in PT.iter_all_subsets(zone, loc):
     if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
-      _pl = pl[1][0]
+      _pl = PT.request_nd_value(pl)[0]
     elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
-      distri = MT.getDistribution(subset, 'Index')[1]
-      _pl = np_utils.single_dim_pr_to_pl(pr[1], distri)[0]
+      distri = MT.distribution_value(subset, 'Index')
+      _pl = np_utils.single_dim_pr_to_pl(PT.request_nd_value(pr), distri)[0]
     all_pl.append(_pl + shift)
   return all_pl
 
-def _update_pl(zone, loc, new_pl):
+def _update_pl(zone:CGNSTree, loc:str, new_pl:List[NDArray]):
   for subset, _pl in zip(PT.iter_all_subsets(zone, loc), new_pl):
     PT.rm_children_from_name(subset, 'PointList')
     PT.rm_children_from_name(subset, 'PointRange')
     PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
     # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
   
-def _ngon_to_elements_zone_2d(zone, comm):
+def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   """ Implementation of conversion for 2d zones. We assume that input zones
       are poly2d with BAR (+PE) and NGON node """
 
+  zone_dtype = PT.request_nd_value(zone).dtype
   # Start by constructing boundary edges
   edge_n = MT.Zone.EdgeNode(zone)
   
-  edge_vtx     = PT.get_child_from_name(edge_n, 'ElementConnectivity')[1]
-  pe           = PT.get_child_from_name(edge_n, 'ParentElements')[1]
-  edge_distri  = MT.getDistribution(edge_n, 'Element')[1]
+  edge_vtx     = PT.request_nd_value(PT.request_child_from_name(edge_n, 'ElementConnectivity'))
+  pe           = PT.request_nd_value(PT.request_child_from_name(edge_n, 'ParentElements'))
+  edge_distri  = MT.distribution_value(edge_n, 'Element')
 
   edge_distri_f = par_utils.partial_to_full_distribution(edge_distri, comm)
 
@@ -67,29 +68,30 @@ def _ngon_to_elements_zone_2d(zone, comm):
 
   bar_distri  = par_utils.dn_to_distribution(bar_vtx.size // 2, comm)
 
-  bar_range  = np.array([1, bar_distri[-1]], dtype=zone[1].dtype)
+  bar_range  = np.array([1, bar_distri[-1]], dtype=zone_dtype)
   if bar_distri[-1] > 0:
     bar_n = PT.new_Elements('BAR_2', 'BAR_2', erange=bar_range, econn=bar_vtx, parent=zone)
     MT.newDistribution({'Element' : bar_distri}, bar_n)
   
   # Renumber PointList indexing Edges
-  new_edge_id = -1*np.ones(edge_vtx.size // 2, zone[1].dtype)
+  new_edge_id = -1*np.ones(edge_vtx.size // 2, zone_dtype)
   new_edge_id[is_bnd_edge] = np.arange(bar_distri[0]+1, bar_distri[1]+1)
 
   new_pl = GI.Take(new_edge_id)
+  del(GI)
   _update_pl(zone, 'EdgeCenter', new_pl)
 
   # Now take care of the faces
   ngon_n = PT.Zone.NGonNode(zone)
 
-  face_distri = MT.getDistribution(ngon_n, 'Element')[1]
+  face_distri = MT.distribution_value(ngon_n, 'Element')
   face_vtx    = MT.Element.connectivity(ngon_n)
   n_face_loc  = len(face_vtx)
 
   n_treated = 0
   elt_shift = bar_range[1]
   mask = np.empty(n_face_loc, bool)
-  new_face_id = np.empty(n_face_loc, zone[1].dtype) # For subset renumbering
+  new_face_id = np.empty(n_face_loc, zone_dtype) # For subset renumbering
   for elt_kind, target_size in zip(['TRI_3', 'QUAD_4'], [3,4]):
     # Find corresponding faces
     np.equal(face_vtx.counts, target_size, out=mask)
@@ -101,7 +103,7 @@ def _ngon_to_elements_zone_2d(zone, comm):
     distri = par_utils.dn_to_distribution(n_elt_loc, comm)
     if distri[-1] > 0:
       elt = PT.new_Elements(elt_kind, elt_kind,
-                            erange=np.array([elt_shift+1, elt_shift+distri[-1]], zone[1].dtype),
+                            erange=np.array([elt_shift+1, elt_shift+distri[-1]], zone_dtype),
                             econn=elt_conn,
                             parent=zone)
       MT.new_distribution({'Element' : distri}, elt)
@@ -132,11 +134,11 @@ def _ngon_to_elements_zone_2d(zone, comm):
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
   face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
-  GI = EP.GlobalIndexer(face_distri_f, new_pl[-1]-bar_range[1]-1, comm)
+  GMI = EP.GlobalIndexer(face_distri_f, new_pl[-1]-bar_range[1]-1, comm)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
-    data = PT.get_node_from_path(zone, path)[1]
-    GI.Put(data, data) # Inplace update of node data
+    data = PT.request_nd_value(PT.request_node_from_path(zone, path))
+    GMI.Put(data, data) # Inplace update of node data
 
   # Remove NGON/Edge elements
   PT.rm_child(zone, edge_n)
@@ -144,16 +146,17 @@ def _ngon_to_elements_zone_2d(zone, comm):
 
 
 
-def _ngon_to_elements_zone_3d(zone, comm):
+def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   """ Implementation of conversion for 3d zones. We assume that input zones
       are poly3d with NGON (+PE) and NFACE node """
 
+  zone_dtype = PT.request_nd_value(zone).dtype
   # Start by constructing boundary faces
   ngon_n = PT.Zone.NGonNode(zone)
   
   face_vtx     = MT.Element.connectivity(ngon_n)
-  pe           = PT.get_child_from_name(ngon_n, 'ParentElements')[1]
-  face_distri  = MT.getDistribution(ngon_n, 'Element')[1]
+  pe           = PT.request_nd_value(PT.request_child_from_name(ngon_n, 'ParentElements'))
+  face_distri  = MT.distribution_value(ngon_n, 'Element')
   dn_face   = len(face_vtx)
 
   face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
@@ -176,8 +179,8 @@ def _ngon_to_elements_zone_3d(zone, comm):
   tri_distri  = par_utils.dn_to_distribution(tri_vtx.size  // 3, comm)
   quad_distri = par_utils.dn_to_distribution(quad_vtx.size // 4, comm)
 
-  tri_range  = np.array([1, tri_distri[-1]], dtype=zone[1].dtype)
-  quad_range = np.array([1, quad_distri[-1]], dtype=zone[1].dtype) + tri_range[-1]
+  tri_range  = np.array([1, tri_distri[-1]], dtype=zone_dtype)
+  quad_range = np.array([1, quad_distri[-1]], dtype=zone_dtype) + tri_range[-1]
   if tri_distri[-1] > 0:
     tri_n = PT.new_Elements('TRI_3', 'TRI_3', erange=tri_range, econn=tri_vtx, parent=zone)
     MT.newDistribution({'Element' : tri_distri}, tri_n)
@@ -186,7 +189,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
     MT.newDistribution({'Element' : quad_distri}, quad_n)
   
   # Renumber PointList indexing Faces
-  new_face_id = -1*np.ones(dn_face, zone[1].dtype)
+  new_face_id = -1*np.ones(dn_face, zone_dtype)
   new_face_id[is_bnd_tri] = np.arange(tri_distri[0]+1, tri_distri[1]+1)
   new_face_id[is_bnd_quad] = np.arange(quad_distri[0]+tri_distri[-1]+1, quad_distri[1]+tri_distri[-1]+1)
 
@@ -196,7 +199,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   # Now take care of the cells 
   nface_n = PT.Zone.NFaceNode(zone)
   cell_face     = MT.Element.connectivity(nface_n)
-  cell_distri   = MT.getDistribution(nface_n, 'Element')[1]
+  cell_distri   = MT.distribution_value(nface_n, 'Element')
   dn_cell = len(cell_face)
 
   # Design choice : get the number of vertices (with reps) for **all** cells,
@@ -209,7 +212,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   elt_shift = quad_range[1]
   cell_face_section = []
   mask = np.empty(dn_cell, bool)
-  new_cell_id = np.empty(dn_cell, zone[1].dtype) # For subset renumbering
+  new_cell_id = np.empty(dn_cell, zone_dtype) # For subset renumbering
   # Gather (locally) the element per kind. In addition we prepare the renumbering table for cells
   for elt_kind, target_size in zip(['TETRA_4', 'PYRA_5', 'PENTA_6', 'HEXA_8'], [12, 16, 18, 24]):
     # Find corresponding cells
@@ -223,9 +226,10 @@ def _ngon_to_elements_zone_3d(zone, comm):
     distri = par_utils.dn_to_distribution(n_elt_loc, comm)
     if distri[-1] > 0:
       n_vtx_per_elt = EU.element_number_of_nodes(EU.cgns_name_to_id(elt_kind))
+      assert n_vtx_per_elt is not None
       elt = PT.new_Elements(elt_kind, elt_kind,
-                            erange=np.array([elt_shift+1, elt_shift+distri[-1]], zone[1].dtype),
-                            econn=np.empty(n_vtx_per_elt*n_elt_loc, zone[1].dtype),
+                            erange=np.array([elt_shift+1, elt_shift+distri[-1]], zone_dtype),
+                            econn=np.empty(n_vtx_per_elt*n_elt_loc, zone_dtype),
                             parent=zone)
       MT.new_distribution({'Element' : distri}, elt)
     
@@ -251,7 +255,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
     elt = PT.get_child_from_name_and_label(zone, elt_kind, 'Elements_t')
     if elt is not None:
       _section_face_vtx = sections_face_vtx[i]
-      ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
+      ec = PT.request_child_from_name(elt, 'ElementConnectivity')[1]
       combine_funcs[i](_section_face_vtx.counts, _section_face_vtx.values, cell_face_section[i], ec) 
 
   # Renumber PointList indexing cells
@@ -267,11 +271,11 @@ def _ngon_to_elements_zone_3d(zone, comm):
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
   cell_distri_f = par_utils.partial_to_full_distribution(cell_distri, comm)
-  GI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
+  GMI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
-    data = PT.get_node_from_path(zone, path)[1]
-    GI.Put(data, data) # Inplace update of node data
+    data = PT.request_nd_value(PT.request_node_from_path(zone, path))
+    GMI.Put(data, data) # Inplace update of node data
 
 
   # Remove NGON/NFACE elements
@@ -279,7 +283,7 @@ def _ngon_to_elements_zone_3d(zone, comm):
   PT.rm_child(zone, nface_n)
  
 
-def convert_ngon_to_elements(dist_tree, comm):
+def convert_ngon_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """
   Transform a polyedric (NGon based) connectivity into a standard nodal
   connectivity.
@@ -289,8 +293,8 @@ def convert_ngon_to_elements(dist_tree, comm):
   are removed and relevant data (such as PointList) are updated.
 
   Args:
-    dist_tree  (CGNSTree): distributed tree with polyedric connectivity
-    comm       (`MPIComm`) : MPI communicator
+    dist_tree  (CGNSDistTree): distributed tree with polyedric connectivity
+    comm       (`MPIComm`)   : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -298,6 +302,7 @@ def convert_ngon_to_elements(dist_tree, comm):
         :end-before: #convert_ngon_to_elements@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   # Needed to update the joins afterward
   MJT.add_joins_donor_name(dist_tree, comm)
 

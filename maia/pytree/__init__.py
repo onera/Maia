@@ -1,5 +1,6 @@
 from .sids import *
 from .walk import *
+from .walk.legacy import * # To remove ?
 from .node import *
 
 from .compare    import *

@@ -3,9 +3,11 @@ import os
 import time
 import mpi4py.MPI as MPI
 
+from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
@@ -15,20 +17,26 @@ from .utils                     import create_parent_folder
 if _LEGACY_IO:
   from . import _hdf_io_cass as _hdf_io
 else:
-  from . import _hdf_io_h5py as _hdf_io
+  from . import _hdf_io_h5py as _hdf_io #type:ignore[no-redef]
 
 from maia.factory     import full_to_dist
 
-def load_size_tree(filename, comm):
-  return _hdf_io.load_size_tree(filename, comm)
+def load_size_tree(filename: Union[str, PathLike], 
+                   comm: MPIComm) -> CGNSTree:
+  return _hdf_io.load_size_tree(str(filename), comm)
 
-def load_partial(filename, dist_tree, hdf_filter, comm):
+def load_partial(filename: str, 
+                 dist_tree: CGNSTree, 
+                 hdf_filter: Dict[str, Any], 
+                 comm: MPIComm) -> None:
   if _LEGACY_IO:
     _hdf_io.load_partial(filename, dist_tree, hdf_filter, comm)
   else:
-    _hdf_io.load_partial(filename, dist_tree, hdf_filter)
+    _hdf_io.load_partial(filename, dist_tree, hdf_filter) #type:ignore[call-arg] #(signature mismatch)
 
-def write_tree(tree, filename, links=[]):
+def write_tree(tree: CGNSTree, 
+               filename: Union[str, PathLike],
+               links: List[List[str]] = []) -> None:
   """write_tree(tree, filename, links=[])
 
   Sequential write to a CGNS file.
@@ -48,7 +56,7 @@ def write_tree(tree, filename, links=[]):
   filename = str(filename)
   _hdf_io.write_full(filename, tree, links=links)
 
-def read_tree(filename):
+def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
   """read_tree(filename)
 
   Sequential load of a CGNS file.
@@ -66,7 +74,7 @@ def read_tree(filename):
   else:
     return _hdf_io.read_full(filename)
 
-def read_links(filename):
+def read_links(filename: Union[str, PathLike]) -> List[List[str]]:
   """read_links(filename)
 
   Detect the links embedded in a CGNS file.
@@ -81,9 +89,13 @@ def read_links(filename):
   """
   filename = str(filename)
 
-  return _hdf_io.read_links(filename)
+  assert not _LEGACY_IO, "Not implemented for legacy IO"
+  return _hdf_io.read_links(filename) #type:ignore[attr-defined] #(Only av. on h5py io)
 
-def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
+def load_tree_from_filter(filename: str,
+                          dist_tree: CGNSTree, 
+                          comm: MPIComm, 
+                          hdf_filter: Dict[str, Any]) -> None:
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() \
@@ -97,7 +109,7 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
   unlock_at_least_one = True
   while(len(hdf_filter_with_func) > 0 and unlock_at_least_one ):
     # Update if you can
-    next_hdf_filter = dict()
+    next_hdf_filter:Dict[str, Any] = dict()
     unlock_at_least_one = False
     for key, f in hdf_filter_with_func.items():
       try:
@@ -123,13 +135,17 @@ def load_tree_from_filter(filename, dist_tree, comm, hdf_filter):
     mlog.error(f"ElementConnectivity arrays of NFACE_n elements have been recomputed "\
                f"because they were wrongly defined (missing orientations)")
 
-def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links):
+def save_tree_from_filter(filename: str,
+                          dist_tree: CGNSDistTree, 
+                          comm: MPIComm, 
+                          hdf_filter: Dict[str, Any], 
+                          links: List[List[str]]) -> None:
   """
   """
   hdf_filter_with_dim  = {key: value for (key, value) in hdf_filter.items() if isinstance(value, list)}
   hdf_filter_with_func = {key: value for (key, value) in hdf_filter.items() if not isinstance(value, list)}
 
-  next_hdf_filter = dict()
+  next_hdf_filter:Dict[str, Any] = dict()
   for key, f in hdf_filter_with_func.items():
     f(hdf_filter_with_dim)
 
@@ -139,7 +155,9 @@ def save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links):
 
   _hdf_io.write_partial(filename, saving_dist_tree, hdf_filter_with_dim, links, comm)
 
-def fill_size_tree(tree, filename, comm):
+def fill_size_tree(tree: CGNSTree, 
+                   filename: Union[str, PathLike], 
+                   comm: MPIComm) -> None:
   filename = str(filename)
   add_distribution_info(tree, comm)
   hdf_filter = create_tree_hdf_filter(tree)
@@ -150,7 +168,7 @@ def fill_size_tree(tree, filename, comm):
   PT.rm_nodes_from_name(tree, '*#Size')
 
 
-def file_to_dist_tree(filename, comm):
+def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDistTree:
   """file_to_dist_tree(filename, comm)
 
   Distributed load of a CGNS file.
@@ -173,8 +191,9 @@ def file_to_dist_tree(filename, comm):
     dist_tree = full_to_dist.full_to_dist_tree(tree, comm, owner=0)
 
   else:
-    dist_tree = load_size_tree(filename, comm)
-    fill_size_tree(dist_tree, filename, comm)
+    size_tree = load_size_tree(filename, comm)
+    fill_size_tree(size_tree, filename, comm)
+    dist_tree = CGNSDistTree(size_tree)
 
   end = time.time()
   dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
@@ -184,7 +203,10 @@ def file_to_dist_tree(filename, comm):
             f" (Σ={mlog.bsize_to_str(all_dt_size)})")
   return dist_tree
 
-def dist_tree_to_file(dist_tree, filename, comm, links=[]):
+def dist_tree_to_file(dist_tree: CGNSDistTree, 
+                      filename: Union[str, PathLike], 
+                      comm: MPIComm, 
+                      links: List[List[str]] = []) -> None:
   """dist_tree_to_file(dist_tree, filename, comm, links=[])
 
   Distributed write to a CGNS file.
@@ -192,11 +214,12 @@ def dist_tree_to_file(dist_tree, filename, comm, links=[]):
   If links are used, the link description list must be identiqual on all ranks.
 
   Args:
-    dist_tree (CGNSTree) : Distributed tree to write
-    filename (str) : Path of the file
-    links   (list) : List of links to create (see SIDS-to-Python guide)
-    comm     (MPIComm) : MPI communicator
+    dist_tree (CGNSDistTree) : Distributed tree to write
+    filename (str)           : Path of the file
+    links   (list)           : List of links to create (see SIDS-to-Python guide)
+    comm     (MPIComm)       : MPI communicator
   """
+  check_cgns_dist_tree(dist_tree)
   if links:
     dist_tree = PT.shallow_copy(dist_tree)
     for link in links: # Links override data, so delete data
@@ -217,7 +240,10 @@ def dist_tree_to_file(dist_tree, filename, comm, links=[]):
   end = time.time()
   mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
-def write_trees(tree, filename, comm, links=[]):
+def write_trees(tree: CGNSTree, 
+                filename: Union[str, PathLike], 
+                comm: MPIComm, 
+                links: List[List[str]] = []) -> None:
   """write_trees(tree, filename, comm, links=[])
 
   Sequential write to CGNS files.

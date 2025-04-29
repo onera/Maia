@@ -3,6 +3,9 @@ import numpy              as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+from maia.typing import *
+from maia.pytree.maia.check_tree import check_cgns_dist_tree
+
 from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
 from maia.utils           import logging as mlog
@@ -375,7 +378,10 @@ def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
 ###############################################################################
 
 ###############################################################################
-def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
+def convert_s_to_u(dist_tree:CGNSDistTree,
+                   connectivity:Literal['Poly', 'Standard'],
+                   comm:MPIComm,
+                   subset_loc:Dict[str, Union[None, str, List[str]]] = {}) -> None:
   """Performs the destructuration of the input distributed tree.
 
   The element connectivity can be generated:
@@ -394,7 +400,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
     ``Poly`` and subset location set to ``FaceCenter`` (or ``EdgeCenter`` for 2D meshes).
 
   Args:
-    dist_tree (CGNSTree): Structured tree
+    dist_tree (CGNSDistTree): Structured distributed tree
     connectivity (str): Type of elements used to describe the connectivity.
       Admissible values are ``"Poly"`` and ``"Standard"``.
     comm       (MPIComm) : MPI communicator
@@ -409,11 +415,12 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         :end-before: #convert_s_to_u@end
         :dedent: 2
   """
+  check_cgns_dist_tree(dist_tree)
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
   add_joins_donor_name(dist_tree, comm)
-  zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.get_node_from_path(dist_tree, path))
+  zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.request_node_from_path(dist_tree, path))
                               for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
 
   PT.update_child(dist_tree, 'CGNSLibraryVersion', 'CGNSLibraryVersion_t', 4.2)
@@ -423,7 +430,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
         continue
 
       elif PT.Zone.Type(zone) == 'Structured': #Zone is S -> convert it
-        zone_dims_s = PT.get_value(zone)
+        zone_dims_s = PT.request_nd_value(zone)
         zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
         n_vtx  = PT.Zone.VertexSize(zone)
         cell_dim = PT.Zone.CellDimension(zone)
@@ -436,7 +443,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
           elt_type = {2: 'QUAD_4', 3: 'HEXA_8'}[cell_dim]
           erange = np.array([1, PT.Zone.n_cell(zone)], zdtype)
           elt = PT.new_Elements(elt_type, elt_type, erange=erange, econn=cell_vtx.values, parent=zone)
-          MT.new_distribution({'Element' : MT.get_distribution(zone, 'Cell')[1].copy()}, elt)
+          MT.new_distribution({'Element' : MT.distribution_value(zone, 'Cell').copy()}, elt)
         else:
           # Poly elements --> compute surfacic (resp. lineic) elts 1 ... n_face
           # Then FaceCenter (resp. EdgeCenter) BCs are ready
@@ -491,12 +498,12 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
           is_abutt1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
             opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
-            opp_zone = PT.get_node_from_path(dist_tree, opp_zone_path)
+            opp_zone = PT.request_node_from_path(dist_tree, opp_zone_path)
             if PT.Zone.Type(opp_zone) != 'Unstructured':
               continue
             loc = PT.Subset.GridLocation(gc_s)
-            pl = PT.get_child_from_name(gc_s, 'PointList')[1]
-            pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path])
+            pl = PT.request_nd_value(PT.request_child_from_name(gc_s, 'PointList'))
+            pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path]) #type:ignore[call-arg]
             pl_idx = pl_idx.reshape((1,-1), order='F')
             if 'EdgeCenter' in loc: #IEdge or JEdge -> EdgeCenter
               PT.update_child(gc_s, 'GridLocation', value='EdgeCenter')
@@ -508,7 +515,7 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
               opp_base_name = PT.utils.path_head(opp_zone_path,1)
               if PT.GridConnectivity.ZoneDonorPath(opp_jn, opp_base_name) == zone_path:
                 pld_n = PT.get_child_from_name(opp_jn, 'PointListDonor')
-                if pld_n is not None and np.array_equal(pld_n[1], pl):
+                if pld_n is not None and np.array_equal(PT.request_nd_value(pld_n), pl):
                    PT.update_child(opp_jn, 'PointListDonor', value=pl_idx)
                    break
             else:
@@ -525,33 +532,33 @@ def convert_s_to_u(dist_tree, connectivity, comm, subset_loc=dict()):
 
         # Update CellCenter subsets 
         if connectivity == 'Standard':
-          elt = PT.get_child_from_name(zone, 'QUAD_4' if cell_dim == 3 else 'BAR_2')
+          elt = PT.request_child_from_name(zone, 'QUAD_4' if cell_dim == 3 else 'BAR_2')
         else:
           elt = PT.Zone.NGonNode(zone) if cell_dim == 3 else MT.Zone.EdgeNode(zone)
         cell_offset = PT.Element.Range(elt)[1]
         for subset in PT.iter_all_subsets(zone, 'CellCenter'):
-          pl = PT.get_child_from_name(subset, 'PointList')
-          pl[1][0] += cell_offset
+          pl_n = PT.request_child_from_name(subset, 'PointList')
+          PT.request_nd_value(pl_n)[0] += cell_offset
 
         # Face or Edge distribution does not exist on U meshes
-        distri = MT.getDistribution(zone)
+        distri = MT.requestDistribution(zone)
         PT.rm_children_from_name(distri, 'Face')
         PT.rm_children_from_name(distri, 'Edge')
 
   copy_donor_subset(dist_tree)
 
 ###############################################################################
-def convert_s_to_ngon(dist_tree, comm):
+def convert_s_to_ngon(dist_tree:CGNSDistTree, comm:MPIComm) -> None:
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
-  bases_dim = set(PT.get_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree))
+  bases_dim = set(PT.request_nd_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree))
   assert len(bases_dim) == 1, "Differents CellDimension in same tree are not allowed"
   _subset_loc = 'EdgeCenter' if list(bases_dim)[0] == 2 else 'FaceCenter'
   convert_s_to_u(dist_tree,
-                 'NGON_n',
+                 'Poly',
                  comm,
                  {'BC_t' : _subset_loc, 'GC_t' : _subset_loc})
 
-def convert_s_to_poly(dist_tree, comm):
+def convert_s_to_poly(dist_tree:CGNSDistTree, comm:MPIComm) -> None:
   """Same as convert_s_to_ngon, but also creates the NFace connectivity"""
   from maia.algo import pe_to_nface, edge_pe_to_ngon
   convert_s_to_ngon(dist_tree, comm)
