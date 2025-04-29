@@ -429,7 +429,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
         continue
 
       elif PT.Zone.Type(zone) == 'Structured': #Zone is S -> convert it
-        zone_dims_s = PT.request_nd_value(zone)
+        zone_dims_s = PT.get_np_value(zone)
         zone_dims_u = np.prod(zone_dims_s, axis=0, dtype=zone_dims_s.dtype).reshape(1,-1)
         n_vtx  = PT.Zone.VertexSize(zone)
         cell_dim = PT.Zone.CellDimension(zone)
@@ -501,7 +501,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
             if PT.Zone.Type(opp_zone) != 'Unstructured':
               continue
             loc = PT.Subset.GridLocation(gc_s)
-            pl = PT.request_nd_value(PT.request_child_from_name(gc_s, 'PointList'))
+            pl = PT.get_np_value(PT.request_child_from_name(gc_s, 'PointList'))
             pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path]) #type:ignore[call-arg]
             pl_idx = pl_idx.reshape((1,-1), order='F')
             if 'EdgeCenter' in loc: #IEdge or JEdge -> EdgeCenter
@@ -514,7 +514,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
               opp_base_name = PT.utils.path_head(opp_zone_path,1)
               if PT.GridConnectivity.ZoneDonorPath(opp_jn, opp_base_name) == zone_path:
                 pld_n = PT.get_child_from_name(opp_jn, 'PointListDonor')
-                if pld_n is not None and np.array_equal(PT.request_nd_value(pld_n), pl):
+                if pld_n is not None and np.array_equal(PT.get_np_value(pld_n), pl):
                    PT.update_child(opp_jn, 'PointListDonor', value=pl_idx)
                    break
             else:
@@ -537,7 +537,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
         cell_offset = PT.Element.Range(elt)[1]
         for subset in PT.iter_all_subsets(zone, 'CellCenter'):
           pl_n = PT.request_child_from_name(subset, 'PointList')
-          PT.request_nd_value(pl_n)[0] += cell_offset
+          PT.get_np_value(pl_n)[0] += cell_offset
 
         # Face or Edge distribution does not exist on U meshes
         distri = MT.requestDistribution(zone)
@@ -549,7 +549,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
 ###############################################################################
 def convert_s_to_ngon(dist_tree:CGNSDistTree, comm:MPIComm) -> None:
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
-  bases_dim = set(PT.request_nd_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree))
+  bases_dim = set(PT.get_np_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree))
   assert len(bases_dim) == 1, "Differents CellDimension in same tree are not allowed"
   _subset_loc = 'EdgeCenter' if list(bases_dim)[0] == 2 else 'FaceCenter'
   convert_s_to_u(dist_tree,

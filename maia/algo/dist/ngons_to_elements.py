@@ -27,10 +27,10 @@ def _collected_shifted_pl(zone:CGNSTree, loc:str, shift:int):
   all_pl = []
   for subset in PT.iter_all_subsets(zone, loc):
     if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
-      _pl = PT.request_nd_value(pl)[0]
+      _pl = PT.get_np_value(pl)[0]
     elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
       distri = MT.distribution_value(subset, 'Index')
-      _pl = np_utils.single_dim_pr_to_pl(PT.request_nd_value(pr), distri)[0]
+      _pl = np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), distri)[0]
     all_pl.append(_pl + shift)
   return all_pl
 
@@ -45,12 +45,12 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   """ Implementation of conversion for 2d zones. We assume that input zones
       are poly2d with BAR (+PE) and NGON node """
 
-  zone_dtype = PT.request_nd_value(zone).dtype
+  zone_dtype = PT.get_np_value(zone).dtype
   # Start by constructing boundary edges
   edge_n = MT.Zone.EdgeNode(zone)
   
-  edge_vtx     = PT.request_nd_value(PT.request_child_from_name(edge_n, 'ElementConnectivity'))
-  pe           = PT.request_nd_value(PT.request_child_from_name(edge_n, 'ParentElements'))
+  edge_vtx     = PT.get_np_value(PT.request_child_from_name(edge_n, 'ElementConnectivity'))
+  pe           = PT.get_np_value(PT.request_child_from_name(edge_n, 'ParentElements'))
   edge_distri  = MT.distribution_value(edge_n, 'Element')
 
   edge_distri_f = par_utils.partial_to_full_distribution(edge_distri, comm)
@@ -136,7 +136,7 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   GMI = EP.GlobalIndexer(face_distri_f, new_pl[-1]-bar_range[1]-1, comm)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
-    data = PT.request_nd_value(PT.request_node_from_path(zone, path))
+    data = PT.get_np_value(PT.request_node_from_path(zone, path))
     GMI.Put(data, data) # Inplace update of node data
 
   # Remove NGON/Edge elements
@@ -149,12 +149,12 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   """ Implementation of conversion for 3d zones. We assume that input zones
       are poly3d with NGON (+PE) and NFACE node """
 
-  zone_dtype = PT.request_nd_value(zone).dtype
+  zone_dtype = PT.get_np_value(zone).dtype
   # Start by constructing boundary faces
   ngon_n = PT.Zone.NGonNode(zone)
   
   face_vtx     = MT.Element.connectivity(ngon_n)
-  pe           = PT.request_nd_value(PT.request_child_from_name(ngon_n, 'ParentElements'))
+  pe           = PT.get_np_value(PT.request_child_from_name(ngon_n, 'ParentElements'))
   face_distri  = MT.distribution_value(ngon_n, 'Element')
   dn_face   = len(face_vtx)
 
@@ -273,7 +273,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   GMI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
-    data = PT.request_nd_value(PT.request_node_from_path(zone, path))
+    data = PT.get_np_value(PT.request_node_from_path(zone, path))
     GMI.Put(data, data) # Inplace update of node data
 
 

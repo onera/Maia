@@ -136,14 +136,14 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
       # Special case of NFace (connectivity is signed, and does not indicates vertices)
       if PT.Element.CGNSName(elt) == 'NFACE_n':
         ec = PT.request_child_from_name(elt, 'ElementConnectivity')
-        ec_val = PT.request_nd_value(ec)
+        ec_val = PT.get_np_value(ec)
         sign = np.sign(ec_val)
         val  = np.abs(ec_val)
         r = np.searchsorted(cur_idx, val)
         ec_val[:] = sign*(val + offset[r-1])
 
       if (pe := PT.get_child_from_name(elt, 'ParentElements')) is not None:
-        pe_val = PT.request_nd_value(pe)
+        pe_val = PT.get_np_value(pe)
         r = np.searchsorted(cur_idx, pe_val)
         pe_val += offset[r-1] * (pe_val > 0)
 
@@ -155,12 +155,12 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
 
       if (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
         # PointRange may cross several sections, so we extend it
-        distri = PT.request_nd_value(distri_n) if (distri_n := MT.getDistribution(subset, 'Index')) is not None else None
-        new_pl = np_utils.single_dim_pr_to_pl(PT.request_nd_value(pr), distri)
+        distri = PT.get_np_value(distri_n) if (distri_n := MT.getDistribution(subset, 'Index')) is not None else None
+        new_pl = np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), distri)
         PT.update_node(pr, 'PointList', 'IndexArray_t', new_pl)
 
       pl = PT.request_child_from_name(subset, 'PointList')
-      pl_value = PT.request_nd_value(pl)
+      pl_value = PT.get_np_value(pl)
       r = np.searchsorted(cur_idx, pl_value)
       pl_value += offset[r-1]
 
@@ -178,7 +178,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
                                    PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path
       for gc in PT.get_children_from_predicates(opp_zone, ['ZoneGridConnectivity_t', is_gc_to_update]):
         pld = PT.request_child_from_name(gc, 'PointListDonor')
-        pld_value = PT.request_nd_value(pld)
+        pld_value = PT.get_np_value(pld)
         r = np.searchsorted(cur_idx, pld_value)
         pld_value += offset[r-1]
       

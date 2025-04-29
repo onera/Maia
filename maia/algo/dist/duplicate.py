@@ -151,7 +151,7 @@ def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
       for zgc, gc in PT.iter_children_from_predicates(duplicated_zone, gc_predicate, ancestors=True):
         gc_path = f"{zone_path}/{PT.get_name(zgc)}/{PT.get_name(gc)}"
         if (gc_path not in jn_paths_a) and (gc_path not in jn_paths_b):
-          gc_value = ".D0".join(PT.request_str_value(gc).split(".D0")[0:-1])
+          gc_value = ".D0".join(PT.get_str_value(gc).split(".D0")[0:-1])
           if gc_value in gc_values_to_update:
             PT.set_value(gc, f"{gc_value}.D{n+1}")
 
@@ -187,8 +187,8 @@ def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
     gcp_a_init = PT.request_child_from_label(jn_a_init_node, "GridConnectivityProperty_t")
     rotation_angle_a_node = PT.request_node_from_name(gcp_a_init, "RotationAngle", depth=2)
     translation_a_node    = PT.request_node_from_name(gcp_a_init, "Translation", depth=2)
-    PT.set_value(rotation_angle_a_node, PT.request_nd_value(rotation_angle_a_node) * (dupl_nb+1))
-    PT.set_value(translation_a_node,    PT.request_nd_value(translation_a_node)    * (dupl_nb+1))
+    PT.set_value(rotation_angle_a_node, PT.get_np_value(rotation_angle_a_node) * (dupl_nb+1))
+    PT.set_value(translation_a_node,    PT.get_np_value(translation_a_node)    * (dupl_nb+1))
     PT.set_value(jn_a_init_node, f"{jn_values_a[ja]}.D{dupl_nb}")
 
   # Update information for joins of the second joins list (B) from last set of duplicated zones
@@ -200,8 +200,8 @@ def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
     gcp_b_last = PT.request_child_from_label(jn_b_last_node, "GridConnectivityProperty_t")
     rotation_angle_b_node = PT.request_node_from_name(gcp_b_last, "RotationAngle", depth=2)
     translation_b_node    = PT.request_node_from_name(gcp_b_last, "Translation", depth=2)
-    PT.set_value(rotation_angle_b_node, PT.request_nd_value(rotation_angle_b_node) * (dupl_nb+1))
-    PT.set_value(translation_b_node,    PT.request_nd_value(translation_b_node)    * (dupl_nb+1))
+    PT.set_value(rotation_angle_b_node, PT.get_np_value(rotation_angle_b_node) * (dupl_nb+1))
+    PT.set_value(translation_b_node,    PT.get_np_value(translation_b_node)    * (dupl_nb+1))
     PT.set_value(jn_b_last_node, f"{jn_values_b[jb]}.D0")
   
 

@@ -158,12 +158,12 @@ def get_value(node:CGNSTree, raw:bool=False) -> Union[None, NDArray, str, List[s
   else:
     return raw_val
 
-def request_str_value(node:CGNSTree) -> str:
+def get_str_value(node:CGNSTree) -> str:
   val = get_value(node)
   assert isinstance(val, str), f"Value of node {node[0]} was expected to be a string, but is {val}"
   return val
 
-def request_nd_value(node:CGNSTree) -> NDArray: 
+def get_np_value(node:CGNSTree) -> NDArray: 
   val = node[1]
   assert val is not None, f"Value of node {node[0]} was not expected to be None"
   return val

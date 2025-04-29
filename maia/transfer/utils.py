@@ -43,7 +43,7 @@ def get_subset_distribution(zone: CGNSTree, node: CGNSTree) -> NDArray:
 
   if distri_n is None:
     raise RuntimeError(f"Unable to find distribution data for subset node {PT.get_name(node)}")
-  return PT.request_nd_value(distri_n)
+  return PT.get_np_value(distri_n)
 
 def create_all_elt_distribution(dist_elts: List[CGNSTree], comm: MPIComm) -> NDArray:
   """
@@ -96,7 +96,7 @@ def get_entities_numbering(part_zone: CGNSTree) -> \
 
   edge_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Edge')
   if edge_ln_to_gn_n is not None:
-    edge_ln_to_gn = PT.request_nd_value(edge_ln_to_gn_n)
+    edge_ln_to_gn = PT.get_np_value(edge_ln_to_gn_n)
   elif PT.Zone.has_ngon_elements(part_zone) and PT.Zone.CellDimension(part_zone) == 2:
     try:
       edge = MT.Zone.EdgeNode(part_zone)
@@ -107,7 +107,7 @@ def get_entities_numbering(part_zone: CGNSTree) -> \
 
   face_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Face')
   if face_ln_to_gn_n is not None:
-    face_ln_to_gn = PT.request_nd_value(face_ln_to_gn_n)
+    face_ln_to_gn = PT.get_np_value(face_ln_to_gn_n)
   elif PT.Zone.has_ngon_elements(part_zone):
     # Face can be recovered from ngon global numbering
     ngon = PT.Zone.NGonNode(part_zone)

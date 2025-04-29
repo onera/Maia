@@ -27,7 +27,7 @@ def redistribute_pl_node(node: CGNSTree,
 
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(node, 'IndexArray_t'):
-    array = PT.request_nd_value(array_n)
+    array = PT.get_np_value(array_n)
     idx_dimension = array.shape[0]
     new_pl = np.empty((idx_dimension, new_size), order='F', dtype=array.dtype)
     for ip in range(idx_dimension):
@@ -36,12 +36,12 @@ def redistribute_pl_node(node: CGNSTree,
 
   # Standard Data Arrays
   for array_n in PT.iter_children_from_label(node, 'DataArray_t'):
-    array = PT.request_nd_value(array_n)
+    array = PT.get_np_value(array_n)
     PT.set_value(array_n, MTP.block_to_block(array, node_distrib, new_distrib, comm))
 
   # BCData_t arrays case : can be scalar or vector
   global_data_node = PT.get_child_from_name(distri_n, 'BCDataGlobal')
-  global_data_list = PT.request_str_value(global_data_node).split('\n') if global_data_node else []
+  global_data_list = PT.get_str_value(global_data_node).split('\n') if global_data_node else []
   has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
   bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)
   bcds_without_pl_query:Predicates = [bcds_without_pl, 'BCData_t', 'DataArray_t']
@@ -49,7 +49,7 @@ def redistribute_pl_node(node: CGNSTree,
     for array_path in PT.predicates_to_paths(node, query):
       array_n = PT.request_node_from_path(node, array_path)
       if not array_path in global_data_list:
-        array = PT.request_nd_value(array_n)
+        array = PT.get_np_value(array_n)
         PT.set_value(array_n, MTP.block_to_block(array, node_distrib, new_distrib, comm))
       
   #Additionnal treatement for subnodes with PL (eg bcdataset)
@@ -72,7 +72,7 @@ def redistribute_data_node(node: CGNSTree,
   assert PT.get_node_from_name(node, 'PointList') is None
 
   for array in PT.iter_children_from_label(node, 'DataArray_t'):
-    value = PT.request_nd_value(array)
+    value = PT.get_np_value(array)
     PT.set_value(array, MTP.block_to_block(value, distri, new_distri, comm))
 
 # ---------------------------------------------------------------------------------------
@@ -100,7 +100,7 @@ def redistribute_elements_node(node: CGNSTree,
     ec_distrib     = MT.distribution_value(node, "ElementConnectivity")
 
     eso_n = PT.request_child_from_name(node, 'ElementStartOffset')
-    eso   = PT.request_nd_value(eso_n)
+    eso   = PT.get_np_value(eso_n)
 
     # To be consistent with initial distribution, send everything excepted last elt
     eso_wo_last = MTP.block_to_block(eso[:-1], elt_distrib, new_elt_distrib, comm)
@@ -139,14 +139,14 @@ def redistribute_elements_node(node: CGNSTree,
 
   # > ElementConnectivity
   ec_n    = PT.request_child_from_name(node, 'ElementConnectivity')
-  ec      = PT.request_nd_value(ec_n)
+  ec      = PT.get_np_value(ec_n)
   new_ec  = MTP.block_to_block(ec, ec_distrib, new_ec_distrib, comm)
   PT.set_value(ec_n, new_ec)
 
   # > ParentElement
   pe_n    = PT.get_child_from_name(node, 'ParentElements')
   if pe_n is not None :
-    pe      = PT.request_nd_value(pe_n)
+    pe      = PT.get_np_value(pe_n)
     new_pe  = np.zeros((new_elt_distrib[1]-new_elt_distrib[0], pe.shape[1]), order='F', dtype=pe.dtype)
     for ip in range(pe.shape[1]):
       new_pe_tmp  = MTP.block_to_block(pe[:,ip], elt_distrib, new_elt_distrib, comm)

@@ -31,7 +31,7 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
         if pl_n is not None:
-          pl_raw = PT.request_nd_value(pl_n)
+          pl_raw = PT.get_np_value(pl_n)
           if PT.Zone.Type(dist_zone) == 'Structured':
             assert pl_raw.shape[0] == 3
             idx = s_numbering.ijk_to_index_from_loc(pl_raw[0], pl_raw[1], pl_raw[2], loc, PT.Zone.VertexSize(dist_zone))
@@ -39,7 +39,7 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
           else:
             point_lists.append(pl_raw)
         elif pr_n is not None and PT.Zone.Type(dist_zone) == 'Unstructured':
-          pr = PT.request_nd_value(pr_n)
+          pr = PT.get_np_value(pr_n)
           distrib = MT.distribution_value(node, 'Index')
           point_lists.append(np_utils.single_dim_pr_to_pl(pr, distrib))
         # else:
@@ -83,7 +83,7 @@ def create_part_pointlists(dist_zone: CGNSDistTree,
             if PT.get_label(p_node) == 'BCDataSet_t' and PT.get_child_from_name(ancestor, 'PointList') is None:
               d_ancestor = PT.request_node_from_path(dist_zone, '/'.join([PT.get_name(n) for n in ancestors]))
               d_ancestor_loc = PT.Subset.GridLocation(d_ancestor)
-              d_ancestor_pl = PT.request_nd_value(PT.request_child_from_name(d_ancestor, 'PointList'))
+              d_ancestor_pl = PT.get_np_value(PT.request_child_from_name(d_ancestor, 'PointList'))
               PT.new_IndexArray('PointList', np.empty((d_ancestor_pl.shape[0],0), np.int32, order='F'), parent=ancestor)
               PT.new_GridLocation(d_ancestor_loc, ancestor)
               MT.newGlobalNumbering({'Index' : np.empty(0, pdm_gnum_dtype)}, parent=ancestor)

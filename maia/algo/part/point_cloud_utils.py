@@ -20,7 +20,7 @@ def _get_zone_ln_to_gn_from_loc(zone: CGNSTree, location: str) -> NDArray:
     Global numbering array for the specified location
   """
   _loc = location.replace('Center', '')
-  ln_to_gn = as_pdm_gnum(PT.request_nd_value(MT.requestGlobalNumbering(zone, _loc)))
+  ln_to_gn = as_pdm_gnum(PT.get_np_value(MT.requestGlobalNumbering(zone, _loc)))
   return ln_to_gn
 
 def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[NDArray, NDArray]:
@@ -58,7 +58,7 @@ def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[NDArr
   else: #Try to catch a container with the given name
     container = PT.get_child_from_name(zone, location)
     if container:
-      coords = [PT.request_nd_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
+      coords = [PT.get_np_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
       int_coords = np_utils.interweave_arrays(coords)
       ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, PT.Subset.GridLocation(container))
       return int_coords, ln_to_gn

@@ -37,7 +37,7 @@ def transform_affine_zone(zone: CGNSTree,
     maybe_coords_n = [PT.get_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
     phy_dim = 2 if maybe_coords_n[2] is None else 3
     coords_n = [PT.request_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z'][:phy_dim]]
-    coords = [PT.request_nd_value(n)[vtx_mask] for n in coords_n]
+    coords = [PT.get_np_value(n)[vtx_mask] for n in coords_n]
 
     assert translation is not None
     assert rotation_angle is not None
@@ -49,7 +49,7 @@ def transform_affine_zone(zone: CGNSTree,
     transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
     tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np) #type:ignore[operator] #(signature of 2 funcs differs)
     for coord_n, tr_coord in zip(coords_n, tr_coords):
-      coord_value = PT.request_nd_value(coord_n)
+      coord_value = PT.get_np_value(coord_n)
       coord_value[vtx_mask] = tr_coord
   
   # Transform GC/Periodic data
@@ -67,7 +67,7 @@ def transform_affine_zone(zone: CGNSTree,
       gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
       gc_trans  = PT.request_node_from_name(gc, 'Translation')
       
-      gc_angle_value = PT.request_nd_value(gc_angle)
+      gc_angle_value = PT.get_np_value(gc_angle)
       if phy_dim == 2: # 2D : angle may be in slot 0 or 1
         gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
 
@@ -97,14 +97,14 @@ def transform_affine_zone(zone: CGNSTree,
       for basename in cartesian_vectors_basenames:
         vectors_n = [PT.request_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
         if is_full_vtx:
-          vectors = [PT.request_nd_value(n)[vtx_mask] for n in vectors_n]
+          vectors = [PT.get_np_value(n)[vtx_mask] for n in vectors_n]
         else:
-          vectors = [PT.request_nd_value(n) for n in vectors_n]
+          vectors = [PT.get_np_value(n) for n in vectors_n]
         # Assume that vectors are position independant
         # Be careful, if coordinates vector needs to be transform, the translation is not applied !
         tr_vectors = transform_func(*vectors, rotation_center=rotation_center_np, rotation_angle=rotation_angle_np) #type:ignore[operator]
         for vector_n, tr_vector in zip(vectors_n, tr_vectors):
-          vector_val = PT.request_nd_value(vector_n)
+          vector_val = PT.get_np_value(vector_n)
           if is_full_vtx:
             vector_val[vtx_mask] = tr_vector
           else:
@@ -170,7 +170,7 @@ def transform_affine(t: CGNSTree,
       translation = [0.] * phy_dim
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
     any_coord = PT.request_child_from_predicate(any_gc_n, lambda n : PT.get_name(n) in cart_names)
-    vtx_mask = np.ones(PT.request_nd_value(any_coord).shape, bool)
+    vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
     transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
 
 def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
@@ -204,7 +204,7 @@ def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
       for idir, dir in enumerate(['X', 'Y', 'Z']):
         node = PT.get_child_from_name(grid_co, f'Coordinate{dir}')
         if node is not None:
-          node_val = PT.request_nd_value(node)
+          node_val = PT.get_np_value(node)
           node_val *= scaling[idir]
 
     if PT.get_child_from_predicate(zone, is_container) is not None or \
@@ -264,7 +264,7 @@ def shrink_to_subset(array, zone, subset, comm):
   if PT.Zone.Type(zone) == 'Unstructured':
     if pl is None:
       assert pr is not None
-      pl = np_utils.single_dim_pr_to_pl(PT.request_nd_value(pr), subset_distri)
+      pl = np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), subset_distri)
     if loc == 'Vertex':
       shift = 1
     else:
@@ -369,9 +369,9 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
           fields_n = [PT.request_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
           ordered_fields = [fields_n[i] for i in idx_order]
           if basename == "Coordinate":
-            cyl_values = _to_rthetaz(*[PT.request_nd_value(n) for n in ordered_fields])
+            cyl_values = _to_rthetaz(*[PT.get_np_value(n) for n in ordered_fields])
           else:
-            cyl_values = _to_rthetaz_vectors(*[PT.request_nd_value(n) for n in ordered_fields], theta) #type:ignore #(unpacking is not correctly infered)
+            cyl_values = _to_rthetaz_vectors(*[PT.get_np_value(n) for n in ordered_fields], theta) #type:ignore #(unpacking is not correctly infered)
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
 
@@ -380,8 +380,8 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
       if PT.GridConnectivity.isperiodic(gc):
         gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.request_node_from_name(gc, 'Translation')
-        gc_angle_value = PT.request_nd_value(gc_angle)
-        gc_trans_value = PT.request_nd_value(gc_trans)
+        gc_angle_value = PT.get_np_value(gc_angle)
+        gc_trans_value = PT.get_np_value(gc_trans)
         
         # Only allowed transformations are managed
         # > only rotation around axis in cartesian system
@@ -474,8 +474,8 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
       if PT.GridConnectivity.isperiodic(gc):
         gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.request_node_from_name(gc, 'Translation')
-        gc_angle_value = PT.request_nd_value(gc_angle)
-        gc_trans_value = PT.request_nd_value(gc_trans)
+        gc_angle_value = PT.get_np_value(gc_angle)
+        gc_trans_value = PT.get_np_value(gc_trans)
         
         # Only allowed transformations are managed
         # > no periodic by rotation in cylindrical system
@@ -533,7 +533,7 @@ def auxiliary_coords_system(t: CGNSTree,
 
     if reverse:
       assert coord_transform_n is not None
-      transition_matrix = PT.request_nd_value(coord_transform_n)
+      transition_matrix = PT.get_np_value(coord_transform_n)
       transition_matrix = np.linalg.inv(transition_matrix)
 
     assert transition_matrix is not None
@@ -543,7 +543,7 @@ def auxiliary_coords_system(t: CGNSTree,
     if reverse:
       PT.rm_nodes_from_name(zone, 'CoordinateTransform', depth=2)
     else:
-      new_transform_matrix = transition_matrix if coord_transform_n is None else np.dot(transition_matrix, PT.request_nd_value(coord_transform_n))
+      new_transform_matrix = transition_matrix if coord_transform_n is None else np.dot(transition_matrix, PT.get_np_value(coord_transform_n))
       for gc_n in PT.get_children_from_predicate(zone, 'GridCoordinates_t'):
         PT.update_child(gc_n, 'CoordinateTransform', 'DataArray_t', new_transform_matrix)
     
@@ -557,7 +557,7 @@ def auxiliary_coords_system(t: CGNSTree,
         vectors_basenames = py_utils.find_vector_names(datanames, in_suffix)
         for basename in vectors_basenames:
           vectors_n = [PT.request_node_from_name(fields_node, f"{basename}{c}")  for c in in_suffix]
-          tr_fields = np_utils.matmul_cart_vectors([PT.request_nd_value(n) for n in vectors_n], transition_matrix)
+          tr_fields = np_utils.matmul_cart_vectors([PT.get_np_value(n) for n in vectors_n], transition_matrix)
           for node, s, new_val in zip(vectors_n, out_suffix, tr_fields):
             PT.update_node(node, f'{basename}{s}', value=new_val)
             
@@ -582,7 +582,7 @@ def auxiliary_coords_system(t: CGNSTree,
         gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.request_node_from_name(gc, 'Translation')
       
-        gc_angle_value = PT.request_nd_value(gc_angle)
+        gc_angle_value = PT.get_np_value(gc_angle)
         if phy_dim == 2: # 2D : angle may be in slot 0 or 1
           gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
   
@@ -668,7 +668,7 @@ def cylindrical_to_cartesian(t: CGNSTree,
   if need_change_basis:
     transform_matrix_n = PT.get_child_from_predicates(t, 'CGNSBase_t/Zone_t/GridCoordinates_t/CoordinateTransform')
     assert transform_matrix_n is not None
-    transform_matrix = PT.request_nd_value(transform_matrix_n)
+    transform_matrix = PT.get_np_value(transform_matrix_n)
     np_axis = np.dot(transform_matrix, np_axis)
 
   revolution_axis_unit = np_axis / np.linalg.norm(np_axis)

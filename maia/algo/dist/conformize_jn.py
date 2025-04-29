@@ -32,7 +32,7 @@ def conformize_jn_pair(dist_tree: CGNSDistTree,
   pl_vtx_list:Sequence[NDArray]
   if location == 'Vertex':
     pl_vtx_nodes = [PT.request_node_from_path(dist_tree, jn_paths[0]+f'/PointList{d}') for d in ['', 'Donor']]
-    pl_vtx_list = [PT.request_nd_value(pl_node)[0] for pl_node in pl_vtx_nodes]
+    pl_vtx_list = [PT.get_np_value(pl_node)[0] for pl_node in pl_vtx_nodes]
   elif location == 'FaceCenter':
     pl_vtx_list = VL.generate_jn_vertex_list(dist_tree, jn_paths[0], comm)[:2]
   else:

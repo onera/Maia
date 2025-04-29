@@ -61,7 +61,7 @@ def merge_zones_from_family(dist_tree: CGNSDistTree,
   """
   MT.check_cgns_dist_tree(dist_tree)
   match_fam = lambda m: PT.get_child_from_label(m, 'FamilyName_t') is not None and \
-                        PT.request_str_value(PT.request_child_from_label(m, 'FamilyName_t')) == family_name
+                        PT.get_str_value(PT.request_child_from_label(m, 'FamilyName_t')) == family_name
 
   is_zone_with_fam = lambda n: PT.get_label(n) == 'Zone_t' and match_fam(n)
 
@@ -253,7 +253,7 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   assert min([PT.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
 
   expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones])
-  output_dtype = PT.request_nd_value(zones[0]).dtype
+  output_dtype = PT.get_np_value(zones[0]).dtype
   if expected_elt_tot > np.iinfo(np.int32).max:
     if pdm_dtype == np.int32:
       msg = f"_merge_zones would overflow this I4 production of maia/ParaDiGM. "\
@@ -322,16 +322,16 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
       if PT.get_child_from_name(gc, '__maia_merge__') is not None and gc_path < gc_path_opp:
         interface_dom.append((zone_to_id[zone_path], zone_to_id[opp_zone_path]))
 
-        pl  = as_pdm_gnum(PT.request_nd_value(PT.request_child_from_name(gc, 'PointList'))[0])
-        pld = as_pdm_gnum(PT.request_nd_value(PT.request_child_from_name(gc, 'PointListDonor'))[0])
+        pl  = as_pdm_gnum(PT.get_np_value(PT.request_child_from_name(gc, 'PointList'))[0])
+        pld = as_pdm_gnum(PT.get_np_value(PT.request_child_from_name(gc, 'PointListDonor'))[0])
 
         interface_dn_f.append(pl.size)
         interface_ids_f.append(np_utils.interweave_arrays([pl,pld]))
 
         # Find corresponding vertex
         gc_vtx = PT.request_child_from_name(zgc, f'{PT.get_name(gc)}#Vtx')
-        pl_v  = PT.request_nd_value(PT.request_child_from_name(gc_vtx, 'PointList'))[0]
-        pld_v = PT.request_nd_value(PT.request_child_from_name(gc_vtx, 'PointListDonor'))[0]
+        pl_v  = PT.get_np_value(PT.request_child_from_name(gc_vtx, 'PointList'))[0]
+        pld_v = PT.get_np_value(PT.request_child_from_name(gc_vtx, 'PointListDonor'))[0]
         interface_dn_v.append(pl_v.size)
         interface_ids_v.append(np_utils.interweave_arrays([pl_v,pld_v]))
 

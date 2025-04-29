@@ -25,7 +25,7 @@ def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> 
     pr_n = PT.get_child_from_name(node, 'PointRange')
     if pl_n is not None:
       pointlist_nodes.append(pl_n)
-    elif pr_n is not None and (pr:=PT.request_nd_value(pr_n)).shape[0] == 1:
+    elif pr_n is not None and (pr:=PT.get_np_value(pr_n)).shape[0] == 1:
       distrib = MT.distribution_value(node, 'Index')
       pl = np_utils.single_dim_pr_to_pl(pr, distrib)
       new_pl_n = PT.new_node(name='PointList', value=pl, label='IndexArray_t', parent=node)
@@ -63,7 +63,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
             assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']  
             if PT.Element.CGNSName(element) != 'MIXED':                       
-                elem_ec  = PT.request_nd_value(PT.request_child_from_name(element,'ElementConnectivity'))
+                elem_ec  = PT.get_np_value(PT.request_child_from_name(element,'ElementConnectivity'))
                 elem_distri = MT.distribution_value(element, 'Element')
                 elem_type = PT.Element.Type(element)
                 elem_size = elem_distri[1] - elem_distri[0]
@@ -133,7 +133,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                         nb_cell_loc += elem_types[et][elem_pos]
                     except KeyError:
                         pass
-            elem_ec  = PT.request_nd_value(PT.request_child_from_name(element, 'ElementConnectivity'))
+            elem_ec  = PT.get_np_value(PT.request_child_from_name(element, 'ElementConnectivity'))
             elem_eso = PT.request_child_from_name(element, 'ElementStartOffset')
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_ec.dtype)
             old_to_new_cell_numbering    = np.zeros(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
@@ -254,7 +254,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         filter_loc = ['EdgeCenter','FaceCenter','CellCenter']
         pl_list = collect_pl_nodes(zone,filter_loc)
         
-        ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.request_nd_value(pl)[0]) for pl in pl_list]
+        ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.get_np_value(pl)[0]) for pl in pl_list]
             
         old_to_new_pl_list = MTP.part_to_part(old_to_new_element_numbering_list, ln_to_gn_element_list, ln_to_gn_pl_list, comm)
 
@@ -280,6 +280,6 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                           and PT.get_child_from_name(n, 'PointList') is None
 
         for node in PT.get_children_from_predicates(zone, [is_fs_cc, 'DataArray_t']):
-            data = PT.request_nd_value(node)
+            data = PT.get_np_value(node)
             GI_fs.Put(data, data) # Inplace
 

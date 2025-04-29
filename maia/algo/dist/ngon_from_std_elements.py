@@ -211,7 +211,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
   is_zone     = lambda n : PT.get_label(n) == 'Zone_t'
   is_zone_elt = lambda n : is_zone(n) and PT.Zone.Type(n) == 'Unstructured' and not PT.Zone.has_ngon_elements(n)
   for base in PT.iter_all_CGNSBase_t(dist_tree):
-    extract_dim = PT.request_nd_value(base)[0]
+    extract_dim = PT.get_np_value(base)[0]
     zones_u = PT.get_children_from_predicate(base, is_zone_elt)
 
     for zone in zones_u: #Raise if overflow is probable
@@ -254,7 +254,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
     container = PT.request_child_from_name(dist_zone, '__maia::isSubset')
     for node in PT.get_children(container):
       old_label = PT.request_child_from_name(node, '__maia::initialLabel')
-      PT.set_label(node, PT.request_str_value(old_label))
+      PT.set_label(node, PT.get_str_value(old_label))
       PT.rm_child(node, old_label)
       PT.add_child(dist_zone, node)
     PT.rm_child(dist_zone, container)
@@ -309,5 +309,5 @@ def convert_elements_to_ngon(dist_tree: CGNSDistTree,
     generate_ngon_from_std_elements(dist_tree, comm)
 
   lib_version = PT.request_child_from_name(dist_tree, 'CGNSLibraryVersion')
-  if PT.request_nd_value(lib_version)[0] < 4:
+  if PT.get_np_value(lib_version)[0] < 4:
     PT.set_value(lib_version, 4.2)

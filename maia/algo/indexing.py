@@ -27,7 +27,7 @@ def get_pe_local(node: CGNSTree) -> NDArray:
   pe_n = PT.get_child_from_name(node, "ParentElements")
   if pe_n is None:
     raise RuntimeError(f"ParentElements node not found on node {node[0]}")
-  pe_val = PT.request_nd_value(pe_n)
+  pe_val = PT.get_np_value(pe_n)
   if pe_val.size == 0:
     return pe_val
   else:

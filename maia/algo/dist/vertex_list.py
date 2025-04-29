@@ -291,15 +291,15 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
   face_distri_d = MT.distribution_value(ngon_node_d, 'Element')
 
   distri_jn = MT.distribution_value(jn, 'Index')
-  pl   = PT.request_nd_value(PT.request_child_from_name(jn, 'PointList'     ))[0]
-  pl_d = PT.request_nd_value(PT.request_child_from_name(jn, 'PointListDonor'))[0]
+  pl   = PT.get_np_value(PT.request_child_from_name(jn, 'PointList'     ))[0]
+  pl_d = PT.get_np_value(PT.request_child_from_name(jn, 'PointListDonor'))[0]
 
 
   dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
   dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
 
   dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
-  dface_vtx     = [as_pdm_gnum(PT.request_nd_value(PT.request_node_from_path(ng, 'ElementConnectivity'))) \
+  dface_vtx     = [as_pdm_gnum(PT.get_np_value(PT.request_node_from_path(ng, 'ElementConnectivity'))) \
                    for ng in [ngon_node, ngon_node_d]]
 
   isolated_face_loc = get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm)
@@ -402,8 +402,8 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
   interface_dom_face = []
   for interface_path in interface_pathes:
     gc = PT.request_node_from_path(dist_tree, interface_path)
-    pl  = PT.request_nd_value(PT.request_child_from_name(gc, 'PointList'))[0]
-    pld = PT.request_nd_value(PT.request_child_from_name(gc, 'PointListDonor'))[0]
+    pl  = PT.get_np_value(PT.request_child_from_name(gc, 'PointList'))[0]
+    pld = PT.get_np_value(PT.request_child_from_name(gc, 'PointListDonor'))[0]
 
     interface_dn_face.append(pl.size)
     interface_ids_face.append(as_pdm_gnum(np_utils.interweave_arrays([pl,pld])))
@@ -496,7 +496,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
       zone_node = PT.request_node_from_path(dist_tree, zone_path)
       ngon_node = PT.Zone.NGonNode(zone_node)
       n_isolated = get_pl_isolated_faces(ngon_node, 
-                                         PT.request_nd_value(PT.request_node_from_path(dist_tree, interface_path_cur + '/PointList'))[0],
+                                         PT.get_np_value(PT.request_node_from_path(dist_tree, interface_path_cur + '/PointList'))[0],
                                          MT.distribution_value(zone_node, 'Vertex'),
                                          comm).size
       have_isolated.append(bool(comm.allreduce(n_isolated, MPI.SUM) > 0))
@@ -533,7 +533,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
 
       if j == 1: #Swap pl/pld for opposite jn
         pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
-      jn_vtx = PT.new_GridConnectivity(PT.get_name(gc)+'#Vtx', PT.request_str_value(gc), \
+      jn_vtx = PT.new_GridConnectivity(PT.get_name(gc)+'#Vtx', PT.get_str_value(gc), \
           loc='Vertex', type='Abutting1to1', parent=zgc)
       PT.new_IndexArray('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
       PT.new_IndexArray('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
@@ -545,6 +545,6 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
       donor_name_node = PT.get_child_from_name(gc, 'GridConnectivityDonorName')
       if donor_name_node is not None:
         PT.new_node('GridConnectivityDonorName', 'Descriptor_t', \
-            PT.request_str_value(donor_name_node)+'#Vtx', parent=jn_vtx)
+            PT.get_str_value(donor_name_node)+'#Vtx', parent=jn_vtx)
 
 

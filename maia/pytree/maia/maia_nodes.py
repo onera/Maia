@@ -28,7 +28,7 @@ def requestDistribution(root:CGNSTree, distri_name:Optional[str]=None) -> CGNSTr
 
 def distribution_value(root:CGNSTree, distri_name:str) -> NDArray:
   node = requestDistribution(root, distri_name)
-  return N.request_nd_value(node)
+  return N.get_np_value(node)
 
 def getGlobalNumbering(node:CGNSTree, lngn_name:Optional[str]=None) -> Optional[CGNSTree]:
   """
@@ -48,7 +48,7 @@ def requestGlobalNumbering(root:CGNSTree, lngn_name:Optional[str]=None) -> CGNST
 
 def globalnumbering_value(root:CGNSTree, lngn_name:str) -> NDArray:
   node = requestGlobalNumbering(root, lngn_name)
-  return N.request_nd_value(node)
+  return N.get_np_value(node)
 
 
 def newDistribution(distributions:Dict[str, NDArray] = dict(), parent:Optional[CGNSTree]=None) -> CGNSTree:

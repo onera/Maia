@@ -119,7 +119,7 @@ def extract_faces_mesh(zone: CGNSTree, face_ids: NDArray) -> Tuple[NDArray, ...]
       sections_2d = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
       elem_size_list = [PT.Element.Size(elt) for elt in sections_2d]
       face_n_vtx_list = [PT.Element.NVtx(elt) for elt in sections_2d]
-      elem_cnt_list = [PT.request_nd_value(PT.request_node_from_name(elt, 'ElementConnectivity')) for elt in sections_2d]
+      elem_cnt_list = [PT.get_np_value(PT.request_node_from_name(elt, 'ElementConnectivity')) for elt in sections_2d]
       _, face_vtx = np_utils.concatenate_np_arrays(elem_cnt_list, dtype=np.int32)
       face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_size_list), dtype=np.int32)
   elif PT.Zone.Type(zone) == 'Structured':
@@ -177,11 +177,11 @@ def extract_surf_from_bc(part_zones: List[CGNSTree],
     bc_face_ids:List[NDArray]
     if PT.Zone.Type(zone) == 'Unstructured':
       bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: is_relevant_bc(n) and PT.Subset.GridLocation(n) == wanted_loc])
-      bc_face_ids = [PT.request_nd_value(PT.request_child_from_name(bc_node, 'PointList'))[0] for bc_node in bc_nodes]
+      bc_face_ids = [PT.get_np_value(PT.request_child_from_name(bc_node, 'PointList'))[0] for bc_node in bc_nodes]
     else:
       n_vtx_z = PT.Zone.VertexSize(zone)
       bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', is_relevant_bc])
-      bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.request_nd_value(PT.request_child_from_name(bc_node, 'PointRange')), PT.Subset.GridLocation(bc_node))[0] \
+      bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.get_np_value(PT.request_child_from_name(bc_node, 'PointRange')), PT.Subset.GridLocation(bc_node))[0] \
           for bc_node in bc_nodes]
 
     _, bc_face_ids_cat = np_utils.concatenate_np_arrays(bc_face_ids, np.int32)
@@ -199,11 +199,11 @@ def extract_surf_from_bc(part_zones: List[CGNSTree],
     bc_face_vtx_l.append(bc_face_vtx)
     bc_face_vtx_idx_l.append(bc_face_vtx_idx)
 
-    vtx_ln_to_gn_zone = PT.request_nd_value(MT.requestGlobalNumbering(zone, 'Vertex'))
+    vtx_ln_to_gn_zone = PT.get_np_value(MT.requestGlobalNumbering(zone, 'Vertex'))
 
     if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
       elt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
-      elt_2d_gnums = [PT.request_nd_value(MT.requestGlobalNumbering(elt, "Sections")) for elt in elt_2d_nodes]
+      elt_2d_gnums = [PT.get_np_value(MT.requestGlobalNumbering(elt, "Sections")) for elt in elt_2d_nodes]
       face_ln_to_gn_zone = np.concatenate(elt_2d_gnums) if len(elt_2d_nodes) else np.empty(0, dtype=pdm_dtype)
     else:
       face_ln_to_gn_zone = te_utils.get_entities_numbering(zone)[zone_dim-1] # Face if dim==3; Edge if dim == 2

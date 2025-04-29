@@ -27,8 +27,8 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
   assert (cx is not None) and  (cy is not None) and (cz is not None)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
-  vtx_ln_to_gn  = PT.request_nd_value(MT.requestGlobalNumbering(part_zone, 'Vertex'))
-  cell_ln_to_gn = PT.request_nd_value(MT.requestGlobalNumbering(part_zone, 'Cell'))
+  vtx_ln_to_gn  = PT.get_np_value(MT.requestGlobalNumbering(part_zone, 'Vertex'))
+  cell_ln_to_gn = PT.get_np_value(MT.requestGlobalNumbering(part_zone, 'Cell'))
 
   if dim == 3:
     ngon  = PT.Zone.NGonNode(part_zone)
@@ -37,7 +37,7 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
     face_vtx  = MT.Element.connectivity(ngon)
     cell_face = MT.Element.connectivity(nface)
 
-    face_ln_to_gn = PT.request_nd_value(MT.requestGlobalNumbering(ngon, 'Element'))
+    face_ln_to_gn = PT.get_np_value(MT.requestGlobalNumbering(ngon, 'Element'))
 
     return [cell_face.displs, cell_face.values, cell_ln_to_gn, \
         face_vtx.displs, face_vtx.values, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]
@@ -46,8 +46,8 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
     edge  = MT.Zone.EdgeNode(part_zone)
     ngon  = PT.Zone.NGonNode(part_zone)
 
-    edge_pe  = PT.request_nd_value(PT.request_child_from_name(edge, "ParentElements")).reshape(-1, order='C') # Numpy will copy
-    edge_vtx = PT.request_nd_value(PT.request_child_from_name(edge, "ElementConnectivity"))
+    edge_pe  = PT.get_np_value(PT.request_child_from_name(edge, "ParentElements")).reshape(-1, order='C') # Numpy will copy
+    edge_vtx = PT.get_np_value(PT.request_child_from_name(edge, "ElementConnectivity"))
 
     # Convert edge_pe to face_edge
     if PT.Element.Range(ngon)[0] != 1:

@@ -45,7 +45,7 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
   is_valid_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, required_name) is None
   ds_arrays = PT.get_children_from_predicates(bc_n, [is_valid_bcds, 'BCData_t', 'DataArray_t'])
   for ds_array in ds_arrays:
-    PT.new_DataArray(name=PT.get_name(ds_array), value=PT.request_nd_value(ds_array), parent=zsr_bc_n)
+    PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_np_value(ds_array), parent=zsr_bc_n)
   if len(ds_arrays) != 0:
     there_is_dataset = True
     # PL and Location is needed for data exchange, but this should be done in ZSR func
@@ -142,7 +142,7 @@ class Extractor:
 
     # Copy Families existing on extracted tree
     is_family_name = lambda n :  PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
-    found_family_name = set([PT.request_str_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
+    found_family_name = set([PT.get_str_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
     for family_name in sorted(found_family_name):
       fam_node = PT.get_node_from_name_and_label(part_tree, family_name, 'Family_t', depth=2)
       if fam_node is not None:
@@ -282,7 +282,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
         #Follow BC or GC link
         related_node = PT.Subset.ZSRExtent(zsr_node, part_zone)
         zsr_node     = PT.request_node_from_path(part_zone, related_node)
-        patch_domain.append(PT.request_nd_value(PT.Subset.getPatch(zsr_node)))
+        patch_domain.append(PT.get_np_value(PT.Subset.getPatch(zsr_node)))
         location = PT.Subset.GridLocation(zsr_node)
       else: # ZSR does not exists on this partition
         patch_domain.append(np.empty((1,0), np.int32))
@@ -428,7 +428,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
     region_node_names:List[str] = list()
     for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
       region_node = PT.request_child_from_predicate(zsr_with_regionname_n, is_regionname)
-      region_node_names.append(PT.request_str_value(region_node))
+      region_node_names.append(PT.get_str_value(region_node))
     child_list = ['AdditionalFamilyName_t', 'FamilyName_t', 'GridLocation_t']
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', lambda n: in_fam(n) or bc_gc_in_fam(n)], comm, get_value='leaf', child_list=child_list)
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneGridConnectivity_t', bc_gc_in_fam], comm, get_value='leaf', child_list=child_list)
@@ -438,7 +438,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
     fam_node_paths.extend(PT.predicates_to_paths(dist_zone, ['ZoneBC_t', in_fam]))
 
     gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')
-    location = [PT.request_str_value(n) for n in gl_nodes]
+    location = [PT.get_str_value(n) for n in gl_nodes]
     if len(set(location)) > 1:
       # Not checking subregion extents, possible ?
       raise ValueError(f"Specified family refers to nodes with different GridLocation value : {set(location)}.")
@@ -457,7 +457,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
             fam_node = PT.request_node_from_path(part_zone, related_path)
 
           pl_n = PT.request_child_from_name(fam_node, 'PointList')
-          fam_pl.append(PT.request_nd_value(pl_n))
+          fam_pl.append(PT.get_np_value(pl_n))
 
       fam_pl_cat = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
       if fam_pl_cat.size!=0:

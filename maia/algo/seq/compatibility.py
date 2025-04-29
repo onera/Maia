@@ -10,8 +10,8 @@ def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
   offset = PT.request_child_from_name(node, 'ElementStartOffset')
   connec = PT.request_child_from_name(node, 'ElementConnectivity')
 
-  new_val = np_utils.indexed_to_interlaced(PT.request_nd_value(offset),
-                                           PT.request_nd_value(connec))
+  new_val = np_utils.indexed_to_interlaced(PT.get_np_value(offset),
+                                           PT.get_np_value(connec))
 
   PT.set_value(connec, new_val)
   PT.rm_child(node, offset)
@@ -19,7 +19,7 @@ def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
 def interlaced_to_indexed_connectivity(node: CGNSTree) -> None:
   n_elem = PT.Element.Size(node)
   connec = PT.request_child_from_name(node, 'ElementConnectivity')
-  idx, array = np_utils.interlaced_to_indexed(n_elem, PT.request_nd_value(connec))
+  idx, array = np_utils.interlaced_to_indexed(n_elem, PT.get_np_value(connec))
 
   PT.new_DataArray('ElementStartOffset', value=idx, parent=node)
   PT.set_value(connec, array)
@@ -27,7 +27,7 @@ def interlaced_to_indexed_connectivity(node: CGNSTree) -> None:
 def create_mixed_elts_eso(node: CGNSTree) -> None:
   from cmaia.utils import layouts
   ec_n = PT.request_node_from_name(node, 'ElementConnectivity')
-  ec = PT.request_nd_value(ec_n)
+  ec = PT.get_np_value(ec_n)
   eso = np.empty(PT.Element.Size(node)+1, ec.dtype)
   layouts.create_mixed_elts_eso(ec, eso)
   PT.new_DataArray('ElementStartOffset', eso, parent=node)
@@ -88,7 +88,7 @@ def poly_new_to_old(full_tree: CGNSTree, full_onera_compatibility: bool = True) 
       if has_nface:
         nface = maia.pytree.Zone.NFaceNode(z)
         nface_range  = PT.Element.Range(nface)
-        nface_connec = PT.request_nd_value(PT.request_child_from_name(nface, "ElementConnectivity"))
+        nface_connec = PT.get_np_value(PT.request_child_from_name(nface, "ElementConnectivity"))
 
       if full_onera_compatibility:
         # 1. shift ParentElements to 1
@@ -156,7 +156,7 @@ def poly_old_to_new(full_tree: CGNSTree) -> None:
       if pe_node:
         if not has_nface: #Induce NFace range for PE reconstruction
           nface_range  = np.array([ngon_range[1]+1, ngon_range[1]+PT.Zone.n_cell(z)])
-        pe = PT.request_nd_value(pe_node)
+        pe = PT.get_np_value(pe_node)
         pe_no_0 = pe[pe>0]
         min_pe = np.min(pe_no_0)
         max_pe = np.max(pe_no_0)
@@ -168,12 +168,12 @@ def poly_old_to_new(full_tree: CGNSTree) -> None:
 
       # 3. NFace
       if has_nface:
-        nface_connec = PT.request_nd_value(PT.request_child_from_name(nface, "ElementConnectivity"))
+        nface_connec = PT.get_np_value(PT.request_child_from_name(nface, "ElementConnectivity"))
         n_cell = nface_range[1] - nface_range[0]
         if np.min(nface_connec)<0 or n_cell==1: # NFace is signed (if only one cell, it is signed despite being positive)
           # 3.1. interleaved to indexed
           interlaced_to_indexed_connectivity(nface)
-          nface_connec = PT.request_nd_value(PT.request_child_from_name(nface, "ElementConnectivity"))
+          nface_connec = PT.get_np_value(PT.request_child_from_name(nface, "ElementConnectivity"))
     
           # 3.2. shift
           sign_nf = np.sign(nface_connec)

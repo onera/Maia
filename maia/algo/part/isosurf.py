@@ -25,7 +25,7 @@ def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> No
   by a (Additional)FamilyName (at zone level) in the target base """
   copied_families = []
   for fam_node in PT.get_children_from_predicates(target_base, ['Zone_t', familyname_query]):
-    fam_name = PT.request_str_value(fam_node)
+    fam_name = PT.get_str_value(fam_node)
     if fam_name not in copied_families:
       copied_families.append(fam_name)
       family_node = PT.get_child_from_predicate(source_base, fam_name)
@@ -57,11 +57,11 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
     assert not (bc_descriptor_n and gc_descriptor_n)
     if bc_descriptor_n is not None:
-      bc_name      = PT.request_str_value(bc_descriptor_n)
+      bc_name      = PT.get_str_value(bc_descriptor_n)
       dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
       ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
     elif gc_descriptor_n is not None:
-      gc_name      = PT.request_str_value(gc_descriptor_n)
+      gc_name      = PT.get_str_value(gc_descriptor_n)
       dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
       ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
     
@@ -84,7 +84,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
 
       if elt_n is not None :
         part1_elt_gnum_n = MT.requestGlobalNumbering(elt_n, _gridLocation[gridLocation])
-        part1_ln_to_gn   = [PT.request_nd_value(part1_elt_gnum_n)]
+        part1_ln_to_gn   = [PT.get_np_value(part1_elt_gnum_n)]
       else :
         part1_elt_gnum_n = None
         part1_ln_to_gn   = []
@@ -92,19 +92,19 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
       # > Link between part1 and part2
       part1_maia_iso_zone = PT.request_child_from_name(iso_part_zone, "maia#surface_data")
       if gridLocation=='Vertex' :
-        part1_weight        = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" ))]
-        part1_to_part2      = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   ))]
-        part1_to_part2_idx  = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    ))]
+        part1_weight        = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" ))]
+        part1_to_part2      = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   ))]
+        part1_to_part2_idx  = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    ))]
       elif gridLocation=='FaceCenter' :
         # Output should be edge located so check if iso surface locally has edge
         if elt_n is not None:
-          part1_to_part2      = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges"))] 
+          part1_to_part2      = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges"))] 
           part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
         else:
           part1_to_part2      = []
           part1_to_part2_idx  = []
       elif gridLocation=='CellCenter' :
-        part1_to_part2      = [PT.request_nd_value(PT.request_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum"))]
+        part1_to_part2      = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum"))]
         part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
       else:
         raise RuntimeError("Wrong location")
@@ -121,7 +121,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     for part_zone in part_zones:
       elt_n            = part_zone if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone)
       part2_elt_gnum_n = MT.requestGlobalNumbering(elt_n, _gridLocation[gridLocation])
-      part2_ln_to_gn.append(PT.request_nd_value(part2_elt_gnum_n))
+      part2_ln_to_gn.append(PT.get_np_value(part2_elt_gnum_n))
         
 
     # > P2P Object
@@ -152,7 +152,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         fld_data = list()
         for i_part, part_zone in enumerate(part_zones) :
           fld_n = PT.get_node_from_path(part_zone,fld_path)
-          fld_data_tmp = PT.request_nd_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
+          fld_data_tmp = PT.get_np_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
           fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
       
@@ -274,7 +274,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
   for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
-    val = PT.request_str_value(jn)
+    val = PT.get_str_value(jn)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
   gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t',is_gc])
   n_gdom_gcs = len(gdom_gcs_path)
@@ -315,7 +315,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
       for bnd_path in gdom_bcs_path:
         bnd_n = PT.get_node_from_path(part_zone, bnd_path)
         if bnd_n is not None:
-          all_bnd_pl.append(PT.request_nd_value(PT.request_child_from_name(bnd_n, 'PointList')))
+          all_bnd_pl.append(PT.get_np_value(PT.request_child_from_name(bnd_n, 'PointList')))
         else :
           all_bnd_pl.append(np.empty((1,0), np.int32))
       for bnd_path in gdom_gcs_path:
@@ -323,7 +323,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
         container_name, jn_name = bnd_path.split('/')
         bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'*'])
         if len(bnd_n_list) > 0:
-          pl_val_list = [PT.request_nd_value(PT.request_node_from_name(bnd_n, 'PointList')) for bnd_n in bnd_n_list]
+          pl_val_list = [PT.get_np_value(PT.request_node_from_name(bnd_n, 'PointList')) for bnd_n in bnd_n_list]
           all_bnd_pl.append(np_utils.concatenate_np_arrays(pl_val_list)[1])
         else:
           all_bnd_pl.append(np.empty((1,0), np.int32))
@@ -402,7 +402,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
     # > Create BC described by edges
-    gnum = PT.request_nd_value(MT.requestGlobalNumbering(bar_n, 'Element')) if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
+    gnum = PT.get_np_value(MT.requestGlobalNumbering(bar_n, 'Element')) if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
     for i_group, bc_path in enumerate(gdom_bcs_path):
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
       edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
@@ -484,7 +484,7 @@ def _iso_surface(part_tree: CGNSPartTree,
       flowsol_node = PT.request_child_from_name(part_zone, fs_name)
       field_node   = PT.request_child_from_name(flowsol_node, field_name)
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
-      field_values.append(PT.request_nd_value(field_node) - iso_val)
+      field_values.append(PT.get_np_value(field_node) - iso_val)
 
     iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, graph_part_tool, comm)
     PT.set_name(iso_part_zone, MT.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))

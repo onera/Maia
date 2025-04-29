@@ -23,7 +23,7 @@ def dist_coords_to_part_coords(dist_zone: CGNSDistTree,
   dist_data = dict()
   dist_gc = PT.request_child_from_label(dist_zone, "GridCoordinates_t")
   for grid_co in PT.iter_children_from_predicate(dist_gc, lambda n: PT.get_label(n) == 'DataArray_t' and PT.get_name(n) != 'CoordinateTransform'):
-    dist_data[PT.get_name(grid_co)] = PT.request_nd_value(grid_co)
+    dist_data[PT.get_name(grid_co)] = PT.get_np_value(grid_co)
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   part_data = EP.block_to_part(dist_data, distribution_vtx, [lngn-1 for lngn in vtx_lntogn_list], comm)
@@ -112,7 +112,7 @@ def _dist_to_part_sollike(dist_zone: CGNSDistTree,
 
     #Get data
     fields = [PT.get_name(n) for n in PT.get_children(mask_sol)]
-    dist_data = {field : PT.request_nd_value(PT.request_child_from_name(d_sol, field)) \
+    dist_data = {field : PT.get_np_value(PT.request_child_from_name(d_sol, field)) \
                  for field in fields}
 
     #Exchange
@@ -124,7 +124,7 @@ def _dist_to_part_sollike(dist_zone: CGNSDistTree,
         shape: Tuple[int, ...]
         if has_pl:
           p_sol = PT.request_child_from_name(part_zone, PT.get_name(d_sol))
-          shape = (PT.request_nd_value(PT.request_child_from_name(p_sol, 'PointList')).shape[1],)
+          shape = (PT.get_np_value(PT.request_child_from_name(p_sol, 'PointList')).shape[1],)
         else:
           p_sol = PT.update_child(part_zone, PT.get_name(d_sol), PT.get_label(d_sol), PT.get_value(d_sol))
           PT.update_child(p_sol, 'GridLocation', 'GridLocation_t', location)
@@ -202,17 +202,17 @@ def dist_dataset_to_part_dataset(dist_zone: CGNSDistTree,
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         #Get data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
-        dist_data = {data_path : PT.request_nd_value(PT.request_node_from_path(d_dataset, data_path)) \
+        dist_data = {data_path : PT.get_np_value(PT.request_node_from_path(d_dataset, data_path)) \
                      for data_path in data_paths}
         # Filter global / local data
         global_arrays_node = PT.get_child_from_name(distri_node, 'BCDataGlobal')
-        global_arrays_list = PT.request_str_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
+        global_arrays_list = PT.get_str_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
         as_path = lambda path : path if has_own_distri else f"{PT.get_name(d_dataset)}/{path}" #Add DS name if required, to search in global_arrays_list  
         dist_data_loc  = {path: data for path, data in dist_data.items() if as_path(path) not in global_arrays_list}
         dist_data_glob = {path: data for path, data in dist_data.items() if as_path(path)     in global_arrays_list}
 
         #Exchange (local data)
-        distribution = PT.request_nd_value(PT.request_child_from_name(distri_node, 'Index'))
+        distribution = PT.get_np_value(PT.request_child_from_name(distri_node, 'Index'))
         part_data = EP.block_to_part(dist_data_loc, distribution, [lngn-1 for lngn in lngn_list], comm)
 
         #Put part data in tree
@@ -253,7 +253,7 @@ def dist_subregion_to_part_subregion(dist_zone: CGNSDistTree,
     #Get distribution and dist data
     distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
     fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
-    dist_data = {field : PT.request_nd_value(PT.request_child_from_name(d_zsr, field)) \
+    dist_data = {field : PT.get_np_value(PT.request_child_from_name(d_zsr, field)) \
                   for field in fields}
 
     if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:

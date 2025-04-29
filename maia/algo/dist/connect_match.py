@@ -203,7 +203,7 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
 
   node = PT.request_node_from_path(dist_tree, subset_path)
   assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
-  pl = PT.request_nd_value(PT.request_child_from_name(node, 'PointList'))[0]
+  pl = PT.get_np_value(PT.request_child_from_name(node, 'PointList'))[0]
   _pl = _shift_face_num(pl, zone)
 
   cloud = _get_cloud(dmesh, _pl, comm)
@@ -327,8 +327,8 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
       jn_name_cur = f"{leaf_name_cur}_{n_spawn[origin_path_cur]}"
       jn_name_opp = f"{leaf_name_opp}_{n_spawn[origin_path_opp]}"
 
-      pl_cur = np_utils.safe_int_cast(_gnum_cur.reshape((1,-1), order='F'), PT.request_nd_value(zone_cur).dtype)
-      pl_opp = np_utils.safe_int_cast(_gnum_opp.reshape((1,-1), order='F'), PT.request_nd_value(zone_opp).dtype)
+      pl_cur = np_utils.safe_int_cast(_gnum_cur.reshape((1,-1), order='F'), PT.get_np_value(zone_cur).dtype)
+      pl_opp = np_utils.safe_int_cast(_gnum_opp.reshape((1,-1), order='F'), PT.get_np_value(zone_opp).dtype)
 
       jn = PT.new_GridConnectivity(jn_name_cur,
                                    zone_opp_path,
@@ -358,7 +358,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   for i_cloud, cloud_path in enumerate(clouds_path):
     spawn = np.where(cloud_pair == i_cloud)[0]
     itrf_id, numside = np.divmod(spawn, 2) #  Convert into num interface + pos (0 or 1)
-    input_face = PT.request_nd_value(PT.request_node_from_path(dist_tree, f"{cloud_path}/PointList"))[0]
+    input_face = PT.get_np_value(PT.request_node_from_path(dist_tree, f"{cloud_path}/PointList"))[0]
     output_faces = []
     for j,s in zip(itrf_id, numside):
         output_faces.append(matching_face[['lgnum_cur', 'lgnum_opp'][s]][j])

@@ -15,7 +15,7 @@ is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) ==
 
 def _extend_pr(pr_node:CGNSTree, val):
   """ Add a dimension to PR-like arrays with the specified values"""
-  pr2d = PT.request_nd_value(pr_node)
+  pr2d = PT.get_np_value(pr_node)
   assert pr2d.shape[0] == 2
   pr3d = np.append(pr2d, np.array(val, pr2d.dtype).reshape((1,-1), order='F'), axis=0)
   PT.set_value(pr_node, pr3d)
@@ -628,7 +628,7 @@ def extrude(dist_tree: CGNSDistTree,
     # Remark: in extrusion, no need to change nb_cell because the new 3D cells are the 
     #         former 2D ones extruded
     if PT.Zone.Type(zone) == 'Unstructured':
-      zone_dims = PT.request_nd_value(zone)
+      zone_dims = PT.get_np_value(zone)
       zone_dims[0][0] *= 2
     else:
       _extend_pr(zone, [2,1,0])
@@ -652,7 +652,7 @@ def extrude(dist_tree: CGNSDistTree,
       if PT.Zone.Type(zone) == 'Unstructured':
         assert PT.get_child_from_label(container, 'IndexRange_t') is None, "PointRange not supported for U zones"
         assert PT.get_child_from_name(container, 'PointListDonor') is None, "CellCenter GC are not supported for U zones"
-        pl = PT.request_nd_value(PT.request_child_from_name(container, 'PointList'))
+        pl = PT.get_np_value(PT.request_child_from_name(container, 'PointList'))
         pl += cell_offset_3d - cell_offset_2d
       else:
         assert PT.get_child_from_label(container, 'IndexArray_t') is None, "PointList not supported for S zones"
@@ -751,7 +751,7 @@ def extrude(dist_tree: CGNSDistTree,
             pr_n = PT.request_child_from_name(container, 'PointRange')
             _extend_pr(pr_n, [zval,zval])
         else: # Add PR/PR in full containers
-          ztype = PT.request_nd_value(zone).dtype
+          ztype = PT.get_np_value(zone).dtype
           if PT.Zone.Type(zone) == 'Unstructured':
             pl = np.arange(distrib_vtx_2d[0]+1, distrib_vtx_2d[1]+1, dtype=ztype).reshape((1,-1), order='F')
             PT.new_IndexArray('PointList', value=pl, parent=container)
@@ -784,11 +784,11 @@ def extrude(dist_tree: CGNSDistTree,
           # Transform depend of align of zone and opp zone : -1 if different alignement
           sign = -1 if zone_to_align[zone_path] ^ zone_to_align[donor_path] else 1
           transform  = PT.request_child_from_name(subset, 'Transform') 
-          PT.set_value(transform, np.append(PT.request_nd_value(transform), np.array([sign*3], np.int32)))
+          PT.set_value(transform, np.append(PT.get_np_value(transform), np.array([sign*3], np.int32)))
           # In addition we need to swap one of the two PointRange
           if sign < 0:
             pr_n = PT.request_child_from_name(subset, 'PointRange' + (zone_path > donor_path)*'Donor')
-            pr = PT.request_nd_value(pr_n)
+            pr = PT.get_np_value(pr_n)
             pr[2,:] = [2,1]
 
       elif PT.Zone.Type(zone) == 'Unstructured':

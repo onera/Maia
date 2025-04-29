@@ -27,7 +27,7 @@ class CenterToNode:
     gnum_list   = []
     for i_dom, zone_path in enumerate(parts_per_dom):
       dist_base = PT.request_child_from_name(tree, PT.utils.path_head(zone_path))
-      dim = PT.request_nd_value(dist_base)[0]
+      dim = PT.get_np_value(dist_base)[0]
       for i_part, zone in enumerate(parts_per_dom[zone_path]):
 
           n_vtx = PT.Zone.n_vtx(zone)
@@ -113,7 +113,7 @@ class NodeToCenter:
     self.cell_vtx     = []
 
     for base in PT.get_all_CGNSBase_t(tree):
-      dim = PT.request_nd_value(base)[0]
+      dim = PT.get_np_value(base)[0]
       for p_zone in PT.get_all_Zone_t(base):
         cx,cy,cz = PT.Zone.coordinates(p_zone)
         assert (cx is not None) and (cy is not None) and (cz is not None)
@@ -154,7 +154,7 @@ class NodeToCenter:
       fs_out = PT.new_FlowSolution(f'{container_name}#Cell', loc='CellCenter', parent=part)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
-        data_in = PT.request_nd_value(array) 
+        data_in = PT.get_np_value(array) 
         shape = data_in.shape
         if len(shape) != 1 :
            data_in=data_in.flatten(order='F')

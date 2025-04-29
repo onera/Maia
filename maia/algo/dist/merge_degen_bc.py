@@ -258,12 +258,12 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
     pl_degen_faces_list = []
     for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):
       if PT.predicate.belongs_to_family(bc_n, degen_family):
-        pl_degen_faces_list.append(PT.request_nd_value(PT.Subset.getPatch(bc_n)))
+        pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(bc_n)))
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
       zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
       zsr_extent_n = PT.request_node_from_path(zone_n, zsr_extent_path)
       if PT.predicate.belongs_to_family(zsr_n, degen_family):
-        pl_degen_faces_list.append(PT.request_nd_value(PT.Subset.getPatch(zsr_extent_n)))
+        pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(zsr_extent_n)))
     if len(pl_degen_faces_list) == 0:
       continue
     
