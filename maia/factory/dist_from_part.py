@@ -164,7 +164,7 @@ def _recover_dist_block_size(part_zones: List[CGNSPartTree],
     comm: MPI communicator
   """
   # Collect zone size and pr+opposite zone thought partitioning jns
-  zones_to_size:Dict[str, Tuple[int, ...]] = {}
+  zones_to_size:Dict[str, Tuple[np.integer, ...]] = {}
   zones_to_join:Dict[str, List[CGNSTree]] = {}
   for part_zone in part_zones:
     zone_name = PT.get_name(part_zone)

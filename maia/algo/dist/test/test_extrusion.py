@@ -331,6 +331,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
+  zdtype=PT.get_np_value(zone).dtype
 
   n_cell = PT.Zone.n_cell(zone)
   n_vtx  = PT.Zone.n_vtx(zone)
@@ -341,20 +342,20 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   PT.new_DiscreteData('DD_woPL#CellCenter', loc='CellCenter', fields={'Id': id_cc}, parent=zone)
   fs_wpl_cc = PT.new_FlowSolution('FS_wPL#CellCenter', loc='CellCenter', fields={'Id': id_cc[-2:]}, parent=zone)
   PT.new_IndexArray('PointList', value=[id_cc[-2:]], parent=fs_wpl_cc)
-  MT.new_Distribution({'Index': [0,2,2]}, parent=fs_wpl_cc)
+  MT.new_Distribution({'Index': np.array([0,2,2], pdm_dtype)}, parent=fs_wpl_cc)
 
   # > Container EdgeCenter (with PL only because no pl is not allowed)
-  id_ec = np.array([4,6,11,13], zone[1].dtype) # Internal edges
+  id_ec = np.array([4,6,11,13], zdtype) # Internal edges
   zsr_wpl_ec = PT.new_ZoneSubRegion('ZSR_wPL#EdgeCenter', loc='EdgeCenter', fields={'Id': id_ec}, parent=zone)
   PT.new_IndexArray('PointList', value=[id_ec], parent=zsr_wpl_ec)
-  MT.new_Distribution({'Index': [0,4,4]}, parent=zsr_wpl_ec)
+  MT.new_Distribution({'Index': np.array([0,4,4], pdm_dtype)}, parent=zsr_wpl_ec)
 
   # > Container Vertex
   id_vtx = np.arange(n_vtx, dtype=pdm_dtype) + 1
   PT.new_DiscreteData('DD_woPL#Vertex', loc='Vertex', fields={'Id': id_vtx}, parent=zone)
   fs_wpl_vtx = PT.new_FlowSolution('FS_wPL#Vertex', loc='Vertex', fields={'Id': id_vtx[0:3]}, parent=zone)
   PT.new_IndexArray('PointList', value=[id_vtx[0:3]], parent=fs_wpl_vtx)
-  MT.new_Distribution({'Index': [0,3,3]}, parent=fs_wpl_vtx)
+  MT.new_Distribution({'Index': np.array([0,3,3], pdm_dtype)}, parent=fs_wpl_vtx)
   PT.new_ZoneSubRegion('ZSR_related#Vertex', gc_name='Ymin', fields={'Id': id_vtx[-3:]}, parent=zone)
 
   # BC setup : to test several cases, we define : 
@@ -364,28 +365,28 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   xmin, xmax, ymin, ymax = [PT.get_node_from_name(zone, name) for name in ['Xmin', 'Xmax', 'Ymin', 'Ymax']]
 
   # > Xmin : BC Edge + BCDS with PointList
-  bcds_wpl_cc = PT.new_BCDataSet(name='BCDS_wpl#CellCenter', loc='CellCenter', point_list=[[1+16,5+16]], parent=xmin)
+  bcds_wpl_cc = PT.new_BCDataSet(name='BCDS_wpl#CellCenter', loc='CellCenter', point_list=np.array([[1+16,5+16]],zdtype), parent=xmin)
   PT.new_BCData('NeumannData', fields={'Id': [1,5]}, parent=bcds_wpl_cc)
   MT.new_Distribution({'Index': np.array([0,2,2],dtype=pdm_dtype)}, parent=bcds_wpl_cc)
-  bcds_wpl_ec = PT.new_BCDataSet(name='BCDS_wpl#EdgeCenter', loc='EdgeCenter', point_list=[[2,10]], parent=xmin)
+  bcds_wpl_ec = PT.new_BCDataSet(name='BCDS_wpl#EdgeCenter', loc='EdgeCenter', point_list=np.array([[2,10]], zdtype), parent=xmin)
   PT.new_BCData('NeumannData', fields={'Id': [2,10]}, parent=bcds_wpl_ec)
   MT.new_Distribution({'Index': np.array([0,2,2],dtype=pdm_dtype)}, parent=bcds_wpl_ec)
-  bcds_wpl_vtx = PT.new_BCDataSet(name='BCDS_wpl#Vertex', loc='Vertex', point_list=[[1,2,3]], parent=xmin)
+  bcds_wpl_vtx = PT.new_BCDataSet(name='BCDS_wpl#Vertex', loc='Vertex', point_list=np.array([[1,2,3]], zdtype), parent=xmin)
   PT.new_BCData('NeumannData', fields={'Id': [1,2,3]}, parent=bcds_wpl_vtx)
   MT.new_Distribution({'Index': np.array([0,3,3],dtype=pdm_dtype)}, parent=bcds_wpl_vtx)
 
   # > Xmax : BC CellCenter
   PT.update_child(xmax, 'GridLocation', 'GridLocation_t', 'CellCenter')
-  PT.update_child(xmax, 'PointList', value=np.array([[4+16,8+16]], zone[1].dtype))
+  PT.update_child(xmax, 'PointList', value=np.array([[4+16,8+16]], zdtype))
 
   # > Ymin and Ymax : GC Vertex (more interesting than Edge)
   # Remark: GC is not well defined but enough for test (missing perio)
   for bc in [ymin, ymax]:
     PT.update_child(bc, 'GridLocation', 'GridLocation_t', 'Vertex')
     PT.update_node(bc, value=PT.get_name(zone), label='GridConnectivity_t')
-    MT.new_Distribution({'Index' : [0,3,3]}, bc)
-  PT.update_child(ymin, 'PointList', value=np.array([[1,2,3]], zone[1].dtype))
-  PT.update_child(ymax, 'PointList', value=np.array([[7,8,9]], zone[1].dtype))
+    MT.new_Distribution({'Index' : np.array([0,3,3],pdm_dtype)}, bc)
+  PT.update_child(ymin, 'PointList', value=np.array([[1,2,3]], zdtype))
+  PT.update_child(ymax, 'PointList', value=np.array([[7,8,9]], zdtype))
   PT.new_IndexArray('PointListDonor', PT.get_child_from_name(ymax, 'PointList')[1].copy(), ymin)
   PT.new_IndexArray('PointListDonor', PT.get_child_from_name(ymin, 'PointList')[1].copy(), ymax)
   PT.new_Descriptor('GridConnectivityRegionName', 'Ymax', parent=ymin)

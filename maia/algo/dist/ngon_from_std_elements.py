@@ -98,12 +98,12 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     ngon_eso += distrib_face_vtx[i_rank]
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe, parent=zone)
-    MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
+    MT.new_Distribution({'Element' :            par_utils.full_to_partial_distribution(distrib_face, comm),
                         'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_face_vtx, comm)},
                         ngon_n)
 
     # Create NFACE
-    nface_er  = np.array([1, n_cell], dtype=zone[1].dtype) + n_face
+    nface_er  = np.array([1+n_face, n_cell+n_face], dtype=zone[1].dtype)
     nface_ec  = np_utils.safe_int_cast(dcell_face, nface_er.dtype)
     nface_eso = np_utils.safe_int_cast(dcell_face_idx, nface_er.dtype)
     nface_eso += distrib_cell_face[i_rank]

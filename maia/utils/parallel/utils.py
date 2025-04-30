@@ -25,9 +25,10 @@ def gathering_distribution(i_rank: int, n_elt: int, comm: MPIComm) -> NDArray:
   else                          : distrib = np.array([n_elt, n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
   return distrib
 
-def uniform_distribution(n_elt: int, comm: MPIComm) -> NDArray:
+def uniform_distribution(n_elt: Union[int, np.integer], comm: MPIComm) -> NDArray:
   """
   """
+  n_elt = int(n_elt)
   watch_overflow(n_elt)
   u_dist = py_utils.uniform_distribution_at(n_elt, comm.Get_rank(), comm.Get_size())
   proc_indices = np.empty(3, dtype=npy_pdm_gnum_dtype)

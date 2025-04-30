@@ -76,7 +76,7 @@ def concatenate_point_list(point_lists: List[NDArray],
   arrays = [pl[0,:] for pl in point_lists]
   return concatenate_np_arrays(arrays, dtype)
 
-def sizes_to_indices(nb_array: Union[NDArray, Sequence[int]], dtype: Optional[DTypeLike] = None) -> NDArray:
+def sizes_to_indices(nb_array: Union[NDArray, Sequence[int], Sequence[np.integer]], dtype: Optional[DTypeLike] = None) -> NDArray:
   """ Create and offset array from a size array """
   nptype = dtype if dtype else np.asarray(nb_array).dtype
   offset_array = np.empty(len(nb_array)+1, dtype=nptype)

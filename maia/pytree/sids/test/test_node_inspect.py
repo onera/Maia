@@ -245,6 +245,83 @@ def test_zone_s_size():
   assert SIDS.Zone.n_face(zone_s) == 10*(5-1)*(2-1) + (10-1)*5*(2-1) + (10-1)*(5-1)*2 # 10*9*1 + 9*5*1 + 9*4*2
   assert SIDS.Zone.n_vtx_bnd(zone_s) == 0
 
+def test_zone_size_dtype():
+  zone = N.new_Zone('Zone', size=np.array([[100, 36, 0]], np.int32), type='Unstructured')
+  N.new_NGonElements(erange=np.array([1, 15], np.int32), parent=zone)
+  assert all(k.dtype == np.int32 for k in SIDS.Zone.VertexSize(zone))
+  assert all(k.dtype == np.int32 for k in SIDS.Zone.CellSize(zone))
+  assert all(k.dtype == np.int32 for k in SIDS.Zone.FaceSize(zone))
+  assert all(k.dtype == np.int32 for k in SIDS.Zone.VertexBoundarySize(zone))
+  assert SIDS.Zone.n_vtx(zone).dtype == np.int32
+  assert SIDS.Zone.n_cell(zone).dtype == np.int32
+  assert SIDS.Zone.n_face(zone).dtype == np.int32
+  assert SIDS.Zone.n_vtx_bnd(zone).dtype == np.int32
+
+  zone = N.new_Zone('Zone', size=np.array([[10,9,0], [5,4,0], [2,1,0]], np.int64), type='Structured')
+  assert all(k.dtype == np.int64 for k in SIDS.Zone.VertexSize(zone))
+  assert all(k.dtype == np.int64 for k in SIDS.Zone.CellSize(zone))
+  assert all(k.dtype == np.int64 for k in SIDS.Zone.FaceSize(zone))
+  assert all(k.dtype == np.int64 for k in SIDS.Zone.IFaceSize(zone))
+  assert all(k.dtype == np.int64 for k in SIDS.Zone.JFaceSize(zone))
+  assert all(k.dtype == np.int64 for k in SIDS.Zone.KFaceSize(zone))
+  assert all(k.dtype == np.int64 for k in SIDS.Zone.VertexBoundarySize(zone))
+  assert SIDS.Zone.n_vtx(zone).dtype == np.int64
+  assert SIDS.Zone.n_cell(zone).dtype == np.int64
+  assert SIDS.Zone.n_face(zone).dtype == np.int64
+  assert SIDS.Zone.n_vtx_bnd(zone).dtype == np.int64
+
+
+
+  import maia
+  from mpi4py import MPI
+  import maia.pytree as PT
+  def as_i8(tree):
+    for zone in PT.get_all_Zone_t(tree):
+      zone[1] = zone[1].astype(np.int64)
+      for pl in PT.get_nodes_from_label(zone, 'IndexArray_t'):
+        pl[1] = pl[1].astype(np.int64)
+      for elt in PT.get_children_from_label(zone, 'Elements_t'):
+        for da in PT.get_children_from_predicate(elt, PT.pred.label_in(['DataArray_t', 'IndexRange_t'])):
+          da[1] = da[1].astype(np.int64)
+
+  def as_i4(tree):
+    for zone in PT.get_all_Zone_t(tree):
+      zone[1] = zone[1].astype(np.int32)
+      for pl in PT.get_nodes_from_label(zone, 'IndexArray_t'):
+        pl[1] = pl[1].astype(np.int32)
+      for elt in PT.get_children_from_label(zone, 'Elements_t'):
+        for da in PT.get_children_from_predicate(elt, PT.pred.label_in(['DataArray_t', 'IndexRange_t'])):
+          da[1] = da[1].astype(np.int32)
+
+
+  tree = maia.factory.generate_dist_block(11, 'Poly', MPI.COMM_SELF)
+  as_i4(tree)
+  
+  zone = PT.get_all_Zone_t(tree)[0]
+  elt = PT.find_node_from_name(tree, 'NGonElements')
+  assert PT.Element.Size(elt).dtype == np.int32
+  ranges = PT.Zone.get_elt_range_per_dim(zone)
+  for r in ranges:
+    assert r[0].dtype == np.int32 and r[1].dtype == np.int32
+  bc = PT.find_node_from_name(tree, 'Xmin')
+  assert PT.Subset.n_elem(bc).dtype == np.int32
+  fbc = PT.new_BC(point_range=np.array([[1,4], [1,4]], np.int32))
+  assert PT.Subset.n_elem(fbc).dtype == np.int32
+  
+
+  as_i8(tree)
+  zone = PT.get_all_Zone_t(tree)[0]
+  elt = PT.find_node_from_name(tree, 'NGonElements')
+  assert PT.Element.Size(elt).dtype == np.int64
+  ranges = PT.Zone.get_elt_range_per_dim(zone)
+  for r in ranges:
+    assert r[0].dtype == np.int64 and r[1].dtype == np.int64
+  bc = PT.find_node_from_name(tree, 'Xmin')
+  assert PT.Subset.n_elem(bc).dtype == np.int64
+  fbc = PT.new_BC(point_range=np.array([[1,4], [1,4]], np.int64))
+  assert PT.Subset.n_elem(fbc).dtype == np.int64
+
+
 def test_get_ordered_elements():
   zone = N.new_Zone()
   N.new_Elements('ElemA', erange=[11, 53], parent=zone)

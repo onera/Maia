@@ -161,7 +161,7 @@ class Zone:
     return N.get_np_value(zone_node).shape[0]
 
   @staticmethod
-  def VertexSize(zone_node:CGNSTree) -> Tuple[int, ...]:
+  def VertexSize(zone_node:CGNSTree) -> Tuple[np.integer, ...]:
     """
     Return the number of vertices per direction of a Zone_t node
 
@@ -177,7 +177,7 @@ class Zone:
     return tuple(N.get_np_value(zone_node)[:,0])
 
   @staticmethod
-  def CellSize(zone_node:CGNSTree) -> Tuple[int, ...]:
+  def CellSize(zone_node:CGNSTree) -> Tuple[np.integer, ...]:
     """
     Return the number of cells per direction of a Zone_t node
 
@@ -193,7 +193,7 @@ class Zone:
     return tuple(N.get_np_value(zone_node)[:,1])
 
   @staticmethod
-  def FaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
+  def FaceSize(zone_node:CGNSTree) -> Tuple[np.integer, ...]:
     """
     Return the number of faces per direction of a Zone_t node
 
@@ -213,19 +213,18 @@ class Zone:
       Unstructured zones are supported only if they have a NGon connectivity
     """
     if Zone.Type(zone_node) == "Structured":
+      dtype = N.get_np_value(zone_node).dtype
       dirfacesize = [Zone.IFaceSize, Zone.JFaceSize, Zone.KFaceSize][:Zone.IndexDimension(zone_node)]
-      n_face = tuple(math.prod(func(zone_node)) for func in dirfacesize)
+      n_face = tuple(dtype.type(math.prod(func(zone_node))) for func in dirfacesize)
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
-      er = W.find_child_from_name(ngon_node, 'ElementRange')[1]
-      assert er is not None
-      n_face = (er[1] - er[0] + 1,)
+      n_face = (Element.Size(ngon_node),)
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
     return n_face
 
   @staticmethod
-  def IFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
+  def IFaceSize(zone_node:CGNSTree) -> Tuple[np.integer, ...]:
     """
     Return the number of I normal faces in each direction for a structured Zone_t node
 
@@ -246,7 +245,7 @@ class Zone:
     vtx_size  = Zone.VertexSize(zone_node)
     cell_size = Zone.CellSize(zone_node)
     dim = len(vtx_size)
-    n_iface:Tuple[int,...] = (vtx_size[0],)
+    n_iface:Tuple[np.integer,...] = (vtx_size[0],)
     if dim > 1:
       n_iface = n_iface + (cell_size[1],)
     if dim > 2:
@@ -254,7 +253,7 @@ class Zone:
     return n_iface
     
   @staticmethod
-  def JFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
+  def JFaceSize(zone_node:CGNSTree) -> Tuple[np.integer, ...]:
     """
     Return the number of J normal faces in each direction for a structured Zone_t node
 
@@ -275,13 +274,13 @@ class Zone:
     cell_size = Zone.CellSize(zone_node)
     dim = len(vtx_size)
     assert 2 <= dim
-    n_jface:Tuple[int,...] = (cell_size[0], vtx_size[1])
+    n_jface:Tuple[np.integer,...] = (cell_size[0], vtx_size[1])
     if dim == 3:
       n_jface = n_jface + (cell_size[2],)
     return n_jface
     
   @staticmethod
-  def KFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
+  def KFaceSize(zone_node:CGNSTree) -> Tuple[np.integer, ...]:
     """
     Return the number of K normal faces in each direction for a structured Zone_t node
 
@@ -336,7 +335,7 @@ class Zone:
     return utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
 
   @staticmethod
-  def VertexBoundarySize(zone_node:CGNSTree) -> Tuple[int]:
+  def VertexBoundarySize(zone_node:CGNSTree) -> Tuple[np.integer]:
     """
     Return the number of boundary vertices per direction of a Zone_t node
 
@@ -369,7 +368,7 @@ class Zone:
     return N.get_str_value(zone_type_node)
 
   @staticmethod
-  def n_vtx(zone_node:CGNSTree) -> int:
+  def n_vtx(zone_node:CGNSTree) -> np.integer:
     """
     Return the total number of vertices of a Zone_t node
 
@@ -382,10 +381,12 @@ class Zone:
       >>> PT.Zone.n_vtx(zone)
       11
     """
-    return math.prod(Zone.VertexSize(zone_node))
+    dtype = N.get_np_value(zone_node).dtype
+    n_vtx = math.prod(Zone.VertexSize(zone_node))
+    return dtype.type(n_vtx)
 
   @staticmethod
-  def n_cell(zone_node:CGNSTree) -> int:
+  def n_cell(zone_node:CGNSTree) -> np.integer:
     """
     Return the total number of cells of a Zone_t node
 
@@ -398,10 +399,13 @@ class Zone:
       >>> PT.Zone.n_cell(zone)
       50
     """
-    return math.prod(Zone.CellSize(zone_node))
+    dtype = N.get_np_value(zone_node).dtype
+    n_cell = math.prod(Zone.CellSize(zone_node))
+    return dtype.type(n_cell)
+
 
   @staticmethod
-  def n_face(zone_node:CGNSTree) -> int:
+  def n_face(zone_node:CGNSTree) -> np.integer:
     """
     Return the total number of faces of a Zone_t node
 
@@ -417,10 +421,12 @@ class Zone:
     Warning:
       Unstructured zones are supported only if they have a NGon connectivity
     """
-    return sum(Zone.FaceSize(zone_node))
+    dtype = N.get_np_value(zone_node).dtype
+    n_face = sum(Zone.FaceSize(zone_node))
+    return dtype.type(n_face)
 
   @staticmethod
-  def n_vtx_bnd(zone_node:CGNSTree) -> int:
+  def n_vtx_bnd(zone_node:CGNSTree) -> np.integer:
     """
     Return the total number of boundary vertices of a Zone_t node
 
@@ -433,7 +439,9 @@ class Zone:
       >>> PT.Zone.n_vtx_bnd(zone)
       0
     """
-    return math.prod(Zone.VertexBoundarySize(zone_node))
+    dtype = N.get_np_value(zone_node).dtype
+    n_vtx_bnd = math.prod(Zone.VertexBoundarySize(zone_node))
+    return dtype.type(n_vtx_bnd)
 
   @staticmethod
   def has_ngon_elements(zone_node: CGNSTree) -> bool:
@@ -558,7 +566,7 @@ class Zone:
     return utils.bucket_split(Zone.get_ordered_elements(zone_node), lambda e: Element.Dimension(e), size=4)
 
   @staticmethod
-  def get_elt_range_per_dim(zone_node:CGNSTree) -> List[List[int]]:
+  def get_elt_range_per_dim(zone_node:CGNSTree) -> List[List[np.integer]]:
     """ Return the min & max element number of each dimension found in a Zone_t node
 
     Args:
@@ -576,8 +584,13 @@ class Zone:
       [[0, 0], [31, 40], [11, 30], [1, 10]]
     """
     sorted_elts_by_dim = Zone.get_ordered_elements_per_dim(zone_node)
+    if zone_node[1] is not None: # Ugly
+      z = N.get_np_value(zone_node).dtype.type(0)
+    else:
+      last = W.find_child_from_label(zone_node, 'Elements_t')
+      z = Element.Range(last).dtype.type(0)
 
-    range_by_dim = [[0,0], [0,0], [0,0], [0,0]]
+    range_by_dim = [[z,z], [z,z], [z,z], [z,z]]
     for i_dim, elt_dim in enumerate(sorted_elts_by_dim):
       # Element is sorted
       if(len(elt_dim) > 0):
@@ -780,7 +793,7 @@ class Element:
     return N.get_np_value(W.find_child_from_name(elt_node,"ElementRange"))
 
   @staticmethod
-  def Size(elt_node:CGNSTree) -> int:
+  def Size(elt_node:CGNSTree) -> np.integer:
     """ Return the size (number of elements) of an Element_t node
 
     Args:
@@ -793,7 +806,7 @@ class Element:
       20
     """
     er = Element.Range(elt_node)
-    return er[1] - er[0] + 1
+    return er[1] - er[0] + er.dtype.type(1)
 
 
 
@@ -940,7 +953,7 @@ class Subset:
     return pl if pl is not None else pr #type: ignore
 
   @staticmethod
-  def n_elem(subset_node:CGNSTree) -> int:
+  def n_elem(subset_node:CGNSTree) -> np.integer:
     """ Return the number of mesh elements included in a Subset node
 
     Args:
@@ -1125,8 +1138,9 @@ class PointRange:
     return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
 
   @staticmethod
-  def n_elem(point_range_node:CGNSTree) -> int:
-    return PointRange.SizePerIndex(point_range_node).prod()
+  def n_elem(point_range_node:CGNSTree) -> np.integer:
+    dtype = N.get_np_value(point_range_node).dtype
+    return dtype.type(PointRange.SizePerIndex(point_range_node).prod())
 
 
 # --------------------------------------------------------------------------
@@ -1134,7 +1148,7 @@ class PointRange:
 class PointList:
 
   @staticmethod
-  def n_elem(point_list_node:CGNSTree) -> int:
+  def n_elem(point_list_node:CGNSTree) -> np.integer:
     pl_values = N.get_np_value(point_list_node)
-    return pl_values.shape[1]
+    return pl_values.dtype.type(pl_values.shape[1])
 
