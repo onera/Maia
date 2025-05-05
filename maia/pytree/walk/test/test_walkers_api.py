@@ -33,10 +33,10 @@ def test_get_node_from_predicate():
   assert PT.get_node_from_predicate(basic_tree, 'BC_t', sort=lambda l:reversed(l))[0] == 'bc2'
 
 def test_request_node_from_predicate():
-  assert PT.request_node_from_predicate(basic_tree, 'bc2') is not None
-  assert PT.requestNodeFromPredicate(basic_tree, 'bc2') == PT.request_node_from_predicate(basic_tree, 'bc2')
+  assert PT.find_node_from_predicate(basic_tree, 'bc2') is not None
+  assert PT.findNodeFromPredicate(basic_tree, 'bc2') == PT.find_node_from_predicate(basic_tree, 'bc2')
   with pytest.raises(CGNSNodeNotFoundError):
-    PT.request_node_from_predicate(basic_tree, 'bc8')
+    PT.find_node_from_predicate(basic_tree, 'bc8')
 
 def test_get_nodes_from_predicate():
 
@@ -156,44 +156,44 @@ def test_get_child_from_value():
 
 def test_request_child_from_predicate():
   bc1 = PT.get_node_from_name(basic_tree, 'bc1')
-  node = PT.request_child_from_predicate(bc1, lambda n: PTp.match_name(n, 'FamilyName'))
+  node = PT.find_child_from_predicate(bc1, lambda n: PTp.match_name(n, 'FamilyName'))
   assert node is not None
   assert PT.get_name(node) == 'FamilyName'
   
   with pytest.raises(CGNSNodeNotFoundError):
-      PT.request_child_from_predicate(bc1, 'NonExist')
+      PT.find_child_from_predicate(bc1, 'NonExist')
 
 def test_request_child_from_name():
   bc2 = PT.get_node_from_name(basic_tree, 'bc2')
-  node = PT.request_child_from_name(bc2, 'FamilyName')
+  node = PT.find_child_from_name(bc2, 'FamilyName')
   assert node is not None
   assert PT.get_name(node) == 'FamilyName'
   with pytest.raises(CGNSNodeNotFoundError):
-      PT.request_child_from_name(bc2, 'NonExist')
+      PT.find_child_from_name(bc2, 'NonExist')
 
 def test_request_child_from_label():
   bc2 = PT.get_node_from_name(basic_tree, 'bc2')
-  node = PT.request_child_from_label(bc2, 'FamilyName_t')
+  node = PT.find_child_from_label(bc2, 'FamilyName_t')
   assert node is not None
   assert PT.get_label(node) == 'FamilyName_t'
   with pytest.raises(CGNSNodeNotFoundError):
-    PT.request_child_from_label(bc2, 'NonExistLabel')
+    PT.find_child_from_label(bc2, 'NonExistLabel')
 
 def test_request_child_from_value():
   bc1 = PT.get_node_from_name(basic_tree, 'bc1')
-  node = PT.request_child_from_value(bc1, 'BC1')
+  node = PT.find_child_from_value(bc1, 'BC1')
   assert node is not None
   assert PT.get_value(node) == 'BC1'
   with pytest.raises(CGNSNodeNotFoundError):
-    PT.request_child_from_value(bc1, 'NonExist')
+    PT.find_child_from_value(bc1, 'NonExist')
 
 def test_request_child_from_name_and_label():
   bc1 = PT.get_node_from_name(basic_tree, 'bc1')
-  node = PT.request_child_from_name_and_label(bc1, 'FamilyName', 'FamilyName_t')
+  node = PT.find_child_from_name_and_label(bc1, 'FamilyName', 'FamilyName_t')
   assert node is not None
   assert PT.get_name(node) == 'FamilyName'
   with pytest.raises(CGNSNodeNotFoundError):
-    PT.request_child_from_name_and_label(bc1, 'NonExist', 'FamilyName_t')
+    PT.find_child_from_name_and_label(bc1, 'NonExist', 'FamilyName_t')
 
 # ---------------------------------------------------------------------------
 # Tests des fonctions de recherche multiples avec warning sur le paramètre caching

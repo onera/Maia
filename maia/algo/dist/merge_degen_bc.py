@@ -252,7 +252,7 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
   """
   MT.check_cgns_dist_tree(dist_tree)
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    zone_n = PT.request_node_from_path(dist_tree, zone_path)
+    zone_n = PT.find_node_from_path(dist_tree, zone_path)
     vtx_distri = MT.distribution_value(zone_n, 'Vertex')
     
     pl_degen_faces_list = []
@@ -261,7 +261,7 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(bc_n)))
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
       zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
-      zsr_extent_n = PT.request_node_from_path(zone_n, zsr_extent_path)
+      zsr_extent_n = PT.find_node_from_path(zone_n, zsr_extent_path)
       if PT.predicate.belongs_to_family(zsr_n, degen_family):
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(zsr_extent_n)))
     if len(pl_degen_faces_list) == 0:

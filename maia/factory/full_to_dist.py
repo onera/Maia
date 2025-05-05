@@ -38,7 +38,7 @@ def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   global_arrays_list = []
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_path in PT.predicates_to_paths(dist_node, query):
-      array_n = PT.request_node_from_path(dist_node, array_path)
+      array_n = PT.find_node_from_path(dist_node, array_path)
       array = get_np_value(array_n)
       if array.size != 1:
         PT.set_value(array_n, array[distri[0]:distri[1]])
@@ -89,10 +89,10 @@ def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   distri = par_utils.uniform_distribution(n_elem, comm)
   MT.newDistribution({'Element' : distri}, dist_node)
 
-  ec_n = PT.request_child_from_name(dist_node, 'ElementConnectivity')
+  ec_n = PT.find_child_from_name(dist_node, 'ElementConnectivity')
   ec = get_np_value(ec_n)
   if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
-    eso_n = PT.request_child_from_name(dist_node, 'ElementStartOffset')
+    eso_n = PT.find_child_from_name(dist_node, 'ElementStartOffset')
     eso = get_np_value(eso_n)
     distri_ec = eso[[distri[0], distri[1], -1]]
     PT.set_value(ec_n, ec[distri_ec[0] : distri_ec[1]])
@@ -228,7 +228,7 @@ def _broadcast_full_to_dist(tree: Optional[CGNSTree],
           else:
             PT.set_value(node, np.empty(0, dtype=node_val.dtype))
         for node in PT.get_children_from_predicate(container, 'IndexArray_t'):
-          index_dimension_n = PT.request_child_from_name(container, PT.get_name(node)+'#Size')
+          index_dimension_n = PT.find_child_from_name(container, PT.get_name(node)+'#Size')
           index_dimension = index_dimension_n[1][0] #type:ignore[index] #(Node is created before, should not be None)
           assert (node_val := node[1]) is not None
           PT.set_value(node, np.empty((index_dimension,0), dtype=node_val.dtype, order='F'))
@@ -245,7 +245,7 @@ def _broadcast_full_to_dist(tree: Optional[CGNSTree],
         eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
         if eso_n is not None:
           assert (eso_val := eso_n[1]) is not None
-          ec_size = PT.request_child_from_name(elt, 'ElementConnectivity#Size')[1]
+          ec_size = PT.find_child_from_name(elt, 'ElementConnectivity#Size')[1]
           PT.set_value(eso_n, (comm.Get_rank() > owner) * np.array(ec_size, dtype=eso_val.dtype))
 
   # Create Distribution nodes from Size nodes

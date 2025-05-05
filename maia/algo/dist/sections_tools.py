@@ -65,7 +65,7 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         for elt in elts:
           end = start + PT.Element.Size(elt)
           distri = MT.distribution_value(elt, 'Element')
-          ec = PT.request_child_from_name(elt, 'ElementConnectivity')[1]
+          ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
           distri_out = distri.copy()
           distri_out[0] = max(min(merged_distri[0], end), start) - start
           distri_out[1] = max(min(merged_distri[1], end), start) - start
@@ -135,7 +135,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
       
       # Special case of NFace (connectivity is signed, and does not indicates vertices)
       if PT.Element.CGNSName(elt) == 'NFACE_n':
-        ec = PT.request_child_from_name(elt, 'ElementConnectivity')
+        ec = PT.find_child_from_name(elt, 'ElementConnectivity')
         ec_val = PT.get_np_value(ec)
         sign = np.sign(ec_val)
         val  = np.abs(ec_val)
@@ -159,7 +159,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
         new_pl = np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), distri)
         PT.update_node(pr, 'PointList', 'IndexArray_t', new_pl)
 
-      pl = PT.request_child_from_name(subset, 'PointList')
+      pl = PT.find_child_from_name(subset, 'PointList')
       pl_value = PT.get_np_value(pl)
       r = np.searchsorted(cur_idx, pl_value)
       pl_value += offset[r-1]
@@ -171,13 +171,13 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
     cur_zone_path = f'{PT.get_name(base)}/{PT.get_name(zone)}'
     for opp_zone_path in set(opp_zone_paths):
       opp_base_name = PT.utils.path_head(opp_zone_path)
-      opp_zone = PT.request_node_from_path(tree, opp_zone_path)
+      opp_zone = PT.find_node_from_path(tree, opp_zone_path)
       is_gc_to_update = lambda n : PT.get_label(n) == 'GridConnectivity_t' and \
                                    PT.GridConnectivity.is1to1(n) and \
                                    PT.Subset.GridLocation(n) != 'Vertex' and \
                                    PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path
       for gc in PT.get_children_from_predicates(opp_zone, ['ZoneGridConnectivity_t', is_gc_to_update]):
-        pld = PT.request_child_from_name(gc, 'PointListDonor')
+        pld = PT.find_child_from_name(gc, 'PointListDonor')
         pld_value = PT.get_np_value(pld)
         r = np.searchsorted(cur_idx, pld_value)
         pld_value += offset[r-1]

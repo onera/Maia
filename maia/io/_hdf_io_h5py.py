@@ -73,7 +73,7 @@ def load_partial(filename:str, dist_tree, hdf_filter):
 
   for path, filter in hdf_filter.items():
     if isinstance(filter, (list, tuple)):
-      node = PT.request_node_from_path(dist_tree, path) 
+      node = PT.find_node_from_path(dist_tree, path) 
       gid = open_from_path(fid, path)
       PT.set_value(node, load_data_partial(gid, filter))
 
@@ -101,7 +101,7 @@ def write_partial(filename:str, dist_tree, hdf_filter, links, comm):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR, fapl)
 
   for path, filter in hdf_filter.items():
-    array = PT.request_node_from_path(dist_tree, path)[1]
+    array = PT.find_node_from_path(dist_tree, path)[1]
     gid = open_from_path(fid, path)
     write_data_partial(gid, array, filter)
     gid.close()

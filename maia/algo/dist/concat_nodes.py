@@ -34,7 +34,7 @@ def concatenate_subset_nodes(nodes: List[CGNSTree],
     #Use master node to understand queries and collect nodes
     for childs in PT.iter_children_from_predicates(master, data_query, ancestors=True):
       path =  '/'.join([PT.get_name(n) for n in childs])
-      data_to_merge = [PT.get_np_value(PT.request_node_from_path(node, path)) for node in nodes]
+      data_to_merge = [PT.get_np_value(PT.find_node_from_path(node, path)) for node in nodes]
       _, data_merged = np_utils.concatenate_np_arrays(data_to_merge)
 
       #Recreate structure (still using master infos) and add merged array
@@ -65,7 +65,7 @@ def concatenate_subset_nodes(nodes: List[CGNSTree],
       child = childs[-1]
       PT.new_child(parent, PT.get_name(child), PT.get_label(child), PT.get_value(child), children=PT.get_children(child))
 
-  val = PT.request_child_from_name(node, 'PointList')[1]
+  val = PT.find_child_from_name(node, 'PointList')[1]
   assert val is not None
   newsize = val.shape[1]
   distri = par_utils.dn_to_distribution(newsize, comm)
@@ -146,7 +146,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
       if suffix == '.I0':  opp_suffix = '.I1'
       elif suffix == '.I1':  opp_suffix = '.I0'
       else:  opp_suffix = suffix
-      opp_name_node = PT.request_child_from_name(jn, "GridConnectivityDonorName")
+      opp_name_node = PT.find_child_from_name(jn, "GridConnectivityDonorName")
       PT.set_value(opp_name_node, opp_jn_path.split('/')[1] + '.To.' + PT.get_name(zone) + opp_suffix)
 
       try:
@@ -169,7 +169,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
       for jn in PT.get_children_from_label(zgc, 'GridConnectivity_t'):
         if len(PT.get_children_from_name(zgc, PT.get_name(jn))) > 1:
           PT.set_name(jn, PT.get_name(jn) + '_' + PT.Subset.GridLocation(jn)[0])
-          opp_name_node = PT.request_child_from_name(jn, "GridConnectivityDonorName")
+          opp_name_node = PT.find_child_from_name(jn, "GridConnectivityDonorName")
           PT.set_value(opp_name_node, PT.get_str_value(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])
   # If we have multiple periodic jns or intrazone periodics, we can not guarantee that GridConnectivityDonorName is
   # good so rebuild it
@@ -229,7 +229,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
           families.append(PT.get_str_value(n))
 
     # > Merge bc nodes from a same family
-    zone_bc_n = PT.request_node_from_label(dist_zone, "ZoneBC_t")
+    zone_bc_n = PT.find_node_from_label(dist_zone, "ZoneBC_t")
     for family in families:
 
       # > Predicates to find family BCs
@@ -251,9 +251,9 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         bc_name = PT.get_name(bc_n)
         is_zsr_rel_to_bc = lambda n: PT.get_label(n)=='ZoneSubRegion_t' and\
                                      PT.get_child_from_name(n, 'BCRegionName') is not None and\
-                        PT.get_value(PT.request_child_from_name(n, 'BCRegionName'))==bc_name 
+                        PT.get_value(PT.find_child_from_name(n, 'BCRegionName'))==bc_name 
         for zsr_bc_n in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
-          pl_n = PT.request_child_from_name(bc_n, 'PointList')
+          pl_n = PT.find_child_from_name(bc_n, 'PointList')
           PT.new_IndexArray(value=PT.get_value(pl_n), parent=zsr_bc_n)
           PT.new_GridLocation(PT.Subset.GridLocation(bc_n), zsr_bc_n)
           PT.rm_children_from_name(zsr_bc_n, 'BCRegionName')
@@ -265,9 +265,9 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
         for path in PT.predicates_to_paths(bc_n, 'BCDataSet_t/BCData_t'):
           bcd_path = PT.utils.path_head(path, 2)
-          bcd_n = PT.request_node_from_path(bc_n, bcd_path)
+          bcd_n = PT.find_node_from_path(bc_n, bcd_path)
           if PT.get_child_from_name(bcd_n, 'OriginalBCId') is None:
-            array = PT.get_np_value(PT.request_child_from_label(bcd_n, 'DataArray_t'))
+            array = PT.get_np_value(PT.find_child_from_label(bcd_n, 'DataArray_t'))
             PT.new_DataArray('OriginalBCId', np.full(array.size, i_bc), parent=bcd_n)
 
         PT.rm_child(zone_bc_n, bc_n)
@@ -325,7 +325,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
           families.append(PT.get_str_value(n))
 
     # > Merge bc nodes from a same family
-    zone_bc_n = PT.request_child_from_label(dist_zone, "ZoneBC_t")
+    zone_bc_n = PT.find_child_from_label(dist_zone, "ZoneBC_t")
     for family in families:
 
       # > Predicates to find family BCs
@@ -344,14 +344,14 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
       concat_bc_loc  = PT.Subset.GridLocation(concat_bc_n)
       concat_bc_fam_n = PT.get_child_from_label(concat_bc_n, 'FamilyName_t')
 
-      concat_bc_pl_n = PT.request_child_from_name(concat_bc_n, 'PointList')
+      concat_bc_pl_n = PT.find_child_from_name(concat_bc_n, 'PointList')
       concat_bc_pl   = PT.get_np_value(concat_bc_pl_n)[0]
 
-      concat_bc_id_n = PT.request_node_from_path(concat_bc_n, ':maia#concatenate/DirichletData/OriginalBCId')
+      concat_bc_id_n = PT.find_node_from_path(concat_bc_n, ':maia#concatenate/DirichletData/OriginalBCId')
       concat_bc_id   = PT.get_value(concat_bc_id_n)
       PT.rm_children_from_name(concat_bc_n, ':maia#concatenate')
 
-      orig_bc_names = PT.get_str_value(PT.request_node_from_name_and_label(concat_bc_n, 'BCNames', 'Descriptor_t')).split('\n')
+      orig_bc_names = PT.get_str_value(PT.find_node_from_name_and_label(concat_bc_n, 'BCNames', 'Descriptor_t')).split('\n')
       orig_bc_ordin_n = PT.get_node_from_name_and_label(concat_bc_n, 'BCOrdinal', 'Descriptor_t')
       if orig_bc_ordin_n is not None:
         orig_bc_ordin = np.array(PT.get_str_value(orig_bc_ordin_n).split('\n'), dtype=np.int32)
@@ -386,7 +386,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
           bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
           if bcds_pl_n is not None:
             bcds_pl = PT.get_np_value(bcds_pl_n)[0]
-            bcd_bc_id_n = PT.request_child_from_name_and_label(bcd_n, 'OriginalBCId', 'DataArray_t')
+            bcd_bc_id_n = PT.find_child_from_name_and_label(bcd_n, 'OriginalBCId', 'DataArray_t')
             bcd_bc_id   = PT.get_np_value(bcd_bc_id_n)
             bcds_pl_ids = np.where(bcd_bc_id==bc_id)[0]
             bcds_pl = bcds_pl[bcds_pl_ids]

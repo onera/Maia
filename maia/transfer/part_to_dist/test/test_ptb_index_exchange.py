@@ -430,7 +430,7 @@ Zone.P2.N1 Zone_t:
 
   IPTB.part_ngon_to_dist_ngon(dist_zone, PT.get_all_Zone_t(pT), 'Ngon', comm)
 
-  ngon = PT.request_node_from_name(dist_zone, 'Ngon')
+  ngon = PT.find_node_from_name(dist_zone, 'Ngon')
   assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
   if with_pe:
     assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()

@@ -275,12 +275,12 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
   identical for both of them
   """
   MT.check_cgns_dist_tree(dist_tree)
-  jn = PT.request_node_from_path(dist_tree, jn_path)
+  jn = PT.find_node_from_path(dist_tree, jn_path)
   assert PT.Subset.GridLocation(jn) == 'FaceCenter'
 
   base_name, zone_name = jn_path.split('/')[0:2]
-  zone   = PT.request_node_from_path(dist_tree, base_name + '/' + zone_name)
-  zone_d = PT.request_node_from_path(dist_tree, PT.GridConnectivity.ZoneDonorPath(jn, base_name))
+  zone   = PT.find_node_from_path(dist_tree, base_name + '/' + zone_name)
+  zone_d = PT.find_node_from_path(dist_tree, PT.GridConnectivity.ZoneDonorPath(jn, base_name))
 
   ngon_node   = PT.Zone.NGonNode(zone)
   vtx_distri  = MT.distribution_value(zone, 'Vertex')
@@ -291,15 +291,15 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
   face_distri_d = MT.distribution_value(ngon_node_d, 'Element')
 
   distri_jn = MT.distribution_value(jn, 'Index')
-  pl   = PT.get_np_value(PT.request_child_from_name(jn, 'PointList'     ))[0]
-  pl_d = PT.get_np_value(PT.request_child_from_name(jn, 'PointListDonor'))[0]
+  pl   = PT.get_np_value(PT.find_child_from_name(jn, 'PointList'     ))[0]
+  pl_d = PT.get_np_value(PT.find_child_from_name(jn, 'PointListDonor'))[0]
 
 
   dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
   dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
 
   dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
-  dface_vtx     = [as_pdm_gnum(PT.get_np_value(PT.request_node_from_path(ng, 'ElementConnectivity'))) \
+  dface_vtx     = [as_pdm_gnum(PT.get_np_value(PT.find_node_from_path(ng, 'ElementConnectivity'))) \
                    for ng in [ngon_node, ngon_node_d]]
 
   isolated_face_loc = get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm)
@@ -383,7 +383,7 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
   for i, zone_path in enumerate(PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')):
     zone_to_id[zone_path] = i
 
-    zone = PT.request_node_from_path(dist_tree, zone_path)
+    zone = PT.find_node_from_path(dist_tree, zone_path)
     ngon = PT.Zone.NGonNode(zone)
 
     face_distri = MT.distribution_value(ngon, 'Element')
@@ -401,9 +401,9 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
   interface_ids_face = []
   interface_dom_face = []
   for interface_path in interface_pathes:
-    gc = PT.request_node_from_path(dist_tree, interface_path)
-    pl  = PT.get_np_value(PT.request_child_from_name(gc, 'PointList'))[0]
-    pld = PT.get_np_value(PT.request_child_from_name(gc, 'PointListDonor'))[0]
+    gc = PT.find_node_from_path(dist_tree, interface_path)
+    pl  = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
+    pld = PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor'))[0]
 
     interface_dn_face.append(pl.size)
     interface_ids_face.append(as_pdm_gnum(np_utils.interweave_arrays([pl,pld])))
@@ -493,10 +493,10 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
     have_isolated = []
     for interface_path_cur in interface_pathes_cur:
       zone_path = '/'.join(interface_path_cur.split('/')[:2])
-      zone_node = PT.request_node_from_path(dist_tree, zone_path)
+      zone_node = PT.find_node_from_path(dist_tree, zone_path)
       ngon_node = PT.Zone.NGonNode(zone_node)
       n_isolated = get_pl_isolated_faces(ngon_node, 
-                                         PT.get_np_value(PT.request_node_from_path(dist_tree, interface_path_cur + '/PointList'))[0],
+                                         PT.get_np_value(PT.find_node_from_path(dist_tree, interface_path_cur + '/PointList'))[0],
                                          MT.distribution_value(zone_node, 'Vertex'),
                                          comm).size
       have_isolated.append(bool(comm.allreduce(n_isolated, MPI.SUM) > 0))
@@ -527,9 +527,9 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
     pl_vtx, pl_vtx_opp, distri_jn = all_pl_vtx[i], all_pld_vtx[i], all_distri_vtx[i] #Get results
     for j, gc_path in enumerate(interface_path):
       base_name, zone_name, zgc_name, gc_name = gc_path.split('/')
-      zone = PT.request_node_from_path(dist_tree, base_name + '/' + zone_name)
+      zone = PT.find_node_from_path(dist_tree, base_name + '/' + zone_name)
       zgc  = PT.get_child_from_name(zone, zgc_name)
-      gc = PT.request_node_from_path(dist_tree, gc_path)
+      gc = PT.find_node_from_path(dist_tree, gc_path)
 
       if j == 1: #Swap pl/pld for opposite jn
         pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx

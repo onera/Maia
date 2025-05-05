@@ -57,7 +57,7 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
   tree_has_face_gc = False
   face_loc_query = lambda n : PT.get_label(n) == 'GridLocation_t' and PT.get_value(n) == 'FaceCenter'
   for dom_name, parts in parts_per_dom.items():
-    dist_zone = PT.request_node_from_path(dist_tree_jn, dom_name)
+    dist_zone = PT.find_node_from_path(dist_tree_jn, dom_name)
     has_face_gc = PT.get_node_from_predicate(dist_zone, face_loc_query) is not None
     if has_face_gc:
       # Vtx gnum is needed for face->vtx conversion.
@@ -75,7 +75,7 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
     # We need to put vtx joins on partitioned trees, but recovering donor
     # and order is useless
     for dom_name, parts in parts_per_dom.items():
-      dist_zone = PT.request_node_from_path(dist_tree_jn, dom_name)
+      dist_zone = PT.find_node_from_path(dist_tree_jn, dom_name)
       IBTP.dist_pl_to_part_pl(dist_zone, parts, ['ZoneGridConnectivity_t/GridConnectivity_t'], 'Vertex', comm)
 
 
@@ -94,8 +94,8 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
 
     if gc_path_cur < gc_path_opp:
 
-      pl  = as_pdm_gnum(PT.get_np_value(PT.request_node_from_path(dist_tree_jn, gc_path_cur+'/PointList'))[0])
-      pld = as_pdm_gnum(PT.get_np_value(PT.request_node_from_path(dist_tree_jn, gc_path_opp+"/PointList"))[0])
+      pl  = as_pdm_gnum(PT.get_np_value(PT.find_node_from_path(dist_tree_jn, gc_path_cur+'/PointList'))[0])
+      pld = as_pdm_gnum(PT.get_np_value(PT.find_node_from_path(dist_tree_jn, gc_path_opp+"/PointList"))[0])
 
       interface_dn_v.append(pl.size)
       interface_ids_v.append(np_utils.interweave_arrays([pl,pld]))
@@ -122,7 +122,7 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
     for part in parts:
       vtx_gnum = as_pdm_gnum(PT.get_np_value(MT.requestGlobalNumbering(part, 'Vertex')))
       for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
-        pl = PT.get_np_value(PT.request_child_from_name(gc, 'PointList'))[0]
+        pl = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
         vtx_ggnum_parts.append(vtx_gnum[pl-1] + vtx_mdom_offset) #Domain gnum on part side
 
   # Create PTP : indirection part1topart2 is just the identity
@@ -134,7 +134,7 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
   for shifted_lngn_dom, parts in zip(shifted_lngn, parts_per_dom.values()):
     for shifted_lngn_part, part in zip(shifted_lngn_dom, parts):
       for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
-        pl = PT.get_np_value(PT.request_child_from_name(gc, 'PointList'))[0]
+        pl = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
         # We received id starting at 1 so shift it to the end of the internal gc gnums
         shifted_lngn_part[pl-1] = vtx_group_id_recv[count] + vtx_mdom_offsets[-1]
         count += 1

@@ -82,7 +82,7 @@ def test_generated_walkers():
          PT.get_nodes_from_predicate(tree, lambda n: PT.get_label(n) == "IndexArray_t" and PT.get_name(n) == "Index_iii")
 
   with pytest.raises(CGNSNodeNotFoundError):
-    PT.request_node_from_name(tree, "Zzz")
+    PT.find_node_from_name(tree, "Zzz")
 
   assert PT.get_child_from_name(tree, "ZoneI") is None
   root = PT.get_node_from_name(tree, 'ZGCA')
@@ -119,12 +119,12 @@ def test_get_node_from_path():
   assert PT.get_node_from_path(tree, 'Base/Zone/ZGCB/gc3') is None
   assert PT.get_node_from_path(tree, '') == tree
 
-def test_request_node_from_path():
+def test_find_node_from_path():
   tree = PT.yaml.to_cgns_tree(yt)
-  assert PT.request_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
-  assert PT.request_node_from_path(tree, '') == tree
+  assert PT.find_node_from_path(tree, 'Base/ZoneI/ZGCB/gc3') == PT.get_node_from_name(tree, 'gc3')
+  assert PT.find_node_from_path(tree, '') == tree
   with pytest.raises(Exception):
-   PT.request_node_from_path(tree, 'Base/Zone/ZGCB/gc3')
+   PT.find_node_from_path(tree, 'Base/Zone/ZGCB/gc3')
 
 
 def test_pop_node_from_path():
@@ -355,23 +355,23 @@ def test_getNodeFromPredicate():
   # ====================
   # Camel case
   # ----------
-  assert is_base (PT.requestNodeFromPredicate(tree, lambda n: PT.get_name(n) == "Base")                  )
-  assert is_zonei(PT.requestNodeFromPredicate(tree, lambda n: PT.get_name(n) == "ZoneI", search="dfs")   )
-  assert is_base (PT.request_node_from_predicate(tree, lambda n: PT.get_name(n) == "Base")               )
-  assert is_zonei(PT.request_node_from_predicate(tree, lambda n: PT.get_name(n) == "ZoneI", search="dfs"))
+  assert is_base (PT.findNodeFromPredicate(tree, lambda n: PT.get_name(n) == "Base")                  )
+  assert is_zonei(PT.findNodeFromPredicate(tree, lambda n: PT.get_name(n) == "ZoneI", search="dfs")   )
+  assert is_base (PT.find_node_from_predicate(tree, lambda n: PT.get_name(n) == "Base")               )
+  assert is_zonei(PT.find_node_from_predicate(tree, lambda n: PT.get_name(n) == "ZoneI", search="dfs"))
 
   # Snake case
   # ----------
-  assert is_nface(PT.requestNodeFromName(tree, "NFace")                      )
-  assert is_nface(PT.requestNodeFromValue(tree, np.array([23,0], order='F')) )
-  assert is_ngon (PT.requestNodeFromLabel(tree, "Elements_t")                )
-  assert is_nface(PT.requestNodeFromNameAndLabel(tree, "NFace", "Elements_t"))
+  assert is_nface(PT.findNodeFromName(tree, "NFace")                      )
+  assert is_nface(PT.findNodeFromValue(tree, np.array([23,0], order='F')) )
+  assert is_ngon (PT.findNodeFromLabel(tree, "Elements_t")                )
+  assert is_nface(PT.findNodeFromNameAndLabel(tree, "NFace", "Elements_t"))
   predicate = lambda n: PTp.match_value_label(n, np.array([23,0], dtype='int64',order='F'), "Elements_t")
-  assert is_nface(PT.requestNodeFromPredicate(tree, predicate)                    )
-  assert is_nface(PT.request_node_from_name(tree, "NFace")                        )
-  assert is_nface(PT.request_node_from_value(tree, np.array([23,0], order='F'))   )
-  assert is_ngon (PT.request_node_from_label(tree, "Elements_t")                  )
-  assert is_nface(PT.request_node_from_name_and_label(tree, "NFace", "Elements_t"))
+  assert is_nface(PT.findNodeFromPredicate(tree, predicate)                    )
+  assert is_nface(PT.find_node_from_name(tree, "NFace")                        )
+  assert is_nface(PT.find_node_from_value(tree, np.array([23,0], order='F'))   )
+  assert is_ngon (PT.find_node_from_label(tree, "Elements_t")                  )
+  assert is_nface(PT.find_node_from_name_and_label(tree, "NFace", "Elements_t"))
 
   tree = PT.yaml.to_cgns_tree(yt)
 
@@ -403,7 +403,7 @@ def test_getNodeFromPredicate():
   # Snake case
   # ----------
   # Test from Name
-  base = PT.requestNodeFromLabel(tree, 'CGNSBase_t') # get the first base
+  base = PT.findNodeFromLabel(tree, 'CGNSBase_t') # get the first base
   nodes_from_name1 = ["ZoneI"]
   assert [PT.get_name(n) for n in PT.get_children_from_predicate(base, lambda n: PT.get_name(n) == "ZoneI")] == nodes_from_name1
   assert [PT.get_name(n) for n in PT.get_children_from_predicate(base, lambda n: fnmatch.fnmatch(PT.get_name(n), "Zone*"))] == nodes_from_name1

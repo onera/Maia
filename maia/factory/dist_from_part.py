@@ -201,7 +201,7 @@ def _recover_dist_block_size(part_zones: List[CGNSPartTree],
       while keep_going:
         # Iterate jns and select one to continue in same axis/direction
         for jn in zones_to_join_g[current]:
-          pr_n = PT.request_child_from_name(jn, 'PointRange')
+          pr_n = PT.find_child_from_name(jn, 'PointRange')
           assert (pr := pr_n[1]) is not None
           if PT.Subset.normal_axis(jn) == axis and oper(pr[axis,0], 1):
             current = PT.get_value(jn)
@@ -250,7 +250,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
       if has_edge: #2D with Edge + NGON or Edge only or NGON only
         assert all([PT.Zone.CellDimension(zone) == 2 for zone in part_zones])
         edge_name = elt_names[elt_kinds.index('BAR_2')]
-        edge_elts = [PT.request_child_from_name(part_zone, edge_name) for part_zone in part_zones]
+        edge_elts = [PT.find_child_from_name(part_zone, edge_name) for part_zone in part_zones]
         # For EdgeElements, we call part_ngon_to_dist_ngon which manages ParentElements node
         # We need to create ElementStartOffset array to do that
         for edge_elt in edge_elts:
@@ -258,7 +258,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
         IPTB.part_ngon_to_dist_ngon(dist_zone, part_zones, edge_name, comm)
         for edge_elt in edge_elts:
           PT.rm_children_from_name(edge_elt, 'ElementStartOffset') # Cleanup
-        dist_edge_elt = PT.request_child_from_name(dist_zone, edge_name)
+        dist_edge_elt = PT.find_child_from_name(dist_zone, edge_name)
         assert (dist_edge_elt_val:=dist_edge_elt[1]) is not None
         dist_edge_elt_val[0] = 3
         PT.rm_node_from_path(dist_edge_elt, 'ElementStartOffset')
@@ -313,7 +313,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
         dist_nf_range += dist_ng_range[1]
       elif ordering == -1: # NFACE first
         dist_ng_range += dist_nf_range[1]
-        nface_ec = PT.request_child_from_name(dist_nf, 'ElementConnectivity')
+        nface_ec = PT.find_child_from_name(dist_nf, 'ElementConnectivity')
         assert (nface_ec_val := nface_ec[1]) is not None
         np_utils.shift_absvalue(nface_ec_val, dist_nf_range[1])
       if has_pe:
@@ -396,7 +396,7 @@ def _recover_GC(dist_zone: CGNSDistTree, part_zones: List[CGNSPartTree], comm: M
     assert isinstance(val := PT.get_value(jn), str)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
     if PT.GridConnectivity.is1to1(jn):
-      gc_donor_name_n = PT.request_child_from_name(jn, 'GridConnectivityDonorName')
+      gc_donor_name_n = PT.find_child_from_name(jn, 'GridConnectivityDonorName')
       assert isinstance(gc_donor_name := PT.get_value(gc_donor_name_n), str)
       PT.set_value(gc_donor_name_n, MT.conv.get_split_prefix(gc_donor_name))
 
@@ -438,7 +438,7 @@ def _recover_base_iterative_data(dist_tree: CGNSDistTree,
       # If base does not exists, we dont have data -> work on ranks having data
       subcomm = comm.Split(part_base is None)
       if part_base is not None:
-        p_it_data = PT.request_child_from_label(part_base, 'BaseIterativeData_t')
+        p_it_data = PT.find_child_from_label(part_base, 'BaseIterativeData_t')
         p_z_pointers = PT.get_child_from_name(p_it_data, 'ZonePointers')
         d_it_data = PT.deep_copy(p_it_data)
         if p_z_pointers is not None:
@@ -520,7 +520,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
   _recover_base_iterative_data(dist_tree, part_tree, comm)
 
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    dist_zone = CGNSDistTree(PT.request_node_from_path(dist_tree, dist_zone_path))
+    dist_zone = CGNSDistTree(PT.find_node_from_path(dist_tree, dist_zone_path))
 
     part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
 

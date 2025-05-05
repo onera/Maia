@@ -22,8 +22,8 @@ def test_elements_to_ngons_pdm(comm, write_output):
 
   # > Old elements are cleaned up
   assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
-  ngon_node  = PT.request_node_from_name(dist_tree, 'NGonElements')
-  nface_node = PT.request_node_from_name(dist_tree, 'NFaceElements')
+  ngon_node  = PT.find_node_from_name(dist_tree, 'NGonElements')
+  nface_node = PT.find_node_from_name(dist_tree, 'NFaceElements')
 
   assert np.all(PT.get_value(PT.get_child_from_name(ngon_node , 'ElementRange')) == [1,2694])
   assert np.all(PT.get_value(PT.get_child_from_name(nface_node, 'ElementRange')) == [2695,3990])
@@ -45,8 +45,8 @@ def test_elements_to_ngons_maia(comm, write_output):
   # > Old elements are cleaned up
   assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
   # > Poly sections appear
-  ngon_node  = PT.request_node_from_name(dist_tree, 'NGON_n')
-  nface_node = PT.request_node_from_name(dist_tree, 'NFACE_n')
+  ngon_node  = PT.find_node_from_name(dist_tree, 'NGON_n')
+  nface_node = PT.find_node_from_name(dist_tree, 'NFACE_n')
 
   assert PT.get_child_from_name(ngon_node, 'ParentElements')
   assert PT.get_child_from_name(ngon_node, 'ParentElementsPosition')

@@ -147,7 +147,7 @@ def file_to_part_tree(filename: Union[str, PathLike],
 
     nodes =  Filter.readNodesFromPaths(filename, to_read)
     for path, node in zip(to_read, nodes):
-      base = PT.request_node_from_path(tree, PTu.path_head(path))
+      base = PT.find_node_from_path(tree, PTu.path_head(path))
       PT.add_child(base, node)
   else:
     # Remove zones not going to this rank
@@ -233,7 +233,7 @@ def part_tree_to_file(part_tree: CGNSPartTree,
           fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
           for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
             _links = [link for link in links if link[3].startswith(zone_path)]
-            zone = PT.shallow_copy(PT.request_node_from_path(part_tree, zone_path))
+            zone = PT.shallow_copy(PT.find_node_from_path(part_tree, zone_path))
             for link in _links: # Remove nodes to be linked
               PT.rm_node_from_path(zone, PT.utils.path_tail(link[3], 2))
             gid = open_from_path(fid, zone_path.split('/')[0])

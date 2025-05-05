@@ -63,7 +63,7 @@ def detect_wall_families(tree: CGNSTree, bcwalls: List[str] = BC_WALLS) -> List[
   """
   fam_query = lambda n : PT.get_label(n) == 'Family_t' and \
                          PT.get_child_from_label(n, 'FamilyBC_t') is not None and \
-                         PT.get_value(PT.request_child_from_label(n, 'FamilyBC_t')) in bcwalls
+                         PT.get_value(PT.find_child_from_label(n, 'FamilyBC_t')) in bcwalls
   return [PT.get_name(family) for family in PT.iter_children_from_predicates(tree, ['CGNSBase_t', fam_query])]
 
 
@@ -529,6 +529,6 @@ def compute_wall_distance(part_tree: CGNSPartTree,
   else:
     mlog.info(f"Wall distance computed ({end-start:.2f} s)")
     for zone in PT.iter_all_Zone_t(part_tree): #Rename Distance -> TurbulentDistance
-      node = PT.request_node_from_path(zone, out_fs_name+"/Distance")
+      node = PT.find_node_from_path(zone, out_fs_name+"/Distance")
       PT.set_name(node, 'TurbulentDistance')
 

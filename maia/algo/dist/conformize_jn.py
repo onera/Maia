@@ -28,17 +28,17 @@ def conformize_jn_pair(dist_tree: CGNSDistTree,
   """
   MT.check_cgns_dist_tree(dist_tree)
   # Get vtx ids and opposite vtx ids for this join
-  location = PT.Subset.GridLocation(PT.request_node_from_path(dist_tree, jn_paths[0]))
+  location = PT.Subset.GridLocation(PT.find_node_from_path(dist_tree, jn_paths[0]))
   pl_vtx_list:Sequence[NDArray]
   if location == 'Vertex':
-    pl_vtx_nodes = [PT.request_node_from_path(dist_tree, jn_paths[0]+f'/PointList{d}') for d in ['', 'Donor']]
+    pl_vtx_nodes = [PT.find_node_from_path(dist_tree, jn_paths[0]+f'/PointList{d}') for d in ['', 'Donor']]
     pl_vtx_list = [PT.get_np_value(pl_node)[0] for pl_node in pl_vtx_nodes]
   elif location == 'FaceCenter':
     pl_vtx_list = VL.generate_jn_vertex_list(dist_tree, jn_paths[0], comm)[:2]
   else:
     raise RuntimeError(f"Unsupported grid location for jn {jn_paths[0]}")
 
-  zones = [PT.request_node_from_path(dist_tree, PT.utils.path_head(path, 2)) for path in jn_paths]
+  zones = [PT.find_node_from_path(dist_tree, PT.utils.path_head(path, 2)) for path in jn_paths]
   dist_coords = [PT.Zone.coordinates(zone)             for zone in zones]
   vtx_distris = [MT.distribution_value(zone, 'Vertex') for zone in zones]
   vtx_distris = [par_utils.partial_to_full_distribution(di, comm) for di in vtx_distris]

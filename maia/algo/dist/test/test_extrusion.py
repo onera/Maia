@@ -11,7 +11,7 @@ from maia.utils import par_utils
 
 from maia.algo.dist import extrusion as EXT
 
-get_elt_ec = lambda n : PT.request_child_from_name(n, 'ElementConnectivity')[1]
+get_elt_ec = lambda n : PT.find_child_from_name(n, 'ElementConnectivity')[1]
 is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
 is_subset = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']
 is_edge_subset = lambda n: is_subset(n) and PT.Subset.GridLocation(n).endswith('EdgeCenter')

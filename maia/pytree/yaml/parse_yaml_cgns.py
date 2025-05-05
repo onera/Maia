@@ -178,9 +178,10 @@ def to_cgns_tree(yaml_stream) -> CGNSTree:
   elif set(top_labels) <= BASE_CHILDREN:
     b = N.new_CGNSBase(parent=t)
     N.set_children(b, childs)
-    zone_node, gc_n = W.get_child_from_labels(b, ['Zone_t', 'GridCoordinates_t'], ancestors=True)
+    zone_node = W.get_child_from_label(b, 'Zone_t')
     if zone_node is not None:
       phy_dim = 3
+      gc_n = W.get_child_from_label(zone_node, 'GridCoordinates_t')
       if gc_n is not None:
         coords_n = W.get_children_from_predicate(gc_n, lambda n: N.get_label(n) == 'DataArray_t' and N.get_name(n) != 'CoordinateTransform')
         phy_dim = len(coords_n)

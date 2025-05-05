@@ -44,16 +44,6 @@ class AuxiliaryCoordinates(NamedTuple):
 
 Coordinates = Union[CartesianCoordinates, CylindricalCoordinates, SphericalCoordinates, AuxiliaryCoordinates]
 
-def _get_str_value(node:CGNSTree) -> str:
-  val = N.get_value(node)
-  assert isinstance(val, str), f"Value of node {node[0]} was expected to be a string, but is {val}"
-  return val
-
-def _get_np_value(node:CGNSTree) -> NDArray:
-  val = node[1]
-  assert val is not None, f"Value of node {node[0]} was not expected to be None"
-  return val
-
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("CGNSTree_t"))
 class Tree:
@@ -94,7 +84,7 @@ class Tree:
     
     for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
       group     = [zone_path]
-      zone = PT.request_node_from_path(tree, zone_path)
+      zone = PT.find_node_from_path(tree, zone_path)
       for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', matching_gcs]):
         opp_zone_path = GridConnectivity.ZoneDonorPath(gc, zone_path.split('/')[0])
         utils.append_unique(group, opp_zone_path)
@@ -136,7 +126,7 @@ class Tree:
     is_jn_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
             and PT.GridConnectivity.isperiodic(n)
     for jn_path in PT.predicates_to_paths(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_jn_perio]):
-      jn = PT.request_node_from_path(tree, jn_path)
+      jn = PT.find_node_from_path(tree, jn_path)
       perio = PT.GridConnectivity.periodic_values(jn)
       for i_perio, perio_value in enumerate(perio_values):
         if all([np.allclose(a,b,rtol,atol) for a,b in zip(perio_value, perio)]):
@@ -168,7 +158,7 @@ class Zone:
       >>> PT.Zone.IndexDimension(zone)
       1
     """
-    return _get_np_value(zone_node).shape[0]
+    return N.get_np_value(zone_node).shape[0]
 
   @staticmethod
   def VertexSize(zone_node:CGNSTree) -> Tuple[int, ...]:
@@ -184,7 +174,7 @@ class Zone:
       >>> PT.Zone.VertexSize(zone)
       (11, 6, 2)
     """
-    return tuple(_get_np_value(zone_node)[:,0])
+    return tuple(N.get_np_value(zone_node)[:,0])
 
   @staticmethod
   def CellSize(zone_node:CGNSTree) -> Tuple[int, ...]:
@@ -200,7 +190,7 @@ class Zone:
       >>> PT.Zone.CellSize(zone)
       (10,)
     """
-    return tuple(_get_np_value(zone_node)[:,1])
+    return tuple(N.get_np_value(zone_node)[:,1])
 
   @staticmethod
   def FaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
@@ -227,7 +217,7 @@ class Zone:
       n_face = tuple(math.prod(func(zone_node)) for func in dirfacesize)
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
-      er = W.request_child_from_name(ngon_node, 'ElementRange')[1]
+      er = W.find_child_from_name(ngon_node, 'ElementRange')[1]
       assert er is not None
       n_face = (er[1] - er[0] + 1,)
     else:
@@ -359,7 +349,7 @@ class Zone:
       >>> PT.Zone.VertexBoundarySize(zone)
       (0, 0)
     """
-    return tuple(_get_np_value(zone_node)[:,2])
+    return tuple(N.get_np_value(zone_node)[:,2])
 
   @staticmethod
   def Type(zone_node:CGNSTree) -> str:
@@ -375,8 +365,8 @@ class Zone:
       >>> PT.Zone.Type(zone)
       'Unstructured'
     """
-    zone_type_node = W.request_child_from_label(zone_node, "ZoneType_t")
-    return _get_str_value(zone_type_node)
+    zone_type_node = W.find_child_from_label(zone_node, "ZoneType_t")
+    return N.get_str_value(zone_type_node)
 
   @staticmethod
   def n_vtx(zone_node:CGNSTree) -> int:
@@ -523,9 +513,9 @@ class Zone:
   @staticmethod
   def ngon_connectivity(zone_node:CGNSTree) -> Tuple[Optional[NDArray], Optional[NDArray], Optional[NDArray]]:
     ngon_node = Zone.NGonNode(zone_node)
-    face_vtx_idx = N.get_value(W.request_child_from_name(ngon_node, "ElementStartOffset"), True)
-    face_vtx     = N.get_value(W.request_child_from_name(ngon_node, "ElementConnectivity"), True)
-    ngon_pe      = N.get_value(W.request_child_from_name(ngon_node, "ParentElements"), True)
+    face_vtx_idx = N.get_value(W.find_child_from_name(ngon_node, "ElementStartOffset"), True)
+    face_vtx     = N.get_value(W.find_child_from_name(ngon_node, "ElementConnectivity"), True)
+    ngon_pe      = N.get_value(W.find_child_from_name(ngon_node, "ParentElements"), True)
     return face_vtx_idx, face_vtx, ngon_pe
 
   @staticmethod
@@ -698,7 +688,7 @@ class Element:
       >>> PT.Element.Type(elt)
       10
     """
-    return int(_get_np_value(elt_node)[0])
+    return int(N.get_np_value(elt_node)[0])
 
   @staticmethod
   def CGNSName(elt_node:CGNSTree) -> str:
@@ -762,7 +752,7 @@ class Element:
       >>> PT.Element.Range(elt)
       array([21, 40], dtype=int32)
     """
-    return _get_np_value(W.request_child_from_name(elt_node,"ElementRange"))
+    return N.get_np_value(W.find_child_from_name(elt_node,"ElementRange"))
 
   @staticmethod
   def Size(elt_node:CGNSTree) -> int:
@@ -802,7 +792,7 @@ class GridConnectivity:
       return 'Abutting1to1'
     else:
       gc_type_n = W.get_child_from_name(gc_node, 'GridConnectivityType')
-      return _get_str_value(gc_type_n) if gc_type_n is not None else 'Overset'
+      return N.get_str_value(gc_type_n) if gc_type_n is not None else 'Overset'
 
   @staticmethod
   def Transform(gc_node:CGNSTree, as_matrix=False) -> NDArray:
@@ -822,7 +812,7 @@ class GridConnectivity:
              [ 0,  1,  0]])
     """
     transform_node = W.get_child_from_name(gc_node, 'Transform')
-    transform = _get_np_value(transform_node) if transform_node is not None else np.array([1,2,3], np.int32)
+    transform = N.get_np_value(transform_node) if transform_node is not None else np.array([1,2,3], np.int32)
     if as_matrix:
       del_f = lambda x,y : (np.abs(x) == np.abs(y)).astype(int) # del(x−y) ≡ +1 if |x| = |y|
       del_matrix = del_f(transform, np.array([[k+1] for k in range(transform.size)]))
@@ -878,7 +868,7 @@ class GridConnectivity:
                      Translation=array([1., 0., 0.], dtype=float32))
     """
     perio_node = W.get_node_from_label(gc_node, "Periodic_t", depth=[2,2])
-    return PeriodicValues._make([W.request_child_from_name(perio_node, key)[1] if perio_node else None
+    return PeriodicValues._make([W.find_child_from_name(perio_node, key)[1] if perio_node else None
                                  for key in PeriodicValues._fields])
 
   @staticmethod
@@ -895,7 +885,7 @@ class GridConnectivity:
       >>> PT.GridConnectivity.ZoneDonorPath(gc, 'Base')
       'OtherBase/OppZone'
     """
-    opp = _get_str_value(gc_node)
+    opp = N.get_str_value(gc_node)
     return opp if '/' in opp else cur_base_name + '/' + opp
 
 
@@ -962,7 +952,7 @@ class Subset:
       msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
             ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
       warnings.warn(msg, RuntimeWarning, stacklevel=3)
-    return _get_str_value(grid_loc_n) if grid_loc_n else 'Vertex'
+    return N.get_str_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
   @staticmethod
   def normal_axis(subset_node:CGNSTree) -> int:
@@ -988,7 +978,7 @@ class Subset:
     else:
       pr_node = W.get_child_from_name(subset_node, 'PointRange')
       if pr_node is not None:
-        pr_val = _get_np_value(pr_node)
+        pr_val = N.get_np_value(pr_node)
         cst_axis = (pr_val[:,0] == pr_val[:,1])
         if cst_axis.sum() == 1: #Ambiguity can be resolved
           return np.nonzero(cst_axis)[0][0]
@@ -1062,7 +1052,7 @@ class BCDataSet:
       'FaceCenter'
     """
     grid_loc_n = W.get_child_from_label(bcds_node, 'GridLocation_t')
-    return _get_str_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
+    return N.get_str_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
 
   @staticmethod
   def getPatch(bcds_node:CGNSTree, bc_node:CGNSTree) -> CGNSTree:
@@ -1104,7 +1094,7 @@ class PointRange:
     """
     Allow point_range to be inverted (PR[:,1] < PR[:,0]) as it can occurs in struct GCs
     """
-    pr_values = _get_np_value(point_range_node)
+    pr_values = N.get_np_value(point_range_node)
     return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
 
   @staticmethod
@@ -1118,6 +1108,6 @@ class PointList:
 
   @staticmethod
   def n_elem(point_list_node:CGNSTree) -> int:
-    pl_values = _get_np_value(point_list_node)
+    pl_values = N.get_np_value(point_list_node)
     return pl_values.shape[1]
 

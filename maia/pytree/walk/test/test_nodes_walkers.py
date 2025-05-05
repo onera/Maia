@@ -96,11 +96,11 @@ FamilyBC FamilyBC_t:
   ]
   patterns = [check_name(name) for name in names]
 
-  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   assert(not bool(results))
 
-  root = PT.request_node_from_label(tree, "ReferenceState_t")
+  root = PT.find_node_from_label(tree, "ReferenceState_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   assert([PT.get_name(n) for n in results] == names)
 
@@ -109,7 +109,7 @@ FamilyBC FamilyBC_t:
     {'predicate': lambda n: PD.match_name(n, name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
-  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   assert([PT.get_name(n) for n in results] == names)
 
@@ -118,7 +118,7 @@ FamilyBC FamilyBC_t:
     {'predicate': lambda n: PD.match_name(n, name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
-  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   assert([PT.get_name(n) for n in results] == names)
 
@@ -127,6 +127,6 @@ FamilyBC FamilyBC_t:
     {'predicate': lambda n: PD.match_name(n, name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
-  root = PT.request_node_from_label(tree, "FamilyBCDataSet_t")
+  root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
   results = [n for pattern in patterns for n in PT.NodesWalkers(root, pattern)() ]
   assert([PT.get_name(n) for n in results] == names)

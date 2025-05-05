@@ -26,7 +26,7 @@ class CenterToNode:
 
     gnum_list   = []
     for i_dom, zone_path in enumerate(parts_per_dom):
-      dist_base = PT.request_child_from_name(tree, PT.utils.path_head(zone_path))
+      dist_base = PT.find_child_from_name(tree, PT.utils.path_head(zone_path))
       dim = PT.get_np_value(dist_base)[0]
       for i_part, zone in enumerate(parts_per_dom[zone_path]):
 
@@ -72,7 +72,7 @@ class CenterToNode:
     #Check that solutions are known on each source partition
     fields_per_part = list()
     for part in self.parts:
-      container = PT.request_node_from_path(part, container_name)
+      container = PT.find_node_from_path(part, container_name)
       assert PT.Subset.GridLocation(container) == 'CellCenter'
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
     fields_per_part.append(fields_name)
@@ -83,7 +83,7 @@ class CenterToNode:
     asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
     for field_name in fields_per_part[0]:
       field_path = container_name + '/' + field_name
-      cell_fields[field_name] = [asflat(PT.request_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
+      cell_fields[field_name] = [asflat(PT.find_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
 
     # Do all reductions
@@ -147,7 +147,7 @@ class NodeToCenter:
       weights      = self.weights   [i_part]
       weightssum   = self.weightssum[i_part]
 
-      container = PT.request_node_from_path(part, container_name)
+      container = PT.find_node_from_path(part, container_name)
       assert PT.Subset.GridLocation(container) == 'Vertex'
 
       PT.rm_children_from_name(part, f'{container_name}#Cell')

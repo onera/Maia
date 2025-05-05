@@ -21,8 +21,8 @@ def test_ngons_to_elements(comm, write_output):
   # > There is two sections...
   assert len(PT.get_nodes_from_label(dist_tree, 'Elements_t')) == 2
   # > One for the Tris, on for the Tets
-  tris = PT.request_node_from_name(dist_tree, 'TRI_3')
-  tets = PT.request_node_from_name(dist_tree, 'TETRA_4')
+  tris = PT.find_node_from_name(dist_tree, 'TRI_3')
+  tets = PT.find_node_from_name(dist_tree, 'TETRA_4')
 
   # > Some non-regression checks
   assert np.all(PT.get_value(PT.get_child_from_name(tris, 'ElementRange')) == [1,204])

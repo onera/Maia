@@ -7,8 +7,8 @@ import maia.pytree.maia as MT
 from maia.utils import np_utils
 
 def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
-  offset = PT.request_child_from_name(node, 'ElementStartOffset')
-  connec = PT.request_child_from_name(node, 'ElementConnectivity')
+  offset = PT.find_child_from_name(node, 'ElementStartOffset')
+  connec = PT.find_child_from_name(node, 'ElementConnectivity')
 
   new_val = np_utils.indexed_to_interlaced(PT.get_np_value(offset),
                                            PT.get_np_value(connec))
@@ -18,7 +18,7 @@ def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
 
 def interlaced_to_indexed_connectivity(node: CGNSTree) -> None:
   n_elem = PT.Element.Size(node)
-  connec = PT.request_child_from_name(node, 'ElementConnectivity')
+  connec = PT.find_child_from_name(node, 'ElementConnectivity')
   idx, array = np_utils.interlaced_to_indexed(n_elem, PT.get_np_value(connec))
 
   PT.new_DataArray('ElementStartOffset', value=idx, parent=node)
@@ -26,7 +26,7 @@ def interlaced_to_indexed_connectivity(node: CGNSTree) -> None:
 
 def create_mixed_elts_eso(node: CGNSTree) -> None:
   from cmaia.utils import layouts
-  ec_n = PT.request_node_from_name(node, 'ElementConnectivity')
+  ec_n = PT.find_node_from_name(node, 'ElementConnectivity')
   ec = PT.get_np_value(ec_n)
   eso = np.empty(PT.Element.Size(node)+1, ec.dtype)
   layouts.create_mixed_elts_eso(ec, eso)
@@ -54,7 +54,7 @@ def enforce_ngon_pe_local(full_tree: CGNSTree) -> None:
       ngon_node = PT.Zone.NGonNode(zone)
     except RuntimeError: #If no NGon, go to next zone
       continue
-    pe = PT.request_child_from_name(ngon_node, 'ParentElements')
+    pe = PT.find_child_from_name(ngon_node, 'ParentElements')
     PT.set_value(pe, maia.algo.indexing.get_pe_local(ngon_node))
 
 def poly_new_to_old(full_tree: CGNSTree, full_onera_compatibility: bool = True) -> None:
@@ -74,7 +74,7 @@ def poly_new_to_old(full_tree: CGNSTree, full_onera_compatibility: bool = True) 
         :dedent: 2
   """
   MT.check_cgns_full_tree(full_tree)
-  cg_version_node = PT.request_child_from_label(full_tree, 'CGNSLibraryVersion_t')
+  cg_version_node = PT.find_child_from_label(full_tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 3.1)
   for z in PT.get_all_Zone_t(full_tree):
     if PT.Zone.Type(z) != 'Unstructured':
@@ -88,7 +88,7 @@ def poly_new_to_old(full_tree: CGNSTree, full_onera_compatibility: bool = True) 
       if has_nface:
         nface = maia.pytree.Zone.NFaceNode(z)
         nface_range  = PT.Element.Range(nface)
-        nface_connec = PT.get_np_value(PT.request_child_from_name(nface, "ElementConnectivity"))
+        nface_connec = PT.get_np_value(PT.find_child_from_name(nface, "ElementConnectivity"))
 
       if full_onera_compatibility:
         # 1. shift ParentElements to 1
@@ -135,7 +135,7 @@ def poly_old_to_new(full_tree: CGNSTree) -> None:
         :dedent: 2
   """
   MT.check_cgns_full_tree(full_tree)
-  cg_version_node = PT.request_child_from_label(full_tree, 'CGNSLibraryVersion_t')
+  cg_version_node = PT.find_child_from_label(full_tree, 'CGNSLibraryVersion_t')
   PT.set_value(cg_version_node, 4.2)
   for z in PT.get_all_Zone_t(full_tree):
     if PT.Zone.Type(z) != 'Unstructured':
@@ -168,12 +168,12 @@ def poly_old_to_new(full_tree: CGNSTree) -> None:
 
       # 3. NFace
       if has_nface:
-        nface_connec = PT.get_np_value(PT.request_child_from_name(nface, "ElementConnectivity"))
+        nface_connec = PT.get_np_value(PT.find_child_from_name(nface, "ElementConnectivity"))
         n_cell = nface_range[1] - nface_range[0]
         if np.min(nface_connec)<0 or n_cell==1: # NFace is signed (if only one cell, it is signed despite being positive)
           # 3.1. interleaved to indexed
           interlaced_to_indexed_connectivity(nface)
-          nface_connec = PT.get_np_value(PT.request_child_from_name(nface, "ElementConnectivity"))
+          nface_connec = PT.get_np_value(PT.find_child_from_name(nface, "ElementConnectivity"))
     
           # 3.2. shift
           sign_nf = np.sign(nface_connec)

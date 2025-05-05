@@ -29,7 +29,7 @@ def create_part_pl_gnum_unique(part_zones: List[CGNSPartTree],
   n_elems = np.empty(len(part_zones), dtype=np.int32)
   for i_zone, p_zone in enumerate(part_zones):
     node = PT.get_node_from_path(p_zone, node_path)
-    n_elems[i_zone] = PT.get_np_value(PT.request_child_from_name(node, 'PointList')).shape[1] if node else 0
+    n_elems[i_zone] = PT.get_np_value(PT.find_child_from_name(node, 'PointList')).shape[1] if node else 0
 
   # Exchange
   shifted_part = par_utils.gather_and_shift(len(part_zones), comm, dtype=np.int32)
@@ -63,13 +63,13 @@ def create_part_pl_gnum(dist_zone: CGNSDistTree,
     node = PT.get_node_from_path(p_zone, node_path)
     if node:
       if is_bcds := PT.get_label(node) == 'BCDataSet_t':
-        bc_parent = PT.request_node_from_path(p_zone, PT.utils.path_head(node_path))
+        bc_parent = PT.find_node_from_path(p_zone, PT.utils.path_head(node_path))
       location = PT.BCDataSet.GridLocation(node, bc_parent) if is_bcds else PT.Subset.GridLocation(node)
       if location == 'Vertex':
         ln_to_gn = MT.globalnumbering_value(p_zone, 'Vertex')
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
-      part_pl = PT.get_np_value(PT.request_child_from_name(node, 'PointList'))[0]
+      part_pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
       ln_to_gn_list.append(ln_to_gn[part_pl-1])
 
   blk_distri_f = par_utils.distribution_from_gnum(ln_to_gn_list, comm, full=True)
@@ -121,7 +121,7 @@ def create_part_pr_gnum(dist_zone: CGNSDistTree,
       ln_to_gn_all = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
 
       # Get entity local numbering as full list
-      part_pr = PT.get_np_value(PT.request_child_from_name(node, 'PointRange'))
+      part_pr = PT.get_np_value(PT.find_child_from_name(node, 'PointRange'))
       i_ar = np.arange(part_pr[0][0], part_pr[0][1]+1) #creation pointlist
       if idx_dim == 1:
         local_num = i_ar
@@ -175,7 +175,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
             for node in PT.get_children_from_predicate(ancestor_n, name_predicate)])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
-    ln_to_gn_list = [PT.get_np_value(PT.request_node_from_path(part_zone, gn_path)) for part_zone in part_zones \
+    ln_to_gn_list = [PT.get_np_value(PT.find_node_from_path(part_zone, gn_path)) for part_zone in part_zones \
         if PT.get_node_from_path(part_zone, gn_path) is not None]
 
   distri   = par_utils.distribution_from_gnum(ln_to_gn_list, comm)
@@ -190,7 +190,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
     ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
     if ancestor_n:
       for node in PT.iter_children_from_predicate(ancestor_n, name_predicate):
-        part_pl = PT.get_np_value(PT.request_child_from_name(node, 'PointList'))
+        part_pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))
         loc = PT.BCDataSet.GridLocation(node, ancestor_n) if PT.get_label(node) == 'BCDataSet_t' else PT.Subset.GridLocation(node)
         if PT.Zone.Type(part_zone) == 'Unstructured':
           if loc == 'Vertex':

@@ -140,7 +140,7 @@ def partition_dist_tree(dist_tree: CGNSDistTree,
     zone_paths = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
     n_cell_per_block = np.zeros(len(zone_paths), np.int32)
     for part_zone_path in PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
-      part_zone = PT.request_node_from_path(part_tree, part_zone_path)
+      part_zone = PT.find_node_from_path(part_tree, part_zone_path)
       idx = zone_paths.index(MT.conv.get_part_prefix(part_zone_path))
       n_cell = PT.Zone.n_cell(part_zone) # If zone is a point cloud, use n_vtx
       n_cell_per_block[idx] = n_cell if n_cell > 0 else PT.Zone.n_vtx(part_zone)
@@ -238,7 +238,7 @@ def _partitioning(dist_tree: CGNSDistTree,
   if has_u_zones:
     base_to_parts_u = partU.part_U_zones(base_to_blocks_u, dzone_to_weighted_parts, comm, part_options)
     for base, u_parts in base_to_parts_u.items():
-      part_base = PT.request_child_from_name(part_tree, base)
+      part_base = PT.find_child_from_name(part_tree, base)
       for u_part in u_parts:
         if not part_options['preserve_orientation']:
           CNT.enforce_boundary_pe_left(u_part)

@@ -46,8 +46,8 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
     edge  = MT.Zone.EdgeNode(part_zone)
     ngon  = PT.Zone.NGonNode(part_zone)
 
-    edge_pe  = PT.get_np_value(PT.request_child_from_name(edge, "ParentElements")).reshape(-1, order='C') # Numpy will copy
-    edge_vtx = PT.get_np_value(PT.request_child_from_name(edge, "ElementConnectivity"))
+    edge_pe  = PT.get_np_value(PT.find_child_from_name(edge, "ParentElements")).reshape(-1, order='C') # Numpy will copy
+    edge_vtx = PT.get_np_value(PT.find_child_from_name(edge, "ElementConnectivity"))
 
     # Convert edge_pe to face_edge
     if PT.Element.Range(ngon)[0] != 1:

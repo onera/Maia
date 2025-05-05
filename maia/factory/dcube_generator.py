@@ -208,8 +208,8 @@ def dcube_struct_generate(n_vtx: Union[int, Sequence[int]],
   max_coords = np.asarray(origin).copy() + np.asarray(edge_length)
 
   dist_tree = maia.factory.generate_dist_points(n_vtx, "Structured", comm, origin, max_coords)
-  dist_base = PT.request_node_from_label(dist_tree, 'CGNSBase_t')
-  dist_zone = PT.request_node_from_label(dist_tree, 'Zone_t')
+  dist_base = PT.find_node_from_label(dist_tree, 'CGNSBase_t')
+  dist_zone = PT.find_node_from_label(dist_tree, 'Zone_t')
 
   # Update zone dims
   zone_dims = PT.get_value(dist_zone, raw=True)
@@ -392,7 +392,7 @@ def generate_dist_block(n_vtx: Union[int, Sequence[int]],
     matrix = np.eye(phy_dim)
     matrix[:,0:cell_dim] = np.asarray(length).T
     zone = PT.get_all_Zone_t(dist_tree)[0]
-    coords = [PT.request_node_from_path(zone, f'GridCoordinates/Coordinate{dir}') for dir in 'XYZ'[0:phy_dim]]
+    coords = [PT.find_node_from_path(zone, f'GridCoordinates/Coordinate{dir}') for dir in 'XYZ'[0:phy_dim]]
     coords_val:List[NDArray] = [PT.get_value(c) for c in coords] #type:ignore #(coords should not be None)
     tr_coords = np_utils.matmul_cart_vectors(coords_val, matrix)
     for coord_n, new_c in zip(coords, tr_coords):
@@ -402,7 +402,7 @@ def generate_dist_block(n_vtx: Union[int, Sequence[int]],
     maia.algo.scale_mesh(dist_tree, scale_length)
 
   for dim, coord_name in enumerate(['CoordinateX', 'CoordinateY', 'CoordinateZ'][:phy_dim]):
-    coord_n = PT.request_node_from_name(dist_tree, coord_name)
+    coord_n = PT.find_node_from_name(dist_tree, coord_name)
     assert (coord_val:=PT.get_value(coord_n, True)) is not None
     PT.set_value(coord_n, coord_val+origin[dim])
 

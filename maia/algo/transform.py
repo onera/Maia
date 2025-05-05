@@ -36,7 +36,7 @@ def transform_affine_zone(zone: CGNSTree,
   for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):
     maybe_coords_n = [PT.get_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
     phy_dim = 2 if maybe_coords_n[2] is None else 3
-    coords_n = [PT.request_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z'][:phy_dim]]
+    coords_n = [PT.find_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z'][:phy_dim]]
     coords = [PT.get_np_value(n)[vtx_mask] for n in coords_n]
 
     assert translation is not None
@@ -63,9 +63,9 @@ def transform_affine_zone(zone: CGNSTree,
   is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
     if PT.GridConnectivity.isperiodic(gc):
-      gc_center = PT.request_node_from_name(gc, 'RotationCenter')
-      gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
-      gc_trans  = PT.request_node_from_name(gc, 'Translation')
+      gc_center = PT.find_node_from_name(gc, 'RotationCenter')
+      gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
+      gc_trans  = PT.find_node_from_name(gc, 'Translation')
       
       gc_angle_value = PT.get_np_value(gc_angle)
       if phy_dim == 2: # 2D : angle may be in slot 0 or 1
@@ -95,7 +95,7 @@ def transform_affine_zone(zone: CGNSTree,
       data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
       cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names, phy_dim)
       for basename in cartesian_vectors_basenames:
-        vectors_n = [PT.request_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
+        vectors_n = [PT.find_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
         if is_full_vtx:
           vectors = [PT.get_np_value(n)[vtx_mask] for n in vectors_n]
         else:
@@ -158,7 +158,7 @@ def transform_affine(t: CGNSTree,
         :dedent: 2
   """
   for zone in PT.iter_all_Zone_t(t):
-    any_gc_n = PT.request_child_from_label(zone, 'GridCoordinates_t')
+    any_gc_n = PT.find_child_from_label(zone, 'GridCoordinates_t')
     cart_names = ['CoordinateX', 'CoordinateY' ,'CoordinateZ']
     phy_dim = len(PT.get_children_from_predicate(any_gc_n, lambda n : PT.get_name(n) in cart_names))
     assert phy_dim in [2,3]
@@ -169,7 +169,7 @@ def transform_affine(t: CGNSTree,
     if translation is None:
       translation = [0.] * phy_dim
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
-    any_coord = PT.request_child_from_predicate(any_gc_n, lambda n : PT.get_name(n) in cart_names)
+    any_coord = PT.find_child_from_predicate(any_gc_n, lambda n : PT.get_name(n) in cart_names)
     vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
     transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
 
@@ -237,7 +237,7 @@ def _get_subset_container(nodes: Sequence[CGNSTree]) -> CGNSTree:
   zone = nodes[0]
   last = nodes[-1]
   if PT.get_label(last) == 'ZoneSubRegion_t':
-    return PT.request_node_from_path(zone, PT.Subset.ZSRExtent(last, zone))
+    return PT.find_node_from_path(zone, PT.Subset.ZSRExtent(last, zone))
   elif PT.get_label(last) == 'BCData_t':
     parent_ds, parent_bc = nodes[-2], nodes[-3] 
     parent_ds_children =[PT.get_name(n) for n in PT.get_children(parent_ds)] 
@@ -366,7 +366,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
           theta = shrink_to_subset(theta, zone, subset_container, comm)
         for basename in vectors_basenames:
 
-          fields_n = [PT.request_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
+          fields_n = [PT.find_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
           ordered_fields = [fields_n[i] for i in idx_order]
           if basename == "Coordinate":
             cyl_values = _to_rthetaz(*[PT.get_np_value(n) for n in ordered_fields])
@@ -378,8 +378,8 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
     is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
     for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
       if PT.GridConnectivity.isperiodic(gc):
-        gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
-        gc_trans  = PT.request_node_from_name(gc, 'Translation')
+        gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
+        gc_trans  = PT.find_node_from_name(gc, 'Translation')
         gc_angle_value = PT.get_np_value(gc_angle)
         gc_trans_value = PT.get_np_value(gc_trans)
         
@@ -460,7 +460,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
           theta = loc_to_theta[loc_container]
           theta = shrink_to_subset(theta, zone, subset_container, comm)
         for basename in cylindric_vectors_basenames:
-          fields_n = [PT.request_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
+          fields_n = [PT.find_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
           if basename == "Coordinate":
             cart_values = _to_xyz(*[PT.get_value(n) for n in fields_n])
           else:
@@ -472,8 +472,8 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
     is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
     for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
       if PT.GridConnectivity.isperiodic(gc):
-        gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
-        gc_trans  = PT.request_node_from_name(gc, 'Translation')
+        gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
+        gc_trans  = PT.find_node_from_name(gc, 'Translation')
         gc_angle_value = PT.get_np_value(gc_angle)
         gc_trans_value = PT.get_np_value(gc_trans)
         
@@ -556,7 +556,7 @@ def auxiliary_coords_system(t: CGNSTree,
         datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
         vectors_basenames = py_utils.find_vector_names(datanames, in_suffix)
         for basename in vectors_basenames:
-          vectors_n = [PT.request_node_from_name(fields_node, f"{basename}{c}")  for c in in_suffix]
+          vectors_n = [PT.find_node_from_name(fields_node, f"{basename}{c}")  for c in in_suffix]
           tr_fields = np_utils.matmul_cart_vectors([PT.get_np_value(n) for n in vectors_n], transition_matrix)
           for node, s, new_val in zip(vectors_n, out_suffix, tr_fields):
             PT.update_node(node, f'{basename}{s}', value=new_val)
@@ -578,9 +578,9 @@ def auxiliary_coords_system(t: CGNSTree,
     is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
     for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
       if PT.GridConnectivity.isperiodic(gc):
-        gc_center = PT.request_node_from_name(gc, 'RotationCenter')
-        gc_angle  = PT.request_node_from_name(gc, 'RotationAngle')
-        gc_trans  = PT.request_node_from_name(gc, 'Translation')
+        gc_center = PT.find_node_from_name(gc, 'RotationCenter')
+        gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
+        gc_trans  = PT.find_node_from_name(gc, 'Translation')
       
         gc_angle_value = PT.get_np_value(gc_angle)
         if phy_dim == 2: # 2D : angle may be in slot 0 or 1

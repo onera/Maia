@@ -281,7 +281,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
       if zsr_node is not None:
         #Follow BC or GC link
         related_node = PT.Subset.ZSRExtent(zsr_node, part_zone)
-        zsr_node     = PT.request_node_from_path(part_zone, related_node)
+        zsr_node     = PT.find_node_from_path(part_zone, related_node)
         patch_domain.append(PT.get_np_value(PT.Subset.getPatch(zsr_node)))
         location = PT.Subset.GridLocation(zsr_node)
       else: # ZSR does not exists on this partition
@@ -427,7 +427,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
                                                 comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
     region_node_names:List[str] = list()
     for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
-      region_node = PT.request_child_from_predicate(zsr_with_regionname_n, is_regionname)
+      region_node = PT.find_child_from_predicate(zsr_with_regionname_n, is_regionname)
       region_node_names.append(PT.get_str_value(region_node))
     child_list = ['AdditionalFamilyName_t', 'FamilyName_t', 'GridLocation_t']
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', lambda n: in_fam(n) or bc_gc_in_fam(n)], comm, get_value='leaf', child_list=child_list)
@@ -454,9 +454,9 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
 
           if PT.get_label(fam_node)=="ZoneSubRegion_t":
             related_path = PT.Subset.ZSRExtent(fam_node, part_zone)
-            fam_node = PT.request_node_from_path(part_zone, related_path)
+            fam_node = PT.find_node_from_path(part_zone, related_path)
 
-          pl_n = PT.request_child_from_name(fam_node, 'PointList')
+          pl_n = PT.find_child_from_name(fam_node, 'PointList')
           fam_pl.append(PT.get_np_value(pl_n))
 
       fam_pl_cat = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')

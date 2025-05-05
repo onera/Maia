@@ -81,9 +81,9 @@ def create_part_pointlists(dist_zone: CGNSDistTree,
             # A corner case specific to BCDataSet : we can have a partitioned BCDS/PointList even if BC/PointList
             # was empty. In this case, we must create here an PointList (empty) and GridLoc for the parent BC
             if PT.get_label(p_node) == 'BCDataSet_t' and PT.get_child_from_name(ancestor, 'PointList') is None:
-              d_ancestor = PT.request_node_from_path(dist_zone, '/'.join([PT.get_name(n) for n in ancestors]))
+              d_ancestor = PT.find_node_from_path(dist_zone, '/'.join([PT.get_name(n) for n in ancestors]))
               d_ancestor_loc = PT.Subset.GridLocation(d_ancestor)
-              d_ancestor_pl = PT.get_np_value(PT.request_child_from_name(d_ancestor, 'PointList'))
+              d_ancestor_pl = PT.get_np_value(PT.find_child_from_name(d_ancestor, 'PointList'))
               PT.new_IndexArray('PointList', np.empty((d_ancestor_pl.shape[0],0), np.int32, order='F'), parent=ancestor)
               PT.new_GridLocation(d_ancestor_loc, ancestor)
               MT.newGlobalNumbering({'Index' : np.empty(0, pdm_gnum_dtype)}, parent=ancestor)

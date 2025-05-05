@@ -144,7 +144,7 @@ def _generate_functions(function, maxdepth, child, easypredicates):
 
 #Generation for Node(s)Walker(s) based funcs
 _base_functions = [
-    WAPI.requestNodeFromPredicate,
+    WAPI.findNodeFromPredicate,
     WAPI.getNodeFromPredicate,
     WAPI.getNodesFromPredicate,
     WAPI.iterNodesFromPredicate,

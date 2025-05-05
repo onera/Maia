@@ -85,49 +85,49 @@ def get_child_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) 
   return get_node_from_name_and_label(root, name, label, **kwargs)
 
 # > Generic version
-def request_node_from_predicate(root:CGNSTree, predicate:Predicate, *args, **kwargs) -> CGNSTree:
+def find_node_from_predicate(root:CGNSTree, predicate:Predicate, *args, **kwargs) -> CGNSTree:
   """ Return the list of first level childs of node matching a given predicate (callable function)"""
   if (node := get_node_from_predicate(root, predicate, *args, **kwargs)) is not None:
     return node
   raise CGNSNodeNotFoundError(root, predicate)
 
 # > Specialized versions
-def request_child_from_predicate(root:CGNSTree, predicate:Predicate, **kwargs) -> CGNSTree:
-  """Specialization of request_node_predicate with depth=[1,1]"""
+def find_child_from_predicate(root:CGNSTree, predicate:Predicate, **kwargs) -> CGNSTree:
+  """Specialization of find_node_predicate with depth=[1,1]"""
   kwargs['depth'] = [1,1]
-  return request_node_from_predicate(root, predicate, **kwargs)
+  return find_node_from_predicate(root, predicate, **kwargs)
 
-def request_node_from_name(root:CGNSTree, name:str, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_predicate with embedded predicate match_name"""
-  return request_node_from_predicate(root, lambda n : match_name(n, name), **kwargs)
-def request_child_from_name(root:CGNSTree, name:str, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_name with depth=[1,1]"""
+def find_node_from_name(root:CGNSTree, name:str, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_predicate with embedded predicate match_name"""
+  return find_node_from_predicate(root, lambda n : match_name(n, name), **kwargs)
+def find_child_from_name(root:CGNSTree, name:str, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_name with depth=[1,1]"""
   kwargs['depth'] = [1,1]
-  return request_node_from_name(root, name, **kwargs)
+  return find_node_from_name(root, name, **kwargs)
 
-def request_node_from_label(root:CGNSTree, label:str, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_predicate with embedded predicate match_label"""
-  return request_node_from_predicate(root, lambda n : match_label(n, label), **kwargs)
-def request_child_from_label(root:CGNSTree, label:str, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_label with depth=[1,1]"""
+def find_node_from_label(root:CGNSTree, label:str, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_predicate with embedded predicate match_label"""
+  return find_node_from_predicate(root, lambda n : match_label(n, label), **kwargs)
+def find_child_from_label(root:CGNSTree, label:str, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
-  return request_node_from_label(root, label, **kwargs)
+  return find_node_from_label(root, label, **kwargs)
 
-def request_node_from_value(root:CGNSTree, value, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_predicate with embedded predicate match_value"""
-  return request_node_from_predicate(root, lambda n : match_value(n, value), **kwargs)
-def request_child_from_value(root:CGNSTree, value, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_value with depth=[1,1]"""
+def find_node_from_value(root:CGNSTree, value, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_predicate with embedded predicate match_value"""
+  return find_node_from_predicate(root, lambda n : match_value(n, value), **kwargs)
+def find_child_from_value(root:CGNSTree, value, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_value with depth=[1,1]"""
   kwargs['depth'] = [1,1]
-  return request_node_from_value(root, value, **kwargs)
+  return find_node_from_value(root, value, **kwargs)
 
-def request_node_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_predicate with embedded predicate match_name_label"""
-  return request_node_from_predicate(root, lambda n : match_name_label(n, name, label), **kwargs)
-def request_child_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> CGNSTree:
-  """Specialization of request_node_from_name_and_label with depth=[1,1]"""
+def find_node_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_predicate with embedded predicate match_name_label"""
+  return find_node_from_predicate(root, lambda n : match_name_label(n, name, label), **kwargs)
+def find_child_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> CGNSTree:
+  """Specialization of find_node_from_name_and_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
-  return request_node_from_name_and_label(root, name, label, **kwargs)
+  return find_node_from_name_and_label(root, name, label, **kwargs)
 
 # ---------------------------------------------------------------------------- #
 
@@ -272,13 +272,13 @@ def iter_children_from_name_and_label(root:CGNSTree, name:str, label:str, **kwar
 
 # For typing : overload to indicate if we return one or several nodes, depending of ancestors flag
 @overload
-def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
 def get_node_from_predicates(root:CGNSTree, predicates:Predicates, **kwargs) -> Optional[CGNSTree]: ...
 
-def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:bool=False, **kwargs) -> Union[Optional[CGNSTree], Tuple[Optional[CGNSTree], ...]]:
+def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:bool=False, **kwargs) -> Union[None, CGNSTree, Tuple[CGNSTree, ...]]:
   """ Return the first node in input tree matching the chain of predicates, or None
 
   The search can be fine-tuned with the following kwargs:
@@ -309,7 +309,7 @@ def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:boo
 
 # > Specialized versions
 @overload
-def get_child_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_child_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_child_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -321,7 +321,7 @@ def get_child_from_predicates(root:CGNSTree, predicates:Predicates, ancestors=Fa
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
-def get_node_from_names(root:CGNSTree, names:List[str], ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_node_from_names(root:CGNSTree, names:List[str], ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_node_from_names(root:CGNSTree, names:List[str], ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -333,7 +333,7 @@ def get_node_from_names(root:CGNSTree, names:List[str], ancestors=False, **kwarg
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
-def get_child_from_names(root:CGNSTree, names:List[str], ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_child_from_names(root:CGNSTree, names:List[str], ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_child_from_names(root:CGNSTree, names:List[str], ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -345,7 +345,7 @@ def get_child_from_names(root:CGNSTree, names:List[str], ancestors=False, **kwar
   return get_node_from_names(root, names, ancestors, **kwargs)
 
 @overload
-def get_node_from_labels(root:CGNSTree, labels:List[str], ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_node_from_labels(root:CGNSTree, labels:List[str], ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_node_from_labels(root:CGNSTree, labels:List[str], ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -357,7 +357,7 @@ def get_node_from_labels(root:CGNSTree, labels:List[str], ancestors=False, **kwa
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
-def get_child_from_labels(root:CGNSTree, labels:List[str], ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_child_from_labels(root:CGNSTree, labels:List[str], ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_child_from_labels(root:CGNSTree, labels:List[str], ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -369,7 +369,7 @@ def get_child_from_labels(root:CGNSTree, labels:List[str], ancestors=False, **kw
   return get_node_from_labels(root, labels, ancestors, **kwargs)
 
 @overload
-def get_node_from_values(root:CGNSTree, values, ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_node_from_values(root:CGNSTree, values, ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_node_from_values(root:CGNSTree, values, ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -381,7 +381,7 @@ def get_node_from_values(root:CGNSTree, values, ancestors=False, **kwargs):
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
-def get_child_from_values(root:CGNSTree, values, ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_child_from_values(root:CGNSTree, values, ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_child_from_values(root:CGNSTree, values, ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -393,7 +393,7 @@ def get_child_from_values(root:CGNSTree, values, ancestors=False, **kwargs):
   return get_node_from_values(root, values, ancestors, **kwargs)
 
 @overload
-def get_node_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_node_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_node_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -406,7 +406,7 @@ def get_node_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[st
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
-def get_child_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors:Literal[True], **kwargs) -> Tuple[Optional[CGNSTree], ...]: ...
+def get_child_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors:Literal[True], **kwargs) -> Optional[Tuple[CGNSTree, ...]]: ...
 @overload
 def get_child_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors:Literal[False], **kwargs) -> Optional[CGNSTree]: ...
 @overload
@@ -754,7 +754,7 @@ def get_node_from_path(root:CGNSTree, path:CGNSPath) -> Optional[CGNSTree]:
       return None
   return node
 
-def request_node_from_path(root:CGNSTree, path:CGNSPath) -> CGNSTree:
+def find_node_from_path(root:CGNSTree, path:CGNSPath) -> CGNSTree:
   if (node := get_node_from_path(root, path)) is not None:
     return node
   raise CGNSNodeNotFoundError(root, path)
@@ -901,10 +901,10 @@ def predicates_to_path(root:CGNSTree, predicates) -> Optional[str]:
   and returning the path of the first matching nodes (instead of the node itself)
   """
   nodes = get_node_from_predicates(root, predicates, depth=[1,1], ancestors=True)
-  if None in nodes:
+  if nodes is None:
     return None
   else:
-    return '/'.join([n[0] for n in nodes]) #type:ignore #(all nodes are not None)
+    return '/'.join([n[0] for n in nodes])
 # ---------------------------------------------------------------------------- #
 
 # ---------------------------------------------------------------------------- #
@@ -914,9 +914,9 @@ def getNodeFromPredicate(root, predicate, *args, **kwargs):
   """ Alias for get_node_from_predicate"""
   return get_node_from_predicate(root, predicate, *args, **kwargs)
 
-def requestNodeFromPredicate(root, predicate, *args, **kwargs):
-  """ Alias for request_node_from_predicate"""
-  return request_node_from_predicate(root, predicate, *args, **kwargs)
+def findNodeFromPredicate(root, predicate, *args, **kwargs):
+  """ Alias for find_node_from_predicate"""
+  return find_node_from_predicate(root, predicate, *args, **kwargs)
 
 def getNodesFromPredicate(root, predicate, *args, **kwargs):
   """ Alias for get_nodes_from_predicate (legacy), with default value 'deep' for search"""

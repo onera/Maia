@@ -58,7 +58,7 @@ def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
 
   # Update tree
   for i, path in enumerate(zones_path_ini):
-    zone = PT.request_node_from_path(part_tree, path)
+    zone = PT.find_node_from_path(part_tree, path)
     PT.set_name(zone, path_tail(new_names[i]))
   for gc, new_name in zip(gcs, recv_names):
     PT.set_value(gc, new_name)

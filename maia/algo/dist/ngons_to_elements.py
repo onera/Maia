@@ -49,8 +49,8 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   # Start by constructing boundary edges
   edge_n = MT.Zone.EdgeNode(zone)
   
-  edge_vtx     = PT.get_np_value(PT.request_child_from_name(edge_n, 'ElementConnectivity'))
-  pe           = PT.get_np_value(PT.request_child_from_name(edge_n, 'ParentElements'))
+  edge_vtx     = PT.get_np_value(PT.find_child_from_name(edge_n, 'ElementConnectivity'))
+  pe           = PT.get_np_value(PT.find_child_from_name(edge_n, 'ParentElements'))
   edge_distri  = MT.distribution_value(edge_n, 'Element')
 
   edge_distri_f = par_utils.partial_to_full_distribution(edge_distri, comm)
@@ -136,7 +136,7 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   GMI = EP.GlobalIndexer(face_distri_f, new_pl[-1]-bar_range[1]-1, comm)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
-    data = PT.get_np_value(PT.request_node_from_path(zone, path))
+    data = PT.get_np_value(PT.find_node_from_path(zone, path))
     GMI.Put(data, data) # Inplace update of node data
 
   # Remove NGON/Edge elements
@@ -154,7 +154,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   ngon_n = PT.Zone.NGonNode(zone)
   
   face_vtx     = MT.Element.connectivity(ngon_n)
-  pe           = PT.get_np_value(PT.request_child_from_name(ngon_n, 'ParentElements'))
+  pe           = PT.get_np_value(PT.find_child_from_name(ngon_n, 'ParentElements'))
   face_distri  = MT.distribution_value(ngon_n, 'Element')
   dn_face   = len(face_vtx)
 
@@ -254,7 +254,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
     elt = PT.get_child_from_name_and_label(zone, elt_kind, 'Elements_t')
     if elt is not None:
       _section_face_vtx = sections_face_vtx[i]
-      ec = PT.request_child_from_name(elt, 'ElementConnectivity')[1]
+      ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
       combine_funcs[i](_section_face_vtx.counts, _section_face_vtx.values, cell_face_section[i], ec) 
 
   # Renumber PointList indexing cells
@@ -273,7 +273,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   GMI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
-    data = PT.get_np_value(PT.request_node_from_path(zone, path))
+    data = PT.get_np_value(PT.find_node_from_path(zone, path))
     GMI.Put(data, data) # Inplace update of node data
 
 

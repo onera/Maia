@@ -63,7 +63,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
             assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']  
             if PT.Element.CGNSName(element) != 'MIXED':                       
-                elem_ec  = PT.get_np_value(PT.request_child_from_name(element,'ElementConnectivity'))
+                elem_ec  = PT.get_np_value(PT.find_child_from_name(element,'ElementConnectivity'))
                 elem_distri = MT.distribution_value(element, 'Element')
                 elem_type = PT.Element.Type(element)
                 elem_size = elem_distri[1] - elem_distri[0]
@@ -133,8 +133,8 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                         nb_cell_loc += elem_types[et][elem_pos]
                     except KeyError:
                         pass
-            elem_ec  = PT.get_np_value(PT.request_child_from_name(element, 'ElementConnectivity'))
-            elem_eso = PT.request_child_from_name(element, 'ElementStartOffset')
+            elem_ec  = PT.get_np_value(PT.find_child_from_name(element, 'ElementConnectivity'))
+            elem_eso = PT.find_child_from_name(element, 'ElementStartOffset')
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_ec.dtype)
             old_to_new_cell_numbering    = np.zeros(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
             ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) + 1\

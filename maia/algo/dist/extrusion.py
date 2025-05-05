@@ -587,7 +587,7 @@ def extrude(dist_tree: CGNSDistTree,
   zone_to_distrib_vtx = dict()
   zone_to_align = dict()
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    zone = PT.request_node_from_path(dist_tree, zone_path)
+    zone = PT.find_node_from_path(dist_tree, zone_path)
     if not PT.Zone.CellDimension(zone) == 2:
       raise ValueError("Only 2D zones are supported in this function")
 
@@ -652,7 +652,7 @@ def extrude(dist_tree: CGNSDistTree,
       if PT.Zone.Type(zone) == 'Unstructured':
         assert PT.get_child_from_label(container, 'IndexRange_t') is None, "PointRange not supported for U zones"
         assert PT.get_child_from_name(container, 'PointListDonor') is None, "CellCenter GC are not supported for U zones"
-        pl = PT.get_np_value(PT.request_child_from_name(container, 'PointList'))
+        pl = PT.get_np_value(PT.find_child_from_name(container, 'PointList'))
         pl += cell_offset_3d - cell_offset_2d
       else:
         assert PT.get_child_from_label(container, 'IndexArray_t') is None, "PointList not supported for S zones"
@@ -689,12 +689,12 @@ def extrude(dist_tree: CGNSDistTree,
       # are full, we don't need to add PR/PL since they are still full after duplication.
       for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n)):
         if has_pl(container):
-          maybe_pl = PT.request_child_from_name(container, 'PointList')[1]
+          maybe_pl = PT.find_child_from_name(container, 'PointList')[1]
           distrib_idx = MT.distribution_value(container, 'Index')
         elif PT.get_label(container) == 'ZoneSubRegion_t': # Related ZSR *or* PR defined ZSR
           maybe_pl = None
           zsr_extent = PT.Subset.ZSRExtent(container, zone)
-          extent_node = PT.request_node_from_path(zone, zsr_extent)
+          extent_node = PT.find_node_from_path(zone, zsr_extent)
           distrib_idx = MT.distribution_value(extent_node, 'Index')
         else: # Full containers
           maybe_pl = None
@@ -705,10 +705,10 @@ def extrude(dist_tree: CGNSDistTree,
           PT.update_child(container, 'PointList', value=new_pl)
           MT.newDistribution({'Index' : new_distrib_idx}, container)
         elif has_pr(container):
-          _extend_pr(PT.request_child_from_name(container, 'PointRange'), [1, 2])
+          _extend_pr(PT.find_child_from_name(container, 'PointRange'), [1, 2])
           MT.newDistribution({'Index' : new_distrib_idx}, container)
         for name, value in new_data.items():
-          PT.set_value(PT.request_child_from_name(container, name), value)
+          PT.set_value(PT.find_child_from_name(container, name), value)
       
       # Specific treatment of BCDS (they are skipped above because of get_children).
       # Duplicate data and PL/PR if present in BCDS
@@ -719,7 +719,7 @@ def extrude(dist_tree: CGNSDistTree,
           assert (pl_n is None) ^ (PT.Zone.Type(zone) == 'Unstructured'), "Required S zone + PR or U zone + PL"
           distrib_idx_n = MT.requestDistribution(pl_ower, 'Index')
 
-          data = {path : PT.request_node_from_path(bcds, path)[1] for path in PT.predicates_to_paths(bcds, 'BCData_t/DataArray_t')}
+          data = {path : PT.find_node_from_path(bcds, path)[1] for path in PT.predicates_to_paths(bcds, 'BCData_t/DataArray_t')}
           old_pl = pl_n[1] if pl_n is not None else None
           new_distrib_idx, new_pl, new_data = _pl_and_data_vtx_duplication(old_pl, distrib_idx_n[1], n_vtx_2d, data, comm)
           if has_pl(bcds):
@@ -727,10 +727,10 @@ def extrude(dist_tree: CGNSDistTree,
             PT.set_value(pl_n, new_pl)
             PT.set_value(distrib_idx_n, new_distrib_idx)
           elif has_pr(bcds):
-            _extend_pr(PT.request_child_from_name(bcds, 'PointRange'), [1,2])
+            _extend_pr(PT.find_child_from_name(bcds, 'PointRange'), [1,2])
             PT.set_value(distrib_idx_n, new_distrib_idx)
           for path, value in new_data.items():
-            PT.set_value(PT.request_node_from_path(bcds, path), value)
+            PT.set_value(PT.find_node_from_path(bcds, path), value)
     else:
       # Do not add data in Vertex containers; consequently, we need to:
       # - add a PointList or PointRange in full containers
@@ -743,12 +743,12 @@ def extrude(dist_tree: CGNSDistTree,
       for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and not is_partial(n)):
         if PT.get_label(container) == 'ZoneSubRegion_t': # Break ZSR link
           zsr_extent = PT.Subset.ZSRExtent(container, zone)
-          extent_node = PT.request_node_from_path(zone, zsr_extent)
+          extent_node = PT.find_node_from_path(zone, zsr_extent)
           PT.add_child(container, PT.deep_copy(PT.Subset.getPatch(extent_node)))
           PT.add_child(container, PT.deep_copy(MT.requestDistribution(extent_node)))
           PT.rm_children_from_name(container, '*RegionName')
           if PT.Zone.Type(zone) == 'Structured':
-            pr_n = PT.request_child_from_name(container, 'PointRange')
+            pr_n = PT.find_child_from_name(container, 'PointRange')
             _extend_pr(pr_n, [zval,zval])
         else: # Add PR/PR in full containers
           ztype = PT.get_np_value(zone).dtype
@@ -775,24 +775,24 @@ def extrude(dist_tree: CGNSDistTree,
     # Now deal vertex subsets PL/PR, which are extended in all cases
     for subset in PT.get_nodes_from_predicate(zone, lambda n : is_subset(n) and is_vertex(n)):
       if PT.Zone.Type(zone) == 'Structured' and PT.get_name(subset) not in ['InitialSurface', 'ExtrudedSurface'] :
-        pr_n = PT.request_child_from_name(subset, 'PointRange')
+        pr_n = PT.find_child_from_name(subset, 'PointRange')
         _extend_pr(pr_n, [1,2])
         MT.new_distribution({'Index' : par_utils.uniform_distribution(PT.PointRange.n_elem(pr_n), comm)}, subset)
         if PT.get_label(subset) == 'GridConnectivity1to1_t':
           donor_path = PT.GridConnectivity.ZoneDonorPath(subset, PT.get_name(base))
-          _extend_pr(PT.request_child_from_name(subset, 'PointRangeDonor'), [1,2])
+          _extend_pr(PT.find_child_from_name(subset, 'PointRangeDonor'), [1,2])
           # Transform depend of align of zone and opp zone : -1 if different alignement
           sign = -1 if zone_to_align[zone_path] ^ zone_to_align[donor_path] else 1
-          transform  = PT.request_child_from_name(subset, 'Transform') 
+          transform  = PT.find_child_from_name(subset, 'Transform') 
           PT.set_value(transform, np.append(PT.get_np_value(transform), np.array([sign*3], np.int32)))
           # In addition we need to swap one of the two PointRange
           if sign < 0:
-            pr_n = PT.request_child_from_name(subset, 'PointRange' + (zone_path > donor_path)*'Donor')
+            pr_n = PT.find_child_from_name(subset, 'PointRange' + (zone_path > donor_path)*'Donor')
             pr = PT.get_np_value(pr_n)
             pr[2,:] = [2,1]
 
       elif PT.Zone.Type(zone) == 'Unstructured':
-        pl_n = PT.request_child_from_name(subset, 'PointList')
+        pl_n = PT.find_child_from_name(subset, 'PointList')
         distrib_idx_n = MT.requestDistribution(subset, 'Index')
         new_distrib_idx, new_pl, _ = _pl_and_data_vtx_duplication(pl_n[1], distrib_idx_n[1], n_vtx_2d, {}, comm)
         # Manage PointListDonor

@@ -245,15 +245,15 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
       elif PT.get_name(zbc) != '__maia::isSubset':
         for bcds in PT.get_nodes_from_name(zbc, '__maia::isBCDS*'):
           _, bc_name, ds_name = bcds[0].split('#@#')
-          bc = PT.request_child_from_name(zbc, bc_name)
+          bc = PT.find_child_from_name(zbc, bc_name)
           PT.update_node(bcds, name=ds_name, label='BCDataSet_t')
           if bc is not None: # BC may have been removed (eg. EdgeCenter BCs)
             PT.add_child(bc, bcds)
         PT.rm_children_from_label(zbc, 'BCDataSet_t')
     # > Subsets
-    container = PT.request_child_from_name(dist_zone, '__maia::isSubset')
+    container = PT.find_child_from_name(dist_zone, '__maia::isSubset')
     for node in PT.get_children(container):
-      old_label = PT.request_child_from_name(node, '__maia::initialLabel')
+      old_label = PT.find_child_from_name(node, '__maia::initialLabel')
       PT.set_label(node, PT.get_str_value(old_label))
       PT.rm_child(node, old_label)
       PT.add_child(dist_zone, node)
@@ -308,6 +308,6 @@ def convert_elements_to_ngon(dist_tree: CGNSDistTree,
   else:
     generate_ngon_from_std_elements(dist_tree, comm)
 
-  lib_version = PT.request_child_from_name(dist_tree, 'CGNSLibraryVersion')
+  lib_version = PT.find_child_from_name(dist_tree, 'CGNSLibraryVersion')
   if PT.get_np_value(lib_version)[0] < 4:
     PT.set_value(lib_version, 4.2)

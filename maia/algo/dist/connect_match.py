@@ -190,7 +190,7 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
   Node path must refer to nodes having a FaceCenter PointList 
   """
   zone_path = PTu.path_head(subset_path, 2)
-  zone = PT.request_node_from_path(dist_tree, zone_path)
+  zone = PT.find_node_from_path(dist_tree, zone_path)
   try:
     dmesh = dmesh_cache[zone_path]
   except KeyError:
@@ -201,9 +201,9 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
       dmesh.generate_distribution()
     dmesh_cache[zone_path] = dmesh
 
-  node = PT.request_node_from_path(dist_tree, subset_path)
+  node = PT.find_node_from_path(dist_tree, subset_path)
   assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
-  pl = PT.get_np_value(PT.request_child_from_name(node, 'PointList'))[0]
+  pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
   _pl = _shift_face_num(pl, zone)
 
   cloud = _get_cloud(dmesh, _pl, comm)
@@ -275,7 +275,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
     for j, side in enumerate(['lgnum_cur', 'lgnum_opp']):
       i_cloud = matching_face['np_cloud_pair'][2*i_itrf+j]
       parent_face_num = clouds[i_cloud]['parent_face']
-      parent_zone = PT.request_node_from_path(dist_tree, PTu.path_head(clouds_path[i_cloud], 2))
+      parent_zone = PT.find_node_from_path(dist_tree, PTu.path_head(clouds_path[i_cloud], 2))
       distri_face = par_utils.dn_to_distribution(parent_face_num.size, comm)
       gnum_2d = EP.block_to_part(parent_face_num, distri_face, matching_face[side][i_itrf]-1, comm)
       # At this point face are in gnum but local to 2d dimension : shift back
@@ -320,8 +320,8 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
       leaf_name_opp = PTu.path_tail(origin_path_opp)
       zone_cur_path = PTu.path_head(origin_path_cur, 2)
       zone_opp_path = PTu.path_head(origin_path_opp, 2)
-      zone_cur  = PT.request_node_from_path(dist_tree, zone_cur_path)
-      zone_opp  = PT.request_node_from_path(dist_tree, zone_opp_path)
+      zone_cur  = PT.find_node_from_path(dist_tree, zone_cur_path)
+      zone_opp  = PT.find_node_from_path(dist_tree, zone_opp_path)
       zgc = PT.update_child(zone_cur, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t')
 
       jn_name_cur = f"{leaf_name_cur}_{n_spawn[origin_path_cur]}"
@@ -346,7 +346,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
       MT.newDistribution({"Index" : jn_distri.copy()}, jn)
 
       to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
-      origin_node = PT.request_node_from_path(dist_tree, origin_path_cur)
+      origin_node = PT.find_node_from_path(dist_tree, origin_path_cur)
       for node in PT.get_children_from_predicate(origin_node, to_copy):
         PT.add_child(jn, node)
 
@@ -358,14 +358,14 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   for i_cloud, cloud_path in enumerate(clouds_path):
     spawn = np.where(cloud_pair == i_cloud)[0]
     itrf_id, numside = np.divmod(spawn, 2) #  Convert into num interface + pos (0 or 1)
-    input_face = PT.get_np_value(PT.request_node_from_path(dist_tree, f"{cloud_path}/PointList"))[0]
+    input_face = PT.get_np_value(PT.find_node_from_path(dist_tree, f"{cloud_path}/PointList"))[0]
     output_faces = []
     for j,s in zip(itrf_id, numside):
         output_faces.append(matching_face[['lgnum_cur', 'lgnum_opp'][s]][j])
     # Search input_face that are not in output face
     unfound = par_algo.dist_set_difference(input_face, output_faces, comm)
     if comm.allreduce(unfound.size, MPI.SUM) > 0:
-      input_node = PT.request_node_from_path(dist_tree, cloud_path)
+      input_node = PT.find_node_from_path(dist_tree, cloud_path)
       PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
       PT.update_child(input_node, 'GridLocation', value='FaceCenter')
       PT.update_child(input_node, 'PointList', value=unfound.reshape((1,-1), order='F'))
@@ -424,7 +424,7 @@ def connect_1to1_families(dist_tree: CGNSDistTree,
 
   subset_path:Tuple[List[CGNSPath], List[CGNSPath]] = (list(), list())
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
-    zone = PT.request_node_from_path(dist_tree, zone_path)
+    zone = PT.find_node_from_path(dist_tree, zone_path)
     for container in PT.get_children_from_predicate(zone, is_subset_container):
       for subset in PT.get_children_from_predicate(container, is_subset):
         path = f'{zone_path}/{PT.get_name(container)}/{PT.get_name(subset)}'

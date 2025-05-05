@@ -42,12 +42,12 @@ def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             
             elem_type = PT.Element.Type(element)
             elem_er = PT.Element.Range(element)
-            elem_ec = PT.get_np_value(PT.request_child_from_name(element,'ElementConnectivity'))
+            elem_ec = PT.get_np_value(PT.find_child_from_name(element,'ElementConnectivity'))
             elem_distrib = MT.distribution_value(element, 'Element')
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
 
             if PT.Element.CGNSName(element) == 'MIXED':
-                eso = PT.get_np_value(PT.request_child_from_name(element, 'ElementStartOffset'))
+                eso = PT.get_np_value(PT.find_child_from_name(element, 'ElementStartOffset'))
                 mixed_partial_ec = elem_ec
                 mixed_partial_eso = eso[:-1] + nb_nodes_prev
                 stride_ec = np.diff(eso).astype(int, copy=False)

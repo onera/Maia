@@ -119,7 +119,7 @@ def extract_faces_mesh(zone: CGNSTree, face_ids: NDArray) -> Tuple[NDArray, ...]
       sections_2d = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
       elem_size_list = [PT.Element.Size(elt) for elt in sections_2d]
       face_n_vtx_list = [PT.Element.NVtx(elt) for elt in sections_2d]
-      elem_cnt_list = [PT.get_np_value(PT.request_node_from_name(elt, 'ElementConnectivity')) for elt in sections_2d]
+      elem_cnt_list = [PT.get_np_value(PT.find_node_from_name(elt, 'ElementConnectivity')) for elt in sections_2d]
       _, face_vtx = np_utils.concatenate_np_arrays(elem_cnt_list, dtype=np.int32)
       face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_size_list), dtype=np.int32)
   elif PT.Zone.Type(zone) == 'Structured':
@@ -177,11 +177,11 @@ def extract_surf_from_bc(part_zones: List[CGNSTree],
     bc_face_ids:List[NDArray]
     if PT.Zone.Type(zone) == 'Unstructured':
       bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: is_relevant_bc(n) and PT.Subset.GridLocation(n) == wanted_loc])
-      bc_face_ids = [PT.get_np_value(PT.request_child_from_name(bc_node, 'PointList'))[0] for bc_node in bc_nodes]
+      bc_face_ids = [PT.get_np_value(PT.find_child_from_name(bc_node, 'PointList'))[0] for bc_node in bc_nodes]
     else:
       n_vtx_z = PT.Zone.VertexSize(zone)
       bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', is_relevant_bc])
-      bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.get_np_value(PT.request_child_from_name(bc_node, 'PointRange')), PT.Subset.GridLocation(bc_node))[0] \
+      bc_face_ids = [_pr_to_face_pl(n_vtx_z, PT.get_np_value(PT.find_child_from_name(bc_node, 'PointRange')), PT.Subset.GridLocation(bc_node))[0] \
           for bc_node in bc_nodes]
 
     _, bc_face_ids_cat = np_utils.concatenate_np_arrays(bc_face_ids, np.int32)

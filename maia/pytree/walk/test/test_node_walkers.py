@@ -56,7 +56,7 @@ FamilyBC FamilyBC_t:
   # Optionnal kwargs
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
   assert PT.NodeWalkers(node, predicates, depth=1)() is None #Not found because of depth=1
-  root = PT.request_node_from_label(node, "FamilyBCDataSet_t")
+  root = PT.find_node_from_label(node, "FamilyBCDataSet_t")
   assert PT.NodeWalkers(root, predicates, depth=1)()[0] == "Density"
 
   # Specific options for each predicate
@@ -73,8 +73,8 @@ FamilyBC FamilyBC_t:
   # With ancestors (shared options for all predicates)
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
   # None is found
-  assert PT.NodeWalkers(node, predicates, depth=1, ancestors=True)() == (None, None)
-  # First is found, but not second
+  assert PT.NodeWalkers(node, predicates, depth=1, ancestors=True)() is None
+  # First is found, but not second -> return None
   predicates = [lambda n : PT.get_label(n) == "FamilyBCDataSet_t", lambda n : PT.get_name(n) == "Pressure"]
   nodes = PT.NodeWalkers(node, predicates, depth=1, ancestors=True)()
-  assert PT.get_name(nodes[0]) == 'FamilyBCDataSet' and nodes[1] is None # Second node not found
+  assert nodes is None

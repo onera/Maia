@@ -26,7 +26,9 @@ def get_node_from_predicates_for_each_with_parents__(parent, predicates, for_eac
   # Different kwargs + ancestors
   res = ()
   for predicate, kwargs in zip(predicates, for_each):
-    next = NodeWalker(parent, predicate, **kwargs)() if parent else None
+    next = NodeWalker(parent, predicate, **kwargs)()
+    if next is None:
+      return None
     res = (*res, next)
     parent = next
   return res

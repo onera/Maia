@@ -91,8 +91,8 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, container_names)
   tree_info = comm.bcast(tree_info, root=0)
-  input_base = PT.request_child_from_label(dist_tree, 'CGNSBase_t')
-  input_zone = PT.request_child_from_label(input_base, 'Zone_t')
+  input_base = PT.find_child_from_label(dist_tree, 'CGNSBase_t')
+  input_zone = PT.find_child_from_label(input_base, 'Zone_t')
 
 
   # > CGNS to meshb conversion
@@ -133,8 +133,8 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
   # > Set names and copy base data
-  adapted_base = PT.request_child_from_label(adapted_dist_tree, 'CGNSBase_t')
-  adapted_zone = PT.request_child_from_label(adapted_base, 'Zone_t')
+  adapted_base = PT.find_child_from_label(adapted_dist_tree, 'CGNSBase_t')
+  adapted_zone = PT.find_child_from_label(adapted_base, 'Zone_t')
   PT.set_name(adapted_base, PT.get_name(input_base))
   PT.set_name(adapted_zone, PT.get_name(input_zone))
 

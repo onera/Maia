@@ -47,7 +47,7 @@ def redistribute_pl_node(node: CGNSTree,
   bcds_without_pl_query:Predicates = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_path in PT.predicates_to_paths(node, query):
-      array_n = PT.request_node_from_path(node, array_path)
+      array_n = PT.find_node_from_path(node, array_path)
       if not array_path in global_data_list:
         array = PT.get_np_value(array_n)
         PT.set_value(array_n, MTP.block_to_block(array, node_distrib, new_distrib, comm))
@@ -99,7 +99,7 @@ def redistribute_elements_node(node: CGNSTree,
   if has_eso :
     ec_distrib     = MT.distribution_value(node, "ElementConnectivity")
 
-    eso_n = PT.request_child_from_name(node, 'ElementStartOffset')
+    eso_n = PT.find_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_np_value(eso_n)
 
     # To be consistent with initial distribution, send everything excepted last elt
@@ -138,7 +138,7 @@ def redistribute_elements_node(node: CGNSTree,
   MT.newDistribution(new_distrib, node)
 
   # > ElementConnectivity
-  ec_n    = PT.request_child_from_name(node, 'ElementConnectivity')
+  ec_n    = PT.find_child_from_name(node, 'ElementConnectivity')
   ec      = PT.get_np_value(ec_n)
   new_ec  = MTP.block_to_block(ec, ec_distrib, new_ec_distrib, comm)
   PT.set_value(ec_n, new_ec)
@@ -201,7 +201,7 @@ def redistribute_zone(zone: CGNSTree,
     # Trick if related to an other node -> add pl
     matching_region_path = PT.Subset.ZSRExtent(zone_subregion, zone)
     if matching_region_path != PT.get_name(zone_subregion):
-      distri_node = PT.request_node_from_path(zone, matching_region_path + '/:CGNS#Distribution')
+      distri_node = PT.find_node_from_path(zone, matching_region_path + '/:CGNS#Distribution')
       PT.add_child(zone_subregion, PT.deep_copy(distri_node))
     redistribute_pl_node(zone_subregion, distribution, comm)
     if matching_region_path != PT.get_name(zone_subregion):

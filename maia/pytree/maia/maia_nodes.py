@@ -103,7 +103,7 @@ class Element:
     @staticmethod
     def connectivity(elt_node:CGNSTree) -> vs.VStrideArray:  
       eso = W.get_child_from_name(elt_node, 'ElementStartOffset')
-      ec  = W.request_child_from_name(elt_node, 'ElementConnectivity')
+      ec  = W.find_child_from_name(elt_node, 'ElementConnectivity')
       assert ec[1] is not None
 
       is_distri = W.get_child_from_name(elt_node, ':CGNS#Distribution') is not None

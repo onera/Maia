@@ -90,21 +90,21 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         part1_ln_to_gn   = []
 
       # > Link between part1 and part2
-      part1_maia_iso_zone = PT.request_child_from_name(iso_part_zone, "maia#surface_data")
+      part1_maia_iso_zone = PT.find_child_from_name(iso_part_zone, "maia#surface_data")
       if gridLocation=='Vertex' :
-        part1_weight        = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" ))]
-        part1_to_part2      = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   ))]
-        part1_to_part2_idx  = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    ))]
+        part1_weight        = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Vtx_parent_weight" ))]
+        part1_to_part2      = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Vtx_parent_gnum"   ))]
+        part1_to_part2_idx  = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Vtx_parent_idx"    ))]
       elif gridLocation=='FaceCenter' :
         # Output should be edge located so check if iso surface locally has edge
         if elt_n is not None:
-          part1_to_part2      = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges"))] 
+          part1_to_part2      = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges"))] 
           part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
         else:
           part1_to_part2      = []
           part1_to_part2_idx  = []
       elif gridLocation=='CellCenter' :
-        part1_to_part2      = [PT.get_np_value(PT.request_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum"))]
+        part1_to_part2      = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Cell_parent_gnum"))]
         part1_to_part2_idx  = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
       else:
         raise RuntimeError("Wrong location")
@@ -157,7 +157,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
       
       else :
-        fld_data = [PT.request_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
+        fld_data = [PT.find_node_from_path(part_zone,fld_path)[1] for part_zone in part_zones]
         stride   = 1
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2
 
@@ -315,7 +315,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
       for bnd_path in gdom_bcs_path:
         bnd_n = PT.get_node_from_path(part_zone, bnd_path)
         if bnd_n is not None:
-          all_bnd_pl.append(PT.get_np_value(PT.request_child_from_name(bnd_n, 'PointList')))
+          all_bnd_pl.append(PT.get_np_value(PT.find_child_from_name(bnd_n, 'PointList')))
         else :
           all_bnd_pl.append(np.empty((1,0), np.int32))
       for bnd_path in gdom_gcs_path:
@@ -323,7 +323,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
         container_name, jn_name = bnd_path.split('/')
         bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'*'])
         if len(bnd_n_list) > 0:
-          pl_val_list = [PT.get_np_value(PT.request_node_from_name(bnd_n, 'PointList')) for bnd_n in bnd_n_list]
+          pl_val_list = [PT.get_np_value(PT.find_node_from_name(bnd_n, 'PointList')) for bnd_n in bnd_n_list]
           all_bnd_pl.append(np_utils.concatenate_np_arrays(pl_val_list)[1])
         else:
           all_bnd_pl.append(np.empty((1,0), np.int32))
@@ -416,7 +416,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
 
     for i_group, gc_path in enumerate(gdom_gcs_path):
       gc_name = PT.utils.path_tail(gc_path)
-      gc_val  = PT.get_value(PT.request_node_from_path(dist_zone, gc_path))
+      gc_val  = PT.get_value(PT.find_node_from_path(dist_zone, gc_path))
 
       i_group+=n_gdom_bcs
       
@@ -481,8 +481,8 @@ def _iso_surface(part_tree: CGNSPartTree,
     field_values = []
     for part_zone in part_zones:
       # Check : vertex centered solution (PDM_isosurf doesnt work with cellCentered field)
-      flowsol_node = PT.request_child_from_name(part_zone, fs_name)
-      field_node   = PT.request_child_from_name(flowsol_node, field_name)
+      flowsol_node = PT.find_child_from_name(part_zone, fs_name)
+      field_node   = PT.find_child_from_name(flowsol_node, field_name)
       assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
       field_values.append(PT.get_np_value(field_node) - iso_val)
 

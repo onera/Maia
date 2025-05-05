@@ -419,7 +419,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
   i_rank = comm.Get_rank()
 
   add_joins_donor_name(dist_tree, comm)
-  zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.request_node_from_path(dist_tree, path))
+  zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.find_node_from_path(dist_tree, path))
                               for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
 
   PT.update_child(dist_tree, 'CGNSLibraryVersion', 'CGNSLibraryVersion_t', 4.2)
@@ -497,11 +497,11 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
           is_abutt1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
             opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
-            opp_zone = PT.request_node_from_path(dist_tree, opp_zone_path)
+            opp_zone = PT.find_node_from_path(dist_tree, opp_zone_path)
             if PT.Zone.Type(opp_zone) != 'Unstructured':
               continue
             loc = PT.Subset.GridLocation(gc_s)
-            pl = PT.get_np_value(PT.request_child_from_name(gc_s, 'PointList'))
+            pl = PT.get_np_value(PT.find_child_from_name(gc_s, 'PointList'))
             pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path]) #type:ignore[call-arg]
             pl_idx = pl_idx.reshape((1,-1), order='F')
             if 'EdgeCenter' in loc: #IEdge or JEdge -> EdgeCenter
@@ -531,12 +531,12 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
 
         # Update CellCenter subsets 
         if connectivity == 'Standard':
-          elt = PT.request_child_from_name(zone, 'QUAD_4' if cell_dim == 3 else 'BAR_2')
+          elt = PT.find_child_from_name(zone, 'QUAD_4' if cell_dim == 3 else 'BAR_2')
         else:
           elt = PT.Zone.NGonNode(zone) if cell_dim == 3 else MT.Zone.EdgeNode(zone)
         cell_offset = PT.Element.Range(elt)[1]
         for subset in PT.iter_all_subsets(zone, 'CellCenter'):
-          pl_n = PT.request_child_from_name(subset, 'PointList')
+          pl_n = PT.find_child_from_name(subset, 'PointList')
           PT.get_np_value(pl_n)[0] += cell_offset
 
         # Face or Edge distribution does not exist on U meshes

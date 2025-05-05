@@ -147,15 +147,15 @@ def dist_tree_to_part_tree_copy(dist_tree: CGNSDistTree,
     # so we update the correponding name to include wildcard *
     names = path.split('/')
     if len(names) >= 2:
-      if PT.get_label(PT.request_node_from_path(dist_tree, PT.utils.path_head(path, 2))) == 'Zone_t':
+      if PT.get_label(PT.find_node_from_path(dist_tree, PT.utils.path_head(path, 2))) == 'Zone_t':
         names[1] += '.P*.N*'
     # Same for GC_t nodes
     if len(names) >= 4:
-      if PT.get_label(PT.request_node_from_path(dist_tree, PT.utils.path_head(path, 4))) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
+      if PT.get_label(PT.find_node_from_path(dist_tree, PT.utils.path_head(path, 4))) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
         names[3] += '.*'
 
     # Now copy dist_node to partitioned tree
-    dist_node = PT.request_node_from_path(dist_tree, path)
+    dist_node = PT.find_node_from_path(dist_tree, path)
     if len(names) > 1:
       for part_node in PT.get_children_from_names(part_tree, names[:-1]):
         PT.rm_children_from_name(part_node, names[-1])

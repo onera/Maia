@@ -128,8 +128,8 @@ def find_ridges(dist_tree: CGNSDistTree,
     # > Make unique PL for each group
     groups_cat_pl:List[NDArray] = []
     for bc_names in replaced_bc_identifiers:
-      bcs = [PT.request_node_from_name_and_label(zone, bc_name, 'BC_t')  for bc_name in bc_names]
-      group_pls = [PT.get_np_value(PT.request_child_from_name(bc, 'PointList')) for bc in bcs]
+      bcs = [PT.find_node_from_name_and_label(zone, bc_name, 'BC_t')  for bc_name in bc_names]
+      group_pls = [PT.get_np_value(PT.find_child_from_name(bc, 'PointList')) for bc in bcs]
       groups_cat_pl.append(np_utils.concatenate_point_list(group_pls)[1])
 
     dgrp_face_idx, pl = np_utils.concatenate_np_arrays(groups_cat_pl)
