@@ -668,6 +668,31 @@ class Zone:
       
     return dimension
 
+  @staticmethod
+  def PhysicalDimension(zone_node:CGNSTree) -> int:
+    """ Return the PhysicalDimension of a Zone_t node
+
+    PhysicalDimension is the number of coordinates required to define a node position,
+    and should be equal to the second element of related CGNSBase_t value.
+
+    Args:
+      zone_node (CGNSTree): Input Zone_t node
+    Returns:
+      int : PhysicalDimension (1,2 or 3)
+    Raises:
+      ValueError: if zone has no coordinates
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[5,4,0]])
+      >>> PT.new_GridCoordinates(fields={'CoordinateX' : [0.,0.25,0.5,0.75,1]}, parent=zone)
+      >>> PT.Zone.PhysicalDimension(zone)
+      1
+    """
+    try:
+      coords = Zone.coordinates(zone_node)
+    except RuntimeError:
+      raise ValueError(f"Can not infer PhysicalDimension for zone {N.get_name(zone_node)}, which has no coordinates")
+    return len([c for c in coords if c is not None])
+
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Elements_t"))

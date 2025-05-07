@@ -354,6 +354,24 @@ def test_zone_dim():
   N.new_DataArray('ParentElements', None, parent=ng)
   assert SIDS.Zone.CellDimension(zone) == 3
 
+def test_zone_phy_dim():
+  zone = N.new_Zone(type='Structured', size=[[11,10,0], [11,10,0]])
+  gc = N.new_GridCoordinates(fields={'CoordinateR' : np.ones((11,11)), 'CoordinateTheta' : np.ones((11,11))},
+                             parent=zone)
+  N.new_DataArray('RandomArray', np.empty((11,11)), parent=gc)
+  assert SIDS.Zone.PhysicalDimension(zone) == 2
+
+  zone = N.new_Zone(type='Unstructured', size=[[27,8,0]])
+  gc = N.new_GridCoordinates(fields={'CoordinateX' : np.ones(27),
+                                     'CoordinateY' : np.ones(27),
+                                     'CoordinateZ' : np.ones(27)},
+                             parent=zone)
+  assert SIDS.Zone.PhysicalDimension(zone) == 3
+
+  zone = N.new_Zone(type='Unstructured', size=[[27,8,0]])
+  with pytest.raises(ValueError):
+    SIDS.Zone.PhysicalDimension(zone)
+
 def test_PointRange():
   pr = N.new_IndexRange('StandardPR', [1,3, 3,5, 1,3])
   assert (SIDS.PointRange.SizePerIndex(pr) == [3,3,3]).all()
