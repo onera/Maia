@@ -3,37 +3,90 @@ import numpy as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.transfer  import protocols as EP
+import maia
+
+from maia.utils     import logging as mlog
+
+from maia.algo.dist import connectivity_utils as CU
+from maia.algo.dist import s_to_u             as S2U
+
+from .utils import get_local_coordinates, place_in_container
 
 import cmaia.part_algo as cpart_algo
 
-def compute_face_normal(zone, comm):
-  """Compute the face normal of a distributed zone.
 
-  Input zone must have cartesian coordinates recorded under a unique
-  GridCoordinates node.
+is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
+is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
+                            PT.Zone.Type(z) == 'Unstructured' and \
+                            all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
 
-  The normal is outward oriented and its norms equals the area of the faces.
-
-  Args:
-    zone (CGNSTree): Distributed 3D or 2D U-NGon CGNS Zone
-  Returns:
-    face_normal (array): Flat (interlaced) numpy array of face normal
-
+def compute_face_normal(zone, comm, unitary=False):
   """
-  coords = PT.Zone.coordinates(zone)
-  dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+  Compute the face normal of a distributed zone, for phydim = 2 or 3
+  """
+  zone_dim = PT.Zone.CellDimension(zone)
+  phy_dim  = PT.Zone.PhysicalDimension(zone)
+  assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face normals"
+  assert phy_dim  == 3, "PhysicalDimension of zone must be 3 to compute face normals"
 
+
+  # Get face_vtx
   if PT.Zone.Type(zone) == "Unstructured":
+    # Careful : if zone is poly2d, the ngon element may be absent
+    if is_poly_2d_zone(zone) and not PT.Zone.has_ngon_elements(zone):
+      maia.algo.edge_pe_to_ngon(zone, comm)
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      _face_vtx_idx = np.empty(face_vtx_idx.size, np.int32)
-      np.subtract(face_vtx_idx, face_vtx_idx[0], out=_face_vtx_idx)
-      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-      part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx-1, comm)
-      coords = [part_data[key] for key in part_data.keys()]
+      face_vtx = MT.Element.connectivity(ngon_node)
+    else: # Zone has std elements
+      global_distri = (zone_dim == 2)
+      face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
+  elif PT.Zone.Type(zone) == 'Structured':
+    if zone_dim == 3:
+      ngon_node = S2U.zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
+      face_vtx = MT.Element.connectivity(ngon_node)
+    elif zone_dim == 2:
+      face_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim)
 
-      return cpart_algo.compute_face_normal_u(_face_vtx_idx, *coords)
-  raise NotImplementedError("Only NGON zones are managed")
+  local_coords = get_local_coordinates(zone, face_vtx.values, comm)
+  
+  face_normal = cpart_algo.compute_face_normal_u(face_vtx.displs.astype(np.int32, copy=False), *local_coords)
+
+  if unitary:
+    face_normal.shape = (-1, 3)
+    norm = np.linalg.norm(face_normal, axis=1).reshape(-1,1)
+    face_normal /= norm
+    face_normal.shape = (-1)
+
+  return face_normal
+
+def _compute_elements_normal(zone, comm, unitary=False):
+  """
+  Distributed implementation of _compute_elements_normal, which compute normal vectors
+  and return a raw vector (phydim component per entity)
+  """
+  cell_dim = PT.Zone.CellDimension(zone)
+  phy_dim = PT.Zone.PhysicalDimension(zone)
+  if phy_dim == 3 and cell_dim >= 2:
+    return compute_face_normal(zone, comm, unitary)
+  elif phy_dim == 2 and cell_dim <= 2:
+    raise NotImplementedError
+
+
+def compute_elements_normal(zone, comm, unitary=False):
+  """
+  Distributed implementation of compute_elements_normal, which compute normal vectors
+  and add the result in tree
+  """
+  phy_dim  = PT.Zone.PhysicalDimension(zone)
+  interlaced_normal = _compute_elements_normal(zone, comm, unitary)
+  basename = 'UnitNormal' if unitary else 'Normal'
+  if interlaced_normal is None:
+    msg = f"Zone '{PT.get_name(zone)}' skipped during normal computing because "\
+          f"its physical dimension is too low (phy_dim={phy_dim})"
+    mlog.warning(msg)
+  else:
+    vectors = {f'{basename}{d}' : interlaced_normal[i::phy_dim] \
+               for i,d in enumerate('XYZ'[:phy_dim])}
+    place_in_container(zone, phy_dim-1, vectors, comm)
+

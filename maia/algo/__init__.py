@@ -9,7 +9,8 @@ from .interpolation import interpolate, \
                            create_interpolator
 
 from .geometry      import compute_elements_center, \
-                           compute_elements_measure
+                           compute_elements_measure, \
+                           compute_elements_normal
 
 from .geosearch     import find_closest_points, localize_points
 

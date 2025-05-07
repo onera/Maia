@@ -111,6 +111,7 @@ Geometric calculations
 .. autofunction:: maia.algo.find_closest_points
 .. autofunction:: maia.algo.compute_elements_center
 .. autofunction:: maia.algo.compute_elements_measure
+.. autofunction:: maia.algo.compute_elements_normal
 
 Interpolations
 ^^^^^^^^^^^^^^

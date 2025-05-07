@@ -131,3 +131,51 @@ def compute_elements_measure(t: CGNSTree,
     else:
       part_geometry.compute_elements_measure(zone, dim)
 
+def compute_elements_normal(t: CGNSTree,
+                            comm: Optional[MPIComm] = None,
+                            unitary:bool = False) -> None:
+  """Compute the normal vector of the relevant mesh entity.
+
+  Unlike :func:`compute_elements_center` and :func:`compute_elements_measure`
+  this function does not make sense for every mesh entity: actually, this
+  function compute the normals vector to
+  
+  - face elements if the **physical** dimension of the mesh is 3,
+  - edge elements if the **physical** dimension of the mesh is 2.
+
+  Consequently, the number of components of the computed normals equals
+  the **physical** dimension of the mesh.
+
+  If ``unitary`` is ``True``, the norm of the computed vectors is one; otherwise,
+  it is equal to the measure of the corresponding entity.
+
+  Warning:
+    - Only cartesian coordinates are supported.
+
+  Input tree is modified inplace : results are stored in a
+  ``DiscreteData_t`` container named ``Geometry_{2|3}d``. Note that for
+  unstructured zones described by standard elements, normals are computed
+  only for elements explicitly defined in sections.
+
+  Args:
+    t    (CGNSTree)          : Tree starting at Zone_t level or higher
+    comm       (MPIComm)     : MPI communicator, mandatory only for distributed trees
+    unitary (bool, optional) : If ``True``, normalize the result (default to ``False``).
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #compute_elements_normal@start
+        :end-before: #compute_elements_normal@end
+        :dedent: 2
+  """
+
+  for zone in PT.iter_all_Zone_t(t):
+    
+    if MT.is_cgns_dist_tree(zone):
+      assert comm is not None
+      dist_geometry.compute_elements_normal(zone, comm, unitary)
+    else:
+      raise NotImplementedError
+      #part_geometry.compute_elements_normal(zone, unitary)
+
+
