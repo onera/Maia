@@ -175,7 +175,6 @@ def compute_elements_normal(t: CGNSTree,
       assert comm is not None
       dist_geometry.compute_elements_normal(zone, comm, unitary)
     else:
-      raise NotImplementedError
-      #part_geometry.compute_elements_normal(zone, unitary)
+      part_geometry.compute_elements_normal(zone, unitary)
 
 
