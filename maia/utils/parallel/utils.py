@@ -11,9 +11,15 @@ from Pypdm.Pypdm import compute_weighted_distribution
 
 T = TypeVar('T')
 
+def watch_overflow(n_elt:int) -> None:
+  if n_elt > np.iinfo(npy_pdm_gnum_dtype).max:
+    raise OverflowError(f"Size of array {n_elt} overflows gnum dtype {npy_pdm_gnum_dtype}. "
+                         "Please try to use an I8 installation of Maia/ParaDiGM.")
+
 def gathering_distribution(i_rank: int, n_elt: int, comm: MPIComm) -> NDArray:
   """
   """
+  watch_overflow(n_elt)
   if   comm.Get_rank()  < i_rank: distrib = np.array([0    , 0    , n_elt ], dtype=npy_pdm_gnum_dtype)
   elif comm.Get_rank() == i_rank: distrib = np.array([0    , n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
   else                          : distrib = np.array([n_elt, n_elt, n_elt ], dtype=npy_pdm_gnum_dtype)
@@ -22,6 +28,7 @@ def gathering_distribution(i_rank: int, n_elt: int, comm: MPIComm) -> NDArray:
 def uniform_distribution(n_elt: int, comm: MPIComm) -> NDArray:
   """
   """
+  watch_overflow(n_elt)
   u_dist = py_utils.uniform_distribution_at(n_elt, comm.Get_rank(), comm.Get_size())
   proc_indices = np.empty(3, dtype=npy_pdm_gnum_dtype)
   proc_indices[0] = u_dist[0]

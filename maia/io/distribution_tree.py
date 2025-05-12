@@ -44,8 +44,8 @@ def compute_subset_distribution(node, comm, distri_func):
 
   if(pl_n):
     assert pr_n is None
-    pls_n   = PT.get_child_from_name(node, 'PointList#Size')
-    pl_size = PT.get_value(pls_n)[1]
+    pls_n   = PT.find_child_from_name(node, 'PointList#Size')
+    pl_size = PT.get_np_value(pls_n)[1]
     MT.newDistribution({'Index' : distri_func(pl_size, comm)}, parent=node)
 
 def compute_connectivity_distribution(node):
@@ -55,14 +55,15 @@ def compute_connectivity_distribution(node):
   eso_n  = PT.get_child_from_name(node, 'ElementStartOffset')
   if eso_n is None:
     raise RuntimeError
-  size_n = PT.get_child_from_name(node, 'ElementConnectivity#Size')
+  size_n = PT.find_child_from_name(node, 'ElementConnectivity#Size')
+  size = PT.get_np_value(size_n)[0]
+  par_utils.watch_overflow(size)
 
-  beg  = eso_n[1][0]
-  end  = eso_n[1][-1]
-  size = size_n[1][0]
+  beg  = PT.get_np_value(eso_n)[0]
+  end  = PT.get_np_value(eso_n)[-1]
 
-  distri_n = MT.getDistribution(node)
-  dtype = PT.get_child_from_name(distri_n, 'Element')[1].dtype
+  distri_n = MT.requestDistribution(node)
+  dtype = PT.get_np_value(PT.find_child_from_name(distri_n, 'Element')).dtype
   PT.new_DataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
 
 

@@ -37,6 +37,10 @@ def test_uniform_distribution(comm):
       17, comm.Get_rank(), comm.Get_size())).all()
   assert distrib[2] == 17
 
+  if npy_pdm_gnum_dtype == np.int32:
+    with pytest.raises(OverflowError):
+      distrib = utils.uniform_distribution(2_500_000_000, comm)
+
 @pytest_parallel.mark.parallel(3)
 def test_dn_to_distribution(comm):
   dn = (comm.rank+1)**3 #1, 8, 27
