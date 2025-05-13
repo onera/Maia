@@ -434,6 +434,13 @@ def test_flip():
   with pytest.raises(ValueError):
     vs.flip(a, 'WrongAxis')
 
+  
+  # Test inner flip with mask
+  a = vs.from_counts([3, 3, 4, 3, 0, 1],
+                      [34,22,191,  29,32,53,  43,93,22,95, 633,92,5,   4])
+  a._inner_flip(mask=np.array([False, True, False, False, True, True]))
+  assert (a.values == [34,22,191, 53,32,29, 43,93,22,95, 633,92,5, 4]).all()
+
 def test_unique():
   a = vs.from_counts([0, 3, 5], [.3, .1, .1,  .2, .7, .2, .2, .9])
   a = vs.unique(a, vs.INNER_AXIS)

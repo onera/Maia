@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 #include "std_e/base/msg_exception.hpp"
 
@@ -101,31 +102,52 @@ sort_by_stride(const py::array_t<I> np_displs,
   }
 }
 
+
+inline void _flip_by_stride_one(size_t n_elt, size_t item_size, std::byte* start, std::byte* end) {
+  for (size_t j = 0; j < n_elt / 2; ++j) {
+    auto left  = start + j*item_size;
+    auto right = end - (j+1)*item_size;
+    for (size_t k = 0; k < item_size; ++k) {
+      std::swap(left[k], right[k]);
+    }
+  }
+}
+
 template<typename I>
 void
-flip_by_stride(py::array_t<I>& np_displs,
-               py::array     & np_values) {
+flip_by_stride(py::array_t<I>&                   np_displs,
+               py::array&                        np_values,
+               std::optional<py::array_t<bool>>& np_mask) {
 
   size_t item_size = np_values.itemsize();
 
   auto displs = np_displs.data();
   auto start_ptr = static_cast<std::byte*>(np_values.mutable_data());
 
-  // Loop to operate on each section of the array
-  for (ssize_t i=0; i < np_displs.size()-1; ++i) {
-    size_t n_elt = displs[i+1] - displs[i];
-    auto start = start_ptr + displs[i]*item_size;
-    auto end = start + n_elt*item_size;
-
-    // Inverse subsection
-    for (size_t j = 0; j < n_elt / 2; ++j) {
-      auto left  = start + j*item_size;
-      auto right = end - (j+1)*item_size;
-      for (size_t k = 0; k < item_size; ++k) {
-          std::swap(left[k], right[k]);
+  if (np_mask.has_value()) {
+    auto mask = np_mask.value().data();
+    // Loop to operate on each section of the array
+    for (ssize_t i=0; i < np_displs.size()-1; ++i) {
+      if (mask[i]) {
+        size_t n_elt = displs[i+1] - displs[i];
+        auto start = start_ptr + displs[i]*item_size;
+        auto end = start + n_elt*item_size;
+        // Inverse subsection
+        _flip_by_stride_one(n_elt, item_size, start, end);
       }
     }
   }
+  else {
+    // Loop to operate on each section of the array
+    for (ssize_t i=0; i < np_displs.size()-1; ++i) {
+      size_t n_elt = displs[i+1] - displs[i];
+      auto start = start_ptr + displs[i]*item_size;
+      auto end = start + n_elt*item_size;
+      // Inverse subsection
+      _flip_by_stride_one(n_elt, item_size, start, end);
+    }
+  }
+
 }
 
 template<typename I>
@@ -508,9 +530,9 @@ void register_vstride_module(py::module_& parent) {
 
 
   m.def("flip_by_stride", &flip_by_stride<int32_t>,
-        py::arg("displs").noconvert(), py::arg("values").noconvert());
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("mask").noconvert()=py::none());
   m.def("flip_by_stride", &flip_by_stride<int64_t>,
-        py::arg("displs").noconvert(), py::arg("values").noconvert());
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("mask").noconvert()=py::none());
 
   m.def("take", &take<int32_t, int32_t>,
         py::arg("displs").noconvert(), py::arg("values").noconvert(),
