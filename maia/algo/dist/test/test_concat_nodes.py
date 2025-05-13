@@ -124,6 +124,87 @@ def test_concatenate_jns(comm, mode):
     assert all(['.P' in gc[0] for gc in gcs])
     assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivityProperty_t')) == 2
 
+@pytest_parallel.mark.parallel([1])
+def test_concatenate_jns_len32(comm):
+  yt = """
+  ZoneA Zone_t [[11, 10, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      match1 GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1, 2, 3, 4]]:
+        PointListDonor IndexArray_t [[10, 20, 30, 40]]:
+      match2 GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[5]]:
+        PointListDonor IndexArray_t [[50]]:
+      mergedGC444_5555 GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[6]]:
+        PointListDonor IndexArray_t [[7]]:
+      mergedGC33AAAAA3333BB GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[7]]:
+        PointListDonor IndexArray_t [[6]]:
+      mergedGC2222GC GridConnectivity_t "ZoneC":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[8]]:
+        PointListDonor IndexArray_t [[800]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-45., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+  ZoneB Zone_t [[101, 100, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      match3 GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[10, 20, 30, 40]]:
+        PointListDonor IndexArray_t [[1, 2, 3, 4]]:
+      match4 GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[50]]:
+        PointListDonor IndexArray_t [[5]]:
+  ZoneC Zone_t [[1001, 1000, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      match5 GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[800]]:
+        PointListDonor IndexArray_t [[8]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [45., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+  """
+  tree = PT.yaml.to_cgns_tree(yt)
+  dist_tree = F2D.full_to_dist_tree(tree, comm)
+  zones = PT.get_all_Zone_t(dist_tree)
+
+  GN.concatenate_jns(dist_tree, comm)
+
+  gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
+  opp_names = [PT.get_value(PT.get_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs]
+  
+  assert len(gcs) == 6
+  assert sorted(opp_names) == sorted([gc[0] for gc in gcs[::-1]])
+  
+  mergedgcs = PT.get_nodes_from_predicates(dist_tree, [lambda n: PT.get_label(n) == 'GridConnectivity_t' 
+                                                                 and PT.get_name(n).startswith('mergedGC')])
+  assert len(mergedgcs) == 6
+  mergedgc_names     = sorted([PT.get_name(mgc).split(".")[0] for mgc in mergedgcs])
+  ref_mergedgc_names = ['mergedGC0']*2 + [f'mergedGC{i}' for i in range(2223, 2227)]
+  assert mergedgc_names == ref_mergedgc_names
 
 @pytest.mark.parametrize("specified", [True, False])
 @pytest_parallel.mark.parallel(3)

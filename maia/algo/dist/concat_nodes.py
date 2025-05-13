@@ -6,6 +6,7 @@ from maia.utils import np_utils, par_utils
 from maia.algo.dist import matching_jns_tools as MJT
 
 import numpy as np
+import re
 
 def concatenate_subset_nodes(nodes: List[CGNSTree],
                              comm: MPIComm,
@@ -112,8 +113,14 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     jns_to_merge:Dict[str, Dict] = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
     perio_refs:Dict[str, List]   = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
+    # Find if nodes starting with 'mergedGC' already exist in ZGC to determine 'mergedgc_counter'
+    gc_names = [PT.get_name(gc) for gc in PT.get_nodes_from_name(zone, 'mergedGC*')] # Peut mieux faire ?
+    gc_counts = [-1]
+    p1 = re.compile(r'\d+')
     #Do a get here because tree is modified
     for zgc, jn in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', match_jns], ancestors=True):
+      if len(PT.get_name(jn).split('mergedGC'))>1:
+        gc_counts.append(int(p1.findall(PT.get_name(jn).split('mergedGC')[1])[0]))
       donor_path = PT.GridConnectivity.ZoneDonorPath(jn, PT.get_name(base))
       location = PT.Subset.GridLocation(jn)
       if location.endswith('FaceCenter'):
@@ -155,31 +162,47 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
         jns_to_merge[location][donor_path] = [(key,jn)]
       PT.rm_child(zgc, jn)
 
+    mergedgc_counter = max(gc_counts)+1
+    p2a = re.compile(r'.I\d+')
+    p2b = re.compile(r'.P\d+')
+    
     for location, ljns_to_merge in jns_to_merge.items():
+      
       for donor_path, jns in ljns_to_merge.items():
         #We need to merge jn and opposite jn in same order so sort according to ordinal key
         sorted_jns = [elem[1] for elem in sorted(jns)]
-        merged_name = PT.get_name(zone) + '.To.' + donor_path.split('/')[1]
+        # merged_name = PT.get_name(zone) + '.To.' + donor_path.split('/')[1]
+        extensions = p2a.findall(donor_path) + p2b.findall(donor_path)
+        if len(extensions) == 0:
+          extension = ''
+        elif len(extensions) == 1:
+          extension = extensions[0]
+        else:
+          raise ValueError('????') # Reflexion pour le message d'erreur
+        merged_name = f'mergedGC{mergedgc_counter}{extension}'
+        mergedgc_counter += 1
         merged = concatenate_subset_nodes(sorted_jns, comm, output_name=merged_name,
             additional_child_queries=['GridConnectivityType_t', 'GridConnectivityProperty_t', 'Descriptor_t'])
         PT.add_child(zgc, merged)
     # Make name uniques if we have multiple GridLocation
     if sum([len(ljns_to_merge) > 0 for ljns_to_merge in jns_to_merge.values()]) > 1:
-      loc_suffix = {'Vertex' : '_v', 'FaceCenter' : '_f', 'CellCenter' : '_c'}
+      loc_suffix = {'Vertex' : '_v', 'FaceCenter' : '_f', 'CellCenter' : '_c'} #Not use !!!
       for jn in PT.get_children_from_label(zgc, 'GridConnectivity_t'):
         if len(PT.get_children_from_name(zgc, PT.get_name(jn))) > 1:
           PT.set_name(jn, PT.get_name(jn) + '_' + PT.Subset.GridLocation(jn)[0])
           opp_name_node = PT.find_child_from_name(jn, "GridConnectivityDonorName")
           PT.set_value(opp_name_node, PT.get_str_value(opp_name_node) + '_' + PT.Subset.GridLocation(jn)[0])
-  # If we have multiple periodic jns or intrazone periodics, we can not guarantee that GridConnectivityDonorName is
-  # good so rebuild it
-  perio_found = False
-  for jn in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', match_jns]):
-    perio_found = PT.get_child_from_label(jn, 'GridConnectivityProperty_t') is not None
-    if perio_found:
-      break
-  if perio_found:
-    MJT.add_joins_donor_name(tree, comm, force=True)
+          
+  # # If we have multiple periodic jns or intrazone periodics, we can not guarantee that GridConnectivityDonorName is
+  # # good so rebuild it
+  # perio_found = False
+  # for jn in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', match_jns]):
+  #   perio_found = PT.get_child_from_label(jn, 'GridConnectivityProperty_t') is not None
+  #   if perio_found:
+  #     break
+  # if perio_found:
+  #   MJT.add_joins_donor_name(tree, comm, force=True)
+  MJT.add_joins_donor_name(tree, comm, force=True)
 
 
 def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
