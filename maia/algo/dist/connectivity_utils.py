@@ -54,25 +54,34 @@ def cell_vtx_connectivity_S(zone_S, dim, cell_subset=None):
   # NB this is not factorised with part.connectivity_utils because arrays layout seems different
   # Maybe we could merge it 
   vertex_size = PT.Zone.VertexSize(zone_S)
-  cell_distri = MT.getDistribution(zone_S, 'Cell')[1]
+  cell_distri = MT.distribution_value(zone_S, 'Cell')
 
   if cell_subset is not None:
     # cell_i, cell_j and cell_k are provided
-    if dim == 2:
+    if dim == 1:
+      cell_i = cell_subset
+    elif dim == 2:
       cell_i, cell_j = cell_subset
-    if dim == 3:
+    elif dim == 3:
       cell_i, cell_j, cell_k = cell_subset
   else:
     # Compute cell_i, cell_j, cell_k for all cells of the mesh (distributed)
     cell_idx = np.arange(cell_distri[0]+1, cell_distri[1]+1, dtype=zone_S[1].dtype) # Distributed view of cells, as idx  
-    if dim == 2:
+    if dim == 1:
+      cell_i = cell_idx
+    elif dim == 2:
       cell_i, cell_j = s_numbering.index_to_ij(cell_idx, PT.Zone.CellSize(zone_S))
     elif dim == 3:
       cell_i, cell_j, cell_k = s_numbering.index_to_ijk(cell_idx, PT.Zone.CellSize(zone_S))
 
   dn_cell  = cell_i.size
 
-  if dim == 2:
+  if dim == 1:
+    cell_vtx = np.zeros(2*dn_cell, zone_S[1].dtype)
+    cell_vtx_idx = 2*np.arange(0, dn_cell+1, dtype=np.int32)
+    cell_vtx[0::2] = cell_i
+    cell_vtx[1::2] = cell_i+1
+  elif dim == 2:
     cell_vtx = np.zeros(4*dn_cell, zone_S[1].dtype)
     cell_vtx_idx = 4*np.arange(0, dn_cell+1, dtype=np.int32)
     cell_vtx[0::4] = s_numbering.ij_to_index(cell_i,   cell_j,   vertex_size).flatten()

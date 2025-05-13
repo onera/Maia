@@ -22,7 +22,7 @@ is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
 
 def compute_face_normal(zone, comm, unitary=False):
   """
-  Compute the face normal of a distributed zone, for phydim = 2 or 3
+  Compute the face normal of a distributed zone, for phydim = 3
   """
   zone_dim = PT.Zone.CellDimension(zone)
   phy_dim  = PT.Zone.PhysicalDimension(zone)
@@ -60,6 +60,45 @@ def compute_face_normal(zone, comm, unitary=False):
 
   return face_normal
 
+def compute_edge_normal(zone, comm, unitary=False):
+  """
+  Compute the face normal of a distributed zone, for phydim = 2
+  """
+  zone_dim = PT.Zone.CellDimension(zone)
+  phy_dim  = PT.Zone.PhysicalDimension(zone)
+  assert zone_dim in [1,2], "CellDimension of zone must be >= 2 to compute face normals"
+  assert phy_dim  == 2, "PhysicalDimension of zone must be 3 to compute face normals"
+
+
+  # Get face_vtx
+  if PT.Zone.Type(zone) == "Unstructured":
+    if is_poly_2d_zone(zone):
+      edge_node = MT.Zone.EdgeNode(zone)
+      edge_vtx = MT.Element.connectivity(edge_node)
+    else: # Zone has std elements
+      global_distri = (zone_dim == 1)
+      edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
+  elif PT.Zone.Type(zone) == 'Structured':
+    if zone_dim == 2:
+      edge_node = S2U.zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
+      edge_vtx = MT.Element.connectivity(edge_node)
+    if zone_dim == 1:
+      edge_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim)
+
+  local_coords = get_local_coordinates(zone, edge_vtx.values, comm)
+
+  edge_normal = np.empty(2*len(edge_vtx))
+  edge_normal[0::2] = local_coords[1][1::2] - local_coords[1][0::2] # nx =   yb - ya
+  edge_normal[1::2] = local_coords[0][0::2] - local_coords[0][1::2] # ny = -(xb - xa)
+
+  if unitary:
+    edge_normal.shape = (-1, 2)
+    norm = np.linalg.norm(edge_normal, axis=1).reshape(-1,1)
+    edge_normal /= norm
+    edge_normal.shape = (-1)
+
+  return edge_normal
+
 def _compute_elements_normal(zone, comm, unitary=False):
   """
   Distributed implementation of _compute_elements_normal, which compute normal vectors
@@ -70,7 +109,7 @@ def _compute_elements_normal(zone, comm, unitary=False):
   if phy_dim == 3 and cell_dim >= 2:
     return compute_face_normal(zone, comm, unitary)
   elif phy_dim == 2 and cell_dim <= 2:
-    raise NotImplementedError
+    return compute_edge_normal(zone, comm, unitary)
 
 
 def compute_elements_normal(zone, comm, unitary=False):
