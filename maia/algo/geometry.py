@@ -153,7 +153,7 @@ def compute_elements_normal(t: CGNSTree,
     - Only cartesian coordinates are supported.
 
   Input tree is modified inplace : results are stored in a
-  ``DiscreteData_t`` container named ``Geometry_{2|3}d``. Note that for
+  ``DiscreteData_t`` container named ``Geometry_{1|2|3}d``. Note that for
   unstructured zones described by standard elements, normals are computed
   only for elements explicitly defined in sections.
 

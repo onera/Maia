@@ -14,6 +14,7 @@ Developpement version
 
 💡 New Features
 ^^^^^^^^^^^^^^^
+- Algo module: add ``compute_elements_normal`` to compute face or edge normal (depending on PhyDim)
 - Support for type hints
 
 🚀 Feature improvements

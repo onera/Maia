@@ -225,7 +225,7 @@ def test_compute_elements_normal_edge(cell_dim, comm):
     PT.rm_nodes_from_name(tree, 'CoordinateZ')
 
     zone = PT.get_all_Zone_t(tree)[0]
-    GEO.compute_elements_normal(zone)
+    maia.algo.compute_elements_normal(tree)
 
     container = PT.find_node_from_name(zone, 'Geometry_1d')
     assert PT.Subset.GridLocation(container) == expt_loc
