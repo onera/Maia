@@ -62,10 +62,10 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
     if has_face_gc:
       # Vtx gnum is needed for face->vtx conversion.
       # Connectivities should have been already added by _get_joins_dist_tree
-      vtx_lngn_l = [PT.get_np_value(MT.requestGlobalNumbering(part, 'Vertex')) for part in parts]
+      vtx_lngn_l = [MT.globalnumbering_value(part, 'Vertex') for part in parts]
       vtx_distri  = par_utils.distribution_from_gnum(vtx_lngn_l, comm)
 
-      MT.newDistribution({'Vertex' : vtx_distri}, parent=dist_zone)
+      MT.new_Distribution({'Vertex' : vtx_distri}, parent=dist_zone)
       tree_has_face_gc = True
 
   if tree_has_face_gc:
@@ -120,7 +120,7 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
   vtx_ggnum_parts = []
   for vtx_mdom_offset, parts in zip(vtx_mdom_offsets, parts_per_dom.values()):
     for part in parts:
-      vtx_gnum = as_pdm_gnum(PT.get_np_value(MT.requestGlobalNumbering(part, 'Vertex')))
+      vtx_gnum = as_pdm_gnum(MT.globalnumbering_value(part, 'Vertex'))
       for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
         pl = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
         vtx_ggnum_parts.append(vtx_gnum[pl-1] + vtx_mdom_offset) #Domain gnum on part side

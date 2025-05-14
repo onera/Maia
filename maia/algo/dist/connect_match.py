@@ -36,7 +36,7 @@ def _shift_face_num(cgns_ids:NDArray, zone:CGNSTree, reverse:bool=False) -> NDAr
 def _nodal_sections_to_face_vtx(sections: List[Dict[str, Any]],
                                 rank: int) -> Tuple[NDArray, NDArray]:
   """ Rebuild a Ngon like connectivity (face_vtx) from sections coming from PDM """
-  elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=PT.maia.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
+  elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=MT.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
 
   face_n_vtx_list = [elem_n_vtx(section['pdm_type']) for section in sections]
   
@@ -343,7 +343,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
         assert _periodic is not None
         PT.new_GridConnectivityProperty(_periodic, jn)
 
-      MT.newDistribution({"Index" : jn_distri.copy()}, jn)
+      MT.new_Distribution({"Index" : jn_distri.copy()}, jn)
 
       to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
       origin_node = PT.find_node_from_path(dist_tree, origin_path_cur)
@@ -369,7 +369,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
       PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
       PT.update_child(input_node, 'GridLocation', value='FaceCenter')
       PT.update_child(input_node, 'PointList', value=unfound.reshape((1,-1), order='F'))
-      MT.newDistribution({'Index':  par_utils.dn_to_distribution(unfound.size, comm)}, input_node)
+      MT.new_Distribution({'Index':  par_utils.dn_to_distribution(unfound.size, comm)}, input_node)
     else:
       PT.rm_node_from_path(dist_tree, cloud_path)
 

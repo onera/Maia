@@ -20,7 +20,7 @@ def _get_zone_ln_to_gn_from_loc(zone: CGNSTree, location: str) -> NDArray:
     Global numbering array for the specified location
   """
   _loc = location.replace('Center', '')
-  ln_to_gn = as_pdm_gnum(PT.get_np_value(MT.requestGlobalNumbering(zone, _loc)))
+  ln_to_gn = as_pdm_gnum(MT.globalnumbering_value(zone, _loc))
   return ln_to_gn
 
 def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[NDArray, NDArray]:

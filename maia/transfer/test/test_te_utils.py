@@ -167,7 +167,7 @@ def test_get_entities_numbering():
   expected_cell_lngn = np.array([], int)
 
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn, 'Face' : expected_face_lngn}
-  gnum_node = MT.newGlobalNumbering(gnum_arrays, zoneS)
+  gnum_node = MT.new_GlobalNumbering(gnum_arrays, zoneS)
   vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneS)
   assert (cell_lngn == expected_cell_lngn).all()
   assert (face_lngn == expected_face_lngn).all()
@@ -175,15 +175,15 @@ def test_get_entities_numbering():
 
   zoneU = PT.new_Zone(type='Unstructured')
   gnum_arrays = {'Cell' : expected_cell_lngn, 'Vertex' : expected_vtx_lngn}
-  gnum_node = MT.newGlobalNumbering(gnum_arrays, zoneU)
+  gnum_node = MT.new_GlobalNumbering(gnum_arrays, zoneU)
 
   vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
   assert face_lngn is None
 
   ngon = PT.new_Elements(type='NGON_n', parent=zoneU)
-  gnum_node = MT.newGlobalNumbering({'Element' : expected_face_lngn}, ngon)
+  gnum_node = MT.new_GlobalNumbering({'Element' : expected_face_lngn}, ngon)
   edge = PT.new_Elements('EdgeElements', type='BAR_2', parent=zoneU)
-  gnum_node = MT.newGlobalNumbering({'Element' : np.array([1,6,3,2])}, edge)
+  gnum_node = MT.new_GlobalNumbering({'Element' : np.array([1,6,3,2])}, edge)
   vtx_lngn, edge_lngn, face_lngn, cell_lngn = utils.get_entities_numbering(zoneU)
   assert (vtx_lngn == expected_vtx_lngn).all()
   assert (edge_lngn == [1,6,3,2]).all()

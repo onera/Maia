@@ -75,7 +75,7 @@ def _decompose_sections_to_face_vtx(zone):
   all_face_vtx = []
   for elt in PT.Zone.get_ordered_elements_per_dim(zone)[3]:
     ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
-    elt_distri = MT.getDistribution(elt, 'Element')[1]
+    elt_distri = MT.distribution_value(elt, 'Element')
     elt_kind = PT.Element.CGNSName(elt)
     n_elt = elt_distri[1] - elt_distri[0]
 
@@ -114,7 +114,7 @@ def compute_cell_measure(zone, comm):
 
     ngon_node = PT.Zone.NGonNode(zone)
     face_vtx = MT.Element.connectivity(ngon_node)
-    face_distri = MT.getDistribution(ngon_node, 'Element')[1]
+    face_distri = MT.distribution_value(ngon_node, 'Element')
 
     if not PT.Zone.has_nface_elements(zone):
       maia.algo.pe_to_nface(zone, comm)
@@ -142,12 +142,12 @@ def compute_cell_measure(zone, comm):
 
 
     # Finally, move measure to allCell distribution (same method than _entity_vtx_connectivity_elt)
-    distri_cell = MT.get_distribution(zone, 'Cell')[1]
+    distri_cell = MT.distribution_value(zone, 'Cell')
     start = 0
     read_idx = 0
     measure_cell = []
     for elt in PT.Zone.get_ordered_elements_per_dim(zone)[3]:
-      distri = MT.get_distribution(elt, 'Element')[1]
+      distri = MT.distribution_value(elt, 'Element')
       dn_elt = distri[1] - distri[0]
       end = start + PT.Element.Size(elt)
       distri_out = distri.copy()

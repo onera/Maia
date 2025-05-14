@@ -58,7 +58,7 @@ def pe_to_nface(t: CGNSTree,
   """
   predicate = lambda z: is_poly_3d_zone(z) and not PT.Zone.has_nface_elements(z)
   for zone in iter_matching_zones(t, predicate):
-    if MT.getDistribution(zone) is not None:
+    if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.pe_to_nface(zone, comm, removePE)
     else:
@@ -86,7 +86,7 @@ def nface_to_pe(t: CGNSTree,
   """
   predicate = lambda z: is_poly_3d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
   for zone in iter_matching_zones(t, predicate):
-    if MT.getDistribution(zone) is not None:
+    if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.nface_to_pe(zone, comm, removeNFace)
     else:
@@ -114,7 +114,7 @@ def edge_pe_to_ngon(t: CGNSTree,
   """
   predicate = lambda z: is_poly_2d_zone(z) and not PT.Zone.has_ngon_elements(z)
   for zone in iter_matching_zones(t, predicate):
-    if MT.getDistribution(zone) is not None:
+    if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.edge_pe_to_ngon(zone, comm, removePE)
     else:
@@ -144,7 +144,7 @@ def ngon_to_edge_pe(t: CGNSTree,
   """
   predicate = lambda z: is_poly_2d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
   for zone in iter_matching_zones(t, predicate):
-    if MT.getDistribution(zone) is not None:
+    if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.ngon_to_edge_pe(zone, comm, remove_NGon)
     else:

@@ -13,7 +13,7 @@ def get_local_coordinates(zone, vtx_ids, comm):
   Exchange is performed in the function. vtx_ids must start at 1.
   """
   coords = PT.Zone.coordinates(zone)
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
 
   dist_data = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
   part_data = EP.block_to_part(dist_data, vtx_distri, vtx_ids-1, comm)
@@ -46,12 +46,12 @@ def place_in_container(zone, rq_dim, fields, comm):
         existing_pr = PT.get_child_from_name(container, 'PointRange')
         if existing_pr:
           cur_pr = existing_pr[1]
-          cur_distri = MT.getDistribution(container, 'Index')[1]
+          cur_distri = MT.distribution_value(container, 'Index')
           if not (np.array_equal(cur_pr, pr) and np.array_equal(cur_distri, distri)):
             raise RuntimeError("Container already exists, but has incompatible PointRange or Distribution")
         else:
           PT.new_IndexRange(value=pr, parent=container)
-          MT.newDistribution({'Index' : distri}, container)
+          MT.new_Distribution({'Index' : distri}, container)
         start = end
 
     if output_loc == 'CellCenter':
@@ -66,12 +66,12 @@ def place_in_container(zone, rq_dim, fields, comm):
         elif output_loc == 'EdgeCenter':
           ng = MT.Zone.EdgeNode(zone)
         er = PT.Element.Range(ng)
-        distri = MT.getDistribution(ng, 'Element')[1]
+        distri = MT.distribution_value(ng, 'Element')
         pl = np.arange(distri[0]+er[0], distri[1]+er[0], dtype=er.dtype).reshape((1,-1), order='F')
       else: # Must collect faces or edge in same order than the one used to compute face centers
         subdim = 2 if output_loc == 'FaceCenter' else 1
         ordered_faces = PT.Zone.get_ordered_elements_per_dim(zone)[subdim]
-        distribs = [MT.getDistribution(e, 'Element')[1] for e in ordered_faces]
+        distribs = [MT.distribution_value(e, 'Element') for e in ordered_faces]
         sizes =  [distri_elt[1] - distri_elt[0] for distri_elt in distribs]
         pl = np.empty((1, sum(sizes)), dtype=zone[1].dtype, order='F')
         start = 0
@@ -85,9 +85,9 @@ def place_in_container(zone, rq_dim, fields, comm):
       existing_pl = PT.get_child_from_name(container, 'PointList')
       if existing_pl is not None:
         cur_pl   = existing_pl[1]
-        cur_distri = PT.maia.getDistribution(container, 'Index')[1]
+        cur_distri = MT.distribution_value(container, 'Index')
         if not (np.array_equal(cur_pl, pl) and np.array_equal(cur_distri, distri)):
           raise RuntimeError("Container already exists, but has incompatible PointList or Distribution")
       else:
         PT.new_IndexArray('PointList', pl, container)
-        PT.maia.newDistribution({'Index' : distri}, container)
+        MT.new_Distribution({'Index' : distri}, container)

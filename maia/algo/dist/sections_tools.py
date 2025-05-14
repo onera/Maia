@@ -81,7 +81,7 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         merged_range[0] = PT.Element.Range(elts[0] )[0]
         merged_range[1] = PT.Element.Range(elts[-1])[1]
         merged_elt = PT.new_Elements(f'{kind}', kind, erange=merged_range, econn=merged_ec)
-        MT.newDistribution({'Element' : merged_distri}, merged_elt)
+        MT.new_Distribution({'Element' : merged_distri}, merged_elt)
 
         for elt in elts:
           PT.rm_child(zone, elt)
@@ -155,7 +155,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
 
       if (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
         # PointRange may cross several sections, so we extend it
-        distri = PT.get_np_value(distri_n) if (distri_n := MT.getDistribution(subset, 'Index')) is not None else None
+        distri = PT.get_np_value(distri_n) if (distri_n := MT.get_Distribution(subset, 'Index')) is not None else None
         new_pl = np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), distri)
         PT.update_node(pr, 'PointList', 'IndexArray_t', new_pl)
 

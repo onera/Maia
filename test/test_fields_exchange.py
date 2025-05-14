@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 import maia.pytree        as PT
+import maia.pytree.maia   as MPT
 
 from maia import io       as MIO
 from maia import factory  as MF
@@ -23,7 +24,7 @@ def _create_dist_sol(dist_tree, comm):
   # Create artificial fields on the distributed zone
   dist_zone = PT.get_all_Zone_t(dist_tree)[0] #This mesh is single zone
   fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
-  cell_distri = PT.maia.getDistribution(dist_zone, 'Cell')[1]
+  cell_distri = MPT.get_Distribution(dist_zone, 'Cell')[1]
   n_cell_dist = cell_distri[1] - cell_distri[0]
   PT.new_DataArray('RankId', comm.Get_rank() * np.ones(n_cell_dist), parent=fs)
   PT.new_DataArray('CellId', np.arange(cell_distri[0], cell_distri[1]) + 1, parent=fs)
@@ -34,7 +35,7 @@ def _create_dist_dataset(dist_tree, comm):
   bc_aval  = PT.get_node_from_name_and_label(dist_tree, 'aval',  'BC_t')
 
   for i, bc in enumerate([bc_amont, bc_aval]):
-    patch_distri = PT.maia.getDistribution(bc, "Index")[1]
+    patch_distri = MPT.get_Distribution(bc, "Index")[1]
     patch_size   = PT.Subset.n_elem(bc) #This is local
     bcds   = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
     bcdata = PT.new_child(bcds, 'BCData', 'BCData_t')

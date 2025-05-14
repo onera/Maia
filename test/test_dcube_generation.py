@@ -31,9 +31,9 @@ def test_generate_dcube_ngons(comm, write_output):
   # > The cube include 6 boundary groups
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 6
 
-  assert MT.getDistribution(zone) is not None
+  assert MT.get_Distribution(zone) is not None
   # > Distribution dtype should be consistent with PDM
-  assert MT.getDistribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
+  assert MT.get_Distribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)
@@ -66,9 +66,9 @@ def test_generate_dcube_elts(cgns_elmt_name, comm, write_output):
   main_elem_n = [e for e in elem_nodes if PT.Element.CGNSName(e) == cgns_elmt_name]
   assert len(main_elem_n) == 1
 
-  assert MT.getDistribution(zone) is not None
+  assert MT.get_Distribution(zone) is not None
   # > Distribution dtype should be consistent with PDM
-  assert MT.getDistribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
+  assert MT.get_Distribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)
@@ -94,6 +94,6 @@ def test_generate_place_ngons(random, comm):
   # > The mesh include 4 boundary groups
   assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 4
 
-  assert MT.getDistribution(zone) is not None
+  assert MT.get_Distribution(zone) is not None
   # > Distribution dtype should be consistent with PDM
-  assert MT.getDistribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
+  assert MT.get_Distribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype

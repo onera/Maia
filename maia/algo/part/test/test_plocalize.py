@@ -23,14 +23,14 @@ def test_get_part_data(elt_kind, comm):
   if elt_kind == 'Poly':
     data = LOC._get_part_data_ngon(zone)
     assert len(data) == 8
-    assert (data[2] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
-    assert (data[7] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
+    assert (data[2] == MT.globalnumbering_value(zone, 'Cell'  )).all()
+    assert (data[7] == MT.globalnumbering_value(zone, 'Vertex')).all()
     assert data[6].size == 3*PT.Zone.n_vtx(zone) #Coords
   elif elt_kind == 'HEXA_8':
     data = LOC._get_part_data_elts(zone)
     assert len(data) == 5
-    assert (data[2] == MT.getGlobalNumbering(zone, 'Cell'  )[1]).all()
-    assert (data[4] == MT.getGlobalNumbering(zone, 'Vertex')[1]).all()
+    assert (data[2] == MT.globalnumbering_value(zone, 'Cell'  )).all()
+    assert (data[4] == MT.globalnumbering_value(zone, 'Vertex')).all()
     assert data[3].size == 3*PT.Zone.n_vtx(zone) #Coords
 
 @pytest_parallel.mark.parallel(2)
@@ -71,7 +71,7 @@ def test_mesh_location(reverse, comm):
   if reverse:
     gnum_full = vstride.from_displs([0,0,0,0,2,2,2,2,3], [1,2,3])
     for i_part, zone in enumerate(PT.get_all_Zone_t(tree)):
-      cell_gnum = PT.maia.get_global_numbering(zone, 'Cell')[1].astype(np.int64)
+      cell_gnum = MT.globalnumbering_value(zone, 'Cell').astype(np.int64)
       expected_gnum = vstride.take(gnum_full, cell_gnum-1)
       assert vstride.array_equal(expected_gnum, src_data[i_part]['points_gnum'])
 

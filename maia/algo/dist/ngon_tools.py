@@ -51,8 +51,8 @@ def pe_to_nface(zone, comm, remove_PE=False):
       Defaults to False.
   """
   ngon_node = PT.Zone.NGonNode(zone)
-  nface_distri = MT.getDistribution(zone, 'Cell')[1]
-  ngon_distri  = MT.getDistribution(ngon_node, 'Element')[1]
+  nface_distri = MT.distribution_value(zone, 'Cell')
+  ngon_distri  = MT.distribution_value(ngon_node, 'Element')
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
   assert PT.Element.Range(ngon_node)[0] == 1
@@ -66,7 +66,7 @@ def pe_to_nface(zone, comm, remove_PE=False):
   eso = cell_face.displs + nface_ec_distri[0]
 
   nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=cell_face.values, parent=zone)
-  MT.newDistribution({"Element" : nface_distri, "ElementConnectivity" : nface_ec_distri}, nface)
+  MT.new_Distribution({"Element" : nface_distri, "ElementConnectivity" : nface_ec_distri}, nface)
 
   if remove_PE:
     PT.rm_children_from_name(ngon_node, "ParentElements")
@@ -84,8 +84,8 @@ def nface_to_pe(zone, comm, remove_NFace=False):
   """
   ngon_node  = PT.Zone.NGonNode(zone)
   nface_node = PT.Zone.NFaceNode(zone)
-  ngon_distri    = MT.getDistribution(ngon_node , 'Element')[1]
-  nface_distri   = MT.getDistribution(nface_node, 'Element')[1]
+  ngon_distri    = MT.distribution_value(ngon_node , 'Element')
+  nface_distri   = MT.distribution_value(nface_node, 'Element')
 
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
@@ -136,7 +136,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
 
   # NGON Data
   ngon_node = PT.Zone.NGonNode(zone)
-  distri_face = MT.getDistribution(ngon_node, 'Element')[1]
+  distri_face = MT.distribution_value(ngon_node, 'Element')
   face_vtx = MT.Element.connectivity(ngon_node)
 
   first_vtx  = face_vtx
@@ -197,9 +197,9 @@ def edge_pe_to_ngon(zone, comm, remove_PE=False):
   """
 
   edge_node = MT.Zone.EdgeNode(zone)
-  edge_distri = MT.getDistribution(edge_node, 'Element')[1]
+  edge_distri = MT.distribution_value(edge_node, 'Element')
   edge_distri = par_utils.partial_to_full_distribution(edge_distri, comm)
-  ngon_distri = MT.getDistribution(zone, 'Cell')[1] # ngon = face = cell in tree
+  ngon_distri = MT.distribution_value(zone, 'Cell') # ngon = face = cell in tree
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   assert PT.Element.Range(edge_node)[0] == 1
   local_pe = indexing.get_pe_local(edge_node).reshape(-1, order='C')
@@ -214,7 +214,7 @@ def edge_pe_to_ngon(zone, comm, remove_PE=False):
   eso = face_edge.displs + ngon_ec_distri[0]
 
   ngon = PT.new_NGonElements(erange=face_vtx_range, eso=eso, ec=face_vtx.values, parent=zone)
-  MT.newDistribution({"Element" : ngon_distri, "ElementConnectivity" : ngon_ec_distri}, ngon)
+  MT.new_Distribution({"Element" : ngon_distri, "ElementConnectivity" : ngon_ec_distri}, ngon)
 
   if remove_PE:
     PT.rm_children_from_name(edge_node, "ParentElements")

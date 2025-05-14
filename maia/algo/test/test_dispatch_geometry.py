@@ -75,7 +75,7 @@ def test_compute_elements_center(parallel, comm):
     ec= np.empty(0, z[1].dtype)
     distri =  10*np.ones(3, z[1].dtype)
   bar_n = PT.new_Elements('BAR_2.0', 'BAR_2', erange=[6201, 6210], econn=ec, parent=z)
-  MT.newDistribution({'Element' : distri}, bar_n)
+  MT.new_Distribution({'Element' : distri}, bar_n)
 
   if parallel == 'part':
     tree = maia.factory.partition_dist_tree(tree, comm)
@@ -116,7 +116,7 @@ def test_compute_elements_center(parallel, comm):
           assert PT.get_child_from_name(zone, f'Geometry_2d_J') is not None
           assert PT.get_child_from_name(zone, f'Geometry_2d_K') is not None
         for sol in PT.get_children_from_name(zone, f'Geometry_*'):
-          assert MT.getGlobalNumbering(sol) is None
+          assert MT.get_GlobalNumbering(sol) is None
           dim = int(PT.get_name(sol)[9])
           if cell_dim == dim:
             arrays = [PT.get_child_from_name(sol, f'Center{dir}')[1] for dir in 'XYZ'[:phy_dim]]
@@ -145,7 +145,7 @@ def test_compute_elements_center(parallel, comm):
             if parallel == 'part':
               assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1))
             else:
-              distri = MT.getDistribution(sol, 'Index')[1]
+              distri = MT.distribution_value(sol, 'Index')
               # Works but probably because only one section per dim, otherwise PL may mix elements
               assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1)[distri[0]:distri[1]])
 
@@ -203,7 +203,7 @@ def test_compute_elements_measure(parallel, comm):
     ec= np.empty(0, z[1].dtype)
     distri =  10*np.ones(3, z[1].dtype)
   bar_n = PT.new_Elements('BAR_2.0', 'BAR_2', erange=[last_range+1, last_range+10], econn=ec, parent=z)
-  MT.newDistribution({'Element' : distri}, bar_n)
+  MT.new_Distribution({'Element' : distri}, bar_n)
 
   if parallel == 'part':
     tree = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=True)
@@ -243,7 +243,7 @@ def test_compute_elements_measure(parallel, comm):
           assert PT.get_child_from_name(zone, f'Geometry_2d_J') is not None
           assert PT.get_child_from_name(zone, f'Geometry_2d_K') is not None
         for sol in PT.get_children_from_name(zone, f'Geometry_*'):
-          assert MT.getGlobalNumbering(sol) is None
+          assert MT.get_GlobalNumbering(sol) is None
           dim = int(PT.get_name(sol)[9])
           if cell_dim == dim:
             computed = PT.get_child_from_name(sol, f'Measure')[1].reshape(-1, order='F')
@@ -268,6 +268,6 @@ def test_compute_elements_measure(parallel, comm):
             else:
               starts, ends = [], []
               for elt in PT.Zone.get_ordered_elements_per_dim(zone)[dim]:
-                starts.append(MT.getDistribution(elt, 'Element')[1][0] + PT.Element.Range(elt)[0])
-                ends  .append(MT.getDistribution(elt, 'Element')[1][1] + PT.Element.Range(elt)[0])
+                starts.append(MT.distribution_value(elt, 'Element')[0] + PT.Element.Range(elt)[0])
+                ends  .append(MT.distribution_value(elt, 'Element')[1] + PT.Element.Range(elt)[0])
               assert np.array_equal(pl, np_utils.multi_arange(starts, ends))

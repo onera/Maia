@@ -54,7 +54,7 @@ def generate_dist_line(n_point: int,
   dist_zone = PT.new_Zone(f'Line', type='Unstructured', size=np.array([[n_point,n_point-1,0]], dtype=pdm_gnum_dtype), parent=dist_base)
   PT.new_GridCoordinates(fields=coords, parent=dist_zone)
   elmt_n = PT.new_Elements('BAR_2', type='BAR_2', erange=[1,n_point-1], econn=ec, parent=dist_zone)
-  MT.newDistribution({"Element":bar_distrib}, parent=elmt_n)
-  MT.newDistribution({"Vertex":vtx_distrib, "Cell":bar_distrib}, parent=dist_zone)
+  MT.new_Distribution({"Element":bar_distrib}, parent=elmt_n)
+  MT.new_Distribution({"Vertex":vtx_distrib, "Cell":bar_distrib}, parent=dist_zone)
 
   return dist_tree

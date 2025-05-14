@@ -42,7 +42,7 @@ def create_part_pl_gnum_unique(part_zones: List[CGNSPartTree],
     if node:
       offset = shifted_part[comm.Get_rank()] + i_zone
       start = np.sum(size_per_part[:offset]) + 1
-      distri_ud = MT.newGlobalNumbering(parent=node)
+      distri_ud = MT.new_GlobalNumbering(parent=node)
       PT.new_DataArray('Index', np.arange(start, start+size_per_part[offset], dtype=pdm_gnum_dtype), parent=distri_ud)
 
 def create_part_pl_gnum(dist_zone: CGNSDistTree, 
@@ -96,7 +96,7 @@ def create_part_pl_gnum(dist_zone: CGNSDistTree,
   for p_zone in part_zones:
     node = PT.get_node_from_path(p_zone, node_path)
     if node:
-      distri_ud = MT.newGlobalNumbering(parent=node)
+      distri_ud = MT.new_GlobalNumbering(parent=node)
       PT.new_DataArray('Index', part_lngn[i_zone], parent=distri_ud)
       i_zone += 1
 
@@ -142,7 +142,7 @@ def create_part_pr_gnum(dist_zone: CGNSDistTree,
   for part_zone in part_zones:
     node = PT.get_node_from_path(part_zone, node_path)
     if node:
-      MT.newGlobalNumbering({'Index': index_gnum[i_zone]}, parent=node)
+      MT.new_GlobalNumbering({'Index': index_gnum[i_zone]}, parent=node)
       i_zone += 1
 
 def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
@@ -213,7 +213,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
   assert pl[1].ndim == 2 and pl[1].shape[0] == idx_dim
 
   # Add distribution in dist_node
-  MT.newDistribution({'Index' : distri}, parent=dist_node)
+  MT.new_Distribution({'Index' : distri}, parent=dist_node)
 
 
 def _part_triplet_to_dist_triplet( ptriplet, loc, ln_to_gn, pvtx_size, dvtx_size):
@@ -278,7 +278,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
       proc_permuted = proc_permuted | permuted
 
       # Get the global triplet related to the min and max corners of the window
-      ln_to_gn = MT.getGlobalNumbering(part_zone, LOC_TO_GN[loc])[1]
+      ln_to_gn = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
       proc_bottom.append(_part_triplet_to_dist_triplet(pr[:,0], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
       proc_top.append(_part_triplet_to_dist_triplet(pr[:,1], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
 
@@ -303,7 +303,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   distri = par_utils.uniform_distribution(pr_size, comm)
 
   PT.new_IndexRange(value=dist_pr, parent=dist_node)
-  MT.newDistribution({'Index' : distri}, parent=dist_node)
+  MT.new_Distribution({'Index' : distri}, parent=dist_node)
 
 def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   """
@@ -328,7 +328,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
       cst_stride = PT.Element.NVtx(elt_n)
 
       # Retrieve the ElementRange within the given dimension
-      section_gnum = MT.getGlobalNumbering(elt_n, 'Sections')[1]
+      section_gnum = MT.globalnumbering_value(elt_n, 'Sections')
       min_section_gn = min(min_section_gn, np.min(section_gnum))
       max_section_gn = max(max_section_gn, np.max(section_gnum))
 
@@ -359,7 +359,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   # > Add in disttree
   elt_node = PT.new_Elements(elem_name, type=elt_id, erange=[min_section_gn, max_section_gn], econn=dist_ec, parent=dist_zone)
 
-  MT.newDistribution({'Element' : distri_elt}, parent=elt_node)
+  MT.new_Distribution({'Element' : distri_elt}, parent=elt_node)
 
 def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   """
@@ -481,7 +481,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
     PT.new_DataArray('ParentElements', dist_pe, parent=elt_node)
 
   DistriFaceVtx = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
-  distri_ud = MT.newDistribution(parent=elt_node)
+  distri_ud = MT.new_Distribution(parent=elt_node)
   PT.new_DataArray('Element',                    distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
   PT.new_DataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
@@ -533,4 +533,4 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   elt_node = PT.new_NFaceElements(elem_name, erange=elt_range, eso=dist_eso, ec=dist_ec, parent=dist_zone)
 
   distri_cell_face = par_utils.dn_to_distribution(dist_ec.shape[0], comm)
-  MT.newDistribution({'Element' : distri_cell, 'ElementConnectivity' : distri_cell_face}, parent=elt_node)
+  MT.new_Distribution({'Element' : distri_cell, 'ElementConnectivity' : distri_cell_face}, parent=elt_node)

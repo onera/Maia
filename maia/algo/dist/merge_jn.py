@@ -19,7 +19,7 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   """
   Update ParentElements in ngon to combinate faces
   """
-  face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
+  face_distri = MT.distribution_value(ngon, 'Element')
   pe          = PT.get_node_from_path(ngon, 'ParentElements')[1]
 
 
@@ -40,7 +40,7 @@ def _update_ngon_remove_faces(ngon, del_faces, comm):
   """
   Remove faces from EC, PE and ESO and update distribution info in ngon
   """
-  face_distri = PT.get_value(MT.getDistribution(ngon, 'Element'))
+  face_distri = MT.distribution_value(ngon, 'Element')
   face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
   
   GI = EP.GlobalIndexer(face_distri_f, del_faces-1, comm)
@@ -126,7 +126,7 @@ def _update_subset(node, pl_new, data_query, comm):
   dist_data_ideal = EP.block_to_block(dist_data, new_distri_full, ideal_distri, comm)
 
   #Update distribution and size
-  MT.newDistribution({'Index' : ideal_distri}, node)
+  MT.new_Distribution({'Index' : ideal_distri}, node)
 
   #Update PointList and data
   PT.update_child(node, 'PointList', 'IndexArray_t', dist_data_ideal.pop(pl_identifier).reshape(1,-1, order='F'))
@@ -234,7 +234,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   managed : GridCoordinates, FlowSolution, DiscreteData)
   and update vertex distribution info
   """
-  vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
+  vtx_distri_ini  = MT.distribution_value(zone, 'Vertex')
   pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
   GI = EP.GlobalIndexer(pdm_distrib, vtx_to_remove-1, comm)
@@ -256,7 +256,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   n_rmvd   = mask.size - mask.sum()
   n_rmvd_offset  = par_utils.gather_and_shift(n_rmvd, comm, pdm_dtype)
   vtx_distri = vtx_distri_ini - [n_rmvd_offset[i_rank], n_rmvd_offset[i_rank+1],  n_rmvd_offset[n_rank]]
-  MT.newDistribution({'Vertex' : vtx_distri}, zone)
+  MT.new_Distribution({'Vertex' : vtx_distri}, zone)
   zone[1][0][0] = vtx_distri[2]
 
 def _update_pl_pld_in_jn(dist_tree, zone_path):
@@ -318,8 +318,8 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   assert np.intersect1d(ref_vtx, vtx_to_remove).size == 0
 
   #Get initial distributions
-  face_distri_ini = PT.get_value(MT.getDistribution(ngon, 'Element')).copy()
-  vtx_distri_ini  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
+  face_distri_ini = MT.distribution_value(ngon, 'Element').copy()
+  vtx_distri_ini  = MT.distribution_value(zone, 'Vertex')
 
   old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, ref_faces, comm, True)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, ref_vtx, comm)

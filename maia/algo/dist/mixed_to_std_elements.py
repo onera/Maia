@@ -247,7 +247,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             beg_erange += nb_elems_per_type
             label = MPSEU.element_name(elem_type)
             elem_n = PT.new_Elements(label.capitalize(),label,erange=erange,econn=econn,parent=zone)
-            PT.maia.newDistribution({'Element' : elem_distrib}, parent=elem_n)
+            MT.new_Distribution({'Element' : elem_distrib}, parent=elem_n)
 
 
         # 6/ Update all PointList with GridLocation != Vertex

@@ -157,7 +157,7 @@ def split_original_joins(p_tree):
         if PT.GridConnectivity.is1to1(gc) and not MT.conv.is_intra_gc(gc[0]): #Skip part joins or non 1to1 jns
           pl       = PT.get_child_from_name(gc, 'PointList')[1]
           pl_d     = PT.get_child_from_name(gc, 'PointListDonor')[1]
-          lngn     = PT.get_value(MT.getGlobalNumbering(gc, 'Index'))
+          lngn     = MT.globalnumbering_value(gc, 'Index')
           donor    = PT.get_child_from_name(gc, 'Donor')[1]
           # > List of couples (procs, parts) holding the opposite join
           opposed_parts = np.unique(donor, axis=0)
@@ -186,7 +186,7 @@ def split_original_joins(p_tree):
 
             PT.new_IndexArray(name='PointList'     , value=sub_pl      , parent=join_n)
             PT.new_IndexArray(name='PointListDonor', value=sub_pl_d    , parent=join_n)
-            MT.newGlobalNumbering({'Index' : sub_lngn}, join_n)
+            MT.new_GlobalNumbering({'Index' : sub_lngn}, join_n)
             #Copy decorative nodes
             skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'GridConnectivityType']
             for node in PT.get_children(gc):

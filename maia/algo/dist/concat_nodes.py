@@ -69,14 +69,14 @@ def concatenate_subset_nodes(nodes: List[CGNSTree],
   assert val is not None
   newsize = val.shape[1]
   distri = par_utils.dn_to_distribution(newsize, comm)
-  MT.newDistribution({'Index' : distri}, node)
+  MT.new_Distribution({'Index' : distri}, node)
 
   for bcds_n in PT.get_children_from_label(node, 'BCDataSet_t'):
     bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
     if bcds_pl_n is not None:
       bcds_pl = PT.get_np_value(bcds_pl_n)[0]
       bcds_distrib = par_utils.dn_to_distribution(bcds_pl.size, comm)
-      MT.newDistribution({'Index':bcds_distrib}, parent=bcds_n)
+      MT.new_Distribution({'Index':bcds_distrib}, parent=bcds_n)
 
   return node
 
@@ -370,7 +370,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
                          parent=zone_bc_n)
         if concat_bc_fam_n is not None:
           PT.new_FamilyName(PT.get_str_value(concat_bc_fam_n), parent=bc_n)
-        PT.maia.newDistribution({'Index':bc_distrib}, parent=bc_n)
+        MT.new_Distribution({'Index':bc_distrib}, parent=bc_n)
         if orig_bc_ordin_n is not None:
           PT.new_node('Ordinal', 'Ordinal_t', orig_bc_ordin[bc_id], parent=bc_n)
 
@@ -395,7 +395,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
             bc_bcds_n = PT.new_BCDataSet(PT.get_name(bcds_n), type=bcds_type,
                                          point_list=bcds_pl.reshape((1,-1), order='F'),
                                          loc=bcds_loc, parent=bc_n)
-            PT.maia.newDistribution({'Index':bcds_distrib}, parent=bc_bcds_n)
+            MT.new_Distribution({'Index':bcds_distrib}, parent=bc_bcds_n)
             fields = {PT.get_name(data_array_n):PT.get_np_value(data_array_n)[bcds_pl_ids]
               for data_array_n in PT.get_children_from_label(bcd_n, 'DataArray_t')}
             bc_bcd_n = PT.new_BCData(PT.get_name(bcd_n), fields=fields, parent=bc_bcds_n)

@@ -54,7 +54,7 @@ def cell_vtx_connectivity_S(zone_S, dim, cell_subset=None):
   # NB this is not factorised with part.connectivity_utils because arrays layout seems different
   # Maybe we could merge it 
   vertex_size = PT.Zone.VertexSize(zone_S)
-  cell_distri = MT.getDistribution(zone_S, 'Cell')[1]
+  cell_distri = MT.distribution_value(zone_S, 'Cell')
 
   if cell_subset is not None:
     # cell_i, cell_j and cell_k are provided
@@ -121,19 +121,19 @@ def cell_vtx_connectivity_ngon(zone, comm, cell_subset=None):
   assert PT.Zone.Type(zone) == "Unstructured" and PT.Zone.CellDimension(zone) == 3
   if PT.Zone.has_ngon_elements(zone):
     ngon_node = PT.Zone.NGonNode(zone)
-    face_distri   = MT.get_distribution(ngon_node, 'Element')[1]
+    face_distri   = MT.distribution_value(ngon_node, 'Element')
     _face_distri  = par_utils.partial_to_full_distribution(face_distri, comm)
     face_vtx = MT.Element.connectivity(ngon_node)
     if PT.Zone.has_nface_elements(zone):
       nface_node = PT.Zone.NFaceNode(zone)
       cell_face = MT.Element.connectivity(nface_node)
-      cell_distri    = MT.get_distribution(nface_node, 'Element')[1]
+      cell_distri    = MT.distribution_value(nface_node, 'Element')
       _cell_distri   = par_utils.partial_to_full_distribution(cell_distri, comm)
 
     else:
       assert PT.Element.Range(ngon_node)[0] == 1
       local_pe = indexing.get_pe_local(ngon_node).reshape(-1, order='C')
-      cell_distri   = MT.get_distribution(zone, 'Cell')[1]
+      cell_distri   = MT.distribution_value(zone, 'Cell')
       _cell_distri  = par_utils.partial_to_full_distribution(cell_distri, comm)
       cell_face = PDM_dfacecell_to_dcellface(comm, _face_distri, _cell_distri, local_pe)
 
@@ -167,11 +167,11 @@ def entity_vtx_connectivity_elt(zone, comm, dim, distri_global, elts_subset=None
 
   if distri_global:
     assert PT.Zone.CellDimension(zone) == dim, "Redispatch only supported for native cell dimension"
-    distri_cell = MT.getDistribution(zone, 'Cell')[1]
+    distri_cell = MT.distribution_value(zone, 'Cell')
     start = 0
 
   for elt in PT.Zone.get_ordered_elements_per_dim(zone)[dim]:
-    distri = MT.get_distribution(elt, 'Element')[1]
+    distri = MT.distribution_value(elt, 'Element')
     ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
     
     if distri_global:

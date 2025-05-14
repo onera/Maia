@@ -77,7 +77,7 @@ def create_part_pointlists(dist_zone: CGNSDistTree,
             else:
               pl_value = pl_raw.reshape((1,-1), order='F') #type:ignore[assignment] #(reuse same var)
             PT.update_child(p_node, 'PointList', 'IndexArray_t', pl_value)
-            MT.newGlobalNumbering({'Index': p_groups['npZSRGroupLNToGN'][beg_pl:end_pl]}, p_node)
+            MT.new_GlobalNumbering({'Index': p_groups['npZSRGroupLNToGN'][beg_pl:end_pl]}, p_node)
             # A corner case specific to BCDataSet : we can have a partitioned BCDS/PointList even if BC/PointList
             # was empty. In this case, we must create here an PointList (empty) and GridLoc for the parent BC
             if PT.get_label(p_node) == 'BCDataSet_t' and PT.get_child_from_name(ancestor, 'PointList') is None:
@@ -86,7 +86,7 @@ def create_part_pointlists(dist_zone: CGNSDistTree,
               d_ancestor_pl = PT.get_np_value(PT.find_child_from_name(d_ancestor, 'PointList'))
               PT.new_IndexArray('PointList', np.empty((d_ancestor_pl.shape[0],0), np.int32, order='F'), parent=ancestor)
               PT.new_GridLocation(d_ancestor_loc, ancestor)
-              MT.newGlobalNumbering({'Index' : np.empty(0, pdm_gnum_dtype)}, parent=ancestor)
+              MT.new_GlobalNumbering({'Index' : np.empty(0, pdm_gnum_dtype)}, parent=ancestor)
 
           i_pl += 1
 

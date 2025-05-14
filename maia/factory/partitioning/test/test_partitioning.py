@@ -235,7 +235,7 @@ def test_split_lines(method, comm):
   cell_distri[1] = dn_bar
   cell_distri[2] = n_vtx - 1
   bar_elts = PT.new_Elements('Lines', 'BAR_2', erange=[1,n_vtx-1], econn=bar_ec, parent=dist_zone)
-  MT.newDistribution({'Element' : cell_distri.copy()}, bar_elts)
+  MT.new_Distribution({'Element' : cell_distri.copy()}, bar_elts)
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, graph_part_tool=method)
 
@@ -259,12 +259,12 @@ def test_split_structured(comm):
   pr_1 = np.copy(pr)
   pr_1[1][1] = int(pr[1][1]-1)/2 + 1
   xmin_1 = PT.new_BC('Xmin1_wo_DS',point_range=pr_1,parent=zonebc_n)
-  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_1),comm)}, xmin_1)
+  MT.new_Distribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_1),comm)}, xmin_1)
   
   pr_2 = np.copy(pr)
   pr_2[1][0] = int(pr[1][1]-1)/2 + 1
   xmin_2 = PT.new_BC('Xmin2_w_DS',point_range=pr_2,parent=zonebc_n)
-  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_2),comm)}, xmin_2)
+  MT.new_Distribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(xmin_2),comm)}, xmin_2)
   bcds = PT.new_node('BCDataSet','BCDataSet_t',value='Null',parent=xmin_2)
   PT.new_GridLocation('IFaceCenter',parent=bcds)
   pr_ds = np.copy(pr_2)
@@ -273,8 +273,8 @@ def test_split_structured(comm):
   pr_ds[2][0] = pr_2[2][0]+1
   pr_ds[2][1] = pr_2[2][1]-2
   PT.new_IndexRange(value=pr_ds,parent=bcds)
-  MT.newDistribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(bcds),comm)}, bcds)
-  index_ds = MT.getDistribution(bcds, 'Index')
+  MT.new_Distribution({'Index': par_utils.uniform_distribution(PT.Subset.n_elem(bcds),comm)}, bcds)
+  index_ds = MT.find_Distribution(bcds, 'Index')
 
   bcd = PT.new_node('DirichletData','BCData_t',parent=bcds)
   i_ar = np.arange(pr_ds[0,0], pr_ds[0,1]+1, dtype=np.int32)
@@ -288,9 +288,9 @@ def test_split_structured(comm):
   zone_to_parts = maia.factory.partitioning.compute_regular_weights(dist_tree, comm, n_part=5)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts)
   
-  zone = PT.get_node_from_label(part_tree, 'Zone_t') #Check only on first zone
-  dist_cell_size = MT.getGlobalNumbering(zone, 'CellSize')
-  dist_cell_range = MT.getGlobalNumbering(zone, 'CellRange')
+  zone = PT.find_node_from_label(part_tree, 'Zone_t') #Check only on first zone
+  dist_cell_size = MT.find_GlobalNumbering(zone, 'CellSize')
+  dist_cell_range = MT.find_GlobalNumbering(zone, 'CellRange')
   if comm.Get_rank() == 0:
     expected_range = np.array([[1,4], [1,5], [1,5]], order='F')
   elif comm.Get_rank() == 1:
@@ -301,7 +301,7 @@ def test_split_structured(comm):
   bcds_n_l = PT.get_nodes_from_name(part_tree, 'BCDataSet')
   sum_size_bcds = 0
   for bcds_n in bcds_n_l:
-      index_tab = PT.get_value(MT.getGlobalNumbering(bcds_n, 'Index'))
+      index_tab = MT.globalnumbering_value(bcds_n, 'Index')
       size_bcds = PT.Subset.n_elem(bcds_n)
       assert size_bcds == index_tab.shape[0]
       sum_size_bcds += size_bcds
@@ -316,8 +316,8 @@ def test_split_structured_2d(comm):
   part_zone = PT.get_all_Zone_t(part_tree)[0]
   
   assert PT.Zone.CellSize(part_zone) == (5,5)
-  assert MT.getGlobalNumbering(part_zone, 'Cell') is not None
-  assert MT.getGlobalNumbering(part_zone, 'Face') is None
+  assert MT.get_GlobalNumbering(part_zone, 'Cell') is not None
+  assert MT.get_GlobalNumbering(part_zone, 'Face') is None
 
 
 @pytest_parallel.mark.parallel(2)
@@ -327,11 +327,11 @@ def test_split_structured_1d(comm):
   part_zone = PT.get_all_Zone_t(part_tree)[0]
   if comm.Get_rank() == 0:
     assert PT.Zone.CellSize(part_zone) == (5,)
-    assert (MT.getGlobalNumbering(part_zone, 'Cell')[1] == [1,2,3,4,5]).all()
+    assert (MT.globalnumbering_value(part_zone, 'Cell') == [1,2,3,4,5]).all()
   elif comm.Get_rank() == 1:
     assert PT.Zone.CellSize(part_zone) == (4,)
-    assert (MT.getGlobalNumbering(part_zone, 'Cell')[1] == [6,7,8,9]).all()
-  assert MT.getGlobalNumbering(part_zone, 'Face') is None
+    assert (MT.globalnumbering_value(part_zone, 'Cell') == [6,7,8,9]).all()
+  assert MT.get_GlobalNumbering(part_zone, 'Face') is None
   assert len(PT.get_nodes_from_label(part_zone, 'GridConnectivity1to1_t'))
 
 @pytest_parallel.mark.parallel(1)
@@ -345,7 +345,7 @@ def test_split_multi_elt(comm):
   # But, on partitioned mesh, sections are organized as follow : [1st hexa, 2nd hexa], [1st prism, 2nd prism]
   # so reordered gnum should be [1,2,3,4]
   zone = PT.get_node_from_label(ptree, 'Zone_t')
-  cell_gum = PT.maia.getGlobalNumbering(zone, 'Cell')[1]
+  cell_gum = MT.globalnumbering_value(zone, 'Cell')
   assert (cell_gum == [1,2,3,4]).all()
 
 

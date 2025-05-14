@@ -2,7 +2,8 @@ import pytest
 import pytest_parallel
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 import maia
 
@@ -32,7 +33,7 @@ def test_gather_sections(comm):
   expected_distri_f = np.array([0, 4, 7, 10], pdm_dtype)
   expected_distri = par_utils.full_to_partial_distribution(expected_distri_f, comm)
   expected = PT.new_Elements('TRI_3', 'TRI_3', erange=[11, 20], econn=expected_ec)
-  PT.maia.newDistribution({'Element' : expected_distri}, expected)
+  MT.new_Distribution({'Element' : expected_distri}, expected)
 
   assert PT.is_same_tree(elts[0], expected)
 

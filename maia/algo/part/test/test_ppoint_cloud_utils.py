@@ -24,7 +24,7 @@ def test_get_zone_ln_to_gn_from_loc(comm):
   as_partitioned(zone)
   vtx_gnum = np.arange(3**3) + 1
   cell_gnum = np.arange(2**3) + 1
-  MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
+  MT.new_GlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
 
   assert (PCU._get_zone_ln_to_gn_from_loc(zone, 'Vertex') == vtx_gnum).all()
   assert (PCU._get_zone_ln_to_gn_from_loc(zone, 'CellCenter') == cell_gnum).all()
@@ -41,7 +41,7 @@ def test_get_point_cloud(comm):
   PT.new_DataArray('CoordinateZ', 3*np.ones(8), parent=fs)
   vtx_gnum = np.arange(3**3) + 1
   cell_gnum = np.arange(2**3) + 1
-  MT.newGlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
+  MT.new_GlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=zone)
 
   expected_vtx_co = np.array([0., 0. , 0. , 0.5, 0. , 0. , 1., 0. , 0. , 0., 0.5, 0. , 0.5, 0.5, 0. , 1., 0.5, 0.,
                               0., 1. , 0. , 0.5, 1. , 0. , 1., 1. , 0. , 0., 0. , 0.5, 0.5, 0. , 0.5, 1., 0. , 0.5,

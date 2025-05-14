@@ -1,7 +1,8 @@
 import mpi4py.MPI as MPI
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 import maia.transfer.protocols as EP
 from   maia.utils  import np_utils, par_utils, as_pdm_gnum
 from maia.utils import vstride as vs
@@ -36,7 +37,7 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
   Note : if an id appear twice in vtx_pl, it will be duplicated twice. This is because
   data are added to the rank requesting the vertices in vtx_pl
   """
-  distri_n = PT.maia.getDistribution(zone, 'Vertex')
+  distri_n = MT.get_Distribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
   dn_vtx   = distri[1] - distri[0] # Initial number of vertices
   n_vtx    = distri[2]
@@ -97,7 +98,7 @@ def remove_specified_vtx(zone, vtx_pl, comm):
   
   Note : id can appear twice in vtx_pl, it will be removed only once
   """
-  distri_n = PT.maia.getDistribution(zone, 'Vertex')
+  distri_n = MT.get_Distribution(zone, 'Vertex')
   distri   = PT.get_value(distri_n)
   distri_f = par_utils.partial_to_full_distribution(distri, comm)
   dn_vtx   = distri[1] - distri[0] # Initial number of vertices
@@ -130,11 +131,11 @@ def elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm):
   '''
   Return distributed gnum of vertices describing elements tagged in `elt_pl`.
   '''
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
   vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
 
   elt_offset = PT.Element.Range(elt_n)[0]
-  elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distri = MT.distribution_value(elt_n, 'Element')
   elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
 
   # > Get partitioned connectivity of elt_pl
@@ -170,7 +171,7 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
   """
   # TRI elts
   #   Get ec
-  src_distri    = PT.maia.getDistribution(tri_elt, 'Element')[1]
+  src_distri    = MT.distribution_value(tri_elt, 'Element')
   src_distri_f  = par_utils.partial_to_full_distribution(src_distri, comm)
   size_src_elt  = PT.Element.NVtx(tri_elt)
   src_ec        = PT.get_child_from_name(tri_elt, 'ElementConnectivity')[1]
@@ -184,7 +185,7 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
 
   # TETRA elts
   #   Get ec
-  tgt_distri   = PT.maia.getDistribution(tetra_elt, 'Element')[1]
+  tgt_distri   = MT.distribution_value(tetra_elt, 'Element')
   tgt_distri_f = par_utils.partial_to_full_distribution(tgt_distri, comm)
   size_tgt_elt = PT.Element.NVtx(tetra_elt)
   tgt_ec       = PT.get_child_from_name(tetra_elt, 'ElementConnectivity')[1]
@@ -234,14 +235,14 @@ def update_elt_vtx_numbering(zone, elt_n, old_to_new_vtx, comm, elt_pl=None):
   if elt_n is not None:
     ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
     ec    = PT.get_value(ec_n)
-    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+    vtx_distri = MT.distribution_value(zone, 'Vertex')
 
     if elt_pl is None:
       ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec-1, comm)
     else:
       elt_size   = PT.Element.NVtx(elt_n)
       elt_offset = PT.Element.Range(elt_n)[0]
-      elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+      elt_distri = MT.distribution_value(elt_n, 'Element')
       elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
 
       GI = EP.GlobalIndexer(elt_distri_f, elt_pl - elt_offset, comm)
@@ -276,7 +277,7 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   First BC can be kept using `keep_original` argument.
   '''
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
-  vtx_distri   = PT.maia.getDistribution(zone, 'Vertex')[1]
+  vtx_distri   = MT.distribution_value(zone, 'Vertex')
   vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
 
   # TODO: directement choper les GCs
@@ -352,7 +353,7 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
   Update Vertex BCs and GCs according to the new vertices numbering described in `old_to_new_vtx`.
   TODO: predicates
   '''
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
 
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
   if zone_bc_n is not None:
@@ -400,7 +401,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   
   new_vtx_distri = par_utils.dn_to_distribution(n_vtx_to_add, comm)
   new_vtx_pl     = np.arange(n_vtx+new_vtx_distri[0],n_vtx+new_vtx_distri[1], dtype=elt_vtx_pl.dtype)+1
-  vtx_distri     = PT.maia.getDistribution(zone, 'Vertex')[1]
+  vtx_distri     = MT.distribution_value(zone, 'Vertex')
   vtx_distri_f   = par_utils.partial_to_full_distribution(vtx_distri, comm)
   new_vtx_num    = [elt_vtx_pl,new_vtx_pl]
 
@@ -412,7 +413,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
   elt_dim    = PT.Element.Dimension(elt_n)
-  elt_distri_n = PT.maia.getDistribution(elt_n, distri_name='Element')
+  elt_distri_n = MT.get_Distribution(elt_n, 'Element')
   elt_distri   = PT.get_value(elt_distri_n)
   elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
   
@@ -463,7 +464,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
                      loc=DIM_TO_LOC[elt_dim],
                      family='PERIODIC',
                      parent=zone_bc_n)
-    PT.maia.newDistribution({'Index':add_elt_distri}, parent=bc_n)
+    MT.new_Distribution({'Index':add_elt_distri}, parent=bc_n)
 
   n_tri_added_tot = add_elt_distri[2]
 
@@ -480,7 +481,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
     elt_size     = PT.Element.NVtx(elt_n)
     elt_offset   = PT.Element.Range(elt_n)[0]
     elt_dim      = PT.Element.Dimension(elt_n)
-    elt_distri_n = PT.maia.getDistribution(elt_n, 'Element')
+    elt_distri_n = MT.get_Distribution(elt_n, 'Element')
     elt_distri   = PT.get_value(elt_distri_n)
     elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
 
@@ -519,7 +520,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
                            point_list=new_bc_pl.reshape((1,-1), order='F'),
                            loc=DIM_TO_LOC[elt_dim],
                            parent=zone_bc_n)
-      PT.maia.newDistribution({'Index':add_elt_distri_l}, parent=new_bc_n)
+      MT.new_Distribution({'Index':add_elt_distri_l}, parent=new_bc_n)
 
       bc_fam_n = PT.get_child_from_label(bc_n, 'FamilyName_t')
       if bc_fam_n is not None:
@@ -586,7 +587,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
 
   # > Compute new vtx numbering merging vtx from `src_tgt_vtx` (merge_distributed_ids may not work because vtx can be in src and tgt)
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
   vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
 
   dn_elts  = vtx_distri[1] - vtx_distri[0]
@@ -607,7 +608,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   elt_offset = PT.Element.Range(elt_n)[0]
   elt_size   = PT.Element.NVtx(elt_n)
   elt_ec     = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
-  elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distri = MT.distribution_value(elt_n, 'Element')
   elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
   
   # > Precompute vtx in shared numbering
@@ -656,11 +657,11 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   elt_size    = PT.Element.NVtx(elt_n)
   elt_offset  = PT.Element.Range(elt_n)[0]
   elt_vtx     = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
-  elt_distri  = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distri  = MT.distribution_value(elt_n, 'Element')
   elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
   
-  dn_vtx      = PT.maia.getDistribution(zone ,'Vertex')[1]
-  dn_face     = PT.maia.getDistribution(elt_n,'Element')[1]
+  dn_vtx      = MT.distribution_value(zone ,'Vertex')
+  dn_face     = MT.distribution_value(elt_n,'Element')
 
   # > Fake extract bc to have 2 domain in PDM.interface_vertex_to_face(...)
   for bc_name in [bc_names[1],bc_names[0]]: # ordre important pour bc_vtx_pl en dehors de la boucle
@@ -733,7 +734,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
                    loc='FaceCenter',
                    family='GCS',
                    parent=zone_bc_n)
-  PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(constraint_pl.size, comm)}, bc_n)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(constraint_pl.size, comm)}, bc_n)
 
 
 def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
@@ -747,7 +748,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   ec_n       = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec         = PT.get_value(ec_n)
   elt_name   = PT.Element.CGNSName(elt_n)
-  elt_distri = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distri = MT.distribution_value(elt_n, 'Element')
   elt_distri_f = par_utils.partial_to_full_distribution(elt_distri, comm)
   assert elt_name=='TETRA_4'
 
@@ -756,7 +757,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   tgt_ec_n       = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
   tgt_ec         = PT.get_value(tgt_ec_n)
   tgt_elt_name   = PT.Element.CGNSName(tgt_elt_n)
-  tgt_elt_distri_n = PT.maia.getDistribution(tgt_elt_n, distri_name='Element')
+  tgt_elt_distri_n = MT.find_Distribution(tgt_elt_n, 'Element')
   tgt_elt_distri   = PT.get_value(tgt_elt_distri_n)
   tgt_elt_distri_f = par_utils.partial_to_full_distribution(tgt_elt_distri, comm)
   assert tgt_elt_name=='TRI_3'
@@ -802,7 +803,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
     if bc_fam_n is not None:
       PT.add_child(bc_n, bc_fam_n)
     bc_distri_l = par_utils.dn_to_distribution(free_adapt_elt_pl.size, comm)
-    PT.maia.newDistribution({'Index':bc_distri_l}, parent=bc_n)
+    MT.new_Distribution({'Index':bc_distri_l}, parent=bc_n)
 
     bc_n = PT.new_BC(name=bc_name+'_c',
                      type='FamilySpecified',
@@ -811,7 +812,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
                      family='GCS',
                      parent=zone_bc_n)
     bc_distri_l = par_utils.dn_to_distribution(constraint_elt_pl.size, comm)
-    PT.maia.newDistribution({'Index':bc_distri_l}, parent=bc_n)
+    MT.new_Distribution({'Index':bc_distri_l}, parent=bc_n)
 
   # > Find faces not already defined in TRI_3 connectivity or duplicated
   tmp_ec  = np.concatenate([tgt_elt_ec, tgt_ec])
@@ -890,7 +891,7 @@ def convert_vtx_gcs_as_face_bcs(tree, comm):
                          loc='FaceCenter',
                          family='GCS',
                          parent=zone_bc_n)
-        PT.maia.newDistribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
+        MT.new_Distribution({'Index' : par_utils.dn_to_distribution(bc_pl.size, comm)}, bc_n)
 
 
 def deplace_periodic_patch(tree, jn_pairs, comm):
@@ -945,7 +946,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
                      loc='CellCenter',
                      family='PERIODIC',
                      parent=zone_bc_n)
-    PT.maia.newDistribution({'Index':new_bc_distrib}, parent=bc_n)
+    MT.new_Distribution({'Index':new_bc_distrib}, parent=bc_n)
     
     face_bc_name = f'tri_3_constraint_{i_per}'
     new_bc_distrib = par_utils.dn_to_distribution(face_pl.size, comm)
@@ -955,7 +956,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
                      loc='FaceCenter',
                      family='PERIODIC',
                      parent=zone_bc_n)
-    PT.maia.newDistribution({'Index':new_bc_distrib}, parent=bc_n)
+    MT.new_Distribution({'Index':new_bc_distrib}, parent=bc_n)
     to_constrain_bcs.append(face_bc_name)
 
     # maia.io.dist_tree_to_file(tree, f'OUTPUT/internal_surface_{i_per}.cgns', comm)
@@ -1008,7 +1009,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     bc_name2 = PT.utils.path_tail(gc_paths[1])
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
-    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+    vtx_distri = MT.distribution_value(zone, 'Vertex')
     vtx_tag = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype)+1
     old_to_new_vtx = merge_periodic_bc(zone, (bc_name1, bc_name2), vtx_tag, vtx_match_num, comm, keep_original=True)
     
@@ -1030,7 +1031,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
                      loc='Vertex',
                      family='PERIODIC',
                      parent=zone_bc_n)
-    PT.maia.newDistribution({'Index':new_bc_distrib}, parent=bc_n)
+    MT.new_Distribution({'Index':new_bc_distrib}, parent=bc_n)
 
     pl_periodic = new_vtx_num[1].reshape((1,-1), order='F')
     new_bc_distrib = par_utils.dn_to_distribution(pl_periodic.size, comm)
@@ -1040,7 +1041,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
                      loc='Vertex',
                      family='PERIODIC',
                      parent=zone_bc_n)
-    PT.maia.newDistribution({'Index':new_bc_distrib}, parent=bc_n)
+    MT.new_Distribution({'Index':new_bc_distrib}, parent=bc_n)
 
   return new_vtx_nums, to_constrain_bcs, matching_bcs
 

@@ -92,14 +92,14 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   n_rmvd_ec_offset  = par_utils.gather_and_shift(n_rmvd_ec_local, comm)
   n_rmvd_ec_total   = n_rmvd_ec_offset[-1]
 
-  ngon_distri = PT.get_value(MT.getDistribution(dist_ngon, 'Element'))
+  ngon_distri = MT.distribution_value(dist_ngon, 'Element')
   ngon_distri[0] -= n_rmvd_offset[comm.Get_rank()]
   ngon_distri[1] -= (n_rmvd_offset[comm.Get_rank()] + n_rmvd_local)
   ngon_distri[2] -= n_rmvd_total
 
-  ngon_distri_ec_n = MT.getDistribution(dist_ngon, 'ElementConnectivity')
+  ngon_distri_ec_n = MT.get_Distribution(dist_ngon, 'ElementConnectivity')
   if ngon_distri_ec_n is not None:
-    ngon_distri_ec     = PT.get_value(ngon_distri_ec_n)
+    ngon_distri_ec     = PT.get_np_value(ngon_distri_ec_n)
     ngon_distri_ec[0] -= n_rmvd_ec_offset[comm.Get_rank()]
     ngon_distri_ec[1] -= (n_rmvd_ec_offset[comm.Get_rank()] + n_rmvd_ec_local)
     ngon_distri_ec[2] -= n_rmvd_ec_total
@@ -141,7 +141,7 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   if elt_pl.size != 0:
     assert er[0]<=np.min(elt_pl) and np.max(elt_pl)<=er[1]
 
-  elt_distrib_n = PT.maia.getDistribution(elt_n, distri_name='Element')
+  elt_distrib_n = MT.get_Distribution(elt_n, 'Element')
   elt_distri = elt_distrib_n[1]
 
   # > Get old_to_new indirection, -1 means that elt must be removed
@@ -190,12 +190,12 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
       PT.rm_child(zone_bc_n, bc_n)
     else:
       PT.set_value(bc_pl_n, new_bc_pl.reshape((1,-1), order='F'))
-      PT.maia.newDistribution({'Index' : new_bc_distrib}, bc_n)
+      MT.new_Distribution({'Index' : new_bc_distrib}, bc_n)
 
   # > Update zone size and distribution
   if elt_dim==PT.Zone.CellDimension(zone):
     zone[1][:,1] -= n_elt_to_rm
-    distri_cell = PT.maia.getDistribution(zone, 'Cell')[1]
+    distri_cell = MT.distribution_value(zone, 'Cell')
     distri_cell -= rm_distrib
 
   # > Shift other Element Range, if the have higher ids

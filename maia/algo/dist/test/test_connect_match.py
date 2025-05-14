@@ -79,7 +79,7 @@ def test_simple(input_loc, output_loc, comm):                    #    __
     for node, pl in zip([zmin, zmax], [pl_zmin_f, pl_zmax_f]):
       PT.update_child(node, 'GridLocation', value='Vertex')
       PT.update_child(node, 'PointList', value=pl[vtx_distri[0]:vtx_distri[1]].reshape((1,-1), order='F'))
-      MT.newDistribution({'Index' : vtx_distri}, node)
+      MT.new_Distribution({'Index' : vtx_distri}, node)
 
   connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm, location=output_loc)
 

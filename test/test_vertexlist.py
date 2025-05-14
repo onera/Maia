@@ -38,7 +38,7 @@ def test_jn_vertexlist(comm, write_output):
     reference_tree = PT.yaml.to_cgns_tree(f)
   for ref_gc in PT.iter_nodes_from_label(reference_tree, 'GridConnectivity_t'):
     gc = PT.get_node_from_name(dist_tree, PT.get_name(ref_gc))
-    distri = MT.getDistribution(gc, 'Index')[1]
+    distri = MT.get_Distribution(gc, 'Index')[1]
     for ref_node in PT.get_children(ref_gc):
       node = PT.get_child_from_name(gc, PT.get_name(ref_node))
       if PT.get_name(node) in ['PointList', 'PointListDonor']:

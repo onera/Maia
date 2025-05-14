@@ -190,7 +190,7 @@ class Interpolator:
         data[self.referenced_nums[i_part]-1] = reduced_data #Use referenced ids to erase default value
 
         # Reshape data only for partitioned / structured zones
-        if PT.Zone.Type(tgt_part) == 'Structured' and MT.getDistribution(tgt_part) is None:
+        if PT.Zone.Type(tgt_part) == 'Structured' and MT.get_Distribution(tgt_part) is None:
           shape = PT.Zone.CellSize(tgt_part) if self.output_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
           PT.update_child(fs, field_name, 'DataArray_t', data.reshape(shape, order='F'))
         else:

@@ -16,11 +16,11 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   """
   """
   #If needed (reading), update distribution using ESO, which is now loaded
-  distrib = MT.getDistribution(elmt)
+  distrib = MT.get_Distribution(elmt)
   if PT.get_child_from_name(distrib, 'ElementConnectivity') is None:
     compute_connectivity_distribution(elmt)
 
-  distrib_ec = MT.getDistribution(elmt, "ElementConnectivity")[1]
+  distrib_ec = MT.distribution_value(elmt, "ElementConnectivity")
   dn_elmt_c  = distrib_ec[1] - distrib_ec[0]
   n_elmt_c   = distrib_ec[2]
 
@@ -35,7 +35,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
 def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_elmt = PT.get_value(MT.getDistribution(elmt, 'Element'))
+  distrib_elmt = MT.distribution_value(elmt, 'Element')
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   # > For NGon only
@@ -73,7 +73,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter):
 def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   """
   """
-  distrib_elmt = PT.get_value(MT.getDistribution(elmt, 'Element'))
+  distrib_elmt = MT.distribution_value(elmt, 'Element')
   dn_elmt      = distrib_elmt[1] - distrib_elmt[0]
 
   elmt_npe = PT.Element.NVtx(elmt)

@@ -72,7 +72,7 @@ def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,
 
     bc_distrib = par_utils.gather_and_shift(dn_edge_bnd, comm, edge_group.dtype)
     distrib   = np.array([bc_distrib[i_rank], bc_distrib[i_rank+1], bc_distrib[n_rank]])
-    MT.newDistribution({'Index' : distrib}, parent=bc_n)
+    MT.new_Distribution({'Index' : distrib}, parent=bc_n)
 
   # > Distributions
   np_distrib_cell     = np.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)
@@ -80,7 +80,7 @@ def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,
   np_distrib_face     = np.array([distrib_face    [i_rank], distrib_face    [i_rank+1], distrib_face    [n_rank]], dtype=pe.dtype)
   np_distrib_edge_vtx = np.array([distrib_edge_vtx[i_rank], distrib_edge_vtx[i_rank+1], distrib_edge_vtx[n_rank]], dtype=pe.dtype)
 
-  MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=dist_zone)
-  MT.newDistribution({'Element' : np_distrib_face, 'ElementConnectivity' : np_distrib_edge_vtx}, parent=ngon_n)
+  MT.new_Distribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=dist_zone)
+  MT.new_Distribution({'Element' : np_distrib_face, 'ElementConnectivity' : np_distrib_edge_vtx}, parent=ngon_n)
 
   return dist_tree

@@ -1,4 +1,5 @@
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from   maia.utils  import np_utils, s_numbering, as_pdm_gnum
 from   maia import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.factory  import dist_from_part
@@ -241,7 +242,7 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
                                 [min(part1_ijk[1]),max(part1_ijk[1])],
                                 [min(part1_ijk[2]),max(part1_ijk[2])]]))
 
-      part2_elt_gnum = PT.maia.getGlobalNumbering(part_zone, LOC_TO_GNUM[grid_location])[1]
+      part2_elt_gnum = MT.globalnumbering_value(part_zone, LOC_TO_GNUM[grid_location])
       
       partial_gnum.append(as_pdm_gnum(part2_elt_gnum[part2_pl[lnum2]-1]))
     else:

@@ -9,7 +9,7 @@ def is_cgns_part_tree(tree: CGNSTree) -> bool:
     Returns:
         bool: True if the tree is a partitioned tree, False otherwise.
     """
-    return all(MT.getGlobalNumbering(zone) is not None for zone in PT.iter_all_Zone_t(tree))
+    return all(MT.get_GlobalNumbering(zone) is not None for zone in PT.iter_all_Zone_t(tree))
 
 def is_cgns_dist_tree(tree: CGNSTree) -> bool:
     """Determine if the CGNS tree represents a distributed tree.
@@ -18,7 +18,7 @@ def is_cgns_dist_tree(tree: CGNSTree) -> bool:
     Returns:
         bool: True if the tree is a distributed tree, False otherwise.
     """
-    return all(MT.getDistribution(zone) is not None for zone in PT.iter_all_Zone_t(tree))
+    return all(MT.get_Distribution(zone) is not None for zone in PT.iter_all_Zone_t(tree))
 
 def is_cgns_full_tree(tree: CGNSTree) -> bool:
     """Determine if the CGNS tree is a full CGNS tree.
@@ -27,7 +27,7 @@ def is_cgns_full_tree(tree: CGNSTree) -> bool:
     Returns:
         bool: True if the tree is neither a partitioned nor a distributed tree.
     """
-    return all(MT.getDistribution(zone) is None and  MT.getGlobalNumbering(zone) is None \
+    return all(MT.get_Distribution(zone) is None and  MT.get_GlobalNumbering(zone) is None \
               for zone in PT.iter_all_Zone_t(tree))
 
 def check_contain_zones(tree: CGNSTree) -> None:

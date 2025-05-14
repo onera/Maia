@@ -103,4 +103,4 @@ def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         mixed = PT.new_Elements('Mixed','MIXED',erange=[1,nb_elem_prev],econn=dist_data_ec,parent=zone)
         eso = PT.new_DataArray('ElementStartOffset',dist_data_eso,parent=mixed)
         distri_ec = np.array((dist_data_eso[0],dist_data_eso[-1],nb_nodes_prev),dtype=elem_distrib.dtype)
-        MT.newDistribution({'Element' : elem_distrib, 'ElementConnectivity' : distri_ec}, parent=mixed)
+        MT.new_Distribution({'Element' : elem_distrib, 'ElementConnectivity' : distri_ec}, parent=mixed)

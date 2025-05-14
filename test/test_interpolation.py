@@ -4,6 +4,7 @@ import numpy as np
 import os
 
 import maia.pytree        as PT
+import maia.pytree.maia   as MPT
 
 import cmaia
 import maia.io       as MIO
@@ -52,7 +53,7 @@ def test_interpolation_non_overlaping_cubes(comm, strategy, src_elt, tgt_elt, wr
   # Create a field on the source mesh : we use gnum to have something independant of parallelism
   zone = PT.get_all_Zone_t(dist_tree_src)[0]
   d_fs = PT.new_FlowSolution("FlowSolution#Init", loc='CellCenter', parent=zone)
-  distri = PT.maia.getDistribution(zone, 'Cell')[1]
+  distri = MPT.get_Distribution(zone, 'Cell')[1]
   PT.new_DataArray("Density", np.arange(distri[0], distri[1], dtype=float)+1, parent=d_fs)
 
   # Create partition on the meshes. Source and destination can have a different partitioning !

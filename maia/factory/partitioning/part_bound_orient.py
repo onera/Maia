@@ -27,7 +27,7 @@ def orientation_preserved(part_zones, comm):
   for part_zone in part_zones:
     ngon_node = PT.Zone.NGonNode(part_zone)
     pe_n = PT.get_child_from_name(ngon_node, 'ParentElements')
-    face_gnum = MT.getGlobalNumbering(ngon_node, 'Element')[1]
+    face_gnum = MT.globalnumbering_value(ngon_node, 'Element')
 
     if pe_n is not None:
       # PE case : flag external faces having only a left parent, ie pe[iFace,1] == 0
@@ -70,7 +70,7 @@ def preserve_orientation(part_zones, comm):
   for izone, part_zone in enumerate(part_zones):
     cur_zone_glob = zone_proc_offset + izone
     ngon_node  = PT.Zone.NGonNode(part_zone)
-    face_gnum = MT.getGlobalNumbering(ngon_node, 'Element')[1]
+    face_gnum = MT.globalnumbering_value(ngon_node, 'Element')
     if PT.get_child_from_name(ngon_node, 'ParentElements') is None:
       maia.algo.nface_to_pe(part_zone)
     pe = PT.get_child_from_name(ngon_node, 'ParentElements')[1]

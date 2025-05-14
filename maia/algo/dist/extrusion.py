@@ -39,7 +39,7 @@ def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as,
                                   point_list_donor=pl_extruded,
                                   parent=zgc)
     PT.new_GridConnectivityProperty({"translation": np.array(extrusion_vector, dtype=np.float64)}, parent=gc1)
-    MT.newDistribution({'Index' : distrib_idx}, parent=gc1)
+    MT.new_Distribution({'Index' : distrib_idx}, parent=gc1)
 
     gc2 = PT.new_GridConnectivity(name=gc2_name, donor_name=PT.get_name(zone),
                                   type='Abutting1to1', loc='EdgeCenter',
@@ -47,7 +47,7 @@ def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as,
                                   point_list_donor=pl_former,
                                   parent=zgc)
     PT.new_GridConnectivityProperty({"translation": -np.array(extrusion_vector, dtype=np.float64)}, parent=gc2)
-    MT.newDistribution({'Index' : distrib_idx.copy()}, parent=gc2)
+    MT.new_Distribution({'Index' : distrib_idx.copy()}, parent=gc2)
 
     PT.new_Descriptor("GridConnectivityDonorName", gc2_name, parent=gc1)
     PT.new_Descriptor("GridConnectivityDonorName", gc1_name, parent=gc2)
@@ -58,8 +58,8 @@ def _create_surfacic_bcs(zone, n_face2d, first_id, extrusion_vector, ksubset_as,
                     loc='EdgeCenter', family='InitialSurface', parent=zbc)
     bc2 = PT.new_BC(name='ExtrudedSurface', type='FamilySpecified', point_list=pl_extruded,
                     loc='EdgeCenter', family='ExtrudedSuface', parent=zbc)
-    MT.newDistribution({'Index' : distrib_idx}, parent=bc1)
-    MT.newDistribution({'Index' : distrib_idx.copy()}, parent=bc2)
+    MT.new_Distribution({'Index' : distrib_idx}, parent=bc1)
+    MT.new_Distribution({'Index' : distrib_idx.copy()}, parent=bc2)
 
 
 def _nodes_duplication(zone, extrusion_vector, comm, as_last=True):
@@ -68,7 +68,7 @@ def _nodes_duplication(zone, extrusion_vector, comm, as_last=True):
   to create the duplicated nodes needed to generate the second plan
   """
   # > Define new distribution
-  distrib_vtx_n    = MT.getDistribution(zone, 'Vertex')
+  distrib_vtx_n    = MT.get_Distribution(zone, 'Vertex')
   distrib_vtx      = PT.get_value(distrib_vtx_n)
   new_distrib_vtx  = par_utils.uniform_distribution(2*distrib_vtx[2],  comm)
   # > Change value of Z or Theta coordinates in part_data
@@ -124,7 +124,7 @@ def _determine_mesh_orientation(zone, extrusion_vector, comm):
   # > Get coordinates of nodes of the first face
   coords = PT.Zone.coordinates(zone)
   dist_coords_data = coords._asdict()
-  distrib_vtx = MT.getDistribution(zone, 'Vertex')[1]
+  distrib_vtx = MT.distribution_value(zone, 'Vertex')
   part_coords_data = EP.block_to_part(dist_coords_data, distrib_vtx, nodes_of_first_face-1, comm)
   align = 0
   # > Compute scalar product
@@ -171,7 +171,7 @@ def _ngon_duplication(zone, comm, align=True):
   n_vtx_2d  = PT.Zone.n_vtx(zone)
   # > Add ParentElements to NGon node
   ngon_n = PT.Zone.NGonNode(zone)
-  distrib_elem = MT.getDistribution(ngon_n, 'Element')[1]
+  distrib_elem = MT.distribution_value(ngon_n, 'Element')
   er = PT.Element.Range(ngon_n)
   pe = np.zeros((distrib_elem[1]-distrib_elem[0],2), dtype=er.dtype)
   pe[:,0] = np.arange(distrib_elem[0], distrib_elem[1]) + er[0] + 2*n_cell_2d
@@ -197,7 +197,7 @@ def _extrude_bar_to_ngon(bar, n_vtx, n_cell, align=True):
   """
   Internal function used by _extrusion_2d_u_ngon to create face by extrusion of BAR elements
   """
-  distrib_elem = MT.getDistribution(bar, 'Element')[1]
+  distrib_elem = MT.distribution_value(bar, 'Element')
   ec_n = PT.get_child_from_name(bar, 'ElementConnectivity')
 
   # > Change value: 3 => 22
@@ -216,7 +216,7 @@ def _extrude_bar_to_ngon(bar, n_vtx, n_cell, align=True):
     new_ec = np_utils.interweave_arrays([first_nodes, second_nodes, third_nodes, fourth_nodes])
   PT.set_value(ec_n, new_ec)
   # > Create ElementConnectivity distribution
-  MT.newDistribution({'ElementConnectivity' : 4*distrib_elem}, parent=bar)
+  MT.new_Distribution({'ElementConnectivity' : 4*distrib_elem}, parent=bar)
   # > Update PE
   # Remark: new cells are the former faces because we keep the order
   #         so we just have to shift there values of 2*n_cell
@@ -233,11 +233,11 @@ def _merge_ngons(zone, comm):
   ngon_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[2]
   for ngon_n in ngon_nodes:
     assert PT.Element.CGNSName(ngon_n) == 'NGON_n'
-    er  = PT.get_child_from_name(ngon_n, 'ElementRange')[1]
-    ec  = PT.get_child_from_name(ngon_n, 'ElementConnectivity')[1]
-    eso = PT.get_child_from_name(ngon_n, 'ElementStartOffset')[1]
-    pe  = PT.get_child_from_name(ngon_n, 'ParentElements')[1]
-    distrib_elem = MT.getDistribution(ngon_n, 'Element')[1]
+    er  = PT.find_child_from_name(ngon_n, 'ElementRange')[1]
+    ec  = PT.find_child_from_name(ngon_n, 'ElementConnectivity')[1]
+    eso = PT.find_child_from_name(ngon_n, 'ElementStartOffset')[1]
+    pe  = PT.find_child_from_name(ngon_n, 'ParentElements')[1]
+    distrib_elem = MT.distribution_value(ngon_n, 'Element')
     part_ec.append((np.diff(eso).astype(np.int32), ec))
     part_pe0.append(pe[:,0])
     part_pe1.append(pe[:,1])
@@ -266,7 +266,7 @@ def _merge_ngons(zone, comm):
   PT.rm_children_from_predicate(zone, lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'NGON_n')
   # > Create new NGon node
   new_ngon_n = PT.new_NGonElements(erange=new_er, eso=new_eso, ec=new_ec, pe=new_pe, parent=zone)
-  MT.newDistribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
+  MT.new_Distribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
     
 def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
   """
@@ -299,7 +299,7 @@ def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
                                       transform=[1,2,3],
                                       parent=zgc)
     PT.new_GridConnectivityProperty({"translation": np.array(extrusion_vector, dtype=np.float64)}, parent=gc1)
-    MT.newDistribution({'Index' : distrib_idx}, parent=gc1)
+    MT.new_Distribution({'Index' : distrib_idx}, parent=gc1)
 
     gc2 = PT.new_GridConnectivity1to1(name=gc2_name, donor_name=PT.get_name(zone),
                                       point_range=pr_extruded,
@@ -307,7 +307,7 @@ def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
                                       transform=[1,2,3],
                                       parent=zgc)
     PT.new_GridConnectivityProperty({"translation": -np.array(extrusion_vector, dtype=np.float64)}, parent=gc2)
-    MT.newDistribution({'Index' : distrib_idx.copy()}, parent=gc2)
+    MT.new_Distribution({'Index' : distrib_idx.copy()}, parent=gc2)
 
     PT.new_Descriptor("GridConnectivityDonorName", gc2_name, parent=gc1)
     PT.new_Descriptor("GridConnectivityDonorName", gc1_name, parent=gc2)
@@ -316,8 +316,8 @@ def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
     zbc = PT.update_child(zone, 'ZoneBC', 'ZoneBC_t')
     bc1 = PT.new_BC(name='InitialSurface', type='FamilySpecified', point_range=pr_former, family='InitialSurface', parent=zbc)
     bc2 = PT.new_BC(name='ExtrudedSurface', type='FamilySpecified', point_range=pr_extruded, family='ExtrudedSuface', parent=zbc)
-    MT.newDistribution({'Index' : distrib_idx}, parent=bc1)
-    MT.newDistribution({'Index' : distrib_idx.copy()}, parent=bc2)
+    MT.new_Distribution({'Index' : distrib_idx}, parent=bc1)
+    MT.new_Distribution({'Index' : distrib_idx.copy()}, parent=bc2)
 
 
 
@@ -393,8 +393,8 @@ def _extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align=True):
 
   new_tri1 = PT.new_Elements(f'TRI_3.{num}a', 'TRI_3', erange=new_tri1_er, econn=new_tri1_ec)
   new_tri2 = PT.new_Elements(f'TRI_3.{num}b', 'TRI_3', erange=new_tri2_er, econn=new_tri2_ec)
-  MT.newDistribution({'Element' : MT.getDistribution(tri, 'Element')[1].copy()}, new_tri1)
-  MT.newDistribution({'Element' : MT.getDistribution(tri, 'Element')[1].copy()}, new_tri2)
+  MT.new_Distribution({'Element' : MT.distribution_value(tri, 'Element').copy()}, new_tri1)
+  MT.new_Distribution({'Element' : MT.distribution_value(tri, 'Element').copy()}, new_tri2)
   return (new_tri1, new_tri2)
 
 
@@ -434,8 +434,8 @@ def _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align=True
 
   new_quad1 = PT.new_Elements(f'QUAD_4.{num}a', 'QUAD_4', erange=new_quad1_er, econn=new_quad1_ec)
   new_quad2 = PT.new_Elements(f'QUAD_4.{num}b', 'QUAD_4', erange=new_quad2_er, econn=new_quad2_ec)
-  MT.newDistribution({'Element' : MT.getDistribution(quad, 'Element')[1].copy()}, new_quad1)
-  MT.newDistribution({'Element' : MT.getDistribution(quad, 'Element')[1].copy()}, new_quad2)
+  MT.new_Distribution({'Element' : MT.distribution_value(quad, 'Element').copy()}, new_quad1)
+  MT.new_Distribution({'Element' : MT.distribution_value(quad, 'Element').copy()}, new_quad2)
   return (new_quad1, new_quad2)
 
 def _extrude_bar_to_quad(bar, num, n_vtx, align=True):
@@ -703,10 +703,10 @@ def extrude(dist_tree: CGNSDistTree,
         new_distrib_idx, new_pl, new_data = _pl_and_data_vtx_duplication(maybe_pl, distrib_idx, n_vtx_2d, data, comm)
         if has_pl(container): # Update PointList + Distribution
           PT.update_child(container, 'PointList', value=new_pl)
-          MT.newDistribution({'Index' : new_distrib_idx}, container)
+          MT.new_Distribution({'Index' : new_distrib_idx}, container)
         elif has_pr(container):
           _extend_pr(PT.find_child_from_name(container, 'PointRange'), [1, 2])
-          MT.newDistribution({'Index' : new_distrib_idx}, container)
+          MT.new_Distribution({'Index' : new_distrib_idx}, container)
         for name, value in new_data.items():
           PT.set_value(PT.find_child_from_name(container, name), value)
       
@@ -717,7 +717,7 @@ def extrude(dist_tree: CGNSDistTree,
           pl_ower = bcds if is_partial(bcds) else bc
           pl_n = PT.get_child_from_name(pl_ower, 'PointList')
           assert (pl_n is None) ^ (PT.Zone.Type(zone) == 'Unstructured'), "Required S zone + PR or U zone + PL"
-          distrib_idx_n = MT.requestDistribution(pl_ower, 'Index')
+          distrib_idx_n = MT.find_Distribution(pl_ower, 'Index')
 
           data = {path : PT.find_node_from_path(bcds, path)[1] for path in PT.predicates_to_paths(bcds, 'BCData_t/DataArray_t')}
           old_pl = pl_n[1] if pl_n is not None else None
@@ -745,7 +745,7 @@ def extrude(dist_tree: CGNSDistTree,
           zsr_extent = PT.Subset.ZSRExtent(container, zone)
           extent_node = PT.find_node_from_path(zone, zsr_extent)
           PT.add_child(container, PT.deep_copy(PT.Subset.getPatch(extent_node)))
-          PT.add_child(container, PT.deep_copy(MT.requestDistribution(extent_node)))
+          PT.add_child(container, PT.deep_copy(MT.find_Distribution(extent_node)))
           PT.rm_children_from_name(container, '*RegionName')
           if PT.Zone.Type(zone) == 'Structured':
             pr_n = PT.find_child_from_name(container, 'PointRange')
@@ -758,7 +758,7 @@ def extrude(dist_tree: CGNSDistTree,
           else:
             pr = np.array([[1, vertex_size[0]], [1, vertex_size[1]], [zval, zval]], dtype=ztype, order='F')
             PT.new_IndexRange('PointRange', value=pr, parent=container)
-          MT.newDistribution({'Index': distrib_vtx_2d}, parent=container)
+          MT.new_Distribution({'Index': distrib_vtx_2d}, parent=container)
       # Specific treatment of BCDS
       for _, bc, bcds in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t', ancestors=True):
         if is_vertex(bcds) and not is_partial(bcds):
@@ -766,7 +766,7 @@ def extrude(dist_tree: CGNSDistTree,
           PT.add_child(bcds, PT.deep_copy(PT.Subset.getPatch(bc)))
           if PT.Zone.Type(zone) == 'Structured' and has_pr(bcds):
             _extend_pr(PT.Subset.getPatch(bcds), [zval,zval])
-          PT.add_child(bcds, PT.deep_copy(MT.requestDistribution(bc)))
+          PT.add_child(bcds, PT.deep_copy(MT.find_Distribution(bc)))
       # Update PR for structured zones
       for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and has_pr(n)):
         assert PT.Zone.Type(zone) == 'Structured'
@@ -777,7 +777,7 @@ def extrude(dist_tree: CGNSDistTree,
       if PT.Zone.Type(zone) == 'Structured' and PT.get_name(subset) not in ['InitialSurface', 'ExtrudedSurface'] :
         pr_n = PT.find_child_from_name(subset, 'PointRange')
         _extend_pr(pr_n, [1,2])
-        MT.new_distribution({'Index' : par_utils.uniform_distribution(PT.PointRange.n_elem(pr_n), comm)}, subset)
+        MT.new_Distribution({'Index' : par_utils.uniform_distribution(PT.PointRange.n_elem(pr_n), comm)}, subset)
         if PT.get_label(subset) == 'GridConnectivity1to1_t':
           donor_path = PT.GridConnectivity.ZoneDonorPath(subset, PT.get_name(base))
           _extend_pr(PT.find_child_from_name(subset, 'PointRangeDonor'), [1,2])
@@ -793,7 +793,7 @@ def extrude(dist_tree: CGNSDistTree,
 
       elif PT.Zone.Type(zone) == 'Unstructured':
         pl_n = PT.find_child_from_name(subset, 'PointList')
-        distrib_idx_n = MT.requestDistribution(subset, 'Index')
+        distrib_idx_n = MT.find_Distribution(subset, 'Index')
         new_distrib_idx, new_pl, _ = _pl_and_data_vtx_duplication(pl_n[1], distrib_idx_n[1], n_vtx_2d, {}, comm)
         # Manage PointListDonor
         pld_n = PT.get_child_from_name(subset, 'PointListDonor')

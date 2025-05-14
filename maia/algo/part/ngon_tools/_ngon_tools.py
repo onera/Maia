@@ -49,9 +49,9 @@ def pe_to_nface(zone, remove_PE=False):
   #Create NFace node
   _erange = np.array([min_cell, max_cell], dtype=np.int32)
   nface = PT.new_NFaceElements(erange=_erange, eso=nface_eso, ec=nface_ec, parent=zone)
-  cell_gnum = MT.getGlobalNumbering(zone, 'Cell')
+  cell_gnum = MT.get_GlobalNumbering(zone, 'Cell')
   if cell_gnum is not None:
-    MT.newGlobalNumbering({'Element' : PT.get_value(cell_gnum)}, nface)
+    MT.new_GlobalNumbering({'Element' : PT.get_value(cell_gnum)}, nface)
 
   if remove_PE:
     PT.rm_children_from_name(ngon_node, "ParentElements")
@@ -183,9 +183,9 @@ def edge_pe_to_ngon(zone, remove_PE=False):
   ngon_ec = PDM_face_vtx_from_face_and_edge(ngon_eso, face_edge, edge_vtx)
   _erange = np.array([min_face, max_face], dtype=np.int32)
   ngon = PT.new_NGonElements(erange=_erange, eso=ngon_eso, ec=ngon_ec, parent=zone)
-  face_gnum = MT.getGlobalNumbering(zone, 'Cell') # cell = face
+  face_gnum = MT.get_GlobalNumbering(zone, 'Cell') # cell = face
   if face_gnum is not None:
-    MT.newGlobalNumbering({'Element' : PT.get_value(face_gnum)}, ngon)
+    MT.new_GlobalNumbering({'Element' : PT.get_value(face_gnum)}, ngon)
 
   if remove_PE:
     PT.rm_children_from_name(edge_node, "ParentElements")

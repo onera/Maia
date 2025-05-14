@@ -58,7 +58,7 @@ def compute_edge_center(zone, comm, edge_indices=None):
   coords = PT.Zone.coordinates(zone)
 
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
 
   part_data = EP.block_to_part(dist_coords, vtx_distri, edge_vtx.values-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
@@ -118,12 +118,12 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
 
     face_vtx = MT.Element.connectivity(ngon_node)
     if face_indices is not None:
-      face_distri = PT.maia.getDistribution(ngon_node, 'Element')[1]
+      face_distri = MT.distribution_value(ngon_node, 'Element')
       face_vtx = EP.block_to_part(face_vtx, face_distri, _face_indices, comm)
   
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)) if coords[i] is not None)
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
 
   part_data = EP.block_to_part(dist_coords, vtx_distri, face_vtx.values-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]
@@ -153,7 +153,7 @@ def compute_cell_center(zone, comm, cell_indices=None):
 
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
 
   part_data = EP.block_to_part(dist_coords, vtx_distri, cell_vtx.values-1, comm)
   local_coords = [part_data[key] for key in part_data.keys()]

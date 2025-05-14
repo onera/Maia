@@ -1,6 +1,7 @@
 import numpy as np
 
 import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from   maia.utils     import np_utils
 from   maia.utils     import logging as mlog
@@ -46,7 +47,7 @@ def compute_face_measure(zone):
 
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx = PT.maia.Element.connectivity(ngon_node)
+      face_vtx = MT.Element.connectivity(ngon_node)
     else:
       face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
 

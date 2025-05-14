@@ -13,7 +13,7 @@ def transform_affine_zone(zone,
                           translation=np.zeros(3),
                           apply_to_fields=False):
 
-  distri_vtx = MT.getDistribution(zone, 'Vertex')[1]
+  distri_vtx = MT.distribution_value(zone, 'Vertex')
   
   all_vtx = np.arange(distri_vtx[0]+1, distri_vtx[1]+1, dtype=distri_vtx.dtype)
   PTP = EP.PartToPart([vtx_ids], [all_vtx], comm)

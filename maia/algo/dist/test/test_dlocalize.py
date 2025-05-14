@@ -59,7 +59,7 @@ def test_localize_2d(src_kind, tgt_kind, comm):
   maia.algo.localize_points(src_tree, tgt_tree, 'CellCenter', comm)
   
   zone = PT.get_node_from_label(tgt_tree, 'Zone_t')
-  cell_distri = MT.get_distribution(zone, 'Cell')[1]
+  cell_distri = MT.distribution_value(zone, 'Cell')
 
   expected_f = ((np.arange(400) // 4 )  % 5) + np.repeat([1,6,11,16,21], 80) # Regular pattern
   expected = expected_f[cell_distri[0] : cell_distri[1]]

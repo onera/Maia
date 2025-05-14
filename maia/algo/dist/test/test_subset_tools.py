@@ -48,7 +48,7 @@ def test_convert_subset_as_facelist(comm):
   subset_tools.convert_subset_as_facelist(tree, 'Base/zone/ZoneBC/Xmax', comm)
 
   xmax = PT.get_node_from_name(tree, 'Xmax')
-  distri = MT.getDistribution(xmax, 'Index')[1]
+  distri = MT.distribution_value(xmax, 'Index')
   pl = PT.get_child_from_name(xmax, 'PointList')[1]
   assert PT.Subset.GridLocation(xmax) == 'FaceCenter'
   assert pl.ndim == 2

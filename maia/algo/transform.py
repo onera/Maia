@@ -219,7 +219,7 @@ def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
 # Belows are helper functions to compute entity theta coordinate, depending of GridLocation
 def _compute_cellcenter_theta(z: CGNSTree, comm: Optional[MPIComm]) -> NDArray:
   theta = _compute_elements_center(z, 3, comm)[1::3]
-  if PT.Zone.Type(z) == 'Structured' and MT.getDistribution(z) is None:
+  if PT.Zone.Type(z) == 'Structured' and MT.get_Distribution(z) is None:
     theta = theta.reshape(PT.Zone.CellSize(z), order='F')
   return theta
 
@@ -259,7 +259,7 @@ def shrink_to_subset(array, zone, subset, comm):
   if pl is None and pr is None: # Subset is not partial
     return array
   loc = PT.Subset.GridLocation(subset)
-  is_partitioned = MT.getDistribution(zone) is None
+  is_partitioned = MT.get_Distribution(zone) is None
   subset_distri = None if is_partitioned else MT.distribution_value(subset, 'Index')
   if PT.Zone.Type(zone) == 'Unstructured':
     if pl is None:

@@ -49,7 +49,7 @@ def place_in_container(zone, rq_dim, fields):
           ng = MT.Zone.EdgeNode(zone)
         er = PT.Element.Range(ng)
         pl = np.arange(er[0], er[1]+1, dtype=np.int32).reshape((1,-1), order='F')
-        gnum =  PT.maia.getGlobalNumbering(ng, 'Element')[1]
+        gnum =  MT.globalnumbering_value(ng, 'Element')
       else: # Must collect faces or edge in same order than the one used to compute face centers
         subdim = 2 if output_loc == 'FaceCenter' else 1
         ordered_faces = PT.Zone.get_ordered_elements_per_dim(zone)[subdim]
@@ -61,15 +61,15 @@ def place_in_container(zone, rq_dim, fields):
           pl[0,start:start+sizes[i]] = np.arange(er[0], er[1]+1, dtype=np.int32)
           start += sizes[i]
         # For gnum, we computed on all face or edge so Element/GlobalNumbering/Sections should be fine
-        _, gnum = np_utils.concatenate_np_arrays([PT.maia.getGlobalNumbering(e, 'Sections')[1] for e in ordered_faces])
+        _, gnum = np_utils.concatenate_np_arrays([MT.globalnumbering_value(e, 'Sections') for e in ordered_faces])
 
       existing_pl = PT.get_child_from_name(container, 'PointList')
       if existing_pl is not None:
         cur_pl   = existing_pl[1]
-        cur_gnum = PT.maia.getGlobalNumbering(container, 'Index')[1]
+        cur_gnum = MT.globalnumbering_value(container, 'Index')
         if not (np.array_equal(cur_pl, pl) and np.array_equal(cur_gnum, gnum)):
           raise RuntimeError("Container already exists, but has incompatible PointList or GlobalNumbering")
       else:
         PT.new_IndexArray('PointList', pl, container)
-        PT.maia.newGlobalNumbering({'Index' : gnum}, container)
+        MT.new_GlobalNumbering({'Index' : gnum}, container)
 

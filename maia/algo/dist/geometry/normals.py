@@ -23,7 +23,7 @@ def compute_face_normal(zone, comm):
   """
   coords = PT.Zone.coordinates(zone)
   dist_coords = dict((coords._fields[i], coords[i]) for i in range(len(coords)))
-  vtx_distri = MT.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
 
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone):

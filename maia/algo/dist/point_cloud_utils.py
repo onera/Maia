@@ -14,8 +14,8 @@ def get_point_cloud(zone, comm, location):
   If location == Center, compute and return the (interlaced) coordinates of
   cell centers and cell global numbering of a partitioned zone
   """
-  vtx_distri   = MT.get_distribution(zone, 'Vertex')[1]
-  cell_distri  = MT.get_distribution(zone, 'Cell')[1]
+  vtx_distri   = MT.distribution_value(zone, 'Vertex')
+  cell_distri  = MT.distribution_value(zone, 'Cell')
 
   if location == 'Vertex':
     vtx_ln_to_gn = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype) + 1
@@ -24,7 +24,7 @@ def get_point_cloud(zone, comm, location):
     return vtx_coords, vtx_ln_to_gn
 
   elif location == 'CellCenter':
-    cell_distri   = MT.get_distribution(zone, 'Cell')[1]
+    cell_distri   = MT.distribution_value(zone, 'Cell')
     cell_ln_to_gn = np.arange(cell_distri[0], cell_distri[1], dtype=cell_distri.dtype) + 1
     center_cell = _compute_elements_center(zone, 'CellCenter', comm)
     return center_cell, cell_ln_to_gn

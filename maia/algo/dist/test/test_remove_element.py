@@ -3,7 +3,8 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from maia.utils import par_utils
 
@@ -120,7 +121,7 @@ def test_remove_elts_from_pl(elt_name, comm):
 
   zone_bc_n = PT.get_node_from_label(dist_tree, 'ZoneBC_t')
   bc_n = PT.new_BC('ridges', point_list=ridge_pl.reshape((1,-1), order='F'), loc='EdgeCenter', parent=zone_bc_n)
-  PT.maia.newDistribution({'Index':ridge_distri}, parent=bc_n)
+  MT.new_Distribution({'Index':ridge_distri}, parent=bc_n)
 
   # > Define elements to remove
   is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==elt_name
@@ -148,7 +149,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   is_bar_bc  = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
 
   elt_n  = PT.get_child_from_predicate(dist_zone, is_tet_elt)
-  elt_distrib = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distrib = MT.distribution_value(elt_n, 'Element')
   n_elt  = elt_distrib[1]-elt_distrib[0]
   elt_er = PT.get_child_from_name(elt_n,'ElementRange')[1]
   assert np.array_equal(elt_er, np.array([1, n_tet[elt_name]]))
@@ -156,11 +157,11 @@ def test_remove_elts_from_pl(elt_name, comm):
   assert elt_distrib[2]==n_tet[elt_name]
 
   cell_distri = par_utils.dn_to_distribution(n_elt, comm)
-  assert np.array_equal(PT.maia.getDistribution(dist_zone, 'Cell')[1], cell_distri)
+  assert np.array_equal(MT.distribution_value(dist_zone, 'Cell'), cell_distri)
 
   elt_n  = PT.get_child_from_predicate(dist_zone, is_tri_elt)
   elt_er = PT.get_child_from_name(elt_n,'ElementRange')[1]
-  elt_distrib = PT.maia.getDistribution(elt_n, 'Element')[1]
+  elt_distrib = MT.distribution_value(elt_n, 'Element')
   n_elt  = elt_distrib[1]-elt_distrib[0]
   expected_er = np.array([n_tet[elt_name]+1, n_tet[elt_name]+n_tri[elt_name]])
   assert np.array_equal(elt_er, expected_er)
@@ -172,7 +173,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   if elt_name=='TRI_3':
     assert PT.get_node_from_name_and_label(dist_zone, 'Zmin', 'BC_t') is None
     zmax_bc_n = PT.get_node_from_name_and_label(dist_zone, 'Zmax', 'BC_t')
-    assert PT.maia.getDistribution(zmax_bc_n, 'Index')[1][2]==6
+    assert MT.distribution_value(zmax_bc_n, 'Index')[2]==6
 
   if elt_name=='BAR_2':
     assert PT.get_child_from_name(dist_zone, 'BAR_2') is None
@@ -180,7 +181,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   else: 
     elt_n  = PT.get_child_from_predicate(dist_zone, is_bar_elt)
     elt_er = PT.get_child_from_name(elt_n,'ElementRange')[1]
-    elt_distrib = PT.maia.getDistribution(elt_n, 'Element')[1]
+    elt_distrib = MT.distribution_value(elt_n, 'Element')
     n_elt  = elt_distrib[1]-elt_distrib[0]
     expected_er = np.array([n_tet[elt_name]+n_tri[elt_name]+1,
                             n_tet[elt_name]+n_tri[elt_name]+n_bar[elt_name]])
@@ -237,13 +238,13 @@ def test_remove_elts_from_pl_conflict_bc(comm):
   for elt_name, elt_er in expected_elt_er.items():
     elt_n = PT.get_child_from_name(dist_zone, elt_name)
     assert np.array_equal(PT.Element.Range(elt_n), elt_er)
-    assert np.array_equal(PT.maia.getDistribution(elt_n, 'Element')[1], expected_elt_dn[elt_name])
+    assert np.array_equal(MT.distribution_value(elt_n, 'Element'), expected_elt_dn[elt_name])
   
   expected_bc_pl = np.array([[[1]],[[4]]][rank])
   expected_bc_dn = np.array([[0,1,2],[1,2,2]][rank])
   bc_n = PT.get_node_from_label(dist_zone, 'BC_t')
   assert np.array_equal(PT.Subset.getPatch(bc_n)[1], expected_bc_pl)
-  assert np.array_equal(PT.maia.getDistribution(bc_n, 'Index')[1], expected_bc_dn)
+  assert np.array_equal(MT.distribution_value(bc_n, 'Index'), expected_bc_dn)
 
   expected_cell_dn = np.array([[0,1,1],[1,1,1]][rank])
-  assert np.array_equal(PT.maia.getDistribution(dist_zone, 'Cell')[1], expected_cell_dn)
+  assert np.array_equal(MT.distribution_value(dist_zone, 'Cell'), expected_cell_dn)

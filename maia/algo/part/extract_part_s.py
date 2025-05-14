@@ -1,5 +1,6 @@
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from   maia.factory  import dist_from_part
 from   maia.factory.partitioning.split_S.part_zone import compute_face_gnum
 from   maia.utils import s_numbering
@@ -62,7 +63,7 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
         PT.set_label(FS_ep, 'FlowSolution_t')
       else:
         PT.new_IndexRange(value=part1_pr[i_zone], parent=FS_ep)
-        PT.maia.newGlobalNumbering({'Index' : part1_gnum1[i_zone]}, parent=FS_ep)
+        MT.new_GlobalNumbering({'Index' : part1_gnum1[i_zone]}, parent=FS_ep)
 
     for fld_node in PT.get_children_from_label(mask_container, 'DataArray_t'):
       fld_name = PT.get_name(fld_node)
@@ -170,7 +171,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
     vtx_per_dir  = zone_dim[:,0]
     cell_per_dir = zone_dim[:,1]
 
-    gn_entities = {key: PT.maia.getGlobalNumbering(part_zone, key)[1] for key in ['Vertex', 'Face', 'Cell']}
+    gn_entities = {key: MT.globalnumbering_value(part_zone, key) for key in ['Vertex', 'Face', 'Cell']}
 
     _pr = pr.copy()
     if n_dim_pop > 0:
@@ -198,7 +199,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
     # > Get joins without post-treating PRs
     for zgc_n in PT.get_children_from_label(part_zone, 'ZoneGridConnectivity_t'):
       extract_zgc = PT.new_ZoneGridConnectivity(PT.get_name(zgc_n), parent=extract_zone)
-      for gc_n in PT.get_children_from_predicate(zgc_n, lambda n: PT.maia.conv.is_intra_gc(PT.get_name(n))):
+      for gc_n in PT.get_children_from_predicate(zgc_n, lambda n: MT.conv.is_intra_gc(PT.get_name(n))):
         gc_pr = PT.get_value(PT.get_child_from_name(gc_n,"PointRange"))
         intersection = maia.factory.partitioning.split_S.part_zone.intersect_pr(gc_pr, pr)
         if intersection is not None:
@@ -240,7 +241,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
 
   if len(partial_gnum_vtx)!=0:
     for i_part, extract_zone in enumerate(extract_zones):
-      PT.maia.newGlobalNumbering({'Vertex' : partial_gnum_vtx [i_part],
+      MT.new_GlobalNumbering({'Vertex' : partial_gnum_vtx [i_part],
                                   'Cell'   : partial_gnum_cell[i_part]},
                                  parent=extract_zone)
       
@@ -256,7 +257,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
         dist_cell_per_dir = cell_size[:,1]
         face_lntogn = compute_face_gnum(dist_cell_per_dir, cell_window)
         
-        gn_node = PT.maia.getGlobalNumbering(extract_zone)
+        gn_node = MT.find_GlobalNumbering(extract_zone)
         PT.new_node("CellRange", "IndexRange_t", cell_range, parent=gn_node)
         PT.new_DataArray("CellSize", cell_size[:,1], parent=gn_node)
         PT.new_DataArray("Face", face_lntogn, parent=gn_node)

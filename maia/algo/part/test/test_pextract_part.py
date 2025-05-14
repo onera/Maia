@@ -4,7 +4,8 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from   maia.utils import s_numbering
 from   maia.utils import logging as mlog
 
@@ -132,7 +133,7 @@ def test_exch_field(cgns_name, partial, comm):
   # Add field
   for zone in PT.get_all_Zone_t(part_tree):
     n_vtx = PT.Zone.n_vtx(zone)
-    gnum = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
+    gnum = MT.globalnumbering_value(zone, 'Vertex')
     if partial: #Take one over two
       if cgns_name=='Structured':
         pr = np.array([[1,3],[1,1],[1,5]], np.int32)
@@ -168,7 +169,7 @@ def test_exch_field(cgns_name, partial, comm):
       lnum = extractor.exch_tool_box['Base/zone'][PT.get_name(extr_zone)]['parent_lnum_vtx']
       lnum = lnum[pl-1]
       zone = PT.get_all_Zone_t(part_tree)[0]
-      gnum = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
+      gnum = MT.globalnumbering_value(zone, 'Vertex')
       gnum = gnum[lnum-1]
     else:
       pl = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
@@ -179,7 +180,7 @@ def test_exch_field(cgns_name, partial, comm):
     if cgns_name=='Structured':
       lnum = extractor.exch_tool_box['Base/zone'][PT.get_name(extr_zone)]['parent_lnum_vtx']
       zone = PT.get_all_Zone_t(part_tree)[0]
-      gnum = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
+      gnum = MT.globalnumbering_value(zone, 'Vertex')
       gnum = gnum[lnum-1].reshape(PT.Zone.VertexSize(extr_zone), order='F')
     else:
       gnum = extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex']
@@ -192,7 +193,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
 
   # Add field
   for zone in PT.get_all_Zone_t(part_tree):
-    gnum = PT.maia.getGlobalNumbering(PT.get_node_from_name(zone, 'NGonElements'), 'Element')[1]
+    gnum = MT.globalnumbering_value(PT.get_node_from_name(zone, 'NGonElements'), 'Element')
     bc_n = PT.get_child_from_predicates(zone, f'ZoneBC_t/{bc_name}')
     if bc_n is not None:
       bc_pl   = PT.get_value(PT.get_node_from_name(bc_n, "PointList"))

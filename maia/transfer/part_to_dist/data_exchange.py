@@ -200,7 +200,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
       for part_zone in part_zones:
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
           # Get corresponding part ZSR
-          lngn_list.append(PT.get_value(MT.getGlobalNumbering(node, 'Index')))
+          lngn_list.append(MT.globalnumbering_value(node, 'Index'))
           good_zsr = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' \
                                and PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None \
                                and PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node)
@@ -250,14 +250,14 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
       d_bc = PT.get_node_from_path(dist_zone, bc_path) #True BC
       for mask_dataset in PT.get_children(mask_bc):
         ds_path = bc_path + '/' + PT.get_name(mask_dataset)
-        d_dataset = PT.get_node_from_path(dist_zone, ds_path) #True DataSet
-        has_own_distri = MT.getDistribution(d_dataset) is not None
+        d_dataset = PT.find_node_from_path(dist_zone, ds_path) #True DataSet
+        has_own_distri = MT.get_Distribution(d_dataset) is not None
         #If dataset has its own PointList, we must override bc distribution and lngn
         if has_own_distri:
-          distri_node  = MT.getDistribution(d_dataset)
+          distri_node  = MT.get_Distribution(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
-          distri_node  = MT.getDistribution(d_bc)
+          distri_node  = MT.get_Distribution(d_bc)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
         distribution = PT.get_child_from_name(distri_node, 'Index')[1]
 

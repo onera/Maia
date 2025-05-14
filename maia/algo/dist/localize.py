@@ -31,8 +31,8 @@ def minimal_partitioning(zone, comm, use_geom=False):
   """
   dim = PT.Zone.CellDimension(zone)
 
-  vtx_distri  = MT.getDistribution(zone, 'Vertex')[1]
-  cell_distri = MT.getDistribution(zone, 'Cell')[1]
+  vtx_distri  = MT.distribution_value(zone, 'Vertex')
+  cell_distri = MT.distribution_value(zone, 'Cell')
 
   dcoords = PT.Zone.coordinates(zone)
 
@@ -50,7 +50,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     dcell_face = MT.Element.connectivity(nface)
   
     # Compute part. like cell_face
-    nface_distri = MT.get_distribution(nface, 'Element')[1]
+    nface_distri = MT.distribution_value(nface, 'Element')
     if not use_geom and comm.allreduce(np.array_equal(cell_distri, nface_distri), MPI.LAND):
       pcell_face = dcell_face
     else:
@@ -61,7 +61,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     pcell_face     = np.sign(pcell_face.values, dtype=np.int32) * np.arange(1, len(face_gnum)+1, dtype=np.int32)[inverse]
     
     # Compute part. like face_vtx
-    ngon_distri = MT.get_distribution(ngon, 'Element')[1]
+    ngon_distri = MT.distribution_value(ngon, 'Element')
     _pface_vtx = EP.block_to_part(dface_vtx, ngon_distri, face_gnum-1, comm)
     vtx_gnum, inverse = np.unique(_pface_vtx.values, return_inverse=True) # Unique preserve dtype
     vtx_gnum = vtx_gnum.astype(cell_gnum.dtype, copy=False)
@@ -81,7 +81,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     # Prepare dface_edge on distributed input
     local_pe = get_pe_local(edge).reshape(-1, order='C')
 
-    _edge_distri = par_utils.partial_to_full_distribution(MT.get_distribution(edge, 'Element')[1], comm)
+    _edge_distri = par_utils.partial_to_full_distribution(MT.distribution_value(edge, 'Element'), comm)
     _face_distri = par_utils.partial_to_full_distribution(cell_distri, comm)
     dface_edge = PDM_dfacecell_to_dcellface(comm, _edge_distri, _face_distri, local_pe)
 

@@ -189,12 +189,12 @@ def dist_dataset_to_part_dataset(dist_zone: CGNSDistTree,
         ds_path = bc_path + '/' + PT.get_name(mask_dataset)
         d_dataset = PT.find_node_from_path(dist_zone, ds_path) #True DataSet
         #If dataset has its own PointList, we must override bc distribution and lngn
-        has_own_distri = MT.getDistribution(d_dataset) is not None
+        has_own_distri = MT.get_Distribution(d_dataset) is not None
         if has_own_distri:
-          distri_node  = MT.requestDistribution(d_dataset)
+          distri_node  = MT.find_Distribution(d_dataset)
           lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
         else: #Fallback to bc distribution
-          distri_node  = MT.requestDistribution(d_bc)
+          distri_node  = MT.find_Distribution(d_bc)
           if not par_utils.exists_anywhere(part_zones, bc_path+'/:CGNS#GlobalNumbering/Index', comm):
             # For structured zones, gnum are not created during partitioning so add it now
             assert PT.Zone.Type(dist_zone) == "Structured"

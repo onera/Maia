@@ -48,8 +48,7 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
   if extract_zone is not None:
     elt_n            = extract_zone if grid_location!='FaceCenter' else PT.Zone.NGonNode(extract_zone)
     if elt_n is None :return
-    part1_elt_gnum_n = PT.maia.getGlobalNumbering(elt_n, _grid_location[grid_location])
-    part1_ln_to_gn   = [PT.get_value(part1_elt_gnum_n)]
+    part1_ln_to_gn   = [MT.globalnumbering_value(elt_n, _grid_location[grid_location])]
 
   # Get reordering informations if point_list
   # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
@@ -108,7 +107,7 @@ def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box,
         PT.set_label(FS_ep, 'FlowSolution_t')
         PT.rm_children_from_name(FS_ep, 'PointList')
       else:
-        PT.maia.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
+        MT.new_GlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
 
   if part1_data[0].size==0 and extract_zone is not None:
     PT.rm_child(extract_zone, FS_ep)
@@ -208,7 +207,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
           bc_n  = PT.get_node_from_path(part_zone, bc_path)
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
-          bc_gn = PT.get_value(MT.getGlobalNumbering(bc_n, 'Index')) if bc_n is not None else np.empty(0, pdm_gnum_dtype)
+          bc_gn = MT.globalnumbering_value(bc_n, 'Index') if bc_n is not None else np.empty(0, pdm_gnum_dtype)
           pdm_ep.part_group_set(i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) , bc_gn)
       bc_type +=1
 
@@ -226,12 +225,12 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                  3: [[n_extract_vtx, n_extract_cell, 0]] }
 
   # > ExtractPart zone construction
-  extract_zone = PT.new_Zone(PT.maia.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
+  extract_zone = PT.new_Zone(MT.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                                size=size_by_dim[dim],
                                type='Unstructured')
 
   ep_vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VTX)
-  PT.maia.newGlobalNumbering({"Vertex" : ep_vtx_ln_to_gn}, parent=extract_zone)
+  MT.new_GlobalNumbering({"Vertex" : ep_vtx_ln_to_gn}, parent=extract_zone)
 
   # > Grid coordinates
   cx, cy, cz = layouts.interlaced_to_tuple_coords(pdm_ep.vtx_coord_get(0))
@@ -241,7 +240,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
 
   if dim == 0:
-    PT.maia.newGlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extract_zone)
+    MT.new_GlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extract_zone)
 
   # > NGON
   if dim >= 2:
@@ -264,7 +263,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                               erange=[1, nb_bar], 
                               econn=edge_data['np_edge_vtx'], 
                               parent=extract_zone)
-      PT.maia.newGlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+      MT.new_GlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
 
     ngon_n = PT.new_NGonElements('NGonElements',
                                  erange  = [nb_bar+1, nb_bar+n_extract_face],
@@ -272,9 +271,9 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                                  eso     = ep_face_vtx_idx,
                                  parent  = extract_zone)
 
-    PT.maia.newGlobalNumbering({'Element' : ep_face_ln_to_gn}, parent=ngon_n)
+    MT.new_GlobalNumbering({'Element' : ep_face_ln_to_gn}, parent=ngon_n)
     if dim == 2:
-      PT.maia.newGlobalNumbering({'Cell' : ep_face_ln_to_gn}, parent=extract_zone)
+      MT.new_GlobalNumbering({'Cell' : ep_face_ln_to_gn}, parent=extract_zone)
 
   # > NFACES
   if dim == 3:
@@ -286,8 +285,8 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                                     parent  = extract_zone)
 
     ep_cell_ln_to_gn = pdm_ep.ln_to_gn_get(0, PDM._PDM_MESH_ENTITY_CELL)
-    PT.maia.newGlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
-    PT.maia.newGlobalNumbering({'Cell' : ep_cell_ln_to_gn}, parent=extract_zone)
+    MT.new_GlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
+    MT.new_GlobalNumbering({'Cell' : ep_cell_ln_to_gn}, parent=extract_zone)
 
     maia.algo.nface_to_pe(extract_zone, comm)
 
@@ -310,7 +309,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
           bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
           for child in PT.get_children_from_predicate(dist_bc, lambda n : PT.get_name(n) != 'GridLocation'):
             PT.add_child(bc_n, child)
-          PT.maia.newGlobalNumbering({'Index':bc_gn}, parent=bc_n)
+          MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
     bc_type +=1 
 
   # - Get PTP by vertex and cell

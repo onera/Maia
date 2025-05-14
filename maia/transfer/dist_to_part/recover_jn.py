@@ -44,7 +44,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
     gc = PT.get_node_from_path(part_tree, p_gc_path)
-    lngn = PT.get_value(MT.getGlobalNumbering(gc, 'Index'))
+    lngn = MT.globalnumbering_value(gc, 'Index')
     shifted_lntogn.append(lngn + face_in_join_offset[itrf_id])
     pl = PT.get_child_from_name(gc, 'PointList')[1][0]
     part_data['pl'].append(pl)
@@ -80,11 +80,11 @@ def get_pl_donor(dist_tree, part_tree, comm):
     itrf_id = join_to_ref[d_gc_path]
     gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
-    gc = PT.get_node_from_path(part_tree, p_gc_path)
-    pl_node = PT.get_child_from_name(gc, 'PointList')
-    lngn_node = MT.getGlobalNumbering(gc, 'Index')
-    lngn = lngn_node[1]
-    pl = pl_node[1][0]
+    gc = PT.find_node_from_path(part_tree, p_gc_path)
+    pl_node = PT.find_child_from_name(gc, 'PointList')
+    lngn_node = MT.find_GlobalNumbering(gc, 'Index')
+    lngn = PT.get_np_value(lngn_node)
+    pl = PT.get_np_value(pl_node)[0]
     r_idx = 0
     ini_size = pl.size
     # First pass to count the number of matchs for each entity

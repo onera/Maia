@@ -378,7 +378,7 @@ def test_recover_dist_tree_ngon(comm):
   part_tree = PT.new_CGNSTree()
   part_base = PT.new_CGNSBase(parent=part_tree)
   if comm.Get_rank() < 2:
-    distri_ud = MT.newGlobalNumbering()
+    distri_ud = MT.new_GlobalNumbering()
     if comm.Get_rank() == 0:
       # part_zone = G.cartNGon((0,0,0), (.5,.5,.5), (3,3,3))
       part_zone = PT.get_all_Zone_t(generate_dist_block(3, 'Poly', MPI.COMM_SELF))[0]
@@ -392,7 +392,7 @@ def test_recover_dist_tree_ngon(comm):
       zbc = PT.new_ZoneBC(parent=part_zone)
       bc = PT.new_BC(type='BCWall', point_list=[[1,4,2,3]], parent=zbc)
       PT.new_GridLocation('FaceCenter', bc)
-      MT.newGlobalNumbering({'Index' : np.array([1,2,3,4], pdm_dtype)}, parent=bc)
+      MT.new_GlobalNumbering({'Index' : np.array([1,2,3,4], pdm_dtype)}, parent=bc)
     else:
       # part_zone = G.cartNGon((1,0,0), (.5,.5,.5), (3,3,3))
       part_zone = PT.get_all_Zone_t(generate_dist_block(3, 'Poly', MPI.COMM_SELF, origin=[1., 0., 0.]))[0]
@@ -404,7 +404,7 @@ def test_recover_dist_tree_ngon(comm):
                             49,50,51,52,57,58,59,60,65,66,67,68], pdm_dtype)
 
     ngon = PT.get_node_from_path(part_zone, 'NGonElements')
-    MT.newGlobalNumbering({'Element' : ngon_gnum}, parent=ngon)
+    MT.new_GlobalNumbering({'Element' : ngon_gnum}, parent=ngon)
 
     PT.new_DataArray('Vertex', vtx_gnum,  parent=distri_ud)
     PT.new_DataArray('Cell',   cell_gnum, parent=distri_ud)
@@ -532,7 +532,7 @@ def test_recover_poly3d_nface_validity(comm):
   nface = PT.Zone.NFaceNode(zone)
   ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
 
-  distri = MT.getDistribution(PT.Zone.NGonNode(zone), 'Element')[1]
+  distri = MT.distribution_value(PT.Zone.NGonNode(zone), 'Element')
 
   out_sign = EP.part_to_block(np.sign(ec), distri, np.abs(ec)-1, comm, reduce_func=EP.reduce_sum)
   assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)

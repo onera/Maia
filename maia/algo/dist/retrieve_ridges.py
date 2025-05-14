@@ -185,7 +185,7 @@ def find_ridges(dist_tree: CGNSDistTree,
                             econn=dridge_vtx.astype(zone_dtype, copy=False),
                             parent=zone)
     dedges_partial_distrib = par_utils.full_to_partial_distribution(distrib_ridge, comm)
-    MT.new_distribution({'Element':dedges_partial_distrib}, parent=elt_n)
+    MT.new_Distribution({'Element':dedges_partial_distrib}, parent=elt_n)
 
 
     # > Création des BCs EdgeCenter (une par face parent group) + descriptor qui stocke parent 1 et parent 2
@@ -201,7 +201,7 @@ def find_ridges(dist_tree: CGNSDistTree,
                             point_list=pl.reshape((1,-1), order='F').astype(zone_dtype, copy=False),
                             loc='EdgeCenter',
                             parent=zbc_n)
-      MT.new_distribution({'Index':par_utils.dn_to_distribution(pl.size, comm)}, parent=bc_egde_n)
+      MT.new_Distribution({'Index':par_utils.dn_to_distribution(pl.size, comm)}, parent=bc_egde_n)
       values = []
       for val in [bc_identifiers[k-1] for k in bc_edge]:
         if isinstance(val, str):

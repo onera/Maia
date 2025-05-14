@@ -3,7 +3,8 @@ import Pypdm.Pypdm as PDM
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from   maia                              import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.algo.part.point_cloud_utils  import create_sub_numbering
 from   maia.transfer                     import protocols as EP
@@ -19,7 +20,7 @@ def extract_elmt_connectivity_from_pl(zone, elmt_nodes, pl, comm):
   delmt_conn      = list()
   delmt_gnum      = list()
   for elmt_n in elmt_nodes:
-    elmt_distrib = PT.maia.get_distribution(elmt_n, 'Element')[1]
+    elmt_distrib = MT.distribution_value(elmt_n, 'Element')
     elmt_range   = PT.Element.Range(elmt_n)
     elmt_conn    = PT.get_child_from_name(elmt_n, 'ElementConnectivity')[1]
     elmt_gnum    = np.arange(elmt_distrib[0], elmt_distrib[1], dtype=pdm_dtype) + elmt_range[0]
@@ -68,7 +69,7 @@ def extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm,
                             point_list=intersection.reshape((1,-1), order='F'),
                             parent=edge_zone_bc_n)
       PT.new_GridLocation(loc="CellCenter" , parent=edge_bc_n)
-      PT.maia.new_distribution({'Index':bc_distri}, parent=edge_bc_n)
+      MT.new_Distribution({'Index':bc_distri}, parent=edge_bc_n)
 
   return edge_zone_bc_n
 
@@ -87,7 +88,7 @@ def extract_zone_edges(dist_zone, pl, comm):
   distri_bar = par_utils.dn_to_distribution(extract_edge_vtx.size // 2, comm)
 
   # > Compute vtx pl from extracted edge_vtx
-  vtx_distri = PT.maia.get_distribution(dist_zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(dist_zone, 'Vertex')
   vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
 
   GI = maia.transfer.protocols.GlobalIndexer(vtx_distri_f, edge_vtx-1, comm)
@@ -108,7 +109,7 @@ def extract_zone_edges(dist_zone, pl, comm):
                               erange=extract_elmt_range,
                               econn=extract_edge_vtx,
                               parent=edge_zone)
-  PT.maia.new_distribution({'Element':distri_bar}, parent=new_bar_n)
+  MT.new_Distribution({'Element':distri_bar}, parent=new_bar_n)
 
   # > Get BCs intersecting PL
   zone_bc_n  = PT.get_child_from_label(dist_zone, 'ZoneBC_t')
@@ -117,7 +118,7 @@ def extract_zone_edges(dist_zone, pl, comm):
                       bc_predicate=PT.predicate.is_bc_of_loc('EdgeCenter'))
     PT.add_child(edge_zone, edge_zone_bc_n)
 
-  PT.maia.new_distribution({'Vertex': distri_vtx, 'Cell': distri_bar} , parent=edge_zone)
+  MT.new_Distribution({'Vertex': distri_vtx, 'Cell': distri_bar} , parent=edge_zone)
 
   return edge_zone
 

@@ -5,6 +5,7 @@ from mpi4py import MPI
 
 import maia
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 
 from maia.utils import test_utils as TU
 from maia.utils import par_utils
@@ -53,7 +54,7 @@ def test_compute_edge_length_poly3D(comm):
   elif comm.rank == 1:
     edge_co = np.array([18,27, 20,23,23,26], zone[1].dtype)
   edge = PT.new_Elements('EdgeElements', 'BAR_2', erange=[45,50], econn=edge_co, parent=zone)
-  PT.maia.newDistribution({'Element' : par_utils.dn_to_distribution(3, comm)}, parent=edge)
+  MT.new_Distribution({'Element' : par_utils.dn_to_distribution(3, comm)}, parent=edge)
 
   edge_length = GEO.compute_edge_measure(zone, comm)
 

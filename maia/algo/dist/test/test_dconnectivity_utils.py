@@ -53,17 +53,17 @@ def test_combine_dconnectivity(comm):
 
 def test_cell_vtx_connectivity_S():
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0]])
-  MT.new_distribution({'Cell': [2,6,8]}, zone)
+  MT.new_Distribution({'Cell': [2,6,8]}, zone)
   cell_vtx = CU.cell_vtx_connectivity_S(zone, 2)
   assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 2),
                         vs.array([[3,4,9,8],  [4,5,10,9],  [6,7,12,11],  [7,8,13,12]]))
 
-  MT.new_distribution({'Cell': [7,7,8]}, zone)
+  MT.new_Distribution({'Cell': [7,7,8]}, zone)
   cell_vtx = CU.cell_vtx_connectivity_S(zone, 2)
   assert len(cell_vtx) == 0 and cell_vtx.dtype == zone[1].dtype
 
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0],[2,1,0]])
-  MT.new_distribution({'Cell': [2,6,8]}, zone)
+  MT.new_Distribution({'Cell': [2,6,8]}, zone)
   assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 3),
                         vs.array([[3,4,9,8,18,19,24,23],  
                                   [4,5,10,9,19,20,25,24],  
@@ -71,7 +71,7 @@ def test_cell_vtx_connectivity_S():
                                   [7,8,13,12,22,23,28,27]]))
 
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0],[4,3,0]])
-  MT.new_distribution({'Cell': [15,17,24]}, zone)
+  MT.new_Distribution({'Cell': [15,17,24]}, zone)
   assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 3),
                         vs.array([[24,25,30,29,39,40,45,44], [31,32,37,36,46,47,52,51]]))
 

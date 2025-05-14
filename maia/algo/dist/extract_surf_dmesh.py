@@ -18,11 +18,11 @@ def _extract_faces(dist_zone, face_list, comm):
 
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
-  dface_vtx = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-  ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset' )[1]
+  dface_vtx = PT.find_child_from_name(ngon_node, 'ElementConnectivity')[1]
+  ngon_eso  = PT.find_child_from_name(ngon_node, 'ElementStartOffset' )[1]
 
-  distrib_face     = PT.get_value(MT.getDistribution(ngon_node, 'Element'))
-  distrib_face_vtx = PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity'))
+  distrib_face     = MT.distribution_value(ngon_node, 'Element')
+  distrib_face_vtx = MT.distribution_value(ngon_node, 'ElementConnectivity')
 
   dn_face = distrib_face[1] - distrib_face[0]
   np_face_distrib = par_utils.partial_to_full_distribution(distrib_face, comm)
@@ -44,7 +44,7 @@ def _extract_surf_zone(dist_zone, face_list, comm):
     ex_face_old_to_new = _extract_faces(dist_zone, face_list, comm)
 
   # > Transfert extracted vertex coordinates
-  distrib_vtx      = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_vtx      = MT.distribution_value(dist_zone, 'Vertex')
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   if dn_vtx > 0:
     cx, cy, cz = PT.Zone.coordinates(dist_zone)
@@ -74,8 +74,8 @@ def _extract_surf_zone(dist_zone, face_list, comm):
   np_distrib_face    = ex_face_distri[[i_rank, i_rank+1, n_rank]]
   np_distrib_facevtx = ex_fvtx_distri[[i_rank, i_rank+1, n_rank]]
 
-  MT.newDistribution({'Cell' : np_distrib_face, 'Vertex' : np_distrib_vtx}, dist_extract_zone)
-  MT.newDistribution({'Element' : np_distrib_face, 'ElementConnectivity' : np_distrib_facevtx}, extract_ngon_n)
+  MT.new_Distribution({'Cell' : np_distrib_face, 'Vertex' : np_distrib_vtx}, dist_extract_zone)
+  MT.new_Distribution({'Element' : np_distrib_face, 'ElementConnectivity' : np_distrib_facevtx}, extract_ngon_n)
 
   return dist_extract_zone
 

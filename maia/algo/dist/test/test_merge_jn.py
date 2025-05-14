@@ -65,7 +65,7 @@ def test_update_nface(comm):
   nface = PT.new_NFaceElements(erange = [36+1,36+8],
                                eso    = eso_full[cell_distri_ini[0]:cell_distri_ini[1]+1],
                                ec     = nface_ec_full[cell_distri_ini_e[0]:cell_distri_ini_e[1]])
-  MT.newDistribution({'Element' : cell_distri_ini, 'ElementConnectivity' : cell_distri_ini_e}, nface)
+  MT.new_Distribution({'Element' : cell_distri_ini, 'ElementConnectivity' : cell_distri_ini_e}, nface)
 
   #from maia.transform.dist_tree.merge_ids import merge_distributed_ids
   #old_to_new_face = merge_distributed_ids(face_distri_ini, np.array([23,24]), np.array([15,16]), comm, True)
@@ -127,7 +127,7 @@ def test_update_cgns_subsets(comm):
   PT.rm_child(PT.get_child_from_label(zone, 'ZoneBC_t'), bc)
   PT.new_DataArray('Sol', np.copy(PT.get_node_from_name(bc, 'PointList')[1][0]), parent=bc)
 
-  face_distri_ini = PT.get_value(MT.getDistribution(PT.get_node_from_path(zone, 'NGonElements'), 'Element'))
+  face_distri_ini = MT.distribution_value(PT.get_node_from_path(zone, 'NGonElements'), 'Element')
   old_to_new_face_f = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,15,16,23,24,25,26,27,28,29,30,31,32,33,34]
   old_to_new_face = np.array(old_to_new_face_f[face_distri_ini[0]:face_distri_ini[1]])
   MJ._update_cgns_subsets(zone, 'FaceCenter', face_distri_ini, old_to_new_face, 'Base', comm)
@@ -178,7 +178,7 @@ def test_update_vtx_data(comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], comm)
   zone = PT.get_all_Zone_t(tree)[0]
   PT.rm_nodes_from_label(tree, 'ZoneBC_t')
-  distri = PT.get_value(MT.getDistribution(zone, 'Vertex'))
+  distri = MT.distribution_value(zone, 'Vertex')
   fs = PT.new_FlowSolution('FSol', loc='Vertex', parent=zone)
   sol = PT.new_DataArray('Sol', np.arange(27)[distri[0]:distri[1]]+1, parent=fs)
 
@@ -195,7 +195,7 @@ def test_update_vtx_data(comm):
 
   MJ._update_vtx_data(zone, vtx_to_remove, comm)
 
-  assert (PT.get_value(MT.getDistribution(zone, 'Vertex')) == expected_distri).all()
+  assert (MT.distribution_value(zone, 'Vertex') == expected_distri).all()
   assert (PT.get_node_from_name(zone, 'CoordinateX')[1] == expected_cx).all()
   assert (PT.get_node_from_name(zone, 'Sol')[1] == expected_sol).all()
 
@@ -212,11 +212,11 @@ def test_merge_intrazone_jn(comm):
   jn = PT.new_GridConnectivity('matchA', 'zone', type='Abutting1to1', loc='FaceCenter', parent=zgc)
   PT.new_IndexArray('PointList', pl, parent=jn)
   PT.new_IndexArray('PointListDonor', pld, parent=jn)
-  MT.newDistribution({'Index' : distri}, jn)
+  MT.new_Distribution({'Index' : distri}, jn)
   jn = PT.new_GridConnectivity('matchB', 'zone', 'Abutting1to1', loc='FaceCenter', parent=zgc)
   PT.new_IndexArray('PointList', pld, parent=jn)
   PT.new_IndexArray('PointListDonor', pl, parent=jn)
-  MT.newDistribution({'Index' : distri}, jn)
+  MT.new_Distribution({'Index' : distri}, jn)
   #Other jns to ensure they are not merge
   pl = np.array([[13,14]], pdm_dtype) if comm.Get_rank() == 1 else np.array([[]], pdm_dtype)
   pld = np.array([[21,22]], pdm_dtype) if comm.Get_rank() == 1 else np.array([[]], pdm_dtype)
@@ -224,11 +224,11 @@ def test_merge_intrazone_jn(comm):
   jn = PT.new_GridConnectivity('matchC', 'zone', 'Abutting1to1', loc='FaceCenter', parent=zgc)
   PT.new_IndexArray('PointList', pl, parent=jn)
   PT.new_IndexArray('PointListDonor', pld, parent=jn)
-  MT.newDistribution({'Index' : distri}, jn)
+  MT.new_Distribution({'Index' : distri}, jn)
   jn = PT.new_GridConnectivity('matchD', 'zone', 'Abutting1to1', loc='FaceCenter', parent=zgc)
   PT.new_IndexArray('PointList', pld, parent=jn)
   PT.new_IndexArray('PointListDonor', pl, parent=jn)
-  MT.newDistribution({'Index' : distri}, jn)
+  MT.new_Distribution({'Index' : distri}, jn)
 
   jn_pathes = ('Base/zone/ZoneGC/matchC', 'Base/zone/ZoneGC/matchD')
   MJ.merge_intrazone_jn(tree, jn_pathes, comm)

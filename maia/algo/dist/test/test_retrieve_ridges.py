@@ -4,7 +4,8 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 import maia.algo.dist.retrieve_ridges as RR
 
@@ -136,7 +137,7 @@ def test_find_ridges_unique_bc(comm):
                    point_list=concat_pl,
                    loc='FaceCenter',
                    parent=zone_bc_n)
-  PT.maia.newDistribution({'Index':par_utils.dn_to_distribution(concat_pl.size, comm)}, parent=bc_n)
+  MT.new_Distribution({'Index':par_utils.dn_to_distribution(concat_pl.size, comm)}, parent=bc_n)
 
   dist_tree_ref = PT.deep_copy(dist_tree)
 

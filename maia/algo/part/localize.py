@@ -27,8 +27,8 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
   assert (cx is not None) and  (cy is not None) and (cz is not None)
   vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
-  vtx_ln_to_gn  = PT.get_np_value(MT.requestGlobalNumbering(part_zone, 'Vertex'))
-  cell_ln_to_gn = PT.get_np_value(MT.requestGlobalNumbering(part_zone, 'Cell'))
+  vtx_ln_to_gn  = MT.globalnumbering_value(part_zone, 'Vertex')
+  cell_ln_to_gn = MT.globalnumbering_value(part_zone, 'Cell')
 
   if dim == 3:
     ngon  = PT.Zone.NGonNode(part_zone)
@@ -37,7 +37,7 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
     face_vtx  = MT.Element.connectivity(ngon)
     cell_face = MT.Element.connectivity(nface)
 
-    face_ln_to_gn = PT.get_np_value(MT.requestGlobalNumbering(ngon, 'Element'))
+    face_ln_to_gn = MT.globalnumbering_value(ngon, 'Element')
 
     return [cell_face.displs, cell_face.values, cell_ln_to_gn, \
         face_vtx.displs, face_vtx.values, face_ln_to_gn, vtx_coords, vtx_ln_to_gn]

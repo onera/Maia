@@ -33,14 +33,14 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
     for bc in PT.iter_children_from_label(zone_bc, 'BC_t'):
       bc_path = zone_bc_path+"/"+bc[0]
 
-      distrib_bc_n = MT.getDistribution(bc)
-      distrib_bc   = PT.get_child_from_name(distrib_bc_n, 'Index')[1]
+      distrib_bc_n = MT.get_Distribution(bc)
+      distrib_bc   = MT.distribution_value(bc, 'Index')
 
       _create_pl_filter(bc, bc_path, 'PointList', distrib_bc, hdf_filter)
 
       for bcds in PT.iter_children_from_label(bc, "BCDataSet_t"):
         bcds_path = bc_path + "/" + bcds[0]
-        distrib_bcds_n = MT.getDistribution(bcds)
+        distrib_bcds_n = MT.get_Distribution(bcds)
 
         if distrib_bcds_n is None: #BCDS uses BC distribution
           distrib_node = distrib_bc_n
@@ -82,7 +82,7 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
     zone_gc_path = zone_path+"/"+zone_gc[0]
     for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity_t'):
       gc_path = zone_gc_path+"/"+gc[0]
-      distrib_ia = PT.get_value(MT.getDistribution(gc, 'Index'))
+      distrib_ia = MT.distribution_value(gc, 'Index')
       _create_pl_filter(gc, gc_path, 'PointList', distrib_ia, hdf_filter)
       _create_pl_filter(gc, gc_path, 'PointListDonor', distrib_ia, hdf_filter)
 
@@ -93,13 +93,13 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   if present, or using allCells / allVertex if no pointList is present.
   Filter is created for the arrays and for the PointList if present
   """
-  distrib_vtx  = PT.get_value(MT.getDistribution(zone, 'Vertex'))
-  distrib_cell = PT.get_value(MT.getDistribution(zone, 'Cell'))
+  distrib_vtx  = MT.distribution_value(zone, 'Vertex')
+  distrib_cell = MT.distribution_value(zone, 'Cell')
   is_fs_like = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t']
   for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)
     grid_location = PT.Subset.GridLocation(flow_solution)
-    distrib_ud_n = MT.getDistribution(flow_solution)
+    distrib_ud_n = MT.get_Distribution(flow_solution)
     if distrib_ud_n:
       distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
       _create_pl_filter(flow_solution, flow_solution_path, 'PointList', distrib_data, hdf_filter)
@@ -134,7 +134,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
     matching_region = PT.get_node_from_path(zone, matching_region_path)
     assert(matching_region is not None)
 
-    distrib_ud_n = MT.getDistribution(matching_region)
+    distrib_ud_n = MT.get_Distribution(matching_region)
     if not distrib_ud_n:
       raise RuntimeError("ZoneSubRegion {0} is not well defined".format(zone_subregion[0]))
     distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]

@@ -157,8 +157,8 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
 
       ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone, erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe)
       nface_n = PT.new_NFaceElements(nface_name, parent=p_zone, erange=nface_er, eso=nface_eso, ec=nface_ec)
-      MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
-      MT.newGlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
+      MT.new_GlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
+      MT.new_GlobalNumbering({'Element' : data['np_cell_ln_to_gn']}, nface_n)
 
     elif PT.Zone.CellDimension(d_zone) == 2:
       face_edge_idx = data['np_face_edge_idx']   
@@ -180,8 +180,8 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
       nedge_n = PT.new_Elements(nedge_name, 'BAR_2', erange=edge_er, econn=edge_vtx, parent=p_zone)
       ngon_n = PT.new_NGonElements(ngon_name, parent=p_zone, erange=ngon_er, eso=ngon_eso, ec=ngon_ec)
       PT.new_DataArray('ParentElements', nedge_pe, parent=nedge_n)
-      MT.newGlobalNumbering({'Element' : data['np_edge_ln_to_gn']}, nedge_n)
-      MT.newGlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
+      MT.new_GlobalNumbering({'Element' : data['np_edge_ln_to_gn']}, nedge_n)
+      MT.new_GlobalNumbering({'Element' : data['np_face_ln_to_gn']}, ngon_n)
 
   # Keep element sections + NGON section in case input elt / output ngon, since sections will be needed
   # for PL exchange
@@ -235,7 +235,7 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
         key = 'np_element_to_entity' if section['np_element_to_entity'] is not None else 'np_parent_num'
         PT.new_DataArray('Entity', section[key], parent=lnum_node)
 
-        MT.newGlobalNumbering(numberings, elt_n)
+        MT.new_GlobalNumbering(numberings, elt_n)
 
         if connectivity_as == 'NGon': # Prevent clash with NGON/NFace elements with fake label
           elt_n[3] = 'FakeElements_t'
@@ -302,10 +302,10 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     else:
       is_dim_elt = lambda n : PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n) == base_dim
       elts = PT.get_nodes_from_predicate(part_zone, is_dim_elt)
-      section_gnum = [PT.maia.get_global_numbering(elt, 'Sections')[1] for elt in elts]
+      section_gnum = [MT.globalnumbering_value(elt, 'Sections') for elt in elts]
       numberings['Cell'] = np_utils.concatenate_np_arrays(section_gnum, cell_lngn.dtype)[1]
 
-    MT.newGlobalNumbering(numberings, parent=part_zone)
+    MT.new_GlobalNumbering(numberings, parent=part_zone)
 
     part_zones.append(part_zone)
 

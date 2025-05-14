@@ -31,7 +31,7 @@ def test_filter_vtx_coordinates(comm):
   empty = np.empty(0, int)
   tree = dcube_generator.dcube_generate(5,1.,[0,0,0], comm)
   vtx_coords = PT.get_node_from_label(tree, 'GridCoordinates_t')
-  vtx_distri   = PT.get_value(MT.getDistribution(PT.get_all_Zone_t(tree)[0], 'Vertex'))
+  vtx_distri   = MT.distribution_value(PT.get_all_Zone_t(tree)[0], 'Vertex')
   if comm.Get_rank() == 1:
     requested_vtx_ids = np.array([2,6,7,106,3,103,107,102])
     expected_vtx_coords = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],
@@ -160,7 +160,7 @@ class Test_generate_jn_vertex_list():
     distri_pl   = par_utils.uniform_distribution(9, comm)
     PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-    MT.newDistribution({'Index' : distri_pl}, gcA)
+    MT.new_Distribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
@@ -193,7 +193,7 @@ class Test_generate_jn_vertex_list():
     distri_pl   = par_utils.uniform_distribution(9, comm)
     PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-    MT.newDistribution({'Index' : distri_pl}, gcA)
+    MT.new_Distribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
@@ -225,7 +225,7 @@ class Test_generate_jn_vertex_list():
 
     PT.new_IndexArray('PointList'     , (np.array([1,2,4,11,13,16])   [pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
     PT.new_IndexArray('PointListDonor', (np.array([65,66,68,75,77,80])[pl_distri[0]:pl_distri[1]]).reshape(1,-1), gcA)
-    MT.newDistribution({'Index' : pl_distri}, gcA)
+    MT.new_Distribution({'Index' : pl_distri}, gcA)
 
     gc_path = "Base/zone/ZoneGridConnectivity/matchA"
     pl_vtx, pld_vtx, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
@@ -258,7 +258,7 @@ class Test_generate_jn_vertex_list():
     distri_pl   = par_utils.uniform_distribution(3, comm)
     PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
     PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-    MT.newDistribution({'Index' : distri_pl}, gcA)
+    MT.new_Distribution({'Index' : distri_pl}, gcA)
 
     gc_path = "Base/zoneA/ZoneGridConnectivity/matchA"
     pl_vtx, pl_vtx_opp, distri_jn_vtx = VL.generate_jn_vertex_list(tree, gc_path, comm)
@@ -295,7 +295,7 @@ def test_generate_jns_vertex_list(comm, have_isolated_faces):
   distri_pl   = par_utils.uniform_distribution(9, comm)
   PT.new_IndexArray('PointList'     , full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
   PT.new_IndexArray('PointListDonor', full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcA)
-  MT.newDistribution({'Index' : distri_pl}, gcA)
+  MT.new_Distribution({'Index' : distri_pl}, gcA)
 
   zgc = PT.new_ZoneGridConnectivity(parent=zoneB)
   gcB = PT.new_GridConnectivity('matchB', 'Base/zoneA', 'Abutting1to1', loc='FaceCenter', parent=zgc)
@@ -304,7 +304,7 @@ def test_generate_jns_vertex_list(comm, have_isolated_faces):
   distri_pl   = par_utils.uniform_distribution(9, comm)
   PT.new_IndexArray('PointListDonor', full_pl    [distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
   PT.new_IndexArray('PointList'     , full_pl_opp[distri_pl[0]:distri_pl[1]].reshape(1,-1), gcB)
-  MT.newDistribution({'Index' : distri_pl}, gcB)
+  MT.new_Distribution({'Index' : distri_pl}, gcB)
 
   VL.generate_jns_vertex_list(tree, comm, have_isolated_faces=have_isolated_faces)
 

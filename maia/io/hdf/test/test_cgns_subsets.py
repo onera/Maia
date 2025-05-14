@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import maia.pytree as PT
+import maia.pytree.maia as MT
 from maia.io.hdf import cgns_subsets
 
 def test_create_pl_filter():
@@ -16,7 +17,7 @@ def test_create_pl_filter():
   hdf_filter = dict()
   node = PT.yaml.to_node(yt)
 
-  distri = PT.maia.getDistribution(node, 'Index')[1]
+  distri = MT.distribution_value(node, 'Index')
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointListDonor", distri, hdf_filter)
 
@@ -34,7 +35,7 @@ def test_create_pl_filter():
   """
   hdf_filter = dict()
   node = PT.yaml.to_node(yt)
-  distri = PT.maia.getDistribution(node, 'Index')[1]
+  distri = MT.distribution_value(node, 'Index')
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
   assert len(hdf_filter) == 0
 
@@ -83,12 +84,12 @@ Base CGNSBase_t [3,3]:
   if mode == 'w': # This test simulate write mode: no #Size + Well shaped arrays
     PT.rm_nodes_from_name(tree, '*Size')
     for bc in PT.get_nodes_from_label(tree, 'BC_t'):
-      bc_distri = PT.maia.getDistribution(bc, 'Index')
+      bc_distri = MT.get_Distribution(bc, 'Index')
       dn = bc_distri[1][1] - bc_distri[1][0]
       pl = PT.get_child_from_name(bc, 'PointList')
       PT.set_value(pl, np.ones((1,dn), dtype=int, order='F'))
       for bcds in PT.get_nodes_from_label(bc, 'BCDataSet_t'):
-        ds_distri = PT.maia.getDistribution(bcds, 'Index')
+        ds_distri = MT.get_Distribution(bcds, 'Index')
         if ds_distri is None:
           ds_distri = bc_distri
         dn = ds_distri[1][1] - ds_distri[1][0]

@@ -22,7 +22,7 @@ def get_shifted_gnum_from_loc(zones, loc):
   offset = 0
   for zone in zones:
     distri_name = 'Cell' if loc == 'CellCenter' else 'Vertex'
-    distri = MT.get_distribution(zone, distri_name)[1]
+    distri = MT.distribution_value(zone, distri_name)
     gnum = np.arange(distri[0]+1+offset, distri[1]+1+offset, dtype=distri.dtype)
     if loc == 'CellCenter':
       offset += PT.Zone.n_cell(zone)
@@ -82,7 +82,7 @@ def create_src_to_tgt(src_dom,
         # This exchange is done with append mode because we want to merge the located data coming from different
         # partitions, and data is initially computed from cell point of view before beeing moved to vertices
         # We dont need this in Cell mode because "fake partition" cell lngn is equal to the cell distribution
-        distri_vtx = MT.getDistribution(src_zone, 'Vertex')[1]
+        distri_vtx = MT.distribution_value(src_zone, 'Vertex')
         data.update(EP.part_to_block(part_data, distri_vtx, vtx_gnum-1, comm, append=True))
 
 

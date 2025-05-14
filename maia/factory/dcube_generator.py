@@ -43,14 +43,14 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm: MPIComm, elt_min_dim: int =0) -
       _erange = np.array([elt_shift, elt_shift+distrib[-1]-1], section["np_connec"].dtype)
       elmt = PT.new_Elements(f"{cgns_elmt_name}.{i_section}", cgns_elmt_name, \
           erange=_erange, econn=section["np_connec"], parent=zone)
-      MT.newDistribution({'Element' : distrib}, parent=elmt)
+      MT.new_Distribution({'Element' : distrib}, parent=elmt)
       elt_shift += distrib[-1]
 
   # > Distributions
   np_distrib_cell = par_utils.uniform_distribution(n_cell, comm)
   np_distrib_vtx  = par_utils.uniform_distribution(n_vtx,  comm)
 
-  MT.newDistribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=zone)
+  MT.new_Distribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=zone)
 
   return zone
     
@@ -114,11 +114,11 @@ def dcube_generate(n_vtx: int,
     PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
 
     distrib  = par_utils.dn_to_distribution(dn_face_bnd, comm)
-    MT.newDistribution({'Index' : distrib}, parent=bc_n)
+    MT.new_Distribution({'Index' : distrib}, parent=bc_n)
 
   # > Distributions
-  MT.newDistribution({'Cell' : distrib_cell, 'Vertex' : distrib_vtx}, parent=dist_zone)
-  MT.newDistribution({'Element' : distrib_face, 'ElementConnectivity' : distrib_facevtx}, parent=ngon_n)
+  MT.new_Distribution({'Cell' : distrib_cell, 'Vertex' : distrib_vtx}, parent=dist_zone)
+  MT.new_Distribution({'Element' : distrib_face, 'ElementConnectivity' : distrib_facevtx}, parent=ngon_n)
 
   return dist_tree
 
@@ -196,7 +196,7 @@ def dcube_nodal_generate(n_vtx: Union[int, Sequence[int]],
     start, end = face_group_idx[i_bc], face_group_idx[i_bc+1]
     dn_face_bnd = end - start
     PT.new_IndexArray(value=face_group[start:end].reshape(1,dn_face_bnd), parent=bc_n)
-    MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
+    MT.new_Distribution({'Index' : par_utils.dn_to_distribution(dn_face_bnd, comm)}, parent=bc_n)
 
   return dist_tree
 
@@ -230,7 +230,7 @@ def dcube_struct_generate(n_vtx: Union[int, Sequence[int]],
   distrib = {'Cell' : par_utils.uniform_distribution(PT.Zone.n_cell(dist_zone), comm)}
   if cell_dim == 3:
       distrib['Face'] =  par_utils.uniform_distribution(PT.Zone.n_face(dist_zone), comm)
-  MT.newDistribution(distrib, dist_zone)
+  MT.new_Distribution(distrib, dist_zone)
 
   # Create BCs
   zbc = PT.new_child(dist_zone, 'ZoneBC', 'ZoneBC_t')
@@ -253,7 +253,7 @@ def dcube_struct_generate(n_vtx: Union[int, Sequence[int]],
 
   for bc in PT.get_children(zbc):
     distri = par_utils.uniform_distribution(PT.Subset.n_elem(bc), comm)
-    MT.newDistribution({'Index' : distri}, bc)
+    MT.new_Distribution({'Index' : distri}, bc)
 
   return dist_tree
 

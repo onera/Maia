@@ -93,7 +93,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         PT.new_IndexArray(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
 
         bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
-        MT.newDistribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)
+        MT.new_Distribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)
 
 
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
@@ -113,7 +113,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
-  distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, "Vertex"))
+  distrib_vtx = MT.distribution_value(dist_zone, "Vertex")
 
   field_names = tree_info['field_names']
   n_itp_flds  = sum([len(fld_names) for fld_names in field_names.values()])

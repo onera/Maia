@@ -95,7 +95,7 @@ def test_transform_affine(comm):
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
-  cell_distri = MT.getDistribution(dist_zone, 'Cell')[1]
+  cell_distri = MT.distribution_value(dist_zone, 'Cell')
   n_cell_loc =  cell_distri[1] - cell_distri[0]
   fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
   PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
@@ -179,7 +179,7 @@ def test_transform_affine_2d(comm):
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
-  cell_distri = MT.getDistribution(dist_zone, 'Cell')[1]
+  cell_distri = MT.distribution_value(dist_zone, 'Cell')
   n_cell_loc =  cell_distri[1] - cell_distri[0]
   fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
   PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
@@ -289,8 +289,8 @@ class Test_change_basis_simple:
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
-      n_cell = PT.Zone.CellSize(zone) if partitioned else (np.diff(MT.get_distribution(zone, 'Cell')[1])[0],)
-      n_vtx = PT.Zone.VertexSize(zone) if partitioned else (np.diff(MT.get_distribution(zone, 'Vertex')[1])[0],)
+      n_cell = PT.Zone.CellSize(zone) if partitioned else (np.diff(MT.distribution_value(zone, 'Cell'))[0],)
+      n_vtx = PT.Zone.VertexSize(zone) if partitioned else (np.diff(MT.distribution_value(zone, 'Vertex'))[0],)
 
       # Create fields in zone
       PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
@@ -299,7 +299,7 @@ class Test_change_basis_simple:
       PT.new_ZoneSubRegion('SubRegionCC', loc='CellCenter', fields={f'Field{d}' : np.random.rand(*n_cell) for d in ['X', 'Y', 'Z']}, parent=zone),
       PT.new_ZoneSubRegion('SubRegionVtx', loc='Vertex', fields={f'Field{d}' : np.random.rand(*n_vtx) for d in ['X', 'Y', 'Z']}, parent=zone)
       if PT.Zone.Type(zone) == 'Unstructured':
-        n_face = PT.Zone.n_face(zone) if partitioned else np.diff(MT.getDistribution(PT.Zone.NGonNode(zone), 'Element')[1])[0]
+        n_face = PT.Zone.n_face(zone) if partitioned else np.diff(MT.distribution_value(PT.Zone.NGonNode(zone), 'Element'))[0]
         PT.new_ZoneSubRegion('SubRegionFace', loc='FaceCenter', fields={f'Field{d}' : np.random.rand(n_face) for d in ['X', 'Y', 'Z']}, parent=zone)
         bc = PT.get_node_from_name(zone, 'Xmax')
         if bc is not None:
@@ -311,7 +311,7 @@ class Test_change_basis_simple:
       else: # Structured:
         bc = PT.get_node_from_name(zone, 'Xmax')
         if bc is not None:
-          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.getDistribution(bc, 'Index')[1])[0]
+          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.distribution_value(bc, 'Index'))[0]
           bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
           for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
@@ -324,9 +324,9 @@ class Test_change_basis_simple:
             pr_face = [[1,1],[1,1],[1,2]]
           else:
             pr_face = [[1,2],[1,1],[1,2]]
-            MT.new_distribution({'Index' : par_utils.uniform_distribution(4, comm)}, bc)
+            MT.new_Distribution({'Index' : par_utils.uniform_distribution(4, comm)}, bc)
           PT.update_child(bc, 'PointRange', value=pr_face)
-          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.getDistribution(bc, 'Index')[1])[0]
+          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.distribution_value(bc, 'Index'))[0]
           bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
           for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 

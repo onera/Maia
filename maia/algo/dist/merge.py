@@ -186,7 +186,7 @@ def merge_zones(dist_tree: CGNSDistTree,
     gc = PT.find_node_from_path(dist_tree, jn_path)
     if PT.GridConnectivity.is1to1(gc):
       jn_to_pl[jn_path] = \
-          (PT.find_child_from_name(gc, 'PointList')[1], PT.find_child_from_name(gc, 'PointListDonor')[1], MT.getDistribution(gc))
+          (PT.find_child_from_name(gc, 'PointList')[1], PT.find_child_from_name(gc, 'PointListDonor')[1], MT.get_Distribution(gc))
 
   # Update opposite names when going to opp zone (intrazone have been caried before)
   for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
@@ -398,7 +398,7 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
 
   _merge_pls_data(all_mbm, zones, merged_zone, comm, subset_merge_strategy)
 
-  MT.newDistribution({'Vertex' : par_utils.full_to_partial_distribution(merged_distri_vtx, comm),
+  MT.new_Distribution({'Vertex' : par_utils.full_to_partial_distribution(merged_distri_vtx, comm),
                       'Cell'   : par_utils.full_to_partial_distribution(merged_distri_cell, comm)},
                      merged_zone)
 
@@ -637,11 +637,11 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
   assert len(zones) == len(subset_nodes)
   for zone, node in zip(zones, subset_nodes):
     if loc == 'Vertex': 
-      distri_ptb = MT.getDistribution(zone, 'Vertex')[1]
+      distri_ptb = MT.distribution_value(zone, 'Vertex')
     elif loc == 'FaceCenter':
-      distri_ptb = MT.getDistribution(PT.Zone.NGonNode(zone), 'Element')[1]
+      distri_ptb = MT.distribution_value(PT.Zone.NGonNode(zone), 'Element')
     elif loc == 'CellCenter':
-      distri_ptb = MT.getDistribution(zone, 'Cell')[1]
+      distri_ptb = MT.distribution_value(zone, 'Cell')
     if node is not None:
       ref_node = node #Take any node as reference, to build name/type/value of merged node
 
@@ -744,7 +744,7 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
   for c in sorted(common): #Sort to garantie same insertion order across mpi ranks
     PT.new_child(merged_node, name=c[0], label=c[1], value=c[2])
 
-  MT.newDistribution({'Index' : merged_pl_distri}, merged_node)
+  MT.new_Distribution({'Index' : merged_pl_distri}, merged_node)
 
   return merged_node
 
@@ -777,7 +777,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     dom_id_send = zone_to_id[zone_path_send]
     zone_send = PT.get_node_from_path(tree, zone_path_send)
     ngon_send = PT.Zone.NGonNode(zone_send)
-    face_distri_send = MT.getDistribution(ngon_send, 'Element')[1]
+    face_distri_send = MT.distribution_value(ngon_send, 'Element')
     pe_send          = PT.get_child_from_name(ngon_send, 'UpdatedPE')[1]
 
     gcs = PT.get_nodes_from_predicate(zone_send, query, depth=2)
@@ -796,7 +796,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
       ngon_node = PT.Zone.NGonNode(zone)
       pe      = PT.get_child_from_name(ngon_node, 'UpdatedPE')[1]
       pe_dom  = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
-      face_distri = MT.getDistribution(ngon_node, 'Element')[1]
+      face_distri = MT.distribution_value(ngon_node, 'Element')
       face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
 
       GI = EP.GlobalIndexer(face_distri_f, pld-1, comm)
@@ -853,7 +853,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
   erange = np.array([1, merged_distri_face[-1]], out_dtype)
   merged_ec = np_utils.safe_int_cast(merged_ec, out_dtype)
   merged_ngon = PT.new_NGonElements(erange=erange, eso=eso, ec=merged_ec, pe=pe)
-  MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(merged_distri_face, comm),
+  MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(merged_distri_face, comm),
                       'ElementConnectivity' : par_utils.full_to_partial_distribution(ec_distri, comm)},
                       merged_ngon)
   PT.add_child(merged_zone, merged_ngon)

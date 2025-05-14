@@ -36,7 +36,7 @@ def cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, comm):
   """
   Create a pdm_dmesh structure for distributed having only vertices
   """
-  distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_vtx = MT.distribution_value(dist_zone, 'Vertex')
   dn_vtx      = distrib_vtx[1] - distrib_vtx[0]
 
   if dn_vtx > 0:
@@ -59,8 +59,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
-  distrib_vtx      = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
-  distrib_cell     = PT.get_value(MT.getDistribution(dist_zone, 'Cell'))
+  distrib_vtx      = MT.distribution_value(dist_zone, 'Vertex')
+  distrib_cell     = MT.distribution_value(dist_zone, 'Cell')
 
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
@@ -74,12 +74,12 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     nface_node = PT.Zone.NFaceNode(dist_zone)
     nface_ec  = as_pdm_gnum(PT.get_child_from_name(nface_node, 'ElementConnectivity')[1])
     nface_eso = PT.get_child_from_name(nface_node, 'ElementStartOffset' )[1]
-    distrib_cell_face = as_pdm_gnum(PT.get_value(MT.getDistribution(nface_node, 'ElementConnectivity')))
+    distrib_cell_face = as_pdm_gnum(MT.distribution_value(nface_node, 'ElementConnectivity'))
   if has_pe:
     ngon_pe = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ParentElements')[1])
 
-  distrib_face     = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'Element')))
-  distrib_face_vtx = as_pdm_gnum(PT.get_value(MT.getDistribution(ngon_node, 'ElementConnectivity')))
+  distrib_face     = as_pdm_gnum(MT.distribution_value(ngon_node, 'Element'))
+  distrib_face_vtx = as_pdm_gnum(MT.distribution_value(ngon_node, 'ElementConnectivity'))
 
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   dn_cell = distrib_cell[1] - distrib_cell[0]
@@ -138,8 +138,8 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a 2d distributed zone
   """
-  distrib_vtx  = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
-  distrib_face = PT.get_value(MT.getDistribution(dist_zone, 'Cell')) #In 2d, cell == face
+  distrib_vtx  = MT.distribution_value(dist_zone, 'Vertex')
+  distrib_face = MT.distribution_value(dist_zone, 'Cell') #In 2d, cell == face
 
   # Try to hook Edge nodes
   edge_node  = MT.Zone.EdgeNode(dist_zone)
@@ -152,7 +152,7 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
     ngon_tools.ngon_to_edge_pe(dist_zone, comm)
   edge_pe = as_pdm_gnum(PT.get_child_from_name(edge_node, 'ParentElements')[1])
 
-  distrib_edge = MT.getDistribution(edge_node, 'Element')[1]
+  distrib_edge = MT.distribution_value(edge_node, 'Element')
 
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
   dn_face = distrib_face[1] - distrib_face[0]
@@ -190,8 +190,8 @@ def cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm):
   face_vtx (NGON) connectivity (without edge => without bc)
   It is unused now, but we save it in case of need
   """
-  distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
-  distrib_face = PT.get_value(MT.getDistribution(dist_zone, 'Cell')) #In 2d, cell == face
+  distrib_vtx = MT.distribution_value(dist_zone, 'Vertex')
+  distrib_face = MT.distribution_value(dist_zone, 'Cell') #In 2d, cell == face
   n_vtx   = distrib_vtx[2]
   n_face  = distrib_face[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
@@ -208,10 +208,10 @@ def cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm):
   dmesh_nodal.set_coordinates(dvtx_coord)
 
   ngon_node = PT.Zone.NGonNode(dist_zone)
-  ngon_eso  = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-  ngon_ec   = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
+  ngon_eso  = PT.find_child_from_name(ngon_node, 'ElementStartOffset')[1]
+  ngon_ec   = PT.find_child_from_name(ngon_node, 'ElementConnectivity')[1]
 
-  ngon_distri = MT.getDistribution(ngon_node, 'ElementConnectivity')[1]
+  ngon_distri = MT.distribution_value(ngon_node, 'ElementConnectivity')
 
   dface_vtx_idx = np.add(ngon_eso, -ngon_distri[0], dtype=np.int32) #Local index is int32bits
   dface_vtx = as_pdm_gnum(ngon_ec)
@@ -229,7 +229,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   """
   Create a pdm_dmesh_nodal structure from a distributed zone
   """
-  distrib_vtx = PT.get_value(MT.getDistribution(dist_zone, 'Vertex'))
+  distrib_vtx = MT.distribution_value(dist_zone, 'Vertex')
   n_vtx   = distrib_vtx[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
 
@@ -267,7 +267,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
     PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
 
   #Elements
-  to_elmt_size = lambda e : PT.get_value(MT.getDistribution(e, 'Element'))[1] - PT.get_value(MT.getDistribution(e, 'Element'))[0]
+  to_elmt_size = lambda e : MT.distribution_value(e, 'Element')[1] - MT.distribution_value(e, 'Element')[0]
 
   for i_dim, elts in enumerate(sorted_elts_by_dim):
     elt_pdm_types = np.array([MT.pdm_elts.element_pdm_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)

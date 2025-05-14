@@ -70,7 +70,7 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   bar_range  = np.array([1, bar_distri[-1]], dtype=zone_dtype)
   if bar_distri[-1] > 0:
     bar_n = PT.new_Elements('BAR_2', 'BAR_2', erange=bar_range, econn=bar_vtx, parent=zone)
-    MT.newDistribution({'Element' : bar_distri}, bar_n)
+    MT.new_Distribution({'Element' : bar_distri}, bar_n)
   
   # Renumber PointList indexing Edges
   new_edge_id = -1*np.ones(edge_vtx.size // 2, zone_dtype)
@@ -105,7 +105,7 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
                             erange=np.array([elt_shift+1, elt_shift+distri[-1]], zone_dtype),
                             econn=elt_conn,
                             parent=zone)
-      MT.new_distribution({'Element' : distri}, elt)
+      MT.new_Distribution({'Element' : distri}, elt)
 
     # Prepare renum table for faces
     new_face_id[mask] = np.arange(distri[0]+elt_shift+1, distri[1]+elt_shift+1)
@@ -182,10 +182,10 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   quad_range = np.array([1, quad_distri[-1]], dtype=zone_dtype) + tri_range[-1]
   if tri_distri[-1] > 0:
     tri_n = PT.new_Elements('TRI_3', 'TRI_3', erange=tri_range, econn=tri_vtx, parent=zone)
-    MT.newDistribution({'Element' : tri_distri}, tri_n)
+    MT.new_Distribution({'Element' : tri_distri}, tri_n)
   if quad_distri[-1] > 0:
     quad_n = PT.new_Elements('QUAD_4', 'QUAD_4', erange=quad_range, econn=quad_vtx, parent=zone)
-    MT.newDistribution({'Element' : quad_distri}, quad_n)
+    MT.new_Distribution({'Element' : quad_distri}, quad_n)
   
   # Renumber PointList indexing Faces
   new_face_id = -1*np.ones(dn_face, zone_dtype)
@@ -230,7 +230,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
                             erange=np.array([elt_shift+1, elt_shift+distri[-1]], zone_dtype),
                             econn=np.empty(n_vtx_per_elt*n_elt_loc, zone_dtype),
                             parent=zone)
-      MT.new_distribution({'Element' : distri}, elt)
+      MT.new_Distribution({'Element' : distri}, elt)
     
     # Prepare renum table for cells
     new_cell_id[mask] = np.arange(distri[0]+elt_shift+1, distri[1]+elt_shift+1)

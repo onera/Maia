@@ -5,7 +5,8 @@ import numpy as np
 import mpi4py.MPI as MPI
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 import maia.utils.test_utils as TU
 
@@ -17,7 +18,7 @@ def test_get_tree_info():
   dist_tree = maia.factory.generate_dist_block(11, 'TETRA_4', MPI.COMM_SELF)
   zone = PT.get_all_Zone_t(dist_tree)[0]
 
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
   n_vtx = vtx_distri[1] - vtx_distri[0]
   fields = {"Zeros": np.zeros(n_vtx), "Range": np.arange(n_vtx, dtype=float)}
   PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
@@ -44,7 +45,7 @@ def test_cgns_to_meshb(tmp_path):
 
     # ---- Setting up flow solution
     zone       = PT.get_all_Zone_t(dist_tree)[0]
-    vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+    vtx_distri = MT.distribution_value(zone, 'Vertex')
     n_vtx      = vtx_distri[1] - vtx_distri[0]
 
     fields     = {
@@ -132,7 +133,7 @@ def test_meshb_to_cgns(multi_elt, comm):
     bc_cell_groups = []
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
-  vtx_distri = PT.maia.getDistribution(zone, 'Vertex')[1]
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
   dn_vtx = vtx_distri[1] - vtx_distri[0]
   fields = {"Zeros": np.zeros(dn_vtx), "Range": np.arange(dn_vtx, dtype=float)}
   PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
@@ -169,7 +170,7 @@ def test_meshb_to_cgns(multi_elt, comm):
     n_elts = {'TETRA_4.0':144,'PENTA_6.1':24,'TRI_3.0':88,'QUAD_4.1':16,'BAR_2.0':56}
     for elt_name, n_elt in n_elts.items():
       elt_n = PT.get_node_from_name_and_label(zone_n, elt_name, 'Elements_t')
-      assert PT.maia.getDistribution(elt_n, 'Element')[1][2]==n_elt
+      assert MT.distribution_value(elt_n, 'Element')[2]==n_elt
     assert PT.get_node_from_name_and_label(meshb_dist_tree, 'bcv1', 'BC_t') is not None
     assert PT.get_node_from_name_and_label(meshb_dist_tree, 'bcv2', 'BC_t') is not None
 

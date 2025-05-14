@@ -149,7 +149,7 @@ def test_merge_zones_L(comm, merge_bc_from_name):               #      |  |
     PT.add_child(base, zone)
     for bc in PT.iter_nodes_from_label(zone, 'BC_t'):
       pl = PT.get_child_from_name(bc, 'PointList')
-      distri = MT.getDistribution(bc, 'Index')
+      distri = MT.get_Distribution(bc, 'Index')
       data = {'PointList' : pl[1][0]}
       distri_new, data_new = merge._equilibrate_data(data, comm, distri=distri[1])
       PT.set_value(distri, distri_new)
@@ -222,7 +222,7 @@ def test_merge_zones_I(comm, merge_only_two):
     PT.add_child(base, zone)
     for bc in PT.iter_nodes_from_label(zone, 'BC_t'):
       pl = PT.get_child_from_name(bc, 'PointList')
-      distri = MT.getDistribution(bc, 'Index')
+      distri = MT.get_Distribution(bc, 'Index')
       data = {'PointList' : pl[1][0]}
       distri_new, data_new = merge._equilibrate_data(data, comm, distri=distri[1])
       PT.set_value(distri, distri_new)
@@ -346,7 +346,7 @@ def test_merge_subsets(subset_merge, comm):
     bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
     PT.new_DataArray('iZone', i*np.ones(pl.size), parent=bcda)
     PT.new_DataArray('iRank', comm.rank*np.ones(pl.size), parent=bcda)
-    MT.newDistribution({'Index' : par_utils.dn_to_distribution(pl.size, comm)}, parent=bcds)
+    MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl.size, comm)}, parent=bcds)
   # A partial BCDS existing only on one zone
   bc = PT.get_node_from_name(zones[1], 'Ymax')
   pl = PT.get_child_from_name(bc, 'PointList')[1][0][::2]
@@ -356,7 +356,7 @@ def test_merge_subsets(subset_merge, comm):
   bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
   PT.new_DataArray('iZone', i*np.ones(pl.size), parent=bcda)
   PT.new_DataArray('iRank', comm.rank*np.ones(pl.size), parent=bcda)
-  MT.newDistribution({'Index' : par_utils.dn_to_distribution(pl.size, comm)}, parent=bcds)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl.size, comm)}, parent=bcds)
 
   if subset_merge != "none":
     for bc in PT.get_nodes_from_name(tree, 'Xmax'):

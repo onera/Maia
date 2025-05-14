@@ -49,7 +49,7 @@ def _remove_dup_ids_in_ESO(poly, comm):
   # Update arrays and distribution
   PT.set_value(poly_eso_n, new_poly.displs + ec_distri[0])
   PT.set_value(poly_ec_n,  new_poly.values)
-  MT.newDistribution({'ElementConnectivity': ec_distri}, poly)
+  MT.new_Distribution({'ElementConnectivity': ec_distri}, poly)
 
 # ------------------------------------------------------------------------------------------
 def _update_ngon(ngon, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
@@ -84,7 +84,7 @@ def _remove_subset_fictive_faces(zone, comm):
     is_empty = False
     if comm.allreduce(has_last, MPI.LOR):
       # Update distribution, on all ranks
-      distri_entity = MT.getDistribution(node, 'Index')[1]
+      distri_entity = MT.distribution_value(node, 'Index')
       mask = (distri_entity == distri_entity[2])
       distri_entity[mask] -= 1
 
@@ -100,17 +100,17 @@ def _remove_subset_fictive_faces(zone, comm):
   #Trick to add a PL to each subregion to be able to use same algo
   for zsr in PT.get_children_from_label(zone, 'ZoneSubRegion_t'):
     zsr_extent = PT.Subset.ZSRExtent(zsr, zone)
-    zsr_extent_n = PT.get_node_from_path(zone, zsr_extent)
+    zsr_extent_n = PT.find_node_from_path(zone, zsr_extent)
     if  zsr_extent != PT.get_name(zsr):
-      PT.add_child(zsr, PT.deep_copy(PT.get_child_from_name(zsr_extent_n, 'PointList')))
-      PT.add_child(zsr, PT.deep_copy(MT.getDistribution(zsr_extent_n)))
+      PT.add_child(zsr, PT.deep_copy(PT.find_child_from_name(zsr_extent_n, 'PointList')))
+      PT.add_child(zsr, PT.deep_copy(MT.find_Distribution(zsr_extent_n)))
   #Trick to add a PL to DataSet (for same reason)
   for _,bc,bcds in PT.get_children_from_labels(zone, ['ZoneBC_t', 'BC_t', 'BCDataSet_t'], ancestors=True):
     if PT.get_child_from_name(bcds, 'PointList') is None:
       PT.new_GridLocation(PT.Subset.GridLocation(bc), bcds)
-      PT.add_child(bcds, PT.deep_copy(PT.get_child_from_name(bc, 'PointList')))
-      PT.add_child(bcds, PT.deep_copy(MT.getDistribution(bc)))
-      MT.newDistribution({'FakeDistri' : None}, bcds)
+      PT.add_child(bcds, PT.deep_copy(PT.find_child_from_name(bc, 'PointList')))
+      PT.add_child(bcds, PT.deep_copy(MT.find_Distribution(bc)))
+      MT.new_Distribution({'FakeDistri' : None}, bcds)
 
   n_face = PT.Zone.n_face(zone)
 
@@ -143,7 +143,7 @@ def _remove_subset_fictive_faces(zone, comm):
       PT.rm_children_from_name(zsr, ':CGNS#Distribution')
   name_to_remove = ['GridLocation', 'PointList', ':CGNS#Distribution']
   for bcds in PT.get_children_from_labels(zone, ['ZoneBC_t', 'BC_t', 'BCDataSet_t']):
-    if MT.getDistribution(bcds, 'FakeDistri') is not None:
+    if MT.get_Distribution(bcds, 'FakeDistri') is not None:
       PT.rm_children_from_predicate(bcds, lambda n : PT.get_name(n) in name_to_remove)
 
 
@@ -181,8 +181,8 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   n_rmvd_face    = comm.allreduce(len(face_to_remove), op=MPI.SUM)
   
   # Need dto copy face distribution before it changes in ngon update !!!
-  vtx_distri_ini  = PT.get_value(MT.getDistribution(zone_n, 'Vertex')).copy()
-  face_distri_ini = PT.get_value(MT.getDistribution(ngon_n, 'Element')).copy()
+  vtx_distri_ini  = MT.distribution_value(zone_n, 'Vertex').copy()
+  face_distri_ini = MT.distribution_value(ngon_n, 'Element').copy()
   
   # Update ngon node
   #> define old to new global numbering for nodes of degenerated faces to remove

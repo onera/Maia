@@ -25,14 +25,14 @@ def test_nodes_duplication(comm):
   dist_tree = maia.factory.generate_dist_block(10, 'TRI_3', comm)
   zone = PT.get_all_Zone_t(dist_tree)[0]
   coords_2d = PT.Zone.coordinates(zone)
-  distrib_vtx_2d = MT.getDistribution(zone, 'Vertex')[1]
+  distrib_vtx_2d = MT.distribution_value(zone, 'Vertex')
   dn_vtx_2d = distrib_vtx_2d[1] - distrib_vtx_2d[0]
 
   # Run test
   EXT._nodes_duplication(zone, extrusion_vector, comm)
 
   # Verification
-  assert MT.getDistribution(zone, 'Vertex')[1][2] == 2*distrib_vtx_2d[2]
+  assert MT.distribution_value(zone, 'Vertex')[2] == 2*distrib_vtx_2d[2]
   coords = PT.Zone.coordinates(zone)
   if comm.size==1:
     for i in range(3):
@@ -61,7 +61,7 @@ def test_reorder_ngon_ec():
 
   # Prepare test
   ngon_n = PT.new_NGonElements(erange=[1, 1], eso=[7, 11, 14], ec=[1,2,3,4, 5,6,7])
-  MT.newDistribution({'ElementConnectivity': [7, 10, 25]}, parent=ngon_n)
+  MT.new_Distribution({'ElementConnectivity': [7, 10, 25]}, parent=ngon_n)
 
   # Run test
   EXT._reorder_ngon_ec(ngon_n)
@@ -107,7 +107,7 @@ def test_extrude_bar_to_ngon(align):
   n_cell = 37
   bar = PT.new_Elements('EdgeElements', type='BAR_2', erange=[1,17], econn=[1,2, 2,3, 3,4, 4,1, 1,3], 
                         pe=[[6, 6, 7, 7, 6], [0, 0, 0, 0, 7]])
-  MT.newDistribution({'Element': [5, 10, 17]}, parent=bar)
+  MT.new_Distribution({'Element': [5, 10, 17]}, parent=bar)
 
   # Run test
   EXT._extrude_bar_to_ngon(bar, n_vtx, n_cell, align)
@@ -172,7 +172,7 @@ def test_extrude_tri_to_prism_and_tris(align):
   num    = 1
   er_max = 12
   tri = PT.new_Elements('TRI', type='TRI_3', erange=[1,17], econn=[1,2,3, 1,3,4])
-  MT.newDistribution({'Element' : [0, 17, 17]}, tri)
+  MT.new_Distribution({'Element' : [0, 17, 17]}, tri)
   old_tri = PT.deep_copy(tri)
 
   # Run test
@@ -203,7 +203,7 @@ def test_extrude_quad_to_hexa_and_quads(align):
   num    = 1
   er_max = 12
   quad = PT.new_Elements('QUAD', type='QUAD_4', erange=[1,17], econn=[1,2,5,4, 2,3,6,5])
-  MT.newDistribution({'Element' : [0,17,17]}, quad)
+  MT.new_Distribution({'Element' : [0,17,17]}, quad)
   old_quad = PT.deep_copy(quad)
 
   # Run test
@@ -342,20 +342,20 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   PT.new_DiscreteData('DD_woPL#CellCenter', loc='CellCenter', fields={'Id': id_cc}, parent=zone)
   fs_wpl_cc = PT.new_FlowSolution('FS_wPL#CellCenter', loc='CellCenter', fields={'Id': id_cc[-2:]}, parent=zone)
   PT.new_IndexArray('PointList', value=[id_cc[-2:]], parent=fs_wpl_cc)
-  MT.newDistribution({'Index': [0,2,2]}, parent=fs_wpl_cc)
+  MT.new_Distribution({'Index': [0,2,2]}, parent=fs_wpl_cc)
 
   # > Container EdgeCenter (with PL only because no pl is not allowed)
   id_ec = np.array([4,6,11,13], zone[1].dtype) # Internal edges
   zsr_wpl_ec = PT.new_ZoneSubRegion('ZSR_wPL#EdgeCenter', loc='EdgeCenter', fields={'Id': id_ec}, parent=zone)
   PT.new_IndexArray('PointList', value=[id_ec], parent=zsr_wpl_ec)
-  MT.newDistribution({'Index': [0,4,4]}, parent=zsr_wpl_ec)
+  MT.new_Distribution({'Index': [0,4,4]}, parent=zsr_wpl_ec)
 
   # > Container Vertex
   id_vtx = np.arange(n_vtx, dtype=pdm_dtype) + 1
   PT.new_DiscreteData('DD_woPL#Vertex', loc='Vertex', fields={'Id': id_vtx}, parent=zone)
   fs_wpl_vtx = PT.new_FlowSolution('FS_wPL#Vertex', loc='Vertex', fields={'Id': id_vtx[0:3]}, parent=zone)
   PT.new_IndexArray('PointList', value=[id_vtx[0:3]], parent=fs_wpl_vtx)
-  MT.newDistribution({'Index': [0,3,3]}, parent=fs_wpl_vtx)
+  MT.new_Distribution({'Index': [0,3,3]}, parent=fs_wpl_vtx)
   PT.new_ZoneSubRegion('ZSR_related#Vertex', gc_name='Ymin', fields={'Id': id_vtx[-3:]}, parent=zone)
 
   # BC setup : to test several cases, we define : 
@@ -367,13 +367,13 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   # > Xmin : BC Edge + BCDS with PointList
   bcds_wpl_cc = PT.new_BCDataSet(name='BCDS_wpl#CellCenter', loc='CellCenter', point_list=[[1+16,5+16]], parent=xmin)
   PT.new_BCData('NeumannData', fields={'Id': [1,5]}, parent=bcds_wpl_cc)
-  MT.newDistribution({'Index': np.array([0,2,2],dtype=pdm_dtype)}, parent=bcds_wpl_cc)
+  MT.new_Distribution({'Index': np.array([0,2,2],dtype=pdm_dtype)}, parent=bcds_wpl_cc)
   bcds_wpl_ec = PT.new_BCDataSet(name='BCDS_wpl#EdgeCenter', loc='EdgeCenter', point_list=[[2,10]], parent=xmin)
   PT.new_BCData('NeumannData', fields={'Id': [2,10]}, parent=bcds_wpl_ec)
-  MT.newDistribution({'Index': np.array([0,2,2],dtype=pdm_dtype)}, parent=bcds_wpl_ec)
+  MT.new_Distribution({'Index': np.array([0,2,2],dtype=pdm_dtype)}, parent=bcds_wpl_ec)
   bcds_wpl_vtx = PT.new_BCDataSet(name='BCDS_wpl#Vertex', loc='Vertex', point_list=[[1,2,3]], parent=xmin)
   PT.new_BCData('NeumannData', fields={'Id': [1,2,3]}, parent=bcds_wpl_vtx)
-  MT.newDistribution({'Index': np.array([0,3,3],dtype=pdm_dtype)}, parent=bcds_wpl_vtx)
+  MT.new_Distribution({'Index': np.array([0,3,3],dtype=pdm_dtype)}, parent=bcds_wpl_vtx)
 
   # > Xmax : BC CellCenter
   PT.update_child(xmax, 'GridLocation', 'GridLocation_t', 'CellCenter')
@@ -384,7 +384,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   for bc in [ymin, ymax]:
     PT.update_child(bc, 'GridLocation', 'GridLocation_t', 'Vertex')
     PT.update_node(bc, value=PT.get_name(zone), label='GridConnectivity_t')
-    MT.newDistribution({'Index' : [0,3,3]}, bc)
+    MT.new_Distribution({'Index' : [0,3,3]}, bc)
   PT.update_child(ymin, 'PointList', value=np.array([[1,2,3]], zone[1].dtype))
   PT.update_child(ymax, 'PointList', value=np.array([[7,8,9]], zone[1].dtype))
   PT.new_IndexArray('PointListDonor', PT.get_child_from_name(ymax, 'PointList')[1].copy(), ymin)
@@ -525,24 +525,24 @@ def test_extrusion_2d_S(subset_as, comm):
   ymin = PT.get_node_from_name(zoneA, 'Ymin')
   PT.update_child(ymin, 'GridLocation', value='JEdgeCenter')
   PT.update_child(ymin, 'PointRange', value=[[1,8],[1,1]])
-  MT.new_distribution({'Index' : par_utils.uniform_distribution(8, comm)}, ymin)
+  MT.new_Distribution({'Index' : par_utils.uniform_distribution(8, comm)}, ymin)
   # Add a BCDS in zoneB
   ymin = PT.get_node_from_name(zoneB, 'Ymin')
   bcds = PT.new_BCDataSet(loc='Vertex', parent=ymin)
-  distri = MT.get_distribution(ymin, 'Index')[1]
+  distri = MT.distribution_value(ymin, 'Index')
   PT.new_BCData('DirichletData', fields={'field': np.arange(distri[2])[distri[0]:distri[1]]}, parent=bcds)
 
   # Create JN A -> B
   xmax = PT.get_node_from_name(zoneA, 'Xmax')
   PT.get_child_from_name(xmax, 'PointRange')[1][1,1] = 3  
-  MT.new_distribution({'Index' : par_utils.uniform_distribution(3, comm)}, xmax)
+  MT.new_Distribution({'Index' : par_utils.uniform_distribution(3, comm)}, xmax)
   zgc = PT.new_ZoneGridConnectivity(parent=zoneA)
   gc = PT.new_GridConnectivity1to1('matchLeft', 'Small', point_range=[[9,9],[3,5]], point_range_donor=[[1,3], [1,1]], transform=[2,1], parent=zgc)
-  MT.new_distribution({'Index' : par_utils.uniform_distribution(3, comm)}, gc)
+  MT.new_Distribution({'Index' : par_utils.uniform_distribution(3, comm)}, gc)
   # Create JN B -> A
   zgc = PT.new_ZoneGridConnectivity(parent=zoneB)
   gc = PT.new_GridConnectivity1to1('matchRight', 'Large', point_range=[[1,3],[1,1]], point_range_donor=[[9,9], [3,5]], transform=[2,1], parent=zgc)
-  MT.new_distribution({'Index' : par_utils.uniform_distribution(3, comm)}, gc)
+  MT.new_Distribution({'Index' : par_utils.uniform_distribution(3, comm)}, gc)
   PT.rm_nodes_from_name(zoneB, 'Ymax')
 
   tree = PT.union(treeA, treeB)

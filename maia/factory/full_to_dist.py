@@ -51,7 +51,7 @@ def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
     dist_child = distribute_pl_node(child, comm)
     PT.set_children(child, PT.get_children(dist_child))
 
-  distri_n = MT.newDistribution({'Index' : distri}, dist_node)
+  distri_n = MT.new_Distribution({'Index' : distri}, dist_node)
   if len(global_arrays_list) > 0:
     PT.new_Descriptor('BCDataGlobal', '\n'.join(global_arrays_list), parent=distri_n)
 
@@ -87,7 +87,7 @@ def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
 
   n_elem = PT.Element.Size(node)
   distri = par_utils.uniform_distribution(n_elem, comm)
-  MT.newDistribution({'Element' : distri}, dist_node)
+  MT.new_Distribution({'Element' : distri}, dist_node)
 
   ec_n = PT.find_child_from_name(dist_node, 'ElementConnectivity')
   ec = get_np_value(ec_n)
@@ -97,11 +97,11 @@ def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
     distri_ec = eso[[distri[0], distri[1], -1]]
     PT.set_value(ec_n, ec[distri_ec[0] : distri_ec[1]])
     PT.set_value(eso_n, eso[distri[0]:distri[1]+1])
-    MT.newDistribution({'ElementConnectivity' : np_utils.safe_int_cast(distri_ec, distri.dtype)}, dist_node)
+    MT.new_Distribution({'ElementConnectivity' : np_utils.safe_int_cast(distri_ec, distri.dtype)}, dist_node)
   else:
     n_vtx = PT.Element.NVtx(node)
     PT.set_value(ec_n, ec[n_vtx*distri[0] : n_vtx*distri[1]])
-    MT.newDistribution({'ElementConnectivity' : n_vtx*distri}, dist_node)
+    MT.new_Distribution({'ElementConnectivity' : n_vtx*distri}, dist_node)
   
   pe_n = PT.get_child_from_name(dist_node, 'ParentElements')
   if pe_n is not None:
@@ -126,7 +126,7 @@ def _distribute_tree(tree: CGNSTree, comm: MPIComm) -> CGNSDistTree:
     if PT.Zone.Type(zone) == 'Structured':
       zone_distri['Face'] = par_utils.uniform_distribution(PT.Zone.n_face(zone), comm)
 
-    MT.newDistribution(zone_distri, zone)
+    MT.new_Distribution(zone_distri, zone)
 
     # > Coords
     grid_coords = PT.get_children_from_label(zone, 'GridCoordinates_t')
@@ -177,7 +177,7 @@ def _distribute_tree(tree: CGNSTree, comm: MPIComm) -> CGNSDistTree:
       if matching_region_path != PT.get_name(zone_subregion):
         PT.rm_children_from_name(dist_zone_subregion, 'PointList')
         PT.rm_children_from_name(dist_zone_subregion, 'PointRange')
-        PT.rm_child(dist_zone_subregion, MT.getDistribution(dist_zone_subregion))
+        PT.rm_child(dist_zone_subregion, MT.get_Distribution(dist_zone_subregion))
 
       PT.rm_child(zone, zone_subregion)
       PT.add_child(zone, dist_zone_subregion)

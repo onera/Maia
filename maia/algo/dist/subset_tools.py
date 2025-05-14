@@ -22,7 +22,7 @@ def sort_dist_pointlist(subset, comm):
       PT.update_child(subset, 'PointListDonor', value=dist_pld.reshape((1,-1), order='F'))
 
     new_distri = par_utils.dn_to_distribution(dist_pl.size, comm)
-    MT.newDistribution({'Index' : new_distri}, subset)
+    MT.new_Distribution({'Index' : new_distri}, subset)
 
 def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   """
@@ -33,7 +33,7 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   Otherwise, faces having at least one vertex in vtx_ids are returned.
   """
   i_rank = comm.Get_rank()
-  elt_distri = MT.getDistribution(elt_n, 'Element')[1]
+  elt_distri = MT.distribution_value(elt_n, 'Element')
   delt_vtx   = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
   if PT.Element.CGNSName(elt_n)=='NGON_n':
     delt_vtx_idx = PT.get_child_from_name(elt_n, 'ElementStartOffset')[1]
@@ -61,7 +61,7 @@ def convert_subset_as_facelist(dist_tree, subset_path, comm):
     face_list = vtx_ids_to_face_ids(pl_vtx, PT.Zone.NGonNode(zone), comm, True)
     PT.update_child(node, 'GridLocation', value='FaceCenter')
     PT.update_child(node, 'PointList', value=face_list.reshape((1,-1), order='F'))
-    MT.newDistribution({'Index' : par_utils.dn_to_distribution(face_list.size, comm)}, node)
+    MT.new_Distribution({'Index' : par_utils.dn_to_distribution(face_list.size, comm)}, node)
   elif PT.Subset.GridLocation(node) != 'FaceCenter':
       raise ValueError(f"Unsupported location for subset {subset_path}")
 

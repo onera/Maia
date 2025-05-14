@@ -78,7 +78,7 @@ def test_bc_s_to_bc_u(output_loc):
 def test_bcds_s_to_bcds_u(output_loc):
   n_vtx = np.array([4,4,4])
   bc_s = PT.new_BC('MyBCName', type='BCOutflow', point_range=[[1,4], [1,4], [4,4]])
-  distri = MT.newDistribution({'Index' : [0,16,16]}, parent=bc_s)
+  distri = MT.new_Distribution({'Index' : [0,16,16]}, parent=bc_s)
 
   # A dataset w/o PointRange
   ds = PT.new_BCDataSet('RelatedDS', parent=bc_s)
@@ -86,12 +86,12 @@ def test_bcds_s_to_bcds_u(output_loc):
 
   # A dataset still Vertex located, but with its PointRange
   ds = PT.new_BCDataSet('CustomVertexDS', point_range=[[2,3], [2,3], [4,4]], parent=bc_s)
-  PT.maia.newDistribution({'Index' : [0,4,4]}, parent=ds)
+  MT.new_Distribution({'Index' : [0,4,4]}, parent=ds)
   PT.new_BCData('NeumannData', fields={'array' : 2*np.ones(4)}, parent=ds)
 
   # A dataset already FaceCenter located
   ds = PT.new_BCDataSet('CustomFaceDS', point_range=[[1,3], [1,3], [4,4]], loc='KFaceCenter', parent=bc_s)
-  PT.maia.newDistribution({'Index' : [0,9,9]}, parent=ds)
+  MT.new_Distribution({'Index' : [0,9,9]}, parent=ds)
   PT.new_BCData('NeumannData', fields={'array' : 3*np.ones(9)}, parent=ds)
 
   bc_u = s_to_u.bc_s_to_bc_u(bc_s, n_vtx, output_loc, 0, 1)
@@ -201,9 +201,9 @@ def test_s_to_u_2d_elt(with_bc, comm):
     expected_quad_distri = np.array([5,10,10], pdm_dtype)
 
   expected_bar = PT.new_Elements('BAR_2', 'BAR_2', erange=np.array([1,14], pdm_dtype), econn=expected_bar_ec)
-  MT.new_distribution({'Element' : expected_bar_distri}, expected_bar)
+  MT.new_Distribution({'Element' : expected_bar_distri}, expected_bar)
   expected_quad = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([15,24], pdm_dtype), econn=expected_quad_ec)
-  MT.new_distribution({'Element' : expected_quad_distri}, expected_quad)
+  MT.new_Distribution({'Element' : expected_quad_distri}, expected_quad)
 
   assert PT.is_same_tree(PT.get_node_from_name(tree, 'BAR_2'), expected_bar)
   assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_quad)
@@ -237,11 +237,11 @@ def test_s_to_u_3d_elt(comm):
     expected_zmax_distri = np.array([4,6,6], pdm_dtype)
   
   expected_bar = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([1,22], pdm_dtype), econn=expected_quad_ec)
-  MT.new_distribution({'Element' : expected_quad_distri}, expected_bar)
+  MT.new_Distribution({'Element' : expected_quad_distri}, expected_bar)
   expected_quad = PT.new_Elements('HEXA_8', 'HEXA_8', erange=np.array([23,28], pdm_dtype), econn=expected_hexa_ec)
-  MT.new_distribution({'Element' : expected_hexa_distri}, expected_quad)
+  MT.new_Distribution({'Element' : expected_hexa_distri}, expected_quad)
   expected_zmax = PT.new_BC('Zmax', 'Null', loc='FaceCenter', point_list=expected_zmax_pl)
-  MT.new_distribution({'Index' : expected_zmax_distri}, expected_zmax)
+  MT.new_Distribution({'Index' : expected_zmax_distri}, expected_zmax)
 
   assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_bar)
   assert PT.is_same_tree(PT.get_node_from_name(tree, 'HEXA_8'), expected_quad)
@@ -251,7 +251,7 @@ def test_s_to_u_3d_elt(comm):
 def test_s_to_u_2d(comm):
   tree = maia.factory.generate_dist_block([6,3], 'S', comm)
   maia.algo.dist.convert_s_to_ngon(tree, comm)
-  edge = PT.maia.Zone.EdgeNode(PT.get_node_from_label(tree, 'Zone_t'))
+  edge = MT.Zone.EdgeNode(PT.get_node_from_label(tree, 'Zone_t'))
   
   if comm.Get_size() == 1:
     expt_distri = [0,27,27]
@@ -289,12 +289,12 @@ def test_s_to_u_2d_dataset(bc_loc_edge, comm):
 
   # A dataset still Vertex located, but with its PointRange
   ds = PT.new_BCDataSet('CustomVertexDS', point_range=[[1,3], [3,3]], parent=ymax)
-  PT.maia.newDistribution({'Index' : [0,3,3]}, parent=ds)
+  MT.new_Distribution({'Index' : [0,3,3]}, parent=ds)
   PT.new_BCData('NeumannData', fields={'Test2' : 2*np.ones(3)}, parent=ds)
 
   # A dataset already EdgeCenter located
   ds = PT.new_BCDataSet('CustomEdgeDS', point_range=[[1,5], [3,3]], loc='JEdgeCenter', parent=ymax)
-  PT.maia.newDistribution({'Index' : [0,5,5]}, parent=ds)
+  MT.new_Distribution({'Index' : [0,5,5]}, parent=ds)
   PT.new_BCData('NeumannData', fields={'Test3' : 3*np.ones(5)}, parent=ds)
 
   zbc = PT.get_node_from_label(tree, 'ZoneBC_t')
@@ -406,7 +406,7 @@ def test_cell_center_subset_shift(connectivity, comm):
   tree = maia.factory.generate_dist_block(4, 'S', comm)
 
   bc_s = PT.new_BC('BC', type='BCOutflow', loc='CellCenter', point_range=[[1,3], [2,3], [1,1]])
-  PT.maia.newDistribution({'Index' : [0,6,6]}, parent=bc_s)
+  MT.new_Distribution({'Index' : [0,6,6]}, parent=bc_s)
   zbc = PT.get_node_from_label(tree, 'ZoneBC_t')
   PT.set_children(zbc, [bc_s])
 

@@ -1,4 +1,5 @@
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from   maia.algo.part.point_cloud_utils import create_sub_numbering
 from   maia.factory import dist_from_part
 from   maia import npy_pdm_gnum_dtype as pdm_dtype
@@ -47,8 +48,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
         # we assume that BCDataSet values will be retrieved with other procs
         continue
 
-      concat_bc_gn_n = PT.maia.getGlobalNumbering(concat_bc_n, 'Index')
-      concat_bc_gn   = PT.get_value(concat_bc_gn_n)
+      concat_bc_gn = MT.globalnumbering_value(concat_bc_n, 'Index')
 
       concat_bc_id_n = PT.get_node_from_path(concat_bc_n, ':maia#concatenate/DirichletData/OriginalBCId')
       concat_bc_id   = PT.get_value(concat_bc_id_n)
@@ -74,7 +74,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
             PT.new_FamilyName(PT.get_value(concat_bc_fam_n), parent=bc_n)
           if orig_bc_ordin_n is not None:
             PT.new_node('Ordinal', 'Ordinal_t', orig_bc_ordin[bc_id], parent=bc_n)
-          PT.maia.newGlobalNumbering({'Index':bc_gn}, parent=bc_n)
+          MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
 
           for nodes in PT.iter_children_from_predicates(concat_bc_n, 'BCDataSet_t/BCData_t', ancestors=True):
             bcds_n = nodes[0]
@@ -93,7 +93,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
             if bcds_pl_n is not None:
               bcds_pl = PT.get_value(bcds_pl_n)[0]
 
-              bcds_gn_n = PT.maia.getGlobalNumbering(bcds_n, 'Index')
+              bcds_gn_n = MT.find_GlobalNumbering(bcds_n, 'Index')
               bcds_gn   = PT.get_value(bcds_gn_n)
 
               bcd_bc_id_n = PT.get_child_from_name_and_label(bcd_n, 'OriginalBCId', 'DataArray_t')
@@ -105,7 +105,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
               bc_bcds_n = PT.new_BCDataSet(PT.get_name(bcds_n), type=bcds_type,
                                            point_list=bcds_pl.reshape((1,-1), order='F'),
                                            loc=bcds_loc, parent=bc_n)
-              PT.maia.newGlobalNumbering({'Index':bcds_gn}, parent=bc_bcds_n)
+              MT.new_GlobalNumbering({'Index':bcds_gn}, parent=bc_bcds_n)
               fields = {PT.get_name(data_array_n):PT.get_value(data_array_n)[bcds_pl_ids]
                 for data_array_n in PT.get_children_from_label(bcd_n, 'DataArray_t')}
               bc_bcd_n = PT.new_BCData(PT.get_name(bcd_n), fields=fields, parent=bc_bcds_n)
@@ -126,7 +126,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
     for part_zone in part_zones:
       bc_n = PT.get_child_from_predicates(part_zone, ['ZoneBC_t', bc_name])
       if bc_n is not None:
-        all_bc_gn.append(PT.get_value(PT.maia.getGlobalNumbering(bc_n, 'Index')))
+        all_bc_gn.append(MT.globalnumbering_value(bc_n, 'Index'))
       else:
         all_bc_gn.append(np.empty(0, dtype=pdm_dtype))
 
@@ -135,7 +135,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
     for i_part, part_zone in enumerate(part_zones):
       bc_n = PT.get_child_from_predicates(part_zone, ['ZoneBC_t', bc_name])
       if bc_n is not None:
-        bc_gn_n = PT.maia.getGlobalNumbering(bc_n, 'Index')
+        bc_gn_n = MT.find_GlobalNumbering(bc_n, 'Index')
         PT.set_value(bc_gn_n, all_bc_gn[i_part])
 
   # > Generate gnum for deconcatenated BCDSs
@@ -152,7 +152,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
     for part_zone in part_zones:
       bcds_n = PT.get_node_from_path(part_zone, bcds_path)
       if bcds_n is not None:
-        all_bcds_gn.append(PT.get_value(PT.maia.getGlobalNumbering(bcds_n, 'Index')))
+        all_bcds_gn.append(MT.globalnumbering_value(bcds_n, 'Index'))
       else:
         all_bcds_gn.append(np.empty(0, dtype=pdm_dtype))
 
@@ -161,7 +161,7 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
     for i_part, part_zone in enumerate(part_zones):
       bcds_n = PT.get_node_from_path(part_zone, bcds_path)
       if bcds_n is not None:
-        bcds_gn_n = PT.maia.getGlobalNumbering(bcds_n, 'Index')
+        bcds_gn_n = MT.find_GlobalNumbering(bcds_n, 'Index')
         PT.set_value(bcds_gn_n, all_bcds_gn[i_part])
 
 

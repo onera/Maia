@@ -168,7 +168,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
                 k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
                 bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
-            MT.newGlobalNumbering({'Index' : bcds_lntogn}, part_bc)
+            MT.new_GlobalNumbering({'Index' : bcds_lntogn}, part_bc)
           else: #GC are put with bc and treated afterward
             part_bc = PT.new_BC(PT.get_name(dist_bc), point_range=sub_pr, parent=zbc)
           PT.set_value(part_bc, PT.get_value(dist_bc))
@@ -187,7 +187,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
 def create_subsets(d_zone, p_zone):
   """ Create subset nodes (such as ZoneSubRegion) on partitioned zones 
   by computing intersection of the input PR with the part zone size """
-  part_range = PT.maia.getGlobalNumbering(p_zone, 'CellRange')[1]
+  part_range = MT.globalnumbering_value(p_zone, 'CellRange')
   for subset in PT.get_children_from_predicate(d_zone, is_subset):
     subset_pr  = PT.Subset.getPatch(subset)[1]
     subset_loc = PT.Subset.GridLocation(subset)
@@ -523,7 +523,7 @@ def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
     entities = ['Vertex', 'Edge', 'Face', 'Cell']
     entities_gnum = create_zone_gnums(cell_bounds, PT.Zone.CellSize(d_zone))
     entities_gnum_dict = {key:val for key,val in zip(entities, entities_gnum) if val is not None}
-    gn_node = MT.newGlobalNumbering(entities_gnum_dict, parent=part_zone)
+    gn_node = MT.new_GlobalNumbering(entities_gnum_dict, parent=part_zone)
     _cell_bounds = np.copy(cell_bounds, order='F')
     _cell_bounds[:,1] -= 1
     PT.new_node("CellRange", "IndexRange_t", _cell_bounds, parent=gn_node)

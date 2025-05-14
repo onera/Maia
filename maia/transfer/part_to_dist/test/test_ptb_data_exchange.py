@@ -82,10 +82,10 @@ class Test__discover_wrapper:
     PTB._discover_wrapper(dist_zone, part_zones, \
         'DiscreteData_t', 'DiscreteData_t/DataArray_t', comm)
 
-    fs = PT.get_child_from_name(dist_zone, 'FS')
+    fs = PT.find_child_from_name(dist_zone, 'FS')
     assert PT.get_label(fs) == 'DiscreteData_t'
-    dist_pl     = PT.get_node_from_path(fs, 'PointList')[1]
-    dist_distri = PT.get_value(MT.getDistribution(fs, 'Index'))
+    dist_pl     = PT.find_node_from_path(fs, 'PointList')[1]
+    dist_distri = MT.distribution_value(fs, 'Index')
     assert dist_distri.dtype == pdm_dtype
 
     if comm.Get_rank() == 0:

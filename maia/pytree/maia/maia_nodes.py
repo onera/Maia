@@ -10,48 +10,43 @@ from maia.utils import vstride as vs
 
 begin_api_export()
 
-def getDistribution(node:CGNSTree, distri_name:Optional[str]=None) -> Optional[CGNSTree]:
+DISTRI_NAME = ':CGNS#Distribution'
+GLBNUM_NAME = ':CGNS#GlobalNumbering'
+
+def get_Distribution(root:CGNSTree, distri_name:Optional[str]=None) -> Optional[CGNSTree]:
   """
   Starting from node, return the CGNS#Distribution node if distri_name is None
   or the value of the requested distribution if distri_name is not None
   """
-  return W.get_node_from_path(node, '/'.join([':CGNS#Distribution', distri_name])) if distri_name \
-      else W.get_child_from_name(node, ':CGNS#Distribution')
+  path = f'{DISTRI_NAME}/{distri_name}' if distri_name else DISTRI_NAME
+  return W.get_node_from_path(root, path)
 
-# Not really satisfying, I thing we should only rely on PT searches and
-# juste provide an alias for :CGNS#Distribution
-def requestDistribution(root:CGNSTree, distri_name:Optional[str]=None) -> CGNSTree:
-  node = getDistribution(root, distri_name)
-  if node is None:
-    raise CGNSNodeNotFoundError(root, ':CGNS#Distribution')
-  return node
+def find_Distribution(root:CGNSTree, distri_name:Optional[str]=None) -> CGNSTree:
+  if (node := get_Distribution(root, distri_name)) is not None:
+    return node
+  raise CGNSNodeNotFoundError(root, DISTRI_NAME)
 
 def distribution_value(root:CGNSTree, distri_name:str) -> NDArray:
-  node = requestDistribution(root, distri_name)
-  return N.get_np_value(node)
+  return N.get_np_value(find_Distribution(root, distri_name))
 
-def getGlobalNumbering(node:CGNSTree, lngn_name:Optional[str]=None) -> Optional[CGNSTree]:
+def get_GlobalNumbering(root:CGNSTree, lngn_name:Optional[str]=None) -> Optional[CGNSTree]:
   """
   Starting from node, return the CGNS#GlobalNumbering node if lngn_name is None
   or the value of the requested globalnumbering if lngn_name is not None
   """
-  return W.get_node_from_path(node, '/'.join([':CGNS#GlobalNumbering', lngn_name])) if lngn_name \
-      else W.get_child_from_name(node, ':CGNS#GlobalNumbering')
+  path = f'{GLBNUM_NAME}/{lngn_name}' if lngn_name else GLBNUM_NAME
+  return W.get_node_from_path(root, path)
 
-# Not really satisfying, I thing we should only rely on PT searches and
-# juste provide an alias for :CGNS#GlobalNumbering
-def requestGlobalNumbering(root:CGNSTree, lngn_name:Optional[str]=None) -> CGNSTree:
-  node = getGlobalNumbering(root, lngn_name)
-  if node is None:
-    raise CGNSNodeNotFoundError(root, ':CGNS#GlobalNumbering')
-  return node
+def find_GlobalNumbering(root:CGNSTree, lngn_name:Optional[str]=None) -> CGNSTree:
+  if (node := get_GlobalNumbering(root, lngn_name)) is not None:
+    return node
+  raise CGNSNodeNotFoundError(root, GLBNUM_NAME)
 
 def globalnumbering_value(root:CGNSTree, lngn_name:str) -> NDArray:
-  node = requestGlobalNumbering(root, lngn_name)
-  return N.get_np_value(node)
+  return N.get_np_value(find_GlobalNumbering(root, lngn_name))
 
 
-def newDistribution(distributions:Dict[str, NDArray] = dict(), parent:Optional[CGNSTree]=None) -> CGNSTree:
+def new_Distribution(distributions:Dict[str, NDArray] = dict(), parent:Optional[CGNSTree]=None) -> CGNSTree:
   """
   Create and return a CGNSNode to be used to store distribution data
   Attach it to parent node if not None
@@ -66,7 +61,7 @@ def newDistribution(distributions:Dict[str, NDArray] = dict(), parent:Optional[C
     N.update_child(distri_node, name, 'DataArray_t', value)
   return distri_node
 
-def newGlobalNumbering(glob_numberings:Dict[str, NDArray] = dict(), parent:Optional[CGNSTree]=None) -> CGNSTree:
+def new_GlobalNumbering(glob_numberings:Dict[str, NDArray] = dict(), parent:Optional[CGNSTree]=None) -> CGNSTree:
   """
   Create and return a CGNSNode to be used to store distribution data
   Attach it to parent node if not None
@@ -82,11 +77,6 @@ def newGlobalNumbering(glob_numberings:Dict[str, NDArray] = dict(), parent:Optio
   return lngn_node
 
 # --------------------------------------------------------------------------
-
-get_distribution                      = getDistribution
-get_global_numbering                  = getGlobalNumbering
-new_distribution                      = newDistribution
-new_global_numbering                  = newGlobalNumbering
 
 class Zone:
 

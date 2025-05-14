@@ -11,7 +11,7 @@ def test_compute_subset_distribution(comm):
   node = PT.new_BC(name='BC', point_range=[[1,3],[1,3],[3,3]])
   distribution_tree.compute_subset_distribution(node, comm, par_utils.uniform_distribution)
 
-  distrib_ud = MT.getDistribution(node)
+  distrib_ud = MT.get_Distribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
   distrib    = PT.get_child_from_name(distrib_ud, 'Index')
   assert PT.get_label(distrib) == 'DataArray_t'
@@ -22,7 +22,7 @@ def test_compute_subset_distribution(comm):
   PT.new_IndexArray('PointList#Size', [1,9], parent=node)
   distribution_tree.compute_subset_distribution(node, comm, par_utils.uniform_distribution)
 
-  distrib_ud = MT.getDistribution(node)
+  distrib_ud = MT.get_Distribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
   distrib    = PT.get_child_from_name(distrib_ud, 'Index')
   assert PT.get_label(distrib) == 'DataArray_t'
@@ -92,7 +92,7 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
     assert PT.get_node_from_name(zone, 'PointList#Size') is None
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
-    assert MT.getDistribution(zone, 'Face') is not None
+    assert MT.get_Distribution(zone, 'Face') is not None
 
 
 @pytest_parallel.mark.parallel(2)

@@ -98,7 +98,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     ngon_eso += distrib_face_vtx[i_rank]
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe, parent=zone)
-    MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
+    MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
                         'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_face_vtx, comm)},
                         ngon_n)
 
@@ -109,7 +109,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     nface_eso += distrib_cell_face[i_rank]
 
     nfac_n = PT.new_NFaceElements(erange=nface_er, eso=nface_eso, ec=nface_ec, parent=zone)
-    MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_cell, comm),
+    MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(distrib_cell, comm),
                         'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_cell_face, comm)},
                          nfac_n)
 
@@ -131,7 +131,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
 
     bar_n = PT.new_Elements('EdgeElements', 'BAR_2', erange=edge_er, econn=edge_ec, parent=zone)
     PT.new_DataArray('ParentElements', edge_pe, parent=bar_n)
-    MT.newDistribution({'Element' : par_utils.full_to_partial_distribution(distrib_edge, comm)},
+    MT.new_Distribution({'Element' : par_utils.full_to_partial_distribution(distrib_edge, comm)},
                          bar_n)
 
     # Create NGON (combine face_edge + edge_vtx)
@@ -142,7 +142,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     ngon_eso += distrib_face_vtx[i_rank]
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, parent=zone)
-    MT.newDistribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
+    MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
                         'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_face_vtx, comm)},
                         ngon_n)
 

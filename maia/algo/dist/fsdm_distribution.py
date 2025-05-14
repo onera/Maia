@@ -12,10 +12,10 @@ def add_fsdm_distribution(t, comm):
 
     n_vtx_owned = PT.get_node_from_path(zone, ':CGNS#LocalNumbering/VertexSizeOwned')[1][0]
     vtx_distri = par_utils.dn_to_distribution(n_vtx_owned, comm)
-    MT.new_distribution({"Vertex" : vtx_distri}, zone)
+    MT.new_Distribution({"Vertex" : vtx_distri}, zone)
 
     for elt_section in PT.get_children_from_label(zone, 'Elements_t'):
       n_owned_elt = PT.Element.Size(elt_section)
       elt_distri = par_utils.dn_to_distribution(n_owned_elt, comm)
-      MT.new_distribution({"Element" : elt_distri}, elt_section)
+      MT.new_Distribution({"Element" : elt_distri}, elt_section)
     

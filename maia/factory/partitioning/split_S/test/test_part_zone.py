@@ -2,7 +2,8 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 from maia.factory.partitioning.split_S import part_zone as splitS
 
 def test_collect_S_bnd_per_dir():
@@ -189,10 +190,10 @@ def test_create_subset(comm):
 
   if comm.rank == 0:
     part_zone = PT.new_Zone('zone.P0.N0', type='Structured', size=[[3,2,0],[4,3,0],[4,3,0]])
-    PT.maia.newGlobalNumbering({'CellRange': [[1,2],[1,3],[1,3]]}, part_zone)
+    MT.new_GlobalNumbering({'CellRange': [[1,2],[1,3],[1,3]]}, part_zone)
   elif comm.rank == 1:
     part_zone = PT.new_Zone('zone.P1.N0', type='Structured', size=[[2,1,0],[4,3,0],[4,3,0]])
-    PT.maia.newGlobalNumbering({'CellRange': [[3,3],[1,3],[1,3]]}, part_zone)
+    MT.new_GlobalNumbering({'CellRange': [[3,3],[1,3],[1,3]]}, part_zone)
 
   splitS.create_subsets(dist_zone, part_zone) 
 
@@ -224,13 +225,13 @@ def test_create_subset_2d(comm):
 
   if comm.rank == 0:
     part_zone = PT.new_Zone('zone.P0.N0', type='Structured', size=[[3,2,0],[5,4,0]])    # Partititons
-    PT.maia.newGlobalNumbering({'CellRange': [[1,2],[1,4]]}, part_zone)                 # +---------+
+    MT.new_GlobalNumbering({'CellRange': [[1,2],[1,4]]}, part_zone)                     # +---------+
   elif comm.rank == 1:                                                                  # | 0 0 1 1 |
     part_zone = PT.new_Zone('zone.P1.N0', type='Structured', size=[[3,2,0],[3,2,0]])    # | 0 0 1 1 |
-    PT.maia.newGlobalNumbering({'CellRange': [[3,4],[3,4]]}, part_zone)                 # | 0 0 2 2 |
+    MT.new_GlobalNumbering({'CellRange': [[3,4],[3,4]]}, part_zone)                     # | 0 0 2 2 |
   elif comm.rank == 2:                                                                  # | 0 0 2 2 |
     part_zone = PT.new_Zone('zone.P2.N0', type='Structured', size=[[3,2,0],[3,2,0]])    # +---------+
-    PT.maia.newGlobalNumbering({'CellRange': [[3,4],[1,2]]}, part_zone)
+    MT.new_GlobalNumbering({'CellRange': [[3,4],[1,2]]}, part_zone)
 
   splitS.create_subsets(dist_zone, part_zone) 
   if comm.rank == 0:

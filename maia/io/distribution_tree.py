@@ -40,13 +40,13 @@ def compute_subset_distribution(node, comm, distri_func):
   if(pr_n):
     assert pl_n is None
     pr_lenght = PT.PointRange.n_elem(pr_n)
-    MT.newDistribution({'Index' : distri_func(pr_lenght, comm)}, parent=node)
+    MT.new_Distribution({'Index' : distri_func(pr_lenght, comm)}, parent=node)
 
   if(pl_n):
     assert pr_n is None
     pls_n   = PT.find_child_from_name(node, 'PointList#Size')
     pl_size = PT.get_np_value(pls_n)[1]
-    MT.newDistribution({'Index' : distri_func(pl_size, comm)}, parent=node)
+    MT.new_Distribution({'Index' : distri_func(pl_size, comm)}, parent=node)
 
 def compute_connectivity_distribution(node):
   """
@@ -62,7 +62,7 @@ def compute_connectivity_distribution(node):
   beg  = PT.get_np_value(eso_n)[0]
   end  = PT.get_np_value(eso_n)[-1]
 
-  distri_n = MT.requestDistribution(node)
+  distri_n = MT.find_Distribution(node)
   dtype = PT.get_np_value(PT.find_child_from_name(distri_n, 'Element')).dtype
   PT.new_DataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
 
@@ -71,7 +71,7 @@ def compute_elements_distribution(zone, comm, distri_func):
   """
   """
   for elt in PT.iter_children_from_label(zone, 'Elements_t'):
-    MT.newDistribution({'Element' : distri_func(PT.Element.Size(elt), comm)}, parent=elt)
+    MT.new_Distribution({'Element' : distri_func(PT.Element.Size(elt), comm)}, parent=elt)
     eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
     if eso_n is not None and eso_n[1] is not None:
       compute_connectivity_distribution(elt)
@@ -85,7 +85,7 @@ def compute_zone_distribution(zone, comm, distri_func):
     if PT.Zone.IndexDimension(zone) == 3:
       zone_distri['Face']  = distri_func(PT.Zone.n_face(zone), comm)
 
-  MT.newDistribution(zone_distri, parent=zone)
+  MT.new_Distribution(zone_distri, parent=zone)
 
   compute_elements_distribution(zone, comm, distri_func)
 
@@ -121,14 +121,14 @@ def mark_global_bcds_arrays(zone):
           dataset_global_arrays.append(f"{PT.get_name(bcdata)}/{PT.get_name(data_array)}")
 
       if len(dataset_global_arrays) > 0:
-        distri_bcds_n = MT.getDistribution(bcds)
+        distri_bcds_n = MT.get_Distribution(bcds)
         if distri_bcds_n is not None: # Register in BCDS/Distribution node
           PT.new_Descriptor('BCDataGlobal', '\n'.join(dataset_global_arrays), parent=distri_bcds_n)
         else: # Save for later registration in BC
           bc_global_arrays.extend([f'{PT.get_name(bcds)}/{path}' for path in dataset_global_arrays])
 
     if len(bc_global_arrays) > 0: # Register in BC/Distribution node
-      PT.new_Descriptor('BCDataGlobal', '\n'.join(bc_global_arrays), parent=MT.getDistribution(bc))
+      PT.new_Descriptor('BCDataGlobal', '\n'.join(bc_global_arrays), parent=MT.get_Distribution(bc))
 
 
 

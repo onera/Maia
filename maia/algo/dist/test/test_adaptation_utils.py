@@ -1,9 +1,9 @@
 import pytest
 import pytest_parallel
-import shutil
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 import maia.algo.dist.adaptation_utils as adapt_utils
 from   maia.utils import par_utils
 
@@ -18,10 +18,10 @@ def gen_dist_zone(comm):
     cy = np.array([0.,0.,0.,0.,0.])
     cz = np.array([0.,0.,0.,0.,0.])
     grid_coord_n = PT.new_GridCoordinates(fields={'CoordinateX':cx,'CoordinateY':cy,'CoordinateZ':cz}, parent=zone_n)
-    PT.maia.newDistribution({'Vertex':[0,5,9]}, parent=zone_n)
+    MT.new_Distribution({'Vertex':[0,5,9]}, parent=zone_n)
     fields = {'cX':cx,'cY':cy,'cZ':cz}
     flowsol_n = PT.new_FlowSolution('FSolution', loc='Vertex', fields=fields, parent=zone_n)
-    # PT.maia.newDistribution({'Index':[0,5,9]}, parent=flowsol_n)
+    # MT.new_Distribution({'Index':[0,5,9]}, parent=flowsol_n)
 
   elif comm.rank==1:
     zone_n = PT.new_Zone('zone', type='Unstructured', size=[[9,5,0]])
@@ -29,10 +29,10 @@ def gen_dist_zone(comm):
     cy = np.array([0.,0.,0.,0.])
     cz = np.array([0.,0.,0.,0.])
     grid_coord_n = PT.new_GridCoordinates(fields={'CoordinateX':cx,'CoordinateY':cy,'CoordinateZ':cz}, parent=zone_n)
-    PT.maia.newDistribution({'Vertex':[5,9,9]}, parent=zone_n)
+    MT.new_Distribution({'Vertex':[5,9,9]}, parent=zone_n)
     fields = {'cX':cx,'cY':cy,'cZ':cz}
     flowsol_n = PT.new_FlowSolution('FSolution', loc='Vertex', fields=fields, parent=zone_n)
-    # PT.maia.newDistribution({'Index':[5,9,9]}, parent=flowsol_n)
+    # MT.new_Distribution({'Index':[5,9,9]}, parent=flowsol_n)
 
   return zone_n
 
@@ -52,7 +52,7 @@ def test_duplicate_specified_vtx(comm):
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), expected_cx)
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), expected_cx)
 
-  new_distri = PT.maia.getDistribution(zone_n, 'Vertex')[1]
+  new_distri = MT.distribution_value(zone_n, 'Vertex')
   assert PT.Zone.n_vtx(zone_n)==14
   assert (maia.utils.par_utils.partial_to_full_distribution(new_distri, comm) == [0,7,14]).all()
 
@@ -73,7 +73,7 @@ def test_remove_specified_vtx(comm):
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), expected_cx)
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), expected_cx)
 
-  new_distri = PT.maia.getDistribution(zone_n, 'Vertex')[1]
+  new_distri = MT.distribution_value(zone_n, 'Vertex')
   assert PT.Zone.n_vtx(zone_n)==4
   assert (maia.utils.par_utils.partial_to_full_distribution(new_distri, comm) == [0,3,4]).all()
 
@@ -92,8 +92,8 @@ def test_elmt_pl_to_vtx_pl(comm):
     distri     = np.array([2, 4, 4], pdm_dtype)
     elt_pl     = np.array([], pdm_dtype) # Requested elts
   elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
-  PT.maia.newDistribution({'Element':     distri}, elt)
-  PT.maia.newDistribution({'Vertex' : vtx_distri}, zone)
+  MT.new_Distribution({'Element':     distri}, elt)
+  MT.new_Distribution({'Vertex' : vtx_distri}, zone)
 
   quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
                                                        PT.Element.CGNSName(n)=='QUAD_4')
@@ -116,7 +116,7 @@ def test_tag_elmt_owning_vtx(comm):
     distri = np.array([2, 4, 4], pdm_dtype)
     vtx_pl = np.array([2]) #Requested vtx
   elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
-  PT.maia.newDistribution({'Element' : distri}, elt)
+  MT.new_Distribution({'Element' : distri}, elt)
   
   quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
                                                        PT.Element.CGNSName(n)=='QUAD_4')
@@ -142,10 +142,10 @@ def test_convert_vtx_gcs_as_face_bcs(comm):
   base = PT.new_CGNSBase(parent=tree)
   zone_n = PT.new_Zone('zone', type='Unstructured', size=[[9,3,0]], parent=base)
   elt_n  = PT.new_Elements('TRI_3', type='TRI_3', erange=np.array([1,3], dtype=np.int32), econn=econn, parent=zone_n)
-  PT.maia.newDistribution({'Element':e_distri}, parent=elt_n)
+  MT.new_Distribution({'Element':e_distri}, parent=elt_n)
   zone_bc_n = PT.new_ZoneBC(parent=zone_n)
   bc_n = PT.new_BC('bc0', point_list=bc_pl, loc='FaceCenter', parent=zone_bc_n)
-  PT.maia.newDistribution({'Index':bc_distri}, parent=bc_n)
+  MT.new_Distribution({'Index':bc_distri}, parent=bc_n)
   zone_gc_n = PT.new_ZoneGridConnectivity(parent=zone_n)
   gc_n = PT.new_GridConnectivity('gc0', type='Abutting1to1', point_list=gc0_pl, loc='Vertex', parent=zone_gc_n)
   PT.new_GridConnectivityProperty(periodic={'translation': [1.0,0]}, parent=gc_n)
@@ -262,9 +262,9 @@ def test_add_undefined_faces(comm):
   assert PT.Zone.n_vtx(zone)==27
   assert PT.Zone.n_cell(zone)==40
   assert np.array_equal(PT.Element.Range(tet_n),np.array([ 1,40], dtype=np.int32))
-  assert PT.maia.getDistribution(tet_n, 'Element')[1][2]==40
+  assert MT.distribution_value(tet_n, 'Element')[2]==40
   assert np.array_equal(PT.Element.Range(tri_n),np.array([41,96], dtype=np.int32))
-  assert PT.maia.getDistribution(tri_n, 'Element')[1][2]==56
+  assert MT.distribution_value(tri_n, 'Element')[2]==56
 
 
 @pytest_parallel.mark.parallel([1,3])
@@ -285,9 +285,9 @@ def test_find_matching_bcs(comm):
   gc2_vtx = distributed(np.array([101,102,103,104,105,106,107,108,109], np.int32))
   
   zone_n = PT.new_Zone('zone', type='Unstructured', size=[[120,3,0]])
-  PT.maia.newDistribution({'Vertex':par_utils.uniform_distribution(120, comm)}, parent=zone_n)
+  MT.new_Distribution({'Vertex':par_utils.uniform_distribution(120, comm)}, parent=zone_n)
   bar_n  = PT.new_Elements('BAR_2', type='BAR_2', erange=[1,10], econn=bar_ec, parent=zone_n)
-  PT.maia.newDistribution({'Element':distri_bar}, parent=bar_n)
+  MT.new_Distribution({'Element':distri_bar}, parent=bar_n)
   zbc_n = PT.new_ZoneBC(parent=zone_n)
   PT.new_BC('BC1', point_list=bc1_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zbc_n)
   PT.new_BC('BC2', point_list=bc2_pl.reshape((1,-1),order='F'), loc='EdgeCenter', parent=zbc_n)
@@ -314,8 +314,8 @@ def test_update_elt_vtx_numbering(partial, comm):
   
   zone_n = PT.new_Zone('zone', type='Unstructured', size=[[12,3,0]])
   bar_n  = PT.new_Elements('BAR_2', type='BAR_2', erange=np.array([1,6], dtype=np.int32), econn=bar_ec, parent=zone_n)
-  PT.maia.newDistribution({'Vertex' :distri_vtx}, parent=zone_n)
-  PT.maia.newDistribution({'Element':distri_bar}, parent=bar_n)
+  MT.new_Distribution({'Vertex' :distri_vtx}, parent=zone_n)
+  MT.new_Distribution({'Element':distri_bar}, parent=bar_n)
 
   old_to_new = np.array([1,6,3,5,5,6,7,8,9,8,9,12])[distri_num[0]:distri_num[1]]
   

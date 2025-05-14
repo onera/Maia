@@ -22,7 +22,7 @@ def _dcloud_to_cgns(dpoint_cloud: Dict[str, Any], comm: MPIComm):
   grid_coord = PT.new_GridCoordinates(fields=coords, parent=dist_zone)
 
   np_distrib_pts  = par_utils.full_to_partial_distribution(dpoint_cloud['np_distrib_pts'], comm)
-  MT.newDistribution({'Vertex' : np_distrib_pts, 'Cell' : np.zeros(3, np_distrib_pts.dtype)}, parent=dist_zone)
+  MT.new_Distribution({'Vertex' : np_distrib_pts, 'Cell' : np.zeros(3, np_distrib_pts.dtype)}, parent=dist_zone)
 
   return dist_zone
 

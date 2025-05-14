@@ -1,11 +1,10 @@
 import pytest
 import pytest_parallel
 import os
-import mpi4py.MPI as MPI
 import numpy      as np
 
-import Pypdm.Pypdm  as PDM
-import maia.pytree  as PT
+import maia.pytree       as PT
+import maia.pytree.maia  as MT
 
 import maia
 import maia.factory as MF
@@ -57,7 +56,7 @@ def generate_test_tree(n_vtx,n_part,comm, build_bc_zsr=False):
     # BCs ZSR
     bcs_pl = np.concatenate([PT.get_value(pl_n)[0] for pl_n in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/PointList')])
     bcs_pl = np.flip(bcs_pl) # Reverse to be sure of the p2p_gnum_come_from (as in extract_part)
-    bcs_gnum = PT.maia.getGlobalNumbering(PT.get_child_from_name(zone, 'NGonElements'), 'Element')[1][bcs_pl-1]
+    bcs_gnum = MT.get_GlobalNumbering(PT.get_child_from_name(zone, 'NGonElements'), 'Element')[1][bcs_pl-1]
     zsr_n = PT.new_ZoneSubRegion("ZSR_BC", loc='FaceCenter', point_list=bcs_pl.reshape(1,-1), parent=zone)
     PT.new_DataArray('face_gnum', bcs_gnum, parent=zsr_n)
 

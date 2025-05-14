@@ -83,10 +83,8 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
                 ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
 
       if elt_n is not None :
-        part1_elt_gnum_n = MT.requestGlobalNumbering(elt_n, _gridLocation[gridLocation])
-        part1_ln_to_gn   = [PT.get_np_value(part1_elt_gnum_n)]
+        part1_ln_to_gn   = [MT.globalnumbering_value(elt_n, _gridLocation[gridLocation])]
       else :
-        part1_elt_gnum_n = None
         part1_ln_to_gn   = []
 
       # > Link between part1 and part2
@@ -120,8 +118,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     part2_ln_to_gn      = list()
     for part_zone in part_zones:
       elt_n            = part_zone if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone)
-      part2_elt_gnum_n = MT.requestGlobalNumbering(elt_n, _gridLocation[gridLocation])
-      part2_ln_to_gn.append(PT.get_np_value(part2_elt_gnum_n))
+      part2_ln_to_gn.append(MT.globalnumbering_value(elt_n, _gridLocation[gridLocation]))
         
 
     # > P2P Object
@@ -191,7 +188,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
       # Update global numbering in FS
       partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
       if iso_part_zone is not None and create_fs and len(partial_gnum)!=0:
-        MT.newGlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
+        MT.new_GlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
 
     # Remove node if is empty
     if FS_iso is not None and len(PT.get_children_from_label(FS_iso, 'DataArray_t'))==0:
@@ -359,7 +356,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                             erange=[1, n_iso_elt],
                             econn=results['np_elt_vtx'],
                             parent=iso_part_zone)
-    MT.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
+    MT.new_GlobalNumbering({'Element' : results['np_elt_ln_to_gn'],
                                 'Sections': results['np_elt_ln_to_gn']}, parent=elt_n)
   else:
     ng_eso = results['np_elt_vtx_idx']
@@ -378,14 +375,14 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                     erange=[1, nb_bar], 
                     econn=edge_data['np_edge_vtx'], 
                     parent=iso_part_zone)
-    MT.newGlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+    MT.new_GlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
 
     elt_n = PT.new_NGonElements('NGonElements',
                                  erange = [nb_bar+1, nb_bar+n_iso_elt],
                                  ec=ng_ec,
                                  eso=ng_eso,
                                  parent=iso_part_zone)
-    MT.newGlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=elt_n)
+    MT.new_GlobalNumbering({'Element' : results['np_elt_ln_to_gn']}, parent=elt_n)
   
   # Bnd edges
   if elt_type in ['TRI_3']:
@@ -398,11 +395,11 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                               erange=np.array([n_iso_elt+1, n_iso_elt+n_bnd_edge]),
                               econn=results_edge['bnd_edge_vtx'],
                               parent=iso_part_zone)
-      MT.newGlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
+      MT.new_GlobalNumbering({'Element' : results_edge['bnd_edge_lngn'],
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
     # > Create BC described by edges
-    gnum = PT.get_np_value(MT.requestGlobalNumbering(bar_n, 'Element')) if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
+    gnum = MT.globalnumbering_value(bar_n, 'Element') if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
     for i_group, bc_path in enumerate(gdom_bcs_path):
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
       edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\
@@ -412,7 +409,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
       if partial_gnum.size != 0:
         zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')  
         bc_n = PT.new_BC(PT.utils.path_tail(bc_path), point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-        MT.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+        MT.new_GlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
     for i_group, gc_path in enumerate(gdom_gcs_path):
       gc_name = PT.utils.path_tail(gc_path)
@@ -428,7 +425,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
       if edge_pl.size != 0:
         zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
         bc_n = PT.new_BC(gc_name, point_list=edge_pl, loc="EdgeCenter", parent=zonebc_n)
-        MT.newGlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
+        MT.new_GlobalNumbering({'Index' : partial_gnum}, parent=bc_n)
 
 
   else:
@@ -436,7 +433,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
 
 
   # > LN to GN
-  MT.newGlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
+  MT.new_GlobalNumbering({'Vertex' : results['np_vtx_ln_to_gn'],
                               'Cell'   : results['np_elt_ln_to_gn'] }, parent=iso_part_zone)
 
   # > Link between vol and isosurf

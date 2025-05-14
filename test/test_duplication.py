@@ -22,7 +22,7 @@ def test_translate_cube(comm, fields, write_output):
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
-  cell_distri = MT.getDistribution(dist_zone, 'Cell')[1]
+  cell_distri = MT.get_Distribution(dist_zone, 'Cell')[1]
   n_cell_loc =  cell_distri[1] - cell_distri[0]
   fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
   PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)

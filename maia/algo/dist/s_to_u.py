@@ -110,10 +110,10 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     ds_point_range = PT.get_child_from_name(bcds, 'PointRange')
     is_related = ds_point_range is None
     if not is_related: #BCDS has its own location / pr
-      ds_distri = MT.getDistribution(bcds, 'Index')[1]
+      ds_distri = MT.distribution_value(bcds, 'Index')
     if is_related: #BCDS has same location / pr than bc
       ds_point_range = PT.get_child_from_name(bc_s, 'PointRange')
-      ds_distri = MT.getDistribution(bc_s, 'Index')[1]
+      ds_distri = MT.distribution_value(bc_s, 'Index')
     ds_loc = PT.BCDataSet.GridLocation(bcds, bc_s)
     ds_size = PT.PointRange.SizePerIndex(ds_point_range)
     ds_slabs = HFR2S.compute_slabs(ds_size, ds_distri[0:2])
@@ -130,12 +130,12 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
       ds_pl = pr_utils.compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, _loc, dtype=point_range.dtype)
       PT.update_child(bcds, 'GridLocation', 'GridLocation_t', ds_output_loc)
       PT.new_IndexArray(value=ds_pl, parent=bcds)
-      MT.newDistribution({'Index' : ds_distri}, parent=bcds)
+      MT.new_Distribution({'Index' : ds_distri}, parent=bcds)
     PT.rm_children_from_name(bcds, 'PointRange')
     PT.add_child(bc_u, bcds)
 
 
-  MT.newDistribution({'Index' : np.array([*bc_range, bc_size.prod()], pdm_gnum_dtype)}, parent=bc_u)
+  MT.new_Distribution({'Index' : np.array([*bc_range, bc_size.prod()], pdm_gnum_dtype)}, parent=bc_u)
   allowed_types = ['FamilyName_t', 'Descriptor_t', 'AdditionalFamilyName_t'] #Copy these nodes to bc_u
   for allowed_child in [c for c in PT.get_children(bc_s) if PT.get_label(c) in allowed_types]:
     PT.add_child(bc_u, allowed_child)
@@ -236,7 +236,7 @@ def gc_s_to_gc_u(gc_s, zone_path, n_vtx_zone, n_vtx_zone_opp, output_loc, i_rank
   gc_u = PT.new_GridConnectivity(PT.get_name(gc_s), PT.get_value(gc_s), type='Abutting1to1', loc=output_loc)
   PT.new_IndexArray('PointList'     , point_list,     parent=gc_u)
   PT.new_IndexArray('PointListDonor', point_list_opp, parent=gc_u)
-  MT.newDistribution({'Index' : np.array([*gc_range, gc_size.prod()], pdm_gnum_dtype)}, parent=gc_u)
+  MT.new_Distribution({'Index' : np.array([*gc_range, gc_size.prod()], pdm_gnum_dtype)}, parent=gc_u)
   #Copy these nodes to gc_u
   allowed_types = ['GridConnectivityProperty_t']
   allowed_names = ['GridConnectivityDonorName']
@@ -282,7 +282,7 @@ def zonedims_to_ngon_3d(n_vtx_zone, comm, dtype=None):
   _erange = np.array([1, n_face_tot], dtype=dtype)
   ngon = PT.new_NGonElements('NGonElements', erange=_erange, eso=face_vtx_idx, ec=face_vtx, pe=face_pe)
 
-  MT.newDistribution({'Element' : face_distri, 'ElementConnectivity' : 4*face_distri}, parent=ngon)
+  MT.new_Distribution({'Element' : face_distri, 'ElementConnectivity' : 4*face_distri}, parent=ngon)
 
   return ngon
 ###############################################################################
@@ -316,7 +316,7 @@ def zonedims_to_ngon_2d(n_vtx_zone, comm, dtype=None):
   _erange = np.array([1, n_edge_tot], dtype=dtype)
   edge = PT.new_Elements('EdgeElements', 'BAR_2', erange=_erange, econn=edge_vtx, pe=edge_pe)
 
-  MT.newDistribution({'Element' : edge_distri}, parent=edge)
+  MT.new_Distribution({'Element' : edge_distri}, parent=edge)
   return edge
 ###############################################################################
 
@@ -370,7 +370,7 @@ def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
   _update_pl(zone, loc, new_pl)
   erange = np.array([1, ref_bnd_elt_distri[-1]], elt_vtx.dtype)
   bar = PT.new_Elements(elt_kind, elt_kind, erange=erange, econn=elt_vtx, parent=zone)
-  MT.new_distribution({'Element' : ref_bnd_elt_distri}, bar)
+  MT.new_Distribution({'Element' : ref_bnd_elt_distri}, bar)
 
   # Lastly, update range of volumic elts to put it after
   PT.Element.Range(PT.get_child_from_label(zone, 'Elements_t'))[:] += erange[1]
@@ -442,7 +442,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
           elt_type = {2: 'QUAD_4', 3: 'HEXA_8'}[cell_dim]
           erange = np.array([1, PT.Zone.n_cell(zone)], zdtype)
           elt = PT.new_Elements(elt_type, elt_type, erange=erange, econn=cell_vtx.values, parent=zone)
-          MT.new_distribution({'Element' : MT.distribution_value(zone, 'Cell').copy()}, elt)
+          MT.new_Distribution({'Element' : MT.distribution_value(zone, 'Cell').copy()}, elt)
         else:
           # Poly elements --> compute surfacic (resp. lineic) elts 1 ... n_face
           # Then FaceCenter (resp. EdgeCenter) BCs are ready
@@ -540,7 +540,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
           PT.get_np_value(pl_n)[0] += cell_offset
 
         # Face or Edge distribution does not exist on U meshes
-        distri = MT.requestDistribution(zone)
+        distri = MT.find_Distribution(zone)
         PT.rm_children_from_name(distri, 'Face')
         PT.rm_children_from_name(distri, 'Edge')
 

@@ -241,6 +241,6 @@ def sort_jn_pointlist(dist_tree, comm):
     # Update donor 
     PT.update_child(gc_opp, 'PointList', value=PT.get_value(PT.get_node_from_name(gc,'PointListDonor')))
     PT.update_child(gc_opp, 'PointListDonor', value=PT.get_value(PT.get_node_from_name(gc,'PointList')))
-    MT.newDistribution({'Index': PT.get_value(MT.getDistribution(gc,'Index'))}, gc_opp)
+    MT.new_Distribution({'Index': MT.distribution_value(gc,'Index')}, gc_opp)
   
 

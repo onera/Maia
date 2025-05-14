@@ -25,7 +25,7 @@ def test_collect_distributed_pl():
     PT.new_BC('bc'+str(i+1), point_list=pl, parent=zoneBC)
   for i, pr in enumerate(point_ranges):
     bc = PT.new_BC('bc'+str(i+1+len(point_lists)), point_range=pr, parent=zoneBC)
-    distri = MT.newDistribution({'Index' : np.array([10,15,20])}, parent=bc)
+    distri = MT.new_Distribution({'Index' : np.array([10,15,20])}, parent=bc)
 
   collected = IBTP.collect_distributed_pl(zone, [['ZoneBC_t', 'BC_t']])
   assert len(collected) == len(point_lists) + 1
@@ -149,13 +149,13 @@ ZoneU Zone_t [[6,0,0]]:
     assert part_bc is None
     assert PT.Subset.GridLocation(part_sol) == 'CellCenter'
     assert (PT.get_child_from_name(part_sol, 'PointList')[1] == [2,3,4]).all()
-    assert (PT.get_value(MT.getGlobalNumbering(part_sol, 'Index')) == [1,3,2]).all()
+    assert (MT.globalnumbering_value(part_sol, 'Index') == [1,3,2]).all()
   if comm.Get_rank() == 1:
     assert part_sol is None
     assert PT.get_child_from_name(part_bc, 'PointList')[1].size == 0 #No specified in list => skipped, only child are constructed
     assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
     assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [1]).all()
-    assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [1]).all()
+    assert (MT.globalnumbering_value(part_ds, 'Index') == [1]).all()
 
   with pytest.raises(ValueError):
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t'], 'FaceCenter', comm)
@@ -201,4 +201,4 @@ ZoneU.P1.N0 Zone_t [[3,0,0]]:
   assert PT.get_child_from_name(part_bc, 'PointList')[1].size == 0
   assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
   assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [42]).all()
-  assert (PT.get_value(MT.getGlobalNumbering(part_ds, 'Index')) == [9]).all()
+  assert (MT.globalnumbering_value(part_ds, 'Index') == [9]).all()

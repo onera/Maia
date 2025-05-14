@@ -304,7 +304,7 @@ def test_interpolation_mdom(strategy, comm):
   # Add sol to exchange
   for zone in PT.get_all_Zone_t(src_tree):
     dom_flag = {'A': 1, 'B':2}[PT.get_name(zone)[3]]
-    fields = {'gnum' : MT.getGlobalNumbering(zone, 'Cell')[1],
+    fields = {'gnum' : MT.globalnumbering_value(zone, 'Cell'),
               'dom'  : dom_flag*np.ones(PT.Zone.n_cell(zone), np.int32)}
     PT.new_FlowSolution('FlowSol', loc='CellCenter', fields=fields, parent=zone)
   interpolator.exchange_fields('FlowSol')
@@ -331,7 +331,7 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
 
   for zone in PT.iter_all_Zone_t(psrc_tree):
     cx,cy,cz = PT.Zone.coordinates(zone)
-    gnum     = PT.maia.getGlobalNumbering(zone, 'Vertex')[1]
+    gnum     = MT.globalnumbering_value(zone, 'Vertex')
     PT.new_FlowSolution('FS', loc="Vertex", fields={'gnum':gnum, 'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
 
   interpolator = maia.algo.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,

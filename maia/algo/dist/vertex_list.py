@@ -27,7 +27,7 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   The offset array indicates to which face the vertices belong.
   Note that vertex ids can appear twice (or more) in vtx_list if they are shared by multiple faces
   """
-  distri_ngon  = PT.get_value(MT.getDistribution(ngon, 'Element'))
+  distri_ngon  = MT.distribution_value(ngon, 'Element')
 
   face_vtx = MT.Element.connectivity(ngon)
 
@@ -206,10 +206,10 @@ def _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx, pl_face_vtx, pld_fa
   n_face_vtx = len(pl_face_vtx)
 
   received_coords     = filter_vtx_coordinates(PT.get_child_from_label(zone, 'GridCoordinates_t'),
-                                            PT.get_value(MT.getDistribution(zone, 'Vertex')),
+                                            MT.distribution_value(zone, 'Vertex'),
                                             pl_face_vtx, comm)
   opp_received_coords = filter_vtx_coordinates(PT.get_child_from_label(zone_d, 'GridCoordinates_t'),
-                                            PT.get_value(MT.getDistribution(zone_d, 'Vertex')),
+                                            MT.distribution_value(zone_d, 'Vertex'),
                                             pld_face_vtx, comm)
 
   #Apply transformation
@@ -537,7 +537,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
           loc='Vertex', type='Abutting1to1', parent=zgc)
       PT.new_IndexArray('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
       PT.new_IndexArray('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
-      MT.newDistribution({'Index' : distri_jn}, jn_vtx)
+      MT.new_Distribution({'Index' : distri_jn}, jn_vtx)
 
       PT.add_child(jn_vtx, PT.get_child_from_label(gc, 'GridConnectivityProperty_t'))
       PT.add_child(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceId'))

@@ -4,7 +4,8 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from maia.algo.dist import interpolation as ITP
 
@@ -20,7 +21,7 @@ def test_simple_2d(comm):
 
   tgt_zone = PT.get_all_Zone_t(tgt_tree)[0]
   tgt_center = maia.algo.dist.geometry._compute_elements_center(tgt_zone, 'CellCenter', comm)
-  cell_distri = PT.maia.getDistribution(tgt_zone, 'Cell')[1]
+  cell_distri = MT.distribution_value(tgt_zone, 'Cell')
   dn_cell = cell_distri[1] - cell_distri[0]
   sol = PT.get_node_from_name(tgt_zone, 'Geometry_2d')
   assert PT.Subset.GridLocation(sol) == 'CellCenter'

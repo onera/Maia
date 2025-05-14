@@ -19,11 +19,11 @@ def redistribute_pl_node(node: CGNSTree,
   using a given distribution function. Mainly useful for unit tests. Node must be known by
   each process.
   """
-  distri_n = MT.requestDistribution(node)
+  distri_n = MT.find_Distribution(node)
   node_distrib = MT.distribution_value(node, 'Index')
   new_distrib = distribution(node_distrib[2], comm)
   new_size = new_distrib[1] - new_distrib[0]
-  MT.newDistribution({'Index' : new_distrib}, node)
+  MT.new_Distribution({'Index' : new_distrib}, node)
 
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(node, 'IndexArray_t'):
@@ -135,7 +135,7 @@ def redistribute_elements_node(node: CGNSTree,
     new_ec_distrib = new_elt_distrib*PT.Element.NVtx(node)
 
   # > Set CGNS#Distribution node in node
-  MT.newDistribution(new_distrib, node)
+  MT.new_Distribution(new_distrib, node)
 
   # > ElementConnectivity
   ec_n    = PT.find_child_from_name(node, 'ElementConnectivity')
@@ -173,7 +173,7 @@ def redistribute_zone(zone: CGNSTree,
   if PT.Zone.Type(zone) == 'Structured' and PT.Zone.IndexDimension(zone) == 3:
     new_distrib['Face'] = distribution(PT.Zone.n_face(zone), comm)
 
-  MT.newDistribution(new_distrib, zone)
+  MT.new_Distribution(new_distrib, zone)
 
   # > Coords
   grid_coords = PT.get_children_from_label(zone, 'GridCoordinates_t')
@@ -205,7 +205,7 @@ def redistribute_zone(zone: CGNSTree,
       PT.add_child(zone_subregion, PT.deep_copy(distri_node))
     redistribute_pl_node(zone_subregion, distribution, comm)
     if matching_region_path != PT.get_name(zone_subregion):
-      PT.rm_child(zone_subregion, MT.getDistribution(zone_subregion))
+      PT.rm_child(zone_subregion, MT.get_Distribution(zone_subregion))
 
   # > BCs
   for bc in PT.iter_children_from_predicates(zone, 'ZoneBC_t/BC_t'):

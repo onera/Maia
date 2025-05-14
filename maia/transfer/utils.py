@@ -34,12 +34,12 @@ def get_subset_distribution(zone: CGNSTree, node: CGNSTree) -> NDArray:
   location = PT.Subset.GridLocation(node)
   distri_n = None
   if PT.get_node_from_name(node, 'PointList') is not None:
-    distri_n = MT.getDistribution(node, 'Index')
+    distri_n = MT.get_Distribution(node, 'Index')
   else:
     if location == 'Vertex':
-      distri_n = MT.getDistribution(zone, 'Vertex')
+      distri_n = MT.get_Distribution(zone, 'Vertex')
     elif location == 'CellCenter':
-      distri_n = MT.getDistribution(zone, 'Cell')
+      distri_n = MT.get_Distribution(zone, 'Cell')
 
   if distri_n is None:
     raise RuntimeError(f"Unable to find distribution data for subset node {PT.get_name(node)}")
@@ -94,7 +94,7 @@ def get_entities_numbering(part_zone: CGNSTree) -> \
   face_ln_to_gn = None
   cell_ln_to_gn = MT.globalnumbering_value(part_zone, 'Cell')
 
-  edge_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Edge')
+  edge_ln_to_gn_n = MT.get_GlobalNumbering(part_zone, 'Edge')
   if edge_ln_to_gn_n is not None:
     edge_ln_to_gn = PT.get_np_value(edge_ln_to_gn_n)
   elif PT.Zone.has_ngon_elements(part_zone) and PT.Zone.CellDimension(part_zone) == 2:
@@ -105,7 +105,7 @@ def get_entities_numbering(part_zone: CGNSTree) -> \
     else:
       edge_ln_to_gn = MT.globalnumbering_value(edge, 'Element')
 
-  face_ln_to_gn_n = MT.getGlobalNumbering(part_zone, 'Face')
+  face_ln_to_gn_n = MT.get_GlobalNumbering(part_zone, 'Face')
   if face_ln_to_gn_n is not None:
     face_ln_to_gn = PT.get_np_value(face_ln_to_gn_n)
   elif PT.Zone.has_ngon_elements(part_zone):

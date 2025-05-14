@@ -140,7 +140,7 @@ def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSPartTree]], comm: MPI
     dist_zone = CGNSDistTree(PT.update_child(dist_base, dist_zone_name, 'Zone_t'))
 
     PT.new_child(dist_zone, 'ZoneType', 'ZoneType_t', 'Unstructured')
-    MT.newDistribution(parent=dist_zone) # Needed to call relevant function nace_to_pe later
+    MT.new_Distribution(parent=dist_zone) # Needed to call relevant function nace_to_pe later
     # Elements are needed only if there are some FaceCenter jns
     if par_utils.any_true(part_zones, has_face_intra_gc, comm):
       _recover_elements(dist_zone, part_zones, comm)
@@ -533,7 +533,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     vtx_distri  = par_utils.distribution_from_gnum(vtx_lngn_list, comm)
     cell_distri = par_utils.distribution_from_gnum(cell_lngn_list, comm)
 
-    MT.newDistribution({'Vertex' : vtx_distri, 'Cell' : cell_distri}, parent=dist_zone)
+    MT.new_Distribution({'Vertex' : vtx_distri, 'Cell' : cell_distri}, parent=dist_zone)
     if PT.Zone.Type(dist_zone) == "Unstructured":
       d_zone_dims = np.array([[vtx_distri[2], cell_distri[2], 0]], dtype=pdm_dtype)
     elif PT.Zone.Type(dist_zone) == "Structured":
@@ -541,7 +541,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
       if d_zone_dims.shape[0] == 3:
         face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
         face_distri = par_utils.distribution_from_gnum(face_lngn_list, comm)
-        MT.newDistribution({'Face' : face_distri}, parent=dist_zone)
+        MT.new_Distribution({'Face' : face_distri}, parent=dist_zone)
     else:
       raise AssertionError("Wrong zone type")
     PT.set_value(dist_zone, d_zone_dims)
@@ -582,7 +582,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
 
     part_to_dist._part_zones_to_dist_zone(dist_zone, part_zones, comm, filter)
     is_empty_cont = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'BCDataSet_t'] \
-                           and MT.getDistribution(n) is None
+                           and MT.get_Distribution(n) is None
     PT.rm_children_from_predicate(dist_zone, is_empty_cont)
     for dist_bc in PT.iter_children_from_labels(dist_zone, ['ZoneBC_t', 'BC_t']):
       PT.rm_children_from_predicate(dist_bc, is_empty_cont)
