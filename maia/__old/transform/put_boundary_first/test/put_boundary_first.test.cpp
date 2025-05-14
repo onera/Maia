@@ -13,7 +13,7 @@ using namespace cgns;
 TEST_CASE("put_boundary_first, with 2 zones") {
   tree base = create_unstructured_base();
 
-  maia::put_boundary_first(base,MPI_COMM_SELF);
+  maia::put_boundary_first(base);
 
   // zones
   tree& z0 = get_child_by_name(base,"Zone0");

@@ -91,7 +91,7 @@ def put_strided(a, a_count, indices, read_counts, read, extend=False, out_offset
     np.cumsum(a_count, out=a_displs[1:])
     if out_offsets is not None:
       a_displs[:-1] += out_offsets
-    vstride.put_extend(a_count, a_displs, a, indices, read_counts, read)
+    vstride.put_extend(a_displs, a, indices, read_counts, read)
   else:
     vstride.put(a_count, a, indices, read_counts, read)
 

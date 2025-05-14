@@ -29,7 +29,7 @@ apply_cpp_cgns_par_function_to_py_base(F&& f) {
 
 const auto generate_interior_faces_and_parents = apply_cpp_cgns_par_function_to_py_base(maia::generate_interior_faces_and_parents);
 const auto elements_to_ngons               = apply_cpp_cgns_par_function_to_py_base(maia::elements_to_ngons);
-const auto put_boundary_first = apply_cpp_cgns_par_function_to_py_base(maia::put_boundary_first);
+const auto put_boundary_first = apply_cpp_cgns_function_to_py_base(maia::put_boundary_first);
 const auto split_boundary_subzones_according_to_bcs = apply_cpp_cgns_par_function_to_py_base(maia::split_boundary_subzones_according_to_bcs);
 
 

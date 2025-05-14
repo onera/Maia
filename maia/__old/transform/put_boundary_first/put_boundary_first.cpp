@@ -113,7 +113,7 @@ partition_zone_with_boundary_first(tree& z) -> void {
 }
 
 auto
-put_boundary_first(tree& b, MPI_Comm comm) -> void {
+put_boundary_first(tree& b) -> void {
   STD_E_ASSERT(label(b)=="CGNSBase_t");
   for (tree& z : get_children_by_label(b,"Zone_t")) {
     partition_zone_with_boundary_first(z);
