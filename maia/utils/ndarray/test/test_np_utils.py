@@ -588,3 +588,19 @@ def test_safe_int_cast():
 
   empty = np.empty(0, np.int64)
   assert np_utils.safe_int_cast(empty, np.int32).dtype == np.int32
+
+def test_normalize_interweaved_inplace():
+  sqrt = np.sqrt
+
+  a = np.array([3.,0,0,   0,-2,0,  1,1,1,   1,0,1, 1,0,0])
+  np_utils.normalize_interweaved_inplace(a, 3)
+  assert np.array_equal(a, [1.,0,0, 0,-1,0, 1/sqrt(3),1/sqrt(3),1/sqrt(3), 
+                            1/sqrt(2),0,1/sqrt(2), 1,0,0])
+
+  a = np.array([3.,0,   0,-2,  1,1,  1,0])
+  np_utils.normalize_interweaved_inplace(a, 2)
+  assert np.array_equal(a, [1.,0, 0,-1, 1/sqrt(2),1/sqrt(2), 1,0])
+
+  a = np.array([3., -2, 1])
+  np_utils.normalize_interweaved_inplace(a, 1)
+  assert np.array_equal(a, [1,-1,1])

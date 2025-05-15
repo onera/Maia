@@ -20,7 +20,12 @@ def cell_vtx_connectivity_S(zone_S, dim) :
     n_cell = PT.Zone.n_cell(zone_S)
     vertex_size = PT.Zone.VertexSize(zone_S)
     
-    if dim == 2:
+    if dim == 1:
+      cell_vtx_idx = 2*np.arange(0, n_cell+1, dtype=np.int32)
+      cell_vtx = np.zeros(2*n_cell, dtype=np.int32)
+      cell_vtx[0::2] = np.arange(1, vertex_size[0])
+      cell_vtx[1::2] = np.arange(1+1, vertex_size[0]+1)
+    elif dim == 2:
       cell_vtx_idx = 4*np.arange(0, n_cell+1, dtype=np.int32)
       cell_vtx = np.zeros(4*n_cell, dtype=np.int32)
       i = np.arange(1, vertex_size[0])

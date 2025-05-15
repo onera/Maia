@@ -29,12 +29,11 @@ def place_in_container(zone, rq_dim, fields, comm):
       facesize = PT.Zone.FaceSize(zone)
       dirfacesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize, PT.Zone.KFaceSize]
 
-      #Distribué -> répartition I,J,K  car distribution des faces calculées sur n_face_tot
       face_distri = par_utils.dn_to_distribution(next(iter(fields.values())).size, comm)
       nfi, nfj, nfk = facesize
       dfacesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0      , nfi),
-                    py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
-                    py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
+                   py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
+                   py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
       start = 0
       for i,dir in enumerate(['I', 'J', 'K']):
         end = start + dfacesize[i]
@@ -43,6 +42,34 @@ def place_in_container(zone, rq_dim, fields, comm):
         distri = par_utils.dn_to_distribution(dfacesize[i], comm)
         pr = np.ones((3,2), order='F', dtype=zone[1].dtype)
         pr[:,1] = dirfacesizefunc[i](zone)
+        existing_pr = PT.get_child_from_name(container, 'PointRange')
+        if existing_pr:
+          cur_pr = existing_pr[1]
+          cur_distri = MT.distribution_value(container, 'Index')
+          if not (np.array_equal(cur_pr, pr) and np.array_equal(cur_distri, distri)):
+            raise RuntimeError("Container already exists, but has incompatible PointRange or Distribution")
+        else:
+          PT.new_IndexRange(value=pr, parent=container)
+          MT.new_Distribution({'Index' : distri}, container)
+        start = end
+
+    elif output_loc == 'EdgeCenter': 
+      # Zone is 2D, and we computed EdgeCenter --> We have to split it into I/J/EdgeCenter
+      edgesize = PT.Zone.FaceSize(zone)
+      diredgesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize]
+      
+      face_distri = par_utils.dn_to_distribution(next(iter(fields.values())).size, comm)
+      nei, nej = edgesize
+      dedgesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0  , nei),
+                   py_utils.overlap_size(face_distri[0], face_distri[1], nei, nei+nej)]
+      start = 0
+      for i,dir in enumerate(['I', 'J']):
+        end = start + dedgesize[i]
+        dircenter = {key: val[start:end] for key,val in fields.items()}
+        container = update_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dircenter)
+        distri = par_utils.dn_to_distribution(dedgesize[i], comm)
+        pr = np.ones((2,2), order='F', dtype=zone[1].dtype)
+        pr[:,1] = diredgesizefunc[i](zone)
         existing_pr = PT.get_child_from_name(container, 'PointRange')
         if existing_pr:
           cur_pr = existing_pr[1]

@@ -52,9 +52,13 @@ def test_combine_dconnectivity(comm):
   assert vs.array_equal(cell_vtx, expected_cell_vtx)
 
 def test_cell_vtx_connectivity_S():
+  zone = PT.new_Zone(type='Structured', size=[[51,50,0]])
+  MT.new_Distribution({'Cell': [12,16,50]}, zone)
+  assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 1),
+                        vs.array([[13,14], [14,15], [15,16], [16,17]]))
+
   zone = PT.new_Zone(type='Structured', size=[[5,4,0],[3,2,0]])
   MT.new_Distribution({'Cell': [2,6,8]}, zone)
-  cell_vtx = CU.cell_vtx_connectivity_S(zone, 2)
   assert vs.array_equal(CU.cell_vtx_connectivity_S(zone, 2),
                         vs.array([[3,4,9,8],  [4,5,10,9],  [6,7,12,11],  [7,8,13,12]]))
 

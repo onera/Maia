@@ -33,6 +33,19 @@ def place_in_container(zone, rq_dim, fields):
         container = update_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dirfields)
         start = end
 
+    elif output_loc == 'EdgeCenter':
+      # Zone is 2D, and we computed EdgeCenter --> We have to split it into I/J/EdgeCenter
+      edgesize = PT.Zone.FaceSize(zone)
+      diredgesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize]
+      start = 0
+      for i,dir in enumerate(['I', 'J']):
+        end = start + edgesize[i]
+        newsize = diredgesizefunc[i](zone)
+        dirfields = {key: val[start:end].reshape(newsize, order='F') \
+                      for key, val in fields.items()}
+        container = update_container(zone, f'Geometry_{rq_dim}d_{dir}', f'{dir}{output_loc}', dirfields)
+        start = end
+
     if output_loc == 'CellCenter':
       fields = {key: val.reshape(PT.Zone.CellSize(zone), order='F') \
                  for key, val in fields.items()}

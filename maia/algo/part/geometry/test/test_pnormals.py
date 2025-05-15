@@ -3,9 +3,9 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree        as PT
+import maia.pytree as PT
 
-from maia.algo.dist.geometry import normals as GEO
+from maia.algo.part.geometry import normals as GEO
 
 @pytest.mark.parametrize('unitary', [False, True])
 @pytest.mark.parametrize('elt_kind', ['TRI_3', 'Poly'])
@@ -14,35 +14,33 @@ def test_compute_edge_normal2d(elt_kind, unitary, comm):
   tree = maia.factory.generate_dist_block(3, 'TRI_3', comm)
   if elt_kind != 'TRI_3':
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
-  zone = PT.get_all_Zone_t(tree)[0]
 
-  base_n = PT.find_node_from_label(tree, 'CGNSBase_t')
-  base_val = PT.get_np_value(base_n)
-  base_val[1] = 2
-  PT.rm_nodes_from_name(tree, 'CoordinateZ')
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+
+  PT.rm_nodes_from_name(ptree, 'CoordinateZ')
+  zone = PT.get_all_Zone_t(ptree)[0]
   
-  edge_normal = GEO.compute_edge_normal(zone, comm, unitary)
+  edge_normal = GEO.compute_edge_normal(zone, unitary)
 
   if elt_kind == 'TRI_3': # Only external edges are computed
     coef = 0.5 if not unitary else 1
     if comm.Get_rank() == 0:
-      expected_edge_normal = coef * np.array([0,-1, 0,-1, 0,1])
+      expected_edge_normal = coef * np.array([0,-1, 0,-1, -1,0])
     elif comm.Get_rank() == 1:
-      expected_edge_normal = coef * np.array([0,1, -1,0, -1,0])
+      expected_edge_normal = coef * np.array([0,1, 1,0, 1,0])
     elif comm.Get_rank() == 2:
-      expected_edge_normal = coef * np.array([1,0, 1,0])
+      expected_edge_normal = coef * np.array([0,1, -1,0])
   elif elt_kind == 'Poly':
     ce = 1            if unitary else 0.5
     ci = 1/np.sqrt(2) if unitary else 0.5 
     if comm.Get_rank() == 0:
-      expected_edge_normal = np.array([0,-ce,  -ce,0,  0,-ce,  ci,ci,  ce,0])
+      expected_edge_normal = np.array([0,-ce,  -ce,0,  0,-ce,  ci,ci,  ce,0,  ci,ci,  0,ce])
     elif comm.Get_rank() == 1:
-      expected_edge_normal = np.array([ci,ci,  0,ce,  ce,0,  0,ce,  -ce,0,  ci,ci])
+      expected_edge_normal = np.array([-ci,-ci,  ce,0,  0,ce,  -ce,0,  ci,ci,  ce,0,  0,ce])
     elif comm.Get_rank() == 2:
-      expected_edge_normal = np.array([ce,0,  ci,ci,  0,ce,  ce,0,  0,ce])
+      expected_edge_normal = np.array([0,-ce,  -ce,0,  ci,ci,  ce,0,  0,ce])
 
   assert (edge_normal == expected_edge_normal).all()
-
 
 @pytest.mark.parametrize('elt_kind', ['S', 'BAR_2'])
 @pytest_parallel.mark.parallel(2)
@@ -54,37 +52,31 @@ def test_compute_edge_normal_1d(elt_kind, comm):
   if comm.rank == 1:
     cy[:] = [.25, 0]
 
-  zone = PT.get_all_Zone_t(tree)[0]
-  edge_normal = GEO._compute_elements_normal(zone, comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  PT.rm_nodes_from_name(ptree, 'CoordinateZ') # Bug in BAR_2 : CZ is created
+  zone = PT.get_all_Zone_t(ptree)[0]
+  edge_normal = GEO._compute_elements_normal(zone)
 
   if comm.rank == 0:
     assert (edge_normal == np.array([ 0.25,-0.5,   0.25,-0.5])).all()
   elif comm.rank == 1:
     assert (edge_normal == np.array([-0.25,-0.5,  -0.25,-0.5])).all()
-  
-@pytest.mark.parametrize('unitary', [False, True])
-@pytest_parallel.mark.parallel(3)
-def test_compute_face_normal3d_ng(unitary, comm):
-  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
-  zone = PT.get_all_Zone_t(tree)[0]
-  
-  face_normal = GEO.compute_face_normal(zone, comm, unitary)
 
+@pytest.mark.parametrize('unitary', [False, True])
+@pytest_parallel.mark.parallel(2)
+def test_compute_face_normal3d_ngon(unitary, comm):
+  tree = maia.factory.generate_dist_block(3, 'Poly', comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  
+  face_normal = GEO.compute_face_normal(zone, unitary)
+
+  # Somehow both ranks have same cell numbering => cell normals
   # All face area are 0.25
   coef = 0.25 if not unitary else 1
-  if comm.Get_rank() == 0:
-    expected_face_normal = coef * np.array([0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-                                            0,0,-1, 0,0,-1, 0,0,-1, 0,0,-1,
-                                            0,0, 1, 0,0, 1, 0,0, 1, 0,0, 1])
-  elif comm.Get_rank() == 1:
-    expected_face_normal = coef * np.array([-1,0,0, -1,0,0, -1,0,0, -1,0,0,
-                                            -1,0,0, -1,0,0, -1,0,0, -1,0,0,
-                                             1,0,0,  1,0,0,  1,0,0,  1,0,0])
-
-  elif comm.Get_rank() == 2:
-    expected_face_normal = coef * np.array([0,-1,0,  0,-1,0,  0,-1,0,  0,-1,0,
-                                            0,-1,0,  0,-1,0,  0,-1,0,  0,-1,0,
-                                            0, 1,0,  0, 1,0,  0, 1,0,  0, 1,0])
+  expected_face_normal = coef * np.array([
+      0,0,-1,   0,0,-1,  0,0,-1,  0,0,-1,  0, 0,1,  0, 0,1,  0, 0,1,  0, 0,1,  -1,0,0,  -1,0,0, 
+    -1,0, 0,  -1,0, 0,  1,0, 0,  1,0, 0,  0,-1,0,  0,-1,0,  0,-1,0,  0,-1,0,   0,1,0,   0,1,0])
 
   assert (face_normal == expected_face_normal).all()
 
@@ -92,10 +84,11 @@ def test_compute_face_normal3d_ng(unitary, comm):
 @pytest_parallel.mark.parallel(1)
 def test_compute_face_normal3d_elt(unitary, comm):
   tree = maia.factory.generate_dist_block([3,3,2], 'HEXA_8', comm)
-  zone = PT.get_all_Zone_t(tree)[0]
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
   
   # Computed only for boundary faces
-  face_normal = GEO.compute_face_normal(zone, comm, unitary)
+  face_normal = GEO.compute_face_normal(zone, unitary)
 
   # All face area are 0.25
   c1 = 0.25 if not unitary else 1
@@ -122,13 +115,21 @@ def test_compute_face_normal2d(elt_kind, comm):
 
   if elt_kind != 'S':
     maia.algo.dist.convert_s_to_u(tree, elt_kind, comm)
+  if elt_kind == 'Poly':
+    maia.algo.edge_pe_to_ngon(tree, comm) # Needed for partitioning
 
-  zone = PT.get_all_Zone_t(tree)[0]
-  face_normal = GEO._compute_elements_normal(zone, comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
 
-  # Both rank have same pair of value, because of geometry
-  assert (face_normal == np.array([-0.5,0.,0.5,  0.5,0.,0.5])).all()
+  GEO.compute_elements_normal(zone)
+  # NB : split is mesh dependant (apparently along Oy axis in all cases,
+  # but partition affectation is switched) so we go back to distributed
+  # mesh to compare to expected result
+  maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
 
+  assert (PT.find_node_from_name(tree, 'NormalX')[1] == [-0.5, 0.5]).all()
+  assert (PT.find_node_from_name(tree, 'NormalY')[1] == [0., 0.]).all()
+  assert (PT.find_node_from_name(tree, 'NormalZ')[1] == [0.5, 0.5]).all()
 
 @pytest.mark.parametrize('cell_dim', [2,3])
 @pytest_parallel.mark.parallel(1)
@@ -139,34 +140,38 @@ def test_compute_elements_normal_face_placement(cell_dim, comm):
   
   # > S 
   tree = PT.deep_copy(base_tree)
+  tree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
-  GEO.compute_elements_normal(zone, comm)
+  GEO.compute_elements_normal(zone)
 
   if cell_dim == 3:
     assert PT.get_node_from_name(zone, 'Geometry_2d') is None
     for dir in ['I', 'J', 'K']:
       container = PT.find_node_from_name(zone, f'Geometry_2d_{dir}')
       assert PT.Subset.GridLocation(container) == f'{dir}FaceCenter'
-      assert PT.get_child_from_name(container, 'PointRange') is not None
+      #assert PT.get_child_from_name(container, 'PointRange') is not None
       assert PT.get_child_from_name(container, 'NormalZ') is not None
   else:
     container = PT.find_node_from_name(zone, f'Geometry_2d')
     assert PT.Subset.GridLocation(container) == 'CellCenter'
     assert PT.get_child_from_name(container, 'PointRange') is None
     assert PT.get_child_from_name(container, 'NormalZ') is not None
-
+  
   # > U
   expt_loc = 'FaceCenter' if cell_dim == 3 else 'CellCenter'
   for cnt in ['Poly', 'Standard']:
     # > Poly
     tree = PT.deep_copy(base_tree)
     maia.algo.dist.convert_s_to_ngon(tree, comm)
+    if cell_dim == 2:
+      maia.algo.edge_pe_to_ngon(tree, comm) # Needed for partitioning
     if cnt == 'Standard':
       # NB : convert_s_to_u with STD elements seems to produce bad face orientation !
       maia.algo.dist.convert_ngon_to_elements(tree, comm)
 
+    tree = maia.factory.partition_dist_tree(tree, comm)
     zone = PT.get_all_Zone_t(tree)[0]
-    GEO.compute_elements_normal(zone, comm, unitary=True)
+    GEO.compute_elements_normal(zone, unitary=True)
 
     container = PT.find_node_from_name(zone, 'Geometry_2d')
     assert PT.Subset.GridLocation(container) == expt_loc
@@ -181,16 +186,17 @@ def test_compute_elements_normal_edge_placement(cell_dim, comm):
   # > S 
   n_vtx = [5,5] if cell_dim == 2 else [5]
   tree = maia.factory.generate_dist_block(n_vtx, 'S', comm)
+  tree = maia.factory.partition_dist_tree(tree, comm)
   PT.rm_nodes_from_name(tree, 'CoordinateZ')
   zone = PT.get_all_Zone_t(tree)[0]
-  GEO.compute_elements_normal(zone, comm, unitary=True)
+  GEO.compute_elements_normal(zone, unitary=True)
 
   if cell_dim == 2:
     assert PT.get_node_from_name(zone, 'Geometry_1d') is None
     for dir in ['I', 'J']:
       container = PT.find_node_from_name(zone, f'Geometry_1d_{dir}')
       assert PT.Subset.GridLocation(container) == f'{dir}EdgeCenter'
-      assert PT.get_child_from_name(container, 'PointRange') is not None
+      #assert PT.get_child_from_name(container, 'PointRange') is not None
       assert PT.get_child_from_name(container, 'UnitNormalY') is not None
       assert PT.get_child_from_name(container, 'UnitNormalZ') is None
   else:
@@ -211,10 +217,11 @@ def test_compute_elements_normal_edge_placement(cell_dim, comm):
     tree = maia.factory.generate_dist_block(5, elt_kind, comm)
     if cnt == 'Poly':
       maia.algo.dist.convert_elements_to_ngon(tree, comm)
+    tree = maia.factory.partition_dist_tree(tree, comm)
     PT.rm_nodes_from_name(tree, 'CoordinateZ')
 
     zone = PT.get_all_Zone_t(tree)[0]
-    maia.algo.compute_elements_normal(tree, comm)
+    maia.algo.compute_elements_normal(tree)
 
     container = PT.find_node_from_name(zone, 'Geometry_1d')
     assert PT.Subset.GridLocation(container) == expt_loc

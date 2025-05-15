@@ -164,6 +164,17 @@ def test_compute_elements_measure():
   assert maia.pytree.get_node_from_name(dist_tree, 'Geometry_3d') is not None
   #compute_elements_measure@end
 
+def test_compute_elements_normal():
+  #compute_elements_normal@start
+  from mpi4py import MPI
+  import maia
+  from   maia.utils.test_utils import mesh_dir
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'Uelt_M6Wing.yaml', MPI.COMM_WORLD)
+
+  maia.algo.compute_elements_normal(dist_tree, MPI.COMM_WORLD)
+  assert maia.pytree.get_node_from_name(dist_tree, 'Geometry_2d') is not None
+  #compute_elements_normal@end
+
 def test_compute_wall_distance():
   #compute_wall_distance@start
   from mpi4py import MPI
