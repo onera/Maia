@@ -138,7 +138,7 @@ def compute_elements_normal(t: CGNSTree,
 
   Unlike :func:`compute_elements_center` and :func:`compute_elements_measure`
   this function does not make sense for every mesh entity: actually, this
-  function compute the normals vector to
+  function compute the normal vector to
   
   - face elements if the **physical** dimension of the mesh is 3,
   - edge elements if the **physical** dimension of the mesh is 2.
@@ -158,8 +158,8 @@ def compute_elements_normal(t: CGNSTree,
   only for elements explicitly defined in sections.
 
   Args:
-    t    (CGNSTree)          : Tree starting at Zone_t level or higher
-    comm       (MPIComm)     : MPI communicator, mandatory only for distributed trees
+    t       (CGNSTree)       : Tree starting at Zone_t level or higher
+    comm    (MPIComm)        : MPI communicator, mandatory only for distributed trees
     unitary (bool, optional) : If ``True``, normalize the result (default to ``False``).
 
   Example:

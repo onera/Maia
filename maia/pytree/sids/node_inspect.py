@@ -690,7 +690,7 @@ class Zone:
     try:
       coords = Zone.coordinates(zone_node)
     except RuntimeError:
-      raise ValueError(f"Can not infer PhysicalDimension for zone {N.get_name(zone_node)}, which has no coordinates")
+      raise ValueError(f"Can not infer PhysicalDimension for zone {N.get_name(zone_node)}, with no coordinates")
     return len([c for c in coords if c is not None])
 
 

@@ -29,12 +29,11 @@ def place_in_container(zone, rq_dim, fields, comm):
       facesize = PT.Zone.FaceSize(zone)
       dirfacesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize, PT.Zone.KFaceSize]
 
-      #Distribué -> répartition I,J,K  car distribution des faces calculées sur n_face_tot
       face_distri = par_utils.dn_to_distribution(next(iter(fields.values())).size, comm)
       nfi, nfj, nfk = facesize
       dfacesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0      , nfi),
-                    py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
-                    py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
+                   py_utils.overlap_size(face_distri[0], face_distri[1], nfi    , nfi+nfj),
+                   py_utils.overlap_size(face_distri[0], face_distri[1], nfi+nfj, nfi+nfj+nfk)]
       start = 0
       for i,dir in enumerate(['I', 'J', 'K']):
         end = start + dfacesize[i]
@@ -58,11 +57,11 @@ def place_in_container(zone, rq_dim, fields, comm):
       # Zone is 2D, and we computed EdgeCenter --> We have to split it into I/J/EdgeCenter
       edgesize = PT.Zone.FaceSize(zone)
       diredgesizefunc = [PT.Zone.IFaceSize, PT.Zone.JFaceSize]
-      #Distribué -> répartition I,J,K  car distribution des faces calculées sur n_face_tot
+      
       face_distri = par_utils.dn_to_distribution(next(iter(fields.values())).size, comm)
       nei, nej = edgesize
-      dedgesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0      , nei),
-                   py_utils.overlap_size(face_distri[0], face_distri[1], nei    , nei+nej)]
+      dedgesize = [py_utils.overlap_size(face_distri[0], face_distri[1], 0  , nei),
+                   py_utils.overlap_size(face_distri[0], face_distri[1], nei, nei+nej)]
       start = 0
       for i,dir in enumerate(['I', 'J']):
         end = start + dedgesize[i]

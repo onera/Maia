@@ -48,8 +48,18 @@ class Test_cell_vtx_connectivity:
     assert (cell_vtx.counts == 4).all()
     assert (cell_vtx.values == PT.get_node_from_name(elt, 'ElementConnectivity')[1]).all()
 
+  def test_cell_vtx_s_1d(self, comm):
+    dist_tree = maia.factory.generate_dist_block([6], 'S', comm)
+    part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+    zone = PT.get_all_Zone_t(part_tree)[0] 
+
+    cell_vtx = CU.cell_vtx_connectivity_S(zone, dim=1)
+    assert np.array_equal(cell_vtx.values, [1,2, 2,3, 3,4, 4,5, 5,6])
+    assert np.array_equal(cell_vtx.displs, [0,2,4,6,8,10])
+    assert cell_vtx.dtype == cell_vtx.displs.dtype == np.int32
+
   def test_cell_vtx_s_2d(self, comm):
-    dist_tree = maia.factory.generate_dist_block([3,3,1], 'S', comm)
+    dist_tree = maia.factory.generate_dist_block([3,3], 'S', comm)
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
     zone = PT.get_all_Zone_t(part_tree)[0] 
 

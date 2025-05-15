@@ -132,12 +132,11 @@ def test_compute_face_normal2d(elt_kind, comm):
 
 @pytest.mark.parametrize('cell_dim', [2,3])
 @pytest_parallel.mark.parallel(1)
-def test_compute_elements_normal_face(cell_dim, comm):
+def test_compute_elements_normal_face_placement(cell_dim, comm):
   # NB : in this test we just check the placement, not the values
   n_vtx = [4,4,4] if cell_dim == 3 else [4,4]
   base_tree = maia.factory.generate_dist_block(n_vtx, 'S', comm)
   
-  # ----- PhyDim = 3 (Face normals) -----
   # > S 
   tree = PT.deep_copy(base_tree)
   zone = PT.get_all_Zone_t(tree)[0]
@@ -176,10 +175,9 @@ def test_compute_elements_normal_face(cell_dim, comm):
 
 @pytest.mark.parametrize('cell_dim', [1,2])
 @pytest_parallel.mark.parallel(1)
-def test_compute_elements_normal_edge(cell_dim, comm):
+def test_compute_elements_normal_edge_placement(cell_dim, comm):
   # NB : in this test we just check the placement, not the values
   
-  # ----- PhyDim = 2 (Edge normals) -----
   # > S 
   n_vtx = [5,5] if cell_dim == 2 else [5]
   tree = maia.factory.generate_dist_block(n_vtx, 'S', comm)
@@ -223,7 +221,3 @@ def test_compute_elements_normal_edge(cell_dim, comm):
     assert (PT.get_child_from_name(container, 'PointList') is not None) == (cell_dim == 2)
     assert PT.get_child_from_name(container, 'NormalY') is not None
     assert PT.get_child_from_name(container, 'NormalZ') is None
-
-
-  
-  

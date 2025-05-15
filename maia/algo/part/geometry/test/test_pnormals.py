@@ -3,7 +3,7 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree        as PT
+import maia.pytree as PT
 
 from maia.algo.part.geometry import normals as GEO
 
@@ -64,7 +64,7 @@ def test_compute_edge_normal_1d(elt_kind, comm):
 
 @pytest.mark.parametrize('unitary', [False, True])
 @pytest_parallel.mark.parallel(2)
-def test_compute_face_normal3d_ng(unitary, comm):
+def test_compute_face_normal3d_ngon(unitary, comm):
   tree = maia.factory.generate_dist_block(3, 'Poly', comm)
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
@@ -131,16 +131,13 @@ def test_compute_face_normal2d(elt_kind, comm):
   assert (PT.find_node_from_name(tree, 'NormalY')[1] == [0., 0.]).all()
   assert (PT.find_node_from_name(tree, 'NormalZ')[1] == [0.5, 0.5]).all()
 
-
-
 @pytest.mark.parametrize('cell_dim', [2,3])
 @pytest_parallel.mark.parallel(1)
-def test_compute_elements_normal_face(cell_dim, comm):
+def test_compute_elements_normal_face_placement(cell_dim, comm):
   # NB : in this test we just check the placement, not the values
   n_vtx = [4,4,4] if cell_dim == 3 else [4,4]
   base_tree = maia.factory.generate_dist_block(n_vtx, 'S', comm)
   
-  # ----- PhyDim = 3 (Face normals) -----
   # > S 
   tree = PT.deep_copy(base_tree)
   tree = maia.factory.partition_dist_tree(tree, comm)
@@ -183,10 +180,9 @@ def test_compute_elements_normal_face(cell_dim, comm):
 
 @pytest.mark.parametrize('cell_dim', [1,2])
 @pytest_parallel.mark.parallel(1)
-def test_compute_elements_normal_edge(cell_dim, comm):
+def test_compute_elements_normal_edge_placement(cell_dim, comm):
   # NB : in this test we just check the placement, not the values
   
-  # ----- PhyDim = 2 (Edge normals) -----
   # > S 
   n_vtx = [5,5] if cell_dim == 2 else [5]
   tree = maia.factory.generate_dist_block(n_vtx, 'S', comm)

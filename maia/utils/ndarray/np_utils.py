@@ -509,6 +509,11 @@ def transform_cart_vectors_2d(vx: NDArray,
   else:
     return (modified_components[0].reshape(vx.shape, order='F'), modified_components[1].reshape(vy.shape, order='F'))
 
+def normalize_interweaved_inplace(vector:NDArray, dim:int) -> None:
+  vector.shape = (-1, dim)
+  norm = np.linalg.norm(vector, axis=1).reshape(-1,1)
+  vector /= norm
+  vector.shape = (-1,)
 
 def safe_int_cast(array: NDArray, dtype: DTypeLike) -> NDArray:
   """ Util function to perfom I4 <--> I8 conversions with bounds test """

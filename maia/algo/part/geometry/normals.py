@@ -7,6 +7,7 @@ import maia.pytree.maia as MT
 import maia
 
 from maia.utils     import logging as mlog
+from maia.utils     import np_utils
 
 from maia.algo.part import connectivity_utils as CU
 from maia.algo.dist import s_to_u             as S2U
@@ -28,7 +29,7 @@ def compute_face_normal(zone, unitary=False):
   zone_dim = PT.Zone.CellDimension(zone)
   phy_dim  = PT.Zone.PhysicalDimension(zone)
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face normals"
-  assert phy_dim  == 3, "PhysicalDimension of zone must be 3 to compute face normals"
+  assert  phy_dim == 3, "PhysicalDimension of zone must be 3 to compute face normals"
 
 
   # Get face_vtx
@@ -58,10 +59,7 @@ def compute_face_normal(zone, unitary=False):
   face_normal = cpart_algo.compute_face_normal_u(face_vtx.displs.astype(np.int32, copy=False), *extended_coords)
 
   if unitary:
-    face_normal.shape = (-1, 3)
-    norm = np.linalg.norm(face_normal, axis=1).reshape(-1,1)
-    face_normal /= norm
-    face_normal.shape = (-1)
+    np_utils.normalize_interweaved_inplace(face_normal, 3)
 
   return face_normal
 
@@ -72,7 +70,7 @@ def compute_edge_normal(zone, unitary=False):
   zone_dim = PT.Zone.CellDimension(zone)
   phy_dim  = PT.Zone.PhysicalDimension(zone)
   assert zone_dim in [1,2], "CellDimension of zone must be >= 2 to compute face normals"
-  assert phy_dim  == 2, "PhysicalDimension of zone must be 3 to compute face normals"
+  assert phy_dim == 2, "PhysicalDimension of zone must be 3 to compute face normals"
 
 
   # Get face_vtx
@@ -103,10 +101,7 @@ def compute_edge_normal(zone, unitary=False):
   edge_normal[1::2] = extended_coords[0][0::2] - extended_coords[0][1::2] # ny = -(xb - xa)
 
   if unitary:
-    edge_normal.shape = (-1, 2)
-    norm = np.linalg.norm(edge_normal, axis=1).reshape(-1,1)
-    edge_normal /= norm
-    edge_normal.shape = (-1)
+    np_utils.normalize_interweaved_inplace(edge_normal, 2)
 
   return edge_normal
 
