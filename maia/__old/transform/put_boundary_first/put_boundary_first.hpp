@@ -56,7 +56,7 @@ Complexity:
         Note that it would also make sense to use std::partition instead of std::stable_partition
     - Algorithms are at most linear time and space in the arrays number of elements.
 */
-auto put_boundary_first(cgns::tree& b, MPI_Comm comm) -> void;
+auto put_boundary_first(cgns::tree& b) -> void;
 
 
 } // maia

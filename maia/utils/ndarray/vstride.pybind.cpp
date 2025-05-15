@@ -57,13 +57,13 @@ struct Reduce_Band {
 };
 template <>
 struct Reduce_Band<float> {
-      static constexpr auto op = [] (float x, float y) {return 0.;}; // Fake OP
+      static constexpr auto op = [] (float x, float y) {(void) x; (void)y; return 0.;}; // Fake OP
       using rtype = float;
       static constexpr rtype neutral = 0;
 };
 template <>
 struct Reduce_Band<double> {
-      static constexpr auto op = [] (double x, double y) {return 0.;}; // Fake OK
+      static constexpr auto op = [] (double x, double y) {(void) x; (void)y; return 0.;}; // Fake OP
       using rtype = double;
       static constexpr rtype neutral = 0;
 };
@@ -76,13 +76,13 @@ struct Reduce_Bor {
 };
 template <>
 struct Reduce_Bor<float> {
-      static constexpr auto op = [] (float x, float y) {return 0.;}; // Fake OP
+      static constexpr auto op = [] (float x, float y) {(void) x; (void)y; return 0.;}; // Fake OP
       using rtype = float;
       static constexpr rtype neutral = 0;
 };
 template <>
 struct Reduce_Bor<double> {
-      static constexpr auto op = [] (double x, double y) {return 0.;}; // Fake OP
+      static constexpr auto op = [] (double x, double y) {(void) x; (void)y; return 0.;}; // Fake OP
       using rtype = double;
       static constexpr rtype neutral = 0;
 };
@@ -92,11 +92,11 @@ void
 sort_by_stride(const py::array_t<I> np_displs,
                      py::array_t<T> np_values) {
 
-  int n_elt   = np_displs.size() - 1;
+  auto n_elt   = np_displs.size() - 1;
   auto displs = np_displs.data();
   auto values = np_values.mutable_data();
   
-  for (size_t i=0; i<n_elt; ++i) {
+  for (ssize_t i=0; i<n_elt; ++i) {
     std::sort(values+displs[i], values+displs[i+1]);
   }
 }
@@ -112,7 +112,7 @@ flip_by_stride(py::array_t<I>& np_displs,
   auto start_ptr = static_cast<std::byte*>(np_values.mutable_data());
 
   // Loop to operate on each section of the array
-  for (size_t i=0; i < np_displs.size()-1; ++i) {
+  for (ssize_t i=0; i < np_displs.size()-1; ++i) {
     size_t n_elt = displs[i+1] - displs[i];
     auto start = start_ptr + displs[i]*item_size;
     auto end = start + n_elt*item_size;
@@ -179,11 +179,11 @@ roll_by_stride(py::array_t<I>& np_displs,
 
   if (shift == 0) return;
 
-  int n_elt   = np_displs.size() - 1;
+  auto n_elt   = np_displs.size() - 1;
   auto displs = np_displs.data();
   auto values = np_values.mutable_data();
   
-  for (size_t i=0; i < n_elt; ++i) {
+  for (ssize_t i=0; i < n_elt; ++i) {
     auto count = displs[i+1] - displs[i];
     if (count > 0) {
       int loc_shift = shift % count;
@@ -252,7 +252,7 @@ _accumulate_by_stride(py::array_t<I>&   np_displs,
                       py::array_t<T>&   np_values,
                       ReducOp red) {
 
-  int n_elt   = np_displs.size() - 1;
+  auto n_elt   = np_displs.size() - 1;
   auto displs = np_displs.data();
   auto values = np_values.data();
 
@@ -260,7 +260,7 @@ _accumulate_by_stride(py::array_t<I>&   np_displs,
   auto np_out = py::array_t<U>(n_elt);
   auto out    = np_out.mutable_data();
   
-  for (size_t i=0; i < n_elt; ++i) {
+  for (ssize_t i=0; i < n_elt; ++i) {
     out[i] = std::accumulate(values+displs[i], values+displs[i+1], red.neutral, red.op);
   }
 
@@ -308,7 +308,7 @@ void take(py::array_t<I1>      displs,
   auto _displs = displs.data();
   auto _ind    = ind.data();
 
-  for (size_t i=0; i < ind.size(); ++i) {
+  for (ssize_t i=0; i < ind.size(); ++i) {
     auto cur_idx = _ind[i];
     auto cur_cnt = _displs[cur_idx+1] - _displs[cur_idx];
     _write_buff = std::copy_n(_read_buff + s_data*_displs[cur_idx], 
@@ -388,8 +388,7 @@ resize(py::array_t<I1>  write_counts,
 
 template<typename I1, typename I2>
 void
-put_extend(py::array_t<I1>  write_counts,
-           py::array_t<I1>  write_displs,
+put_extend(py::array_t<I1>  write_displs,
            py::buffer       write_buff,
            py::array_t<I2>  ind,
            py::array_t<I1>  read_counts,
@@ -398,7 +397,6 @@ put_extend(py::array_t<I1>  write_counts,
   size_t s_data = write_buff.request().itemsize;
 
   auto _ind          = ind.data();
-  auto _write_counts = write_counts.data();
   auto _write_displs = write_displs.data();
   auto _read_counts  = read_counts.data();
 
@@ -408,7 +406,7 @@ put_extend(py::array_t<I1>  write_counts,
   std::vector<I1> write_offset(write_displs.size(), 0);
 
   int64_t r_idx = 0;
-  for (int i=0; i < ind.size(); ++i) {
+  for (ssize_t i=0; i < ind.size(); ++i) {
     auto idx = _ind[i];
     auto r_count = _read_counts[i];
     auto w_start = _write_displs[idx] + write_offset[idx];
@@ -548,17 +546,17 @@ void register_vstride_module(py::module_& parent) {
         py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
 
   m.def("put_extend", &put_extend<int32_t, int32_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_displs").noconvert(), py::arg("w_values").noconvert(),
-        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+        py::arg("w_displs").noconvert(), py::arg("w_values").noconvert(), py::arg("indices").noconvert(),
+        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
   m.def("put_extend", &put_extend<int32_t, int64_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(),
-        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+        py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(), py::arg("indices").noconvert(),
+        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
   m.def("put_extend", &put_extend<int32_t, int32_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(),
-        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+        py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(), py::arg("indices").noconvert(),
+        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
   m.def("put_extend", &put_extend<int64_t, int64_t>,
-        py::arg("w_counts").noconvert(), py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(),
-        py::arg("indices").noconvert(),  py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
+        py::arg("w_values").noconvert(), py::arg("w_displs").noconvert(), py::arg("indices").noconvert(),
+        py::arg("r_counts").noconvert(), py::arg("r_values").noconvert());
 
 
   m.def("concatenate_by_stride", &concatenate_by_stride<int32_t>,

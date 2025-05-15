@@ -141,7 +141,6 @@ void combine_to_hexa(py::array_t<int>& np_face_vtx_n,
                      py::array_t<T>& np_cell_vtx){
   
   int n_elt = np_face_vtx_n.size() / 6;
-  auto face_vtx_n = np_face_vtx_n.data();
   auto face_vtx   = np_face_vtx  .data();
   auto cell_face  = np_cell_face .data();
   auto cell_vtx   = np_cell_vtx  .mutable_data();

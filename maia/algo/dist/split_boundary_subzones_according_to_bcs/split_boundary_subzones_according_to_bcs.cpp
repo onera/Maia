@@ -22,6 +22,7 @@ namespace maia {
 // TODO I4 -> I, R8 -> R
 template<class Tree_range, class Distribution> auto
 sub_field_for_ids(const Tree_range& fields, std_e::span<const I4> ids, I4 first_id, const Distribution& distri, MPI_Comm comm) {
+  (void)(first_id);
   MPI_Barrier(comm);
   MPI_Barrier(comm);
   I4 sz = ids.size();

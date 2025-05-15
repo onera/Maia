@@ -10,7 +10,7 @@ counting_sort(py::array_t<int64_t>& np_array, int n_bins) {
 
   auto np_counts = py::array_t<int>(n_bins);
   auto counts = np_counts.mutable_data();
-  for(size_t i=0; i < n_bins; ++i) {
+  for(int i=0; i < n_bins; ++i) {
     counts[i] = 0;
   }
 
@@ -21,7 +21,7 @@ counting_sort(py::array_t<int64_t>& np_array, int n_bins) {
     counts[array[i]]++;
   }
 
-  for(size_t i=0; i < n_bins; ++i) {
+  for(int i=0; i < n_bins; ++i) {
     displs[i+1] = displs[i] + counts[i];
     counts[i] = 0;
   }
@@ -41,7 +41,7 @@ counting_sort_mult(py::list array_list, int n_bins) {
 
   auto np_counts = py::array_t<int64_t>(n_bins);
   auto counts = np_counts.mutable_data();
-  for(size_t i=0; i < n_bins; ++i) {
+  for(int i=0; i < n_bins; ++i) {
     counts[i] = 0;
   }
 
@@ -56,7 +56,7 @@ counting_sort_mult(py::list array_list, int n_bins) {
   }
 
   std::vector<int> displs(n_bins+1, 0);
-  for(size_t i=0; i < n_bins; ++i) {
+  for(int i=0; i < n_bins; ++i) {
     displs[i+1] = displs[i] + counts[i];
     counts[i] = 0;
   }
