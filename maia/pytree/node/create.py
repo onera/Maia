@@ -103,10 +103,7 @@ def update_child(parent:CGNSTree, name:str, label:str=UNSET, value:Any=UNSET, ch
   Example:
     >>> zone = PT.new_node('Zone', label='Zone_t') # Basic node creation
     >>> PT.update_child(zone, 'ZoneType', 'ZoneType_t') # Child is created
-    ['ZoneType', None, [], 'ZoneType_t']
     >>> PT.update_child(zone, 'ZoneType', value="Unstructured") # Child is updated
-    ['ZoneType', array([b'U', b'n', b's', b't', b'r', b'u', b'c', b't', b'u', b'r', b'e',
-           b'd'], dtype='|S1'), [], 'ZoneType_t']
     >>> PT.print_tree(zone)
     Zone Zone_t 
     └───ZoneType ZoneType_t "Unstructured"

@@ -159,7 +159,7 @@ def apply_hooks(doc_test):
 
     Current hook:
     - If an example's source code (after stripping leading whitespace) starts with "PT.new_",
-      it prepends "_ = " to the stripped code, preserving original indentation.
+      or "PT.update_", it prepends "_ = " to the stripped code, preserving original indentation.
       This handles PyTree node creation expressions that aren't assigned, ensuring they are executed.
 
     Args:
@@ -171,7 +171,7 @@ def apply_hooks(doc_test):
     for example in doc_test.examples:
         code = example.source
         stripped_code = code.lstrip()
-        if stripped_code.startswith("PT.new_"):
+        if stripped_code.startswith("PT.new_") or stripped_code.startswith("PT.update_"):
             indentation = code[:len(code) - len(stripped_code)]
             example.source = f"{indentation}_ = {stripped_code}"
     return doc_test
