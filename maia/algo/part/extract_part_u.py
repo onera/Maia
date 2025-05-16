@@ -16,6 +16,11 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
+# ExtractPart API changed between PDM2.6 and PDM2.7 (see !153), this switch allow to use good API
+EP_OLD_API = hasattr(PDM.ExtractPart, 'extract_part_group_get')
+PDM_EP_group_set   = PDM.ExtractPart.part_group_set         if EP_OLD_API else PDM.ExtractPart.group_set
+PDM_EP_group_get   = PDM.ExtractPart.extract_part_group_get if EP_OLD_API else PDM.ExtractPart.group_get
+PDM_EP_n_group_set = PDM.ExtractPart.part_n_group_set       if EP_OLD_API else PDM.ExtractPart.n_group_set
 
 def exchange_field_one_domain(part_zones, extract_zone, mesh_dim, exch_tool_box, container_name, comm) :
 
@@ -164,7 +169,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
-      pdm_ep.part_n_group_set(bc_type+1, n_gdom_bcs)
+      PDM_EP_n_group_set(pdm_ep, bc_type+1, n_gdom_bcs)
 
   # Loop over domain zone : preparing extract part
   for i_part, part_zone in enumerate(part_zones):
@@ -182,19 +187,23 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
     vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
 
-    n_cell = cell_ln_to_gn.shape[0]
-    n_face = face_ln_to_gn.shape[0]
-    n_edge = 0
-    n_vtx  = vtx_ln_to_gn .shape[0]
-
-    pdm_ep.part_set(i_part,
-                    n_cell, n_face, n_edge, n_vtx,
-                    cell_face_idx, cell_face    ,
-                    None, None, None,
-                    face_vtx_idx , face_vtx     ,
-                    cell_ln_to_gn, face_ln_to_gn,
-                    None,
-                    vtx_ln_to_gn , vtx_coords)
+    if EP_OLD_API:
+      pdm_ep.part_set(i_part,
+                      cell_ln_to_gn.shape[0], face_ln_to_gn.shape[0], 0, vtx_ln_to_gn.shape[0],
+                      cell_face_idx, cell_face    ,
+                      None, None, None,
+                      face_vtx_idx , face_vtx     ,
+                      cell_ln_to_gn, face_ln_to_gn,
+                      None,
+                      vtx_ln_to_gn , vtx_coords)
+    else:
+      pdm_ep.part_set(i_part,
+                      cell_face_idx, cell_face    ,
+                      None, None, None,
+                      face_vtx_idx , face_vtx     ,
+                      cell_ln_to_gn, face_ln_to_gn,
+                      None,
+                      vtx_ln_to_gn , vtx_coords)
 
     pdm_ep.selected_lnum_set(i_part, point_list[i_part][0] - local_pl_offset(part_zone, dim))
 
@@ -208,7 +217,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
           bc_gn = MT.globalnumbering_value(bc_n, 'Index') if bc_n is not None else np.empty(0, pdm_gnum_dtype)
-          pdm_ep.part_group_set(i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) , bc_gn)
+          PDM_EP_group_set(pdm_ep, i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) , bc_gn)
       bc_type +=1
 
   pdm_ep.compute()
@@ -296,7 +305,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
     if LOC_TO_DIM[dim_name]<=dim:
       for i_bc, bc_path in enumerate(gdom_bcs_path):
-        bc_info = pdm_ep.extract_part_group_get(0, i_bc, bc_type)
+        bc_info = PDM_EP_group_get(pdm_ep, 0, i_bc, bc_type)
         bc_pl = bc_info['group_entity']
         bc_gn = bc_info['group_entity_ln_to_gn']
         if bc_pl.size != 0:
