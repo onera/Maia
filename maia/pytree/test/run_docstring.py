@@ -7,6 +7,8 @@ import maia.pytree as PT
 import numpy as np
 
 # --- Configuration ---
+VERBOSE = False
+STOP_ON_FIRST_FAIL = False
 script_dir = os.path.abspath(os.path.dirname(__file__))
 MAIA_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(script_dir)))
 MAIA_PYTREE_PATH = os.path.join(MAIA_BASE_DIR, "maia", "pytree")
@@ -70,7 +72,7 @@ def _find_modules_with_doctest_markers(base_path, package_prefix):
       list of str: A sorted list of unique, fully qualified module names that contain '>>>' markers.
   """
   modules_with_markers = []
-  cprint(Colors.OKBLUE, f"Scanning for Python files with '>>>' markers in: {base_path}")
+  cprint(Colors.OKBLUE, f"Scanning for Python files with '>>>' markers in: {base_path} ...")
   for root, dirs, files in os.walk(base_path):
     # Prune test directories and __pycache__
     dirs[:] = [d for d in dirs if not d.lower().startswith('test') and d != '__pycache__']
@@ -91,7 +93,8 @@ def _find_modules_with_doctest_markers(base_path, package_prefix):
           
           full_module_name = f"{package_prefix}.{module_part}"
           modules_with_markers.append(full_module_name)
-          cprint(Colors.OKCYAN, f"  Found '>>>' in: {full_module_name} ({full_file_path})")
+          if VERBOSE:
+            cprint(Colors.OKCYAN, f"  Found '>>>' in: {full_module_name} ({full_file_path})")
         # else: # Optionally, log files without markers if needed for debugging
         #   cprint(Colors.OKCYAN, f"  No '>>>' markers in: {full_file_path}")
                   
@@ -125,7 +128,8 @@ def filter_and_confirm_doctests(module_names_with_markers):
       # If this list is not empty, the module contains actual runnable doctests.
       if finder.find(module, name=module.__name__, globs=test_globs):
         confirmed_modules.append(module_name)
-        cprint(Colors.OKGREEN, f"  Confirmed runnable doctests in: {module_name}")
+        if VERBOSE:
+          cprint(Colors.OKGREEN, f"  Confirmed runnable doctests in: {module_name}")
       else:
         # This case means '>>>' was present, but DocTestFinder didn't parse any valid tests.
         cprint(Colors.OKCYAN, f"  Module {module_name} had '>>>' markers, but DocTestFinder found no runnable doctests.")
@@ -198,7 +202,8 @@ def collect_doctests(confirmed_module_names):
       for dt in finder.find(module, name=module.__name__, globs=test_globs):
         dt = apply_hooks(dt) # Apply custom hooks to each DocTest
         tests.append(dt)
-      cprint(Colors.OKCYAN, f"  Collected doctests from: {module_name}")
+      if VERBOSE:
+        cprint(Colors.OKCYAN, f"  Collected doctests from: {module_name}")
     except ImportError as e:
       cprint(Colors.WARNING, f"CollectDoctests: Could not import module {module_name}: {e}")
     except Exception as e:
@@ -289,11 +294,15 @@ if __name__ == "__main__":
   cprint(Colors.HEADER, "\n=== Running Doctests ===")
   for i, doc_test_obj in enumerate(collected_doctest_objects):
     module_name_for_reporting = doc_test_obj.module.__name__ if hasattr(doc_test_obj, 'module') and hasattr(doc_test_obj.module, '__name__') else doc_test_obj.name
-    cprint(Colors.OKBLUE, f"Running test {i+1}/{len(collected_doctest_objects)} from: {module_name_for_reporting} (DocTest: {doc_test_obj.name})")
+    if VERBOSE:
+      cprint(Colors.OKBLUE, f"Running test {i+1}/{len(collected_doctest_objects)} from: {module_name_for_reporting} (DocTest: {doc_test_obj.name})")
     runner.run(doc_test_obj)
+    if STOP_ON_FIRST_FAIL and runner.failures > 0:
+      cprint(Colors.FAIL, f"\nTest execution stopped because STOP_ON_FIRST_FAIL is True")
+      sys.exit(1)
 
   cprint(Colors.HEADER, "\n=== Doctest Summary ===")
-  failure_count, attempt_count = runner.summarize(verbose=True)
+  failure_count, attempt_count = runner.summarize(verbose=False)
                                                   
   if failure_count > 0:
     cprint(Colors.FAIL, f"\n{failure_count} out of {attempt_count} doctests FAILED.")
