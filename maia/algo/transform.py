@@ -636,7 +636,7 @@ def cartesian_to_cylindrical(t: CGNSTree,
 
 def cylindrical_to_cartesian(t: CGNSTree,
                              axis: Sequence[float],
-                             comm: Optional[MPIComm],
+                             comm: Optional[MPIComm] = None,
                              apply_to_fields: bool = True) -> None:
   """Convert the input tree into a cartesian coordinate system.
 
