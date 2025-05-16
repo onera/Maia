@@ -644,7 +644,7 @@ class Zone:
       >>> zone = PT.new_Zone(type='Unstructured')
       >>> PT.new_Elements('PYRA', 'PYRA_5', erange=[1,10],  parent=zone)
       >>> PT.Zone.CellDimension(zone)
-      2
+      3
     """
     if Zone.Type(zone_node)=="Structured":
       dimension = Zone.IndexDimension(zone_node)
@@ -1096,9 +1096,11 @@ class BCDataSet:
       >>> ds1 = PT.new_BCDataSet('DataSet1', point_range=[[1,2],[1,1]], parent=bc)
       >>> ds2 = PT.new_BCDataSet('DataSet2', parent=bc)
       >>> PT.BCDataSet.getPatch(ds1, bc)
-      ['PointRange', array([[1, 2], [1, 1]], dtype=int32), [], 'IndexRange_t']
+      ['PointRange', array([[1, 2],
+             [1, 1]], dtype=int32), [], 'IndexRange_t']
       >>> PT.BCDataSet.getPatch(ds2, bc)
-      ['PointRange', array([[1, 5], [1, 1]], dtype=int32), [], 'IndexRange_t']
+      ['PointRange', array([[1, 5],
+             [1, 1]], dtype=int32), [], 'IndexRange_t']
     """
     from maia import pytree as PT
     pl = W.get_child_from_name(bcds_node, 'PointList')

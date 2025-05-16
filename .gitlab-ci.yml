@@ -90,6 +90,7 @@ job:doc_snippets:
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh; unset PYTEST_PLUGINS
     - mpirun -np 1 python3 -m pytest ../doc
+    - python3 ../maia/pytree/test/run_docstring.py
 
 job:portability_gnum:
   stage: test

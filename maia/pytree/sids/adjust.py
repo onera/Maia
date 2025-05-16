@@ -34,7 +34,7 @@ def subregion_fields_to_bcdataset(tree:CGNSTree, mode:str='move'):
     mode (str, optional): Controls how the fields are created (see above). Defaults to ``'move'``.
 
   Example:
-    >>> zone = PT.yaml.to_zone('''
+    >>> zone = PT.yaml.to_node('''
     ... Zone Zone_t:
     ...   ZoneBC ZoneBC_t:
     ...     Wing BC_t 'BCWall':
@@ -103,7 +103,7 @@ def subregion_fields_from_bcdataset(tree:CGNSTree, mode:str='move'):
     ...     BCRegionName Descriptor_t "Wing":
     ... ''')
     >>> PT.subregion_fields_from_bcdataset(zone)
-    >>> PT.print_tree(zone, 'Zone_t')
+    >>> PT.print_tree(zone)
     Zone Zone_t 
     ├───ZoneBC ZoneBC_t 
     │   └───Wing BC_t "BCWall"

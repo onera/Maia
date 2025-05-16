@@ -55,7 +55,7 @@ def update_node(node:CGNSTree, name:Union[str,_UNSET]=UNSET, label:Union[str,_UN
     >>> node = PT.new_node('Zone')
     >>> PT.update_node(node, label='Zone_t', value=[[11,10,0]])
     >>> node
-    ['Zone', array([[11,10,0]], dtype=int32), [], 'Zone_t']
+    ['Zone', array([[11, 10,  0]], dtype=int32), [], 'Zone_t']
   """
   if not isinstance(name, _UNSET):
     NA.set_name(node, name)
@@ -136,7 +136,7 @@ def shallow_copy(t:Tree) -> Tree:
     >>> zone_dupl = PT.shallow_copy(zone)
     >>> zone_dupl[1] *= 2
     >>> PT.get_value(zone)
-    array([[18, 8, 0]], dtype=int32)
+    array([[18,  8,  0]], dtype=int32)
   """
   out:Tree = [NA.get_name(t), NA.get_value(t, raw=True), [], NA.get_label(t)] #type: ignore[assignment]
   for child in NA.get_children(t):
