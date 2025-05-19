@@ -9,6 +9,33 @@ import maia.pytree.maia as MT
 
 from maia.algo.dist import fix_orient as FO
 
+@pytest_parallel.mark.parallel(1)
+def test_enforce_boundary_pe_left_2d(comm):
+  tree = maia.factory.generate_dist_block(4, 'QUAD_4', comm)
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+
+  # Edge element are first in tree
+  pe = PT.get_np_value(PT.find_node_from_name(tree, 'ParentElements'))
+  ec = PT.get_np_value(PT.find_node_from_name(tree, 'ElementConnectivity'))
+
+  # Switch some bnd edges
+  pe[0,:] = pe[0,::-1]
+  pe[-1,:] = pe[-1,::-1]
+
+  ec[0:2] = ec[0:2][::-1]
+  ec[-2:] = ec[-2:][::-1]
+
+  FO.enforce_boundary_pe_left(tree, comm)
+
+  assert (pe[[0,-1],:] == np.array([[25,0], [33,0]])).all()
+  assert (ec[0:2] == [1,2]).all()
+  assert (ec[-2:] == [16,15]).all()
+
+  # Test early return
+  tree_bck = PT.deep_copy(tree)
+  FO.enforce_boundary_pe_left(tree, comm)
+  assert PT.is_same_tree(tree_bck, tree)
+
 @pytest.mark.parametrize('with_nface', [False, True])
 @pytest_parallel.mark.parallel(2)
 def test_enforce_boundary_pe_left(with_nface, comm):
@@ -65,6 +92,26 @@ def test_enforce_boundary_pe_left_early_return(comm):
   assert PT.is_same_tree(tree, tree_bck)
 
 
+@pytest_parallel.mark.parallel(3)
+def test_fix_normal_orientation_2d(comm):
+  tree = maia.factory.generate_dist_block(5, 'TRI_3', comm, origin=[0., 0])
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  tree_bck = PT.deep_copy(tree)
+  zone = PT.find_node_from_label(tree, 'Zone_t')
+
+  # Prepare case by swapping some bnd cells in PE
+  edge = MT.Zone.EdgeNode(zone)
+  edge_vtx = MT.Element.connectivity(edge)
+
+  # Swap some edges to create test (some are internal, some are external)
+  edge_vtx[0] = edge_vtx[0][::-1] # Bnd face
+  edge_vtx[-1] = edge_vtx[-1][::-1] # Bnd face
+
+  FO.fix_normal_orientation(tree, comm)
+
+  # Edge connectivity is swapped back to respect orientation
+  assert PT.is_same_tree(tree, tree_bck)
+  
 @pytest_parallel.mark.parallel(2)
 def test_fix_normal_orientation(comm):
   tree = maia.factory.generate_dist_block(5, 'Poly', comm)
