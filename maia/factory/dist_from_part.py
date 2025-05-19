@@ -22,7 +22,8 @@ class UDDCollector:
     self.ud_paths:List[str] = list()
   def pre(self, nodes: List[CGNSTree]):
     last = nodes[-1]
-    if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) not in [':CGNS#GlobalNumbering', ':CGNS#LocalNumbering']:
+    names_to_skip = [':CGNS#GlobalNumbering', ':CGNS#LocalNumbering', 'maia#Connectivities']
+    if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) not in names_to_skip:
       path = "/".join([PT.get_name(n) for n in nodes])
       # Remove maia naming conventions, since paths should be given on disttree
       for i, node in enumerate(nodes):
