@@ -232,7 +232,7 @@ The distributed entities are:
         .. admonition:: Specific case of global BCData_t arrays
 
           The CGNS standard allows 
-          `global data <https://cgns.github.io/CGNS_docs_current/sids/bc.html#global&local>`_
+          `global data <https://cgns.org/standard/SIDS/boundary.html#boundary-condition-data-structure-definition-bcdata-t>`_
           to be stored in BCDataSet_t nodes. To distinguishe these arrays, which are not distributed,
           from the classical one, an additional
           :cgns:`Descriptor_t` node named :cgns:`BCDataGlobal` must be added under the related

@@ -102,7 +102,7 @@ in the ``$PATH`` once the environment is loaded:
 The opposite maia_poly_new_to_old script can be used to put back meshes
 in old conventions, insuring compatibility with legacy tools.
 
-.. warning:: CGNS databases should respect the `SIDS <https://cgns.github.io/CGNS_docs_current/sids/index.html>`_.
+.. warning:: CGNS databases should respect the `SIDS <https://cgns.org/standard/SIDS/CGNS_SIDS.html>`_.
   The most commonly observed non-compliant practices are:
 
   - Empty ``DataArray_t`` (of size 0) under ``FlowSolution_t`` containers.
@@ -168,7 +168,7 @@ the outline of the volumic mesh after duplication.
 .. rubric:: Compliant with the pyCGNS world
 
 Finally, since Maia uses the standard `CGNS/Python mapping 
-<https://cgns.github.io/CGNS_docs_current/python/sidstopython.pdf>`_,
+<https://cgns.org/standard/python.html>`_,
 you can set up applications involving multiple python packages:
 here, we create and split a mesh with maia, but we then call Cassiopee functions
 to compute the gradient of a field on each partition.

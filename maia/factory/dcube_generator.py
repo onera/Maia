@@ -278,7 +278,7 @@ def generate_dist_block(n_vtx: Union[int, Sequence[int]],
   - Other names must be in ``["BAR_2", "TRI_3", "QUAD_4", "TETRA_4", "PYRA_5", "PENTA_6", "HEXA_8"]``
     and produces an unstructured 1d, 2d or 3d zone with corresponding standard elements.
 
-  The `CGNS physical dimension <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase>`_
+  The `CGNS physical dimension <https://cgns.org/standard/SIDS/hierarchy.html#cgns-entry-level-structure-definition-cgnsbase-t>`_
   :math:`d_\\phi` is deduced from the shape of the ``origin`` parameter. Note that the physical dimension must be
   upper or equal to the cell dimension.
 

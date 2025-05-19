@@ -105,9 +105,12 @@ predicate, or all the nodes matching the predicate:
 # Return an empty list
 
 
-.. seealso:: All the :func:`get_nodes_from_...` functions have a
-  :func:`iter_nodes_from_...` variant, which return a generator instead of a list
-  and can be used for looping
+.. seealso:: 
+  
+  - All the :func:`get_node_from_...` functions have a :func:`find_node_from_...` variant,
+    which raises a ``CGNSNodeNotFoundError`` if nothing is found (mainly useful for typing);
+  - All the :func:`get_nodes_from_...` functions have an :func:`iter_nodes_from_...` variant,
+    which returns a generator instead of a list and can be used for iteration.
 
 
 Chaining searches (advanced)

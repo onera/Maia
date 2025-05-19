@@ -29,11 +29,11 @@ By avoiding compiled code and minimizing external dependencies,
 
 ``maia.pytree`` works with nothing more than the standard
 `CGNS/Python mapping
-<https://cgns.github.io/CGNS_docs_current/python/index.html>`_
+<https://cgns.org/standard/python.html>`_
 which makes it easily interoperable. 
 In addition, it exploits the 
 `CGNS/SIDS description
-<https://cgns.github.io/CGNS_docs_current/sids/index.html>`_
+<https://cgns.org/standard/SIDS/CGNS_SIDS.html>`_
 to propose relevant actions on specific nodes.
 
 ..  RuntimeWarning: Attaching node BC (BC_t) under a Zone_t parent is not SIDS compliant. Admissible parent labels are ['ZoneBC_t'].

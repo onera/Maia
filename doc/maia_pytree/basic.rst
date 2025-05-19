@@ -25,11 +25,11 @@ nodes have in fact a hierarchic structure, which is why we rather employ the wor
 The organisation of this structure (for example: what are the allowed labels
 under each node, or what are the allowed values for each label)
 is defined by the `CGNS/SIDS description
-<https://cgns.github.io/CGNS_docs_current/sids/index.html>`_
+<https://cgns.org/standard/SIDS/CGNS_SIDS.html>`_
 and will not be described here.
 
 In addition, the `sids-to-python specification
-<https://cgns.github.io/CGNS_docs_current/python/index.html>`_
+<https://cgns.org/standard/python.html>`_
 defines how to describe a node structure in python.
 ``maia.pytree`` conforms to this mapping which, in short, states that:
 

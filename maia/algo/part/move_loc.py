@@ -1,4 +1,5 @@
 import numpy as np
+from mpi4py import MPI
 
 import maia
 from maia.typing import *
@@ -97,6 +98,7 @@ class CenterToNode:
       is_struct = PT.Zone.Type(part) == 'Structured'
       PT.rm_children_from_name(part, f'{container_name}#Vtx')
       fs = PT.new_FlowSolution(f'{container_name}#Vtx', loc='Vertex', parent=part)
+      PT.set_label(fs, PT.get_label(PT.find_node_from_path(part, container_name)))
       vtx_cell_idx = self.vtx_cell[i_part].displs
       for field_name, field_values in node_fields.items():
         data_out = field_values[i_part][vtx_cell_idx[:-1]]
@@ -148,10 +150,12 @@ class NodeToCenter:
       weightssum   = self.weightssum[i_part]
 
       container = PT.find_node_from_path(part, container_name)
+      container_lbl = PT.get_label(container)
       assert PT.Subset.GridLocation(container) == 'Vertex'
 
       PT.rm_children_from_name(part, f'{container_name}#Cell')
       fs_out = PT.new_FlowSolution(f'{container_name}#Cell', loc='CellCenter', parent=part)
+      PT.set_label(fs_out, container_lbl)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
         data_in = PT.get_np_value(array) 
@@ -171,12 +175,15 @@ def centers_to_nodes(part_tree: CGNSPartTree,
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
                      **options) -> None:
-  """ Create Vertex located FlowSolution_t from CellCenter located FlowSolution_t.
+  """ Create Vertex located fields from CellCenter located fields.
+
+  This transformation is performed for all the fields found under the requested container(s),
+  which can be FlowSolution_t or DiscreteData_t nodes.
 
   Interpolation is based on Inverse Distance Weighting 
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
   each cell contributes to each of its vertices with a weight computed from the distance
-  between the cell isobarycenter and the vertice.  The method can be tuned with
+  between the cell isobarycenter and the vertice. The method can be tuned with
   the following kwargs:
 
   - ``idw_power`` (float, default = 1) -- Power to which the cell-vertex distance is elevated.
@@ -188,7 +195,7 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   Args:
     part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
+    containers_name (list of str) : List of the names of the containers nodes to transfer.
     **options: Options related to interpolation, see above.
 
   See also:
@@ -212,7 +219,10 @@ def nodes_to_centers(part_tree: CGNSPartTree,
                      comm: MPIComm, 
                      containers_name: List[str] = [], 
                      **options) -> None:
-  """ Create CellCenter located FlowSolution_t from Vertex located FlowSolution_t.
+  """ Create CellCenter located fields from Vertex located fields.
+
+  This transformation is performed for all the fields found under the requested container(s),
+  which can be FlowSolution_t or DiscreteData_t nodes.
 
   Interpolation is based on Inverse Distance Weighting 
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
@@ -225,7 +235,7 @@ def nodes_to_centers(part_tree: CGNSPartTree,
   Args:
     part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the FlowSolution_t nodes to transfer.
+    containers_name (list of str) : List of the names of the containers nodes to transfer.
     **options: Options related to interpolation, see above.
 
   See also:

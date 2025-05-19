@@ -138,7 +138,7 @@ def generate_dist_points(n_vtx: Union[int, Sequence[int]],
   - ``"Unstructured"`` (or ``"U"``) produces an unstructured zone
 
   In all cases, the created zone contains only the cartesian grid coordinates; no connectivities are created.
-  The `physical dimension <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase>`_ of the output
+  The `physical dimension <https://cgns.org/standard/SIDS/hierarchy.html#cgns-entry-level-structure-definition-cgnsbase-t>`_ of the output
   is set equal to the length of the origin parameter.
 
   Args:

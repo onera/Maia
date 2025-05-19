@@ -2,7 +2,7 @@ File management
 ===============
 
 Maia supports HDF5/CGNS file reading and writing,
-see `related documention <https://cgns.github.io/CGNS_docs_current/hdf5/index.html>`_.
+see `related documention <https://cgns.org/standard/hdf5.html>`_.
 
 The IO functions are provided by the ``maia.io`` module. The low level hdf
 calls are performed by the python module `h5py <https://www.h5py.org/>`_.

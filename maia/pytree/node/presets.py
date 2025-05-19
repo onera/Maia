@@ -36,7 +36,7 @@ def new_CGNSBase(name:str='Base', *, cell_dim:int=3, phy_dim:int=3, parent:Optio
   """ Create a CGNSBase_t node
 
   Link to corresponding SIDS section:
-  `CGNSBase_t <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#CGNSBase>`_
+  `CGNSBase_t <https://cgns.org/standard/SIDS/hierarchy.html#cgns-entry-level-structure-definition-cgnsbase-t>`_
 
   Args:
     name (str): Name of the created base
@@ -56,7 +56,7 @@ def new_Family(name:str='Family', *, family_bc:Optional[str]=None, parent:Option
   """ Create a Family_t node
 
   Link to corresponding SIDS section:
-  `Family_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#Family>`_
+  `Family_t <https://cgns.org/standard/SIDS/hierarchy.html#base-level-families>`_
 
   Args:
     name (str): Name of the created family
@@ -117,7 +117,7 @@ def new_Zone(name:str='Zone', *, type:str='Null', size:Optional[ArrayLike]=None,
   for example, [[11,10,0]] for an unstructured zone or [[11,10,0], [6,5,0]] for a 2D structured zone.
 
   Link to corresponding SIDS section:
-  `Zone_t <https://cgns.github.io/CGNS_docs_current/sids/cgnsbase.html#Zone>`_
+  `Zone_t <https://cgns.org/standard/SIDS/hierarchy.html#zone-structure-definition-zone-t>`_
 
   Args:
     name (str): Name of the created zone
@@ -155,7 +155,7 @@ def new_Elements(name:str='Elements',
   elements.
 
   Link to corresponding SIDS section:
-  `Elements_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Elements>`_
+  `Elements_t <https://cgns.org/standard/SIDS/grid.html#elements-structure-definition-elements-t>`_
 
   Args:
     name (str): Name of the created element node
@@ -199,7 +199,7 @@ def new_NGonElements(name:str = 'NGonElements',
   """ Create an Element_t node describing a NGON_n connectivity
 
   Link to corresponding SIDS section:
-  `Elements_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Elements>`_
+  `Elements_t <https://cgns.org/standard/SIDS/grid.html#elements-structure-definition-elements-t>`_
 
   Args:
     name (str): Name of the created element node
@@ -234,7 +234,7 @@ def new_NFaceElements(name:str = 'NFaceElements',
   """ Create an Element_t node describing a NFACE_n connectivity
 
   Link to corresponding SIDS section:
-  `Elements_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Elements>`_
+  `Elements_t <https://cgns.org/standard/SIDS/grid.html#elements-structure-definition-elements-t>`_
 
   Args:
     name (str): Name of the created element node
@@ -280,7 +280,7 @@ def new_BC(name:str = 'BC',
   ``point_list`` parameter : both can no be used simultaneously.
 
   Link to corresponding SIDS section:
-  `BC_t <https://cgns.github.io/CGNS_docs_current/sids/bc.html#BC>`_
+  `BC_t <https://cgns.org/standard/SIDS/boundary.html#boundary-condition-structure-definition-bc-t>`_
 
   Args:
     name (str): Name of the created bc node
@@ -329,7 +329,7 @@ def new_BCDataSet(name:str = 'BCDataSet',
   """ Create a BCDataSet_t node
 
   Link to corresponding SIDS section:
-  `BCDataSet_t <https://cgns.github.io/CGNS_docs_current/sids/bc.html#BCDataSet>`_
+  `BCDataSet_t <https://cgns.org/standard/SIDS/boundary.html#boundary-condition-data-set-structure-definition-bcdataset-t>`_
 
   Args:
     name (str): Name of the created dataset node
@@ -365,7 +365,7 @@ def new_BCData(name:str,
   """ Create a BCData_t node
 
   Link to corresponding SIDS section:
-  `BCData_t <https://cgns.github.io/CGNS_docs_current/sids/bc.html#BCData>`_
+  `BCData_t <https://cgns.org/standard/SIDS/boundary.html#boundary-condition-data-structure-definition-bcdata-t>`_
 
   Args:
     name (str): Name of the created BCData node
@@ -419,7 +419,7 @@ def new_GridConnectivity(name:str = 'GC',
   or ``point_list_donor``).
 
   Link to corresponding SIDS section:
-  `GridConnectivity_t <https://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivity>`_
+  `GridConnectivity_t <https://cgns.org/standard/SIDS/multizone.html#general-interface-connectivity-structure-definition-gridconnectivity-t>`_
 
   Args:
     name (str): Name of the created gc node
@@ -486,7 +486,7 @@ def new_GridConnectivityProperty(periodic:Mapping[str,ArrayLike]={}, parent:Opti
   when the physical dimension of the mesh if lower than 3.
 
   Link to corresponding SIDS section:
-  `GridConnectivityProperty_t <https://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivityProperty>`_
+  `GridConnectivityProperty_t <https://cgns.org/standard/SIDS/multizone.html#grid-connectivity-property-structure-definition-gridconnectivityproperty-t>`_
 
   Args:
     periodic (dict): Name of the created gc node
@@ -520,7 +520,7 @@ def new_GridConnectivity1to1(name:str = 'GC',
   :func:`new_GridConnectivity` to create general GridConnectivity_t nodes.
 
   Link to corresponding SIDS section:
-  `GridConnectivity1to1_t <https://cgns.github.io/CGNS_docs_current/sids/cnct.html#GridConnectivity1to1>`_
+  `GridConnectivity1to1_t <https://cgns.org/standard/SIDS/multizone.html#to-1-interface-connectivity-structure-definition-gridconnectivity1to1-t>`_
 
   Args:
     name (str): Name of the created gc node
@@ -555,7 +555,7 @@ def new_IndexArray(name:str='PointList', value:Optional[ArrayLike]=None, parent:
   ``(IndexDimension, N)``.
 
   Link to corresponding SIDS section:
-  `IndexArray_t <https://cgns.github.io/CGNS_docs_current/sids/build.html#IndexArray>`_
+  `IndexArray_t <https://cgns.org/standard/SIDS/block.html#definition-indexarray-t>`_
 
   Args:
     name (str): Name of the created index array node
@@ -579,7 +579,7 @@ def new_IndexRange(name:str='PointRange', value:Optional[ArrayLike]=None, parent
   ``(IndexDimension, 2)`` (see example below).
 
   Link to corresponding SIDS section:
-  `IndexRange_t <https://cgns.github.io/CGNS_docs_current/sids/build.html#IndexRange>`_
+  `IndexRange_t <https://cgns.org/standard/SIDS/block.html#definition-indexrange-t>`_
 
   Args:
     name (str): Name of the created index range node
@@ -606,7 +606,7 @@ def new_GridLocation(loc:str, parent:Optional[CGNSTree]=None):
   """ Create a GridLocation_t node
 
   Link to corresponding SIDS section:
-  `GridLocation_t <https://cgns.github.io/CGNS_docs_current/sids/build.html#GridLocation>`_
+  `GridLocation_t <https://cgns.org/standard/SIDS/block.html#definition-gridlocation-t>`_
 
   Args:
     loc (str): Value to set in the grid location node
@@ -632,7 +632,7 @@ def new_BaseIterativeData(name:str='BaseIterativeData',
   """ Create a BaseIterativeData_t node
 
   Link to corresponding SIDS section:
-  `BaseIterativeData_t <https://cgns.github.io/CGNS_docs_current/sids/timedep.html#IterativeData>`_
+  `BaseIterativeData_t <https://cgns.org/standard/SIDS/time.html#base-iterative-data-structure-definition-baseiterativedata-t>`_
 
   Args:
     name (str): Name of the created node
@@ -666,7 +666,7 @@ def new_Axisymmetry(*,
   """ Create a Axisymmetry_t node
 
   Link to corresponding SIDS section:
-  `Axisymmetry_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#Axisymmetry>`_
+  `Axisymmetry_t <https://cgns.org/standard/SIDS/grid.html#axisymmetry-structure-definition-axisymmetry-t>`_
 
   Args:
     reference_point (ArrayLike) : if provided, create a AxisymmetryReferencePoint child array
@@ -697,7 +697,7 @@ def new_DataArray(name:str, value:ArrayLike, *, dtype:Optional[str]=None, parent
   :func:`~maia.pytree.set_value` applies.
 
   Link to corresponding SIDS section:
-  `DataArray_t <https://cgns.github.io/CGNS_docs_current/sids/data.html#DataArray>`_
+  `DataArray_t <https://cgns.org/standard/SIDS/array.html#definition-dataarray-t>`_
 
   Args:
     name (str): Name of the created data array node
@@ -735,7 +735,7 @@ def new_GridCoordinates(name:str='GridCoordinates', *, fields:Mapping[str,ArrayL
   """ Create a GridCoordinates_t node
 
   Link to corresponding SIDS section:
-  `GridCoordinates_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#GridCoordinates>`_
+  `GridCoordinates_t <https://cgns.org/standard/SIDS/grid.html#grid-coordinates-structure-definition-gridcoordinates-t>`_
 
   Args:
     name (str): Name of the created gc node
@@ -763,7 +763,7 @@ def new_FlowSolution(name:str = 'FlowSolution',
   """ Create a FlowSolution_t node
 
   Link to corresponding SIDS section:
-  `FlowSolution_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#FlowSolution>`_
+  `FlowSolution_t <https://cgns.org/standard/SIDS/grid.html#flow-solution-structure-definition-flowsolution-t>`_
 
   Args:
     name (str): Name of the created flow solution node
@@ -794,7 +794,7 @@ def new_DiscreteData(name:str = 'DiscreteData',
   """ Create a DiscreteData_t node
 
   Link to corresponding SIDS section:
-  `DiscreteData_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#DiscreteData>`_
+  `DiscreteData_t <https://cgns.org/standard/SIDS/misc.html#discrete-data-structure-definition-discretedata-t>`_
 
   Args:
     name (str): Name of the created discrete data node
@@ -831,7 +831,7 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
   with ``point_range`` or ``point_list``.
 
   Link to corresponding SIDS section:
-  `ZoneSubRegion_t <https://cgns.github.io/CGNS_docs_current/sids/gridflow.html#ZoneSubRegion>`_
+  `ZoneSubRegion_t <https://cgns.org/standard/SIDS/grid.html#zone-subregion-structure-definition-zonesubregion-t>`_
 
   Args:
     name (str): Name of the created zsr node
@@ -886,7 +886,7 @@ def new_UserDefinedData(name:str = 'UserDefined',
   """ Create a UserDefinedData_t node
 
   Link to corresponding SIDS section:
-  `UserDefinedData_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#UserDefinedData>`_
+  `UserDefinedData_t <https://cgns.org/standard/SIDS/misc.html#user-defined-data-structure-definition-userdefineddata-t>`_
 
   Args:
     name (str): Name of the created user-defined data node
@@ -905,7 +905,7 @@ def new_ViscosityModel(value:str='SutherlandLaw',
   """ Create a ViscosityModel_t node
 
   Link to corresponding SIDS section:
-  `UserDefinedData_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#UserDefinedData>`_
+  `ViscosityModel_t <https://cgns.org/standard/SIDS/equation.html#molecular-viscosity-model-structure-definition-viscositymodel-t>`_
 
   Args:
     value (str): String value of the viscosity model node
@@ -925,7 +925,7 @@ def new_Descriptor(name:str='Descriptor',
   """ Create a Descriptor_t node
 
   Link to corresponding SIDS section:
-  `Descriptor_t <https://cgns.github.io/CGNS_docs_current/sids/build.html#Descriptor>`_
+  `Descriptor_t <https://cgns.org/standard/SIDS/block.html#definition-descriptor-t>`_
 
   Args:
     name (str): Name of the created descriptor node
@@ -943,7 +943,7 @@ def new_FlowEquationSet(parent:Optional[CGNSTree]=None):
   """ Create a FlowEquationSet_t node
 
   Link to corresponding SIDS section:
-  `FlowEquationSet_t <https://cgns.github.io/CGNS_docs_current/sids/floweqn.html#FlowEquationSet>`_
+  `FlowEquationSet_t <https://cgns.org/standard/SIDS/equation.html#flow-equation-set-structure-definition-flowequationset-t>`_
 
   Args:
     parent (CGNSTree): Parent node to which the new node should be attached
@@ -960,7 +960,7 @@ def new_GasModel(value:str='Ideal',
   """ Create a GasModel_t node
 
   Link to corresponding SIDS section:
-  `GasModel_t <https://cgns.github.io/CGNS_docs_current/sids/floweqn.html#GasModel>`_
+  `GasModel_t <https://cgns.org/standard/SIDS/equation.html#thermodynamic-gas-model-structure-definition-gasmodel-t>`_
 
   Args:
     value (str): String value of the gas model node
@@ -980,7 +980,7 @@ def new_ReferenceState(name:str = 'ReferenceState',
   """ Create a ReferenceState_t node
 
   Link to corresponding SIDS section:
-  `ReferenceState_t <https://cgns.github.io/CGNS_docs_current/sids/misc.html#ReferenceState>`_
+  `ReferenceState_t <https://cgns.org/standard/SIDS/misc.html#reference-state-structure-definition-referencestate-t>`_
 
   Args:
     name (str): Name of the created reference state node

@@ -73,16 +73,16 @@ def test_nodes_to_centers_S(comm) :
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
     
     zone = PT.get_all_Zone_t(part_tree)[0] 
-    cx = PT.get_node_from_name(zone, 'CoordinateX')[1]
-    cy = PT.get_node_from_name(zone, 'CoordinateY')[1]
-    cz = PT.get_node_from_name(zone, 'CoordinateZ')[1]
+    cx, cy, cz = PT.Zone.coordinates(zone)
+    
     PT.new_FlowSolution('FlowSolution', loc='Vertex', fields={'cX': cx, 'cY': cy, 'cZ': cz}, parent=zone)
     expected = maia.algo.part.geometry._compute_elements_center(zone,3)
 
     ML.nodes_to_centers(part_tree, comm, ["FlowSolution"])
-    sol_cell = PT.get_node_from_name(part_tree, 'FlowSolution#Cell')
+    sol_cell = PT.find_node_from_name(part_tree, 'FlowSolution#Cell')
+    assert PT.get_label(sol_cell) == 'FlowSolution_t'
     for i, dir in enumerate(['X', 'Y', 'Z']):
-      field = PT.get_node_from_name(sol_cell, f'c{dir}')[1]
+      field = PT.get_np_value(PT.find_node_from_name(sol_cell, f'c{dir}'))
       assert field.shape == (3,3,3) and field.dtype == float
       assert np.allclose(field.flatten(order='F'), expected[i::3])
 
@@ -91,14 +91,9 @@ def test_centers_to_node_S(comm) :
     dist_tree = maia.factory.generate_dist_block(3, 'S', comm)
     part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
     
-    zone = PT.get_all_Zone_t(part_tree)[0] 
-    cell_center = maia.algo.part.geometry._compute_elements_center(zone, 3)
-    ccx = cell_center[0::3].reshape(PT.Zone.CellSize(zone), order='F')
-    ccy = cell_center[1::3].reshape(PT.Zone.CellSize(zone), order='F')
-    ccz = cell_center[2::3].reshape(PT.Zone.CellSize(zone), order='F')
-    PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'cX': ccx, 'cY': ccy, 'cZ': ccz}, parent=zone)
+    maia.algo.compute_elements_center(part_tree, 3, comm)
 
-    ML.centers_to_nodes(part_tree, comm, ["FlowSolution"])
+    ML.centers_to_nodes(part_tree, comm, ["Geometry_3d"])
 
     expected_vtx = [[0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5,
                       0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75],
@@ -106,8 +101,9 @@ def test_centers_to_node_S(comm) :
                       0.5, 0.75, 0.75, 0.75, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75],
                     [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5, 0.5,
                       0.5, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75, 0.75]]
-    sol_cell = PT.get_node_from_name(part_tree, 'FlowSolution#Vtx')
+    sol_cell = PT.find_node_from_name(part_tree, 'Geometry_3d#Vtx')
+    assert PT.get_label(sol_cell) == 'DiscreteData_t'
     for i, dir in enumerate(['X', 'Y', 'Z']):
-      field = PT.get_node_from_name(sol_cell, f'c{dir}')[1]
+      field = PT.get_np_value(PT.find_node_from_name(sol_cell, f'Center{dir}'))
       assert field.shape == (3,3,3) and field.dtype == float
       assert np.allclose(field.flatten(order='F'), expected_vtx[i])
