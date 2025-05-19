@@ -23,59 +23,10 @@ def _remove_z(array:NDArray) -> NDArray:
   remove_mask = np.tile([True, True, False], array.size // 3)
   return array[remove_mask]
 
-def enforce_boundary_pe_left_2d(zone:CGNSDistTree, comm:MPIComm) -> None:
-  edge_node = MT.Zone.EdgeNode(zone)
-  if PT.get_child_from_name(edge_node, 'ParentElements') is None:
-    maia.algo.ngon_to_edge_pe(zone, comm)
-  pe_n = PT.find_child_from_name(edge_node, 'ParentElements')
-  pe = PT.get_np_value(pe_n)
-
-  need_swap = pe[:,0] == 0
-  
-  # Early return if all bnd faces have already left parent
-  if not comm.allreduce(need_swap.any(), MPI.LOR):
-    return
-
-  # Swap PE
-  pe[need_swap, 0] = pe[need_swap, 1]
-  pe[need_swap, 1] = 0
-
-  # Swap Edge connectivity
-  edge_vtx = MT.Element.connectivity(edge_node)
-  edge_vtx._inner_flip(need_swap)
-  
-  # NGon node does not depend of edge orientation so we have nothing more to do
-
-def enforce_boundary_pe_left_3d(zone:CGNSDistTree, comm:MPIComm) -> None:
-  ngon_node = PT.Zone.NGonNode(zone)
-  if PT.get_child_from_name(ngon_node, 'ParentElements') is None:
-    maia.algo.nface_to_pe(zone, comm)
-  pe_n = PT.find_child_from_name(ngon_node, 'ParentElements')
-  pe = PT.get_np_value(pe_n)
-
-  need_swap = pe[:,0] == 0
-  
-  # Early return if all bnd faces have already left parent
-  if not comm.allreduce(need_swap.any(), MPI.LOR):
-    return
-
-  # Swap PE
-  pe[need_swap, 0] = pe[need_swap, 1]
-  pe[need_swap, 1] = 0
-
-  # Swap NG connectivity
-  face_vtx = MT.Element.connectivity(ngon_node)
-  face_vtx._inner_flip(need_swap)
-
-  # Change sign in NFace
-  if PT.Zone.has_nface_elements(zone):
-    face_distri   = MT.distribution_value(ngon_node, 'Element')
-    face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm) 
-    nface_node = PT.Zone.NFaceNode(zone)
-    cell_face = PT.get_np_value(PT.find_child_from_name(nface_node, 'ElementConnectivity'))
-    GI = EP.GlobalIndexer(face_distri_f, abs(cell_face)-PT.Element.Range(ngon_node)[0], comm)
-    need_swap_loc = GI.Take(need_swap)
-    np.multiply(cell_face, -1, out=cell_face, where=need_swap_loc)
+def iter_matching_zones(t: CGNSTree, cond: Callable[[CGNSTree], bool]) -> Iterator[CGNSTree]:
+  for z in PT.iter_all_Zone_t(t):
+    if cond(z):
+      yield z
 
 def enforce_boundary_pe_left(tree:CGNSDistTree, comm:MPIComm) -> None:
   """
@@ -84,12 +35,45 @@ def enforce_boundary_pe_left(tree:CGNSDistTree, comm:MPIComm) -> None:
   orientation.
   This function only update polyedric zones
   """
-  for zone in PT.iter_all_Zone_t(tree):
-    if is_poly_3d_zone(zone):
-      enforce_boundary_pe_left_3d(zone, comm)
-    elif is_poly_2d_zone(zone):
-      enforce_boundary_pe_left_2d(zone, comm)
+
+  maia.algo.nface_to_pe(tree, comm)
+  maia.algo.ngon_to_edge_pe(tree, comm)
+
+  is_poly = lambda z: is_poly_3d_zone(z) or is_poly_2d_zone(z)
+
+  for zone in iter_matching_zones(tree, is_poly):
+
+    get_fn = PT.Zone.NGonNode if PT.Zone.CellDimension(zone) == 3 else MT.Zone.EdgeNode
+    bnd_elt_node = get_fn(zone)
     
+    pe_n = PT.find_child_from_name(bnd_elt_node, 'ParentElements')
+    pe = PT.get_np_value(pe_n)
+
+    need_swap = pe[:,0] == 0
+    
+    # Early return if all bnd faces have already left parent
+    if not comm.allreduce(need_swap.any(), MPI.LOR):
+      return
+
+    # Swap PE
+    pe[need_swap, 0] = pe[need_swap, 1]
+    pe[need_swap, 1] = 0
+
+    # Swap face_vtx or edge_vtx connectivity
+    elt_vtx = MT.Element.connectivity(bnd_elt_node)
+    elt_vtx._inner_flip(need_swap)
+
+    # Change sign in NFace (only for 3d zones; for 2d zones, the orientation of edges
+    # does not impact the NGON node so we don't do anything)
+    if PT.Zone.has_nface_elements(zone):
+      face_distri   = MT.distribution_value(bnd_elt_node, 'Element')
+      face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm) 
+      nface_node = PT.Zone.NFaceNode(zone)
+      cell_face = PT.get_np_value(PT.find_child_from_name(nface_node, 'ElementConnectivity'))
+      GI = EP.GlobalIndexer(face_distri_f, abs(cell_face)-PT.Element.Range(bnd_elt_node)[0], comm)
+      need_swap_loc = GI.Take(need_swap)
+      np.multiply(cell_face, -1, out=cell_face, where=need_swap_loc)
+
 
 def fix_normal_orientation(tree:CGNSDistTree, comm:MPIComm) -> None:
   """
@@ -112,12 +96,11 @@ def fix_normal_orientation(tree:CGNSDistTree, comm:MPIComm) -> None:
   maia.algo.edge_pe_to_ngon(tree, comm)
   maia.algo.ngon_to_edge_pe(tree, comm)
 
-  for zone in PT.iter_all_Zone_t(tree):
+  is_poly = lambda z: is_poly_3d_zone(z) or \
+                     (is_poly_2d_zone(z) and PT.Zone.PhysicalDimension(z) == 2)
+  for zone in iter_matching_zones(tree, is_poly):
     cell_dim = PT.Zone.CellDimension(zone)
     phy_dim = PT.Zone.PhysicalDimension(zone)
-
-    if not (is_poly_3d_zone(zone) or (is_poly_2d_zone(zone) and phy_dim == 2)):
-      continue # Skip non relevant zones
     
     # *NB* In all this function we use the words:
     #   ngon = face and nface = cell for 3D meshes
