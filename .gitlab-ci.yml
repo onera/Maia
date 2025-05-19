@@ -232,7 +232,6 @@ init_deploy:
     - rsync -a . sonics@spiro02:/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a . sonics@sator:/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a . sonics@juno1:/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
-    - rsync -a --delete . sonics@spiro02:/stck/sonics/tmp/maia-ci-dev #This one is for LD8
 
 
 deploy_spiro_socle6:
@@ -251,7 +250,7 @@ deploy_spiro_socle6:
                 -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd6 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
                 -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
-                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd6.log
       EOF
   script:
@@ -274,7 +273,7 @@ deploy_sator_socle6:
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/dsi-cfd6 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
-                -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd6.log
       EOF
   script:
@@ -298,18 +297,47 @@ deploy_juno_socle6:
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=/tmp_user/juno/sonics/usr/maia/dev/dsi-cfd6 \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
-                -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j install > dsi-cfd6.log
       EOF
   script:
     - export JOB_BUILD_DIR=/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
     - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_juno6.sh sonics@juno1:${JOB_BUILD_DIR}
+    - rsync build_juno6.sh sonics@juno:${JOB_BUILD_DIR}
     - ssh sonics@juno1 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_juno6.sh"
+
+deploy_eos_openmpi:
+  stage: deploy
+  needs: ["init_deploy"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  before_script:
+    - |
+      cat > build_eos.sh << EOF
+      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+      module load gcc/10.2.0
+      module load hdf5/1.10.5-gnu831-ompi405
+      module load openmpi/4.0.5-gnu831
+      module load python/3.8.14-gnu831
+      module load scotch/6.0.9-idx32-gnu831-ompi405
+      module load parmetis/4.0.3-gnu831-ompi405
+      module load metis/5.1.0-gnu831
+      module load cmake/3.19.8-gnu831
+      export https_proxy=http://proxy.onera:80
+      cmake ../ -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/stck/sonics/LD8/maia/dev/dsi-ompi405 \
+                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+      make -j install > openmpi-eos.log
+      EOF
+  script:
+    - export JOB_BUILD_DIR=/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - echo "Build directory is ${JOB_BUILD_DIR}"
+    - rsync build_eos.sh sonics@juno:${JOB_BUILD_DIR}
+    - ssh sonics@juno4 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_eos.sh"
 
 post_deploy:
   stage: deploy
-  needs: ["deploy_spiro_socle6", "deploy_sator_socle6", "deploy_juno_socle6"]
+  needs: ["deploy_spiro_socle6", "deploy_sator_socle6", "deploy_juno_socle6", "deploy_eos_openmpi"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   before_script: 
