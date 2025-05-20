@@ -153,7 +153,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   return dist_tree
 
 
-def meshb_to_cgns(out_files, tree_info, comm):
+def meshb_to_cgns(out_files, tree_info, comm, fix_orientation_2d=0, fix_orientation_3d=0):
   '''
   Reading a meshb file and conversion to CGNS norm.
 
@@ -168,7 +168,7 @@ def meshb_to_cgns(out_files, tree_info, comm):
   # meshb -> dmesh_nodal -> cgns
   file_name = bytes(out_files["mesh"], 'utf-8') if isinstance(out_files["mesh"], str)\
          else bytes(out_files["mesh"])
-  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, 0, 1)
+  dmesh_nodal = PDM.meshb_to_dmesh_nodal(file_name, comm, fix_orientation_2d, fix_orientation_3d)
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files)
 
   end = time.time()
