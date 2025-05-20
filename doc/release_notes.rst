@@ -26,15 +26,16 @@ Developpement version
 - Allow distributed meshes in interpolation
 - convert_s_to_u: manage 2D input meshes and add standard elements output mode
 - IO functions: automatically create non existing folders in writting functions
+- Create internal edges in isosurface and extract_part functionnalities
 
 🐞 Fixes
 ^^^^^^^^
 - Pytree / YAML loader: allow spaces in nodes name
-- Create internal edges in isosurface and extract_part functionnalities
 - concatenate_subsets_from_families: fix GridLocation value of updated ZoneSubRegion nodes
 - compute_wall_distance: write output (using huge value) even if no BCWall are found in mesh
 - extract_part: return an empty tree instead of raising when requested subset does not exist
 - convert_s_to_u: correct PointList values of CellCenter subsets
+- merge_zones: automatically create NGON/ParentElements if not existing
 
 v1.6 (January 2025)
 -------------------

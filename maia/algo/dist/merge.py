@@ -7,6 +7,8 @@ from maia.pytree.typing import Predicates
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
+import maia
+
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, par_utils, as_pdm_gnum, logging
 
@@ -164,6 +166,9 @@ def merge_zones(dist_tree: CGNSDistTree,
 
     #Remove from input tree at the same time
     PT.rm_node_from_path(dist_tree, zone_path)
+
+  # Create NGON/ParentElements if not existing
+  maia.algo.nface_to_pe(masked_tree, comm, True)
 
   #Merge zones
   merged_zone = _merge_zones(masked_tree, comm, subset_merge)

@@ -227,6 +227,9 @@ def test_merge_zones_I(comm, merge_only_two):
       distri_new, data_new = merge._equilibrate_data(data, comm, distri=distri[1])
       PT.set_value(distri, distri_new)
       PT.set_value(pl, data_new['PointList'].reshape((1,-1), order='F'))
+
+  # Test case w/o ParentElements, but with NFace connectivity
+  maia.algo.pe_to_nface(tree, comm, True)
       
   #Setup connections
   jn_cur = [['Xmax'], ['Xmin', 'Xmax'], ['Xmin']] #To copy to create jn
@@ -461,6 +464,7 @@ def test_input_overflow(comm):
     ZoneType ZoneType_t "Unstructured":
     NGON Elements_t [22, 0]:
       ElementRange IndexRange_t I4 [1, 800000000]: # Fake value to overflow
+      ParentElements DataArray_t: # Fake value to skip PE creation
     NFace Elements_t [23, 0]:
       ElementRange IndexRange_t I4 [800000001, 1200000000]: # Fake value to overflow
   Zone2 Zone_t [[1, 500000000, 0]]:
@@ -468,6 +472,7 @@ def test_input_overflow(comm):
     ZoneType ZoneType_t "Unstructured":
     NGON Elements_t [22, 0]:
       ElementRange IndexRange_t I4 [1, 900000000]: # Fake value to overflow
+      ParentElements DataArray_t: # Fake value to skip PE creation
     NFace Elements_t [23, 0]:
       ElementRange IndexRange_t I4 [900000001, 1400000000]: # Fake value to overflow
   """)
