@@ -63,7 +63,7 @@ def test_concatenate_subset_nodes(default_bcds, comm):
 
 @pytest_parallel.mark.parallel([1])
 @pytest.mark.parametrize("mode", ['', 'intrazone', 'periodic', 'intraperio'])
-def test_concatenate_jns(comm, mode):
+def test_concatenate_jns_1to1(comm, mode):
   yt = """
   ZoneA Zone_t [[11, 10, 0]]:
     ZoneType ZoneType_t "Unstructured":
@@ -117,6 +117,9 @@ def test_concatenate_jns(comm, mode):
   opp_names = [PT.get_value(PT.get_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs]
   assert len(gcs) == 2
   assert opp_names == [gc[0] for gc in gcs[::-1]]
+  
+  len_names = np.array([len(name) for name in opp_names])
+  assert np.all(len_names < 33)
 
   if mode=='intrazone':
     assert all(['.I' in gc[0] for gc in gcs])
@@ -125,7 +128,7 @@ def test_concatenate_jns(comm, mode):
     assert len(PT.get_nodes_from_label(dist_tree, 'GridConnectivityProperty_t')) == 2
 
 @pytest_parallel.mark.parallel([1])
-def test_concatenate_jns_naming(comm):
+def test_concatenate_jns_all_types(comm):
   yt = """
   ZoneA Zone_t [[101, 100, 0]]:
     ZoneType ZoneType_t "Unstructured":
@@ -165,7 +168,6 @@ def test_concatenate_jns_naming(comm):
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[5, 6, 7, 8]]:
         PointListDonor IndexArray_t [[1, 2, 3, 4]]:
-    ZGC2 ZoneGridConnectivity_t:
       perio7 GridConnectivity_t "ZoneB":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
@@ -206,7 +208,7 @@ def test_concatenate_jns_naming(comm):
             RotationAngle DataArray_t R4 [-10., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-    ZGC3 ZoneGridConnectivity_t:
+    ZGC2 ZoneGridConnectivity_t:
       intraperio11 GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "Vertex":
@@ -286,66 +288,87 @@ def test_concatenate_jns_naming(comm):
         GridConnectivityType GridConnectivityType_t "Abutting":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[223]]:
-  """
-  yt = """
-  ZoneA Zone_t [[101, 100, 0]]:
+      nomatch4 GridConnectivity_t "ZoneD":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[224, 225]]:
+      nomatch5 GridConnectivity_t "ZoneD":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[226]]:
+  ZoneD Zone_t [[101, 100, 0]]:
     ZoneType ZoneType_t "Unstructured":
     ZGC1 ZoneGridConnectivity_t:
-      intra1 GridConnectivity_t "ZoneA":
+      intra1 GridConnectivity_t "ZoneD":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[1, 2, 3, 4]]:
         PointListDonor IndexArray_t [[5, 6, 7, 8]]:
-      nomatch2 GridConnectivity_t "ZoneA":
+      nomatch2 GridConnectivity_t "ZoneD":
         GridConnectivityType GridConnectivityType_t "Abutting":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[21, 22]]:
-      nomatch3 GridConnectivity_t "ZoneA":
+      nomatch3 GridConnectivity_t "ZoneD":
         GridConnectivityType GridConnectivityType_t "Abutting":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[23]]:
-      intra4 GridConnectivity_t "ZoneA":
+      intra4 GridConnectivity_t "ZoneD":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[5, 6, 7, 8]]:
         PointListDonor IndexArray_t [[1, 2, 3, 4]]:
-      overset5 GridConnectivity_t "ZoneA":
+      overset5 GridConnectivity_t "ZoneD":
         GridLocation GridLocation_t "CellCenter":
         GridConnectivityType GridConnectivityType_t "Overset":
         PointList IndexArray_t [[11, 12]]:
-      OversetHole0 GridConnectivity_t "ZoneA":
+      OversetHole0 GridConnectivity_t "ZoneD":
         GridLocation GridLocation_t "CellCenter":
         GridConnectivityType GridConnectivityType_t "Overset":
         PointList IndexArray_t [[13, 14]]:
-      userdefined6 GridConnectivity_t "ZoneA":
+      userdefined6 GridConnectivity_t "ZoneD":
         GridConnectivityType GridConnectivityType_t "UserDefined":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[31, 32]]:
-      null7 GridConnectivity_t "ZoneA":
+      null7 GridConnectivity_t "ZoneD":
         GridConnectivityType GridConnectivityType_t "Null":
         GridLocation GridLocation_t "Vertex":
         PointList IndexArray_t [[41, 42]]:
+      nomatch8 GridConnectivity_t "ZoneC":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[24, 25, 26, 27]]:
+      nomatch9 GridConnectivity_t "ZoneD":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[28]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [0., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., -1.]:
+      nomatch10 GridConnectivity_t "ZoneD":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[29]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [0., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 1.]:
   """
   tree = PT.yaml.to_cgns_tree(yt)
   dist_tree = F2D.full_to_dist_tree(tree, comm)
   zones = PT.get_all_Zone_t(dist_tree)
 
-  GN.concatenate_jns2(dist_tree, comm)
-  # PT.print_tree(dist_tree)
-  # exit()
+  GN.concatenate_jns(dist_tree, comm)
 
-  # gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
-  # opp_names = [PT.get_value(PT.get_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs]
+  gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
+  gcs_1to1 = [gc for gc in gcs if PT.GridConnectivity.is1to1(gc)]
+  opp_names_1to1 = [PT.get_value(PT.get_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs_1to1]
   
-  # assert len(gcs) == 6
-  # assert sorted(opp_names) == sorted([gc[0] for gc in gcs[::-1]])
+  assert sorted(opp_names_1to1) == sorted([gc[0] for gc in gcs_1to1[::-1]])
   
-  # mergedgcs = PT.get_nodes_from_predicates(dist_tree, [lambda n: PT.get_label(n) == 'GridConnectivity_t' 
-  #                                                                and PT.get_name(n).startswith('mergedGC')])
-  # assert len(mergedgcs) == 6
-  # mergedgc_names     = sorted([PT.get_name(mgc).split(".")[0] for mgc in mergedgcs])
-  # ref_mergedgc_names = ['mergedGC0']*2 + [f'mergedGC{i}' for i in range(2223, 2227)]
-  # assert mergedgc_names == ref_mergedgc_names
+  len_names = np.array([len(gc[0]) for gc in gcs])
 
 
 @pytest.mark.parametrize("specified", [True, False])
