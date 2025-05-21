@@ -16,20 +16,14 @@ def test_enforce_boundary_pe_left_2d(comm):
 
   # Edge element are first in tree
   pe = PT.get_np_value(PT.find_node_from_name(tree, 'ParentElements'))
-  ec = PT.get_np_value(PT.find_node_from_name(tree, 'ElementConnectivity'))
 
   # Switch some bnd edges
   pe[0,:] = pe[0,::-1]
   pe[-1,:] = pe[-1,::-1]
 
-  ec[0:2] = ec[0:2][::-1]
-  ec[-2:] = ec[-2:][::-1]
-
   FO.enforce_boundary_pe_left(tree, comm)
 
   assert (pe[[0,-1],:] == np.array([[25,0], [33,0]])).all()
-  assert (ec[0:2] == [1,2]).all()
-  assert (ec[-2:] == [16,15]).all()
 
   # Test early return
   tree_bck = PT.deep_copy(tree)
@@ -69,16 +63,12 @@ def test_enforce_boundary_pe_left(with_nface, comm):
   
   if comm.rank == 0:
     assert (pe[0:2, :] == np.array([[241, 0], [242,0]])).all()
-    assert (face_vtx[0] == [2,7,6,1]).all()
-    assert (face_vtx[1] == [3,8,7,2]).all()
     if with_nface:
       assert (cell_face[0] == [-177,-97,-17,1,81,161]).all()
       assert (cell_face[1] == [-181,-113,-18,2,97,165]).all()
 
   if comm.rank == 1:
     assert (pe[-2:, :] == np.array([[288, 0], [304,0]])).all()
-    assert (face_vtx[-1] == [99,100,125,124]).all()
-    assert (face_vtx[-2] == [74,75,100,99]).all()
     if with_nface:
       assert (cell_face[15] == [239,-64,48,140,156,223]).all()
       assert (cell_face[31] == [240,64,80,144,160,224]).all()

@@ -31,8 +31,9 @@ def iter_matching_zones(t: CGNSTree, cond: Callable[[CGNSTree], bool]) -> Iterat
 def enforce_boundary_pe_left(tree:CGNSDistTree, comm:MPIComm) -> None:
   """
   Force the boundary ngon to have a non zero left parent cell.
-  In such case, connectivities (FaceVtx & NFace, if existing) are reversed to preserve face
-  orientation.
+  After this operation, the normal of the face may be badly oriented:
+  use fix_normal_orientation to correct that.
+
   This function only update polyedric zones
   """
 
@@ -58,10 +59,6 @@ def enforce_boundary_pe_left(tree:CGNSDistTree, comm:MPIComm) -> None:
     # Swap PE
     pe[need_swap, 0] = pe[need_swap, 1]
     pe[need_swap, 1] = 0
-
-    # Swap face_vtx or edge_vtx connectivity
-    elt_vtx = MT.Element.connectivity(bnd_elt_node)
-    elt_vtx._inner_flip(need_swap)
 
     # Change sign in NFace (only for 3d zones; for 2d zones, the orientation of edges
     # does not impact the NGON node so we don't do anything)
