@@ -153,7 +153,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   return dist_tree
 
 
-def meshb_to_cgns(out_files, tree_info, comm, fix_orientation_2d=0, fix_orientation_3d=1):
+def meshb_to_cgns(out_files, tree_info, comm, fix_orientation_2d=False, fix_orientation_3d=True):
   '''
   Reading a meshb file and conversion to CGNS norm.
 
