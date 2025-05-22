@@ -19,7 +19,7 @@ def dist_set_difference(ids, others, comm):
   ln_to_gn = [ids] + others
   
   distri = par_utils.distribution_from_gnum(ln_to_gn, comm, full=True)
-  GI = EP.GlobalMultiIndexer(distri, [g-1 for g in ln_to_gn], comm)
+  GI = EP.GlobalIndexer(distri, [g-1 for g in ln_to_gn], comm)
 
   part_data   = [np.ones(ids.size, dtype=bool)] + [np.zeros(other.size, dtype=bool) for other in others]
 
@@ -163,9 +163,8 @@ def is_unique_strided_serialized(array, stride, comm):
   unique_gnum, idx, count = np.unique(gnum, return_index=True, return_counts=True)
   max_gnum = comm.allreduce(np.max(unique_gnum), op=MPI.MAX)
   distri = par_utils.uniform_distribution(max_gnum, comm)
-  distri_f = par_utils.partial_to_full_distribution(distri, comm)
 
-  GI = EP.GlobalIndexer(distri_f, unique_gnum-1, comm)
+  GI = EP.GlobalIndexer(distri, unique_gnum-1, comm)
   dist_data = GI.Put(count, reduce=EP.ReduceOp.SUM)
   
   is_unique = np.zeros(distri[1]-distri[0], dtype=bool)

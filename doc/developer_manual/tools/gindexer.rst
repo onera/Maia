@@ -338,15 +338,15 @@ of 5 because 3 values has been written by P0, then 2 values by P2.
 API reference
 -------------
 
-.. autoclass:: maia.transfer.protocols.GlobalIndexer
+.. autoclass:: maia.transfer.protocols._protocols.GlobalIndexer
     :members:
     :member-order: bysource
 
-.. autoclass:: maia.transfer.protocols.GlobalMultiIndexer
+.. autoclass:: maia.transfer.protocols._protocols.GlobalMultiIndexer
     :members:
     :member-order: bysource
 
 .. _reduceop:
 
-.. autodata:: maia.transfer.protocols.ReduceOp
+.. autodata:: maia.transfer.protocols._protocols.ReduceOp
   :annotation: : Enum class

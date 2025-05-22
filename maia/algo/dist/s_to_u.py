@@ -7,9 +7,8 @@ from maia.typing import *
 
 from maia                 import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
-from maia.utils           import logging as mlog
 from maia.utils.numbering import range_to_slab          as HFR2S
-from maia.transfer.protocols import GlobalMultiIndexer
+from maia.transfer        import protocols as EP
 
 from .matching_jns_tools import gc_is_reference, add_joins_donor_name, copy_donor_subset
 from .connectivity_utils import cell_vtx_connectivity_S
@@ -348,7 +347,7 @@ def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
 
   # Distribution of all lowerdim elts (including non referenced)
   all_bnd_elt_distri_f = par_utils.distribution_from_gnum(ini_pl, comm, True, True)
-  GI = GlobalMultiIndexer(all_bnd_elt_distri_f, [t-1 for t in ini_pl], comm)
+  GI = EP.GlobalIndexer(all_bnd_elt_distri_f, [t-1 for t in ini_pl], comm)
   ref_bnd_elt_mask = GI.access_counts > 0
   # Distribution of referenced lowerdim elts only
   ref_bnd_elt_distri = par_utils.dn_to_distribution(ref_bnd_elt_mask.sum(), comm)

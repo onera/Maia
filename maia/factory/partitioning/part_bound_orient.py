@@ -86,7 +86,7 @@ def preserve_orientation(part_zones, comm):
     
   # Gather data to identify faces having two times right parent == 0
   distri = par_utils.distribution_from_gnum(gnum_list, comm, full=True)
-  GI = EP.GlobalMultiIndexer(distri, [g-1 for g in gnum_list], comm)
+  GI = EP.GlobalIndexer(distri, [g-1 for g in gnum_list], comm)
   mask = GI.access_counts >= 2 # <-- these ones
 
   # In addition, exchange partition id and reduce with min to choose a master

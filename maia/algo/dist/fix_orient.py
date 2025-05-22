@@ -64,10 +64,9 @@ def enforce_boundary_pe_left(tree:CGNSDistTree, comm:MPIComm) -> None:
     # does not impact the NGON node so we don't do anything)
     if PT.Zone.has_nface_elements(zone):
       face_distri   = MT.distribution_value(bnd_elt_node, 'Element')
-      face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm) 
       nface_node = PT.Zone.NFaceNode(zone)
       cell_face = PT.get_np_value(PT.find_child_from_name(nface_node, 'ElementConnectivity'))
-      GI = EP.GlobalIndexer(face_distri_f, abs(cell_face)-PT.Element.Range(bnd_elt_node)[0], comm)
+      GI = EP.GlobalIndexer(face_distri, abs(cell_face)-PT.Element.Range(bnd_elt_node)[0], comm)
       need_swap_loc = GI.Take(need_swap)
       np.multiply(cell_face, -1, out=cell_face, where=need_swap_loc)
 
@@ -129,8 +128,7 @@ def fix_normal_orientation(tree:CGNSDistTree, comm:MPIComm) -> None:
 
     # For each internal face (resp. edge), get the center of the left and right cell (resp. face)
     cell_distri   = MT.distribution_value(zone, 'Cell')
-    cell_distri_f = par_utils.partial_to_full_distribution(cell_distri, comm)
-    parents_center = EP.GlobalIndexer(cell_distri_f,
+    parents_center = EP.GlobalIndexer(cell_distri,
                                       np.ravel(pe[boundary_flag]) - PT.Element.Range(nface_node)[0],
                                       comm).Take(cell_center, count=phy_dim)
 
@@ -158,7 +156,7 @@ def fix_normal_orientation(tree:CGNSDistTree, comm:MPIComm) -> None:
       external_faces_center = _remove_z(external_faces_center)
 
     # Get the center of left cell only
-    parent_center = EP.GlobalIndexer(cell_distri_f,
+    parent_center = EP.GlobalIndexer(cell_distri,
                                      pe[boundary_flag, 0] - PT.Element.Range(nface_node)[0],
                                      comm).Take(cell_center, count=phy_dim)
     # Compute Face - Left cell vector for each face

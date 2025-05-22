@@ -251,9 +251,8 @@ def _merge_ngons(zone, comm):
   new_er = np.array([1, n_faces], zone[1].dtype)
   # > Define new Element distribution
   new_distrib_elem = par_utils.uniform_distribution(n_faces,  comm)
-  new_distrib_elem_f = par_utils.partial_to_full_distribution(new_distrib_elem, comm)
   # > Exchange to define new ElementStartOffset, ElementConnectivity and ParentElements
-  GI = EP.GlobalMultiIndexer(new_distrib_elem_f, ln_to_gn_elem_l, comm)
+  GI = EP.GlobalIndexer(new_distrib_elem, ln_to_gn_elem_l, comm)
   new_diff_eso, new_ec = GI.Put_v(part_ec)
   dn = new_distrib_elem[1] - new_distrib_elem[0]
   new_pe = np.empty((dn, 2), order='F', dtype=zone[1].dtype)
