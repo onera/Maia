@@ -287,7 +287,10 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
               suffix = ""
           else:
             index = list(nomatch_jns_to_merge[location].keys()).index(donor_path)
-            suffix = find_suffix(perio_node, match_perio_refs, location)
+            if PT.GridConnectivity.isperiodic(first_jn):
+              suffix = find_suffix(perio_node, match_perio_refs, location)
+            else:
+              suffix = ""
           
           merged_name = f'{prefix}{index}{loc_suffix[location]}{suffix}'
           additional_child_queries = ['GridConnectivityType_t', 'GridConnectivityProperty_t', 'Descriptor_t']

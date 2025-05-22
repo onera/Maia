@@ -132,18 +132,28 @@ def test_concatenate_jns_all_types(comm):
   yt = """
   ZoneA Zone_t [[101, 100, 0]]:
     ZoneType ZoneType_t "Unstructured":
-    ZGC1 ZoneGridConnectivity_t:
-      intra1 GridConnectivity_t "ZoneA":
+    ZGC ZoneGridConnectivity_t:
+      intra1a GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[1, 2, 3, 4]]:
         PointListDonor IndexArray_t [[5, 6, 7, 8]]:
-      match2 GridConnectivity_t "ZoneB":
+      intra1b GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[9]]:
-        PointListDonor IndexArray_t [[109]]:
-      intraperio3 GridConnectivity_t "ZoneA":
+        PointList IndexArray_t [[5, 6, 7, 8]]:
+        PointListDonor IndexArray_t [[1, 2, 3, 4]]:
+      intra2a GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[17]]:
+        PointListDonor IndexArray_t [[16]]:
+      intra2b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[16]]:
+        PointListDonor IndexArray_t [[17]]:
+      intraperio1a GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[10, 11, 12]]:
@@ -153,52 +163,7 @@ def test_concatenate_jns_all_types(comm):
             RotationAngle DataArray_t R4 [10., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-      intra4 GridConnectivity_t "ZoneA":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[17]]:
-        PointListDonor IndexArray_t [[16]]:
-      intra5 GridConnectivity_t "ZoneA":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[16]]:
-        PointListDonor IndexArray_t [[17]]:
-      intra6 GridConnectivity_t "ZoneA":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[5, 6, 7, 8]]:
-        PointListDonor IndexArray_t [[1, 2, 3, 4]]:
-      perio7 GridConnectivity_t "ZoneB":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[18]]:
-        PointListDonor IndexArray_t [[118]]:
-        GridConnectivityProperty GridConnectivityProperty_t:
-          Periodic Periodic_t:
-            RotationAngle DataArray_t R4 [10., 0., 0.]:
-            RotationCenter DataArray_t R4 [0., 0., 0.]:
-            Translation DataArray_t R4 [0., 0., 0.]:
-      perio8 GridConnectivity_t "ZoneB":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[19]]:
-        PointListDonor IndexArray_t [[119]]:
-        GridConnectivityProperty GridConnectivityProperty_t:
-          Periodic Periodic_t:
-            RotationAngle DataArray_t R4 [20., 0., 0.]:
-            RotationCenter DataArray_t R4 [0., 0., 0.]:
-            Translation DataArray_t R4 [0., 0., 0.]:
-      perio9 GridConnectivity_t "ZoneC":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[20]]:
-        PointListDonor IndexArray_t [[220]]:
-        GridConnectivityProperty GridConnectivityProperty_t:
-          Periodic Periodic_t:
-            RotationAngle DataArray_t R4 [20., 0., 0.]:
-            RotationCenter DataArray_t R4 [0., 0., 0.]:
-            Translation DataArray_t R4 [0., 0., 0.]:
-      intraperio10 GridConnectivity_t "ZoneA":
+      intraperio1b GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[13, 14, 15]]:
@@ -208,8 +173,7 @@ def test_concatenate_jns_all_types(comm):
             RotationAngle DataArray_t R4 [-10., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-    ZGC2 ZoneGridConnectivity_t:
-      intraperio11 GridConnectivity_t "ZoneA":
+      intraperio2a GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "Vertex":
         PointList IndexArray_t [[21, 22, 23, 24]]:
@@ -219,7 +183,7 @@ def test_concatenate_jns_all_types(comm):
             RotationAngle DataArray_t R4 [-10., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-      intraperio12 GridConnectivity_t "ZoneA":
+      intraperio2b GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "Vertex":
         PointList IndexArray_t [[25, 26, 27, 28]]:
@@ -229,20 +193,60 @@ def test_concatenate_jns_all_types(comm):
             RotationAngle DataArray_t R4 [10., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-  ZoneB Zone_t [[201, 200, 0]]:
-    ZoneType ZoneType_t "Unstructured":
-    ZGC ZoneGridConnectivity_t:
-      intra1 GridConnectivity_t "ZoneB":
+      match1a GridConnectivity_t "ZoneB":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[103, 104]]:
-        PointListDonor IndexArray_t [[101, 102]]:
-      match2 GridConnectivity_t "ZoneA":
+        PointList IndexArray_t [[9]]:
+        PointListDonor IndexArray_t [[109]]:
+      perio1a GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[18]]:
+        PointListDonor IndexArray_t [[118]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio2a GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[19]]:
+        PointListDonor IndexArray_t [[119]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio2b GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[20]]:
+        PointListDonor IndexArray_t [[120]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio3a GridConnectivity_t "ZoneC":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[21]]:
+        PointListDonor IndexArray_t [[221]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+  ZoneB Zone_t [[201, 200, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGCA ZoneGridConnectivity_t:
+      match1b GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[109]]:
         PointListDonor IndexArray_t [[9]]:
-      perio3 GridConnectivity_t "ZoneA":
+      perio1b GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[118]]:
@@ -252,7 +256,7 @@ def test_concatenate_jns_all_types(comm):
             RotationAngle DataArray_t R4 [-10., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-      perio4 GridConnectivity_t "ZoneA":
+      perio2a GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[119]]:
@@ -262,82 +266,67 @@ def test_concatenate_jns_all_types(comm):
             RotationAngle DataArray_t R4 [-20., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-      intra5 GridConnectivity_t "ZoneB":
+      perio2b GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
         GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[101, 102]]:
-        PointListDonor IndexArray_t [[103, 104]]:
-  ZoneC Zone_t [[301, 300, 0]]:
-    ZoneType ZoneType_t "Unstructured":
-    ZGC ZoneGridConnectivity_t:
-      perio1 GridConnectivity_t "ZoneA":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[220]]:
+        PointList IndexArray_t [[120]]:
         PointListDonor IndexArray_t [[20]]:
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationAngle DataArray_t R4 [-20., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., 0.]:
-      nomatch2 GridConnectivity_t "ZoneC":
-        GridConnectivityType GridConnectivityType_t "Abutting":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[221, 222]]:
-      nomatch3 GridConnectivity_t "ZoneC":
-        GridConnectivityType GridConnectivityType_t "Abutting":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[223]]:
-      nomatch4 GridConnectivity_t "ZoneD":
-        GridConnectivityType GridConnectivityType_t "Abutting":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[224, 225]]:
-      nomatch5 GridConnectivity_t "ZoneD":
-        GridConnectivityType GridConnectivityType_t "Abutting":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[226]]:
-  ZoneD Zone_t [[101, 100, 0]]:
-    ZoneType ZoneType_t "Unstructured":
-    ZGC1 ZoneGridConnectivity_t:
-      intra1 GridConnectivity_t "ZoneD":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[1, 2, 3, 4]]:
-        PointListDonor IndexArray_t [[5, 6, 7, 8]]:
-      nomatch2 GridConnectivity_t "ZoneD":
-        GridConnectivityType GridConnectivityType_t "Abutting":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[21, 22]]:
-      nomatch3 GridConnectivity_t "ZoneD":
-        GridConnectivityType GridConnectivityType_t "Abutting":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[23]]:
-      intra4 GridConnectivity_t "ZoneD":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridLocation GridLocation_t "FaceCenter":
-        PointList IndexArray_t [[5, 6, 7, 8]]:
-        PointListDonor IndexArray_t [[1, 2, 3, 4]]:
-      overset5 GridConnectivity_t "ZoneD":
+    ZGCB ZoneGridConnectivity_t:
+      overset5 GridConnectivity_t "ZoneA":
         GridLocation GridLocation_t "CellCenter":
         GridConnectivityType GridConnectivityType_t "Overset":
         PointList IndexArray_t [[11, 12]]:
-      OversetHole0 GridConnectivity_t "ZoneD":
+      OversetHole0 GridConnectivity_t "ZoneA":
         GridLocation GridLocation_t "CellCenter":
         GridConnectivityType GridConnectivityType_t "Overset":
         PointList IndexArray_t [[13, 14]]:
-      userdefined6 GridConnectivity_t "ZoneD":
+      userdefined6 GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "UserDefined":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[31, 32]]:
-      null7 GridConnectivity_t "ZoneD":
+      null7 GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Null":
         GridLocation GridLocation_t "Vertex":
         PointList IndexArray_t [[41, 42]]:
-      nomatch8 GridConnectivity_t "ZoneC":
+      nomatch1a GridConnectivity_t "ZoneC":
         GridConnectivityType GridConnectivityType_t "Abutting":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[24, 25, 26, 27]]:
-      nomatch9 GridConnectivity_t "ZoneD":
+  ZoneC Zone_t [[301, 300, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      perio3b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[221]]:
+        PointListDonor IndexArray_t [[21]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intranomatch1a GridConnectivity_t "ZoneC":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[221, 222]]:
+      intranomatch1b GridConnectivity_t "ZoneC":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[223]]:
+      nomatch1a GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[224, 225]]:
+      nomatch1b GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[226]]:
+      intraperionomatch1a GridConnectivity_t "ZoneC":
         GridConnectivityType GridConnectivityType_t "Abutting":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[28]]:
@@ -346,7 +335,7 @@ def test_concatenate_jns_all_types(comm):
             RotationAngle DataArray_t R4 [0., 0., 0.]:
             RotationCenter DataArray_t R4 [0., 0., 0.]:
             Translation DataArray_t R4 [0., 0., -1.]:
-      nomatch10 GridConnectivity_t "ZoneD":
+      intraperiononomatch1b GridConnectivity_t "ZoneC":
         GridConnectivityType GridConnectivityType_t "Abutting":
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t [[29]]:
@@ -358,7 +347,6 @@ def test_concatenate_jns_all_types(comm):
   """
   tree = PT.yaml.to_cgns_tree(yt)
   dist_tree = F2D.full_to_dist_tree(tree, comm)
-  zones = PT.get_all_Zone_t(dist_tree)
 
   GN.concatenate_jns(dist_tree, comm)
 
@@ -369,6 +357,258 @@ def test_concatenate_jns_all_types(comm):
   assert sorted(opp_names_1to1) == sorted([gc[0] for gc in gcs_1to1[::-1]])
   
   len_names = np.array([len(gc[0]) for gc in gcs])
+
+@pytest_parallel.mark.parallel([1])
+def test_concatenate_jns_all_types_names(comm):
+  yt = """
+  ZoneWithVeryVeryVeryLongName Zone_t [[101, 100, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      intra1a GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1, 2, 3, 4]]:
+        PointListDonor IndexArray_t [[5, 6, 7, 8]]:
+      intra1b GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[5, 6, 7, 8]]:
+        PointListDonor IndexArray_t [[1, 2, 3, 4]]:
+      overset5 GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridLocation GridLocation_t "CellCenter":
+        GridConnectivityType GridConnectivityType_t "Overset":
+        PointList IndexArray_t [[11, 12]]:
+      Overset0 GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridLocation GridLocation_t "CellCenter":
+        GridConnectivityType GridConnectivityType_t "Overset":
+        PointList IndexArray_t [[13, 14]]:
+      userdefined6 GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridConnectivityType GridConnectivityType_t "UserDefined":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[31, 32]]:
+      null7 GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridConnectivityType GridConnectivityType_t "Null":
+        GridLocation GridLocation_t "Vertex":
+        PointList IndexArray_t [[41, 42]]:
+      intranomatch1a GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[24, 25, 26]]:
+      intranomatch1b GridConnectivity_t "ZoneWithVeryVeryVeryLongName":
+        GridConnectivityType GridConnectivityType_t "Abutting":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[27]]:
+  """
+  tree = PT.yaml.to_cgns_tree(yt)
+  dist_tree = F2D.full_to_dist_tree(tree, comm)
+
+  GN.concatenate_jns(dist_tree, comm)
+
+  gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
+  
+  len_names = np.array([len(gc[0]) for gc in gcs])
+  assert np.all(len_names < 33)
+  
+  oversets = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Overset"]
+  assert len(oversets) == 2
+  assert np.all(np.array([PT.get_name(overset).startswith('Overset') for overset in oversets]))
+  
+  userdefineds = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="UserDefined"]
+  assert len(userdefineds) == 1
+  assert np.all(np.array([PT.get_name(userdefined).startswith('UserDefined') for userdefined in userdefineds]))
+  
+  nulls  = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Null"]
+  assert len(nulls) == 1
+  assert np.all(np.array([PT.get_name(null).startswith('Null') for null in nulls]))
+  
+  matchs = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Abutting1to1"]
+  assert len(oversets) == 2
+  assert np.all(np.array(['GCMatch' in PT.get_name(match) for match in matchs]))
+  
+  nomatchs = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Abutting"]
+  assert len(oversets) == 2
+  assert np.all(np.array(['GCNoMatch' in PT.get_name(nomatch) for nomatch in nomatchs]))
+  
+  loc_suffix = {'Vertex' : 'Vtx', 'FaceCenter' : 'Face', 'CellCenter' : 'Cell'} # To call from concat_nodes.py ?
+  assert np.all([PT.get_name(gc).split("@")[-1].startswith(loc_suffix[PT.Subset.GridLocation(gc)]) for gc in gcs])
+
+@pytest_parallel.mark.parallel([1])
+@pytest.mark.parametrize("type", ["Abutting1to1", "Abutting"])
+@pytest.mark.parametrize("perio", [True, False])
+def test_concatenate_jns_all_abutting(comm, type, perio):
+  yt = """
+  ZoneA Zone_t [[101, 100, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      intraperio1a GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1, 2, 3]]:
+        PointListDonor IndexArray_t [[4, 5, 6]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio1b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[4, 5, 6]]:
+        PointListDonor IndexArray_t [[1, 2, 3]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio2a GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[10, 11, 12]]:
+        PointListDonor IndexArray_t [[13, 14, 15]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio2b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[13, 14, 15]]:
+        PointListDonor IndexArray_t [[10, 11, 12]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio3a GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "Vertex":
+        PointList IndexArray_t [[21, 22, 23, 24]]:
+        PointListDonor IndexArray_t [[25, 26, 27, 28]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio3b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "Vertex":
+        PointList IndexArray_t [[25, 26, 27, 28]]:
+        PointListDonor IndexArray_t [[21, 22, 23, 24]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio1a GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[18]]:
+        PointListDonor IndexArray_t [[118]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio2a GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[19]]:
+        PointListDonor IndexArray_t [[119]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio2b GridConnectivity_t "ZoneB":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[20]]:
+        PointListDonor IndexArray_t [[120]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio3a GridConnectivity_t "ZoneC":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[21]]:
+        PointListDonor IndexArray_t [[221]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+  ZoneB Zone_t [[201, 200, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      perio1b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[118]]:
+        PointListDonor IndexArray_t [[18]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio2a GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[119]]:
+        PointListDonor IndexArray_t [[19]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      perio2b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[120]]:
+        PointListDonor IndexArray_t [[20]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+  ZoneC Zone_t [[301, 300, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      perio3b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[221]]:
+        PointListDonor IndexArray_t [[21]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [-20., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+  """
+  tree = PT.yaml.to_cgns_tree(yt)
+  dist_tree = F2D.full_to_dist_tree(tree, comm)
+  for gc in PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t'):
+    if type =="Abutting":
+      PT.update_child(gc, "GridConnectivityType", value=type)
+      PT.rm_node_from_path(gc, "PointListDonor")
+    if not perio:
+      PT.rm_node_from_path(gc, "GridConnectivityProperty")
+
+  GN.concatenate_jns(dist_tree, comm)
+  
+  gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
+  
+  len_gcs = 10
+  if type == "Abutting1to1":
+    gc_partial_name = 'GCMatch'
+    if perio: len_gcs = 8
+  else:
+    gc_partial_name = 'GCNoMatch'
+    if not perio: len_gcs = 14 
+
+  assert np.all(np.array([gc_partial_name in PT.get_name(gc) for gc in gcs]))
 
 
 @pytest.mark.parametrize("specified", [True, False])
