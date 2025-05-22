@@ -343,8 +343,8 @@ class VStrideArray:
 
   def _inner_sort(self):
     _vstride.sort_by_stride(self.displs, self.values)
-  def _inner_flip(self):
-    _vstride.flip_by_stride(self.displs, self.values)
+  def _inner_flip(self, mask=None):
+    _vstride.flip_by_stride(self.displs, self.values, mask)
 
   # Methods
 
