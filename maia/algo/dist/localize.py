@@ -97,7 +97,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
     pface_edge     = np.sign(pface_edge.values, dtype=np.int32) * np.arange(1, len(edge_gnum)+1, dtype=np.int32)[inverse]
 
     # Compute part. like edge_vtx
-    GI = EP.GlobalIndexer(_edge_distri, edge_gnum-1, comm)
+    GI = EP.GlobalIndexer(_edge_distri, edge_gnum, comm, gnum_offset=1)
     pedge_vtx = GI.Take(dedge_vtx, count=2)
     vtx_gnum, inverse = np.unique(pedge_vtx, return_inverse=True) # Unique preserve dtype
     vtx_gnum = vtx_gnum.astype(cell_gnum.dtype, copy=False)

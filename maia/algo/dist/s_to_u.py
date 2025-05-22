@@ -347,7 +347,7 @@ def add_lowerdim_std_elements(zone, n_vtx, cell_dim, comm):
 
   # Distribution of all lowerdim elts (including non referenced)
   all_bnd_elt_distri_f = par_utils.distribution_from_gnum(ini_pl, comm, True, True)
-  GI = EP.GlobalIndexer(all_bnd_elt_distri_f, [t-1 for t in ini_pl], comm)
+  GI = EP.GlobalIndexer(all_bnd_elt_distri_f, ini_pl, comm, gnum_offset=1)
   ref_bnd_elt_mask = GI.access_counts > 0
   # Distribution of referenced lowerdim elts only
   ref_bnd_elt_distri = par_utils.dn_to_distribution(ref_bnd_elt_mask.sum(), comm)

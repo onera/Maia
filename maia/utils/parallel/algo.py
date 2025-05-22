@@ -19,7 +19,7 @@ def dist_set_difference(ids, others, comm):
   ln_to_gn = [ids] + others
   
   distri = par_utils.distribution_from_gnum(ln_to_gn, comm, full=True)
-  GI = EP.GlobalIndexer(distri, [g-1 for g in ln_to_gn], comm)
+  GI = EP.GlobalIndexer(distri, ln_to_gn, comm, gnum_offset=1)
 
   part_data   = [np.ones(ids.size, dtype=bool)] + [np.zeros(other.size, dtype=bool) for other in others]
 

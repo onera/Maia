@@ -64,25 +64,48 @@ def BlockToBlock(distri_in: NDArray,
 
 @overload
 def GlobalIndexer(distri: NDArray,
-                  ln_to_gn_list: NDArray,
-                  comm: MPIComm) -> _GlobalIndexer: ...
+                  g_idx: NDArray,
+                  comm: MPIComm,
+                  *,
+                  gnum_offset:int=0) -> _GlobalIndexer: ...
 @overload
 def GlobalIndexer(distri: NDArray,
-                  ln_to_gn_list: List[NDArray],
-                  comm: MPIComm) -> _GlobalMultiIndexer: ...
+                  g_idx: List[NDArray],
+                  comm: MPIComm,
+                  *,
+                  gnum_offset:int=0) -> _GlobalMultiIndexer: ...
 def GlobalIndexer(distri: NDArray,
-                  ln_to_gn_list: Union[NDArray, List[NDArray]],
-                  comm: MPIComm) -> Union[_GlobalIndexer, _GlobalMultiIndexer]:
+                  g_idx: Union[NDArray, List[NDArray]],
+                  comm: MPIComm,
+                  *,
+                  gnum_offset:int=0) -> Union[_GlobalIndexer, _GlobalMultiIndexer]:
   """
-  Create a GlobalIndexer or a MultiGlobalIndexer, with auto distribution extension
+  Helper function creating a Global(Multi)Indexer protocol object, with the following behaviour:
+
+  - Create a GlobalIndexer or a MultiGlobalIndexer depending of g_idx type
+  - Auto expend distribution if a partial distribution is used
+  - Shift (inplace) g_idx array(s) if gnum_offset is provided
   """
   assert distri is not None
   full_distri = auto_expand_distri(distri, comm)
 
-  if isinstance(ln_to_gn_list, list):
-    return _GlobalMultiIndexer(full_distri, ln_to_gn_list, comm)
+
+  if isinstance(g_idx, list):
+    if gnum_offset != 0:
+      for _g_idx in g_idx:
+        _g_idx -= gnum_offset
+    GMI = _GlobalMultiIndexer(full_distri, g_idx, comm)
+    if gnum_offset != 0:
+      for _g_idx in g_idx:
+        _g_idx += gnum_offset
+    return GMI
   else:
-    return _GlobalIndexer(full_distri, ln_to_gn_list, comm)
+    if gnum_offset != 0:
+      g_idx -= gnum_offset
+    GI = _GlobalIndexer(full_distri, g_idx, comm)
+    if gnum_offset != 0:
+      g_idx += gnum_offset
+    return GI
 
 def PartToPart(gnum1: List[NDArray],
                gnum2: List[NDArray],

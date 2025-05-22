@@ -130,7 +130,7 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
-  GI = EP.GlobalIndexer(face_distri, new_pl[-1]-bar_range[1]-1, comm)
+  GI = EP.GlobalIndexer(face_distri, new_pl[-1], comm, gnum_offset=bar_range[1]+1)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
     data = PT.get_np_value(PT.find_node_from_path(zone, path))
@@ -266,7 +266,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
-  GI = EP.GlobalIndexer(cell_distri, new_pl[-1]-quad_range[1]-1, comm)
+  GI = EP.GlobalIndexer(cell_distri, new_pl[-1], comm, gnum_offset=quad_range[1]+1)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
     data = PT.get_np_value(PT.find_node_from_path(zone, path))

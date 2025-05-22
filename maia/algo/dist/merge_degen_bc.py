@@ -25,7 +25,7 @@ def distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_faces, ngon_n, comm):
   # Get the nodes ids of all faces in pl_faces
   nodes_pl = face_ids_to_vtx_ids(pl_faces, ngon_n, comm).values
   # Make unique
-  GI = EP.GlobalIndexer(vtx_distri, nodes_pl-1, comm)
+  GI = EP.GlobalIndexer(vtx_distri, nodes_pl, comm, gnum_offset=1)
   nodes_pl = np.flatnonzero(GI.access_counts > 0).astype(nodes_pl.dtype, copy=False) + vtx_distri[0] + 1
 
   # Because result could be badly distributed, redistribute it
@@ -166,7 +166,7 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   merged_id = pdm_gnum.get(0)
   # In each group, choose any and map others to it
   distri   = par_utils.uniform_distribution(comm.allreduce(merged_id.max(initial=0), MPI.MAX), comm)
-  GI = EP.GlobalIndexer(distri, merged_id-1, comm)
+  GI = EP.GlobalIndexer(distri, merged_id, comm, gnum_offset=1)
   selected_vtx_id = GI.Put(pl_degen_vtx, reduce=EP.ReduceOp.MAX)
   old_to_new_degen_faces_nodes = GI.Take(selected_vtx_id)
   
