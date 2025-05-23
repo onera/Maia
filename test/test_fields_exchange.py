@@ -139,7 +139,7 @@ class Test_fields_exchange:
       assert PT.get_node_from_path(part_zone, 'FlowSolution/CellId')   is not None
       assert PT.get_node_from_path(part_zone, 'FlowSolution/CstField') is not None
       
-  def test_zone_level_and_partial_reduce_func(self, comm):
+  def test_zone_level_and_partial_reduce_op(self, comm):
     dist_tree, part_tree = self.get_trees(comm)
     dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
     part_zones = PT.get_all_Zone_t(part_tree)
@@ -159,7 +159,7 @@ class Test_fields_exchange:
     assert PT.get_node_from_path(dist_zone, 'FlowSolutionVtx/PartRankId') is not None
     
     bck_zone = PT.deep_copy(dist_zone)
-    MT.part_to_dist.data_exchange.part_sol_to_dist_sol(dist_zone, part_zones, comm, include=['FlowSolutionVtx/PartRankId'],reduce_func=EP.reduce_sum)
+    MT.part_to_dist.data_exchange.part_sol_to_dist_sol(dist_zone, part_zones, comm, include=['FlowSolutionVtx/PartRankId'],reduce_op=EP.ReduceOp.SUM)
     bck_fs_cc_rank_id  = PT.get_value(PT.get_node_from_path(bck_zone,  'FlowSolution/PartRankId'))
     fs_cc_rank_id      = PT.get_value(PT.get_node_from_path(dist_zone, 'FlowSolution/PartRankId'))
     assert np.all(fs_cc_rank_id == bck_fs_cc_rank_id)

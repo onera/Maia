@@ -54,7 +54,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     part_stride.append(np.ones(pl.size, np.int32))
 
   distribution = par_utils.distribution_from_gnum(shifted_lntogn, comm, full=True)
-  GI = EP.GlobalMultiIndexer(distribution, [s-1 for s in shifted_lntogn], comm)
+  GI = EP.GlobalIndexer(distribution, shifted_lntogn, comm, gnum_offset=1)
 
   part_data_new = dict()
   for field_name, p_field in part_data.items():

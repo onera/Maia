@@ -650,7 +650,7 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
     if node is not None:
       ref_node = node #Take any node as reference, to build name/type/value of merged node
 
-      pl = PT.get_child_from_name(node, 'PointList')[1][0]
+      pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
       part_data = {}
       for nodes in PT.get_children_from_predicates(node, data_query, ancestors=True):
         path =  '/'.join([PT.get_name(node) for node in nodes])
@@ -663,9 +663,8 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
         else:
           _append_or_create(part_data, path, data)
       #TODO maybe it is just a BtB -- nope because we want to reorder; but we could do one with all pl at once
-      distri_ptb_f = par_utils.partial_to_full_distribution(distri_ptb, comm)
       stride = np.zeros(distri_ptb[1] - distri_ptb[0], np.int32)
-      GI = EP.GlobalIndexer(distri_ptb_f, pl-1, comm)
+      GI = EP.GlobalIndexer(distri_ptb, pl-1, comm)
       mask = GI.access_counts > 0
       stride[mask] = 1
       dist_data = {key: GI.Put(pdata[0])[mask] for key, pdata in part_data.items()}
@@ -797,14 +796,13 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     
       # Get send data on the opposite zone and update PE
       zone_path = PT.GridConnectivity.ZoneDonorPath(gc, base_n)
-      zone = PT.get_node_from_path(tree, zone_path)
+      zone = PT.find_node_from_path(tree, zone_path)
       ngon_node = PT.Zone.NGonNode(zone)
-      pe      = PT.get_child_from_name(ngon_node, 'UpdatedPE')[1]
-      pe_dom  = PT.get_child_from_name(ngon_node, 'PEDomain')[1]
+      pe      = PT.get_np_value(PT.find_child_from_name(ngon_node, 'UpdatedPE'))
+      pe_dom  = PT.get_np_value(PT.find_child_from_name(ngon_node, 'PEDomain'))
       face_distri = MT.distribution_value(ngon_node, 'Element')
-      face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
 
-      GI = EP.GlobalIndexer(face_distri_f, pld-1, comm)
+      GI = EP.GlobalIndexer(face_distri, pld-1, comm)
       local_faces = GI.access_counts > 0
       assert np.max(pe[local_faces, 1], initial=0) == 0 #Initial = trick to admit empty array
       GI.Put(part_pe_gc, pe[:,1])

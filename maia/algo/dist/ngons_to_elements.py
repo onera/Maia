@@ -23,7 +23,7 @@ is_cell_full_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'Discr
                                     PT.get_child_from_name(n, 'PointRange') is None and \
                                     PT.Subset.GridLocation(n) == 'CellCenter'
 
-def _collected_shifted_pl(zone:CGNSTree, loc:str, shift:int):
+def _collected_shifted_pl(zone:CGNSTree, loc:str, shift:int) -> List[NDArray]:
   all_pl = []
   for subset in PT.iter_all_subsets(zone, loc):
     if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
@@ -53,11 +53,9 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   pe           = PT.get_np_value(PT.find_child_from_name(edge_n, 'ParentElements'))
   edge_distri  = MT.distribution_value(edge_n, 'Element')
 
-  edge_distri_f = par_utils.partial_to_full_distribution(edge_distri, comm)
-
   old_edge_pl = _collected_shifted_pl(zone, 'EdgeCenter', -PT.Element.Range(edge_n)[0])
-  GI = EP.GlobalMultiIndexer(edge_distri_f, old_edge_pl, comm)
-  is_subset_edge = (GI.access_counts > 0)
+  GMI = EP.GlobalIndexer(edge_distri, old_edge_pl, comm)
+  is_subset_edge = (GMI.access_counts > 0)
 
   is_bnd_edge = (pe[:,1] == 0)  | (is_subset_edge)
   bar_vtx = np.empty(2*is_bnd_edge.sum(), edge_vtx.dtype)
@@ -76,8 +74,8 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   new_edge_id = -1*np.ones(edge_vtx.size // 2, zone_dtype)
   new_edge_id[is_bnd_edge] = np.arange(bar_distri[0]+1, bar_distri[1]+1)
 
-  new_pl = GI.Take(new_edge_id)
-  del(GI)
+  new_pl = GMI.Take(new_edge_id)
+  del(GMI)
   _update_pl(zone, 'EdgeCenter', new_pl)
 
   # Now take care of the faces
@@ -132,12 +130,11 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
-  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
-  GMI = EP.GlobalIndexer(face_distri_f, new_pl[-1]-bar_range[1]-1, comm)
+  GI = EP.GlobalIndexer(face_distri, new_pl[-1], comm, gnum_offset=bar_range[1]+1)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
     data = PT.get_np_value(PT.find_node_from_path(zone, path))
-    GMI.Put(data, data) # Inplace update of node data
+    GI.Put(data, data) # Inplace update of node data
 
   # Remove NGON/Edge elements
   PT.rm_child(zone, edge_n)
@@ -158,15 +155,14 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   face_distri  = MT.distribution_value(ngon_n, 'Element')
   dn_face   = len(face_vtx)
 
-  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
   face_vtx._counts = face_vtx.counts.astype(np.int32, copy=False)
   face_n = face_vtx.counts
 
   old_face_pl = _collected_shifted_pl(zone, 'FaceCenter', -PT.Element.Range(ngon_n)[0])
   
   # This is to detect faces that are indexed by some PL, in addition to boundary faces
-  GI = EP.GlobalMultiIndexer(face_distri_f, old_face_pl, comm)
-  is_subset_face = (GI.access_counts > 0)
+  GMI = EP.GlobalIndexer(face_distri, old_face_pl, comm)
+  is_subset_face = (GMI.access_counts > 0)
   
   is_bnd_face = (pe[:,1] == 0) | (is_subset_face)
 
@@ -193,7 +189,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   new_face_id[is_bnd_tri] = np.arange(tri_distri[0]+1, tri_distri[1]+1)
   new_face_id[is_bnd_quad] = np.arange(quad_distri[0]+tri_distri[-1]+1, quad_distri[1]+tri_distri[-1]+1)
 
-  new_pl = GI.Take(new_face_id)
+  new_pl = GMI.Take(new_face_id)
   _update_pl(zone, 'FaceCenter', new_pl)
 
   # Now take care of the cells 
@@ -270,12 +266,11 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   _update_pl(zone, 'CellCenter', new_pl[:-1])
 
   # For allCells containers, we need an additional exchange to reorder data in cell_distri order
-  cell_distri_f = par_utils.partial_to_full_distribution(cell_distri, comm)
-  GMI = EP.GlobalIndexer(cell_distri_f, new_pl[-1]-quad_range[1]-1, comm)
+  GI = EP.GlobalIndexer(cell_distri, new_pl[-1], comm, gnum_offset=quad_range[1]+1)
 
   for path in PT.predicates_to_paths(zone, [is_cell_full_container, 'DataArray_t']):
     data = PT.get_np_value(PT.find_node_from_path(zone, path))
-    GMI.Put(data, data) # Inplace update of node data
+    GI.Put(data, data) # Inplace update of node data
 
 
   # Remove NGON/NFACE elements

@@ -5,9 +5,8 @@ import maia.pytree.maia as MT
 
 import maia
 from maia.typing import *
-from maia.transfer      import protocols     as MTP
-from maia.utils         import par_utils     as MUPar
-from maia.utils.ndarray import np_utils
+from maia.transfer      import protocols     as EP
+from maia.utils         import par_utils, np_utils
 import maia.pytree.sids.elements_utils    as MPSEU
 
 def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> List[CGNSTree]:
@@ -238,10 +237,9 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                                 offset += elem_types_rank[elem_type][pos]
                     ln_to_gn_list.append(ln_to_gn + offset)
             
-            elem_distrib = MUPar.uniform_distribution(nb_elems_per_type,comm)
-            elem_distrib_f = MUPar.partial_to_full_distribution(elem_distrib, comm)
+            elem_distrib = par_utils.uniform_distribution(nb_elems_per_type,comm)
 
-            GI_elem  = MTP.GlobalMultiIndexer(elem_distrib_f, ln_to_gn_list, comm)
+            GI_elem  = EP.GlobalIndexer(elem_distrib, ln_to_gn_list, comm)
             econn = GI_elem.Put(part_data_ec, count=nb_nodes_per_elem)
             
             beg_erange += nb_elems_per_type
@@ -256,7 +254,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         
         ln_to_gn_pl_list = [maia.utils.as_pdm_gnum(PT.get_np_value(pl)[0]) for pl in pl_list]
             
-        old_to_new_pl_list = MTP.part_to_part(old_to_new_element_numbering_list, ln_to_gn_element_list, ln_to_gn_pl_list, comm)
+        old_to_new_pl_list = EP.part_to_part(old_to_new_element_numbering_list, ln_to_gn_element_list, ln_to_gn_pl_list, comm)
 
         for pl_node, new_pl in zip(pl_list, old_to_new_pl_list):
             PT.set_value(pl_node, np.array(new_pl).reshape((1,-1), order='F'))
@@ -267,13 +265,12 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         # 7a. Redistribute old_to_new_cell_numbering to be coherent with
         #     cells distribution
         cells_distrib = MT.distribution_value(zone, 'Cell')
-        cells_distrib_f = MUPar.partial_to_full_distribution(cells_distrib, comm)
 
-        GI_cell = MTP.GlobalMultiIndexer(cells_distrib_f, ln_to_gn_cell_list, comm)
+        GI_cell = EP.GlobalIndexer(cells_distrib, ln_to_gn_cell_list, comm)
         dist_old_to_new_cell_numbering = GI_cell.Put(old_to_new_cell_numbering_list)
         
         # 7b. Reorder FlowSolution DataArray
-        GI_fs = MTP.GlobalIndexer(cells_distrib_f, dist_old_to_new_cell_numbering, comm)
+        GI_fs = EP.GlobalIndexer(cells_distrib, dist_old_to_new_cell_numbering, comm)
 
         is_fs_cc = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] \
                           and PT.Subset.GridLocation(n) == 'CellCenter' \

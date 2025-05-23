@@ -47,7 +47,7 @@ def orientation_preserved(part_zones, comm):
   # In both cases, we flagged faces having a left parent. When summing flags, if a face has a value > 1, it means
   # that it has two times a left parent, and thus that faces has been reverted after split to have output normal
   distri = par_utils.distribution_from_gnum(gnum_list, comm, full=True)
-  out = EP.part_to_block(data_list, distri, [g-1 for g in gnum_list], comm, reduce_func=EP.reduce_sum)
+  out = EP.part_to_block(data_list, distri, gnum_list, comm, reduce_op=EP.ReduceOp.SUM, gnum_offset=1)
 
   return not comm.allreduce((out > 1).any(), op=MPI.LOR)
 
@@ -86,7 +86,7 @@ def preserve_orientation(part_zones, comm):
     
   # Gather data to identify faces having two times right parent == 0
   distri = par_utils.distribution_from_gnum(gnum_list, comm, full=True)
-  GI = EP.GlobalMultiIndexer(distri, [g-1 for g in gnum_list], comm)
+  GI = EP.GlobalIndexer(distri, gnum_list, comm, gnum_offset=1)
   mask = GI.access_counts >= 2 # <-- these ones
 
   # In addition, exchange partition id and reduce with min to choose a master
@@ -97,7 +97,7 @@ def preserve_orientation(part_zones, comm):
   # Send back master part. id to partitions (we do it only for duplicated faces)
   send_data = vs.from_counts(mask.astype(np.int32), dist_data)
 
-  out_data = EP.block_to_part(send_data, distri, [g-1 for g in gnum_list], comm)
+  out_data = EP.block_to_part(send_data, distri, gnum_list, comm, gnum_offset=1)
 
   # Now treat partitions to swap faces 
   for izone, part_zone in enumerate(part_zones):

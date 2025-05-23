@@ -75,8 +75,6 @@ def test_localize_mdom(comm):
   yaml_path = TU.mesh_dir / 'S_twoblocks.yaml'
   tree = maia.io.file_to_dist_tree(yaml_path, comm)
 
-  maia.io.dist_tree_to_file(tree, 'src.cgns', comm)
-
   src_parts  = LOC._collect_source(PT.get_all_Zone_t(tree), comm)
 
   # In this test we create the points to localize (clouds) by hand

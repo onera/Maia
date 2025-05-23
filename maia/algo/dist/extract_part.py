@@ -89,9 +89,8 @@ def extract_zone_edges(dist_zone, pl, comm):
 
   # > Compute vtx pl from extracted edge_vtx
   vtx_distri = MT.distribution_value(dist_zone, 'Vertex')
-  vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
 
-  GI = maia.transfer.protocols.GlobalIndexer(vtx_distri_f, edge_vtx-1, comm)
+  GI = EP.GlobalIndexer(vtx_distri, edge_vtx, comm, gnum_offset=1)
   vtx_mask = (GI.access_counts > 0)
   coords =  PT.Zone.coordinates(dist_zone)._asdict()
   extract_coords = {key: coord[vtx_mask] for key,coord in coords.items()}

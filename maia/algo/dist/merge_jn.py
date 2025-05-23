@@ -26,13 +26,11 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   #TODO This method asserts that PE is CGNS compliant ie left_parent != 0 for bnd elements
   assert not np.any(pe[:,0] == 0)
 
-  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
-
   # 1. Get the left cell of the faces to delete
-  part_data = EP.GlobalIndexer(face_distri_f, del_faces-1, comm).Take(pe[:,0])
+  part_data = EP.GlobalIndexer(face_distri, del_faces-1, comm).Take(pe[:,0])
   
   # 2. Put it in the right cell of the faces to keep
-  GI = EP.GlobalIndexer(face_distri_f, ref_faces-1, comm)
+  GI = EP.GlobalIndexer(face_distri, ref_faces-1, comm)
   assert np.max(pe[GI.access_counts > 0, 1], initial=0) == 0 #Initial = trick to admit empty array
   GI.Put(part_data, pe[:,1])
 
@@ -41,9 +39,8 @@ def _update_ngon_remove_faces(ngon, del_faces, comm):
   Remove faces from EC, PE and ESO and update distribution info in ngon
   """
   face_distri = MT.distribution_value(ngon, 'Element')
-  face_distri_f = par_utils.partial_to_full_distribution(face_distri, comm)
   
-  GI = EP.GlobalIndexer(face_distri_f, del_faces-1, comm)
+  GI = EP.GlobalIndexer(face_distri, del_faces-1, comm)
   local_faces = np.nonzero(GI.access_counts > 0)[0]
   RME.remove_ngons(ngon, local_faces, comm)
   
@@ -235,9 +232,8 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   and update vertex distribution info
   """
   vtx_distri_ini  = MT.distribution_value(zone, 'Vertex')
-  pdm_distrib     = par_utils.partial_to_full_distribution(vtx_distri_ini, comm)
 
-  GI = EP.GlobalIndexer(pdm_distrib, vtx_to_remove-1, comm)
+  GI = EP.GlobalIndexer(vtx_distri_ini, vtx_to_remove-1, comm)
   mask = GI.access_counts == 0
 
   #Update all vertex entities

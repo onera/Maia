@@ -73,7 +73,7 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
 
   distri = par_utils.distribution_from_gnum([pl_vtx], comm, True, True)
 
-  dist_data = EP.part_to_block(part_data, distri, pl_vtx-1, comm, append=True)
+  dist_data = EP.part_to_block(part_data, distri, pl_vtx-1, comm, extend=True)
   part_data = EP.block_to_part(dist_data, distri, restricted_pl_vtx-1, comm)
 
   extended_pl, unique_idx = np.unique(part_data["vtx_to_face"].values, return_index=True)
@@ -251,9 +251,8 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
   Return the array indices of theses faces
   """
   pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
-  vtx_distri_f = par_utils.partial_to_full_distribution(vtx_distri, comm)
   
-  GI = EP.GlobalIndexer(vtx_distri_f, pl_face_vtx.values-1, comm)
+  GI = EP.GlobalIndexer(vtx_distri, pl_face_vtx.values-1, comm)
   vtx_n_occur_full = GI.access_counts
 
   n_occur = GI.Take(vtx_n_occur_full)
@@ -354,7 +353,7 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
 
   #Final part_to_block will merge gnum from two method and reequilibrate
   distri = par_utils.distribution_from_gnum(pl_vtx_l, comm, True, True)
-  GI = EP.GlobalMultiIndexer(distri, [pl-1 for pl in pl_vtx_l], comm)
+  GI = EP.GlobalIndexer(distri, pl_vtx_l, comm, gnum_offset=1)
   pl_vtx = np.flatnonzero(GI.access_counts > 0) + distri[comm.rank] + 1
   _, pld_vtx = GI.Put_v([(np.ones(pld.size, np.int32), pld) for pld in pld_vtx_l], extend=True)
   assert pld_vtx.size == pl_vtx.size

@@ -75,7 +75,7 @@ def create_part_pl_gnum(dist_zone: CGNSDistTree,
   blk_distri_f = par_utils.distribution_from_gnum(ln_to_gn_list, comm, full=True)
 
   #First count the element without multiplicity
-  GI = EP.GlobalMultiIndexer(blk_distri_f, [gn-1 for gn in ln_to_gn_list], comm)
+  GI = EP.GlobalIndexer(blk_distri_f, ln_to_gn_list, comm, gnum_offset=1)
   mask = (GI.access_counts > 0)
 
   # Exchange size of filtered gnum and shift to create a create global numbering
@@ -179,8 +179,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
         if PT.get_node_from_path(part_zone, gn_path) is not None]
 
   distri   = par_utils.distribution_from_gnum(ln_to_gn_list, comm)
-  distri_f = par_utils.partial_to_full_distribution(distri, comm)
-  GI = EP.GlobalMultiIndexer(distri_f, [gn-1 for gn in ln_to_gn_list], comm)
+  GI = EP.GlobalIndexer(distri, ln_to_gn_list, comm, gnum_offset=1)
 
   idx_dim = 1 if PT.Zone.Type(dist_zone) == 'Unstructured' else PT.get_np_value(dist_zone).shape[0]
   keys = ['pl_i', 'pl_j', 'pl_k'][:idx_dim]
@@ -349,9 +348,8 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
 
   # Exchange : for multiple elements (eg. BAR) we take the first received
   distri_elt   = par_utils.distribution_from_gnum(elt_gnum_l, comm)
-  distri_elt_f = par_utils.partial_to_full_distribution(distri_elt, comm)
 
-  GI = EP.GlobalMultiIndexer(distri_elt_f, [gn-1 for gn in elt_gnum_l], comm)
+  GI = EP.GlobalIndexer(distri_elt, elt_gnum_l, comm, gnum_offset=1)
 
   # Faster than filtering, even if stride is constant
   _, dist_ec = GI.Put_v(data_in_l)
@@ -413,7 +411,7 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   #       at partition interface (like preserve_orientation=True)
   #       Thats why we can merge face connectivity without problem
   distri = par_utils.distribution_from_gnum(elt_gnum_l, comm, full=True)
-  GI = EP.GlobalMultiIndexer(distri, [e-1 for e in elt_gnum_l], comm)
+  GI = EP.GlobalIndexer(distri, elt_gnum_l, comm, gnum_offset=1)
   n_faceTot = distri[-1]
 
 
@@ -517,8 +515,7 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
   distri_cell   = par_utils.distribution_from_gnum(cell_gnum_l, comm)
-  distri_cell_f = par_utils.partial_to_full_distribution(distri_cell, comm)
-  GI = EP.GlobalMultiIndexer(distri_cell_f, [gn-1 for gn in cell_gnum_l], comm)
+  GI = EP.GlobalIndexer(distri_cell, cell_gnum_l, comm, gnum_offset=1)
 
   d_elt_n, dist_ec = GI.Put_v(part_data)
 
