@@ -160,55 +160,64 @@ def block_to_block(data_in: BasicDistData,
 def block_to_part(dist_data: vs.VStrideArray,
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
-                  comm: MPIComm) -> vs.VStrideArray: ...
+                  comm: MPIComm,
+                  **kwargs) -> vs.VStrideArray: ...
 @overload
 def block_to_part(dist_data: NDArray[T],
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
-                  comm: MPIComm) -> NDArray[T]: ...
+                  comm: MPIComm,
+                  **kwargs) -> NDArray[T]: ...
 @overload
 def block_to_part(dist_data: Mapping[str, Union[NDArray[T], vs.VStrideArray]],
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
-                  comm: MPIComm) -> Mapping[str, Union[NDArray[T], vs.VStrideArray]]: ...
+                  comm: MPIComm,
+                  **kwargs) -> Mapping[str, Union[NDArray[T], vs.VStrideArray]]: ...
 @overload
 def block_to_part(dist_data: DistData,
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
-                  comm: MPIComm) -> SPartData: ...
+                  comm: MPIComm,
+                  **kwargs) -> SPartData: ...
 
 @overload
 def block_to_part(dist_data: NDArray[T],
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
-                  comm: MPIComm) -> List[NDArray[T]]: ...
+                  comm: MPIComm,
+                  **kwargs) -> List[NDArray[T]]: ...
 @overload
 def block_to_part(dist_data: vs.VStrideArray,
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
-                  comm: MPIComm) -> List[vs.VStrideArray]: ...
+                  comm: MPIComm,
+                  **kwargs) -> List[vs.VStrideArray]: ...
 @overload
 def block_to_part(dist_data: Mapping[str, Union[NDArray[T], vs.VStrideArray]],
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
-                  comm: MPIComm) -> Mapping[str, Union[List[NDArray[T]], List[vs.VStrideArray]]]: ...
+                  comm: MPIComm,
+                  **kwargs) -> Mapping[str, Union[List[NDArray[T]], List[vs.VStrideArray]]]: ...
 @overload
 def block_to_part(dist_data: DistData,
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
-                  comm: MPIComm) -> MPartData: ...
+                  comm: MPIComm,
+                  **kwargs) -> MPartData: ...
 
 def block_to_part(dist_data: DistData,
                   distri: NDArray,
                   ln_to_gn_list: Union[NDArray, List[NDArray]],
-                  comm: MPIComm) -> Union[SPartData, MPartData]:
+                  comm: MPIComm,
+                  **kwargs) -> Union[SPartData, MPartData]:
   """ A wrapper creating a GlobalIndexer and using it for a Take exchange.
 
   This wrapper allows as input data buffer, variable buffer, or dictionnairies containing
   a combination of theses objects. The returned data matches the input kind, stored as list
   if a GlobalMultiIndexer is used or as single variable if a GlobalIndexer is used.
   """
-  GI = GlobalIndexer(distri, ln_to_gn_list, comm)
+  GI = GlobalIndexer(distri, ln_to_gn_list, comm, **kwargs)
 
   def exch_one(d_field):
     if isinstance(d_field, vs.VStrideArray):
@@ -236,6 +245,7 @@ def part_to_block(part_data: NDArray[T],
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> NDArray[T]: ...
 @overload
 def part_to_block(part_data: vs.VStrideArray,
@@ -243,6 +253,7 @@ def part_to_block(part_data: vs.VStrideArray,
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> vs.VStrideArray: ...
 @overload
 def part_to_block(part_data: Mapping[str, Union[NDArray[T], vs.VStrideArray]],
@@ -250,6 +261,7 @@ def part_to_block(part_data: Mapping[str, Union[NDArray[T], vs.VStrideArray]],
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> Mapping[str, Union[NDArray[T], vs.VStrideArray]]: ...
 @overload
 def part_to_block(part_data: SPartData,
@@ -257,6 +269,7 @@ def part_to_block(part_data: SPartData,
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> DistData: ...
 
 @overload
@@ -265,6 +278,7 @@ def part_to_block(part_data: List[NDArray[T]],
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> NDArray[T]: ...
 @overload
 def part_to_block(part_data: List[vs.VStrideArray],
@@ -272,6 +286,7 @@ def part_to_block(part_data: List[vs.VStrideArray],
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> vs.VStrideArray: ...
 @overload
 def part_to_block(part_data: Mapping[str, Union[List[NDArray[T]], List[vs.VStrideArray]]],
@@ -279,6 +294,7 @@ def part_to_block(part_data: Mapping[str, Union[List[NDArray[T]], List[vs.VStrid
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> Mapping[str, Union[NDArray[T], vs.VStrideArray]]: ...
 @overload
 def part_to_block(part_data: MPartData,
@@ -286,6 +302,7 @@ def part_to_block(part_data: MPartData,
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> DistData: ...
 
 def part_to_block(part_data: Union[SPartData, MPartData],
@@ -293,6 +310,7 @@ def part_to_block(part_data: Union[SPartData, MPartData],
                   ln_to_gn_list: Union[NDArray, List[NDArray]],
                   comm: MPIComm,
                   reduce_op:Optional[ReduceOp]=None,
+                  extend:bool=False,
                   **kwargs: Any) -> DistData:
   """ A wrapper creating a GlobalIndexer and using it for a Put exchange.
 
@@ -301,13 +319,14 @@ def part_to_block(part_data: Union[SPartData, MPartData],
   variable if a GlobalIndexer is used. The returned data matches the input kind.
   """
 
-  GI = GlobalIndexer(distri, ln_to_gn_list, comm)
+  GI = GlobalIndexer(distri, ln_to_gn_list, comm, **kwargs)
   if reduce_op is not None: # Reduce func => fixed buff
+    assert not extend
     def _exchange_one(part_fields):
       return GI.Put(part_fields, reduce=reduce_op)
   else:
-    append = kwargs.get('extend', False) or kwargs.get('keep_multiple', False)
-    if append: # Append mode => vbuffer
+    if extend:
+      assert reduce_op is None
       def _exchange_one(part_fields):
         if isinstance(GI, _GlobalIndexer):
           assert isinstance(part_fields, vs.VStrideArray)

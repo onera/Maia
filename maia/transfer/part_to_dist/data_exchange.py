@@ -75,7 +75,7 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm, reduce_op=None):
         part_data.pop(p_co_name, None) # Remove key from dict
 
   # Exchange
-  dist_data = EP.part_to_block(part_data, distribution, [gn-1 for gn in lntogn_list], comm, reduce_op)
+  dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_op, gnum_offset=1)
   for coord, array in dist_data.items():
     dist_coord = PT.get_child_from_name(d_grid_co, coord)
     PT.set_value(dist_coord, array)
@@ -223,7 +223,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
         lngn_list.pop(ipart)
 
     # Exchange
-    dist_data = EP.part_to_block(part_data, distribution, [gn-1 for gn in lngn_list], comm, reduce_op)
+    dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_op, gnum_offset=1)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_zsr, field)
       PT.set_value(dist_field, array)
@@ -286,7 +286,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
           lngn_list.pop(ipart)
 
         #Exchange local data
-        dist_data = EP.part_to_block(part_data_loc, distribution, [gn-1 for gn in lngn_list], comm, reduce_op)
+        dist_data = EP.part_to_block(part_data_loc, distribution, lngn_list, comm, reduce_op, gnum_offset=1)
         for field, array in dist_data.items():
           dist_field = PT.get_node_from_path(d_dataset, field)
           PT.set_value(dist_field, array)
