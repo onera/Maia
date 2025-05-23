@@ -66,7 +66,7 @@ def set_default(dist_tree, comm):
 
 def partition_dist_tree(dist_tree: CGNSDistTree, 
                         comm: MPIComm, 
-                        **kwargs: Dict[str, Any]) -> CGNSPartTree:
+                        **kwargs) -> CGNSPartTree:
   """Perform the partitioning operation: create a partitioned tree from the input distributed tree.
 
   Important:

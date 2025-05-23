@@ -83,7 +83,7 @@ def create_src_to_tgt(src_dom,
         # partitions, and data is initially computed from cell point of view before beeing moved to vertices
         # We dont need this in Cell mode because "fake partition" cell lngn is equal to the cell distribution
         distri_vtx = MT.distribution_value(src_zone, 'Vertex')
-        data.update(EP.part_to_block(part_data, distri_vtx, vtx_gnum-1, comm, append=True))
+        data.update(EP.part_to_block(part_data, distri_vtx, vtx_gnum-1, comm, extend=True))
 
 
   #Phase 2 -- closest point

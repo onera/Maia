@@ -235,28 +235,28 @@ def part_to_block(part_data: NDArray[T],
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> NDArray[T]: ...
 @overload
 def part_to_block(part_data: vs.VStrideArray,
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> vs.VStrideArray: ...
 @overload
 def part_to_block(part_data: Mapping[str, Union[NDArray[T], vs.VStrideArray]],
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> Mapping[str, Union[NDArray[T], vs.VStrideArray]]: ...
 @overload
 def part_to_block(part_data: SPartData,
                   distri: NDArray,
                   ln_to_gn_list: NDArray,
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> DistData: ...
 
 @overload
@@ -264,35 +264,35 @@ def part_to_block(part_data: List[NDArray[T]],
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> NDArray[T]: ...
 @overload
 def part_to_block(part_data: List[vs.VStrideArray],
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> vs.VStrideArray: ...
 @overload
 def part_to_block(part_data: Mapping[str, Union[List[NDArray[T]], List[vs.VStrideArray]]],
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> Mapping[str, Union[NDArray[T], vs.VStrideArray]]: ...
 @overload
 def part_to_block(part_data: MPartData,
                   distri: NDArray,
                   ln_to_gn_list: List[NDArray],
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> DistData: ...
 
 def part_to_block(part_data: Union[SPartData, MPartData],
                   distri: NDArray,
                   ln_to_gn_list: Union[NDArray, List[NDArray]],
                   comm: MPIComm,
-                  reduce_func: Optional[Callable[[NDArray, NDArray], NDArray]] = None,
+                  reduce_op:Optional[ReduceOp]=None,
                   **kwargs: Any) -> DistData:
   """ A wrapper creating a GlobalIndexer and using it for a Put exchange.
 
@@ -302,18 +302,11 @@ def part_to_block(part_data: Union[SPartData, MPartData],
   """
 
   GI = GlobalIndexer(distri, ln_to_gn_list, comm)
-  if reduce_func is not None: # Reduce func => fixed buff
+  if reduce_op is not None: # Reduce func => fixed buff
     def _exchange_one(part_fields):
-      func_to_op = {reduce_sum: ReduceOp.SUM, 
-                    reduce_min: ReduceOp.MIN, 
-                    reduce_max: ReduceOp.MAX,
-                    reduce_mean:ReduceOp.SUM}
-      dist_data = GI.Put(part_fields, reduce=func_to_op[reduce_func])
-      if reduce_func == reduce_mean:
-        dist_data /= GI.access_counts
-      return dist_data
+      return GI.Put(part_fields, reduce=reduce_op)
   else:
-    append = kwargs.get('append', False) or kwargs.get('keep_multiple', False)
+    append = kwargs.get('extend', False) or kwargs.get('keep_multiple', False)
     if append: # Append mode => vbuffer
       def _exchange_one(part_fields):
         if isinstance(GI, _GlobalIndexer):
@@ -402,32 +395,3 @@ def part_to_part_strided(send_stride: Union[int, List[NDArray]],
                         send_stride)
     recv_stride, recv_data = PTP.wait(request)
   return recv_stride, recv_data #type:ignore[return-value] #(return None for debug)
-
-
-def reduce_sum(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
-  """
-  Function that sum all data sharing the same global number
-  """
-  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
-  return np.add.reduceat(dist_data, indices)
-
-def reduce_max(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
-  """
-  Function that return the maximum of all data sharing the same global number
-  """
-  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
-  return np.maximum.reduceat(dist_data, indices)
-
-def reduce_min(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
-  """
-  Function that return the minimum of all data sharing the same global number
-  """
-  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
-  return np.minimum.reduceat(dist_data, indices)
-
-def reduce_mean(dist_data: NDArray, dist_stride: NDArray) -> NDArray:
-  """
-  Function that return the mean of all data sharing the same global number
-  """
-  indices = np_utils.sizes_to_indices(dist_stride)[:-1]
-  return np.add.reduceat(dist_data, indices) / dist_stride

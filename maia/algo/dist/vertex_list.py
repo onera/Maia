@@ -73,7 +73,7 @@ def get_extended_pl(pl, pl_d, face_vtx_idx_pl, face_vtx_pl, comm, faces_to_skip=
 
   distri = par_utils.distribution_from_gnum([pl_vtx], comm, True, True)
 
-  dist_data = EP.part_to_block(part_data, distri, pl_vtx-1, comm, append=True)
+  dist_data = EP.part_to_block(part_data, distri, pl_vtx-1, comm, extend=True)
   part_data = EP.block_to_part(dist_data, distri, restricted_pl_vtx-1, comm)
 
   extended_pl, unique_idx = np.unique(part_data["vtx_to_face"].values, return_index=True)

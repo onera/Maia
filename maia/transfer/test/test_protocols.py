@@ -122,7 +122,7 @@ def test_part_to_block(comm):
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 
 @pytest_parallel.mark.parallel(2)
-@pytest.mark.parametrize("reduce_func", ["sum", "min", "max", "mean"])
+@pytest.mark.parametrize("reduce_func", ["sum", "min", "max"])
 def test_part_to_block_with_reduce(reduce_func, comm):
   part_data = dict()
   expected_dist_data = dict()
@@ -153,12 +153,12 @@ def test_part_to_block_with_reduce(reduce_func, comm):
     elif reduce_func == "mean":
       expected_dist_data["field"] = np.array([6., 7., 8., (9.+1000.)/2.])
 
-  _reduce_func = {"sum" : EP.reduce_sum,
-                  "min" : EP.reduce_min, 
-                  "max" : EP.reduce_max, 
-                  "mean": EP.reduce_mean}[reduce_func]
+  _reduce_func = {"sum" : EP.ReduceOp.SUM,
+                  "min" : EP.ReduceOp.MIN, 
+                  "max" : EP.ReduceOp.MAX}[reduce_func]
+                  #"mean": EP.reduce_mean}[reduce_func]
 
-  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, comm, reduce_func=_reduce_func)
+  dist_data = EP.part_to_block(part_data, partial_distri, ln_to_gn_list, comm, reduce_op=_reduce_func)
   assert dist_data["field"].dtype == np.float64
   assert (dist_data["field"] == expected_dist_data["field"]).all()
 

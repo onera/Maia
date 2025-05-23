@@ -153,7 +153,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
   # We don't need to exchange second vertex because we know key and vtx1 (vtx1 + vtx2 == key)
   data = {'FaceGnum' : vs.from_counts(stride_one, face_gnum),
           'FirstVtx' : vs.from_counts(stride_one, first_vtx.values)}
-  dist_data = EP.part_to_block(data, distri, key_from_face, comm, append=True)
+  dist_data = EP.part_to_block(data, distri, key_from_face, comm, extend=True)
 
 
   # Second : get data from block, for each edge

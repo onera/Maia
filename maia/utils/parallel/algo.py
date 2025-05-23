@@ -42,7 +42,7 @@ def dist_set_difference(ids, others, comm):
 
   # ts, tt = BTP.exchange_field(dist_data, d_stride)
 
-  # dist_data = EP.part_to_block(part_data, None, ln_to_gn-1, comm, reduce_func=reduce_prod)
+  # dist_data = EP.part_to_block(part_data, None, ln_to_gn-1, comm, reduce_op=EP.ReduceOp.PROD)
 
   # Sur chaque rank, on a une liste d'id (qui étaient sur ids ou pas) et un flag valant 1
   # si faut les garder

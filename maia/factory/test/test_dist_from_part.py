@@ -534,7 +534,7 @@ def test_recover_poly3d_nface_validity(comm):
 
   distri = MT.distribution_value(PT.Zone.NGonNode(zone), 'Element')
 
-  out_sign = EP.part_to_block(np.sign(ec), distri, np.abs(ec)-1, comm, reduce_func=EP.reduce_sum)
+  out_sign = EP.part_to_block(np.sign(ec), distri, np.abs(ec)-1, comm, reduce_op=EP.ReduceOp.SUM)
   assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)
 
 @pytest_parallel.mark.parallel(3)
