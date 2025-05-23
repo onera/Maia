@@ -167,27 +167,27 @@ def test_duplicate_2d(from_family, comm):
   # Prepare 2D periodic case
   dist_tree = maia.factory.generate_dist_block([5,2], 'TRI_3', comm, origin=[.5, -0.5])
   maia.algo.scale_mesh(dist_tree, [4,1])
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  cx = PT.get_node_from_name(zone, 'CoordinateX')
-  cy = PT.get_node_from_name(zone, 'CoordinateY')
+  zone = PT.find_node_from_label(dist_tree, 'Zone_t')
+  cx = PT.find_node_from_name(zone, 'CoordinateX')
+  cy = PT.find_node_from_name(zone, 'CoordinateY')
   cy[1] = np.sign(cy[1]) * cx[1]
 
-  ymin = PT.get_node_from_name(zone, 'Ymin')
-  ymax = PT.get_node_from_name(zone, 'Ymax')
+  ymin = PT.find_node_from_name(zone, 'Ymin')
+  ymax = PT.find_node_from_name(zone, 'Ymax')
   PT.rm_nodes_from_name(zone, 'Ym*')
 
   zgc = PT.new_ZoneGridConnectivity(parent=zone)
   gc = PT.new_GridConnectivity('Bottom', zone[0], 'Abutting1to1', loc='EdgeCenter', \
-                               point_list       = PT.get_child_from_name(ymin, 'PointList')[1],
-                               point_list_donor = PT.get_child_from_name(ymax, 'PointList')[1],
+                               point_list       = PT.find_child_from_name(ymin, 'PointList')[1],
+                               point_list_donor = PT.find_child_from_name(ymax, 'PointList')[1],
                                parent=zgc)
   PT.add_child(gc, PT.get_child_from_name(ymin, ':CGNS#Distribution'))
   PT.new_GridConnectivityProperty(periodic={'rotation_angle' : [np.pi/2, 0], 'rotation_center' : [0,0], 'translation' : [0,0]},
                                   parent=gc)
 
   gc = PT.new_GridConnectivity('Top', zone[0], 'Abutting1to1', loc='EdgeCenter', \
-                               point_list       = PT.get_child_from_name(ymax, 'PointList')[1],
-                               point_list_donor = PT.get_child_from_name(ymin, 'PointList')[1],
+                               point_list       = PT.find_child_from_name(ymax, 'PointList')[1],
+                               point_list_donor = PT.find_child_from_name(ymin, 'PointList')[1],
                                parent=zgc)
   PT.new_GridConnectivityProperty(periodic={'rotation_angle' : [-np.pi/2, 0], 'rotation_center' : [0,0], 'translation' : [0,0]},
                                   parent=gc)

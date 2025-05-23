@@ -405,7 +405,13 @@ def _homogeneous_matrix_to_transform(homo_matrix):
     rotation_angle[1] = np.arcsin ( Rmat[0,2])
     rotation_angle[2] = np.arctan2(-Rmat[0,1], Rmat[0,0])
   elif dim == 2:
-    rotation_angle = np.arcsin(Rmat[1,0])
+    # Prevent InvalidValue coming from rounding errors (waiting for quaternions)
+    value = Rmat[1,0]
+    if 1. < value and value <= 1 + 1e-8:
+      value = 1.
+    if value < -1. and -1-1e-8 <= value:
+      value = -1.
+    rotation_angle = np.arcsin(value)
   return translation, rotation_center, rotation_angle
 
 def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
