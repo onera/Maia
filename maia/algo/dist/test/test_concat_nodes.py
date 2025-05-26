@@ -329,7 +329,21 @@ def test_concatenate_jns_all_abutting(comm, type, perio):
   
   assert len(gcs)    == nb_gcs
   assert len(perios) == nb_perios
-
+  
+  if perio:
+    if type == "Abutting1to1":
+      suffix_to_rot_angle = {".P0": [ 10., 0., 0.],
+                             ".P1": [-10., 0., 0.],
+                             ".P2": [ 20., 0., 0.],
+                             ".P3": [-20., 0., 0.]}
+    else:
+      suffix_to_rot_angle = {".P0": [-10., 0., 0.],
+                             ".P1": [ 10., 0., 0.],
+                             ".P2": [-20., 0., 0.],
+                             ".P3": [ 20., 0., 0.]}
+    for gc in gcs:
+      suffix = f'.P{PT.get_name(gc).split(".P")[-1]}'
+      assert np.all(PT.GridConnectivity.periodic_values(gc)[1] == suffix_to_rot_angle[suffix])
 
 @pytest.mark.parametrize("specified", [True, False])
 @pytest_parallel.mark.parallel(3)

@@ -135,6 +135,10 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   Manage no match joins too
   """
   MJT.add_joins_donor_name(tree, comm)
+  
+  match_perio_refs:List   = []
+  nomatch_perio_refs:List = []
+  
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     
     zone_path = '/'.join([PT.get_name(node) for node in [base, zone]])
@@ -146,9 +150,6 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
       nomatch_jns_to_merge:Dict[str, Dict] = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
       nomatch_jns_to_keep:Dict[str, Dict]  = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
       other_gcs:Dict[str, Dict]            = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
-      
-      match_perio_refs:List   = []
-      nomatch_perio_refs:List = []
       
       for jn in PT.get_children_from_label(zgc, 'GridConnectivity_t'):
         donor_path = PT.GridConnectivity.ZoneDonorPath(jn, PT.get_name(base))
