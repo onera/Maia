@@ -27,6 +27,7 @@ Developpement version
 - convert_s_to_u: manage 2D input meshes and add standard elements output mode
 - IO functions: automatically create non existing folders in writting functions
 - Create internal edges in isosurface and extract_part functionnalities
+- Create internal 1to1-GridConnectivity nodes in extract_part functionnality
 
 🐞 Fixes
 ^^^^^^^^

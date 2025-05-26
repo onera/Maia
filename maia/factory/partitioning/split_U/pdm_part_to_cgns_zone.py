@@ -27,20 +27,19 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
   Create by splitting
   """
   if grid_loc is None:
-    grid_loc = 'FaceCenter' if PT.Zone.has_ngon_elements(d_zone) else 'Vertex'
+    grid_loc = 'FaceCenter' if PT.Zone.has_ngon_elements(p_zone) else 'Vertex'
   if grid_loc not in ['FaceCenter', 'Vertex']:
     raise NotImplementedError("Unvalid specified entity")
   #Element have been created before, so we can check the kind here
   if grid_loc == 'FaceCenter' and not PT.Zone.has_ngon_elements(p_zone):
     raise NotImplementedError("FaceCenter GC interfaces can not be used for nodal meshes")
   if grid_loc == 'FaceCenter':
-    entity = 'face' if PT.Zone.CellDimension(d_zone) == 3 else 'edge'
+    entity = 'face' if PT.Zone.CellDimension(p_zone) == 3 else 'edge'
     _grid_loc = f"{entity.capitalize()}Center"
   else:
     entity = 'vtx'
     _grid_loc = 'Vertex'
 
-  entity_part_bound_proc_idx = data['np_{0}_part_bound_proc_idx'.format(entity)]
   entity_part_bound_part_idx = data['np_{0}_part_bound_part_idx'.format(entity)]
   entity_part_bound_tmp      = data['np_{0}_part_bound'         .format(entity)]
 
@@ -69,8 +68,9 @@ def zgc_created_pdm_to_cgns(p_zone, d_zone, dims, data, grid_loc='FaceCenter', z
 
       cur_rank, cur_part = MT.conv.get_part_suffix(PT.get_name(p_zone))
       gcname = MT.conv.name_intra_gc(cur_rank, cur_part, opp_rank, opp_part)
+      zname = MT.conv.get_part_prefix(PT.get_name(p_zone))
       join_n = PT.new_GridConnectivity(name       = gcname,
-                                       donor_name = MT.conv.add_part_suffix(PT.get_name(d_zone), opp_rank, opp_part),
+                                       donor_name = MT.conv.add_part_suffix(zname, opp_rank, opp_part),
                                        type       = 'Abutting1to1',
                                        loc        = _grid_loc,
                                        parent     = zgc_n)

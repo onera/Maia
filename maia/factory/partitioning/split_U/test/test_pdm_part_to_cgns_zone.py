@@ -79,9 +79,9 @@ def test_save_additional_connectivities():
 @pytest.mark.parametrize("grid_loc",['FaceCenter', 'Vertex'])
 def test_zgc_created_pdm_to_cgns(grid_loc):
   d_zone = PT.new_Zone('ZoneA', type='Unstructured')
-  PT.new_NFaceElements(parent=d_zone) # Dist zone must have a NFaceElement to impose dimension to 3d
   p_zone = PT.new_Zone('ZoneA.P0.N0', type='Unstructured')
   PT.new_NGonElements(parent=p_zone) # Create NGon to escape NotImplementedError
+  PT.new_NFaceElements(parent=p_zone) # zone must have a NFaceElement to impose dimension to 3d
   dims = {'n_cell': 1} # Just to trigger 3d
   data = {'np_face_part_bound_proc_idx' : np.array([0,0,7]),
           'np_face_part_bound_part_idx' : np.array([0,0,7]),
