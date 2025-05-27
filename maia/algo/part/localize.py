@@ -29,10 +29,8 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
   assert none_count in (0, 1)
   for i in range(len(coords)):
     if coords[i] is None:
-      for j in range(len(coords)) :
-        if coords[j] is not None:
-          coords[i]=np.zeros(cx.size, dtype=np.float64)
-        break
+      coords[i]=np.zeros(cx.size, dtype=np.float64)
+      break
   vtx_coords = np_utils.interweave_arrays(coords)
 
   vtx_ln_to_gn  = MT.globalnumbering_value(part_zone, 'Vertex')
