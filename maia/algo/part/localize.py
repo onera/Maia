@@ -24,8 +24,16 @@ InvResult = Dict[str, vs.VStrideArray]
 def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
   dim = PT.Zone.CellDimension(part_zone)
   cx, cy, cz = PT.Zone.coordinates(part_zone)
-  assert (cx is not None) and  (cy is not None) and (cz is not None)
-  vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
+  coords = [cx, cy, cz]
+  none_count = sum(a is None for a in (cx, cy, cz))
+  assert none_count in (0, 1)
+  for i in range(len(coords)):
+    if coords[i] is None:
+      for j in range(len(coords)) :
+        if coords[j] is not None:
+          coords[i]=np.zeros(cx.size, dtype=np.float64)
+        break
+  vtx_coords = np_utils.interweave_arrays(coords)
 
   vtx_ln_to_gn  = MT.globalnumbering_value(part_zone, 'Vertex')
   cell_ln_to_gn = MT.globalnumbering_value(part_zone, 'Cell')
