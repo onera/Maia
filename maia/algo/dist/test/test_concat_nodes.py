@@ -109,32 +109,31 @@ def test_concatenate_jns_all_types(comm):
 
   gcs = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
   
-  len_names = np.array([len(gc[0]) for gc in gcs])
-  assert np.all(len_names < 33)
+  assert all(len(PT.get_name(gc)) < 33 for gc in gcs)
   
   oversets = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Overset"]
   assert len(oversets) == 2
-  assert np.all(np.array([PT.get_name(overset).startswith('Overset') for overset in oversets]))
+  assert all(PT.get_name(overset).startswith('Overset') for overset in oversets)
   
   userdefineds = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="UserDefined"]
   assert len(userdefineds) == 1
-  assert np.all(np.array([PT.get_name(userdefined).startswith('UserDefined') for userdefined in userdefineds]))
+  assert all(PT.get_name(userdefined).startswith('UserDefined') for userdefined in userdefineds)
   
   nulls  = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Null"]
   assert len(nulls) == 1
-  assert np.all(np.array([PT.get_name(null).startswith('Null') for null in nulls]))
+  assert all(PT.get_name(null).startswith('Null') for null in nulls)
   
   matchs = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Abutting1to1"]
   assert len(matchs) == 2
-  assert np.all(np.array(['GCMatch' in PT.get_name(match) for match in matchs]))
+  assert all('GCMatch' in PT.get_name(match) for match in matchs)
   assert all(['.I' in match[0] for match in matchs])
   
   nomatchs = [gc for gc in gcs if PT.GridConnectivity.Type(gc)=="Abutting"]
   assert len(nomatchs) == 2
-  assert np.all(np.array(['GCNoMatch' in PT.get_name(nomatch) for nomatch in nomatchs]))
+  assert all('GCNoMatch' in PT.get_name(nomatch) for nomatch in nomatchs)
   
   loc_suffix = {'Vertex' : 'Vtx', 'FaceCenter' : 'Face', 'CellCenter' : 'Cell'}
-  assert np.all([PT.get_name(gc).split("@")[-1].startswith(loc_suffix[PT.Subset.GridLocation(gc)]) for gc in gcs])
+  assert all(PT.get_name(gc).split("@")[-1].startswith(loc_suffix[PT.Subset.GridLocation(gc)]) for gc in gcs)
 
 @pytest_parallel.mark.parallel([1])
 @pytest.mark.parametrize("type", ["Abutting1to1", "Abutting"])
@@ -305,27 +304,26 @@ def test_concatenate_jns_all_abutting(comm, type, perio):
   gcs    = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
   perios = PT.get_nodes_from_label(dist_tree, 'GridConnectivityProperty_t')
   
-  len_names = np.array([len(gc[0]) for gc in gcs])
-  assert np.all(len_names < 33)
+  assert all(len(PT.get_name(gc)) <= 32 for gc in gcs)
   
   nb_perios = 0
   if type == "Abutting1to1":
     nb_gcs    = 8
     gc_partial_name = 'GCMatch'
-    opp_names = [PT.get_value(PT.get_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs]
-    assert sorted(opp_names) == sorted([gc[0] for gc in gcs[::-1]])
+    opp_names = [PT.get_str_value(PT.find_child_from_name(gc, "GridConnectivityDonorName")) for gc in gcs]
+    assert sorted(opp_names) == sorted([PT.get_name(gc) for gc in gcs[::-1]])
     if perio:
       nb_gcs    = 10
       nb_perios = 10
-      assert all(['.P' in gc[0] for gc in gcs])
+      assert all(['.P' in PT.get_name(gc) for gc in gcs])
   else:
     gc_partial_name = 'GCNoMatch'
     nb_gcs = 10 
     if perio:
       nb_perios = 10
-      assert all(['.P' in gc[0] for gc in gcs])
+      assert all(['.P' in PT.get_name(gc) for gc in gcs])
   
-  assert np.all(np.array([gc_partial_name in PT.get_name(gc) for gc in gcs]))
+  assert all(gc_partial_name in PT.get_name(gc) for gc in gcs)
   
   assert len(gcs)    == nb_gcs
   assert len(perios) == nb_perios
@@ -343,7 +341,7 @@ def test_concatenate_jns_all_abutting(comm, type, perio):
                              ".P3": [ 20., 0., 0.]}
     for gc in gcs:
       suffix = f'.P{PT.get_name(gc).split(".P")[-1]}'
-      assert np.all(PT.GridConnectivity.periodic_values(gc)[1] == suffix_to_rot_angle[suffix])
+      assert np.array_equal(PT.GridConnectivity.periodic_values(gc)[1], suffix_to_rot_angle[suffix])
 
 @pytest.mark.parametrize("specified", [True, False])
 @pytest_parallel.mark.parallel(3)

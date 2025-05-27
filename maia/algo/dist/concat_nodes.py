@@ -1,3 +1,4 @@
+from collections import defaultdict
 from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -6,12 +7,7 @@ from maia.utils import np_utils, par_utils
 from maia.algo.dist import matching_jns_tools as MJT
 
 import numpy as np
-import re
 
-loc_suffix = {'Vertex' : '@Vtx', 'FaceCenter' : '@Face', 'CellCenter' : '@Cell'}
-
-pi = re.compile(r'.I\d+')
-pp = re.compile(r'.P\d+')
 
 def find_suffix(perio_node, perio_refs, add_opp_perio=False):
   found = False
@@ -30,7 +26,7 @@ def find_suffix(perio_node, perio_refs, add_opp_perio=False):
 def opp_perio(perio_node):
   opp_perio = PT.deep_copy(perio_node)
   for da in PT.get_children_from_predicates(opp_perio, ['Periodic','DataArray_t']):
-    PT.set_value(da, -PT.get_value(da))
+    PT.set_value(da, -PT.get_np_value(da))
   return opp_perio
 
 
@@ -134,11 +130,14 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   Periodic jns are merged if their Periodic node are the same
   Manage no match joins too
   """
+  loc_suffix = {'Vertex' : '@Vtx', 'FaceCenter' : '@Face', 'CellCenter' : '@Cell'}
+  key_index = lambda d,k: list(d.keys()).index(k)
+
   MJT.add_joins_donor_name(tree, comm)
   
-  match_perio_refs:List   = []
-  nomatch_perio_refs:List = []
   
+  match_perio_refs:List[CGNSTree]   = []
+  nomatch_perio_refs:List[CGNSTree] = []
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     
     zone_path = '/'.join([PT.get_name(node) for node in [base, zone]])
@@ -146,10 +145,10 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
     #Do a get here because tree is modified
     for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
     
-      match_jns_to_merge:Dict[str, Dict]   = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
-      nomatch_jns_to_merge:Dict[str, Dict] = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
-      nomatch_jns_to_keep:Dict[str, Dict]  = {'Vertex' : dict(), 'FaceCenter' : dict(), 'CellCenter' : dict()}
-      other_gcs:Dict[str, Dict]            = {'Vertex' : list(), 'FaceCenter' : list(), 'CellCenter' : list()}
+      match_jns_to_merge:Dict[str, Dict]   = {key: defaultdict(list) for key in loc_suffix}
+      nomatch_jns_to_merge:Dict[str, Dict] = {key: defaultdict(list) for key in loc_suffix}
+      nomatch_jns_to_keep:Dict[str, Dict]  = {key: defaultdict(list) for key in loc_suffix}
+      other_gcs:Dict[str, List]            = {key: list() for key in loc_suffix}
       
       for jn in PT.get_children_from_label(zgc, 'GridConnectivity_t'):
         donor_path = PT.GridConnectivity.ZoneDonorPath(jn, PT.get_name(base))
@@ -167,20 +166,14 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
         
         intra_gc = donor_path == zone_path
         if (intra_gc) and (not is_perio_gc) and (type == "Abutting"):
-          try:
-            nomatch_jns_to_keep[location][donor_path].append((key,jn))
-          except KeyError:
-            nomatch_jns_to_keep[location][donor_path] = [(key,jn)]
-          continue
+          nomatch_jns_to_keep[location][donor_path].append((key,jn))
+          continue # Skip this join
   
         #Manage periodic -- merge only if periodic values are identical
         if is_perio_gc:
           perio_node = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
           if type=="Abutting1to1":
-            if intra_gc:
-              suffix = find_suffix(perio_node, match_perio_refs, add_opp_perio=True)
-            else:
-              suffix = find_suffix(perio_node, match_perio_refs)
+            suffix = find_suffix(perio_node, match_perio_refs, add_opp_perio=intra_gc)
           elif type=="Abutting":
             suffix = find_suffix(perio_node, nomatch_perio_refs)
         #Manage intrazone -- prevent merge of two sides into one
@@ -202,18 +195,15 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
           opp_suffix = suffix
   
         if type=="Abutting1to1":
-          try:
-            match_jns_to_merge[location][donor_path].append((key,jn))
-          except KeyError:
-            match_jns_to_merge[location][donor_path] = [(key,jn)]
-          index = list(match_jns_to_merge[location].keys()).index(donor_path)
+          match_jns_to_merge[location][donor_path].append((key,jn))
+          index = key_index(match_jns_to_merge[location], donor_path)
           if suffix == "" or (suffix.startswith(".P") and not intra_gc):
             opp_jn = PT.find_node_from_path(tree, opp_jn_path)
             PT.update_child(opp_jn, "GridConnectivityDonorName", value=f'mergedGCMatch{index}{loc_suffix[location]}{suffix}')
           else:
-            cur_path = f"{PT.get_name(base)}/{PT.get_name(zone)}{opp_suffix}"
+            cur_path = f"{zone_path}{opp_suffix}"
             try:
-              index_opp = list(match_jns_to_merge[location].keys()).index(cur_path)
+              index_opp = key_index(match_jns_to_merge[location], cur_path)
               index = min(index, index_opp)
             except ValueError:
               pass
@@ -221,15 +211,9 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
                 gc_d_n_node = PT.find_child_from_name(jn, "GridConnectivityDonorName")
                 PT.set_value(gc_d_n_node, f'mergedGCMatch{index}{loc_suffix[location]}{opp_suffix}')
         elif type=="Abutting":
-          try:
-            nomatch_jns_to_merge[location][donor_path].append((key,jn))
-          except KeyError:
-            nomatch_jns_to_merge[location][donor_path] = [(key,jn)]
+          nomatch_jns_to_merge[location][donor_path].append((key,jn))
         else:
-          try:
-            other_gcs[location].append((key,jn))
-          except KeyError:
-            other_gcs[location] = [(key,jn)]
+          other_gcs[location].append((key,jn))
       
       PT.rm_children_from_label(zgc, 'GridConnectivity_t')
       
@@ -253,32 +237,30 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
         if len(ljns_to_merge)==0: continue
         first_jn = ljns_to_merge[list(ljns_to_merge.keys())[0]][0][1]
         type = PT.GridConnectivity.Type(first_jn)
-        if type == "Abutting1to1": prefix = "mergedGCMatch"
-        else: prefix = "mergedGCNoMatch"
-        
+        prefix = "mergedGCMatch" if type == 'Abutting1to1' else "mergedGCNoMatch"
         for donor_path, jns in ljns_to_merge.items():
           #We need to merge jn and opposite jn in same order so sort according to ordinal key
           sorted_jns = [elem[1] for elem in sorted(jns)]
           first_jn = sorted_jns[0]
           intra_gc = ".".join(donor_path.split(".")[:-1]) == zone_path
           if type == "Abutting1to1":
-            index = list(match_jns_to_merge[location].keys()).index(donor_path)
-            gc_d_n = PT.get_value(PT.find_child_from_name(first_jn, 'GridConnectivityDonorName'))
-            opp_suffixes_i = pi.findall(gc_d_n)
-            opp_suffixes_p = pp.findall(gc_d_n)
-            if len(opp_suffixes_i)>0:
-              opp_suffix = opp_suffixes_i[-1]
+            index = key_index(match_jns_to_merge[location], donor_path)
+            gc_d_n = PT.get_str_value(PT.find_child_from_name(first_jn, 'GridConnectivityDonorName'))
+            has_opp_suffix_i = gc_d_n.endswith('.I0') or gc_d_n.endswith('.I1')
+            has_opp_suffix_p = len(gc_d_n.split('.P')) > 1 and gc_d_n.split('.P')[-1].isdigit()
+            if has_opp_suffix_i:
+              opp_suffix = gc_d_n[-3:]
               if opp_suffix == '.I0': suffix = '.I1'
               elif opp_suffix == '.I1': suffix = '.I0'
-              index_opp = list(match_jns_to_merge[location].keys()).index(f"{PT.get_name(base)}/{PT.get_name(zone)}{opp_suffix}")
+              index_opp = key_index(match_jns_to_merge[location], f"{zone_path}{opp_suffix}")
               index = min(index, index_opp)
-            elif len(opp_suffixes_p)>0 and intra_gc:
-              opp_suffix = opp_suffixes_p[-1]
+            elif has_opp_suffix_p and intra_gc:
+              opp_suffix = gc_d_n[gc_d_n.rfind('.P'):]
               opp_suffix_index = int(opp_suffix[2:])
               opp_perio_node = match_perio_refs[opp_suffix_index]
               suffix = find_suffix(opp_perio(opp_perio_node), match_perio_refs)
               try:
-                index_opp = list(match_jns_to_merge[location].keys()).index(f"{PT.get_name(base)}/{PT.get_name(zone)}{opp_suffix}")
+                index_opp = key_index(match_jns_to_merge[location], f"{zone_path}{opp_suffix}")
                 index = min(index, index_opp)
               except ValueError:
                 pass
@@ -288,7 +270,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
             else:
               suffix = ""
           else:
-            index = list(nomatch_jns_to_merge[location].keys()).index(donor_path)
+            index = key_index(nomatch_jns_to_merge[location], donor_path)
             if PT.GridConnectivity.isperiodic(first_jn):
               perio_node = PT.get_child_from_label(first_jn, 'GridConnectivityProperty_t')
               suffix = find_suffix(perio_node, match_perio_refs)
