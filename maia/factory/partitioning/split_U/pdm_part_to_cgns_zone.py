@@ -85,13 +85,12 @@ def pdm_vtx_to_cgns_grid_coordinates(d_zone, p_zone, dims, data):
   d_zone_gc = PT.get_child_from_label(d_zone, 'GridCoordinates_t')
   d_gc_transform = PT.get_child_from_name(d_zone_gc, 'CoordinateTransform') 
   d_gc_names = PT.Zone.coordinates(d_zone)._fields
-  d_gc_names_list = []
-  for i in range(len(PT.Zone.coordinates(d_zone))):
-    if PT.Zone.coordinates(d_zone)[i] is not None:
-      d_gc_names_list.append(d_gc_names[i])
   coords = data['np_vtx_coord']
   fields = dict()
-  for i, d_gc_name in enumerate(d_gc_names_list):
+  if d_gc_names[0] == "CoordinateX" and PT.Zone.coordinates(d_zone)[0] is not None:
+    if PT.Zone.coordinates(d_zone)[2] is None:
+      d_gc_names = ('CoordinateX','CoordinateY')
+  for i, d_gc_name in enumerate(d_gc_names):
     fields[d_gc_name] = coords[i::3]
   grid_c = PT.new_GridCoordinates(fields=fields, parent=p_zone)
   PT.add_child(grid_c, d_gc_transform)
