@@ -278,7 +278,6 @@ def test_merge_zones_I(comm, merge_only_two):
   old_id = PT.get_node_from_path(zones[1], 'ZoneBC/Ymin/PointList')[1][0].copy()
   PT.new_DataArray('OldId', old_id, parent=zsr_full)
   
-
   if merge_only_two:
     n_merged = 2
     merge.merge_zones(tree, ['Base/zone1', 'Base/zone2'], comm, output_path='MergedBase/MergedZone')
@@ -295,7 +294,8 @@ def test_merge_zones_I(comm, merge_only_two):
     assert len(PT.get_nodes_from_label(merged_zone, 'GridConnectivity_t')) == 2 + 1 #1 non abbuting
     for gc in PT.iter_nodes_from_label(merged_zone, 'GridConnectivity_t'):
       assert PT.get_value(gc) == 'Base/mergedZone0'
-      assert (PT.get_node_from_label(gc, 'Periodic_t') is not None) == (PT.get_name(gc) != 'Zmin')
+      assert (PT.get_node_from_label(gc, 'Periodic_t') is not None) == (PT.get_name(gc) != 'GCNoMatch0@Face')
+      assert PT.GridConnectivity.isperiodic(gc) == (PT.GridConnectivity.Type(gc) == 'Abutting1to1')
 
   assert len(PT.get_nodes_from_label(merged_zone, 'BC_t')) == 4
   assert PT.Zone.n_cell(merged_zone) == n_merged*((n_vtx-1)**3)

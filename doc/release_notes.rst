@@ -37,6 +37,7 @@ Developpement version
 - extract_part: return an empty tree instead of raising when requested subset does not exist
 - convert_s_to_u: correct PointList values of CellCenter subsets
 - merge_zones: automatically create NGON/ParentElements if not existing
+- merge_zones: prevent too long node names for output JNs when ``concatenate_jns=True``
 
 v1.6 (January 2025)
 -------------------
