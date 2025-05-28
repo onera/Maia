@@ -729,3 +729,19 @@ ZoneU Zone_t:
   assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field')  is not None
   assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field2') is None
   assert PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithPL/DirichletData/field3') is not None
+
+
+@pytest_parallel.mark.parallel(1)
+def test_missing_gnum_node(comm):
+  pt = """
+  ZoneU.P1.N0 Zone_t [[3,0,0]]:
+    ZSRWithPL ZoneSubRegion_t:
+      GridLocation GridLocation_t "Vertex":
+      PointList IndexArray_t [[1,2]]:
+      field DataArray_t [84,48]:
+  """
+
+  part_zones = PTy.to_nodes(pt)
+
+  with pytest.raises(AssertionError):
+    PTB.part_subregion_to_dist_subregion(None, part_zones, comm)

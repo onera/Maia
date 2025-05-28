@@ -178,6 +178,13 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   Transfert all the data included in ZoneSubRegion_t nodes from the partitioned
   zones to the distributed zone.
   """
+  is_zsr_with_pl = lambda n: PT.get_label(n)=='ZoneSubRegion_t' and\
+                             PT.get_child_from_name(n, 'PointList') is not None
+  for zone in part_zones:
+    for zsr_n in PT.get_children_from_predicate(zone, is_zsr_with_pl):
+      gn_n = MT.get_GlobalNumbering(zsr_n)
+      assert gn_n is not None and PT.get_child_from_name(gn_n, 'Index') is not None,\
+      f"missing \":CGNS#GlobalNumbering\" node under ZoneSubRegion_t with PointList \"{PT.get_name(zsr_n)}\""
   _discover_wrapper(dist_zone, part_zones, 'ZoneSubRegion_t', 'ZoneSubRegion_t/DataArray_t', comm)
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
   for mask_zsr in PT.get_children(mask_tree):
