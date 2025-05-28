@@ -28,6 +28,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
   For 3D poly zones : cell_face, face_vtx, coords, cell_gnum, face_gnum, vtx_gnum, 
   For 2D poly zones : face_edge, edge_vtx, coords, face_gnum, vtx_gnum
   For elt or S zones : cell_vtx ('volumic' cells only), coords, cell_gnum, vtx_gnum
+  Even if phydim < 3, coords are always returned as 3D array (filled with zeros)
   """
   dim = PT.Zone.CellDimension(zone)
 
@@ -127,7 +128,9 @@ def minimal_partitioning(zone, comm, use_geom=False):
     part_data = [pcell_vtx_idx, pcell_vtx, cell_gnum, vtx_gnum]
 
   # Bring back coordinates
-  pcoords = EP.block_to_part(dcoords._asdict(), vtx_distri, vtx_gnum-1, comm)
+  dcoords = {key: data if data is not None else np.zeros_like(dcoords[0]) \
+              for key, data in dcoords._asdict().items()}
+  pcoords = EP.block_to_part(dcoords, vtx_distri, vtx_gnum-1, comm)
   pvtx_coords = np_utils.interweave_arrays(list(pcoords.values()))
   if is_poly_3d_zone(zone):
     part_data.insert(4, pvtx_coords)

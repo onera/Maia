@@ -43,9 +43,9 @@ def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[NDArr
     RuntimeError: If location is unknown or node not found
   """
   if location == 'Vertex':
-    cx,cy,cz = PT.Zone.coordinates(zone)
-    assert (cx is not None) and (cy is not None) and (cz is not None)
-    coords = [c.reshape(-1, order='F') for c in [cx,cy,cz]]
+    _coords = PT.Zone.coordinates(zone)
+    coords = [c if c is not None else np.zeros_like(_coords[0]) for c in _coords]
+    coords = [c.reshape(-1, order='F') for c in coords]
     vtx_coords   = np_utils.interweave_arrays(coords)
     vtx_ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, location)
     return vtx_coords, vtx_ln_to_gn

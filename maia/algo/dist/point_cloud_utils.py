@@ -19,7 +19,8 @@ def get_point_cloud(zone, comm, location):
 
   if location == 'Vertex':
     vtx_ln_to_gn = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype) + 1
-    coords = [c.reshape(-1, order='F') for c in PT.Zone.coordinates(zone)]
+    _coords = PT.Zone.coordinates(zone)
+    coords = [c if c is not None else np.zeros_like(_coords[0]) for c in _coords]
     vtx_coords   = np_utils.interweave_arrays(coords)
     return vtx_coords, vtx_ln_to_gn
 
