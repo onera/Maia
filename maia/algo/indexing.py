@@ -8,7 +8,8 @@ from .dist import ngon_tools as dist_ngon_tools
 from .part import ngon_tools as part_ngon_tools
 
 is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
-is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
+is_poly_2d_zone = lambda z: PT.get_child_from_label(z, 'Elements_t') is not None and \
+                            PT.Zone.CellDimension(z) == 2 and \
                             PT.Zone.Type(z) == 'Unstructured' and \
                             all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
 

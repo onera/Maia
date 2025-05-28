@@ -51,8 +51,8 @@ def test_localize_2d(src_kind, tgt_kind, comm):
   n_vtx_src = [6,6]   if src_kind == 'S' else 6
   n_vtx_tgt = [21,21] if tgt_kind == 'S' else 21
   _src_kind = 'QUAD_4' if src_kind == 'Poly' else 'S'
-  src_tree = maia.factory.generate_dist_block(n_vtx_src, _src_kind, comm)
-  tgt_tree = maia.factory.generate_dist_block(n_vtx_tgt, tgt_kind,  comm)
+  src_tree = maia.factory.generate_dist_block(n_vtx_src, _src_kind, comm, origin=[0.,0])
+  tgt_tree = maia.factory.generate_dist_block(n_vtx_tgt, tgt_kind,  comm, origin=[0.,0])
   if src_kind == 'Poly':
     maia.algo.dist.convert_elements_to_ngon(src_tree, comm)
   
