@@ -273,9 +273,12 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
 
   is_perio = lambda n : PT.get_child_from_label(n, 'GridConnectivityProperty_t') is not None
-  gc_query:Predicates = ['ZoneGridConnectivity_t', \
-                         lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-                         and PT.Subset.GridLocation(n) == 'FaceCenter']
+  face_gc_query:Predicates = ['ZoneGridConnectivity_t', \
+                              lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+                              and PT.Subset.GridLocation(n) == 'FaceCenter']
+  vtx_gc_query:Predicates = ['ZoneGridConnectivity_t', \
+                             lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
+                             and PT.Subset.GridLocation(n) == 'Vertex']
 
   # Move non 1to1 GC_t to ZoneBC since they have no PointListDonor
   is_not_1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and not PT.GridConnectivity.is1to1(n)
@@ -292,8 +295,12 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
 
   # JNs to external zones must be excluded from vertex list computing
   tree_vl = PT.shallow_copy(tree)
+  for zone in PT.iter_all_Zone_t(tree_vl):
+    if PT.get_node_from_predicates(zone, vtx_gc_query) is not None:
+      raise RuntimeError("Vertex located 1to1 GridConnectivity_t nodes are not supported in merge_zones." \
+                         " Use a tree with FaceCenter located joins.")
   for base, zone in PT.get_children_from_predicates(tree_vl, ['CGNSBase_t', 'Zone_t'], ancestors=True):
-    for zgc, gc in PT.get_children_from_predicates(zone, gc_query, ancestors=True):
+    for zgc, gc in PT.get_children_from_predicates(zone, face_gc_query, ancestors=True):
       if PT.GridConnectivity.ZoneDonorPath(gc, PT.get_name(base)) not in zone_to_id:
         PT.rm_child(zgc, gc)
   VL.generate_jns_vertex_list(tree_vl, comm, have_isolated_faces=True)
@@ -315,7 +322,7 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   interface_ids_v = []
   for zone_path, zone in zip(zone_paths, zones):
     base_name, zone_name = zone_path.split('/')
-    for zgc, gc in PT.get_children_from_predicates(zone, gc_query, ancestors=True):
+    for zgc, gc in PT.get_children_from_predicates(zone, face_gc_query, ancestors=True):
       opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, base_name)
       if opp_zone_path in zone_to_id:
         if is_perio(gc):
