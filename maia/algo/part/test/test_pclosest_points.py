@@ -98,6 +98,11 @@ def test_closestpoint_mdom(comm):
   assert _result['closest_src_gnum'][dom1_idx].max() <= PT.Zone.n_vtx(src_parts_per_dom[0][0])
   assert _result['closest_src_gnum'][dom2_idx].max() <= PT.Zone.n_vtx(src_parts_per_dom[1][0])
 
+def test_closest_points_phydim2(comm):
+  dtree_src = maia.factory.generate_dist_block(5, 'TRI_3', comm, origin=[0.,0])
+  ptree_src = maia.factory.partition_dist_tree(dtree_src, comm)
+  CLO.find_closest_points(ptree_src, ptree_src, 'Vertex', comm)
+
 @pytest_parallel.mark.parallel(2)
 def test_closest_points_lowdim(comm):
   dtree_src = maia.factory.generate_dist_sphere(5, 'TRI_3', comm)

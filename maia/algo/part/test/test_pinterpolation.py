@@ -332,7 +332,7 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
   for zone in PT.iter_all_Zone_t(psrc_tree):
     cx,cy,cz = PT.Zone.coordinates(zone)
     gnum     = MT.globalnumbering_value(zone, 'Vertex')
-    PT.new_FlowSolution('FS', loc="Vertex", fields={'gnum':gnum, 'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
+    PT.new_DiscreteData('FS', loc="Vertex", fields={'gnum':gnum, 'cx':cx, 'cy':cy, 'cz':cz}, parent=zone)
 
   interpolator = maia.algo.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
                                                strategy=strategy,
@@ -357,7 +357,8 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
     expected_cy[no_in_src_pl]=np.nan
     expected_cz[no_in_src_pl]=np.nan
 
-  tgt_fs = PT.get_node_from_label(ptgt_tree, 'FlowSolution_t')
+  tgt_fs = PT.get_node_from_name(ptgt_tree, 'FS')
+  assert PT.get_label(tgt_fs) == 'DiscreteData_t'
   tgt_cx = PT.get_child_from_name(tgt_fs, 'cx')[1]
   tgt_cy = PT.get_child_from_name(tgt_fs, 'cy')[1]
   tgt_cz = PT.get_child_from_name(tgt_fs, 'cz')[1]

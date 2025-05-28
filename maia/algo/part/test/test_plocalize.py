@@ -131,8 +131,8 @@ def test_localize_points(input_kind, comm):
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("cnt_kind", ['Element', 'Poly'])
 def test_localize_2d(cnt_kind, comm):
-  dtree_src = maia.factory.generate_dist_block(5, 'QUAD_4', comm, origin=[0.,0.,0.])
-  dtree_tgt = maia.factory.generate_dist_block([4,4],  'S', comm, origin=[.4,.05,0])
+  dtree_src = maia.factory.generate_dist_block(5, 'QUAD_4', comm, origin=[0.,0.])
+  dtree_tgt = maia.factory.generate_dist_block([4,4],  'S', comm, origin=[.4,.05])
 
   if cnt_kind == 'Poly':
     maia.algo.dist.convert_elements_to_ngon(dtree_src, comm)

@@ -25,7 +25,7 @@ def test_dump_pdm_output():
 def test_pdm_vtx_to_cgns_grid_coordinates(fields):
   d_zone = PT.new_Zone('Zone', type='Unstructured')
   p_zone = PT.new_Zone('Zone.P0.N0', type='Unstructured')
-  PT.new_GridCoordinates(fields={f: None for f in fields}, parent=d_zone)
+  PT.new_GridCoordinates(fields={f: np.empty(0) for f in fields}, parent=d_zone)
   dims = {'n_vtx' : 3}
   data = {'np_vtx_coord' : np.array([1,2,3, 4,5,6, 7,8,9], dtype=np.float64)}
 

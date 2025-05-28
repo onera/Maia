@@ -348,6 +348,19 @@ def test_split_multi_elt(comm):
   cell_gum = MT.globalnumbering_value(zone, 'Cell')
   assert (cell_gum == [1,2,3,4]).all()
 
+@pytest.mark.parametrize("elt_kind", ['S', 'Poly', 'Standard'])
+@pytest.mark.parametrize("phy_dim", [2,3])
+def test_split_phydim2(elt_kind, phy_dim, comm):
+  origin = [0.,0.] if (phy_dim==2) else [0.,0.,0.]
+  dist_tree = maia.factory.generate_dist_block([11,6], 'S', comm, origin=origin)
+  if elt_kind != 'S':
+    maia.algo.dist.convert_s_to_u(dist_tree, elt_kind, comm)
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
+  
+  assert PT.find_node_from_label(part_tree, 'CGNSBase_t')[1][1] == phy_dim
+  assert (PT.get_node_from_name(part_tree, 'CoordinateX') is None) == False
+  assert (PT.get_node_from_name(part_tree, 'CoordinateZ') is None) == (phy_dim==2)
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("data_transfer", [['FlowSolution_t'], ["ALL"], ['UserDefinedData_t', 'BCDataSet_t']])

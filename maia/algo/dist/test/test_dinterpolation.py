@@ -24,6 +24,7 @@ def test_simple_2d(comm):
   cell_distri = MT.distribution_value(tgt_zone, 'Cell')
   dn_cell = cell_distri[1] - cell_distri[0]
   sol = PT.get_node_from_name(tgt_zone, 'Geometry_2d')
+  assert PT.get_label(sol) == 'DiscreteData_t'
   assert PT.Subset.GridLocation(sol) == 'CellCenter'
   for array in PT.get_children_from_label(sol, 'DataArray_t'):
     assert array[1].shape == (dn_cell,)

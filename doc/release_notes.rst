@@ -38,6 +38,7 @@ Developpement version
 - convert_s_to_u: correct PointList values of CellCenter subsets
 - merge_zones: automatically create NGON/ParentElements if not existing
 - merge_zones: prevent too long node names for output JNs when ``concatenate_jns=True``
+- Better management of phyDim=2 in some functions
 
 v1.6 (January 2025)
 -------------------
