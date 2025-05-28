@@ -148,8 +148,10 @@ class Interpolator:
 
     #Check that solutions are known on each source partition
     fields_per_part = list()
+    container_label = ''
     for src_part in self.src_parts:
-      container = PT.get_node_from_path(src_part, container_name)
+      container = PT.find_node_from_path(src_part, container_name)
+      container_label = PT.get_label(container)
       assert PT.Subset.GridLocation(container) == self.input_loc
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
       fields_per_part.append(fields_name)
@@ -158,12 +160,14 @@ class Interpolator:
 
     fields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
     if self.root is not None: # Some rank have no src partitions, share field names
+      container_label = self.comm.bcast(container_label, root=self.root)
       fields_names = self.comm.bcast(fields_names, root=self.root)
 
     #Cleanup target partitions
     for tgt_part in self.tgt_parts:
       PT.rm_children_from_name(tgt_part, container_name)
       fs = PT.new_FlowSolution(container_name, loc=self.output_loc, parent=tgt_part)
+      PT.set_label(fs, container_label)
 
     #Collect src sol
     src_field_dic = dict()

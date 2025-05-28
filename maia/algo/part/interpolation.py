@@ -134,11 +134,6 @@ def interpolate(src_tree:CGNSPartTree,
   # Exchange fields
   for container_name in containers_name:
     interpolator.exchange_fields(container_name)
-    tgt_container = PT.get_node_from_name(tgt_tree, container_name)
-    if tgt_container:
-      src_container = PT.get_node_from_name(src_tree, container_name)
-      src_container_label = PT.get_label(src_container)
-      PT.set_label(tgt_container, src_container_label)
 
 
 
