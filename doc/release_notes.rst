@@ -9,8 +9,8 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Developpement version
----------------------
+v1.7 (May 2024)
+---------------
 
 💡 New Features
 ^^^^^^^^^^^^^^^
@@ -39,6 +39,11 @@ Developpement version
 - merge_zones: automatically create NGON/ParentElements if not existing
 - merge_zones: prevent too long node names for output JNs when ``concatenate_jns=True``
 - Better management of phyDim=2 in some functions
+
+🔧 Advanced users / devs
+^^^^^^^^^^^^^^^^^^^^^^^^
+- Introduce the ``VStrideArray`` class to facilitate connectivity array manipulation
+- Add options to manage multiple occurences in the ``Put`` method of ``Global(Multi)Indexer``
 
 v1.6 (January 2025)
 -------------------

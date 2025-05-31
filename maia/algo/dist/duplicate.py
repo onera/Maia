@@ -266,8 +266,9 @@ def duplicate_from_rotation_jns_to_360(dist_tree: CGNSDistTree,
       rotation_angle_a[i] = 0.
   index = np.where(rotation_angle_a != 0)[0]
   if index.size == 1:
-    sectors_number = abs(int(np.round(2*np.pi/rotation_angle_a[index])))
-    rotation_angle_a[index] = np.sign(rotation_angle_a[index]) * 2*np.pi/sectors_number
+    _angle = rotation_angle_a[index[0]]
+    sectors_number = abs(int(np.round(2*np.pi/_angle)))
+    rotation_angle_a[index[0]] = np.sign(_angle) * 2*np.pi/sectors_number
   else:
     raise ValueError("Zone/Join not define a section of a row")
 

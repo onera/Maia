@@ -16,7 +16,7 @@ MAIA_PACKAGE_PREFIX = "maia.pytree"
 
 # List of modules to explicitly exclude from doctests, even if found and containing markers.
 # Example: modules_not_to_test = ["maia.pytree.some_module_to_skip"]
-modules_not_to_test = []
+modules_not_to_test = [] #type:ignore[var-annotated] #(list of str)
 
 # --- ANSI Color Codes ---
 class Colors:
