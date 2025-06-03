@@ -2,8 +2,8 @@ from typing import overload, TypeVar
 from maia.pytree.typing import *
 from maia.pytree.meta   import CGNSNodeNotFoundError
 
-from maia.pytree.predicate     import auto_predicate, auto_predicates, \
-                                      match_name, match_label, match_value, match_name_label
+from maia.pytree.predicate     import match_name, match_label, match_value
+from .auto_pred import auto_predicate, auto_predicates
 
 
 from .node_walker   import NodeWalker
@@ -54,7 +54,7 @@ def get_child_from_predicate(root:CGNSTree, predicate:Predicate, **kwargs) -> Op
 
 def get_node_from_name(root:CGNSTree, name:str, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_predicate with embedded predicate match_name"""
-  return get_node_from_predicate(root, lambda n : match_name(n, name), **kwargs)
+  return get_node_from_predicate(root, match_name(name), **kwargs)
 def get_child_from_name(root:CGNSTree, name:str, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_name with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -62,7 +62,7 @@ def get_child_from_name(root:CGNSTree, name:str, **kwargs) -> Optional[CGNSTree]
 
 def get_node_from_label(root:CGNSTree, label:str, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_predicate with embedded predicate match_label"""
-  return get_node_from_predicate(root, lambda n : match_label(n, label), **kwargs)
+  return get_node_from_predicate(root, match_label(label), **kwargs)
 def get_child_from_label(root:CGNSTree, label:str, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -70,7 +70,7 @@ def get_child_from_label(root:CGNSTree, label:str, **kwargs) -> Optional[CGNSTre
 
 def get_node_from_value(root:CGNSTree, value, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_predicate with embedded predicate match_value"""
-  return get_node_from_predicate(root, lambda n : match_value(n, value), **kwargs)
+  return get_node_from_predicate(root, match_value(value), **kwargs)
 def get_child_from_value(root:CGNSTree, value, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_value with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -78,7 +78,7 @@ def get_child_from_value(root:CGNSTree, value, **kwargs) -> Optional[CGNSTree]:
 
 def get_node_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_predicate with embedded predicate match_name_label"""
-  return get_node_from_predicate(root, lambda n : match_name_label(n, name, label), **kwargs)
+  return get_node_from_predicate(root, match_name(name) & match_label(label), **kwargs)
 def get_child_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> Optional[CGNSTree]:
   """Specialization of get_node_from_name_and_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -99,7 +99,7 @@ def find_child_from_predicate(root:CGNSTree, predicate:Predicate, **kwargs) -> C
 
 def find_node_from_name(root:CGNSTree, name:str, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_predicate with embedded predicate match_name"""
-  return find_node_from_predicate(root, lambda n : match_name(n, name), **kwargs)
+  return find_node_from_predicate(root, match_name(name), **kwargs)
 def find_child_from_name(root:CGNSTree, name:str, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_name with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -107,7 +107,7 @@ def find_child_from_name(root:CGNSTree, name:str, **kwargs) -> CGNSTree:
 
 def find_node_from_label(root:CGNSTree, label:str, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_predicate with embedded predicate match_label"""
-  return find_node_from_predicate(root, lambda n : match_label(n, label), **kwargs)
+  return find_node_from_predicate(root, match_label(label), **kwargs)
 def find_child_from_label(root:CGNSTree, label:str, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -115,7 +115,7 @@ def find_child_from_label(root:CGNSTree, label:str, **kwargs) -> CGNSTree:
 
 def find_node_from_value(root:CGNSTree, value, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_predicate with embedded predicate match_value"""
-  return find_node_from_predicate(root, lambda n : match_value(n, value), **kwargs)
+  return find_node_from_predicate(root, match_value(value), **kwargs)
 def find_child_from_value(root:CGNSTree, value, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_value with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -123,7 +123,7 @@ def find_child_from_value(root:CGNSTree, value, **kwargs) -> CGNSTree:
 
 def find_node_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_predicate with embedded predicate match_name_label"""
-  return find_node_from_predicate(root, lambda n : match_name_label(n, name, label), **kwargs)
+  return find_node_from_predicate(root, match_name(name) & match_label(label), **kwargs)
 def find_child_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> CGNSTree:
   """Specialization of find_node_from_name_and_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -176,7 +176,7 @@ def get_children_from_predicate(root:CGNSTree, predicate:Predicate, **kwargs) ->
 
 def get_nodes_from_name(root:CGNSTree, name:str, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_predicate with embedded predicate match_name"""
-  return get_nodes_from_predicate(root, lambda n : match_name(n, name), **kwargs)
+  return get_nodes_from_predicate(root, match_name(name), **kwargs)
 def get_children_from_name(root:CGNSTree, name:str, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_name with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -184,7 +184,7 @@ def get_children_from_name(root:CGNSTree, name:str, **kwargs) -> List[CGNSTree]:
 
 def get_nodes_from_label(root:CGNSTree, label:str, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_predicate with embedded predicate match_label"""
-  return get_nodes_from_predicate(root, lambda n : match_label(n, label), **kwargs)
+  return get_nodes_from_predicate(root, match_label(label), **kwargs)
 def get_children_from_label(root:CGNSTree, label:str, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -192,7 +192,7 @@ def get_children_from_label(root:CGNSTree, label:str, **kwargs) -> List[CGNSTree
 
 def get_nodes_from_value(root:CGNSTree, value, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_predicate with embedded predicate match_value"""
-  return get_nodes_from_predicate(root, lambda n : match_value(n, value), **kwargs)
+  return get_nodes_from_predicate(root, match_value(value), **kwargs)
 def get_children_from_value(root:CGNSTree, value, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_value with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -200,7 +200,7 @@ def get_children_from_value(root:CGNSTree, value, **kwargs) -> List[CGNSTree]:
 
 def get_nodes_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_predicate with embedded predicate match_name_label"""
-  return get_nodes_from_predicate(root, lambda n : match_name_label(n, name, label), **kwargs)
+  return get_nodes_from_predicate(root, match_name(name) & match_label(label), **kwargs)
 def get_children_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> List[CGNSTree]:
   """Specialization of get_nodes_from_name_and_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -233,7 +233,7 @@ def iter_children_from_predicate(root:CGNSTree, predicate:Predicate, **kwargs) -
 
 def iter_nodes_from_name(root:CGNSTree, name:str, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_predicate with embedded predicate match_name"""
-  return iter_nodes_from_predicate(root, lambda n : match_name(n, name), **kwargs)
+  return iter_nodes_from_predicate(root, match_name(name), **kwargs)
 def iter_children_from_name(root:CGNSTree, name:str, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_name with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -241,7 +241,7 @@ def iter_children_from_name(root:CGNSTree, name:str, **kwargs) -> Iterator[CGNST
 
 def iter_nodes_from_label(root:CGNSTree, label:str, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_predicate with embedded predicate match_label"""
-  return iter_nodes_from_predicate(root, lambda n : match_label(n, label), **kwargs)
+  return iter_nodes_from_predicate(root, match_label(label), **kwargs)
 def iter_children_from_label(root:CGNSTree, label:str, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -249,7 +249,7 @@ def iter_children_from_label(root:CGNSTree, label:str, **kwargs) -> Iterator[CGN
 
 def iter_nodes_from_value(root:CGNSTree, value, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_predicate with embedded predicate match_value"""
-  return iter_nodes_from_predicate(root, lambda n : match_value(n, value), **kwargs)
+  return iter_nodes_from_predicate(root, match_value(value), **kwargs)
 def iter_children_from_value(root:CGNSTree, value, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_value with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -257,7 +257,7 @@ def iter_children_from_value(root:CGNSTree, value, **kwargs) -> Iterator[CGNSTre
 
 def iter_nodes_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_predicate with embedded predicate match_name_label"""
-  return iter_nodes_from_predicate(root, lambda n : match_name_label(n, name, label), **kwargs)
+  return iter_nodes_from_predicate(root, match_name(name) & match_label(label), **kwargs)
 def iter_children_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs) -> Iterator[CGNSTree]:
   """Specialization of iter_nodes_from_name_and_label with depth=[1,1]"""
   kwargs['depth'] = [1,1]
@@ -329,7 +329,7 @@ def get_node_from_names(root:CGNSTree, names:List[str], **kwargs) -> Optional[CG
 
 def get_node_from_names(root:CGNSTree, names:List[str], ancestors=False, **kwargs):
   """Specialization of get_node_from_predicates with embedded predicates match_name"""
-  predicates:Predicates = [p:=lambda n,name=name : match_name(n, name) for name in names] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_name(name) for name in names]
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -353,7 +353,7 @@ def get_node_from_labels(root:CGNSTree, labels:List[str], **kwargs) -> Optional[
 
 def get_node_from_labels(root:CGNSTree, labels:List[str], ancestors=False, **kwargs):
   """Specialization of get_node_from_predicates with embedded predicates match_label"""
-  predicates:Predicates = [lambda n,label=label : match_label(n, label) for label in labels] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_label(label) for label in labels]
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -377,7 +377,7 @@ def get_node_from_values(root:CGNSTree, values, **kwargs) -> Optional[CGNSTree]:
 
 def get_node_from_values(root:CGNSTree, values, ancestors=False, **kwargs):
   """Specialization of get_node_from_predicates with embedded predicates match_value"""
-  predicates:Predicates = [lambda n,value=value : match_value(n, value) for value in values] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_value(value) for value in values]
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -402,7 +402,7 @@ def get_node_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[st
 def get_node_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors=False, **kwargs):
   """Specialization of get_node_from_predicates with embedded predicates match_name_label"""
   assert len(names) == len(labels)
-  predicates:Predicates = [lambda n,name=name,label=label : match_name_label(n, name, label) for name,label in zip(names, labels)] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_name(name) & match_label(label) for name,label in zip(names, labels)]
   return get_node_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -473,7 +473,7 @@ def iter_nodes_from_names(root:CGNSTree, names:List[str], **kwargs) -> Iterator[
 
 def iter_nodes_from_names(root:CGNSTree, names:List[str], ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_name"""
-  predicates:Predicates = [lambda n,name=name : match_name(n, name) for name in names] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_name(name) for name in names]
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -497,7 +497,7 @@ def iter_nodes_from_labels(root:CGNSTree, labels:List[str], **kwargs) -> Iterato
 
 def iter_nodes_from_labels(root:CGNSTree, labels:List[str], ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_label"""
-  predicates:Predicates = [lambda n,label=label : match_label(n, label) for label in labels] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_label(label) for label in labels]
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -521,7 +521,7 @@ def iter_nodes_from_values(root:CGNSTree, values, **kwargs) -> Iterator[CGNSTree
 
 def iter_nodes_from_values(root:CGNSTree, values, ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_value"""
-  predicates:Predicates = [lambda n,value=value : match_value(n, value) for value in values] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_value(value) for value in values]
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -546,7 +546,7 @@ def iter_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[
 def iter_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors=False, **kwargs):
   """Specialization of iter_nodes_from_predicates with embedded predicates match_name_label"""
   assert len(names) == len(labels)
-  predicates:Predicates = [lambda n,name=name,label=label : match_name_label(n, name, label) for name,label in zip(names, labels)] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_name(name) & match_label(label) for name,label in zip(names, labels)]
   return iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -627,7 +627,7 @@ def get_nodes_from_names(root:CGNSTree, names:List[str], **kwargs) -> List[CGNST
 
 def get_nodes_from_names(root:CGNSTree, names:List[str], ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_name"""
-  predicates:Predicates = [lambda n,name=name : match_name(n, name) for name in names] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_name(name) for name in names]
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -651,7 +651,7 @@ def get_nodes_from_labels(root:CGNSTree, labels:List[str], **kwargs) -> List[CGN
 
 def get_nodes_from_labels(root:CGNSTree, labels:List[str], ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_label"""
-  predicates:Predicates = [lambda n,label=label : match_label(n, label) for label in labels] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_label(label) for label in labels]
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -675,7 +675,7 @@ def get_nodes_from_values(root:CGNSTree, values, **kwargs) -> List[CGNSTree]: ..
 
 def get_nodes_from_values(root:CGNSTree, values, ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_value"""
-  predicates:Predicates = [lambda n,value=value : match_value(n, value) for value in values] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_value(value) for value in values]
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload
@@ -700,7 +700,7 @@ def get_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[s
 def get_nodes_from_name_and_labels(root:CGNSTree, names:List[str], labels:List[str], ancestors=False, **kwargs):
   """Specialization of get_nodes_from_predicates with embedded predicates match_name_label"""
   assert len(names) == len(labels)
-  predicates:Predicates = [lambda n,name=name,label=label : match_name_label(n, name, label) for name,label in zip(names, labels)] #type:ignore[misc] #(can not infer lambda)
+  predicates:Predicates = [match_name(name) & match_label(label) for name,label in zip(names, labels)]
   return get_nodes_from_predicates(root, predicates, ancestors, **kwargs)
 
 @overload

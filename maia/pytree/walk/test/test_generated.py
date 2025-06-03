@@ -73,11 +73,11 @@ get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 def test_generated_walkers():          
   tree = PT.yaml.to_cgns_tree(yt)
 
-  assert PT.get_node_from_name(tree, "ZoneI") == PT.get_node_from_predicate(tree, lambda n: PTp.match_name(n, "ZoneI"))
+  assert PT.get_node_from_name(tree, "ZoneI") == PT.get_node_from_predicate(tree, PTp.match_name("ZoneI"))
   assert PT.get_node_from_value(tree, np.array([22,0])) == \
-         PT.get_node_from_predicate(tree, lambda n: PTp.match_value(n, np.array([22,0])))
+         PT.get_node_from_predicate(tree, PTp.match_value(np.array([22,0])))
   assert list(PT.iter_nodes_from_name(tree, "IndexArray_t")) == \
-         list(PT.iter_nodes_from_predicate(tree, lambda n: PTp.match_name(n, "IndexArray_t")))
+         list(PT.iter_nodes_from_predicate(tree, PTp.match_name("IndexArray_t")))
   assert PT.get_nodes_from_name_and_label(tree, "Index_iii", "IndexArray_t") == \
          PT.get_nodes_from_predicate(tree, lambda n: PT.get_label(n) == "IndexArray_t" and PT.get_name(n) == "Index_iii")
 
@@ -101,7 +101,7 @@ def test_generated_remove():
   treeA = PT.yaml.to_cgns_tree(yt)
   treeB = PT.yaml.to_cgns_tree(yt)
 
-  PT.rm_nodes_from_predicate(treeA, lambda n: PTp.match_name(n, "gc*"))
+  PT.rm_nodes_from_predicate(treeA, PTp.match_name("gc*"))
   PT.rm_nodes_from_name(treeB, "gc*")
   assert PT.is_same_tree(treeA, treeB)
 
@@ -366,8 +366,6 @@ def test_getNodeFromPredicate():
   assert is_nface(PT.findNodeFromValue(tree, np.array([23,0], order='F')) )
   assert is_ngon (PT.findNodeFromLabel(tree, "Elements_t")                )
   assert is_nface(PT.findNodeFromNameAndLabel(tree, "NFace", "Elements_t"))
-  predicate = lambda n: PTp.match_value_label(n, np.array([23,0], dtype='int64',order='F'), "Elements_t")
-  assert is_nface(PT.findNodeFromPredicate(tree, predicate)                    )
   assert is_nface(PT.find_node_from_name(tree, "NFace")                        )
   assert is_nface(PT.find_node_from_value(tree, np.array([23,0], order='F'))   )
   assert is_ngon (PT.find_node_from_label(tree, "Elements_t")                  )

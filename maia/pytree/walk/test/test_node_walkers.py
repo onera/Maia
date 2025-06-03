@@ -61,8 +61,8 @@ FamilyBC FamilyBC_t:
 
   # Specific options for each predicate
   patterns = [
-    {'predicate': lambda n: PD.match_label(n, "ReferenceState_t"), 'search':'dfs'},
-    {'predicate': lambda n: PD.match_name(n, 'Density'), 'depth':1},
+    {'predicate': PD.match_label("ReferenceState_t"), 'search':'dfs'},
+    {'predicate': PD.match_name('Density'), 'depth':1},
   ]
   assert PT.NodeWalkers(node, patterns)()[0] == 'Density'
 

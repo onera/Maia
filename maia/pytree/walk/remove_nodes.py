@@ -1,6 +1,6 @@
 from maia.pytree.typing import *
 
-from maia.pytree.predicate import match_name, match_label, match_value, match_name_label
+from maia.pytree.predicate import match_name, match_label, match_value
 from maia.pytree.utils     import path_head, path_tail
 
 from .walkers_api import get_node_from_path
@@ -42,16 +42,16 @@ def rm_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], b
 
 def rm_children_from_name(root:CGNSTree, name:str):
   """Specialization of rm_children_from_predicate with embedded predicate match_name"""
-  return rm_children_from_predicate(root, lambda n : match_name(n, name))
+  return rm_children_from_predicate(root, match_name(name))
 def rm_children_from_label(root:CGNSTree, label:str):
   """Specialization of rm_children_from_predicate with embedded predicate match_label"""
-  return rm_children_from_predicate(root, lambda n : match_label(n, label))
+  return rm_children_from_predicate(root, match_label(label))
 def rm_children_from_value(root:CGNSTree, value):
   """Specialization of rm_children_from_predicate with embedded predicate match_value"""
-  return rm_children_from_predicate(root, lambda n : match_value(n, value))
+  return rm_children_from_predicate(root, match_value(value))
 def rm_children_from_name_and_label(root:CGNSTree, name:str, label:str):
   """Specialization of rm_children_from_predicate with embedded predicate match_name_label"""
-  return rm_children_from_predicate(root, lambda n : match_name_label(n, name, label))
+  return rm_children_from_predicate(root, match_name(name) & match_label(label))
 
 def keep_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool]):
   """
@@ -88,16 +88,16 @@ def keep_children_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree],
 
 def keep_children_from_name(root:CGNSTree, name:str):
   """Specialization of keep_children_from_predicate with embedded predicate match_name"""
-  return keep_children_from_predicate(root, lambda n : match_name(n, name))
+  return keep_children_from_predicate(root, match_name(name))
 def keep_children_from_label(root:CGNSTree, label:str):
   """Specialization of keep_children_from_predicate with embedded predicate match_label"""
-  return keep_children_from_predicate(root, lambda n : match_label(n, label))
+  return keep_children_from_predicate(root, match_label(label))
 def keep_children_from_value(root:CGNSTree, value):
   """Specialization of keep_children_from_predicate with embedded predicate match_value"""
-  return keep_children_from_predicate(root, lambda n : match_value(n, value))
+  return keep_children_from_predicate(root, match_value(value))
 def keep_children_from_name_and_label(root:CGNSTree, name:str, label:str):
   """Specialization of keep_children_from_predicate with embedded predicate match_name_label"""
-  return keep_children_from_predicate(root, lambda n : match_name_label(n, name, label))
+  return keep_children_from_predicate(root, match_name(name) & match_label(label))
 
 
 def rm_nodes_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool], **kwargs):
@@ -150,16 +150,16 @@ def rm_nodes_from_predicate(root: CGNSTree, predicate: Callable[[CGNSTree], bool
 
 def rm_nodes_from_name(root:CGNSTree, name:str, **kwargs):
   """Specialization of rm_nodes_from_predicate with embedded predicate match_name"""
-  return rm_nodes_from_predicate(root, lambda n : match_name(n, name), **kwargs)
+  return rm_nodes_from_predicate(root, match_name(name), **kwargs)
 def rm_nodes_from_label(root:CGNSTree, label:str, **kwargs):
   """Specialization of rm_nodes_from_predicate with embedded predicate match_label"""
-  return rm_nodes_from_predicate(root, lambda n : match_label(n, label), **kwargs)
+  return rm_nodes_from_predicate(root, match_label(label), **kwargs)
 def rm_nodes_from_value(root:CGNSTree, value, **kwargs):
   """Specialization of rm_nodes_from_predicate with embedded predicate match_value"""
-  return rm_nodes_from_predicate(root, lambda n : match_value(n, value), **kwargs)
+  return rm_nodes_from_predicate(root, match_value(value), **kwargs)
 def rm_nodes_from_name_and_label(root:CGNSTree, name:str, label:str, **kwargs):
   """Specialization of rm_nodes_from_predicate with embedded predicate match_name_label"""
-  return rm_nodes_from_predicate(root, lambda n : match_name_label(n, name, label), **kwargs)
+  return rm_nodes_from_predicate(root, match_name(name) & match_label(label), **kwargs)
 
 
 

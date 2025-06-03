@@ -7,12 +7,27 @@ from maia.pytree.typing import *
 import maia.pytree.cgns_keywords as CGK
 from   maia.pytree      import node as N
 from   maia.pytree      import sids as S
-from   maia.pytree.node import check
 
-def match_name(n:CGNSTree, name: str) -> bool:
-  return fnmatch.fnmatch(n[0], name)
+class UnaryPredicate:
+  def __init__(self, func) -> None:
+    self.func = func
 
-def match_value(n:CGNSTree, value) -> bool:
+  def __call__(self, X) -> bool:
+    return self.func(X)
+  
+  def __and__(self, other):
+    return UnaryPredicate(lambda X : self(X) and other(X))
+
+  def __or__(self, other):
+    return UnaryPredicate(lambda X : self(X) or other(X))
+  
+  def __invert__(self):
+    return UnaryPredicate(lambda X : not self(X))
+
+def match_name(name: str) -> UnaryPredicate:
+  return UnaryPredicate(lambda n : fnmatch.fnmatch(n[0], name))
+
+def __match_value(n:CGNSTree, value) -> bool:
   if n[1] is None:
     return value is None
   elif value is None: #value is None and node[1] is not None
@@ -22,26 +37,14 @@ def match_value(n:CGNSTree, value) -> bool:
     assert _value is not None
     return np.array_equal(n[1], _value)
 
-def match_str_label(n:CGNSTree, label:str) -> bool:
-  return fnmatch.fnmatch(n[3], label)
+def match_value(value) -> UnaryPredicate:
+  return UnaryPredicate(lambda n : __match_value(n, value))
 
-def match_cgk_label(n:CGNSTree, label) -> bool:
-  return n[3] == label.name
-
-def match_label(n:CGNSTree, label):
-  return match_cgk_label(n, label) if isinstance(label, CGK.Label) else match_str_label(n, label)
-
-def match_name_value(n:CGNSTree, name: str, value):
-  return match_name(n, name) and match_value(n, value)
-
-def match_name_label(n:CGNSTree, name: str, label:str):
-  return match_name(n, name) and match_label(n, label)
-
-def match_value_label(n:CGNSTree, value, label:str):
-  return match_value(n, value) and match_label(n, label)
-
-def match_name_value_label(n:CGNSTree, name: str, value:str, label):
-  return match_name(n, name) and match_value(n, value) and match_label(n, label)
+def match_label(label) -> UnaryPredicate:
+  if isinstance(label, CGK.Label):
+    return UnaryPredicate(lambda n : n[3] == label.name)
+  else:
+    return UnaryPredicate(lambda n : fnmatch.fnmatch(n[3], label))
 
 def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
   """
@@ -69,40 +72,3 @@ def is_bc_of_loc(grid_loc):
 def is_elmt_of_type(cgns_name):
   predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==cgns_name
   return predicate
-
-def auto_predicate(query):
-  if isinstance(query, str):
-    if check.is_valid_label(query):
-      predicate = partial(match_str_label, label=query)
-    else:
-      predicate = partial(match_name, name=query)
-  elif isinstance(query, CGK.Label):
-    predicate = partial(match_cgk_label, label=query)
-  elif callable(query):
-    predicate = query
-  elif isinstance(query, np.ndarray):
-    predicate = partial(match_value, value=query)
-  else:
-    raise TypeError("predicate must be a string for name, a numpy for value, a CGNS Label or a callable python function.")
-  return predicate
-
-def auto_predicates(predicates):
-  """
-  Convert a list a "convenience" predicates to a list a true callable predicates
-  The list can also be given as a '/' separated string
-  """
-  _predicates = []
-  if isinstance(predicates, str):
-    _predicates = [auto_predicate(p) for p in predicates.split('/')]
-  elif isinstance(predicates, (list, tuple)):
-    _predicates = []
-    for p in predicates:
-      if isinstance(p, dict):
-        #Create a new dict with a callable predicate
-        _predicates.append({**p, 'predicate' : auto_predicate(p['predicate'])})
-      else:
-        _predicates.append(auto_predicate(p))
-  else:
-    raise TypeError("predicates must be a sequence or a path as with strings separated by '/'.")
-  return _predicates
-
