@@ -1,7 +1,7 @@
 from maia.pytree.typing import *
 
-from maia.pytree.predicate import name_matches, label_matches, value_is
-from maia.pytree.utils     import path_head, path_tail
+from maia.pytree.pred  import name_matches, label_matches, value_is
+from maia.pytree.utils import path_head, path_tail
 
 from .walkers_api import get_node_from_path
 

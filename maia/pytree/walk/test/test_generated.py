@@ -7,7 +7,6 @@ from itertools import chain
 from maia.pytree.cgns_keywords import Label as CGL
 
 import maia.pytree           as PT
-import maia.pytree.predicate as PTp
 from maia.pytree.meta import CGNSNodeNotFoundError
 
 
@@ -73,11 +72,11 @@ get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 def test_generated_walkers():          
   tree = PT.yaml.to_cgns_tree(yt)
 
-  assert PT.get_node_from_name(tree, "ZoneI") == PT.get_node_from_predicate(tree, PTp.name_matches("ZoneI"))
+  assert PT.get_node_from_name(tree, "ZoneI") == PT.get_node_from_predicate(tree, PT.pred.name_matches("ZoneI"))
   assert PT.get_node_from_value(tree, np.array([22,0])) == \
-         PT.get_node_from_predicate(tree, PTp.value_is(np.array([22,0])))
+         PT.get_node_from_predicate(tree, PT.pred.value_is(np.array([22,0])))
   assert list(PT.iter_nodes_from_name(tree, "IndexArray_t")) == \
-         list(PT.iter_nodes_from_predicate(tree, PTp.name_matches("IndexArray_t")))
+         list(PT.iter_nodes_from_predicate(tree, PT.pred.name_matches("IndexArray_t")))
   assert PT.get_nodes_from_name_and_label(tree, "Index_iii", "IndexArray_t") == \
          PT.get_nodes_from_predicate(tree, lambda n: PT.get_label(n) == "IndexArray_t" and PT.get_name(n) == "Index_iii")
 
@@ -101,7 +100,7 @@ def test_generated_remove():
   treeA = PT.yaml.to_cgns_tree(yt)
   treeB = PT.yaml.to_cgns_tree(yt)
 
-  PT.rm_nodes_from_predicate(treeA, PTp.name_matches("gc*"))
+  PT.rm_nodes_from_predicate(treeA, PT.pred.name_matches("gc*"))
   PT.rm_nodes_from_name(treeB, "gc*")
   assert PT.is_same_tree(treeA, treeB)
 

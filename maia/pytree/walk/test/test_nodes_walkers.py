@@ -1,9 +1,6 @@
 import pytest
 
 import maia.pytree as PT
-from   maia.pytree import predicate as PD
-
-from maia.pytree.yaml import parse_yaml_cgns
 
 yt = """
 FamilyBC FamilyBC_t:
@@ -18,8 +15,8 @@ FamilyBC FamilyBC_t:
 get_names = lambda nodes : [PT.get_name(node) for node in nodes]
 
 def test_create():
-  node = parse_yaml_cgns.to_node(yt)
-  pattern = [lambda n : PT.get_label(n, "FamilyBCDataSet"), lambda n : PT.get_name(n).startswith("Momentum")]
+  node = PT.yaml.to_node(yt)
+  pattern = [lambda n : PT.get_label(n) == "FamilyBCDataSet", lambda n : PT.get_name(n).startswith("Momentum")]
   
   walker = PT.NodesWalkers(node, pattern, caching=True)
 
@@ -40,7 +37,7 @@ def test_create():
   
 
 def test_simple():
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
 
   walker = PT.NodesWalker(node, lambda n: PT.get_label(n) == "DataArray_t", explore='deep')
   assert get_names(walker()) == ['Density', 'Density2', 'MomentumX', 'SomeData']
@@ -51,7 +48,7 @@ def test_simple():
 
 @pytest.mark.parametrize("caching", [False, True])
 def test_ancestors(caching):
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
 
   assert get_names(PT.NodesWalkers(node, predicates, caching=caching, ancestors=False)()) == ['Density', 'MomentumX']
@@ -59,7 +56,7 @@ def test_ancestors(caching):
     assert len(nodes) == 2 and PT.get_name(nodes[0]) == "RefStateFamilyBCDataSet"
 
 def test_kwargs():
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   # By default kwargs are applied to each predicate
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_label(n) == "DataArray_t"]
 
@@ -87,12 +84,12 @@ FamilyBC FamilyBC_t:
       MomentumZ DataArray_t [0.]:
       EnergyStagnationDensity DataArray_t [2.51]:
   """
-  tree = parse_yaml_cgns.to_node(yt)
+  tree = PT.yaml.to_node(yt)
 
   names = ["Density", "MomentumX", "MomentumY", "MomentumZ", "EnergyStagnationDensity"]
   check_name = lambda name : [
-    {'predicate': PD.label_matches("ReferenceState_t"), 'depth':0, 'caching':False},
-    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
+    {'predicate': PT.pred.label_matches("ReferenceState_t"), 'depth':0, 'caching':False},
+    {'predicate': PT.pred.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
 
@@ -105,8 +102,8 @@ FamilyBC FamilyBC_t:
   assert([PT.get_name(n) for n in results] == names)
 
   check_name = lambda name : [
-    {'predicate': PD.label_matches("ReferenceState_t"), 'depth':1, 'caching':False},
-    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
+    {'predicate': PT.pred.label_matches("ReferenceState_t"), 'depth':1, 'caching':False},
+    {'predicate': PT.pred.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
   root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
@@ -114,8 +111,8 @@ FamilyBC FamilyBC_t:
   assert([PT.get_name(n) for n in results] == names)
 
   check_name = lambda name : [
-    {'predicate': PD.label_matches("ReferenceState_t"), 'depth':None, 'caching':False},
-    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
+    {'predicate': PT.pred.label_matches("ReferenceState_t"), 'depth':None, 'caching':False},
+    {'predicate': PT.pred.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
   root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
@@ -123,8 +120,8 @@ FamilyBC FamilyBC_t:
   assert([PT.get_name(n) for n in results] == names)
 
   check_name = lambda name : [
-    {'predicate': PD.label_matches("ReferenceState_t"), 'caching':False},
-    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
+    {'predicate': PT.pred.label_matches("ReferenceState_t"), 'caching':False},
+    {'predicate': PT.pred.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
   root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")

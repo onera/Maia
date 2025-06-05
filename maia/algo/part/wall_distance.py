@@ -506,7 +506,7 @@ def compute_wall_distance(part_tree: CGNSPartTree,
   # with the same name, it can be wrongly selected)
   wall_bc_families = detect_wall_families(part_tree)
   is_wall_bc = lambda n : PT.get_value(n) in BC_WALLS or \
-             any([PT.predicate.belongs_to_family(wall_bc_family)(n) for wall_bc_family in wall_bc_families])
+             any([PT.pred.belongs_to_family(wall_bc_family)(n) for wall_bc_family in wall_bc_families])
 
   walldist = WallDistance(part_tree, is_wall_bc, comm, point_cloud=point_cloud, out_fs_name=out_fs_name, **options)
   out = walldist.compute()

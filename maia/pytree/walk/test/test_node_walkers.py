@@ -1,9 +1,6 @@
 import pytest
 
 import maia.pytree as PT
-from   maia.pytree import predicate as PD
-
-from maia.pytree.yaml import parse_yaml_cgns
 
 yt = """
 FamilyBC FamilyBC_t:
@@ -17,7 +14,7 @@ FamilyBC FamilyBC_t:
   """
 
 def test_create():
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   pattern = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_name(n) == "MomentumX"]
   
   walker = PT.NodeWalkers(node, pattern)
@@ -43,7 +40,7 @@ FamilyBC FamilyBC_t:
       EnergyStagnationDensity DataArray_t [2.51]:
     SomeData DataArray_t:
     """
-  node = parse_yaml_cgns.to_node(yt)
+  node = PT.yaml.to_node(yt)
   predicates = [lambda n : PT.get_label(n) == "ReferenceState_t", lambda n : PT.get_name(n) == "MomentumX"]
 
   walker = PT.NodeWalkers(node, predicates)
@@ -61,8 +58,8 @@ FamilyBC FamilyBC_t:
 
   # Specific options for each predicate
   patterns = [
-    {'predicate': PD.label_matches("ReferenceState_t"), 'search':'dfs'},
-    {'predicate': PD.name_matches('Density'), 'depth':1},
+    {'predicate': PT.pred.label_matches("ReferenceState_t"), 'search':'dfs'},
+    {'predicate': PT.pred.name_matches('Density'), 'depth':1},
   ]
   assert PT.NodeWalkers(node, patterns)()[0] == 'Density'
 

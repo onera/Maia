@@ -6,7 +6,7 @@ from   functools import partial
 from maia.pytree.typing import *
 from maia.pytree.meta   import begin_api_export, end_api_export
 
-from maia.pytree.predicate import name_matches, label_matches, value_is
+from maia.pytree.pred import name_matches, label_matches, value_is
 
 from . import walkers_api as WAPI
 

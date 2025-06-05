@@ -45,7 +45,7 @@ def test_extract_elmt_connectivity_from_pl(comm):
   with pytest.raises(RuntimeError): # Not TRI Elements so fails cause some pl elements not found
     strd_and_conn = EP.extract_elmt_connectivity_from_pl(dist_zone, elmt_3d_nodes, pl, comm)
 
-  tetra_elmt_nodes = PT.get_nodes_from_predicate(dist_zone, PT.predicate.is_elmt_of_type('TETRA_4'))
+  tetra_elmt_nodes = PT.get_nodes_from_predicate(dist_zone, PT.pred.is_elmt_of_type('TETRA_4'))
   with pytest.raises(RuntimeError): # Not TRI Elements so fails cause some pl elements not found
     strd_and_conn = EP.extract_elmt_connectivity_from_pl(dist_zone, tetra_elmt_nodes, pl, comm)
 
@@ -127,7 +127,7 @@ def test_extract_bcs_from_pl(comm):
                   "BC3":[np.array([2]   , dtype=np.int32),
                          np.array([]    , dtype=np.int32)][comm.rank]}
   extract_zone_bc_n = EP.extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm, 
-    bc_predicate=lambda n: PT.predicate.is_bc_of_loc('EdgeCenter'))
+    bc_predicate=lambda n: PT.pred.is_bc_of_loc('EdgeCenter'))
   check_result(extract_zone_bc_n, expected_pls)
 
 @pytest_parallel.mark.parallel(2)
@@ -136,7 +136,7 @@ def test_extract_edges(comm, root_t):
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', comm)
 
   point_list = [PT.Subset.getPatch(n)[1][0] \
-    for n in PT.get_nodes_from_predicate(dist_tree, PT.predicate.is_bc_of_loc('EdgeCenter'))[2:6]]
+    for n in PT.get_nodes_from_predicate(dist_tree, PT.pred.is_bc_of_loc('EdgeCenter'))[2:6]]
 
   if root_t=='Zone_t':
     _dist_tree = PT.get_node_from_label(dist_tree, 'Zone_t')

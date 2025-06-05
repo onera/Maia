@@ -2,7 +2,7 @@ from typing import overload, TypeVar
 from maia.pytree.typing import *
 from maia.pytree.meta   import CGNSNodeNotFoundError
 
-from maia.pytree.predicate     import name_matches, label_matches, value_is
+from maia.pytree.pred import name_matches, label_matches, value_is
 from .auto_pred import auto_predicate, auto_predicates
 
 

@@ -303,7 +303,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree: CGNSDistTree,
 
 def _family_name_to_zones_and_jns_paths(dist_tree: CGNSDistTree,
                                         family_name: str) -> Tuple[List[CGNSPath], Tuple[List[CGNSPath], List[CGNSPath]]]:
-  is_z_in_fam = lambda n : PT.get_label(n) == 'Zone_t' and PT.predicate.belongs_to_family(n, family_name)
+  is_z_in_fam = lambda n : PT.get_label(n) == 'Zone_t' and PT.pred.belongs_to_family(n, family_name)
   zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_z_in_fam])
 
   mask_tree = PT.shallow_copy(dist_tree)

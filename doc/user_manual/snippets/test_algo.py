@@ -718,7 +718,7 @@ def test_extract_edges():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', MPI.COMM_WORLD)
 
   point_list = [PT.Subset.getPatch(n)[1][0] \
-    for n in PT.get_nodes_from_predicate(dist_tree, PT.predicate.is_bc_of_loc('EdgeCenter'))]
+    for n in PT.get_nodes_from_predicate(dist_tree, PT.pred.is_bc_of_loc('EdgeCenter'))]
   domain_pl = {'cube/zone': numpy.concatenate(point_list)}
 
   edge_dist_tree = maia.algo.dist.extract_part.extract_edges(dist_tree, domain_pl, MPI.COMM_WORLD)
@@ -736,7 +736,7 @@ def test_concat_from_fam():
 
   maia.algo.dist.concatenate_subsets_from_families(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
 
-  is_ridge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, 'RIDGE')
+  is_ridge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.pred.belongs_to_family(n, 'RIDGE')
   assert len(PT.get_nodes_from_predicate(dist_tree, is_ridge_bc)) == 1
   #concat_from_fam@end
 
@@ -752,6 +752,6 @@ def test_deconcatenate_from_families():
   maia.algo.dist.concatenate_subsets_from_families(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
   maia.algo.dist.deconcatenate_subsets_from_families(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
 
-  is_ridge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, 'RIDGE')
+  is_ridge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.pred.belongs_to_family(n, 'RIDGE')
   assert len(PT.get_nodes_from_predicate(dist_tree, is_ridge_bc)) == 9
   #deconcatenate_from_fam@end

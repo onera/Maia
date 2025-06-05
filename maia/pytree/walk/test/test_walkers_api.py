@@ -3,7 +3,7 @@ import os
 
 import maia.pytree           as PT
 import maia.pytree.yaml      as PTy
-import maia.pytree.predicate as PTp
+import maia.pytree.pred      as PTp
 
 from maia.pytree.meta import CGNSNodeNotFoundError
 
