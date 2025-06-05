@@ -37,7 +37,7 @@ def concretize_paths(root:CGNSTree, wanted_path_list:List[str], labels:List[str]
   for path in wanted_path_list:
     names = path.split('/')
     assert len(names) == len(labels)
-    predicates:Predicates = [predicate.match_name(name) & predicate.match_label(label) for (name, label) in zip(names,labels)]
+    predicates:Predicates = [predicate.name_matches(name) & predicate.label_matches(label) for (name, label) in zip(names,labels)]
     paths = predicates_to_paths(root, predicates)
     all_paths.extend(paths)
 

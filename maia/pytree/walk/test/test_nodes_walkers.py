@@ -91,8 +91,8 @@ FamilyBC FamilyBC_t:
 
   names = ["Density", "MomentumX", "MomentumY", "MomentumZ", "EnergyStagnationDensity"]
   check_name = lambda name : [
-    {'predicate': PD.match_label("ReferenceState_t"), 'depth':0, 'caching':False},
-    {'predicate': PD.match_name(name), 'depth':1, 'caching':False},
+    {'predicate': PD.label_matches("ReferenceState_t"), 'depth':0, 'caching':False},
+    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
 
@@ -105,8 +105,8 @@ FamilyBC FamilyBC_t:
   assert([PT.get_name(n) for n in results] == names)
 
   check_name = lambda name : [
-    {'predicate': PD.match_label("ReferenceState_t"), 'depth':1, 'caching':False},
-    {'predicate': PD.match_name(name), 'depth':1, 'caching':False},
+    {'predicate': PD.label_matches("ReferenceState_t"), 'depth':1, 'caching':False},
+    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
   root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
@@ -114,8 +114,8 @@ FamilyBC FamilyBC_t:
   assert([PT.get_name(n) for n in results] == names)
 
   check_name = lambda name : [
-    {'predicate': PD.match_label("ReferenceState_t"), 'depth':None, 'caching':False},
-    {'predicate': PD.match_name(name), 'depth':1, 'caching':False},
+    {'predicate': PD.label_matches("ReferenceState_t"), 'depth':None, 'caching':False},
+    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
   root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")
@@ -123,8 +123,8 @@ FamilyBC FamilyBC_t:
   assert([PT.get_name(n) for n in results] == names)
 
   check_name = lambda name : [
-    {'predicate': PD.match_label("ReferenceState_t"), 'caching':False},
-    {'predicate': PD.match_name(name), 'depth':1, 'caching':False},
+    {'predicate': PD.label_matches("ReferenceState_t"), 'caching':False},
+    {'predicate': PD.name_matches(name), 'depth':1, 'caching':False},
   ]
   patterns = [check_name(name) for name in names]
   root = PT.find_node_from_label(tree, "FamilyBCDataSet_t")

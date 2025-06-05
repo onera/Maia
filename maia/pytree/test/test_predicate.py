@@ -11,23 +11,23 @@ from maia.pytree.yaml   import parse_yaml_cgns
 def test_matches():
   nface = ['NFace', np.array([23, 0], np.int32), [], 'Elements_t']
 
-  assert P.match_name('NFace')(nface)
-  assert P.match_name('NFac*')(nface)
-  assert not P.match_name('NFacE')(nface)
-  assert P.match_value(np.array([23,0]))(nface)
-  assert P.match_label('Elements_t')(nface)
-  assert P.match_label('Elemen*')(nface)
-  assert P.match_label(CGL.Elements_t)(nface)
+  assert P.name_matches('NFace')(nface)
+  assert P.name_matches('NFac*')(nface)
+  assert not P.name_matches('NFacE')(nface)
+  assert P.value_is(np.array([23,0]))(nface)
+  assert P.label_matches('Elements_t')(nface)
+  assert P.label_matches('Elemen*')(nface)
+  assert P.label_matches(CGL.Elements_t)(nface)
 
   # Try composition
-  assert (P.match_name('NFace') & P.match_label('Elements_t'))(nface)
-  assert (P.match_name('NFace') & P.match_label(CGL.Elements_t))(nface)
-  assert not (P.match_name('NFAce') & P.match_label('Elements'))(nface)
-  assert not (P.match_name('NFace') & P.match_label('Elements'))(nface)
-  assert not (P.match_name('NFace') & P.match_label(CGL.Zone_t))(nface)
+  assert (P.name_matches('NFace') & P.label_matches('Elements_t'))(nface)
+  assert (P.name_matches('NFace') & P.label_matches(CGL.Elements_t))(nface)
+  assert not (P.name_matches('NFAce') & P.label_matches('Elements'))(nface)
+  assert not (P.name_matches('NFace') & P.label_matches('Elements'))(nface)
+  assert not (P.name_matches('NFace') & P.label_matches(CGL.Zone_t))(nface)
 
   node = ['FamilyName', np.array([b'F', b'A', b'M', b'I', b'L', b'Y']), [], 'FamilyName_t']
-  assert P.match_value('FAMILY')(node)
+  assert P.value_is('FAMILY')(node)
 
 def test_belongs_to_family():
   yt = """
