@@ -64,28 +64,32 @@ def label_in(label_l) -> UnaryPredicate:
   """ Label of the node belongs to the provided list """
   _label_l = [label.name if isinstance(label, CGK.Label) else label for label in label_l]
   return UnaryPredicate(lambda n : n[3] in _label_l)
-def belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
+
+def __belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
+  family_name_n = W.get_child_from_label(n, 'FamilyName_t')
+  if family_name_n:
+    fam_val = N.get_str_value(family_name_n)
+    if fnmatch.fnmatch(fam_val, target_family):
+      return True
+  if allow_additional:
+    for additional_family_n in W.iter_children_from_label(n, 'AdditionalFamilyName_t'):
+      fam_val = N.get_str_value(additional_family_n)
+      if fnmatch.fnmatch(fam_val, target_family):
+        return True
+  return False
+
+def belongs_to_family(target_family:str, allow_additional=False) -> UnaryPredicate:
   """
   Return True if the node n has a FamilyName_t child whose value is target_family.
   If allow_additional is True, also return True if node n has a AdditionalFamilyName_t child
   whose value is target_family. Wildcard are accepted in target_family.
   """
-  family_name_n = W.get_node_from_predicate(n, 'FamilyName_t', depth=[1,1])
-  if family_name_n:
-    assert isinstance(fam_val:=N.get_value(family_name_n), str)
-    if fnmatch.fnmatch(fam_val, target_family):
-      return True
-  if allow_additional:
-    for additional_family_n in W.iter_nodes_from_predicate(n, 'AdditionalFamilyName_t', depth=[1,1]):
-      assert isinstance(fam_val:=N.get_value(additional_family_n), str)
-      if fnmatch.fnmatch(fam_val, target_family):
-        return True
-  return False
+  return  UnaryPredicate(lambda n : __belongs_to_family(n, target_family, allow_additional))
 
 def is_bc_of_loc(grid_loc):
   predicate = lambda n: N.get_label(n)=='BC_t' and S.Subset.GridLocation(n)==grid_loc
-  return predicate
+  return UnaryPredicate(predicate)
 
 def is_elmt_of_type(cgns_name):
   predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==cgns_name
-  return predicate
+  return UnaryPredicate(predicate)

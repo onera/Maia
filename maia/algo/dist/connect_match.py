@@ -429,7 +429,7 @@ def connect_1to1_families(dist_tree: CGNSDistTree,
       for subset in PT.get_children_from_predicate(container, is_subset):
         path = f'{zone_path}/{PT.get_name(container)}/{PT.get_name(subset)}'
         for i_fam, family in enumerate(families):
-          if PT.predicate.belongs_to_family(subset, family, True):
+          if PT.predicate.belongs_to_family(family, True)(subset):
             subset_path[i_fam].append(path)
 
   connect_1to1_from_paths(dist_tree, subset_path, comm, periodic, **options)

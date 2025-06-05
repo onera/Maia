@@ -9,7 +9,7 @@ import numpy as np
 
 def deconcatenate_subset_from_family(part_zones, family, comm):
   # > Predicates to find family BCs over all procs
-  is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, family)
+  is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(family)(n)
   predicates = ['ZoneBC_t', is_bc_from_fam]
   dist_zone = ['MaskedZone', None, [], 'Zone_t']
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, predicates, comm,

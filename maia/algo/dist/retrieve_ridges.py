@@ -23,7 +23,7 @@ def replace_bc_identifiers(zone:CGNSTree, bc_identifiers:List[Union[str, List[st
 
     # > Identify BCs
     if   isinstance(bc_identifier, str):
-      identified_bcs = [PT.get_name(node) for node in PT.get_nodes_from_predicate(zone, lambda n : PT.get_label(n) == 'BC_t' and PT.predicate.belongs_to_family(n, bc_identifier))]
+      identified_bcs = [PT.get_name(node) for node in PT.get_nodes_from_predicate(zone, lambda n : PT.get_label(n) == 'BC_t' and PT.predicate.belongs_to_family(bc_identifier)(n))]
     elif isinstance(bc_identifier, list):
       identified_bcs = bc_identifier
     else:

@@ -341,7 +341,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
       # > Predicates to find family BCs
       is_subset_container = lambda n: PT.get_label(n) in ['ZoneBC_t']
       is_subset = lambda n: PT.get_label(n) in ['BC_t'] and\
-                            PT.predicate.belongs_to_family(n, family, True)
+                            PT.predicate.belongs_to_family(family, True)(n)
 
       # > Go through family BCs gathering informations
       bc_nodes = list() ; bc_names = list() ; bc_ordin = list() 
@@ -435,7 +435,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
     for family in families:
 
       # > Predicates to find family BCs
-      is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, family)
+      is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(family)(n)
       bc_nodes = PT.get_nodes_from_predicates(dist_zone, ['ZoneBC_t', is_bc_from_fam])
       if len(bc_nodes)>1:
         raise ValueError(f"Family {family} leads to multiple BCs.")
