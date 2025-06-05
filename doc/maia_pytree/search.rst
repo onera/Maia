@@ -12,9 +12,9 @@ Tutorial
 
 Almost all the functions have the following pattern:
 
-.. function:: get_node(s)_from_{predicate}(s)(node, condition, **kwargs)
+.. function:: get_node(s)_from_{predicate}(s)(root, condition, **kwargs)
 
-``node`` has the same meaning for all the search functions, and is
+``root`` has the same meaning for all the search functions, and is
 simply the tree in which the search is performed.
 Then, by choosing appropriate keyword for ``{predicate}`` and using
 or not the ``s`` suffixes, lot of cases can be covered.
@@ -64,20 +64,23 @@ or ``False`` (node is not selected) : ``f(n:CGNSTree) -> bool``
 
 Here is an example of these functions:
 
->>> PT.get_node_from_name(node, 'BC2')
+>>> PT.get_node_from_name(root, 'BC2')
 # Return node BC2
->>> PT.get_node_from_label(node, 'BC_t')
+>>> PT.get_node_from_label(root, 'BC_t')
 # Return node BC1
->>> PT.get_node_from_value(node, [[1,5],[1,1]])
+>>> PT.get_node_from_value(root, [[1,5],[1,1]])
 # Return the PointRange node located under BCDataSet
->>> PT.get_node_from_predicate(node, lambda n: 'BC' in PT.get_label(n)
+>>> PT.get_node_from_predicate(root, lambda n: 'BC' in PT.get_label(n)
 ...    and PT.Subset.GridLocation(n) == 'FaceCenter')
 # Return node BCDataSet
+
+More details about the general ``predicate`` case are provided in section
+:ref:`building predicates <builtin_preds>`.
 
 .. seealso:: There is also a :func:`get_..._from_name_and_label` form, which takes two str
   as condition: first one is for the name, second one for the label.
 
-  >>> PT.get_node_from_name_and_label(node, '*', '*Location_t')
+  >>> PT.get_node_from_name_and_label(root, '*', '*Location_t')
   # Return node GridLocation of BC1
 
 Number of results
@@ -95,13 +98,13 @@ predicate, or all the nodes matching the predicate:
 | :func:`get_nodes_from_...`     | List of all the nodes found or ``[]``|
 +--------------------------------+--------------------------------------+
 
->>> PT.get_node_from_label(node, 'BC_t')
+>>> PT.get_node_from_label(root, 'BC_t')
 # Return node BC1
->>> PT.get_nodes_from_label(node, 'BC_t')
+>>> PT.get_nodes_from_label(root, 'BC_t')
 # Return a list containing BC1, BC2
->>> PT.get_node_from_label(node, 'DataArray_t')
+>>> PT.get_node_from_label(root, 'DataArray_t')
 # Return None
->>> PT.get_nodes_from_label(node, 'DataArray_t')
+>>> PT.get_nodes_from_label(root, 'DataArray_t')
 # Return an empty list
 
 
@@ -120,7 +123,7 @@ When looking for a particular node, it is often necessary to chain several
 searches. For example, if we want to select the BCData nodes under a
 BCDataSet node, we can do
 
->>> for bcds in PT.get_nodes_from_label(node, 'BCDataSet_t'):
+>>> for bcds in PT.get_nodes_from_label(root, 'BCDataSet_t'):
 >>>   for bcdata in PT.get_nodes_from_label(bcds, 'BCData_t'):
 >>>     # Do something with bcdata nodes
 
@@ -130,7 +133,7 @@ function, and changing the ``condition`` to a list :
 >>> for bcdata in PT.get_nodes_from_labels(node, ['BCDataSet_t', 'BCData_t']):
 >>>   # Do something with bcdata nodes
 
-Just as before, a search will be performed starting from ``node``, using the first
+Just as before, a search will be performed starting from ``root``, using the first
 condition; from the results, a second search will be performed using the second
 condition; and so on.
 
@@ -140,10 +143,10 @@ condition; and so on.
   the following steps:
 
   - String is split from separator ``'/'``
-  - Each substring is replaced by ``get_label`` if it ends with _t, 
+  - Each substring is replaced by ``get_label`` if it ends with ``_t``, 
     and by ``get_name`` otherwise.
 
-  >>> for bcdata in PT.get_nodes_from_predicates(node, 'BCDataSet_t/BCData_t'):
+  >>> for bcdata in PT.get_nodes_from_predicates(root, 'BCDataSet_t/BCData_t'):
   >>>   # Do something wih bcdata nodes
 
 Note that the generic versions :func:`get_..._from_predicates` expect a list
@@ -153,7 +156,7 @@ of criteria used to compare at each level :
 >>> is_bc = lambda n : PT.get_label(n) == 'BC_t' and 
 ...                    PT.get_node_from_label(n, 'BCDataSet_t') is None
 >>> is_pr = lambda n : PT.get_name(n) == 'PointRange'
->>> for pr in PT.get_nodes_from_predicates(node, [is_bc, is_pr]):
+>>> for pr in PT.get_nodes_from_predicates(root, [is_bc, is_pr]):
 >>>   # Do something with pr nodes
 
 All the functions allowing chained search take an additional boolean parameter ``ancestors``.
@@ -161,7 +164,7 @@ If this parameter is ``True``, the function return tuple(s) of nodes instead of 
 This tuple is of size ``len(conditions)`` and contains all the intermediate results.
 The default value of ``ancestors`` is ``False``.
 
->>> for bc, loc in PT.get_nodes_from_predicates(node, 
+>>> for bc, loc in PT.get_nodes_from_predicates(root, 
 ...                                             'BC_t/GridLocation_t',
 ...                                             ancestors=True):
 ...   print(PT.get_name(bc), PT.get_value(loc))
@@ -187,9 +190,9 @@ See API reference for the full list.
     - :func:`get_child_from_...` means :func:`get_node_from_...` with ``depth==1``
     - :func:`get_children_from_...` means :func:`get_nodes_from_...` with ``depth==1``
 
-  >>> PT.get_nodes_from_label(node, 'GridLocation_t')
+  >>> PT.get_nodes_from_label(root, 'GridLocation_t')
   # Return the 3 GridLocation nodes
-  >>> PT.get_nodes_from_label(node, 'GridLocation_t', depth=2)
+  >>> PT.get_nodes_from_label(root, 'GridLocation_t', depth=2)
   # Return the 2 GridLocation nodes under the BC nodes
 
 - ``explore`` ('shallow' or 'deep'): *Apply to get_nodes_from_... functions* 
@@ -198,17 +201,109 @@ See API reference for the full list.
   are not tested. If explore='deep', all the nodes are tested.
   Default is 'shallow'.
 
-  >>> PT.get_nodes_from_label(node, 'BC*_t')
+  >>> PT.get_nodes_from_label(root, 'BC*_t')
   # Return nodes BC1 and BC2
-  >>> PT.get_nodes_from_label(node, 'BC*_t', explore='deep')
+  >>> PT.get_nodes_from_label(root, 'BC*_t', explore='deep')
   # Return nodes BC1, BCDataSet and BC2
 
 
+.. _builtin_preds:
+
+Building predicates
+^^^^^^^^^^^^^^^^^^^^
+
+As explained before, the generic form :func:`get_..._from_predicate` takes for search
+condition a callable having the following signature: ``f(n:CGNSTree) -> bool``.
+
+Although users can define their own predicate functions (eg. using lambda expressions), the ``pred``
+submodule of ``maia.pytree`` facilitates the usage and the creation of predicate functions. 
+
+>>> from maia.pytree import pred as PTp
+
+.. rubric:: Predefined predicates
+
+Some frequently used predicate functions are directly available in the ``pred`` module.
+By convention, we use uppercase letters for these object, which are callable having the relevant
+signature ``f(n:CGNSTree) -> bool``, and can thus directly be used as predicate:
+
+>>> zones = PT.get_nodes_from_predicate(tree, PTp.IS_POLY3D_ZONE)
+
+.. autosummary::
+  ~maia.pytree.pred.IS_POLY2D_ZONE
+  ~maia.pytree.pred.IS_POLY3D_ZONE
+  ~maia.pytree.pred.HAS_POINTLIST
+  ~maia.pytree.pred.IS_NGON_ELT
+
+.. rubric:: Predicate generator
+
+Since we can not statically define all the useful predicates function, the ``pred`` module
+also provides *generating* functions; we use lowercase letters to name these functions.
+They are not directly predicate function, but they return a closure having the relevant
+signature ``f(n:CGNSTree) -> bool`` (so a predicate function) when called: 
+
+>>> sols = PT.get_nodes_from_predicate(tree, PTp.label_is('FlowSolution_t'))
 
 
+.. autosummary::
+  ~maia.pytree.pred.name_is
+  ~maia.pytree.pred.name_in
+  ~maia.pytree.pred.name_matches
+  ~maia.pytree.pred.label_is
+  ~maia.pytree.pred.label_in
+  ~maia.pytree.pred.label_matches
+  ~maia.pytree.pred.value_is
+  ~maia.pytree.pred.has_child
+  ~maia.pytree.pred.has_location
+  ~maia.pytree.pred.belongs_to_family
+
+.. [1] If a GridLocation if allowed, but absent, its default value is Vertex
+       (even for BCDataSet_t nodes, despite SIDS specification)
+.. [2] AdditionalFamilyName_t nodes are considered only if ``allow_additional`` is ``True``
+
+.. rubric:: Logical operations
+
+All predicate functions (predefined uppercase functions and return object of preficate generators)
+are wrapped in a :class:`UnaryPredicate` object allowing to combine
+them with the logical operators AND ``&``, OR ``|`` and NOT ``~``:
+
+>>> pred = PTp.label_is('BCDataSet_t') & HAS_POINTLIST & ~PTp.has_location('Vertex')
+
+Users can wrap their callable predicate function in a :class:`UnaryPredicate` object
+(to make them combinable) using the default constructor:
+
+>>> AT_LEAST_3_CHILDREN = PTp.UnaryPredicate(lambda X: len(PT.get_children(X)) >= 3)
+>>> pred = PTp.label_is('BC_t') & AT_LEAST_3_CHILDREN
+
+.. rubric:: Defining new predicate generator (advanced)
+
+The previous exemple can be generalized to a predicate generator using again
+the :class:`UnaryPredicate` constructor:
+
+>>> def at_least_n_children(n:int) -> UnaryPredicate:
+...   return UnaryPredicate(lambda X : len(PT.get_children(X)) >= n)
+
+.. Note the difference between :obj:`at_least_3_children`, which is already a ``UnaryPredicate``, and 
+  :func:`at_least_n_children`, which is a function returning a ``UnaryPredicate`` when called with an
+  integer ``n``.
+  Both lines are equivalent and return node BC1:
+
+.. >>> PT.get_node_from_predicate(root, PTp.label_is('BC_t') & at_least_3_children)
+.. >>> PT.get_node_from_predicate(root, PTp.label_is('BC_t') & at_least_n_children(3))
 
 
+Alternatively, the ``pred`` module provides a decorator turning parametrized boolean functions
+into a predicate generator:
 
+>>> @PTp.predicate_generator
+... def check_at_least_n_children(node:CGNSTree, n:int) -> bool:
+...   return len(PT.get_children(node)) >= n    
+
+Once decorated, ``check_at_least_n_children`` does no longer return a bool, but can be call with a parameter
+``n`` to generate a :class:`UnaryPredicate`. Note that as for any decorator, you can keep the original
+function available with ``at_least_n_children = PTp.predicate_generator(check_at_least_n_children)``.
+
+Users are advised to gather their application specific predicates function and predicate generators
+in a dedicated module.
 
 Summary
 -------
