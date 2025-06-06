@@ -107,8 +107,9 @@ class Extractor:
            '[MAIA] Vertex extraction not available with parmetis or ptscotch partitioning. Please check your script.' 
 
     # ExtractPart CGNSTree
+    base_name = next(iter(part_tree_per_dom.keys())).split('/')[0] #Only one base
     extract_tree = PT.new_CGNSTree()
-    extract_base = PT.new_CGNSBase('Base', cell_dim=cell_dim, phy_dim=3, parent=extract_tree)
+    extract_base = PT.new_CGNSBase(base_name, cell_dim=cell_dim, phy_dim=3, parent=extract_tree)
     # Compute extract part of each domain
     for i_domain, dom_part_zones in enumerate(part_tree_per_dom.items()):
       dom_path   = dom_part_zones[0]

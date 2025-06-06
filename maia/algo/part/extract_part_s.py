@@ -183,9 +183,12 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
     j_ar_cell = np.arange(min(_pr[1]), max(_pr[1])).reshape(-1,1)
     k_ar_cell = np.arange(min(_pr[2]), max(_pr[2])).reshape(-1,1,1)
 
-    locnum_cell = s_numbering.ijk_to_index_from_loc(i_ar_cell, j_ar_cell, k_ar_cell, location, vtx_per_dir).flatten()
-    entity = 'Face' if n_dim_pop == 1 else 'Cell'
-    lcell_gn.append(gn_entities[entity][locnum_cell-1])
+    _entity = 'Face' if n_dim_pop == 1 else 'Cell'
+    entity = 'IJK'[extract_dir] + 'FaceCenter' if _entity == 'Face' else 'CellCenter'
+    # Get the parent gnum of Cell or Face depending of n_dim_pop (if n_dim_pop=1, we are extracting faces)
+    # The local (idx_from_loc) to acces gnum array must be computed from the relevant location
+    locnum_cell = s_numbering.ijk_to_index_from_loc(i_ar_cell, j_ar_cell, k_ar_cell, entity, vtx_per_dir).flatten()
+    lcell_gn.append(gn_entities[_entity][locnum_cell-1])
 
     i_ar_vtx = np.arange(min(pr[0]), max(pr[0])+1)
     j_ar_vtx = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
@@ -242,8 +245,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
   if len(partial_gnum_vtx)!=0:
     for i_part, extract_zone in enumerate(extract_zones):
       MT.new_GlobalNumbering({'Vertex' : partial_gnum_vtx [i_part],
-                                  'Cell'   : partial_gnum_cell[i_part]},
-                                 parent=extract_zone)
+                              'Cell'   : partial_gnum_cell[i_part]}, parent=extract_zone)
       
       # > Retrive missing gnum if 3d
       if dim==3 and PT.Zone.n_cell(extract_zone)!=0:

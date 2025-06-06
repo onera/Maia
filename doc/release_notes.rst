@@ -9,6 +9,13 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Development version
+-------------------
+
+🐞 Fixes
+^^^^^^^^
+- extract_part: fix output cell GlobalNumbering of surfacic S extractions and allow any input basename
+
 v1.7 (May 2024)
 ---------------
 
