@@ -25,6 +25,12 @@ class UnaryPredicate:
   def __invert__(self) -> "UnaryPredicate":
     return UnaryPredicate(lambda X : not self(X))
 
+_py_any = any
+_py_all = all
+def any(preds:Iterable[UnaryPredicate]) -> UnaryPredicate:
+  return UnaryPredicate(lambda X : _py_any(pred(X) for pred in preds))
+def all(preds:Iterable[UnaryPredicate]) -> UnaryPredicate:
+  return UnaryPredicate(lambda X : _py_all(pred(X) for pred in preds))
 def predicate_generator(func):
   @functools.wraps(func)
   def wrapper(*args, **kwargs):
@@ -49,10 +55,12 @@ def __value_is(n:CGNSTree, value) -> bool:
     _value = N.access._convert_value(value)
     assert _value is not None
     return np.array_equal(n[1], _value)
-
 def value_is(value) -> UnaryPredicate:
   """ Value of the node is equal to the provided ``value`` """
   return UnaryPredicate(lambda n : __value_is(n, value))
+def value_in(value_l) -> UnaryPredicate:
+  """ Value of the node belongs to the provided ``value_l`` list """
+  return any([value_is(val) for val in value_l])
 
 def label_is(label) -> UnaryPredicate:
   """ Label of the node is exactly equal to the provided ``label`` """
@@ -74,6 +82,10 @@ def label_in(label_l) -> UnaryPredicate:
 def has_child(child_name) -> UnaryPredicate:
   """ Node has a child whose name is exactly ``child_name`` """
   return UnaryPredicate(lambda n : W.get_child_from_predicate(n, name_is(child_name)) is not None)
+
+def has_child_of_label(child_label) -> UnaryPredicate:
+  """ Node has a child whose label is exactly ``child_label`` """
+  return UnaryPredicate(lambda n : W.get_child_from_predicate(n, label_is(child_label)) is not None)
 
 def has_location(loc:str) -> UnaryPredicate:
   """ Node allows a GridLocation child, and its value is ``loc`` [1]_ """
@@ -104,17 +116,41 @@ def belongs_to_family(family:str, allow_additional=False) -> UnaryPredicate:
   (wildcard accepted) """
   return UnaryPredicate(lambda n : __belongs_to_family(n, family, allow_additional))
 
-def is_bc_of_loc(grid_loc):
-  predicate = lambda n: N.get_label(n)=='BC_t' and S.Subset.GridLocation(n)==grid_loc
+def is_bc_of_loc(loc):
+  """ Label of node is BC_t and its GridLocation value is ``loc`` """
+  predicate = lambda n: N.get_label(n)=='BC_t' and S.Subset.GridLocation(n)==loc
   return UnaryPredicate(predicate)
 
 def is_elmt_of_type(cgns_name):
+  """ Label of node is Elements_t and its CGNSName is ``cgns_name`` """
   predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==cgns_name
   return UnaryPredicate(predicate)
 
+def is_gc_with(match:Optional[bool]=None, perio:Optional[bool]=None):
+  """ Label of node is GridConnectivity(1to1)_t and join is or not
+  Abutting1to1 (resp periodic) depending of the value of ``match`` (resp ``perio``) [3]_ """
+  pred = label_in(['GridConnectivity_t', 'GridConnectivity1to1_t'])
+  if match is not None:
+    pred = pred & UnaryPredicate(lambda n : S.GridConnectivity.is1to1(n) == match)
+  if perio is not None:
+    pred = pred & UnaryPredicate(lambda n : S.GridConnectivity.isperiodic(n) == perio)
+  return pred
+
+def _is_zone_of_celldim(cell_dim):
+  return label_is('Zone_t') & UnaryPredicate(lambda z: S.Zone.CellDimension(z) == cell_dim)
 
 HAS_POINTLIST = has_child('PointList') #: Node has a child named ``PointList``
-IS_NGON_ELT = is_elmt_of_type('NGon_n') #: Node is an Elements_t node of type ``NGON_n``
-IS_S_ZONE = ... #: Node is a Zone_t with structured connectivity
-IS_POLY2D_ZONE = ... #: Node is a Zone_t described by polyedric 2D elements
-IS_POLY3D_ZONE = ... #: Node is a Zone_t described by polyedric 3D elements
+IS_NGON_ELT = is_elmt_of_type('NGON_n') #: Node is an Elements_t node of type ``NGON_n``
+
+#: Node is a Zone_t with structured connectivity
+IS_S_ZONE = label_is('Zone_t') & UnaryPredicate(lambda z : S.Zone.Type(z) == 'Structured')
+#: Node is a Zone_t with unstructured connectivity
+IS_U_ZONE = label_is('Zone_t') & UnaryPredicate(lambda z : S.Zone.Type(z) == 'Unstructured')
+
+#: Node is a Zone_t described by polyedric 2D elements
+IS_POLY2D_ZONE = has_child_of_label('Elements_t') & _is_zone_of_celldim(2) \
+  & UnaryPredicate(lambda z : _py_all(S.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] \
+                                  for e in W.get_children_from_label(z, 'Elements_t')))
+ #: Node is a Zone_t described by polyedric 3D elements
+IS_POLY3D_ZONE = has_child_of_label('Elements_t') & _is_zone_of_celldim(3) \
+  & UnaryPredicate(lambda z: S.Zone.has_ngon_elements(z))

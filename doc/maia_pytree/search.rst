@@ -229,6 +229,8 @@ signature ``f(n:CGNSTree) -> bool``, and can thus directly be used as predicate:
 >>> zones = PT.get_nodes_from_predicate(tree, PTp.IS_POLY3D_ZONE)
 
 .. autosummary::
+  ~maia.pytree.pred.IS_S_ZONE
+  ~maia.pytree.pred.IS_U_ZONE
   ~maia.pytree.pred.IS_POLY2D_ZONE
   ~maia.pytree.pred.IS_POLY3D_ZONE
   ~maia.pytree.pred.HAS_POINTLIST
@@ -252,13 +254,19 @@ signature ``f(n:CGNSTree) -> bool`` (so a predicate function) when called:
   ~maia.pytree.pred.label_in
   ~maia.pytree.pred.label_matches
   ~maia.pytree.pred.value_is
+  ~maia.pytree.pred.value_in
   ~maia.pytree.pred.has_child
+  ~maia.pytree.pred.has_child_of_label
   ~maia.pytree.pred.has_location
   ~maia.pytree.pred.belongs_to_family
+  ~maia.pytree.pred.is_bc_of_loc
+  ~maia.pytree.pred.is_elmt_of_type
+  ~maia.pytree.pred.is_gc_with
 
 .. [1] If a GridLocation if allowed, but absent, its default value is Vertex
        (even for BCDataSet_t nodes, despite SIDS specification)
 .. [2] AdditionalFamilyName_t nodes are considered only if ``allow_additional`` is ``True``
+.. [3] ``match`` and ``perio`` can be set to ``None`` (default value) to ignore this additional criteria
 
 .. rubric:: Logical operations
 
@@ -267,6 +275,12 @@ are wrapped in a :class:`UnaryPredicate` object allowing to combine
 them with the logical operators AND ``&``, OR ``|`` and NOT ``~``:
 
 >>> pred = PTp.label_is('BCDataSet_t') & HAS_POINTLIST & ~PTp.has_location('Vertex')
+
+We also provide the ``all`` and ``any`` functions that take a list of :class:`UnaryPredicate`
+objects as input and return a single :class:`UnaryPredicate` as output, following standard ``all``
+and ``any`` logic.
+
+>>> pred = PTp.any([PTp.has_location(f'{dir}FaceCenter') for dir in 'IJK'])
 
 Users can wrap their callable predicate function in a :class:`UnaryPredicate` object
 (to make them combinable) using the default constructor:
