@@ -145,21 +145,23 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
   """
 
   # Prepare iterators
-  matches_loc = lambda n : PT.Subset.GridLocation(n) == location
-  is_bcds_with_pl    = lambda n: PT.get_label(n) == 'BCDataSet_t'and PT.get_child_from_name(n, 'PointList') is not None
-  is_bcds_without_pl = lambda n: PT.get_label(n) == 'BCDataSet_t'and PT.get_child_from_name(n, 'PointList') is None
+  matches_loc = PT.pred.has_location(location)
+  is_bcds_with_pl    = PT.pred.label_is('BCDataSet_t') &  PT.pred.HAS_POINTLIST
+  is_bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~PT.pred.HAS_POINTLIST
 
-  is_sol  = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and matches_loc(n) 
-  is_bc   = lambda n: PT.get_label(n) == 'BC_t' and matches_loc(n) 
-  is_bcds = lambda n: is_bcds_with_pl(n) and matches_loc(n) 
-  is_zsr  = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' and matches_loc(n) 
-  is_jn   = lambda n: PT.get_label(n) == 'GridConnectivity_t' and matches_loc(n) 
+  is_sol  = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) & matches_loc
+  is_bc   = PT.pred.label_is('BC_t') & matches_loc
+  is_bcds = is_bcds_with_pl & matches_loc
+  is_zsr  = PT.pred.label_is('ZoneSubRegion_t') & matches_loc
+  is_jn   = PT.pred.label_is('GridConnectivity_t') & matches_loc
 
-  sol_list  = PT.getChildrenFromPredicate(zone, is_sol)
-  bc_list   = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', is_bc])
-  bcds_list = PT.getChildrenFromPredicates(zone, ['ZoneBC_t', 'BC_t', is_bcds])
-  zsr_list  = PT.getChildrenFromPredicate(zone, is_zsr)
-  jn_list   = PT.getChildrenFromPredicates(zone, ['ZoneGridConnectivity_t', is_jn])
+  sol_list  = PT.get_children_from_predicate(zone, is_sol)
+  bc_list   = PT.get_children_from_predicates(zone, ['ZoneBC_t', is_bc])
+  bcds_list = PT.get_children_from_predicates(zone, ['ZoneBC_t', 'BC_t', is_bcds])
+  zsr_list  = PT.get_children_from_predicate(zone, is_zsr)
+  jn_list   = PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_jn])
+
+  i_jn_list = [jn for jn in jn_list if PT.GridConnectivity.ZoneDonorPath(jn, base_name) == base_name + '/'+ PT.get_name(zone)]
   i_jn_list = [jn for jn in jn_list if PT.GridConnectivity.ZoneDonorPath(jn, base_name) == base_name + '/'+ PT.get_name(zone)]
 
   #Loop in same order using to get apply pl using generic func
@@ -206,14 +208,13 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 # TODO move to sids module, doc, unit test
 #(take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
 def all_nodes_with_point_list(zone, pl_location):
-  has_pl = lambda n: PT.get_child_from_name(n, 'PointList') is not None \
-                     and PT.Subset.GridLocation(n) == pl_location
+  has_pl = PT.pred.HAS_POINTLIST & PT.pred.has_location(pl_location)
   return itertools.chain(
-      PT.getChildrenFromPredicate(zone, has_pl)                      , #FlowSolution_t, ZoneSubRegion_t, ...
-      PT.getChildrenFromPredicates(zone, ['ZoneBC_t', has_pl])              , #BC_t
+      PT.get_children_from_predicate(zone, has_pl)                      , #FlowSolution_t, ZoneSubRegion_t, ...
+      PT.get_children_from_predicates(zone, ['ZoneBC_t', has_pl])              , #BC_t
       #For this one we must exclude BC since predicate is also tested on root (and should not be ?)
-      PT.getChildrenFromPredicates(zone, ['ZoneBC_t', 'BC_t', lambda n : has_pl(n) and PT.get_label(n) != 'BC_t'])      , #BCDataSet_t
-      PT.getChildrenFromPredicates(zone, ['ZoneGridConnectivity_t', has_pl]), #GridConnectivity_t
+      PT.get_children_from_predicates(zone, ['ZoneBC_t', 'BC_t', has_pl & ~PT.pred.label_is('BC_t')])      , #BCDataSet_t
+      PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', has_pl]), #GridConnectivity_t
     )
 
 def _shift_cgns_subsets(zone, location, shift_value):
@@ -240,8 +241,8 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   for coord_n in PT.iter_children_from_predicates(zone, ['GridCoordinates_t', 'DataArray_t']):
     PT.set_value(coord_n, coord_n[1][mask])
 
-  is_all_vtx_sol = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] \
-      and PT.Subset.GridLocation(n) == 'Vertex' and PT.get_node_from_path(n, 'PointList') is None
+  is_all_vtx_sol = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
+                 & PT.pred.has_location('Vertex') & ~PT.pred.HAS_POINTLIST
 
   for node in PT.iter_children_from_predicate(zone, is_all_vtx_sol):
     for data_n in PT.iter_children_from_label(node, 'DataArray_t'):

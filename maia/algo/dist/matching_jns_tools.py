@@ -9,6 +9,9 @@ import maia.pytree.maia as MT
 
 from .subset_tools import sort_dist_pointlist
 
+IS_GC = PT.pred.is_gc_with()
+IS_GC_MATCH = PT.pred.is_gc_with(match=True)
+
 def gc_is_reference(gc_s, zone_path):
   """
   Check if a structured 1to1 GC is the reference of its pair or not
@@ -107,9 +110,7 @@ def add_joins_donor_name(dist_tree, comm, force=False):
   gc_list  = []
   gc_paths = []
   # > First pass to collect joins
-  match1to1 = lambda n : PT.get_label(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t'] \
-      and PT.GridConnectivity.is1to1(n)
-  query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", match1to1]
+  query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", IS_GC_MATCH]
 
   if force:
     for gc in PT.iter_children_from_predicates(dist_tree, query):
@@ -168,13 +169,9 @@ def get_matching_jns(dist_tree:CGNSTree,
   """
   Return the list of pairs of matching jns
   """
-  if select_func is None:
-    gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                         and PT.GridConnectivity.is1to1(n)
-  else:
-    gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                         and PT.GridConnectivity.is1to1(n) \
-                         and select_func(n)
+  gc_query = IS_GC_MATCH
+  if select_func is not None:
+    gc_query = gc_query & PT.pred.UnaryPredicate(select_func)
 
   query:Predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]
 
@@ -193,9 +190,7 @@ def copy_donor_subset(dist_tree):
   pointlist in the tree. This assume that GridConnectivityDonorName were added and index distribution
   was identical for two related gc nodes
   """
-  gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', \
-      lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] and
-                PT.GridConnectivity.is1to1(n)]
+  gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', IS_GC_MATCH]
 
   for jn_path in PT.predicates_to_paths(dist_tree, gc_predicates):
     opp_jn_path = get_jn_donor_path(dist_tree, jn_path)
@@ -225,8 +220,7 @@ def clear_interface_ids(dist_tree):
   """
   Remove DistInterfaceId nodes created on GC_t
   """
-  gc_query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]):
+  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', IS_GC]):
     PT.rm_children_from_name(gc, 'DistInterfaceId')
     PT.rm_children_from_name(gc, 'DistInterfaceOrd')
 

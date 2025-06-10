@@ -7,6 +7,8 @@ import maia.pytree as PT
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.factory import full_to_dist
 
+IS_GC = PT.pred.is_gc_with()
+
 def test_gc_is_reference():
   pr  = np.array([[1,1], [1,10], [1,10]], order='F')
   prd = np.array([[20,10], [1,10], [5,5]], order='F')
@@ -100,8 +102,7 @@ Base1 CGNSBase_t [3,3]:
   MJT.add_joins_donor_name(dist_tree, comm)
 
   expected_donor_names = ['matchBA', 'matchAB', 'matchCB1', 'matchCB2', 'matchBC2', 'matchBC1']
-  query = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, query)):
+  for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, IS_GC)):
     assert PT.get_value(PT.get_child_from_name(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
 
 @pytest_parallel.mark.parallel(1)
@@ -204,7 +205,7 @@ Base CGNSBase_t:
     pathes = MJT.get_matching_jns(self.dist_tree)
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
     assert pathes[1] == ('Base/ZoneA/ZGC/match1', 'Base/ZoneB/ZGC/match2')
-    pathes = MJT.get_matching_jns(self.dist_tree, lambda n: PT.Subset.GridLocation(n) == 'Vertex')
+    pathes = MJT.get_matching_jns(self.dist_tree, PT.pred.has_location('Vertex'))
     assert len(pathes) == 1
     assert pathes[0] == ('Base/ZoneA/ZGC/perio1', 'Base/ZoneA/ZGC/perio2')
 

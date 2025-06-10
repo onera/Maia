@@ -98,8 +98,7 @@ def test_find_ridges(comm, elmt_t):
   expected_elmt_range = np.array([36+8+1, 36+8+16]) if elmt_t=="Poly" else np.array([32+1 , 32+16])
   assert np.array_equal(bar_elmt_range, expected_elmt_range)
 
-  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
-  edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
+  edge_bcs = PT.get_nodes_from_predicate(dist_tree, PT.pred.is_bc_of_loc('EdgeCenter'))
   assert len(edge_bcs)==3
   for bc in edge_bcs:
     pl = PT.get_child_from_name(bc, 'PointList')[1][0]
@@ -119,8 +118,7 @@ def test_find_ridges_all_bcs(comm):
   expected_elmt_range = np.array([36+8+1, 36+8+24])
   assert np.array_equal(bar_elmt_range, expected_elmt_range)
 
-  is_edge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=="EdgeCenter"
-  edge_bcs = PT.get_nodes_from_predicate(dist_tree, is_edge_bc)
+  edge_bcs = PT.get_nodes_from_predicate(dist_tree, PT.pred.is_bc_of_loc('EdgeCenter'))
   assert len(edge_bcs)==12
 
 

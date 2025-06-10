@@ -7,11 +7,10 @@ import maia.pytree.maia   as MT
 from .dist import ngon_tools as dist_ngon_tools
 from .part import ngon_tools as part_ngon_tools
 
-is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
-is_poly_2d_zone = lambda z: PT.get_child_from_label(z, 'Elements_t') is not None and \
-                            PT.Zone.CellDimension(z) == 2 and \
-                            PT.Zone.Type(z) == 'Unstructured' and \
-                            all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
+from maia.pytree.pred import UnaryPredicate
+HAS_PE = UnaryPredicate(lambda z : PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is not None)
+HAS_NGON = UnaryPredicate(PT.Zone.has_ngon_elements)
+HAS_NFACE = UnaryPredicate(PT.Zone.has_nface_elements)
 
 def iter_matching_zones(t: CGNSTree, cond: Callable[[CGNSTree], bool]) -> Iterator[CGNSTree]:
   for z in PT.iter_all_Zone_t(t):
@@ -57,8 +56,7 @@ def pe_to_nface(t: CGNSTree,
         :end-before: #pe_to_nface@end
         :dedent: 2
   """
-  predicate = lambda z: is_poly_3d_zone(z) and not PT.Zone.has_nface_elements(z)
-  for zone in iter_matching_zones(t, predicate):
+  for zone in iter_matching_zones(t, PT.pred.IS_POLY3D_ZONE & ~HAS_NFACE):
     if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.pe_to_nface(zone, comm, removePE)
@@ -85,8 +83,7 @@ def nface_to_pe(t: CGNSTree,
         :end-before: #nface_to_pe@end
         :dedent: 2
   """
-  predicate = lambda z: is_poly_3d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
-  for zone in iter_matching_zones(t, predicate):
+  for zone in iter_matching_zones(t, PT.pred.IS_POLY3D_ZONE & ~HAS_PE):
     if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.nface_to_pe(zone, comm, removeNFace)
@@ -113,8 +110,7 @@ def edge_pe_to_ngon(t: CGNSTree,
         :end-before: #edge_pe_to_ngon@end
         :dedent: 2
   """
-  predicate = lambda z: is_poly_2d_zone(z) and not PT.Zone.has_ngon_elements(z)
-  for zone in iter_matching_zones(t, predicate):
+  for zone in iter_matching_zones(t, PT.pred.IS_POLY2D_ZONE & ~HAS_NGON):
     if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.edge_pe_to_ngon(zone, comm, removePE)
@@ -143,8 +139,7 @@ def ngon_to_edge_pe(t: CGNSTree,
         :end-before: #ngon_to_edge_pe@end
         :dedent: 2
   """
-  predicate = lambda z: is_poly_2d_zone(z) and PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is None
-  for zone in iter_matching_zones(t, predicate):
+  for zone in iter_matching_zones(t, PT.pred.IS_POLY2D_ZONE & ~HAS_PE):
     if MT.get_Distribution(zone) is not None:
       assert comm is not None
       dist_ngon_tools.ngon_to_edge_pe(zone, comm, remove_NGon)

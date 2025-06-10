@@ -199,7 +199,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
     # > Get joins without post-treating PRs
     for zgc_n in PT.get_children_from_label(part_zone, 'ZoneGridConnectivity_t'):
       extract_zgc = PT.new_ZoneGridConnectivity(PT.get_name(zgc_n), parent=extract_zone)
-      for gc_n in PT.get_children_from_predicate(zgc_n, lambda n: MT.conv.is_intra_gc(PT.get_name(n))):
+      for gc_n in PT.get_children_from_predicate(zgc_n, MT.pred.is_gc_with(intra=True)):
         gc_pr = PT.get_value(PT.get_child_from_name(gc_n,"PointRange"))
         intersection = maia.factory.partitioning.split_S.part_zone.intersect_pr(gc_pr, pr)
         if intersection is not None:

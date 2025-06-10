@@ -105,7 +105,7 @@ def test_projection_to(comm):
     """)
   PT.add_child(zone, zone_bc)
 
-  WD.compute_projection_to(part_tree, lambda n: PT.get_label(n) == 'BC_t', comm)
+  WD.compute_projection_to(part_tree, PT.pred.label_is('BC_t'), comm)
 
   fs = PT.get_child_from_name(zone, 'SurfDistance')
   assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
@@ -307,7 +307,7 @@ def test_walldistance_2d_S(is_perio, comm):
     zone = PT.get_node_from_label(tree, 'Zone_t')
     zbc = PT.get_child_from_name(zone, 'ZoneBC')
     gcs = [PT.get_child_from_name(zbc, name) for name in ['Ymin', 'Ymax']]
-    PT.rm_children_from_predicate(zbc, lambda n : n[0] in ['Ymin', 'Ymax'])
+    PT.rm_children_from_predicate(zbc, PT.pred.name_in(['Ymin', 'Ymax']))
     for i, gc in enumerate(gcs):
       other = 1 if i == 0 else 0
       PT.update_node(gc, label='GridConnectivity1to1_t', value='zone')

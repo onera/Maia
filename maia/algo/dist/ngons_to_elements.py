@@ -13,15 +13,8 @@ from maia.algo.dist import matching_jns_tools as MJT
 from cmaia.algo import combine_to_tetra, combine_to_pyra, \
                        combine_to_penta, combine_to_hexa
 
-is_poly_3d = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
-is_poly_2d = lambda z: PT.Zone.CellDimension(z) == 2 and \
-                        PT.Zone.Type(z) == 'Unstructured' and \
-                        all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
-
-is_cell_full_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t'] and \
-                                    PT.get_child_from_name(n, 'PointList') is None and \
-                                    PT.get_child_from_name(n, 'PointRange') is None and \
-                                    PT.Subset.GridLocation(n) == 'CellCenter'
+HAS_SUBSET = PT.pred.has_child('PointList') or PT.pred.has_child('PointRange')
+is_cell_full_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) & ~HAS_SUBSET & PT.pred.has_location('CellCenter')
 
 def _collected_shifted_pl(zone:CGNSTree, loc:str, shift:int) -> List[NDArray]:
   all_pl = []
@@ -302,7 +295,7 @@ def convert_ngon_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   MJT.add_joins_donor_name(dist_tree, comm)
 
   for zone in PT.get_all_Zone_t(dist_tree):
-    if is_poly_3d(zone):
+    if PT.pred.IS_POLY3D_ZONE(zone):
       # Function require NFACE + NGON with PE
       if not PT.Zone.has_nface_elements(zone):
         maia.algo.pe_to_nface(zone, comm)
@@ -312,7 +305,7 @@ def convert_ngon_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
 
       _ngon_to_elements_zone_3d(zone, comm)
 
-    elif is_poly_2d(zone):
+    elif PT.pred.IS_POLY2D_ZONE(zone):
       # Function require NGON + Edge with PE
       if not PT.Zone.has_ngon_elements(zone):
         maia.algo.edge_pe_to_ngon(zone, comm)

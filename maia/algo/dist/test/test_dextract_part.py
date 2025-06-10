@@ -127,7 +127,7 @@ def test_extract_bcs_from_pl(comm):
                   "BC3":[np.array([2]   , dtype=np.int32),
                          np.array([]    , dtype=np.int32)][comm.rank]}
   extract_zone_bc_n = EP.extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm, 
-    bc_predicate=lambda n: PT.pred.is_bc_of_loc('EdgeCenter'))
+    bc_predicate=PT.pred.is_bc_of_loc('EdgeCenter'))
   check_result(extract_zone_bc_n, expected_pls)
 
 @pytest_parallel.mark.parallel(2)

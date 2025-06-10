@@ -113,6 +113,6 @@ def extract_surf_tree_from_bc(dist_tree, comm):
   """
   Shortcut for extract_surf_tree_from_queries specialized for BC_t nodes
   """
-  queries = [[lambda n: PT.get_label(n) == 'ZoneBC_t', lambda n: PT.get_label(n) == 'BC_t']]
+  queries = [[PT.pred.label_is('ZoneBC_t'), PT.pred.label_is('BC_t')]]
   return extract_surf_tree_from_queries(dist_tree, queries, comm)
 

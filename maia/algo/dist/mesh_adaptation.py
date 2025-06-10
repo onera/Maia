@@ -138,12 +138,12 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   PT.set_name(adapted_base, PT.get_name(input_base))
   PT.set_name(adapted_zone, PT.get_name(input_zone))
 
-  to_copy = lambda n: PT.get_label(n) in ['Family_t']
+  to_copy = PT.pred.label_in(['Family_t'])
   for node in PT.get_nodes_from_predicate(input_base, to_copy):
     PT.add_child(adapted_base, node)
 
   # > Copy BC data
-  to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+  to_copy = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
   for bc_path in PT.predicates_to_paths(adapted_zone, 'ZoneBC_t/BC_t'):
     adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
     input_bc   = PT.get_node_from_path(input_zone, bc_path)
@@ -199,7 +199,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
   start = time.time()
   # > Get periodic infos
   add_joins_donor_name(tree, comm) # Add missing joins donor names
-  perio_jns_pairs = get_matching_jns(tree, lambda n : PT.GridConnectivity.isperiodic(n))
+  perio_jns_pairs = get_matching_jns(tree, PT.pred.is_gc_with(perio=True))
   jn_pairs_and_values = dict()
   for pair in perio_jns_pairs:
     gc_nodes = (PT.get_node_from_path(tree, gc_path) for gc_path in pair)

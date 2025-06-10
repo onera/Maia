@@ -6,9 +6,9 @@ import maia.pytree        as PT
 
 from maia.algo.dist import compatibility_2d as cpt2d
 
-is_bar   = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
-is_ngon  = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'NGON_n'
-is_nface = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'NFACE_n'
+is_bar   = PT.pred.is_elmt_of_type('BAR_2')
+is_ngon  = PT.pred.is_elmt_of_type('NGON_n')
+is_nface = PT.pred.is_elmt_of_type('NFACE_n')
 
 @pytest_parallel.mark.parallel(2)
 def test_convert_std_to_3dlike(comm):

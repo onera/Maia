@@ -18,12 +18,15 @@ DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                      'IFaceCenter': 'CellCenter', 'JFaceCenter': 'CellCenter', 'KFaceCenter': 'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
+def is_elt_of_dim(dim):
+  return PT.pred.UnaryPredicate(lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n)==dim)
+
 def discover_containers(part_zones, container_name, patch_name, patch_type, comm):
   mask_zone = ['MaskedZone', None, [], 'Zone_t']
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
   
-  fields_query = lambda n: PT.get_label(n) in ['DataArray_t', patch_type]
+  fields_query = PT.pred.label_in(['DataArray_t', patch_type])
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
   mask_container = PT.get_child_from_name(mask_zone, container_name)
   if mask_container is None:
@@ -57,7 +60,7 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
   partial_field = PT.get_child_from_name(ref_zsr_node, patch_name) is not None
 
   # list all FS and ZSR paths
-  is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
+  is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
   paths = PT.predicates_to_paths(mask_zone, [is_container, 'DataArray_t'])
   # dtypes: gives the information path -> dtype
   dtypes = dict()
@@ -107,12 +110,10 @@ def local_pl_offset(part_zone, dim):
       ngon = PT.Zone.NGonNode(part_zone)
       return PT.Element.Range(ngon)[0] - 1
     else:
-      tri_or_quad_elts = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.Dimension(n)==2
-      elt_n     = PT.get_child_from_predicate(part_zone, tri_or_quad_elts)
+      elt_n     = PT.get_child_from_predicate(part_zone, is_elt_of_dim(2))
       return PT.Element.Range(elt_n)[0] - 1
   elif dim == 1:
-    bar_elts  = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.Dimension(n)==1
-    elt_n     = PT.get_child_from_predicate(part_zone, bar_elts)
+    elt_n     = PT.get_child_from_predicate(part_zone, is_elt_of_dim(1))
     return PT.Element.Range(elt_n)[0] - 1
   else:
     return 0

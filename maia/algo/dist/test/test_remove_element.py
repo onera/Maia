@@ -112,7 +112,7 @@ def test_remove_ngons_2p(comm):
 def test_remove_elts_from_pl(elt_name, comm):
 
   dist_tree = maia.factory.dcube_generator.dcube_nodal_generate(3, 1., [0.,0.,0.], 'TETRA_4', comm, get_ridges=True)
-  dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  dist_zone = PT.find_node_from_label(dist_tree, 'Zone_t')
   
   # > Define lineic BC
   ridge_pl_f = np.arange(89, 113, dtype=np.int32)
@@ -124,8 +124,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   MT.new_Distribution({'Index':ridge_distri}, parent=bc_n)
 
   # > Define elements to remove
-  is_asked_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)==elt_name
-  elt_n = PT.get_child_from_predicate(dist_zone, is_asked_elt)
+  elt_n = PT.find_child_from_predicate(dist_zone, PT.pred.is_elmt_of_type(elt_name))
   if elt_name=='TETRA_4':
     elt_pl_f = np.array([1,13,2,25,14,37], dtype=np.int32)+1
   elif elt_name=='TRI_3':
@@ -142,11 +141,11 @@ def test_remove_elts_from_pl(elt_name, comm):
   n_tri = {'TETRA_4':48, 'TRI_3':38, 'BAR_2':48}
   n_bar = {'TETRA_4':24, 'TRI_3':24, 'BAR_2': 0}
 
-  is_tet_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4'
-  is_tri_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3'
-  is_bar_elt = lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='BAR_2'
-  is_tri_bc  = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='FaceCenter'
-  is_bar_bc  = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)=='EdgeCenter'
+  is_tet_elt = PT.pred.is_elmt_of_type('TETRA_4')
+  is_tri_elt = PT.pred.is_elmt_of_type('TRI_3')
+  is_bar_elt = PT.pred.is_elmt_of_type('BAR_2')
+  is_tri_bc  = PT.pred.is_bc_of_loc('FaceCenter')
+  is_bar_bc  = PT.pred.is_bc_of_loc('EdgeCenter')
 
   elt_n  = PT.get_child_from_predicate(dist_zone, is_tet_elt)
   elt_distrib = MT.distribution_value(elt_n, 'Element')

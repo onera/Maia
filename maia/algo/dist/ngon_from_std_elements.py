@@ -11,6 +11,9 @@ from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh_nodal
 import Pypdm.Pypdm as PDM
 
+HAS_SUBSET = PT.pred.has_child('PointList') or PT.pred.has_child('PointRange')
+IS_ZONE_ELT = PT.pred.IS_U_ZONE & ~PT.pred.UnaryPredicate(lambda z: PT.Zone.has_ngon_elements(z))
+
 def raise_if_possible_overflow(n_elt, n_rank):
   max_int = 2**31 - 1
   if n_elt > n_rank * max_int:
@@ -150,7 +153,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
   # > Shift CellCenter located pointlist
   shift = n_face if extract_dim == 3 else n_edge
   for node in PT.iter_all_subsets(zone, ['CellCenter']):
-    pl = PT.get_child_from_predicate(node, lambda n : PT.get_name(n) in ['PointList', 'PointRange'])
+    pl = PT.get_child_from_predicate(node, PT.pred.name_in(['PointList', 'PointRange']))
     pl[1] += shift - first_cell_id # Last one shift back to 0 if mesh was increasing dim. numbered
 
   # > Remove internal holder state
@@ -178,17 +181,15 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
   """
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'ZoneSubRegion_t', 'DiscreteData_t']
-  is_fcenter   = lambda n : PT.Subset.GridLocation(n) not in ['CellCenter', 'Vertex']
-  is_subset    = lambda n : PT.get_child_from_name(n, 'PointList') is not None \
-                         or PT.get_child_from_name(n, 'PointRange') is not None
+  is_container = PT.pred.label_in(['FlowSolution_t', 'ZoneSubRegion_t', 'DiscreteData_t'])
+  is_fcenter   = PT.pred.UnaryPredicate(lambda n : PT.Subset.GridLocation(n) not in ['CellCenter', 'Vertex'])
   
   # Convert data having PL into bc, so they will be converted by the function
   for dist_zone in PT.iter_all_Zone_t(dist_tree):
     # BCDS case is specific (they are included in BCs)
     for zbc in PT.iter_children_from_label(dist_zone, 'ZoneBC_t'):
       for bc in PT.get_children_from_label(zbc, 'BC_t'):
-        for bcds in PT.get_children_from_predicate(bc, lambda n : PT.get_label(n) == 'BCDataSet_t' and is_subset(n)):
+        for bcds in PT.get_children_from_predicate(bc, PT.pred.label_is('BCDataSet_t') & HAS_SUBSET):
           PT.update_node(bcds, name=f'__maia::isBCDS#@#{bc[0]}#@#{bcds[0]}', label='BC_t')
           PT.add_child(zbc, bcds)
         PT.rm_children_from_name(bc, '__maia::isBCDS#@#*')
@@ -201,18 +202,16 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
     # Other data (as ZSR) are self contained
     to_remove = list()
     container = PT.new_child(dist_zone, '__maia::isSubset', 'ZoneBC_t')
-    for node in PT.get_children_from_predicate(dist_zone, lambda n: is_container(n) and is_fcenter(n) and is_subset(n)):
+    for node in PT.get_children_from_predicate(dist_zone, is_container & is_fcenter & HAS_SUBSET):
       PT.new_Descriptor('__maia::initialLabel', PT.get_label(node), parent=node)
       PT.set_label(node, 'BC_t')
       to_remove.append(PT.get_name(node))
       PT.add_child(container, node)
-    PT.rm_children_from_predicate(dist_zone, lambda n : PT.get_name(n) in to_remove)
+    PT.rm_children_from_predicate(dist_zone, PT.pred.name_in(to_remove))
 
-  is_zone     = lambda n : PT.get_label(n) == 'Zone_t'
-  is_zone_elt = lambda n : is_zone(n) and PT.Zone.Type(n) == 'Unstructured' and not PT.Zone.has_ngon_elements(n)
   for base in PT.iter_all_CGNSBase_t(dist_tree):
     extract_dim = PT.get_np_value(base)[0]
-    zones_u = PT.get_children_from_predicate(base, is_zone_elt)
+    zones_u = PT.get_children_from_predicate(base, IS_ZONE_ELT)
 
     for zone in zones_u: #Raise if overflow is probable
       face_vtx_size = predict_face_vtx_size(zone, extract_dim)
@@ -297,7 +296,7 @@ def convert_elements_to_ngon(dist_tree: CGNSDistTree,
   """
   MT.check_cgns_dist_tree(dist_tree)
   # If tree has MIXED elements, first convert Mixed -> Elts
-  is_mixed = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'MIXED'
+  is_mixed = PT.pred.is_elmt_of_type('MIXED')
   has_mixed = PT.get_node_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', is_mixed]) is not None
   if has_mixed:
     maia.algo.dist.convert_mixed_to_elements(dist_tree, comm)

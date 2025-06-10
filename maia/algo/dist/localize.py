@@ -16,11 +16,6 @@ from maia.algo.dist.point_cloud_utils  import get_point_cloud
 
 from maia.algo.part.localize import _mdom_mesh_location as _mdom_mesh_location_part
 
-is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
-is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
-                            PT.Zone.Type(z) == 'Unstructured' and \
-                            all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
-
 def minimal_partitioning(zone, comm, use_geom=False):
   """
   Minimal partitioning without zones interfaces, groups, etc.
@@ -42,7 +37,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
   else:
     cell_gnum = np.arange(cell_distri[0]+1, cell_distri[1]+1, dtype=pdm_gnum_dtype)
 
-  if is_poly_3d_zone(zone):
+  if PT.pred.IS_POLY3D_ZONE(zone):
     pe_to_nface(zone, comm) # Create NFace if not already existing
     ngon  = PT.Zone.NGonNode(zone)
     nface = PT.Zone.NFaceNode(zone)
@@ -73,7 +68,7 @@ def minimal_partitioning(zone, comm, use_geom=False):
         cell_gnum, face_gnum, vtx_gnum]
   
 
-  elif is_poly_2d_zone(zone):
+  elif PT.pred.IS_POLY2D_ZONE(zone):
 
     edge  = MT.Zone.EdgeNode(zone)
     if PT.get_child_from_name(edge, 'ParentElements') is None:
@@ -132,9 +127,9 @@ def minimal_partitioning(zone, comm, use_geom=False):
               for key, data in dcoords._asdict().items()}
   pcoords = EP.block_to_part(dcoords, vtx_distri, vtx_gnum-1, comm)
   pvtx_coords = np_utils.interweave_arrays(list(pcoords.values()))
-  if is_poly_3d_zone(zone):
+  if PT.pred.IS_POLY3D_ZONE(zone):
     part_data.insert(4, pvtx_coords)
-  elif is_poly_2d_zone(zone):
+  elif PT.pred.IS_POLY2D_ZONE(zone):
     part_data.insert(3, pvtx_coords)
   else:
     part_data.insert(2, pvtx_coords)

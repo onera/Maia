@@ -12,10 +12,13 @@ from maia.utils import par_utils
 from maia.algo.dist import extrusion as EXT
 
 get_elt_ec = lambda n : PT.find_child_from_name(n, 'ElementConnectivity')[1]
-is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
-is_subset = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']
-is_edge_subset = lambda n: is_subset(n) and PT.Subset.GridLocation(n).endswith('EdgeCenter')
-is_face_subset = lambda n: is_subset(n) and PT.Subset.GridLocation(n).endswith('FaceCenter')
+
+def location_endswith(loc):
+  return PT.pred.UnaryPredicate(lambda n : PT.Subset.GridLocation(n).endswith(loc))
+
+IS_BAR = PT.pred.is_elmt_of_type('BAR_2')
+IS_EDGE_SUBSET = PT.pred.label_in(['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']) & location_endswith('EdgeCenter')
+IS_FACE_SUBSET = PT.pred.label_in(['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']) & location_endswith('FaceCenter')
 
 @pytest_parallel.mark.parallel([1,2])
 def test_nodes_duplication(comm):
@@ -86,8 +89,7 @@ def test_ngon_duplication(align, comm):
   EXT._ngon_duplication(zone, comm, align)
 
   # Verification
-  is_ngon = lambda n: PT.get_label(n) == "Elements_t" and PT.Element.CGNSName(n) == 'NGON_n'
-  assert len(PT.get_children_from_predicate(zone, is_ngon)) == 2
+  assert len(PT.get_children_from_predicate(zone, PT.pred.IS_NGON_ELT)) == 2
   old_ngon = PT.get_child_from_name(zone, ngon_name_ini)
   new_ngon = PT.get_child_from_name(zone, f'{ngon_name_ini}_bis')
   
@@ -299,7 +301,7 @@ def test_extrusion_2d_cart_ngon(coords_dim, ksubset_as, comm):
   zone = PT.get_all_Zone_t(dist_tree)[0]
 
   n_cell = PT.Zone.n_cell(zone)
-  n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, is_bar))
+  n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, IS_BAR))
 
   # Run test
   EXT.extrude(dist_tree, [0., 0., 1.], comm, ksubset_as=ksubset_as)
@@ -309,17 +311,17 @@ def test_extrusion_2d_cart_ngon(coords_dim, ksubset_as, comm):
   assert PT.Zone.n_cell(zone) == n_cell
   assert PT.Zone.n_face(zone) == n_edges+2*n_cell
 
-  assert len(PT.get_nodes_from_predicate(zone, is_bar)) == 0
+  assert len(PT.get_nodes_from_predicate(zone, IS_BAR)) == 0
 
   assert PT.get_child_from_name(PT.Zone.NGonNode(zone), 'ParentElements') is not None
-  assert len(PT.get_nodes_from_predicate(zone, is_edge_subset)) == 0
+  assert len(PT.get_nodes_from_predicate(zone, IS_EDGE_SUBSET)) == 0
 
   if ksubset_as == 'GC':
-    assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4 # 4 initial BC
+    assert len(PT.get_nodes_from_predicate(zone, IS_FACE_SUBSET)) == 4 # 4 initial BC
     assert len(PT.get_nodes_from_label(zone, 'GridConnectivity_t')) == 2
     assert np.all(np.abs(PT.get_node_from_name(zone, 'Translation')[1]) == [0., 0., 1.])
   elif ksubset_as == 'BC':
-    assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4 + 2
+    assert len(PT.get_nodes_from_predicate(zone, IS_FACE_SUBSET)) == 4 + 2
     assert len(PT.get_children_from_label(base, 'Family_t')) == 2
 
 
@@ -335,7 +337,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
 
   n_cell = PT.Zone.n_cell(zone)
   n_vtx  = PT.Zone.n_vtx(zone)
-  n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, is_bar))
+  n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, IS_BAR))
 
   # > Container CellCenter
   id_cc = np.arange(n_cell) + n_edges + 1
@@ -391,7 +393,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   PT.new_IndexArray('PointListDonor', PT.get_child_from_name(ymin, 'PointList')[1].copy(), ymax)
   PT.new_Descriptor('GridConnectivityRegionName', 'Ymax', parent=ymin)
   PT.new_Descriptor('GridConnectivityRegionName', 'Ymin', parent=ymax)
-  PT.rm_nodes_from_predicate(zone, lambda n : PT.get_name(n) in ['Ymin', 'Ymax'])
+  PT.rm_nodes_from_predicate(zone, PT.pred.name_in(['Ymin', 'Ymax']))
   PT.new_child(zone, 'ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=[ymin, ymax])
 
   # Run test
@@ -486,15 +488,15 @@ def test_extrusion_2d_cart_elem(element_type, comm):
   # Verification
   assert np.all(PT.get_value(base) == [3, 3])
 
-  assert len(PT.get_nodes_from_predicate(zone, is_bar)) == 0
+  assert len(PT.get_nodes_from_predicate(zone, IS_BAR)) == 0
 
   allowed_elts = ['TRI_3', 'QUAD_4', 'PENTA_6'] if element_type == 'TRI_3' else ['QUAD_4', 'HEXA_8']
   assert all(PT.Element.CGNSName(e) in allowed_elts for e in PT.get_children_from_label(zone, 'Elements_t'))
 
   assert [len(e) for e in PT.Zone.get_ordered_elements_per_dim(zone)] == [0, 0, 3, 1]
 
-  assert len(PT.get_nodes_from_predicate(zone, is_edge_subset)) == 0
-  assert len(PT.get_nodes_from_predicate(zone, is_face_subset)) == 4
+  assert len(PT.get_nodes_from_predicate(zone, IS_EDGE_SUBSET)) == 0
+  assert len(PT.get_nodes_from_predicate(zone, IS_FACE_SUBSET)) == 4
   assert len(PT.get_nodes_from_predicate(zone, 'GridConnectivity_t')) == 2
   assert np.all(np.abs(PT.get_node_from_name(zone, 'Translation')[1]) == [0., 0., 2.])
 
@@ -559,8 +561,8 @@ def test_extrusion_2d_S(subset_as, comm):
   # Verification
   assert np.all(PT.get_value(base) == [3, 3])
 
-  assert len(PT.get_nodes_from_predicate(tree, is_edge_subset)) == 0
-  assert len(PT.get_nodes_from_predicate(tree, is_face_subset)) == 1
+  assert len(PT.get_nodes_from_predicate(tree, IS_EDGE_SUBSET)) == 0
+  assert len(PT.get_nodes_from_predicate(tree, IS_FACE_SUBSET)) == 1
 
   gcs = PT.get_nodes_from_label(tree, 'GridConnectivity1to1_t')
   assert len(gcs) == 2 + 4*(subset_as=='GC')

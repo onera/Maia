@@ -223,8 +223,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   child_list = ['GridLocation', 'FamilyName_t', 'AdditionalFamilyName_t', 'Descriptor_t']
   for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim):
     if LOC_TO_DIM[dim_name]<=dim:
-      is_dim_bc = lambda n: PT.get_label(n)=="BC_t" and\
-                            PT.Subset.GridLocation(n)==dim_name
+      is_dim_bc = PT.pred.is_bc_of_loc(dim_name)
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
@@ -375,7 +374,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
           if bc_loc == 'CellCenter' and dim == 2: # Offset BCs, because we put Edge elts first
             bc_pl += nb_bar
           bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
-          for child in PT.get_children_from_predicate(dist_bc, lambda n : PT.get_name(n) != 'GridLocation'):
+          for child in PT.get_children_from_predicate(dist_bc, ~PT.pred.name_is('GridLocation')):
             PT.add_child(bc_n, child)
           MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
     bc_type +=1 

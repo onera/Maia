@@ -9,6 +9,8 @@ from maia.utils import par_utils
 from .connectivity_utils import combine_face_edge_and_edge_vtx
 from .ngon_tools         import PDM_dfacecell_to_dcellface
 
+IS_2D_BASE = PT.pred.label_is('CGNSBase_t') & PT.pred.UnaryPredicate(lambda n : PT.get_np_value(n)[0] == 2)
+
 def _convert_ngon2d_to_bar(zone):
   """
   Function to convert, in 2D, NGon node that wrongly describe edge_vtx 
@@ -99,8 +101,7 @@ def poly2d_convert_3dlike_to_std(dist_tree, comm):
     dist_tree (CGNSDistTree): Distributed tree
     comm      (MPIComm)     : MPI communicator
   """
-  is_2D_base = lambda n: PT.get_label(n) == 'CGNSBase_t' and PT.get_value(n)[0] == 2
-  for zone in PT.get_children_from_predicates(dist_tree, [is_2D_base, 'Zone_t']):
+  for zone in PT.get_children_from_predicates(dist_tree, [IS_2D_BASE, 'Zone_t']):
     _convert_ngon2d_to_bar(zone)
     _convert_nface2d_to_ngon(zone, comm)
     for subset in PT.iter_all_subsets(zone, 'FaceCenter'):
@@ -117,8 +118,7 @@ def poly2d_convert_std_to_3dlike(dist_tree, comm):
     dist_tree (CGNSDistTree): Distributed tree
     comm      (MPIComm)     : MPI communicator
   """
-  is_2D_base = lambda n: PT.get_label(n) == 'CGNSBase_t' and PT.get_value(n)[0] == 2
-  for zone in PT.get_children_from_predicates(dist_tree, [is_2D_base, 'Zone_t']):
+  for zone in PT.get_children_from_predicates(dist_tree, [IS_2D_BASE, 'Zone_t']):
     _bar_pe_to_nface2d(zone, comm)
     for subset in PT.iter_all_subsets(zone, 'EdgeCenter'):
       PT.update_child(subset, 'GridLocation', 'GridLocation_t', 'FaceCenter')

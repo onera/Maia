@@ -451,7 +451,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
         PT.set_value(zone, zone_dims_u)
 
         for flow_solution_s in PT.iter_children_from_label(zone, "FlowSolution_t"):
-          patch = PT.get_child_from_predicate(flow_solution_s, lambda n: PT.get_name(n) in ['PointRange', 'PointList'])
+          patch = PT.get_child_from_predicate(flow_solution_s, PT.pred.name_in(['PointRange', 'PointList']))
           assert patch is None, f"Partial FlowSolution_t are not supported"
 
         loc_to_name = {'Vertex' : '#Vtx', 'FaceCenter': '#Face', 'EdgeCenter' : '#Edge', 'CellCenter': '#Cell'}
@@ -493,7 +493,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
               gc_u_list.append(gc_u)
 
           # Hybrid joins should be here : we just have to translate the PL ijk into face index
-          is_abutt1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.Type(n) == 'Abutting1to1'
+          is_abutt1to1 = PT.pred.label_is('GridConnectivity_t') & PT.pred.is_gc_with(match=True)
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
             opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
             opp_zone = PT.find_node_from_path(dist_tree, opp_zone_path)

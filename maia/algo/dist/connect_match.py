@@ -345,7 +345,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
 
       MT.new_Distribution({"Index" : jn_distri.copy()}, jn)
 
-      to_copy = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+      to_copy = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
       origin_node = PT.find_node_from_path(dist_tree, origin_path_cur)
       for node in PT.get_children_from_predicate(origin_node, to_copy):
         PT.add_child(jn, node)
@@ -417,8 +417,8 @@ def connect_1to1_families(dist_tree: CGNSDistTree,
         :dedent: 2
   """
   MT.check_cgns_dist_tree(dist_tree)
-  is_subset_container = lambda n: PT.get_label(n) in ['ZoneBC_t', 'ZoneGridConnectivity_t']
-  is_subset           = lambda n: PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
+  is_subset_container = PT.pred.label_in(['ZoneBC_t', 'ZoneGridConnectivity_t'])
+  is_subset           = PT.pred.label_in(['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'])
 
   assert isinstance(families, (list, tuple)) and len(families) == 2
 
