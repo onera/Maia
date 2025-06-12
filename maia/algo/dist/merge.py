@@ -3,6 +3,7 @@ from re import sub
 from Pypdm import Pypdm as PDM
 
 from maia.typing import *
+from maia.pytree.typing import Predicates
 import maia.pytree        as PT
 import maia.pytree.pred   as PTp
 import maia.pytree.maia   as MT
@@ -16,8 +17,6 @@ from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
-
-IS_GC = PTp.is_gc_with()
 
 def _append_or_create(d, key, val):
   try:
@@ -271,8 +270,8 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
 
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
 
-  face_gc_query = ['ZoneGridConnectivity_t', IS_GC & PTp.has_location('FaceCenter')]
-  vtx_gc_query = ['ZoneGridConnectivity_t', IS_GC & PTp.has_location('Vertex')]
+  face_gc_query:Predicates = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('FaceCenter')]
+  vtx_gc_query:Predicates  = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('Vertex')]
 
   # Move non 1to1 GC_t to ZoneBC since they have no PointListDonor
   is_not_1to1 = PTp.label_is('GridConnectivity_t') & PTp.is_gc_with(match=False)
@@ -530,7 +529,7 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   Merging by name is not performed for GridConnectivity_t
   """
   #In each case, we need to collect all the nodes, since some can be absent of a given zone
-  jn_to_keep = PTp.label_is('GridConnectivity_t') & PTp.has_location('FaceCenter') & ~PTp.has_child('__maia_merge__')
+  jn_to_keep = PTp.label_is('GridConnectivity_t') & PTp.has_location('FaceCenter') & ~PTp.has_child_of_name('__maia_merge__')
 
   #Order : FlowSolution/DiscreteData/ZoneSubRegion, BC, BCDataSet, GridConnectivity_t, 
   all_subset_queries = [
@@ -771,7 +770,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     PT.new_DataArray('PEDomain',  dom_id * np.ones_like(pe_bck, dtype=np.int32), parent=ngon_node)
 
   # First, we need to update the PE node to include cells of opposite zone
-  query = IS_GC & PTp.has_child('__maia_merge__')
+  query = PT.pred.IS_GC & PTp.has_child_of_name('__maia_merge__')
 
   for zone_path_send in zone_paths:
     base_n = zone_path_send.split('/')[0]

@@ -282,7 +282,7 @@ def dist_subregion_to_part_subregion(dist_zone: CGNSDistTree,
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
           # Get corresponding part ZSR
           good_zsr = PT.pred.label_is('ZoneSubRegion_t') \
-                   & PT.pred.has_child('GridConnectivityRegionName') \
+                   & PT.pred.has_child_of_name('GridConnectivityRegionName') \
                    & PT.pred.UnaryPredicate(lambda n : PT.get_value(PT.find_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node))
           p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
           for field_name, data in part_data.items():

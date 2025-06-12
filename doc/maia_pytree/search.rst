@@ -234,7 +234,8 @@ signature ``f(n:CGNSTree) -> bool``, and can thus directly be used as predicate:
   ~maia.pytree.pred.IS_POLY2D_ZONE
   ~maia.pytree.pred.IS_POLY3D_ZONE
   ~maia.pytree.pred.HAS_POINTLIST
-  ~maia.pytree.pred.IS_NGON_ELT
+  ~maia.pytree.pred.IS_SUBSET
+  ~maia.pytree.pred.IS_GC
 
 .. rubric:: Predicate generator
 
@@ -255,7 +256,7 @@ signature ``f(n:CGNSTree) -> bool`` (so a predicate function) when called:
   ~maia.pytree.pred.label_matches
   ~maia.pytree.pred.value_is
   ~maia.pytree.pred.value_in
-  ~maia.pytree.pred.has_child
+  ~maia.pytree.pred.has_child_of_name
   ~maia.pytree.pred.has_child_of_label
   ~maia.pytree.pred.has_location
   ~maia.pytree.pred.belongs_to_family

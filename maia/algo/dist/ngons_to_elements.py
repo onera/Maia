@@ -13,8 +13,8 @@ from maia.algo.dist import matching_jns_tools as MJT
 from cmaia.algo import combine_to_tetra, combine_to_pyra, \
                        combine_to_penta, combine_to_hexa
 
-HAS_SUBSET = PT.pred.has_child('PointList') or PT.pred.has_child('PointRange')
-is_cell_full_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) & ~HAS_SUBSET & PT.pred.has_location('CellCenter')
+is_cell_full_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
+                       & ~PT.pred.IS_SUBSET & PT.pred.has_location('CellCenter')
 
 def _collected_shifted_pl(zone:CGNSTree, loc:str, shift:int) -> List[NDArray]:
   all_pl = []

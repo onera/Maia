@@ -19,7 +19,7 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   but also recreate the distributed pointlist if needed
   """
   if pl_path.split('/')[0] == 'ZoneSubRegion_t':
-    is_gc_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child('GridConnectivityRegionName')
+    is_gc_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('GridConnectivityRegionName')
     ini_zsr_nodes_names = [PT.get_name(n) for n in PT.get_nodes_from_predicate(dist_zone, is_gc_zsr)]
 
   discover_nodes_from_matching(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t', 'Descriptor_t'])
@@ -179,7 +179,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   Transfert all the data included in ZoneSubRegion_t nodes from the partitioned
   zones to the distributed zone.
   """
-  is_zsr_with_pl = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child('PointList')
+  is_zsr_with_pl = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('PointList')
   for zone in part_zones:
     for zsr_n in PT.get_children_from_predicate(zone, is_zsr_with_pl):
       gn_n = MT.get_GlobalNumbering(zsr_n)
@@ -208,7 +208,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
           # Get corresponding part ZSR
           lngn_list.append(MT.globalnumbering_value(node, 'Index'))
-          good_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child('GridConnectivityRegionName') \
+          good_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('GridConnectivityRegionName') \
                    & PT.pred.UnaryPredicate(lambda n : PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node))
           p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
           for field in fields:

@@ -343,8 +343,7 @@ class WallDistance:
     
         
     if self.method == "cloud":
-      is_gc_perio = PT.pred.is_gc_with()
-      gc_predicate = ['ZoneGridConnectivity_t', is_gc_perio]
+      gc_predicate = ['ZoneGridConnectivity_t', PT.pred.IS_GC]
       
       # Recover existing periodicities
       for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):

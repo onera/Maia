@@ -11,7 +11,6 @@ from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh_nodal
 import Pypdm.Pypdm as PDM
 
-HAS_SUBSET = PT.pred.has_child('PointList') or PT.pred.has_child('PointRange')
 IS_ZONE_ELT = PT.pred.IS_U_ZONE & ~PT.pred.UnaryPredicate(lambda z: PT.Zone.has_ngon_elements(z))
 
 def raise_if_possible_overflow(n_elt, n_rank):
@@ -189,7 +188,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
     # BCDS case is specific (they are included in BCs)
     for zbc in PT.iter_children_from_label(dist_zone, 'ZoneBC_t'):
       for bc in PT.get_children_from_label(zbc, 'BC_t'):
-        for bcds in PT.get_children_from_predicate(bc, PT.pred.label_is('BCDataSet_t') & HAS_SUBSET):
+        for bcds in PT.get_children_from_predicate(bc, PT.pred.label_is('BCDataSet_t') & PT.pred.IS_SUBSET):
           PT.update_node(bcds, name=f'__maia::isBCDS#@#{bc[0]}#@#{bcds[0]}', label='BC_t')
           PT.add_child(zbc, bcds)
         PT.rm_children_from_name(bc, '__maia::isBCDS#@#*')
@@ -202,7 +201,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
     # Other data (as ZSR) are self contained
     to_remove = list()
     container = PT.new_child(dist_zone, '__maia::isSubset', 'ZoneBC_t')
-    for node in PT.get_children_from_predicate(dist_zone, is_container & is_fcenter & HAS_SUBSET):
+    for node in PT.get_children_from_predicate(dist_zone, is_container & is_fcenter & PT.pred.IS_SUBSET):
       PT.new_Descriptor('__maia::initialLabel', PT.get_label(node), parent=node)
       PT.set_label(node, 'BC_t')
       to_remove.append(PT.get_name(node))

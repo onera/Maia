@@ -75,7 +75,6 @@ def copy_additional_nodes(dist_zone, part_zone):
   """
   """
   is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t'])
-  HAS_SUBSET   = PT.pred.has_child('PointList') | PT.pred.has_child('PointRange')
 
   #Zone data
   types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ZoneIterativeData_t', 
@@ -87,7 +86,7 @@ def copy_additional_nodes(dist_zone, part_zone):
 
   # Full containers (FS & DD) -- partial containers are created before
   types = ['GridLocation_t', 'Descriptor_t']
-  for d_fs in PT.iter_children_from_predicate(dist_zone, is_container & ~HAS_SUBSET):
+  for d_fs in PT.iter_children_from_predicate(dist_zone, is_container & ~PT.pred.IS_SUBSET):
     p_fs = PT.new_child(part_zone, PT.get_name(d_fs), PT.get_label(d_fs), PT.get_value(d_fs))
     for node in PT.get_children(d_fs):
       if PT.get_label(node) in types:

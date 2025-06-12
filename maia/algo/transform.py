@@ -10,8 +10,6 @@ from maia.transfer import protocols as EP
 from maia.utils import logging as mlog
 from .geometry import _compute_elements_center
 
-IS_GC = PT.pred.is_gc_with()
-
 def _to_xyz(r, theta, z):
   return r*np.cos(theta), r*np.sin(theta), z
 def _to_xyz_vectors(vr, vtheta, vz, theta):
@@ -62,7 +60,7 @@ def transform_affine_zone(zone: CGNSTree,
   # --> This leads to M_gcnew = M_tr * M_gc * (M_tr)^-1
   transf_mat = np_utils._transform_to_homogeneous_matrix(translation_np, rotation_center_np, rotation_angle_np)
   transf_mat_inv = np.linalg.inv(transf_mat)
-  for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', IS_GC]):
+  for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
     if PT.GridConnectivity.isperiodic(gc):
       gc_center = PT.find_node_from_name(gc, 'RotationCenter')
       gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
@@ -376,7 +374,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
 
-    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', IS_GC]):
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       if PT.GridConnectivity.isperiodic(gc):
         gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.find_node_from_name(gc, 'Translation')
@@ -469,7 +467,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
 
-    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', IS_GC]):
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       if PT.GridConnectivity.isperiodic(gc):
         gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.find_node_from_name(gc, 'Translation')
@@ -574,7 +572,7 @@ def auxiliary_coords_system(t: CGNSTree,
     coords_n = PT.Zone.coordinates(zone)
     phy_dim = 2 if coords_n[2] is None else 3
     
-    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', IS_GC]):
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       if PT.GridConnectivity.isperiodic(gc):
         gc_center = PT.find_node_from_name(gc, 'RotationCenter')
         gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')

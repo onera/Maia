@@ -4,8 +4,6 @@ import maia.pytree.maia   as MT
 
 from maia.utils import par_utils
 
-IS_GC = PT.pred.is_gc_with()
-
 def interpret_policy(policy, comm):
   if policy == 'gather':
     policy = 'gather.0'
@@ -95,7 +93,7 @@ def compute_zone_distribution(zone, comm, distri_func):
       [PT.pred.label_in(['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t'])],
       'ZoneBC_t/BC_t',
       'ZoneBC_t/BC_t/BCDataSet_t',
-      ['ZoneGridConnectivity_t', IS_GC]
+      ['ZoneGridConnectivity_t', PT.pred.IS_GC]
       ]
 
   for predicate in predicate_list:
@@ -153,5 +151,5 @@ def clean_distribution_info(dist_tree):
       PT.rm_children_from_name(node, distri_name)
     for bc in PT.iter_nodes_from_predicates(zone, 'ZoneBC_t/BC_t'):
       PT.rm_nodes_from_name(bc, distri_name, depth=2)
-    for gc in PT.iter_nodes_from_predicates(zone, ['ZoneGridConnectivity_t', IS_GC]):
+    for gc in PT.iter_nodes_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       PT.rm_children_from_name(gc, distri_name)

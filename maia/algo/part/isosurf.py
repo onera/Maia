@@ -262,7 +262,6 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
   gdom_bcs_path = PT.predicates_to_paths(dist_zone, ['ZoneBC_t','BC_t'])
   n_gdom_bcs = len(gdom_bcs_path)
   # > GCs
-  is_gc        = PT.pred.is_gc_with()
   gc_predicate = ['ZoneGridConnectivity_t', PT.pred.is_gc_with(match=False)]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
   gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_with(intra=False, match=True)]
@@ -271,7 +270,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
   for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
     val = PT.get_str_value(jn)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
-  gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t',is_gc])
+  gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC])
   n_gdom_gcs = len(gdom_gcs_path)
 
   # Loop over domain zones

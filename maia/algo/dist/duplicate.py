@@ -10,8 +10,6 @@ from   maia.pytree.typing import Predicates
 
 from maia.utils import logging as mlog
 
-IS_GC = PT.pred.is_gc_with()
-
 def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
                                 zone_paths: List[CGNSPath],
                                 jn_paths_for_dupl: Tuple[List[CGNSPath], List[CGNSPath]],
@@ -123,7 +121,7 @@ def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
   # nodes not involved in the duplication (not in jn_paths_for_dupl)
   gc_values_to_update = zone_paths + [PT.get_name(zone) for zone in zones] #Manage both ways BaseName/ZoneName + ZoneName
 
-  gc_predicate = ["ZoneGridConnectivity_t", IS_GC]
+  gc_predicate:Predicates = ["ZoneGridConnectivity_t", PT.pred.IS_GC]
 
   # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
   for zone_path, zone in zip(zone_paths, zones):

@@ -16,9 +16,6 @@ IS_BAR  = PTp.is_elmt_of_type('BAR_2')
 IS_TRI  = PTp.is_elmt_of_type('TRI_3')
 IS_QUAD = PTp.is_elmt_of_type('QUAD_4')
 
-def location_endswith(loc):
-  return PTp.UnaryPredicate(lambda n : PT.Subset.GridLocation(n).endswith(loc))
-
 def _extend_pr(pr_node:CGNSTree, val):
   """ Add a dimension to PR-like arrays with the specified values"""
   pr2d = PT.get_np_value(pr_node)
@@ -642,8 +639,8 @@ def extrude(dist_tree: CGNSDistTree,
     # Update containers
     is_container = PTp.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t'])
     is_subset    = PTp.label_in(['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'])
-    has_pl = PTp.has_child('PointList')
-    has_pr = PTp.has_child('PointRange')
+    has_pl = PTp.has_child_of_name('PointList')
+    has_pr = PTp.has_child_of_name('PointRange')
     is_partial = has_pl | has_pr
     
     # > CellCenter -> Shift to refer cells ids
@@ -660,7 +657,7 @@ def extrude(dist_tree: CGNSDistTree,
           _extend_pr(pr_n, [1,1])
 
     # > *FaceCenter -> should not exist on 2d mesh, remove it
-    is_container_face = (is_container | is_subset) & location_endswith('FaceCenter')
+    is_container_face = (is_container | is_subset) & PT.pred.has_location('*FaceCenter')
     container_face_l = PT.get_nodes_from_predicate(zone, is_container_face, depth=3, explore='deep')
     if len(container_face_l) > 0:
       cnt_names = [PT.get_name(n) for n in container_face_l]
@@ -670,7 +667,7 @@ def extrude(dist_tree: CGNSDistTree,
       PT.rm_nodes_from_predicate(zone, is_container_face, depth=3)
 
     # > *EdgeCenter -> becomes *FaceCenter (no need to change their PointList, but PR must be extended)
-    is_container_edge = (is_container | is_subset) & location_endswith('EdgeCenter')
+    is_container_edge = (is_container | is_subset) & PT.pred.has_location('*EdgeCenter')
     for container in PT.get_nodes_from_predicate(zone, is_container_edge, depth=3, explore='deep'):
       if PT.Zone.Type(zone)  == 'Unstructured':
         PT.update_child(container, 'GridLocation', value='FaceCenter')

@@ -9,9 +9,6 @@ from maia.pytree.typing import Predicates
 
 from maia.io.distribution_tree   import interpret_policy
 
-HAS_SUBSET = PT.pred.has_child('PointList') or PT.pred.has_child('PointRange')
-IS_GC = PT.pred.is_gc_with()
-
 # ---------------------------------------------------------------------------------------
 def redistribute_pl_node(node: CGNSTree,
                          distribution: Callable[[int, MPIComm], NDArray],
@@ -44,7 +41,7 @@ def redistribute_pl_node(node: CGNSTree,
   # BCData_t arrays case : can be scalar or vector
   global_data_node = PT.get_child_from_name(distri_n, 'BCDataGlobal')
   global_data_list = PT.get_str_value(global_data_node).split('\n') if global_data_node else []
-  bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~HAS_SUBSET
+  bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~PT.pred.IS_SUBSET
   bcds_without_pl_query:Predicates = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_path in PT.predicates_to_paths(node, query):
@@ -54,7 +51,7 @@ def redistribute_pl_node(node: CGNSTree,
         PT.set_value(array_n, MTP.block_to_block(array, node_distrib, new_distrib, comm))
       
   #Additionnal treatement for subnodes with PL (eg bcdataset)
-  has_pl = ~PT.pred.name_in(['PointList', 'PointRange']) & HAS_SUBSET
+  has_pl = ~PT.pred.name_in(['PointList', 'PointRange']) & PT.pred.IS_SUBSET
   for child in [node for node in PT.get_children(node) if has_pl(node)]:
     redistribute_pl_node(child, distribution, comm)
 
@@ -213,7 +210,7 @@ def redistribute_zone(zone: CGNSTree,
     redistribute_pl_node(bc, distribution, comm)
 
   # > GCs
-  for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', IS_GC]):
+  for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
     redistribute_pl_node(gc, distribution, comm)
 
     

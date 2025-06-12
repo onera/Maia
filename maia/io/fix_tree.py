@@ -8,8 +8,6 @@ import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
 from maia.algo.dist import matching_jns_tools as MJT
 
-HAS_SUBSET = PT.pred.has_child('PointList') | PT.pred.has_child('PointRange')
-
 def check_datasize(tree):
   """
   Warns if a heavy array is not distributed
@@ -153,7 +151,7 @@ def add_missing_pr_in_bcdataset(tree):
       continue # Correction is done only for S zones
     if bc_point_range is None:
       continue # Correction is done only for BCs having a PointRange
-    for bcds in PT.get_children_from_predicate(bc, PT.pred.label_is('BCDataSet_t') & ~HAS_SUBSET):
+    for bcds in PT.get_children_from_predicate(bc, PT.pred.label_is('BCDataSet_t') & ~PT.pred.IS_SUBSET):
       bcds_grid_location = PT.BCDataSet.GridLocation(bcds, bc)
       if not (bcds_grid_location.endswith('FaceCenter') and PT.Subset.GridLocation(bc) == 'Vertex'):
         continue

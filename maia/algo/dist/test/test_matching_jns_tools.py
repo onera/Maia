@@ -7,8 +7,6 @@ import maia.pytree as PT
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.factory import full_to_dist
 
-IS_GC = PT.pred.is_gc_with()
-
 def test_gc_is_reference():
   pr  = np.array([[1,1], [1,10], [1,10]], order='F')
   prd = np.array([[20,10], [1,10], [5,5]], order='F')
@@ -102,7 +100,7 @@ Base1 CGNSBase_t [3,3]:
   MJT.add_joins_donor_name(dist_tree, comm)
 
   expected_donor_names = ['matchBA', 'matchAB', 'matchCB1', 'matchCB2', 'matchBC2', 'matchBC1']
-  for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, IS_GC)):
+  for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, PT.pred.IS_GC)):
     assert PT.get_value(PT.get_child_from_name(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
 
 @pytest_parallel.mark.parallel(1)

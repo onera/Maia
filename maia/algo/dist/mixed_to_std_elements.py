@@ -9,7 +9,6 @@ from maia.transfer      import protocols     as EP
 from maia.utils         import par_utils, np_utils
 import maia.pytree.sids.elements_utils    as MPSEU
 
-HAS_SUBSET = PT.pred.has_child('PointList') or PT.pred.has_child('PointRange')
 
 def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> List[CGNSTree]:
   """
@@ -274,7 +273,8 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         # 7b. Reorder FlowSolution DataArray
         GI_fs = EP.GlobalIndexer(cells_distrib, dist_old_to_new_cell_numbering, comm)
 
-        is_fs_cc = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) & PT.pred.has_location('CellCenter') & ~HAS_SUBSET
+        is_fs_cc = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
+                 & PT.pred.has_location('CellCenter') & ~PT.pred.IS_SUBSET
 
         for node in PT.get_children_from_predicates(zone, [is_fs_cc, 'DataArray_t']):
             data = PT.get_np_value(node)

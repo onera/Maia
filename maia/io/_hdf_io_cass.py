@@ -7,8 +7,6 @@ import maia.pytree        as PT
 from .fix_tree import check_namings, fix_point_ranges, ensure_symmetric_gc1to1, fix_zone_datatype,\
                       rm_legacy_nodes, add_missing_pr_in_bcdataset, fix_structured_pr_shape
 
-IS_GC = PT.pred.is_gc_with()
-
 def add_sizes_to_zone_tree(zone, zone_path, size_data):
   """
   Creates the MyArray#Size node using the size_data dict on the given zone
@@ -134,7 +132,7 @@ def load_grid_connectivity_property(filename, tree):
   zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
   gc_prop_paths = []
   for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
-    for gc in PT.iter_children_from_predicate(zone_gc, IS_GC):
+    for gc in PT.iter_children_from_predicate(zone_gc, PT.pred.IS_GC):
       gc_prop = PT.get_child_from_label(gc, 'GridConnectivityProperty_t')
       if gc_prop is not None:
         gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])

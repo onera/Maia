@@ -357,7 +357,7 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
 
   zone_gc_n = PT.get_child_from_label(zone, 'ZoneGridConnectivity_t')
   if zone_gc_n is not None:
-    is_vtx_gc = PTp.is_gc_with() & PTp.has_location('Vertex')
+    is_vtx_gc = PTp.IS_GC & PTp.has_location('Vertex')
     for gc_n in PT.get_children_from_predicate(zone_gc_n, is_vtx_gc):
       gc_pl_n = PT.get_child_from_name(gc_n, 'PointList')
       gc_pl   = PT.get_value(gc_pl_n)[0]

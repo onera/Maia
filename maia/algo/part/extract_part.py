@@ -42,7 +42,7 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
   assert PT.get_child_from_predicates(bc_n, f'BCDataSet_t/{unwanted_type}') is None,\
                  f'BCDataSet_t with {unwanted_name} aren\'t managed'
 
-  is_valid_bcds = PT.pred.label_is('BCDataSet_t') & ~PT.pred.has_child(required_name)
+  is_valid_bcds = PT.pred.label_is('BCDataSet_t') & ~PT.pred.has_child_of_name(required_name)
   ds_arrays = PT.get_children_from_predicates(bc_n, [is_valid_bcds, 'BCData_t', 'DataArray_t'])
   for ds_array in ds_arrays:
     PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_np_value(ds_array), parent=zsr_bc_n)
@@ -411,7 +411,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
   in_fam = PT.pred.belongs_to_family(family_name, True)
   is_regionname = PT.pred.name_in(['BCRegionName', 'GridConnectivityRegionName'])
   zsr_has_regionname = PT.pred.label_is('ZoneSubRegion_t') \
-                     & (PT.pred.has_child('BCRegionName') | PT.pred.has_child('GridConnectivityRegionName'))
+                     & (PT.pred.has_child_of_name('BCRegionName') | PT.pred.has_child_of_name('GridConnectivityRegionName'))
 
 
   fam_node_paths = list()

@@ -9,7 +9,6 @@ import maia.pytree.maia as MT
 
 from .subset_tools import sort_dist_pointlist
 
-IS_GC = PT.pred.is_gc_with()
 IS_GC_MATCH = PT.pred.is_gc_with(match=True)
 
 def gc_is_reference(gc_s, zone_path):
@@ -220,7 +219,7 @@ def clear_interface_ids(dist_tree):
   """
   Remove DistInterfaceId nodes created on GC_t
   """
-  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', IS_GC]):
+  for gc in PT.iter_children_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', PT.pred.IS_GC]):
     PT.rm_children_from_name(gc, 'DistInterfaceId')
     PT.rm_children_from_name(gc, 'DistInterfaceOrd')
 
