@@ -736,7 +736,7 @@ def test_concat_from_fam():
 
   maia.algo.dist.concatenate_subsets_from_families(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
 
-  is_ridge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.pred.belongs_to_family(n, 'RIDGE')
+  is_ridge_bc = PT.pred.label_is('BC_t') & PT.pred.belongs_to_family('RIDGE')
   assert len(PT.get_nodes_from_predicate(dist_tree, is_ridge_bc)) == 1
   #concat_from_fam@end
 
@@ -752,6 +752,6 @@ def test_deconcatenate_from_families():
   maia.algo.dist.concatenate_subsets_from_families(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
   maia.algo.dist.deconcatenate_subsets_from_families(dist_tree, MPI.COMM_WORLD, families=['RIDGE'])
 
-  is_ridge_bc = lambda n: PT.get_label(n)=='BC_t' and PT.pred.belongs_to_family(n, 'RIDGE')
+  is_ridge_bc = PT.pred.label_is('BC_t') & PT.pred.belongs_to_family('RIDGE')
   assert len(PT.get_nodes_from_predicate(dist_tree, is_ridge_bc)) == 9
   #deconcatenate_from_fam@end

@@ -13,8 +13,9 @@ from maia.transfer.part_to_dist.index_exchange import create_part_pr_gnum
 idx_to_dir = {0:'x', 1:'y', 2:'z'}
 dir_to_idx = {'x':0, 'y':1, 'z':2}
 min_max_as_int = lambda st : 0 if 'min' in st else 1
-is_subset = lambda n : PT.get_label(n) in ['DiscreteData_t', 'FlowSolution_t', 'ZoneSubRegion_t'] \
-                   and PT.get_child_from_name(n, 'PointRange') is not None
+IS_GC = PT.pred.is_gc_with()
+is_subset = PT.pred.label_in(['DiscreteData_t', 'FlowSolution_t', 'ZoneSubRegion_t']) \
+          & PT.pred.has_child('PointRange')
 
 def zone_cell_range(zone):
   """ Return the size of a point_range 2d array """
@@ -34,7 +35,7 @@ def collect_S_bnd_per_dir(zone):
   base_bound = {k : [] for k in ["xmin", "ymin", "zmin", "xmax", "ymax", "zmax"]}
 
   bnd_queries = [['ZoneBC_t', 'BC_t'],
-      ['ZoneGridConnectivity_t', lambda n : PT.get_label(n) in ['GridConnectivity1to1_t', 'GridConnectivity_t']],
+      ['ZoneGridConnectivity_t', IS_GC],
       ['ZoneBC_t', 'BC_t', 'BCDataSet_t']]
   for bnd_query in bnd_queries:
     for nodes in PT.iter_children_from_predicates(zone, bnd_query, ancestors=True):

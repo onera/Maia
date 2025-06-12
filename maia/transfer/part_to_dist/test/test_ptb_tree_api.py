@@ -76,7 +76,7 @@ def test_recover_UDData(missing_part_node, comm):
     PT.new_Family(f'WALL_{i}', family_bc='BCWall', parent=dist_base)
     PT.new_node('.Solver#BC', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=part_family_n)
     PT.new_node('.Solver#Property', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=part_family_n)
-  for i, bc_n  in enumerate(PT.get_nodes_from_predicate(part_zone, lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t'])):
+  for i, bc_n  in enumerate(PT.get_nodes_from_predicate(part_zone, PT.pred.label_in(['BC_t', 'GridConnectivity_t']))):
     PT.new_node('.Solver#BC', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
     PT.new_node('.Solver#Property', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
 
@@ -86,7 +86,7 @@ def test_recover_UDData(missing_part_node, comm):
   if missing_part_node:
     PT.rm_nodes_from_label(part_tree, 'ZoneBC_t')
 
-  ud_predicates = [['CGNSBase_t', 'Family_t', lambda n : PT.get_name(n).startswith('.Solver#')],
+  ud_predicates = [['CGNSBase_t', 'Family_t', PT.pred.name_matches('*.Solver#')],
                   'CGNSBase_t/Zone_t/ZoneBC_t/BC_t/.Solver#*',
                   'CGNSBase_t/Zone_t/*/Zmin/.Solver#Property',
                   'CGNSBase_t/MyFamily']
@@ -107,7 +107,7 @@ def test_recover_UDData(missing_part_node, comm):
     assert PT.get_node_from_path(dist_base, 'zone/ZoneBC/Zmax/.Solver#BC')[1].size != 1
 
   uds = [PT.new_Descriptor('Descr1', 'Value1', parent=part_tree), PT.new_Descriptor('Descr2', 'Value2', parent=part_tree)]
-  pred = [lambda n : PT.get_label(n) == 'Descriptor_t'] if missing_part_node else 'Descr*'
+  pred = [PT.pred.label_is('Descriptor_t')] if missing_part_node else 'Descr*'
   #                                                     ^ just a way to test two different predicates
   PTB.part_tree_to_dist_tree_copy(dist_tree, part_tree, pred, comm)
   for dist_ud, part_ud in zip(PT.get_children_from_label(dist_tree, 'Descriptor_t'), uds):

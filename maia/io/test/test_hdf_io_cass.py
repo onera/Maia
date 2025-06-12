@@ -141,8 +141,7 @@ def test_load_grid_connectivity_property(comm):
 
   size_tree = LC.load_size_tree(out_file, comm)
   LC.load_grid_connectivity_property(out_file, size_tree)
-  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t']
-  for gc in PT.get_children_from_predicates(size_tree, ['ZoneGridConnectivity_t', is_gc]):
+  for gc in PT.get_children_from_predicates(size_tree, ['ZoneGridConnectivity_t', 'GridConnectivity_t']):
       assert (PT.get_node_from_name(gc, 'RotationCenter') == [0., 0., 0.]).all()
       assert (PT.get_node_from_name(gc, 'RotationAngle') == [0., 0., 0.]).all()
       assert (PT.get_node_from_name(gc, 'Translation') == [-1., 0., 0.]).all()

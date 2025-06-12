@@ -4,6 +4,8 @@ import maia.pytree.maia   as MT
 
 from maia.utils import par_utils
 
+IS_GC = PT.pred.is_gc_with()
+
 def interpret_policy(policy, comm):
   if policy == 'gather':
     policy = 'gather.0'
@@ -90,10 +92,10 @@ def compute_zone_distribution(zone, comm, distri_func):
   compute_elements_distribution(zone, comm, distri_func)
 
   predicate_list = [
-      [lambda n : PT.get_label(n) in ['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t']],
+      [PT.pred.label_in(['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t'])],
       'ZoneBC_t/BC_t',
       'ZoneBC_t/BC_t/BCDataSet_t',
-      ['ZoneGridConnectivity_t', lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']]
+      ['ZoneGridConnectivity_t', IS_GC]
       ]
 
   for predicate in predicate_list:
@@ -144,13 +146,12 @@ def clean_distribution_info(dist_tree):
   Remove the node related to distribution info from the dist_tree
   """
   distri_name = ":CGNS#Distribution"
-  is_dist = lambda n : PT.get_label(n) in ['Elements_t', 'ZoneSubRegion_t', 'FlowSolution_t']
-  is_gc   = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
+  is_dist = PT.pred.label_in(['Elements_t', 'ZoneSubRegion_t', 'FlowSolution_t'])
   for zone in PT.iter_all_Zone_t(dist_tree):
     PT.rm_children_from_name(zone, distri_name)
     for node in PT.iter_nodes_from_predicate(zone, is_dist):
       PT.rm_children_from_name(node, distri_name)
     for bc in PT.iter_nodes_from_predicates(zone, 'ZoneBC_t/BC_t'):
       PT.rm_nodes_from_name(bc, distri_name, depth=2)
-    for gc in PT.iter_nodes_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+    for gc in PT.iter_nodes_from_predicates(zone, ['ZoneGridConnectivity_t', IS_GC]):
       PT.rm_children_from_name(gc, distri_name)

@@ -29,7 +29,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
   face_in_join_offset = np_utils.sizes_to_indices(nb_face_in_joins)
 
   ini_gc_query = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', 
-      lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n) and not MT.conv.is_intra_gc(n[0])]
+                  MT.pred.is_gc_with(intra=False, match=True)]
 
 
   shifted_lntogn = list()

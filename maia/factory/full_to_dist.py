@@ -11,6 +11,8 @@ from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
 from typing           import overload
 
+HAS_SUBSET = PT.pred.has_child('PointList') | PT.pred.has_child('PointRange')
+
 def get_np_value(node:CGNSTree) -> NDArray:
   assert (value := node[1]) is not None
   return value
@@ -32,8 +34,7 @@ def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
     array = get_np_value(array_n)
     PT.set_value(array_n, array[distri[0]:distri[1]])
   # BCData_t arrays case : can be scalar or vector
-  has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
-  bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)
+  bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~HAS_SUBSET
   bcds_without_pl_query:Predicates = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   global_arrays_list = []
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
@@ -46,7 +47,7 @@ def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
         global_arrays_list.append(array_path)
 
   #Additionnal treatement for subnodes with PL (eg bcdataset)
-  has_pl = lambda n : PT.get_name(n) not in ['PointList', 'PointRange'] and has_subset(n)
+  has_pl = ~PT.pred.name_in(['PointList', 'PointRange']) & HAS_SUBSET
   for child in [node for node in PT.get_children(dist_node) if has_pl(node)]:
     dist_child = distribute_pl_node(child, comm)
     PT.set_children(child, PT.get_children(dist_child))
@@ -196,8 +197,8 @@ def _broadcast_full_to_dist(tree: Optional[CGNSTree],
 
   if comm.Get_rank() == owner:
     assert tree is not None
-    is_da_container = lambda n: PT.get_label(n) in da_container
-    is_data_array   = lambda n: PT.get_label(n) == 'DataArray_t' and not PT.get_name(n).endswith('#Size')
+    is_da_container = PT.pred.label_in(da_container)
+    is_data_array   = PT.pred.label_is('DataArray_t') & ~PT.pred.name_matches('*#Size')
 
     # Prepare disttree for owning rank : add #Size node to easily compute distribution and flatten S data
     dist_tree     = PT.deep_copy(tree)

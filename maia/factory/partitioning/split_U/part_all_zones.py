@@ -112,9 +112,6 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
 
 def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
 
-  is_ngon_3d = lambda z: PT.Zone.has_nface_elements(z) or \
-          (PT.Zone.has_ngon_elements(z) and PT.get_child_from_name(PT.Zone.NGonNode(z), 'ParentElements') is not None)
-
   for i_zone, zone in enumerate(u_zones):
     maia.algo.edge_pe_to_ngon(zone, comm) # For 2D Poly zones, NG is required
     if PT.Zone.n_cell(zone) == 0: # Zone has only vertex
@@ -123,7 +120,7 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
       multi_part.dmesh_set(i_zone, dmesh)
     #Determine NGON or ELMT
     elif PT.Zone.has_ngon_elements(zone):
-      if is_ngon_3d(zone):
+      if PT.pred.IS_POLY3D_ZONE(zone):
         dmesh    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
         keep_alive.append(dmesh)
         multi_part.dmesh_set(i_zone, dmesh)

@@ -8,6 +8,8 @@ import maia
 from maia.utils            import np_utils, as_pdm_gnum, logging
 from maia.algo.dist import matching_jns_tools as MJT
 
+HAS_SUBSET = PT.pred.has_child('PointList') | PT.pred.has_child('PointRange')
+
 def check_datasize(tree):
   """
   Warns if a heavy array is not distributed
@@ -87,13 +89,12 @@ def fix_structured_pr_shape(size_tree):
   """
   In structured 1D (resp. 2D) cases, PointRange must be (1,2) (resp. (2,2)) shaped. If it is not, we correct it !
   """
-  is_struct_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
   for base in PT.get_all_CGNSBase_t(size_tree):
     cell_dim = PT.get_value(base)[0]
     if cell_dim == 3:
       continue
     resized = False
-    for zone in PT.get_children_from_predicate(base, is_struct_zone):
+    for zone in PT.get_children_from_predicate(base, PT.pred.IS_S_ZONE):
       for subset in PT.iter_all_subsets(zone):
         for pr_n in PT.get_children_from_label(subset, 'IndexRange_t'):
           pr = PT.get_value(pr_n)
@@ -152,9 +153,7 @@ def add_missing_pr_in_bcdataset(tree):
       continue # Correction is done only for S zones
     if bc_point_range is None:
       continue # Correction is done only for BCs having a PointRange
-    for bcds in PT.get_children_from_label(bc, 'BCDataSet_t'):
-      if PT.get_child_from_predicate(bcds, lambda n : PT.get_name(n) in ['PointRange', 'PointList']) is not None:
-        continue # BCDS has its own PointList/PointRange : nothing to do
+    for bcds in PT.get_children_from_predicate(bc, PT.pred.label_is('BCDataSet_t') & ~HAS_SUBSET):
       bcds_grid_location = PT.BCDataSet.GridLocation(bcds, bc)
       if not (bcds_grid_location.endswith('FaceCenter') and PT.Subset.GridLocation(bc) == 'Vertex'):
         continue
@@ -278,9 +277,7 @@ def corr_index_range_names(tree):
     logging.error(f"Some IndexRange_t nodes under BC_t nodes have been renamed ('ElementRange' -> 'PointRange').")
 
 def check_namings(tree):
-  intra_jn = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                        and MT.conv.is_intra_gc(PT.get_name(n))
-    
+  intra_jn = MT.pred.is_gc_with(intra=True)
   for zone in PT.iter_all_Zone_t(tree):
     if MT.conv.is_part_zone(PT.get_name(zone)) or PT.get_child_from_predicates(zone, ['ZoneGridConnectivity_t', intra_jn]) is not None:
       msg = 'CGNS file is read as a distributed tree, but uses Maia naming conventions of partitioned trees. ' \

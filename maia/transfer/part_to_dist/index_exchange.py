@@ -16,6 +16,9 @@ LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell',
              'IEdgeCenter': 'Edge', 'JEdgeCenter': 'Edge',
              'IFaceCenter': 'Face', 'JFaceCenter': 'Face', 'KFaceCenter': 'Face'}
 
+def split_prefix_is(name):
+  return PT.pred.UnaryPredicate(lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == name)
+
 def create_part_pl_gnum_unique(part_zones: List[CGNSPartTree], 
                                node_path: CGNSPath,
                                comm: MPIComm) -> None:
@@ -161,10 +164,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
   ancestor, leaf = PTu.path_head(node_path), PTu.path_tail(node_path)
   dist_node = PT.get_node_from_path(dist_zone, node_path)
 
-  if allow_mult:
-    name_predicate = lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == leaf
-  else:
-    name_predicate = lambda n: PT.get_name(n) == leaf
+  name_predicate = split_prefix_is(leaf) if allow_mult else PT.pred.name_is(leaf)
    
   if allow_mult:
     ln_to_gn_list = []
@@ -250,10 +250,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
   idx_dim = PT.Zone.IndexDimension(dist_zone)
   ancestor_n, leaf_n = PTu.path_head(node_path), PTu.path_tail(node_path)
 
-  if allow_mult:
-    name_predicate = lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == leaf_n
-  else:
-    name_predicate = lambda n: PT.get_name(n) == leaf_n
+  name_predicate = split_prefix_is(leaf_n) if allow_mult else PT.pred.name_is(leaf_n)
 
   dist_node = PT.get_node_from_path(dist_zone, node_path)
   dist_vtx_size = PT.Zone.VertexSize(dist_zone)

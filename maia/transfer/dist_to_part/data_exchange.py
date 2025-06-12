@@ -22,7 +22,7 @@ def dist_coords_to_part_coords(dist_zone: CGNSDistTree,
   #Get data
   dist_data = dict()
   dist_gc = PT.find_child_from_label(dist_zone, "GridCoordinates_t")
-  for grid_co in PT.iter_children_from_predicate(dist_gc, lambda n: PT.get_label(n) == 'DataArray_t' and PT.get_name(n) != 'CoordinateTransform'):
+  for grid_co in PT.iter_children_from_predicate(dist_gc, PT.pred.label_is('DataArray_t') & ~PT.pred.name_is('CoordinateTransform')):
     dist_data[PT.get_name(grid_co)] = PT.get_np_value(grid_co)
 
   vtx_lntogn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
@@ -281,9 +281,9 @@ def dist_subregion_to_part_subregion(dist_zone: CGNSDistTree,
       for i_part, part_zone in enumerate(part_zones):
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
           # Get corresponding part ZSR
-          good_zsr = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' \
-                               and PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None \
-                               and PT.get_value(PT.find_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node)
+          good_zsr = PT.pred.label_is('ZoneSubRegion_t') \
+                   & PT.pred.has_child('GridConnectivityRegionName') \
+                   & PT.pred.UnaryPredicate(lambda n : PT.get_value(PT.find_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node))
           p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
           for field_name, data in part_data.items():
             PT.new_DataArray(field_name, data[i_pseudo_part], parent=p_zsr)

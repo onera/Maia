@@ -177,8 +177,7 @@ def _partitioning(dist_tree: CGNSDistTree,
                   comm: MPIComm,
                   part_options: Dict[str, Any]) -> CGNSPartTree:
 
-  intra_jn = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                        and MT.conv.is_intra_gc(PT.get_name(n))
+  intra_jn = MT.pred.is_gc_with(intra=True)
   gc = PT.get_child_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', intra_jn])
   if gc is not None:
     msg = f"Your distributed tree has some GC_t nodes whose name uses maia internal conventions for internal splits, eg. '{PT.get_name(gc)}'.\n" \
@@ -189,8 +188,8 @@ def _partitioning(dist_tree: CGNSDistTree,
   blocks_str = "blocks" if n_blocks > 1 else "block"
   mlog.info(f"Partitioning tree of {n_blocks} initial {blocks_str}...")
   start = time.time()
-  is_s_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Structured'
-  is_u_zone = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
+  is_s_zone = PT.pred.IS_S_ZONE
+  is_u_zone = PT.pred.IS_U_ZONE
 
   MJT.add_joins_donor_name(dist_tree, comm)
 

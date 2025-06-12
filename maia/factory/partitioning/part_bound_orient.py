@@ -10,8 +10,6 @@ from maia.utils    import par_utils
 from maia.utils    import vstride as vs
 from maia.transfer import protocols as EP
 
-is_ngon_3d = lambda z : PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
-
 def orientation_preserved(part_zones, comm):
   """
   Return False if partitions interface faces has be reoriented during split
@@ -20,7 +18,7 @@ def orientation_preserved(part_zones, comm):
 
   Only relevant for 3D NGON zones.
   """
-  assert all([is_ngon_3d(z) for z in part_zones]), "Only 3D NGon zones are supported"
+  assert all([PT.pred.IS_POLY3D_ZONE(z) for z in part_zones]), "Only 3D NGon zones are supported"
 
   gnum_list = list()
   data_list = list()
@@ -60,7 +58,7 @@ def preserve_orientation(part_zones, comm):
 
   Only relevant for 3D NGON zones.
   """
-  assert all([is_ngon_3d(z) for z in part_zones]), "Only 3D NGon zones are supported"
+  assert all([PT.pred.IS_POLY3D_ZONE(z) for z in part_zones]), "Only 3D NGon zones are supported"
 
   zone_proc_offset = par_utils.dn_to_distribution(len(part_zones), comm)[0]
 
