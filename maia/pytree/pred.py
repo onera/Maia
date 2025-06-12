@@ -127,9 +127,37 @@ def is_elmt_of_type(cgns_name:str):
   predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==cgns_name
   return UnaryPredicate(predicate)
 
+def is_zone_of_kind(kind:Optional[str]=None, cell_dim:Optional[int]=None):
+  """ Node is a Zone_t and its connectivity is described by ``kind``
+  (one of ``S``, ``U``, ``Poly``, ``Std``) and
+  ``cell_dim`` (one of ``1``, ``2``, ``3``) [3]_
+  """
+  def _celldim_is(cell_dim:int):
+    return UnaryPredicate(lambda z: S.Zone.CellDimension(z) == cell_dim)
+
+  pred = label_is('Zone_t')
+  if kind is not None:
+    if kind == 'S':
+      pred = pred & UnaryPredicate(lambda z: S.Zone.Type(z) == 'Structured')
+    else: # U, Poly, Std : zone need to be Unstructured
+      pred = pred & UnaryPredicate(lambda z: S.Zone.Type(z) == 'Unstructured')
+    if kind != 'U': # Poly or std
+      elts_ok = UnaryPredicate(lambda z: _py_all(S.Element.CGNSName(e) in
+        ['BAR_2', 'NGON_n', 'NFACE_n'] for e in W.get_children_from_label(z, 'Elements_t')))
+      is_poly = elts_ok & ~_celldim_is(1)
+      if kind == 'Poly':
+        pred = pred & is_poly
+      elif kind == 'Std':
+        pred = pred & ~is_poly
+
+  if cell_dim is not None:
+    pred = pred & _celldim_is(cell_dim)
+
+  return pred
+
 def is_gc_with(match:Optional[bool]=None, perio:Optional[bool]=None):
   """ Label of node is GridConnectivity(1to1)_t and join is or not
-  Abutting1to1 (resp periodic) depending of the value of ``match`` (resp ``perio``) [3]_ """
+  Abutting1to1 (resp periodic) depending of the boolean value of ``match`` (resp ``perio``) [4]_ """
   pred = label_in(['GridConnectivity_t', 'GridConnectivity1to1_t'])
   if match is not None:
     pred = pred & UnaryPredicate(lambda n : S.GridConnectivity.is1to1(n) == match)
@@ -137,26 +165,14 @@ def is_gc_with(match:Optional[bool]=None, perio:Optional[bool]=None):
     pred = pred & UnaryPredicate(lambda n : S.GridConnectivity.isperiodic(n) == perio)
   return pred
 
-def _is_zone_of_celldim(cell_dim:int):
-  return label_is('Zone_t') & UnaryPredicate(lambda z: S.Zone.CellDimension(z) == cell_dim)
 
-HAS_POINTLIST = has_child_of_name('PointList') #: Node has a child named ``PointList``
-
+#: Node has a child named PointList
+HAS_POINTLIST = has_child_of_name('PointList')
 #: Node has a PointList or PointRange child
 IS_SUBSET = has_child_of_name('PointList') | has_child_of_name('PointRange')
-
 #: Label of node is either GridConnectivity_t or GridConnectivity1to1_t
 IS_GC = label_in(['GridConnectivity_t', 'GridConnectivity1to1_t'])
-
-#: Node is a Zone_t with structured connectivity
-IS_S_ZONE = label_is('Zone_t') & UnaryPredicate(lambda z : S.Zone.Type(z) == 'Structured')
-#: Node is a Zone_t with unstructured connectivity
-IS_U_ZONE = label_is('Zone_t') & UnaryPredicate(lambda z : S.Zone.Type(z) == 'Unstructured')
-
 #: Node is a Zone_t described by polyedric 2D elements
-IS_POLY2D_ZONE = has_child_of_label('Elements_t') & _is_zone_of_celldim(2) \
-  & UnaryPredicate(lambda z : _py_all(S.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] #type:ignore
-                                  for e in W.get_children_from_label(z, 'Elements_t')))
- #: Node is a Zone_t described by polyedric 3D elements
-IS_POLY3D_ZONE = has_child_of_label('Elements_t') & _is_zone_of_celldim(3) \
-  & UnaryPredicate(lambda z: S.Zone.has_ngon_elements(z))
+IS_POLY2D_ZONE = is_zone_of_kind('Poly', 2)
+#: Node is a Zone_t described by polyedric 3D elements
+IS_POLY3D_ZONE = is_zone_of_kind('Poly', 3)

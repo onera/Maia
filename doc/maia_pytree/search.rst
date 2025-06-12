@@ -229,13 +229,11 @@ signature ``f(n:CGNSTree) -> bool``, and can thus directly be used as predicate:
 >>> zones = PT.get_nodes_from_predicate(tree, PTp.IS_POLY3D_ZONE)
 
 .. autosummary::
-  ~maia.pytree.pred.IS_S_ZONE
-  ~maia.pytree.pred.IS_U_ZONE
   ~maia.pytree.pred.IS_POLY2D_ZONE
   ~maia.pytree.pred.IS_POLY3D_ZONE
-  ~maia.pytree.pred.HAS_POINTLIST
-  ~maia.pytree.pred.IS_SUBSET
   ~maia.pytree.pred.IS_GC
+  ~maia.pytree.pred.IS_SUBSET
+  ~maia.pytree.pred.HAS_POINTLIST
 
 .. rubric:: Predicate generator
 
@@ -260,6 +258,7 @@ signature ``f(n:CGNSTree) -> bool`` (so a predicate function) when called:
   ~maia.pytree.pred.has_child_of_label
   ~maia.pytree.pred.has_location
   ~maia.pytree.pred.belongs_to_family
+  ~maia.pytree.pred.is_zone_of_kind
   ~maia.pytree.pred.is_bc_of_loc
   ~maia.pytree.pred.is_elmt_of_type
   ~maia.pytree.pred.is_gc_with
@@ -267,7 +266,8 @@ signature ``f(n:CGNSTree) -> bool`` (so a predicate function) when called:
 .. [1] If a GridLocation if allowed, but absent, its default value is Vertex
        (even for BCDataSet_t nodes, despite SIDS specification)
 .. [2] AdditionalFamilyName_t nodes are considered only if ``allow_additional`` is ``True``
-.. [3] ``match`` and ``perio`` can be set to ``None`` (default value) to ignore this additional criteria
+.. [3] ``kind`` and ``cell_dim`` can be set to ``None`` (default value) to ignore this additional criteria
+.. [4] ``match`` and ``perio`` can be set to ``None`` (default value) to ignore this additional criteria
 
 .. rubric:: Logical operations
 

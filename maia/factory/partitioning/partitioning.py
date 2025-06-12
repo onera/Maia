@@ -188,8 +188,8 @@ def _partitioning(dist_tree: CGNSDistTree,
   blocks_str = "blocks" if n_blocks > 1 else "block"
   mlog.info(f"Partitioning tree of {n_blocks} initial {blocks_str}...")
   start = time.time()
-  is_s_zone = PT.pred.IS_S_ZONE
-  is_u_zone = PT.pred.IS_U_ZONE
+  IS_S_ZONE = PT.pred.is_zone_of_kind('S')
+  IS_U_ZONE = PT.pred.is_zone_of_kind('U')
 
   MJT.add_joins_donor_name(dist_tree, comm)
 
@@ -206,12 +206,12 @@ def _partitioning(dist_tree: CGNSDistTree,
 
     #Split S zones : we create a subcom for each zone, to avoid serialization of part_zone
     sub_comms = []
-    for zone in PT.iter_children_from_predicate(dist_base, is_s_zone):
+    for zone in PT.iter_children_from_predicate(dist_base, IS_S_ZONE):
       zone_path = PT.get_name(dist_base) + '/' + PT.get_name(zone)
       weights = dzone_to_weighted_parts.get(zone_path, [])
       sub_comms.append(comm.Split(len(weights)>0))
 
-    for zone, sub_comm in zip(PT.iter_children_from_predicate(dist_base, is_s_zone), sub_comms):
+    for zone, sub_comm in zip(PT.iter_children_from_predicate(dist_base, IS_S_ZONE), sub_comms):
       zone_path = PT.get_name(dist_base) + '/' + PT.get_name(zone)
       weights = dzone_to_weighted_parts.get(zone_path, [])
       if len(weights) > 0:
@@ -231,7 +231,7 @@ def _partitioning(dist_tree: CGNSDistTree,
   partS.split_original_joins_S(all_s_parts, comm)
 
   #Split U zones (all at once)
-  base_to_blocks_u = {PT.get_name(base) : [zone for zone in PT.get_all_Zone_t(base) if is_u_zone(zone)] \
+  base_to_blocks_u = {PT.get_name(base) : [zone for zone in PT.get_all_Zone_t(base) if IS_U_ZONE(zone)] \
       for base in PT.get_all_CGNSBase_t(dist_tree)}
   has_u_zones = any([values != [] for values in base_to_blocks_u.values()])
   if has_u_zones:

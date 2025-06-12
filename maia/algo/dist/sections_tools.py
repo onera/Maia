@@ -103,7 +103,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
   ranks, which is why partitioned trees are not supported
   """
 
-  for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', PT.pred.IS_U_ZONE], ancestors=True):
+  for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', PT.pred.is_zone_of_kind('U')], ancestors=True):
 
     elts_cur_ord = PT.Zone.get_ordered_elements(zone)
     elts_new_ord = permutation(elts_cur_ord)

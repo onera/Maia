@@ -92,7 +92,7 @@ def fix_structured_pr_shape(size_tree):
     if cell_dim == 3:
       continue
     resized = False
-    for zone in PT.get_children_from_predicate(base, PT.pred.IS_S_ZONE):
+    for zone in PT.get_children_from_predicate(base, PT.pred.is_zone_of_kind('S')):
       for subset in PT.iter_all_subsets(zone):
         for pr_n in PT.get_children_from_label(subset, 'IndexRange_t'):
           pr = PT.get_value(pr_n)

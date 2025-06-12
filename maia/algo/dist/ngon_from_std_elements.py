@@ -11,8 +11,6 @@ from maia.algo.dist   import matching_jns_tools as MJT
 from maia.factory.partitioning.split_U.cgns_to_pdm_dmesh import cgns_dist_zone_to_pdm_dmesh_nodal
 import Pypdm.Pypdm as PDM
 
-IS_ZONE_ELT = PT.pred.IS_U_ZONE & ~PT.pred.UnaryPredicate(lambda z: PT.Zone.has_ngon_elements(z))
-
 def raise_if_possible_overflow(n_elt, n_rank):
   max_int = 2**31 - 1
   if n_elt > n_rank * max_int:
@@ -210,7 +208,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
 
   for base in PT.iter_all_CGNSBase_t(dist_tree):
     extract_dim = PT.get_np_value(base)[0]
-    zones_u = PT.get_children_from_predicate(base, IS_ZONE_ELT)
+    zones_u = PT.get_children_from_predicate(base, PT.pred.is_zone_of_kind('Std'))
 
     for zone in zones_u: #Raise if overflow is probable
       face_vtx_size = predict_face_vtx_size(zone, extract_dim)

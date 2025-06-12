@@ -237,13 +237,13 @@ def update_gc_donor_name(part_tree, comm):
         PT.new_child(gc, 'GridConnectivityDonorName', 'Descriptor_t', candidate_jns[0])
 
 def hybrid_jns_as_idx(part_tree):
-  for s_zone in PT.get_nodes_from_predicate(part_tree, PT.pred.IS_S_ZONE, depth=2):
+  for s_zone in PT.get_nodes_from_predicate(part_tree, PT.pred.is_zone_of_kind('S'), depth=2):
     pl_as_idx(s_zone, ['ZoneGridConnectivity_t', is_initial_match])
 
 def hybrid_jns_as_ijk(part_tree, comm):
   gc_predicate = ['ZoneGridConnectivity_t', is_initial_match]
   zone_s_data = {}
-  for zone_s_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', PT.pred.IS_S_ZONE]):
+  for zone_s_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', PT.pred.is_zone_of_kind('S')]):
     zone_s = PT.get_node_from_path(part_tree, zone_s_path)
     pl_as_ijk(zone_s, gc_predicate)
     jn_dict = dict()
@@ -252,7 +252,7 @@ def hybrid_jns_as_ijk(part_tree, comm):
     zone_s_data[zone_s_path] = (PT.Zone.CellSize(zone_s), jn_dict)
   zone_s_data_all = comm.allgather(zone_s_data)
 
-  for zone_u_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', PT.pred.IS_U_ZONE]):
+  for zone_u_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', PT.pred.is_zone_of_kind('U')]):
     basename = PT.utils.path_head(zone_u_path, 1)
     zone_u = PT.get_node_from_path(part_tree, zone_u_path)
     for gc in PT.get_children_from_predicates(zone_u, gc_predicate):
