@@ -408,7 +408,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # > Discover family related nodes
-  in_fam = PT.pred.belongs_to_family(family_name, True)
+  in_fam = PT.pred.belongs_to_family(family_name)
   is_regionname = PT.pred.name_in(['BCRegionName', 'GridConnectivityRegionName'])
   zsr_has_regionname = PT.pred.label_is('ZoneSubRegion_t') \
                      & (PT.pred.has_child_of_name('BCRegionName') | PT.pred.has_child_of_name('GridConnectivityRegionName'))

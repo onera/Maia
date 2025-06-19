@@ -340,7 +340,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
       # > Predicates to find family BCs
       is_subset_container = PT.pred.label_is('ZoneBC_t')
-      is_subset = PT.pred.label_is('BC_t') & PT.pred.belongs_to_family(family, True)
+      is_subset = PT.pred.label_is('BC_t') & PT.pred.belongs_to_family(family)
 
       # > Go through family BCs gathering informations
       bc_nodes = list() ; bc_names = list() ; bc_ordin = list() 

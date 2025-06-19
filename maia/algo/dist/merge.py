@@ -49,7 +49,7 @@ def merge_zones_from_family(dist_tree: CGNSDistTree,
 
   Args:
     dist_tree (CGNSDistTree): Input distributed tree
-    family_name (str)       : Name of the family (read from ``FamilyName_t`` node)
+    family_name (str)       : Name of the family (read from ``(Additional)FamilyName_t`` node)
         used to select the zones.
     comm (MPIComm)          : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path

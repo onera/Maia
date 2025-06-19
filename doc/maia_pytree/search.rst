@@ -264,7 +264,7 @@ signature ``f(n:CGNSTree) -> bool`` (so a predicate function) when called:
 
 .. [1] If a GridLocation is allowed, but absent, its default value is Vertex
        (even for BCDataSet_t nodes, despite SIDS specification)
-.. [2] AdditionalFamilyName_t nodes are considered only if ``allow_additional`` is ``True``
+.. [2] AdditionalFamilyName_t nodes are considered only if ``allow_additional`` is ``True``, which is the default value
 .. [3] ``kind`` and ``cell_dim`` can be set to ``None`` (default value) to ignore this additional criteria
 .. [4] ``is_1to1`` and ``is_perio`` can be set to ``None`` (default value) to ignore this additional criteria
 

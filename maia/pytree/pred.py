@@ -103,7 +103,7 @@ def has_location(loc:str) -> NodePredicate:
 
   return _ALLOW_LOC & NodePredicate(lambda n: fnmatch.fnmatch(get_loc(n), loc))
 
-def __belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
+def __belongs_to_family(n:CGNSTree, target_family:str, allow_additional=True):
   family_name_n = W.get_child_from_label(n, 'FamilyName_t')
   if family_name_n:
     fam_val = N.get_str_value(family_name_n)
@@ -116,7 +116,7 @@ def __belongs_to_family(n:CGNSTree, target_family:str, allow_additional=False):
         return True
   return False
 
-def belongs_to_family(family:str, allow_additional=False) -> NodePredicate:
+def belongs_to_family(family:str, allow_additional=True) -> NodePredicate:
   """ Node has an (Additional)FamilyName_t [2]_ child whose value is ``family``
   (wildcard accepted) """
   return NodePredicate(lambda n : __belongs_to_family(n, family, allow_additional))

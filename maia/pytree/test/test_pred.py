@@ -132,8 +132,8 @@ ZoneBC ZoneBC_t:
   assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC1'), 'SecondFamily')  == True
   assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC1'), '*Fam*')  == True
   assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC3'), 'FirstFamily') == False
-  assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC4'), 'FirstFamily') == False
-  assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
+  assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC4'), 'FirstFamily') == True
+  assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=False) == False
   assert P.__belongs_to_family(PT.find_node_from_path(node, 'BC1/FamilyName'), 'SecondFamily') == False
 
 def test_is_bc_of_location():
