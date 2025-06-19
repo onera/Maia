@@ -15,6 +15,8 @@ from maia.algo.dist           import vertex_list as VL
 
 from maia.transfer import protocols as EP
 
+HAS_POINTLIST = PT.pred.has_child_of_name('PointList')
+
 def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   """
   Update ParentElements in ngon to combinate faces
@@ -146,8 +148,8 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 
   # Prepare iterators
   matches_loc = PT.pred.has_location(location)
-  is_bcds_with_pl    = PT.pred.label_is('BCDataSet_t') &  PT.pred.HAS_POINTLIST
-  is_bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~PT.pred.HAS_POINTLIST
+  is_bcds_with_pl    = PT.pred.label_is('BCDataSet_t') &  HAS_POINTLIST
+  is_bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~HAS_POINTLIST
 
   is_sol  = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) & matches_loc
   is_bc   = PT.pred.label_is('BC_t') & matches_loc
@@ -208,7 +210,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 # TODO move to sids module, doc, unit test
 #(take the one of _shift_cgns_subsets, and for _shift_cgns_subsets, make a trivial test)
 def all_nodes_with_point_list(zone, pl_location):
-  has_pl = PT.pred.HAS_POINTLIST & PT.pred.has_location(pl_location)
+  has_pl = HAS_POINTLIST & PT.pred.has_location(pl_location)
   return itertools.chain(
       PT.get_children_from_predicate(zone, has_pl)                      , #FlowSolution_t, ZoneSubRegion_t, ...
       PT.get_children_from_predicates(zone, ['ZoneBC_t', has_pl])              , #BC_t
@@ -242,7 +244,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
     PT.set_value(coord_n, coord_n[1][mask])
 
   is_all_vtx_sol = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
-                 & PT.pred.has_location('Vertex') & ~PT.pred.HAS_POINTLIST
+                 & PT.pred.has_location('Vertex') & ~HAS_POINTLIST
 
   for node in PT.iter_children_from_predicate(zone, is_all_vtx_sol):
     for data_n in PT.iter_children_from_label(node, 'DataArray_t'):

@@ -233,7 +233,6 @@ signature ``f(n:CGNSTree) -> bool``, and can thus directly be used as predicate:
   ~maia.pytree.pred.IS_POLY3D_ZONE
   ~maia.pytree.pred.IS_GC
   ~maia.pytree.pred.IS_SUBSET
-  ~maia.pytree.pred.HAS_POINTLIST
 
 .. rubric:: Predicate generator
 
@@ -259,46 +258,46 @@ signature ``f(n:CGNSTree) -> bool`` (so a predicate function) when called:
   ~maia.pytree.pred.has_location
   ~maia.pytree.pred.belongs_to_family
   ~maia.pytree.pred.is_zone_of_kind
-  ~maia.pytree.pred.is_bc_of_loc
-  ~maia.pytree.pred.is_elmt_of_type
-  ~maia.pytree.pred.is_gc_with
+  ~maia.pytree.pred.is_bc_of_location
+  ~maia.pytree.pred.is_element_of_type
+  ~maia.pytree.pred.is_gc_of_kind
 
-.. [1] If a GridLocation if allowed, but absent, its default value is Vertex
+.. [1] If a GridLocation is allowed, but absent, its default value is Vertex
        (even for BCDataSet_t nodes, despite SIDS specification)
 .. [2] AdditionalFamilyName_t nodes are considered only if ``allow_additional`` is ``True``
 .. [3] ``kind`` and ``cell_dim`` can be set to ``None`` (default value) to ignore this additional criteria
-.. [4] ``match`` and ``perio`` can be set to ``None`` (default value) to ignore this additional criteria
+.. [4] ``is_1to1`` and ``is_perio`` can be set to ``None`` (default value) to ignore this additional criteria
 
 .. rubric:: Logical operations
 
 All predicate functions (predefined uppercase functions and return object of preficate generators)
-are wrapped in a :class:`UnaryPredicate` object allowing to combine
+are wrapped in a :class:`NodePredicate` object allowing to combine
 them with the logical operators AND ``&``, OR ``|`` and NOT ``~``:
 
->>> pred = PTp.label_is('BCDataSet_t') & HAS_POINTLIST & ~PTp.has_location('Vertex')
+>>> pred = PTp.label_is('BCDataSet_t') & IS_SUBSET & ~PTp.has_location('Vertex')
 
-We also provide the ``all`` and ``any`` functions that take a list of :class:`UnaryPredicate`
-objects as input and return a single :class:`UnaryPredicate` as output, following standard ``all``
+We also provide the ``all`` and ``any`` functions that take a list of :class:`NodePredicate`
+objects as input and return a single :class:`NodePredicate` as output, following standard ``all``
 and ``any`` logic.
 
 >>> pred = PTp.any([PTp.has_location(f'{dir}FaceCenter') for dir in 'IJK'])
 
-Users can wrap their callable predicate function in a :class:`UnaryPredicate` object
+Users can wrap their callable predicate function in a :class:`NodePredicate` object
 (to make them combinable) using the default constructor:
 
->>> AT_LEAST_3_CHILDREN = PTp.UnaryPredicate(lambda X: len(PT.get_children(X)) >= 3)
+>>> AT_LEAST_3_CHILDREN = PTp.NodePredicate(lambda X: len(PT.get_children(X)) >= 3)
 >>> pred = PTp.label_is('BC_t') & AT_LEAST_3_CHILDREN
 
 .. rubric:: Defining new predicate generator (advanced)
 
 The previous exemple can be generalized to a predicate generator using again
-the :class:`UnaryPredicate` constructor:
+the :class:`NodePredicate` constructor:
 
->>> def at_least_n_children(n:int) -> UnaryPredicate:
-...   return UnaryPredicate(lambda X : len(PT.get_children(X)) >= n)
+>>> def at_least_n_children(n:int) -> NodePredicate:
+...   return NodePredicate(lambda X : len(PT.get_children(X)) >= n)
 
-.. Note the difference between :obj:`at_least_3_children`, which is already a ``UnaryPredicate``, and 
-  :func:`at_least_n_children`, which is a function returning a ``UnaryPredicate`` when called with an
+.. Note the difference between :obj:`at_least_3_children`, which is already a ``NodePredicate``, and 
+  :func:`at_least_n_children`, which is a function returning a ``NodePredicate`` when called with an
   integer ``n``.
   Both lines are equivalent and return node BC1:
 
@@ -314,7 +313,7 @@ into a predicate generator:
 ...   return len(PT.get_children(node)) >= n    
 
 Once decorated, ``check_at_least_n_children`` does no longer return a bool, but can be call with a parameter
-``n`` to generate a :class:`UnaryPredicate`. Note that as for any decorator, you can keep the original
+``n`` to generate a :class:`NodePredicate`. Note that as for any decorator, you can keep the original
 function available with ``at_least_n_children = PTp.predicate_generator(check_at_least_n_children)``.
 
 Users are advised to gather their application specific predicates function and predicate generators

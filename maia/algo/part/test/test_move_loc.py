@@ -61,7 +61,7 @@ def test_nodes_to_centers(from_api, comm):
   dsol_cell   = PT.get_node_from_name(dist_tree, 'FSol#Cell')
   dfield_cell = PT.get_node_from_name(dsol_cell, 'gnum')[1]
 
-  elt = PT.get_node_from_predicate(dist_tree, PT.pred.is_elmt_of_type('HEXA_8'))
+  elt = PT.get_node_from_predicate(dist_tree, PT.pred.is_element_of_type('HEXA_8'))
   ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
   expected_dfield = np.add.reduceat(ec, 8*np.arange(0,ec.size//8)) / 8.
 

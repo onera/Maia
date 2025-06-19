@@ -17,7 +17,7 @@ LOC_TO_GN = {'Vertex': 'Vertex', 'FaceCenter': 'Face', 'CellCenter': 'Cell',
              'IFaceCenter': 'Face', 'JFaceCenter': 'Face', 'KFaceCenter': 'Face'}
 
 def split_prefix_is(name):
-  return PT.pred.UnaryPredicate(lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == name)
+  return PT.pred.NodePredicate(lambda n: MT.conv.get_split_prefix(PT.get_name(n)) == name)
 
 def create_part_pl_gnum_unique(part_zones: List[CGNSPartTree], 
                                node_path: CGNSPath,

@@ -275,7 +275,7 @@ def corr_index_range_names(tree):
     logging.error(f"Some IndexRange_t nodes under BC_t nodes have been renamed ('ElementRange' -> 'PointRange').")
 
 def check_namings(tree):
-  intra_jn = MT.pred.is_gc_with(intra=True)
+  intra_jn = MT.pred.is_gc_of_kind(is_intra=True)
   for zone in PT.iter_all_Zone_t(tree):
     if MT.conv.is_part_zone(PT.get_name(zone)) or PT.get_child_from_predicates(zone, ['ZoneGridConnectivity_t', intra_jn]) is not None:
       msg = 'CGNS file is read as a distributed tree, but uses Maia naming conventions of partitioned trees. ' \

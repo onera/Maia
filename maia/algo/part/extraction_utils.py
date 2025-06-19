@@ -19,7 +19,7 @@ DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
 def is_elt_of_dim(dim):
-  return PT.pred.UnaryPredicate(lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n)==dim)
+  return PT.pred.NodePredicate(lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n)==dim)
 
 def discover_containers(part_zones, container_name, patch_name, patch_type, comm):
   mask_zone = ['MaskedZone', None, [], 'Zone_t']

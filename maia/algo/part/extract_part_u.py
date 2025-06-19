@@ -205,14 +205,16 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   equilibrate=True
   
   dim = LOC_TO_DIM[location]
+  print("location is", location, "dim", dim)
 
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
   
+  kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
                            n_part_in,
                            n_part_out,
-                           equilibrate,
+                           kind,
                            eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}"),
                            True,
                            comm)
@@ -221,12 +223,14 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   dist_zone = PT.new_Zone('Zone')
   gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
   child_list = ['GridLocation', 'FamilyName_t', 'AdditionalFamilyName_t', 'Descriptor_t']
+  #! 2D dispatch
   for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim):
     if LOC_TO_DIM[dim_name]<=dim:
-      is_dim_bc = PT.pred.is_bc_of_loc(dim_name)
+      is_dim_bc = PT.pred.is_bc_of_location(dim_name)
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
+      print("SET GROUPS for", bc_type+1, "WITH", n_gdom_bcs)
       PDM_EP_n_group_set(pdm_ep, bc_type+1, n_gdom_bcs)
 
   # Loop over domain zone : preparing extract part
@@ -235,6 +239,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     cx, cy, cz = PT.Zone.coordinates(part_zone)
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
     
+    # ! 2D vérifier entrée PDM
     ngon  = PT.Zone.NGonNode(part_zone)
     nface = PT.Zone.NFaceNode(part_zone)
 
@@ -286,6 +291,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE)
   n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VTX )
   
+  # ! Attention dépend de la dim d'entrée -> extraction des edges depuis le 3D pas possible
   size_by_dim = {0: [[n_extract_vtx, 0             , 0]], # not yet implemented
                  1:   None                              , # not yet implemented
                  2: [[n_extract_vtx, n_extract_face, 0]],
@@ -310,6 +316,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     MT.new_GlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extract_zone)
 
   # > NGON
+  # ! Trucs à faire
   if dim >= 2:
     ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
     ep_face_ln_to_gn = pdm_ep.ln_to_gn_get(0, PDM._PDM_MESH_ENTITY_FACE)
@@ -380,6 +387,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     bc_type +=1 
 
   # - Generate intrazones jns
+  # ! A priori OK
   if dim >= 2:
     if dim == 2:
       data = _generate_entity_graph_comm(edge_data['np_edge_ln_to_gn'], comm, 'edge')

@@ -12,9 +12,9 @@ from maia.transfer  import protocols as EP
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import logging as mlog
 
-IS_BAR  = PTp.is_elmt_of_type('BAR_2')
-IS_TRI  = PTp.is_elmt_of_type('TRI_3')
-IS_QUAD = PTp.is_elmt_of_type('QUAD_4')
+IS_BAR  = PTp.is_element_of_type('BAR_2')
+IS_TRI  = PTp.is_element_of_type('TRI_3')
+IS_QUAD = PTp.is_element_of_type('QUAD_4')
 
 def _extend_pr(pr_node:CGNSTree, val):
   """ Add a dimension to PR-like arrays with the specified values"""
@@ -265,7 +265,7 @@ def _merge_ngons(zone, comm):
   new_distrib_ec = par_utils.dn_to_distribution(new_diff_eso.sum(), comm)
   new_eso = np_utils.sizes_to_indices(new_diff_eso) + new_distrib_ec[0]
   # > Delete old ngons
-  PT.rm_children_from_predicate(zone, PTp.is_elmt_of_type('NGON_n'))
+  PT.rm_children_from_predicate(zone, PTp.is_element_of_type('NGON_n'))
   # > Create new NGon node
   new_ngon_n = PT.new_NGonElements(erange=new_er, eso=new_eso, ec=new_ec, pe=new_pe, parent=zone)
   MT.new_Distribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)

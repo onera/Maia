@@ -11,7 +11,7 @@ import maia
 from maia.algo.dist.geometry import _compute_elements_center, _compute_elements_normal
 from maia.transfer import protocols as EP
 
-IS_PHYDIM_2 = PT.pred.UnaryPredicate(lambda z: PT.Zone.PhysicalDimension(z) == 2)
+IS_PHYDIM_2 = PT.pred.NodePredicate(lambda z: PT.Zone.PhysicalDimension(z) == 2)
 
 def _remove_z(array:NDArray) -> NDArray: 
   assert array.size % 3 == 0

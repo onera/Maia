@@ -355,7 +355,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         # > Manage ZSR with BCRegionName
         bc_name = PT.get_name(bc_n)
         is_zsr_rel_to_bc = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('BCRegionName') \
-                         & PT.pred.UnaryPredicate(lambda n : PT.get_value(PT.find_child_from_name(n, 'BCRegionName'))==bc_name)
+                         & PT.pred.NodePredicate(lambda n : PT.get_value(PT.find_child_from_name(n, 'BCRegionName'))==bc_name)
         for zsr_bc_n in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
           pl_n = PT.find_child_from_name(bc_n, 'PointList')
           PT.new_IndexArray(value=PT.get_value(pl_n), parent=zsr_bc_n)

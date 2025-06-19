@@ -27,7 +27,7 @@ def get_tree_info(dist_tree, container_names):
   # > Get BCs infos
   bc_names = dict()
   for entity_name in ["EdgeCenter", "FaceCenter", "CellCenter"]:
-    is_entity_bc = PT.pred.is_bc_of_loc(entity_name)
+    is_entity_bc = PT.pred.is_bc_of_location(entity_name)
     entity_bcs   = PT.get_children_from_predicates(zone_n, ['ZoneBC_t', is_entity_bc])
     bc_names[entity_name] = [PT.get_name(bc_n) for bc_n in entity_bcs]
 
@@ -285,25 +285,25 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
     if zone_bc is not None:
       # > Cell BC_t
-      is_cell_bc = PT.pred.is_bc_of_loc('CellCenter')
+      is_cell_bc = PT.pred.is_bc_of_location('CellCenter')
       cell_bcs   = PT.get_children_from_predicate(zone_bc, is_cell_bc)
       n_cell_tag = _bc_pl_to_bc_tag(cell_bcs, pdm_elmt_tag, pdm_elmt_range, pdm_elmt_idx,
                                       constraints, constraint_tags["CellCenter"])
 
       # > Face BC_t
-      is_face_bc = PT.pred.is_bc_of_loc('FaceCenter')
+      is_face_bc = PT.pred.is_bc_of_location('FaceCenter')
       face_bcs   = PT.get_children_from_predicate(zone_bc, is_face_bc)
       n_face_tag = _bc_pl_to_bc_tag(face_bcs, pdm_elmt_tag, pdm_elmt_range, pdm_elmt_idx,
                                       constraints, constraint_tags["FaceCenter"])
 
       # > Edge BC_t
-      is_edge_bc = PT.pred.is_bc_of_loc('EdgeCenter')
+      is_edge_bc = PT.pred.is_bc_of_location('EdgeCenter')
       edge_bcs   = PT.get_children_from_predicate(zone_bc, is_edge_bc)
       n_edge_tag = _bc_pl_to_bc_tag(edge_bcs, pdm_elmt_tag, pdm_elmt_range, pdm_elmt_idx,
                                       constraints, constraint_tags["EdgeCenter"])
 
       # > Vertices BC_t
-      is_vtx_bc  = PT.pred.is_bc_of_loc('Vertex')
+      is_vtx_bc  = PT.pred.is_bc_of_location('Vertex')
       vtx_bcs   = PT.get_children_from_predicate(zone_bc, is_vtx_bc)
       n_vtx_tag = _bc_pl_to_bc_tag_vtx(vtx_bcs, pdm_elmt_tag[PDM._PDM_MESH_NODAL_POINT])
 

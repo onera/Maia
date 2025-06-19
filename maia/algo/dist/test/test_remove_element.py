@@ -124,7 +124,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   MT.new_Distribution({'Index':ridge_distri}, parent=bc_n)
 
   # > Define elements to remove
-  elt_n = PT.find_child_from_predicate(dist_zone, PT.pred.is_elmt_of_type(elt_name))
+  elt_n = PT.find_child_from_predicate(dist_zone, PT.pred.is_element_of_type(elt_name))
   if elt_name=='TETRA_4':
     elt_pl_f = np.array([1,13,2,25,14,37], dtype=np.int32)+1
   elif elt_name=='TRI_3':
@@ -141,11 +141,11 @@ def test_remove_elts_from_pl(elt_name, comm):
   n_tri = {'TETRA_4':48, 'TRI_3':38, 'BAR_2':48}
   n_bar = {'TETRA_4':24, 'TRI_3':24, 'BAR_2': 0}
 
-  is_tet_elt = PT.pred.is_elmt_of_type('TETRA_4')
-  is_tri_elt = PT.pred.is_elmt_of_type('TRI_3')
-  is_bar_elt = PT.pred.is_elmt_of_type('BAR_2')
-  is_tri_bc  = PT.pred.is_bc_of_loc('FaceCenter')
-  is_bar_bc  = PT.pred.is_bc_of_loc('EdgeCenter')
+  is_tet_elt = PT.pred.is_element_of_type('TETRA_4')
+  is_tri_elt = PT.pred.is_element_of_type('TRI_3')
+  is_bar_elt = PT.pred.is_element_of_type('BAR_2')
+  is_tri_bc  = PT.pred.is_bc_of_location('FaceCenter')
+  is_bar_bc  = PT.pred.is_bc_of_location('EdgeCenter')
 
   elt_n  = PT.get_child_from_predicate(dist_zone, is_tet_elt)
   elt_distrib = MT.distribution_value(elt_n, 'Element')

@@ -177,7 +177,7 @@ def _partitioning(dist_tree: CGNSDistTree,
                   comm: MPIComm,
                   part_options: Dict[str, Any]) -> CGNSPartTree:
 
-  intra_jn = MT.pred.is_gc_with(intra=True)
+  intra_jn = MT.pred.is_gc_of_kind(is_intra=True)
   gc = PT.get_child_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', intra_jn])
   if gc is not None:
     msg = f"Your distributed tree has some GC_t nodes whose name uses maia internal conventions for internal splits, eg. '{PT.get_name(gc)}'.\n" \

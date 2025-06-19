@@ -7,10 +7,10 @@ import maia.pytree.maia   as MT
 from .dist import ngon_tools as dist_ngon_tools
 from .part import ngon_tools as part_ngon_tools
 
-from maia.pytree.pred import UnaryPredicate
-HAS_PE = UnaryPredicate(lambda z : PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is not None)
-HAS_NGON = UnaryPredicate(PT.Zone.has_ngon_elements)
-HAS_NFACE = UnaryPredicate(PT.Zone.has_nface_elements)
+from maia.pytree.pred import NodePredicate
+HAS_PE = NodePredicate(lambda z : PT.get_child_from_predicates(z, 'Elements_t/ParentElements') is not None)
+HAS_NGON = NodePredicate(PT.Zone.has_ngon_elements)
+HAS_NFACE = NodePredicate(PT.Zone.has_nface_elements)
 
 def iter_matching_zones(t: CGNSTree, cond: Callable[[CGNSTree], bool]) -> Iterator[CGNSTree]:
   for z in PT.iter_all_Zone_t(t):

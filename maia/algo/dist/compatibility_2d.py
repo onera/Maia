@@ -9,7 +9,7 @@ from maia.utils import par_utils
 from .connectivity_utils import combine_face_edge_and_edge_vtx
 from .ngon_tools         import PDM_dfacecell_to_dcellface
 
-IS_2D_BASE = PT.pred.label_is('CGNSBase_t') & PT.pred.UnaryPredicate(lambda n : PT.get_np_value(n)[0] == 2)
+IS_2D_BASE = PT.pred.label_is('CGNSBase_t') & PT.pred.NodePredicate(lambda n : PT.get_np_value(n)[0] == 2)
 
 def _convert_ngon2d_to_bar(zone):
   """

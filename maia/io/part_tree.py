@@ -55,7 +55,7 @@ def enforce_maia_naming(part_tree: CGNSPartTree,
     PT.set_label(gc, 'GridConnectivity_t')
 
   # Update JNs name for internal joins
-  is_intra_gc = MT.pred.is_gc_with(intra=True)
+  is_intra_gc = MT.pred.is_gc_of_kind(is_intra=True)
   gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_intra_gc]
   for _, zone, _, gc in PT.get_children_from_predicates(part_tree, gc_predicates, ancestors=True):
     cur_proc, cur_part = MT.conv.get_part_suffix(PT.get_name(zone))

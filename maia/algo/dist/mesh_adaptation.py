@@ -199,7 +199,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
   start = time.time()
   # > Get periodic infos
   add_joins_donor_name(tree, comm) # Add missing joins donor names
-  perio_jns_pairs = get_matching_jns(tree, PT.pred.is_gc_with(perio=True))
+  perio_jns_pairs = get_matching_jns(tree, PT.pred.is_gc_of_kind(is_perio=True))
   jn_pairs_and_values = dict()
   for pair in perio_jns_pairs:
     gc_nodes = (PT.get_node_from_path(tree, gc_path) for gc_path in pair)

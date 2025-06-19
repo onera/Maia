@@ -18,6 +18,8 @@ from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
 
+HAS_POINTLIST = PTp.has_child_of_name('PointList')
+
 def _append_or_create(d, key, val):
   try:
     d[key].append(val)
@@ -274,7 +276,7 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   vtx_gc_query:Predicates  = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('Vertex')]
 
   # Move non 1to1 GC_t to ZoneBC since they have no PointListDonor
-  is_not_1to1 = PTp.label_is('GridConnectivity_t') & PTp.is_gc_with(match=False)
+  is_not_1to1 = PTp.label_is('GridConnectivity_t') & PTp.is_gc_of_kind(is_1to1=False)
   for zone_path in zone_paths:
     zone = PT.find_node_from_path(tree, zone_path)
     for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
@@ -390,12 +392,12 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   # Merge all mesh data
   vtx_data_queries = [
                       ['GridCoordinates_t'],
-                      [PTp.label_is('FlowSolution_t') & PTp.has_location('Vertex') & ~PTp.HAS_POINTLIST],
-                      [PTp.label_is('DiscreteData_t') & PTp.has_location('Vertex') & ~PTp.HAS_POINTLIST],
+                      [PTp.label_is('FlowSolution_t') & PTp.has_location('Vertex') & ~HAS_POINTLIST],
+                      [PTp.label_is('DiscreteData_t') & PTp.has_location('Vertex') & ~HAS_POINTLIST],
                      ]
   cell_data_queries = [
-                       [PTp.label_is('FlowSolution_t') & PTp.has_location('CellCenter') & ~PTp.HAS_POINTLIST],
-                       [PTp.label_is('DiscreteData_t') & PTp.has_location('CellCenter') & ~PTp.HAS_POINTLIST],
+                       [PTp.label_is('FlowSolution_t') & PTp.has_location('CellCenter') & ~HAS_POINTLIST],
+                       [PTp.label_is('DiscreteData_t') & PTp.has_location('CellCenter') & ~HAS_POINTLIST],
                       ]
   _merge_allmesh_data(mbm_vtx,  zones, merged_zone, vtx_data_queries)
   _merge_allmesh_data(mbm_cell, zones, merged_zone, cell_data_queries)
@@ -484,8 +486,8 @@ def pre_merge_families_per_zone(zone, query, comm):
   """ Pre merge the subset according to their family, for a given zone.
   This is because merge_pl_data only support one node per zone after.
   """
-  bcds_pl    = PTp.label_is('BCDataSet_t') &  PTp.HAS_POINTLIST
-  bcds_no_pl = PTp.label_is('BCDataSet_t') & ~PTp.HAS_POINTLIST
+  bcds_pl    = PTp.label_is('BCDataSet_t') &  HAS_POINTLIST
+  bcds_no_pl = PTp.label_is('BCDataSet_t') & ~HAS_POINTLIST
   fam_to_merge = {}
   for node_list in PT.get_children_from_predicates(zone, query, ancestors=True):
     node = node_list[-1]
@@ -533,15 +535,15 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
 
   #Order : FlowSolution/DiscreteData/ZoneSubRegion, BC, BCDataSet, GridConnectivity_t, 
   all_subset_queries = [
-      [PTp.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']) & PTp.HAS_POINTLIST],
+      [PTp.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']) & HAS_POINTLIST],
       ['ZoneBC_t', 'BC_t'],
-      ['ZoneBC_t', 'BC_t', PTp.label_is('BCDataSet_t') & PTp.HAS_POINTLIST],
+      ['ZoneBC_t', 'BC_t', PTp.label_is('BCDataSet_t') & HAS_POINTLIST],
       ['ZoneGridConnectivity_t', jn_to_keep]
       ]
 
   all_data_queries = [
       ['DataArray_t'],
-      [PTp.label_is('BCDataSet_t') & ~PTp.HAS_POINTLIST, 'BCData_t', 'DataArray_t'],
+      [PTp.label_is('BCDataSet_t') & ~HAS_POINTLIST, 'BCData_t', 'DataArray_t'],
       ['BCData_t', 'DataArray_t'],
       ['PointListDonor'],
       ]

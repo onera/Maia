@@ -61,7 +61,7 @@ def detect_wall_families(tree: CGNSTree, bcwalls: List[str] = BC_WALLS) -> List[
   """
   Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
   """
-  IS_WALL_FAM = PT.pred.UnaryPredicate(lambda n : PT.get_value(PT.find_child_from_label(n, 'FamilyBC_t')) in bcwalls)
+  IS_WALL_FAM = PT.pred.NodePredicate(lambda n : PT.get_value(PT.find_child_from_label(n, 'FamilyBC_t')) in bcwalls)
   fam_query = PT.pred.label_is('Family_t') & PT.pred.has_child_of_label('FamilyBC_t') & IS_WALL_FAM
   return [PT.get_name(family) for family in PT.iter_children_from_predicates(tree, ['CGNSBase_t', fam_query])]
 

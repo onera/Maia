@@ -9,7 +9,7 @@ import maia.pytree.maia as MT
 
 from .subset_tools import sort_dist_pointlist
 
-IS_GC_MATCH = PT.pred.is_gc_with(match=True)
+IS_GC_MATCH = PT.pred.is_gc_of_kind(is_1to1=True)
 
 def gc_is_reference(gc_s, zone_path):
   """
@@ -170,7 +170,7 @@ def get_matching_jns(dist_tree:CGNSTree,
   """
   gc_query = IS_GC_MATCH
   if select_func is not None:
-    gc_query = gc_query & PT.pred.UnaryPredicate(select_func)
+    gc_query = gc_query & PT.pred.NodePredicate(select_func)
 
   query:Predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', gc_query]
 

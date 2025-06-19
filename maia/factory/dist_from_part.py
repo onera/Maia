@@ -129,7 +129,7 @@ def get_parts_per_blocks(part_tree: CGNSPartTree,
 def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSPartTree]], comm: MPIComm) -> CGNSDistTree:
   """
   """
-  is_face_intra_gc = MT.pred.is_gc_with(intra=False) & PT.pred.has_location('FaceCenter')
+  is_face_intra_gc = MT.pred.is_gc_of_kind(is_intra=False) & PT.pred.has_location('FaceCenter')
   has_face_intra_gc = \
       lambda z: PT.get_node_from_predicates(z,  ['ZoneGridConnectivity_t', is_face_intra_gc]) is not None
 
@@ -170,7 +170,7 @@ def _recover_dist_block_size(part_zones: List[CGNSPartTree],
     zone_name = PT.get_name(part_zone)
     zones_to_size[zone_name] = PT.Zone.CellSize(part_zone)
     zones_to_join[zone_name] = []
-    for intra_jn in PT.iter_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', MT.pred.is_gc_with(intra=True)]):
+    for intra_jn in PT.iter_children_from_predicates(part_zone, ['ZoneGridConnectivity_t', MT.pred.is_gc_of_kind(is_intra=True)]):
       donor_path = PT.get_value(intra_jn)
       assert isinstance(donor_path, str)
       donor_zone = donor_path if not '/' in donor_path else donor_path.split('/')[1]
@@ -234,7 +234,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
 
   is_poly = has_ngon
   if not is_poly and has_edge: # Maybe 2D Poly with Bar + ParentElements
-    is_bar = PT.pred.is_elmt_of_type('BAR_2')
+    is_bar = PT.pred.is_element_of_type('BAR_2')
     is_poly = PT.get_child_from_predicates(fake_zone, [is_bar, 'ParentElements']) is not None
 
   # Deal Edge/NGon & NGon/NFace
@@ -379,7 +379,7 @@ def _recover_GC(dist_zone: CGNSDistTree, part_zones: List[CGNSPartTree], comm: M
     part_zones: List of partitioned zones
     comm: MPI communicator
   """
-  gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_with(intra=False)]
+  gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_of_kind(is_intra=False)]
 
   discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',

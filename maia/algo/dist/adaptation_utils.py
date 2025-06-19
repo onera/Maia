@@ -277,13 +277,13 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   pbc1_n      = PT.find_child_from_name(zone_bc_n, bc_names[0])
   pbc1_loc    = PT.Subset.GridLocation(pbc1_n)
   pbc1_pl     = PT.get_np_value(PT.find_child_from_name(pbc1_n, 'PointList'))[0]
-  elt_n       = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type(LOC_TO_CGNS[pbc1_loc]))
+  elt_n       = PT.get_child_from_predicate(zone, PTp.is_element_of_type(LOC_TO_CGNS[pbc1_loc]))
   pbc1_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc1_pl, comm)
 
   pbc2_n      = PT.find_child_from_name(zone_bc_n, bc_names[1])
   pbc2_loc    = PT.Subset.GridLocation(pbc2_n)
   pbc2_pl     = PT.get_np_value(PT.find_child_from_name(pbc2_n, 'PointList'))[0]
-  elt_n       = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type(LOC_TO_CGNS[pbc2_loc]))
+  elt_n       = PT.get_child_from_predicate(zone, PTp.is_element_of_type(LOC_TO_CGNS[pbc2_loc]))
   pbc2_vtx_pl = elmt_pl_to_vtx_pl(zone, elt_n, pbc2_pl, comm)
 
   old_vtx_num = old_to_new_vtx_num[0]
@@ -315,16 +315,16 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
 
   old_to_new_vtx = merge_distributed_ids(vtx_distri, pbc2_vtx_pl, part_data[0], comm, False)
 
-  elt_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type(LOC_TO_CGNS[pbc2_loc]))
+  elt_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type(LOC_TO_CGNS[pbc2_loc]))
   if not keep_original:
     remove_elts_from_pl(zone, elt_n, pbc1_pl, comm)
   pbc2_n = PT.get_child_from_name(zone_bc_n, bc_names[1])
   pbc2_pl = PT.get_value(PT.get_child_from_name(pbc2_n, 'PointList'))[0]
   remove_elts_from_pl(zone, elt_n, pbc2_pl, comm)
 
-  tet_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type('TETRA_4'))
-  tri_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type('TRI_3'))
-  bar_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type('BAR_2'))
+  tet_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type('TETRA_4'))
+  tri_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type('TRI_3'))
+  bar_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type('BAR_2'))
 
   update_elt_vtx_numbering(zone, tet_n, old_to_new_vtx, comm)
   update_elt_vtx_numbering(zone, tri_n, old_to_new_vtx, comm)
@@ -348,7 +348,7 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
 
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
   if zone_bc_n is not None:
-    for bc_n in PT.get_children_from_predicate(zone_bc_n, PTp.is_bc_of_loc('Vertex')):
+    for bc_n in PT.get_children_from_predicate(zone_bc_n, PTp.is_bc_of_location('Vertex')):
       bc_pl_n = PT.get_child_from_name(bc_n, 'PointList')
       bc_pl   = PT.get_value(bc_pl_n)[0]
       bc_pl   = EP.block_to_part(old_to_new_vtx, vtx_distri, bc_pl-1, comm)
@@ -458,7 +458,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   twin_elt_bc_pl = list()
 
   # > Get element infos
-  elt_n = PT.get_node_from_predicate(zone, PTp.is_elmt_of_type('BAR_2'))
+  elt_n = PT.get_node_from_predicate(zone, PTp.is_element_of_type('BAR_2'))
   if elt_duplicate_bcs != []:
     assert elt_n is not None
     n_elt        = PT.Element.Size(elt_n)
@@ -539,9 +539,9 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   tag_line = par_algo.gnum_isin(line_pl, bc_line_pl, comm) 
   line_pl  = line_pl[~tag_line]
 
-  tet_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type('TETRA_4'))
-  tri_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type('TRI_3'))
-  bar_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type('BAR_2'))
+  tet_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type('TETRA_4'))
+  tri_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type('TRI_3'))
+  bar_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type('BAR_2'))
 
   update_elt_vtx_numbering(zone, tet_n, old_to_new_vtx, comm, elt_pl=cell_pl)
   update_elt_vtx_numbering(zone, tri_n, old_to_new_vtx, comm, elt_pl=face_pl)
@@ -833,9 +833,9 @@ def convert_vtx_gcs_as_face_bcs(tree, comm):
   Convert 1to1, periodic, vertex GCs as FaceCenter BCs for feflo.
   Note : if a face is also present in a BC, then ???
   '''
-  is_tri_elt = PTp.is_elmt_of_type('TRI_3')
-  is_face_bc = PTp.is_bc_of_loc('FaceCenter')
-  is_per_gc  = PTp.label_is('GridConnectivity_t') & PTp.is_gc_with(match=True, perio=True)
+  is_tri_elt = PTp.is_element_of_type('TRI_3')
+  is_face_bc = PTp.is_bc_of_location('FaceCenter')
+  is_per_gc  = PTp.label_is('GridConnectivity_t') & PTp.is_gc_of_kind(is_1to1=True, is_perio=True)
 
   for zone in PT.get_all_Zone_t(tree):
     # > Get TRI_3 element infos
@@ -1128,6 +1128,6 @@ def rm_feflo_added_elt(zone, comm):
     else:
       bc_loc = PT.Subset.GridLocation(bc_n)
       bc_pl  = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0]
-      elt_n = PT.get_child_from_predicate(zone, PTp.is_elmt_of_type(LOC_TO_CGNS[bc_loc]))
+      elt_n = PT.get_child_from_predicate(zone, PTp.is_element_of_type(LOC_TO_CGNS[bc_loc]))
       if elt_n is not None:
         remove_elts_from_pl(zone, elt_n, bc_pl, comm)

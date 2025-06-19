@@ -373,3 +373,7 @@ def test_void_extraction(comm):
   extractor.exchange_fields(['Geometry_3d'])
   assert is_empty_tree(extractor.get_extract_part_tree())
   assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs
+
+if __name__ == '__main__':
+  from mpi4py.MPI import COMM_WORLD
+  test_from_fam_zsr_api(True, COMM_WORLD)

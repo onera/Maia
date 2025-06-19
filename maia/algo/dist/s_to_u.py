@@ -493,7 +493,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
               gc_u_list.append(gc_u)
 
           # Hybrid joins should be here : we just have to translate the PL ijk into face index
-          is_abutt1to1 = PT.pred.label_is('GridConnectivity_t') & PT.pred.is_gc_with(match=True)
+          is_abutt1to1 = PT.pred.label_is('GridConnectivity_t') & PT.pred.is_gc_of_kind(is_1to1=True)
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
             opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
             opp_zone = PT.find_node_from_path(dist_tree, opp_zone_path)

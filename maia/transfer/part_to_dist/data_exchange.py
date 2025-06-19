@@ -209,7 +209,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
           # Get corresponding part ZSR
           lngn_list.append(MT.globalnumbering_value(node, 'Index'))
           good_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('GridConnectivityRegionName') \
-                   & PT.pred.UnaryPredicate(lambda n : PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node))
+                   & PT.pred.NodePredicate(lambda n : PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node))
           p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
           for field in fields:
             part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])

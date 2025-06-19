@@ -171,8 +171,8 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
     for opp_zone_path in set(opp_zone_paths):
       opp_base_name = PT.utils.path_head(opp_zone_path)
       opp_zone = PT.find_node_from_path(tree, opp_zone_path)
-      matches_zone = PT.pred.UnaryPredicate(lambda n : PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path)
-      is_gc_to_update = PT.pred.is_gc_with(match=True) & ~PT.pred.has_location('Vertex') & matches_zone
+      matches_zone = PT.pred.NodePredicate(lambda n : PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path)
+      is_gc_to_update = PT.pred.is_gc_of_kind(is_1to1=True) & ~PT.pred.has_location('Vertex') & matches_zone
       for gc in PT.get_children_from_predicates(opp_zone, ['ZoneGridConnectivity_t', is_gc_to_update]):
         pld = PT.find_child_from_name(gc, 'PointListDonor')
         pld_value = PT.get_np_value(pld)

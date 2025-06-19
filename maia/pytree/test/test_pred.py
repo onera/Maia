@@ -41,9 +41,9 @@ def test_combination():
     cnt +=1
     return PT.get_label(node) == label
   def name_is(name):
-    return P.UnaryPredicate(lambda X: _name_is(X, name))
+    return P.NodePredicate(lambda X: _name_is(X, name))
   def label_is(label):
-    return P.UnaryPredicate(lambda X: _label_is(X, label))
+    return P.NodePredicate(lambda X: _label_is(X, label))
 
   root = PT.new_node('Zone', 'Zone_t')
   tri  = PT.new_Elements('TRI', 'TRI_3', parent=root)
@@ -136,7 +136,7 @@ ZoneBC ZoneBC_t:
   assert P.__belongs_to_family(PT.find_node_from_name(node, 'BC4'), 'FirstFamily', allow_additional=True) == True
   assert P.__belongs_to_family(PT.find_node_from_path(node, 'BC1/FamilyName'), 'SecondFamily') == False
 
-def test_is_bc_of_loc():
+def test_is_bc_of_location():
   yt = """
   ZoneBC ZoneBC_t:
     BC1 BC_t:
@@ -146,12 +146,12 @@ def test_is_bc_of_loc():
       GridLocation GridLocation_t "EdgeCenter":
   """
   node = parse_yaml_cgns.to_node(yt)
-  assert [n[0] for n in PT.get_nodes_from_predicate(node, P.is_bc_of_loc('Vertex'))]==['BC1','BC2']
-  assert PT.find_node_from_predicate(node, P.is_bc_of_loc('EdgeCenter'))[0] == 'BC3'
-  assert PT.get_node_from_predicate(node, P.is_bc_of_loc('FaceCenter')) is None
+  assert [n[0] for n in PT.get_nodes_from_predicate(node, P.is_bc_of_location('Vertex'))]==['BC1','BC2']
+  assert PT.find_node_from_predicate(node, P.is_bc_of_location('EdgeCenter'))[0] == 'BC3'
+  assert PT.get_node_from_predicate(node, P.is_bc_of_location('FaceCenter')) is None
 
 
-def test_is_elmt_of_type():
+def test_is_element_of_type():
   yt = """
   Zone Zone_t:
     NGON   Elements_t I4 [22, 0]:
@@ -162,10 +162,10 @@ def test_is_elmt_of_type():
     ZoneBC ZoneBC_t:
   """
   node = parse_yaml_cgns.to_node(yt)
-  assert PT.get_node_from_predicate (node, P.is_elmt_of_type('TETRA_4')) is None
-  assert PT.get_node_from_predicate (node, P.is_elmt_of_type('ZoneBC' )) is None
-  assert [n[0] for n in PT.get_nodes_from_predicate(node, P.is_elmt_of_type('TRI_3'))]==['TRI1','TRI2']
-  assert PT.find_node_from_predicate(node, P.is_elmt_of_type('NODE'))[0]=='NODE'
+  assert PT.get_node_from_predicate (node, P.is_element_of_type('TETRA_4')) is None
+  assert PT.get_node_from_predicate (node, P.is_element_of_type('ZoneBC' )) is None
+  assert [n[0] for n in PT.get_nodes_from_predicate(node, P.is_element_of_type('TRI_3'))]==['TRI1','TRI2']
+  assert PT.find_node_from_predicate(node, P.is_element_of_type('NODE'))[0]=='NODE'
 
 def test_is_zone_of_kind():
   struct1d = PT.new_Zone('Struct1D', type='Structured', size=[[11,10,0]])
@@ -222,7 +222,7 @@ def test_is_zone_of_kind():
   assert len(PT.get_nodes_from_predicate(base, P.is_zone_of_kind(None, None))) == 10
 
 
-def test_is_gc_with():
+def test_is_gc_of_kind():
   bc = PT.new_BC('BC')
   gc_s = PT.new_GridConnectivity1to1('SMatch')
   gc_s_per = PT.new_GridConnectivity1to1('SMatchPerio')
@@ -239,9 +239,9 @@ def test_is_gc_with():
   zgc = PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=
                     [bc, gc_s, gc_s_per, gc_abb, gc_abb_per, gc_u, gc_u_per])
 
-  assert PT.find_node_from_predicate(zgc, P.is_gc_with(False, True))[0] == 'UNoMatchPerio'
-  assert [PT.get_name(n) for n in PT.get_nodes_from_predicate(zgc, P.is_gc_with(perio=True))] \
+  assert PT.find_node_from_predicate(zgc, P.is_gc_of_kind(False, True))[0] == 'UNoMatchPerio'
+  assert [PT.get_name(n) for n in PT.get_nodes_from_predicate(zgc, P.is_gc_of_kind(is_perio=True))] \
     == ['SMatchPerio', 'UNoMatchPerio', 'UMatchPerio']
-  assert [PT.get_name(n) for n in PT.get_nodes_from_predicate(zgc, P.is_gc_with(True, True))] \
+  assert [PT.get_name(n) for n in PT.get_nodes_from_predicate(zgc, P.is_gc_of_kind(True, True))] \
     == ['SMatchPerio', 'UMatchPerio']
-  assert len(PT.get_nodes_from_predicate(zgc, P.is_gc_with())) == 6
+  assert len(PT.get_nodes_from_predicate(zgc, P.is_gc_of_kind())) == 6

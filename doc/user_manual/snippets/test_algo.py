@@ -718,7 +718,7 @@ def test_extract_edges():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', MPI.COMM_WORLD)
 
   point_list = [PT.Subset.getPatch(n)[1][0] \
-    for n in PT.get_nodes_from_predicate(dist_tree, PT.pred.is_bc_of_loc('EdgeCenter'))]
+    for n in PT.get_nodes_from_predicate(dist_tree, PT.pred.is_bc_of_location('EdgeCenter'))]
   domain_pl = {'cube/zone': numpy.concatenate(point_list)}
 
   edge_dist_tree = maia.algo.dist.extract_part.extract_edges(dist_tree, domain_pl, MPI.COMM_WORLD)

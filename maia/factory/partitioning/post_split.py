@@ -11,7 +11,7 @@ import maia.transfer.dist_to_part.recover_jn     as JBTP
 from maia.utils     import s_numbering
 from maia.utils     import logging as mlog
 
-is_initial_match = PT.pred.label_is('GridConnectivity_t') & MT.pred.is_gc_with(intra=False, match=True)
+is_initial_match = PT.pred.label_is('GridConnectivity_t') & MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)
 
 def pl_as_idx(zone, subset_predicate):
   """
@@ -120,7 +120,7 @@ def copy_additional_nodes(dist_zone, part_zone):
 def generate_related_zsr(dist_zone, part_zone):
   """
   """
-  is_inter_gc = MT.pred.is_gc_with(intra=False)
+  is_inter_gc = MT.pred.is_gc_of_kind(is_intra=False)
   for d_zsr in PT.iter_nodes_from_predicates(dist_zone, 'ZoneSubRegion_t'):
     bc_descriptor = PT.get_child_from_name(d_zsr, 'BCRegionName')
     gc_descriptor = PT.get_child_from_name(d_zsr, 'GridConnectivityRegionName')
@@ -144,8 +144,8 @@ def generate_related_zsr(dist_zone, part_zone):
 def split_original_joins(p_tree):
   """
   """
-  is_initial_gc = PT.pred.label_is('GridConnectivity_t') & MT.pred.is_gc_with(intra=False, match=True)
-  is_nomatch_gc = PT.pred.label_is('GridConnectivity_t') & PT.pred.is_gc_with(match=False)
+  is_initial_gc = PT.pred.label_is('GridConnectivity_t') & MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)
+  is_nomatch_gc = PT.pred.label_is('GridConnectivity_t') & PT.pred.is_gc_of_kind(is_1to1=False)
   for p_base, p_zone in PT.iter_children_from_predicates(p_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     d_zone_name = MT.conv.get_part_prefix(p_zone[0])
     for zone_gc in PT.get_children_from_label(p_zone, 'ZoneGridConnectivity_t'):
@@ -207,8 +207,8 @@ def update_gc_donor_name(part_tree, comm):
   """
   Update or add the GridConnectivityDonorName name afted join splitting
   """
-  is_1to1_gc    = PT.pred.is_gc_with(match=True)
-  is_initial_gc = MT.pred.is_gc_with(intra=False, match=True)
+  is_1to1_gc    = PT.pred.is_gc_of_kind(is_1to1=True)
+  is_initial_gc = MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)
   send_l = [list() for n in range(comm.Get_size())]
   for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
     for gc in PT.iter_children_from_predicates(p_zone, ['ZoneGridConnectivity_t', is_initial_gc]):

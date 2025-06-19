@@ -84,8 +84,8 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
   interface_dom = []
   interface_dn_v = []
   
-  is_vtx_gc       = PT.pred.IS_GC                   & PT.pred.has_location('Vertex')
-  is_vtx_gc_inter = MT.pred.is_gc_with(intra=False) & PT.pred.has_location('Vertex')
+  is_vtx_gc       = PT.pred.IS_GC                         & PT.pred.has_location('Vertex')
+  is_vtx_gc_inter = MT.pred.is_gc_of_kind(is_intra=False) & PT.pred.has_location('Vertex')
 
   for gc_path_cur in PT.predicates_to_paths(dist_tree_jn, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_vtx_gc]):
     gc_path_opp = MJT.get_jn_donor_path(dist_tree_jn, gc_path_cur)

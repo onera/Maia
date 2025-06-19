@@ -179,7 +179,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
   MJT.add_joins_donor_name(dist_tree, comm)
 
   is_container = PT.pred.label_in(['FlowSolution_t', 'ZoneSubRegion_t', 'DiscreteData_t'])
-  is_fcenter   = PT.pred.UnaryPredicate(lambda n : PT.Subset.GridLocation(n) not in ['CellCenter', 'Vertex'])
+  is_fcenter   = PT.pred.NodePredicate(lambda n : PT.Subset.GridLocation(n) not in ['CellCenter', 'Vertex'])
   
   # Convert data having PL into bc, so they will be converted by the function
   for dist_zone in PT.iter_all_Zone_t(dist_tree):
@@ -293,7 +293,7 @@ def convert_elements_to_ngon(dist_tree: CGNSDistTree,
   """
   MT.check_cgns_dist_tree(dist_tree)
   # If tree has MIXED elements, first convert Mixed -> Elts
-  is_mixed = PT.pred.is_elmt_of_type('MIXED')
+  is_mixed = PT.pred.is_element_of_type('MIXED')
   has_mixed = PT.get_node_from_predicates(dist_tree, ['CGNSBase_t', 'Zone_t', is_mixed]) is not None
   if has_mixed:
     maia.algo.dist.convert_mixed_to_elements(dist_tree, comm)

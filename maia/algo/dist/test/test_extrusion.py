@@ -13,7 +13,7 @@ from maia.algo.dist import extrusion as EXT
 
 get_elt_ec = lambda n : PT.find_child_from_name(n, 'ElementConnectivity')[1]
 
-IS_BAR = PT.pred.is_elmt_of_type('BAR_2')
+IS_BAR = PT.pred.is_element_of_type('BAR_2')
 IS_EDGE_SUBSET = PT.pred.label_in(['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']) & PT.pred.has_location('*EdgeCenter')
 IS_FACE_SUBSET = PT.pred.label_in(['BC_t', 'GridConnectivity', 'GridConnectivity_1to1']) & PT.pred.has_location('*FaceCenter')
 
@@ -86,7 +86,7 @@ def test_ngon_duplication(align, comm):
   EXT._ngon_duplication(zone, comm, align)
 
   # Verification
-  assert len(PT.get_children_from_predicate(zone, PT.pred.is_elmt_of_type('NGON_n'))) == 2
+  assert len(PT.get_children_from_predicate(zone, PT.pred.is_element_of_type('NGON_n'))) == 2
   old_ngon = PT.get_child_from_name(zone, ngon_name_ini)
   new_ngon = PT.get_child_from_name(zone, f'{ngon_name_ini}_bis')
   
