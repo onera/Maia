@@ -15,6 +15,7 @@ Development version
 🐞 Fixes
 ^^^^^^^^
 - extract_part: fix output cell GlobalNumbering of surfacic S extractions and allow any input basename
+- maia_poly_old_to_new: fix conversion of MIXED elements on large meshes
 
 v1.7 (May 2024)
 ---------------

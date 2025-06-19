@@ -237,7 +237,7 @@ interleaved_to_indexed_connectivity(int n_elem, py::array_t<T>& np_interleaved)
 template<typename T>
 void create_mixed_elts_eso(py::array_t<T>& np_connec, py::array_t<T>& np_eso)
 {
-  int n_cell = np_eso.size() - 1;
+  auto n_cell = np_eso.size() - 1;
 
   static int n_vtx_per_type[] = {
     -1, -1, 1, 2, 3, 3, 6, 4, 8, 9,
@@ -252,8 +252,8 @@ void create_mixed_elts_eso(py::array_t<T>& np_connec, py::array_t<T>& np_eso)
   auto eso    = np_eso.mutable_data();
 
   eso[0] = 0;
-  int pos = 0;
-  for (int i = 0; i < n_cell; ++i) {
+  size_t pos = 0;
+  for (size_t i = 0; i < n_cell; ++i) {
     int nv = n_vtx_per_type[connec[eso[i]]];
     pos += (nv + 1);
     eso[i+1] = pos;
