@@ -3,6 +3,7 @@ from mpi4py import MPI
 
 from maia.typing import *
 import maia.pytree      as PT
+import maia.pytree.pred as PTp
 import maia.pytree.maia as MT
 
 from maia           import npy_pdm_gnum_dtype  as pdm_dtype
@@ -11,7 +12,9 @@ from maia.transfer  import protocols as EP
 from maia.utils     import np_utils, par_utils, s_numbering
 from maia.utils     import logging as mlog
 
-is_bar = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
+IS_BAR  = PTp.is_element_of_type('BAR_2')
+IS_TRI  = PTp.is_element_of_type('TRI_3')
+IS_QUAD = PTp.is_element_of_type('QUAD_4')
 
 def _extend_pr(pr_node:CGNSTree, val):
   """ Add a dimension to PR-like arrays with the specified values"""
@@ -262,7 +265,7 @@ def _merge_ngons(zone, comm):
   new_distrib_ec = par_utils.dn_to_distribution(new_diff_eso.sum(), comm)
   new_eso = np_utils.sizes_to_indices(new_diff_eso) + new_distrib_ec[0]
   # > Delete old ngons
-  PT.rm_children_from_predicate(zone, lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'NGON_n')
+  PT.rm_children_from_predicate(zone, PTp.is_element_of_type('NGON_n'))
   # > Create new NGon node
   new_ngon_n = PT.new_NGonElements(erange=new_er, eso=new_eso, ec=new_ec, pe=new_pe, parent=zone)
   MT.new_Distribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
@@ -329,12 +332,12 @@ def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as):
   # 0/ Global information
   n_vtx  = PT.Zone.n_vtx(zone)
   n_cell = PT.Zone.n_cell(zone)
-  n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, is_bar))
+  n_edges = sum(PT.Element.Size(e) for e in PT.get_children_from_predicate(zone, IS_BAR))
 
   # 0bis / Ensure we have both EdgeElements/ParentElements and NGonElements
   if not PT.Zone.has_ngon_elements(zone):
     ngon_tools.edge_pe_to_ngon(zone, comm)
-  if PT.get_node_from_predicates(zone, [is_bar, 'ParentElements']) is None:
+  if PT.get_node_from_predicates(zone, [IS_BAR, 'ParentElements']) is None:
     ngon_tools.ngon_to_edge_pe(zone, comm)
   
   # 1/ Duplication of nodes to generate the second plan
@@ -347,7 +350,7 @@ def _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as):
   _ngon_duplication(zone, comm, align)
   
   # 3/ Extrude Bar to NGon
-  for bar in PT.get_nodes_from_predicate(zone, is_bar):
+  for bar in PT.get_nodes_from_predicate(zone, IS_BAR):
     _extrude_bar_to_ngon(bar, n_vtx, n_cell, align)
   
   # 4/ Merge all NGon nodes
@@ -477,22 +480,18 @@ def _extrusion_2d_u_elem(zone, extrusion_vector, comm, ksubset_as):
   
   # 1bis/ Determine the mesh orientation
   align = _determine_mesh_orientation(zone, extrusion_vector, comm)
-  
-  is_bar  = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'BAR_2'
-  is_tri  = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'TRI_3'
-  is_quad = lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.CGNSName(n) == 'QUAD_4'
 
   # Note : in step 2, we ensure to create all faces from initial plan, then all faces
   # from extruded plan, because it makes generation of FaceCenter BC/GC easier
   # 2/ Extrude Tri to Prism
   new_face_elts = []
-  for num, tri in enumerate(PT.get_children_from_predicate(zone, is_tri)):
+  for num, tri in enumerate(PT.get_children_from_predicate(zone, IS_TRI)):
     new_tri1, new_tri2 = _extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align=align)
     new_face_elts.extend([new_tri1, new_tri2])
     er_max += PT.Element.Size(tri)
   
   # 3/ Extrude Quad to Hexa
-  for num, quad in enumerate(PT.get_children_from_predicate(zone, is_quad)):
+  for num, quad in enumerate(PT.get_children_from_predicate(zone, IS_QUAD)):
     new_quad1, new_quad2 = _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align=align)
     new_face_elts.extend([new_quad1, new_quad2])
     er_max += PT.Element.Size(quad)
@@ -501,7 +500,7 @@ def _extrusion_2d_u_elem(zone, extrusion_vector, comm, ksubset_as):
     PT.add_child(zone, elt)
   
   # 4/ Extrude Bar to Quad
-  for num, bar in enumerate(PT.get_nodes_from_predicate(zone, is_bar)):
+  for num, bar in enumerate(PT.get_nodes_from_predicate(zone, IS_BAR)):
     _extrude_bar_to_quad(bar, num, n_vtx, align=align)
   
   # 5/ Manage K-plans
@@ -638,15 +637,14 @@ def extrude(dist_tree: CGNSDistTree,
       cell_offset_3d = cell_offset_2d # For elt meshes, cell pl dont need to be updated
     
     # Update containers
-    is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t']
-    is_subset    = lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t']
-    has_pl = lambda n : PT.get_child_from_name(n, 'PointList') is not None
-    has_pr = lambda n : PT.get_child_from_name(n, 'PointRange') is not None
-    is_partial = lambda n : has_pl(n) or has_pr(n)
+    is_container = PTp.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCDataSet_t'])
+    is_subset    = PTp.label_in(['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'])
+    has_pl = PTp.has_child_of_name('PointList')
+    has_pr = PTp.has_child_of_name('PointRange')
+    is_partial = has_pl | has_pr
     
     # > CellCenter -> Shift to refer cells ids
-    is_container_cell = lambda n: (is_container(n) or is_subset(n)) and is_partial(n) and \
-                                   PT.Subset.GridLocation(n) == 'CellCenter'
+    is_container_cell = (is_container | is_subset) & is_partial & PTp.has_location('CellCenter')
     for container in PT.get_nodes_from_predicate(zone, is_container_cell, depth=3):
       if PT.Zone.Type(zone) == 'Unstructured':
         assert PT.get_child_from_label(container, 'IndexRange_t') is None, "PointRange not supported for U zones"
@@ -659,7 +657,7 @@ def extrude(dist_tree: CGNSDistTree,
           _extend_pr(pr_n, [1,1])
 
     # > *FaceCenter -> should not exist on 2d mesh, remove it
-    is_container_face = lambda n: (is_container(n) or is_subset(n)) and PT.Subset.GridLocation(n).endswith('FaceCenter')
+    is_container_face = (is_container | is_subset) & PT.pred.has_location('*FaceCenter')
     container_face_l = PT.get_nodes_from_predicate(zone, is_container_face, depth=3, explore='deep')
     if len(container_face_l) > 0:
       cnt_names = [PT.get_name(n) for n in container_face_l]
@@ -669,7 +667,7 @@ def extrude(dist_tree: CGNSDistTree,
       PT.rm_nodes_from_predicate(zone, is_container_face, depth=3)
 
     # > *EdgeCenter -> becomes *FaceCenter (no need to change their PointList, but PR must be extended)
-    is_container_edge = lambda n: (is_container(n) or is_subset(n)) and PT.Subset.GridLocation(n).endswith('EdgeCenter')
+    is_container_edge = (is_container | is_subset) & PT.pred.has_location('*EdgeCenter')
     for container in PT.get_nodes_from_predicate(zone, is_container_edge, depth=3, explore='deep'):
       if PT.Zone.Type(zone)  == 'Unstructured':
         PT.update_child(container, 'GridLocation', value='FaceCenter')
@@ -681,12 +679,12 @@ def extrude(dist_tree: CGNSDistTree,
 
     # > Vertex -> Subsets (BCs, GC) must be always extended, but containers depends on dupl_vtx_data
     # It seems easier to treat data first, because data can require the initial PL or Distribution
-    is_vertex = lambda n : PT.Subset.GridLocation(n) == 'Vertex'
+    is_vertex = PTp.has_location('Vertex')
     
     if dupl_vtx_data:
       # Duplicate data in Vertex containers. PL/PR must be extended if present in container. If containers
       # are full, we don't need to add PR/PL since they are still full after duplication.
-      for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n)):
+      for container in PT.get_children_from_predicate(zone, is_container & is_vertex):
         if has_pl(container):
           maybe_pl = PT.find_child_from_name(container, 'PointList')[1]
           distrib_idx = MT.distribution_value(container, 'Index')
@@ -739,7 +737,7 @@ def extrude(dist_tree: CGNSDistTree,
       if PT.Zone.Type(zone) == 'Structured':
         zval = 1 if zone_to_align[zone_path] else 2
         vertex_size = PT.Zone.VertexSize(zone)
-      for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and not is_partial(n)):
+      for container in PT.get_children_from_predicate(zone, is_container & is_vertex & ~is_partial):
         if PT.get_label(container) == 'ZoneSubRegion_t': # Break ZSR link
           zsr_extent = PT.Subset.ZSRExtent(container, zone)
           extent_node = PT.find_node_from_path(zone, zsr_extent)
@@ -767,12 +765,12 @@ def extrude(dist_tree: CGNSDistTree,
             _extend_pr(PT.Subset.getPatch(bcds), [zval,zval])
           PT.add_child(bcds, PT.deep_copy(MT.find_Distribution(bc)))
       # Update PR for structured zones
-      for container in PT.get_children_from_predicate(zone, lambda n : is_container(n) and is_vertex(n) and has_pr(n)):
+      for container in PT.get_children_from_predicate(zone, is_container & is_vertex & has_pr):
         assert PT.Zone.Type(zone) == 'Structured'
         _extend_pr(PT.Subset.getPatch(container), [zval,zval])
     
     # Now deal vertex subsets PL/PR, which are extended in all cases
-    for subset in PT.get_nodes_from_predicate(zone, lambda n : is_subset(n) and is_vertex(n)):
+    for subset in PT.get_nodes_from_predicate(zone, is_subset & is_vertex):
       if PT.Zone.Type(zone) == 'Structured' and PT.get_name(subset) not in ['InitialSurface', 'ExtrudedSurface'] :
         pr_n = PT.find_child_from_name(subset, 'PointRange')
         _extend_pr(pr_n, [1,2])

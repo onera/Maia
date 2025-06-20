@@ -111,8 +111,7 @@ def poly_new_to_old(full_tree: CGNSTree, full_onera_compatibility: bool = True) 
         indexed_to_interleaved_connectivity(nface)
 
     else: # No NGon / NFace, but we may have to deal with MIXED elements
-      for elt in PT.iter_children_from_predicate(z, lambda n : PT.get_label(n) == 'Elements_t' 
-                                                           and PT.Element.CGNSName(n) == 'MIXED'):
+      for elt in PT.iter_children_from_predicate(z, PT.pred.is_element_of_type('MIXED')):
         PT.rm_children_from_name(elt, 'ElementStartOffset')
 
 
@@ -195,6 +194,5 @@ def poly_old_to_new(full_tree: CGNSTree) -> None:
           maia.algo.pe_to_nface(z)
 
     else: # No NGon / NFace, but we may have to deal with MIXED elements
-      for elt in PT.iter_children_from_predicate(z, lambda n : PT.get_label(n) == 'Elements_t' 
-                                                           and PT.Element.CGNSName(n) == 'MIXED'):
+      for elt in PT.iter_children_from_predicate(z, PT.pred.is_element_of_type('MIXED')):
         create_mixed_elts_eso(elt)

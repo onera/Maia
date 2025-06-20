@@ -480,7 +480,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
   #Build join ids to identify opposite joins
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  match_jns = MJT.get_matching_jns(dist_tree, lambda n: PT.Subset.GridLocation(n) == 'FaceCenter')
+  match_jns = MJT.get_matching_jns(dist_tree, PT.pred.has_location('FaceCenter'))
   interface_pathes_cur = [pair[0] for pair in match_jns]
   interface_pathes_opp = [pair[1] for pair in match_jns]
 

@@ -121,8 +121,7 @@ def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
   # nodes not involved in the duplication (not in jn_paths_for_dupl)
   gc_values_to_update = zone_paths + [PT.get_name(zone) for zone in zones] #Manage both ways BaseName/ZoneName + ZoneName
 
-  gc_predicate:Predicates = ["ZoneGridConnectivity_t",
-                             lambda n : PT.get_label(n) in ["GridConnectivity_t", "GridConnectivity1to1_t"]]
+  gc_predicate:Predicates = ["ZoneGridConnectivity_t", PT.pred.IS_GC]
 
   # Update the value of all GridConnectivity nodes not involved in the duplication from initial zones
   for zone_path, zone in zip(zone_paths, zones):
@@ -303,7 +302,7 @@ def duplicate_from_rotation_jns_to_360(dist_tree: CGNSDistTree,
 
 def _family_name_to_zones_and_jns_paths(dist_tree: CGNSDistTree,
                                         family_name: str) -> Tuple[List[CGNSPath], Tuple[List[CGNSPath], List[CGNSPath]]]:
-  is_z_in_fam = lambda n : PT.get_label(n) == 'Zone_t' and PT.predicate.belongs_to_family(n, family_name)
+  is_z_in_fam = PT.pred.label_is('Zone_t') & PT.pred.belongs_to_family(family_name)
   zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_z_in_fam])
 
   mask_tree = PT.shallow_copy(dist_tree)

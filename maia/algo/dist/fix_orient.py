@@ -11,12 +11,7 @@ import maia
 from maia.algo.dist.geometry import _compute_elements_center, _compute_elements_normal
 from maia.transfer import protocols as EP
 
-from maia.utils import par_utils
-
-is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
-is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
-                            PT.Zone.Type(z) == 'Unstructured' and \
-                            all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
+IS_PHYDIM_2 = PT.pred.NodePredicate(lambda z: PT.Zone.PhysicalDimension(z) == 2)
 
 def _remove_z(array:NDArray) -> NDArray: 
   assert array.size % 3 == 0
@@ -40,7 +35,7 @@ def enforce_boundary_pe_left(tree:CGNSDistTree, comm:MPIComm) -> None:
   maia.algo.nface_to_pe(tree, comm)
   maia.algo.ngon_to_edge_pe(tree, comm)
 
-  is_poly = lambda z: is_poly_3d_zone(z) or is_poly_2d_zone(z)
+  is_poly = PT.pred.IS_POLY2D_ZONE | PT.pred.IS_POLY3D_ZONE
 
   for zone in iter_matching_zones(tree, is_poly):
 
@@ -92,8 +87,7 @@ def fix_normal_orientation(tree:CGNSDistTree, comm:MPIComm) -> None:
   maia.algo.edge_pe_to_ngon(tree, comm)
   maia.algo.ngon_to_edge_pe(tree, comm)
 
-  is_poly = lambda z: is_poly_3d_zone(z) or \
-                     (is_poly_2d_zone(z) and PT.Zone.PhysicalDimension(z) == 2)
+  is_poly = PT.pred.IS_POLY3D_ZONE | (PT.pred.IS_POLY2D_ZONE & IS_PHYDIM_2)
   for zone in iter_matching_zones(tree, is_poly):
     cell_dim = PT.Zone.CellDimension(zone)
     phy_dim = PT.Zone.PhysicalDimension(zone)

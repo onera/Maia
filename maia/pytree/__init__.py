@@ -7,6 +7,7 @@ from .compare    import *
 from .logical_op import *
 
 from . import utils
+from . import pred
 
 # Optional modules
 try:

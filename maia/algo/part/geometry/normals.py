@@ -17,11 +17,6 @@ from .utils import place_in_container
 import cmaia.part_algo as cpart_algo
 
 
-is_poly_3d_zone = lambda z: PT.Zone.CellDimension(z) == 3 and PT.Zone.has_ngon_elements(z)
-is_poly_2d_zone = lambda z: PT.Zone.CellDimension(z) == 2 and \
-                            PT.Zone.Type(z) == 'Unstructured' and \
-                            all(PT.Element.CGNSName(e) in ['BAR_2', 'NGON_n'] for e in PT.get_children_from_label(z, 'Elements_t'))
-
 def compute_face_normal(zone, unitary=False):
   """
   Compute the face normal of a partitioned zone, for phydim = 3
@@ -35,7 +30,7 @@ def compute_face_normal(zone, unitary=False):
   # Get face_vtx
   if PT.Zone.Type(zone) == "Unstructured":
     # Careful : if zone is poly2d, the ngon element may be absent
-    if is_poly_2d_zone(zone) and not PT.Zone.has_ngon_elements(zone):
+    if PT.pred.IS_POLY2D_ZONE(zone) and not PT.Zone.has_ngon_elements(zone):
       maia.algo.edge_pe_to_ngon(zone, None)
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
@@ -75,7 +70,7 @@ def compute_edge_normal(zone, unitary=False):
 
   # Get face_vtx
   if PT.Zone.Type(zone) == "Unstructured":
-    if is_poly_2d_zone(zone):
+    if PT.pred.IS_POLY2D_ZONE(zone):
       edge_node = MT.Zone.EdgeNode(zone)
       edge_vtx = MT.Element.connectivity(edge_node)
     else: # Zone has std elements

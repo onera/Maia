@@ -95,8 +95,7 @@ def test_elmt_pl_to_vtx_pl(comm):
   MT.new_Distribution({'Element':     distri}, elt)
   MT.new_Distribution({'Vertex' : vtx_distri}, zone)
 
-  quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
-                                                       PT.Element.CGNSName(n)=='QUAD_4')
+  quad_n = PT.get_child_from_predicate(zone, PT.pred.is_element_of_type('QUAD_4'))
 
   vtx_pl = adapt_utils.elmt_pl_to_vtx_pl(zone, quad_n, elt_pl, comm)
   if comm.Get_rank() == 0:
@@ -118,8 +117,7 @@ def test_tag_elmt_owning_vtx(comm):
   elt = PT.new_Elements(type='QUAD_4', erange=[1,4], econn=econn, parent=zone)
   MT.new_Distribution({'Element' : distri}, elt)
   
-  quad_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and\
-                                                       PT.Element.CGNSName(n)=='QUAD_4')
+  quad_n = PT.get_child_from_predicate(zone, PT.pred.is_element_of_type('QUAD_4'))
 
   elt_pl = adapt_utils.tag_elmt_owning_vtx(quad_n, vtx_pl, comm, elt_full=True)
   assert (np.concatenate(comm.allgather(elt_pl)) == [1]).all()
@@ -235,8 +233,8 @@ def test_is_elt_included(comm):
     tri_pl = np.array([59, 60])
     tetra_pl = np.array([3])
 
-  tri_elt   = PT.get_node_from_predicate(zone, lambda n : PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
-  tetra_elt = PT.get_node_from_predicate(zone, lambda n : PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
+  tri_elt   = PT.get_node_from_predicate(zone, PT.pred.is_element_of_type('TRI_3'))
+  tetra_elt = PT.get_node_from_predicate(zone, PT.pred.is_element_of_type('TETRA_4'))
   out = adapt_utils.find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm)
 
   if comm.Get_rank() == 0:
@@ -249,8 +247,8 @@ def test_add_undefined_faces(comm):
   dist_tree = maia.factory.dcube_generator.dcube_nodal_generate(3, 1., [0.,0.,0.], 'TETRA_4', comm, get_ridges=True)
   zone = PT.get_node_from_label(dist_tree, 'Zone_t')
 
-  tet_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TETRA_4')
-  tri_n = PT.get_child_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='TRI_3')
+  tet_n = PT.get_child_from_predicate(zone, PT.pred.is_element_of_type('TETRA_4'))
+  tri_n = PT.get_child_from_predicate(zone, PT.pred.is_element_of_type('TRI_3'))
 
   zmax_n  = PT.get_node_from_path(zone, 'ZoneBC/Zmax')
   zmax_pl = PT.Subset.getPatch(zmax_n)[1][0]

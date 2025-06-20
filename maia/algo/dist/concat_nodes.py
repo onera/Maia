@@ -339,9 +339,8 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
     for family in families:
 
       # > Predicates to find family BCs
-      is_subset_container = lambda n: PT.get_label(n) in ['ZoneBC_t']
-      is_subset = lambda n: PT.get_label(n) in ['BC_t'] and\
-                            PT.predicate.belongs_to_family(n, family, True)
+      is_subset_container = PT.pred.label_is('ZoneBC_t')
+      is_subset = PT.pred.label_is('BC_t') & PT.pred.belongs_to_family(family)
 
       # > Go through family BCs gathering informations
       bc_nodes = list() ; bc_names = list() ; bc_ordin = list() 
@@ -355,9 +354,8 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
         # > Manage ZSR with BCRegionName
         bc_name = PT.get_name(bc_n)
-        is_zsr_rel_to_bc = lambda n: PT.get_label(n)=='ZoneSubRegion_t' and\
-                                     PT.get_child_from_name(n, 'BCRegionName') is not None and\
-                        PT.get_value(PT.find_child_from_name(n, 'BCRegionName'))==bc_name 
+        is_zsr_rel_to_bc = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('BCRegionName') \
+                         & PT.pred.NodePredicate(lambda n : PT.get_value(PT.find_child_from_name(n, 'BCRegionName'))==bc_name)
         for zsr_bc_n in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
           pl_n = PT.find_child_from_name(bc_n, 'PointList')
           PT.new_IndexArray(value=PT.get_value(pl_n), parent=zsr_bc_n)
@@ -388,7 +386,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         PT.new_Descriptor('BCOrdinal', '\n'.join(bc_ordin), parent=bc_n)
       PT.add_child(zone_bc_n, bc_n)
 
-is_concat = lambda n: PT.get_child_from_name(n, ':maia#concatenate') is not None
+is_concat = PT.pred.has_child_of_name(':maia#concatenate')
 
 def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
                                         comm: MPIComm,
@@ -435,8 +433,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
     for family in families:
 
       # > Predicates to find family BCs
-      is_bc_from_fam = lambda n: PT.get_label(n)=='BC_t' and PT.predicate.belongs_to_family(n, family)
-      bc_nodes = PT.get_nodes_from_predicates(dist_zone, ['ZoneBC_t', is_bc_from_fam])
+      bc_nodes = PT.get_nodes_from_predicates(dist_zone, ['ZoneBC_t', PT.pred.label_is('BC_t') & PT.pred.belongs_to_family(family)])
       if len(bc_nodes)>1:
         raise ValueError(f"Family {family} leads to multiple BCs.")
       concat_bc_n = bc_nodes[0]

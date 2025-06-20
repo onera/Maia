@@ -114,11 +114,11 @@ def _remove_subset_fictive_faces(zone, comm):
   n_face = PT.Zone.n_face(zone)
 
   fs_like = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
-  is_facecenter = lambda n: PT.Subset.GridLocation(n) == 'FaceCenter'
-  is_fs = lambda n: PT.get_label(n) in fs_like              and is_facecenter(n)
-  is_bc = lambda n: PT.get_label(n) == 'BC_t'               and is_facecenter(n)
-  is_gc = lambda n: PT.get_label(n) == 'GridConnectivity_t' and is_facecenter(n)
-  is_ds = lambda n: PT.get_label(n) == 'BCDataSet_t'        and is_facecenter(n)
+  is_facecenter = PT.pred.has_location('FaceCenter')
+  is_fs = PT.pred.label_in(fs_like             ) & is_facecenter
+  is_bc = PT.pred.label_is('BC_t'              ) & is_facecenter
+  is_gc = PT.pred.label_is('GridConnectivity_t') & is_facecenter
+  is_ds = PT.pred.label_is('BCDataSet_t'       ) & is_facecenter
   for node in PT.get_children_from_predicate(zone, is_fs):
     if update_node(node): # Update node is executed, and return a flag if node must be removed
       PT.rm_child(zone, node)
@@ -143,7 +143,7 @@ def _remove_subset_fictive_faces(zone, comm):
   name_to_remove = ['GridLocation', 'PointList', ':CGNS#Distribution']
   for bcds in PT.get_children_from_labels(zone, ['ZoneBC_t', 'BC_t', 'BCDataSet_t']):
     if MT.get_Distribution(bcds, 'FakeDistri') is not None:
-      PT.rm_children_from_predicate(bcds, lambda n : PT.get_name(n) in name_to_remove)
+      PT.rm_children_from_predicate(bcds, PT.pred.name_in(name_to_remove))
 
 
 # ------------------------------------------------------------------------------------------
@@ -255,12 +255,12 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
     
     pl_degen_faces_list = []
     for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):
-      if PT.predicate.belongs_to_family(bc_n, degen_family):
+      if PT.pred.belongs_to_family(degen_family)(bc_n):
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(bc_n)))
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
       zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
       zsr_extent_n = PT.find_node_from_path(zone_n, zsr_extent_path)
-      if PT.predicate.belongs_to_family(zsr_n, degen_family):
+      if PT.pred.belongs_to_family(degen_family)(zsr_n):
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(zsr_extent_n)))
     if len(pl_degen_faces_list) == 0:
       continue

@@ -11,14 +11,15 @@ from maia.transfer import utils     as te_utils,\
 from maia.factory.dist_from_part import discover_nodes_from_matching
 from .                           import index_exchange as IPTB
 
+IS_EMPTY_DA = PT.pred.label_is('DataArray_t') & PT.pred.value_is(None)
+
 def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
   """
   Wrapper for discover_nodes_from_matching which add the node path in distree,
   but also recreate the distributed pointlist if needed
   """
   if pl_path.split('/')[0] == 'ZoneSubRegion_t':
-    is_gc_zsr = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' and \
-                          PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None
+    is_gc_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('GridConnectivityRegionName')
     ini_zsr_nodes_names = [PT.get_name(n) for n in PT.get_nodes_from_predicate(dist_zone, is_gc_zsr)]
 
   discover_nodes_from_matching(dist_zone, part_zones, pl_path,   comm, child_list=['GridLocation_t', 'Descriptor_t'])
@@ -44,11 +45,11 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
     # If we have a splitted ZSR (because of GridConnectivityRegionName), we need to merge it
     # Here we assume that GC related ZSR can only refer to original jns, named using maia conventions
     # First remove split node already present in dist_zone
-    is_gc_zsr_split = lambda n: is_gc_zsr(n) and PT.get_name(n) != name and PT.get_name(n).startswith(name)
     for name in ini_zsr_nodes_names:
+      is_gc_zsr_split = is_gc_zsr & ~PT.pred.name_is(name) & PT.pred.name_matches(name+'*')
       PT.rm_children_from_predicate(dist_zone, is_gc_zsr_split)
     # Now manage split node not present in dist zone (remove all but .0 and rename .0)
-    is_gc_zsr_split = lambda n: is_gc_zsr(n) and PT.get_name(n) not in ini_zsr_nodes_names
+    is_gc_zsr_split = is_gc_zsr & ~PT.pred.name_in(ini_zsr_nodes_names)
     PT.rm_children_from_predicate(dist_zone, lambda n: is_gc_zsr_split(n) \
             and int(MT.conv.get_split_suffix(PT.get_name(n))) > 0)
     for zsr in PT.get_children_from_predicate(dist_zone, is_gc_zsr_split):
@@ -140,7 +141,7 @@ def part_sol_to_dist_sol(dist_zone, part_zones, comm, include=[], exclude=[], re
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_op)
   # Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'FlowSolution_t'):
-    PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
+    PT.rm_children_from_predicate(dist_sol, IS_EMPTY_DA)
   # Update ZoneIterativeData/FlowSolutionPointers
   discover_nodes_from_matching(dist_zone, part_zones, "ZoneIterativeData_t", comm,
                                child_list=['FlowSolutionPointers'])
@@ -157,7 +158,7 @@ def part_discdata_to_dist_discdata(dist_zone, part_zones, comm, include=[], excl
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_op)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'DiscreteData_t'):
-    PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
+    PT.rm_children_from_predicate(dist_sol, IS_EMPTY_DA)
 
 def part_gridmotion_to_dist_gridmotion(dist_zone, part_zones, comm, include=[], exclude=[], reduce_op=None):
   """
@@ -171,15 +172,14 @@ def part_gridmotion_to_dist_gridmotion(dist_zone, part_zones, comm, include=[], 
   _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_op)
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_sol in PT.iter_children_from_label(dist_zone, 'ArbitraryGridMotion_t'):
-    PT.rm_children_from_predicate(dist_sol, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
+    PT.rm_children_from_predicate(dist_sol, IS_EMPTY_DA)
 
 def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], exclude=[], reduce_op=None):
   """
   Transfert all the data included in ZoneSubRegion_t nodes from the partitioned
   zones to the distributed zone.
   """
-  is_zsr_with_pl = lambda n: PT.get_label(n)=='ZoneSubRegion_t' and\
-                             PT.get_child_from_name(n, 'PointList') is not None
+  is_zsr_with_pl = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('PointList')
   for zone in part_zones:
     for zsr_n in PT.get_children_from_predicate(zone, is_zsr_with_pl):
       gn_n = MT.get_GlobalNumbering(zsr_n)
@@ -208,9 +208,8 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
         for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
           # Get corresponding part ZSR
           lngn_list.append(MT.globalnumbering_value(node, 'Index'))
-          good_zsr = lambda n: PT.get_label(n) == 'ZoneSubRegion_t' \
-                               and PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None \
-                               and PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node)
+          good_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('GridConnectivityRegionName') \
+                   & PT.pred.NodePredicate(lambda n : PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node))
           p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
           for field in fields:
             part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
@@ -237,7 +236,7 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
 
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_zsr in PT.iter_children_from_label(dist_zone, 'ZoneSubRegion_t'):
-    PT.rm_children_from_predicate(dist_zsr, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
+    PT.rm_children_from_predicate(dist_zsr, IS_EMPTY_DA)
 
 def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclude=[], reduce_op=None):
   """
@@ -329,5 +328,5 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
 
   #Cleanup : if field is None, data has been added by wrapper and must be removed
   for dist_ddata in PT.iter_nodes_from_predicates(dist_zone, bc_ds_path+'/BCData_t'):
-    PT.rm_children_from_predicate(dist_ddata, lambda n : PT.get_label(n) == 'DataArray_t' and n[1] is None)
+    PT.rm_children_from_predicate(dist_ddata, IS_EMPTY_DA)
 

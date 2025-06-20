@@ -103,8 +103,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
   ranks, which is why partitioned trees are not supported
   """
 
-  is_zone_u = lambda n : PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n) == 'Unstructured'
-  for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', is_zone_u], ancestors=True):
+  for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', PT.pred.is_zone_of_kind('U')], ancestors=True):
 
     elts_cur_ord = PT.Zone.get_ordered_elements(zone)
     elts_new_ord = permutation(elts_cur_ord)
@@ -172,10 +171,8 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
     for opp_zone_path in set(opp_zone_paths):
       opp_base_name = PT.utils.path_head(opp_zone_path)
       opp_zone = PT.find_node_from_path(tree, opp_zone_path)
-      is_gc_to_update = lambda n : PT.get_label(n) == 'GridConnectivity_t' and \
-                                   PT.GridConnectivity.is1to1(n) and \
-                                   PT.Subset.GridLocation(n) != 'Vertex' and \
-                                   PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path
+      matches_zone = PT.pred.NodePredicate(lambda n : PT.GridConnectivity.ZoneDonorPath(n, opp_base_name) == cur_zone_path)
+      is_gc_to_update = PT.pred.is_gc_of_kind(is_1to1=True) & ~PT.pred.has_location('Vertex') & matches_zone
       for gc in PT.get_children_from_predicates(opp_zone, ['ZoneGridConnectivity_t', is_gc_to_update]):
         pld = PT.find_child_from_name(gc, 'PointListDonor')
         pld_value = PT.get_np_value(pld)

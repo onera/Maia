@@ -23,7 +23,7 @@ def replace_bc_identifiers(zone:CGNSTree, bc_identifiers:List[Union[str, List[st
 
     # > Identify BCs
     if   isinstance(bc_identifier, str):
-      identified_bcs = [PT.get_name(node) for node in PT.get_nodes_from_predicate(zone, lambda n : PT.get_label(n) == 'BC_t' and PT.predicate.belongs_to_family(n, bc_identifier))]
+      identified_bcs = [PT.get_name(node) for node in PT.get_nodes_from_predicate(zone, PT.pred.label_is('BC_t') & PT.pred.belongs_to_family(bc_identifier))]
     elif isinstance(bc_identifier, list):
       identified_bcs = bc_identifier
     else:
@@ -160,7 +160,7 @@ def find_ridges(dist_tree: CGNSDistTree,
     #   We put BAR elts after already existing elts, because we can not safely place it before since we would need
     #     to renumber GC_t nodes, and this function can be called on a single zone
     # > Create element node name
-    bar_nodes    = PT.get_children_from_predicate(zone, PT.predicate.is_elmt_of_type("BAR_2"))
+    bar_nodes    = PT.get_children_from_predicate(zone, PT.pred.is_element_of_type("BAR_2"))
     bar_names    = [PT.get_name(bar_n) for bar_n in bar_nodes]
     new_bar_name = 'topo_edge'
     i_name = 0

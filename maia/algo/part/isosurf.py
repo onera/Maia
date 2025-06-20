@@ -18,13 +18,13 @@ from .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
 
-familyname_query = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
 
 def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> None:
   """ Copy from source_base to target_base the Family_t nodes referenced
   by a (Additional)FamilyName (at zone level) in the target base """
   copied_families = []
-  for fam_node in PT.get_children_from_predicates(target_base, ['Zone_t', familyname_query]):
+  for fam_node in PT.get_children_from_predicates(target_base, ['Zone_t', IS_FAM_NAME]):
     fam_name = PT.get_str_value(fam_node)
     if fam_name not in copied_families:
       copied_families.append(fam_name)
@@ -45,7 +45,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
   
-    fields_query = lambda n: PT.get_label(n) in ['DataArray_t', 'IndexArray_t']
+    fields_query = PT.pred.label_in(['DataArray_t', 'IndexArray_t'])
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
     mask_container = PT.get_child_from_name(mask_zone, container_name)
     if mask_container is None:
@@ -262,18 +262,15 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
   gdom_bcs_path = PT.predicates_to_paths(dist_zone, ['ZoneBC_t','BC_t'])
   n_gdom_bcs = len(gdom_bcs_path)
   # > GCs
-  is_gc        = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-  isnt_gc_intra= lambda n: is_gc(n) and     PT.GridConnectivity.is1to1(n) and not MT.conv.is_intra_gc(PT.get_name(n))
-  is_unmatched:Predicate = lambda n: is_gc(n) and not PT.GridConnectivity.is1to1(n)
-  gc_predicate = ['ZoneGridConnectivity_t', is_unmatched]
+  gc_predicate = ['ZoneGridConnectivity_t', PT.pred.is_gc_of_kind(is_1to1=False)]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
-  gc_predicate = ['ZoneGridConnectivity_t', isnt_gc_intra]
+  gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)]
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
   for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
     val = PT.get_str_value(jn)
     PT.set_value(jn, MT.conv.get_part_prefix(val))
-  gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t',is_gc])
+  gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC])
   n_gdom_gcs = len(gdom_gcs_path)
 
   # Loop over domain zones
@@ -449,7 +446,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
     PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
 
   # > FamilyName(s)
-  dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [familyname_query],
+  dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [IS_FAM_NAME],
       comm, get_value='leaf')
 
   return iso_part_zone

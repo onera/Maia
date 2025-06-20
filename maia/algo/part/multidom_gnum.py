@@ -55,10 +55,9 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
 
   # If there is some FaceCenter interfaces, convert it to Vertex
   tree_has_face_gc = False
-  face_loc_query = lambda n : PT.get_label(n) == 'GridLocation_t' and PT.get_value(n) == 'FaceCenter'
   for dom_name, parts in parts_per_dom.items():
     dist_zone = PT.find_node_from_path(dist_tree_jn, dom_name)
-    has_face_gc = PT.get_node_from_predicate(dist_zone, face_loc_query) is not None
+    has_face_gc = PT.get_node_from_predicate(dist_zone, PT.pred.has_location('FaceCenter')) is not None
     if has_face_gc:
       # Vtx gnum is needed for face->vtx conversion.
       # Connectivities should have been already added by _get_joins_dist_tree
@@ -85,9 +84,8 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
   interface_dom = []
   interface_dn_v = []
   
-  is_gc           = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-  is_vtx_gc       = lambda n: is_gc(n)     and PT.Subset.GridLocation(n) == 'Vertex'
-  is_vtx_gc_intra = lambda n: is_vtx_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  is_vtx_gc       = PT.pred.IS_GC                         & PT.pred.has_location('Vertex')
+  is_vtx_gc_inter = MT.pred.is_gc_of_kind(is_intra=False) & PT.pred.has_location('Vertex')
 
   for gc_path_cur in PT.predicates_to_paths(dist_tree_jn, ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_vtx_gc]):
     gc_path_opp = MJT.get_jn_donor_path(dist_tree_jn, gc_path_cur)
@@ -121,7 +119,7 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
   for vtx_mdom_offset, parts in zip(vtx_mdom_offsets, parts_per_dom.values()):
     for part in parts:
       vtx_gnum = as_pdm_gnum(MT.globalnumbering_value(part, 'Vertex'))
-      for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
+      for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_inter]):
         pl = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
         vtx_ggnum_parts.append(vtx_gnum[pl-1] + vtx_mdom_offset) #Domain gnum on part side
 
@@ -133,7 +131,7 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
   count = 0
   for shifted_lngn_dom, parts in zip(shifted_lngn, parts_per_dom.values()):
     for shifted_lngn_part, part in zip(shifted_lngn_dom, parts):
-      for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_intra]):
+      for gc in PT.get_children_from_predicates(part, ['ZoneGridConnectivity_t', is_vtx_gc_inter]):
         pl = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
         # We received id starting at 1 so shift it to the end of the internal gc gnums
         shifted_lngn_part[pl-1] = vtx_group_id_recv[count] + vtx_mdom_offsets[-1]

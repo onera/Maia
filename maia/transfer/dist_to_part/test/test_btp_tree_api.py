@@ -27,7 +27,7 @@ def test_recover_UDData(missing_part_node, comm):
     PT.new_Family(f'WALL_{i}', family_bc='BCWall', parent=part_base)
     PT.new_node('.Solver#BC', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=dist_family_n)
     PT.new_node('.Solver#Property', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=dist_family_n)
-  for i, bc_n  in enumerate(PT.get_nodes_from_predicate(dist_zone, lambda n : PT.get_label(n) in ['BC_t', 'GridConnectivity_t'])):
+  for i, bc_n  in enumerate(PT.get_nodes_from_predicate(dist_zone, PT.pred.label_in(['BC_t', 'GridConnectivity_t']))):
     PT.new_node('.Solver#BC', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
     PT.new_node('.Solver#Property', label='UserDefinedData_t', value=np.array([i,i+1,i+2]), children=[], parent=bc_n)
 

@@ -42,7 +42,7 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
   assert PT.get_child_from_predicates(bc_n, f'BCDataSet_t/{unwanted_type}') is None,\
                  f'BCDataSet_t with {unwanted_name} aren\'t managed'
 
-  is_valid_bcds = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, required_name) is None
+  is_valid_bcds = PT.pred.label_is('BCDataSet_t') & ~PT.pred.has_child_of_name(required_name)
   ds_arrays = PT.get_children_from_predicates(bc_n, [is_valid_bcds, 'BCData_t', 'DataArray_t'])
   for ds_array in ds_arrays:
     PT.new_DataArray(name=PT.get_name(ds_array), value=PT.get_np_value(ds_array), parent=zsr_bc_n)
@@ -142,7 +142,7 @@ class Extractor:
               PT.rm_child(zone_n, zgc_n)
 
     # Copy Families existing on extracted tree
-    is_family_name = lambda n :  PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+    is_family_name = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
     found_family_name = set([PT.get_str_value(n) for n in PT.get_nodes_from_predicate(extract_tree, is_family_name)])
     for family_name in sorted(found_family_name):
       fam_node = PT.get_node_from_name_and_label(part_tree, family_name, 'Family_t', depth=2)
@@ -409,12 +409,10 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # > Discover family related nodes
-  in_fam = lambda n : PT.predicate.belongs_to_family(n, family_name, True)
-  is_regionname = lambda n: PT.get_name(n) in ['BCRegionName', 'GridConnectivityRegionName']
-  bc_gc_in_fam = lambda n: PT.get_name(n) in region_node_names
-  zsr_has_regionname = lambda n: PT.get_label(n)=="ZoneSubRegion_t" and \
-                                (PT.get_child_from_name(n, 'BCRegionName')               is not None or \
-                                 PT.get_child_from_name(n, 'GridConnectivityRegionName') is not None)
+  in_fam = PT.pred.belongs_to_family(family_name)
+  is_regionname = PT.pred.name_in(['BCRegionName', 'GridConnectivityRegionName'])
+  zsr_has_regionname = PT.pred.label_is('ZoneSubRegion_t') \
+                     & (PT.pred.has_child_of_name('BCRegionName') | PT.pred.has_child_of_name('GridConnectivityRegionName'))
 
 
   fam_node_paths = list()
@@ -424,18 +422,19 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
     #   - BC  belonging to the provided family OR referenced by a previoulsy found ZSR
     #   - GC  referenced by a previously found ZSR
     dist_zone = PT.new_Zone('Zone')
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, [lambda n : PT.get_label(n) == 'ZoneSubRegion_t' and in_fam(n)],
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, [PT.pred.label_is('ZoneSubRegion_t') & in_fam],
                                                 comm, get_value='leaf', child_list=['FamilyName_t', 'GridLocation_t', 'Descriptor_t'])
     region_node_names:List[str] = list()
     for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
       region_node = PT.find_child_from_predicate(zsr_with_regionname_n, is_regionname)
       region_node_names.append(PT.get_str_value(region_node))
     child_list = ['AdditionalFamilyName_t', 'FamilyName_t', 'GridLocation_t']
-    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', lambda n: in_fam(n) or bc_gc_in_fam(n)], comm, get_value='leaf', child_list=child_list)
+    bc_gc_in_fam = PT.pred.name_in(region_node_names)
+    dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', in_fam | bc_gc_in_fam], comm, get_value='leaf', child_list=child_list)
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneGridConnectivity_t', bc_gc_in_fam], comm, get_value='leaf', child_list=child_list)
 
     # Add selected ZSR and BCs to fam_node_paths
-    fam_node_paths.extend(PT.predicates_to_paths(dist_zone, [lambda n : PT.get_label(n) == "ZoneSubRegion_t"]))
+    fam_node_paths.extend(PT.predicates_to_paths(dist_zone, [PT.pred.label_is("ZoneSubRegion_t")]))
     fam_node_paths.extend(PT.predicates_to_paths(dist_zone, ['ZoneBC_t', in_fam]))
 
     gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')

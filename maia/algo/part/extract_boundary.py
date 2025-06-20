@@ -173,10 +173,11 @@ def extract_surf_from_bc(part_zones: List[CGNSTree],
   for zone in part_zones:
     zone_dim = PT.Zone.CellDimension(zone)
     wanted_loc = 'EdgeCenter' if zone_dim == 2 else 'FaceCenter'
-    is_relevant_bc = lambda n: PT.get_label(n) == 'BC_t' and bc_predicate(n)
+    is_relevant_bc = PT.pred.label_is('BC_t') & PT.pred.NodePredicate(bc_predicate)
+
     bc_face_ids:List[NDArray]
     if PT.Zone.Type(zone) == 'Unstructured':
-      bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', lambda n: is_relevant_bc(n) and PT.Subset.GridLocation(n) == wanted_loc])
+      bc_nodes = PT.get_children_from_predicates(zone, ['ZoneBC_t', is_relevant_bc & PT.pred.has_location(wanted_loc)])
       bc_face_ids = [PT.get_np_value(PT.find_child_from_name(bc_node, 'PointList'))[0] for bc_node in bc_nodes]
     else:
       n_vtx_z = PT.Zone.VertexSize(zone)

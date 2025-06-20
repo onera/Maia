@@ -11,10 +11,7 @@ import maia.transfer.dist_to_part.recover_jn     as JBTP
 from maia.utils     import s_numbering
 from maia.utils     import logging as mlog
 
-is_zone_s = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Structured'
-is_zone_u = lambda n: PT.get_label(n) == 'Zone_t' and PT.Zone.Type(n)=='Unstructured'
-is_initial_match = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.GridConnectivity.is1to1(n) \
-    and not MT.conv.is_intra_gc(n[0])
+is_initial_match = PT.pred.label_is('GridConnectivity_t') & MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)
 
 def pl_as_idx(zone, subset_predicate):
   """
@@ -68,17 +65,16 @@ def _copy_additional_nodes_zsr(d_zsr, p_zsr):
   labels   = ['FamilyName_t', 'AdditionalFamilyName_t']
   reg_name = ['BCRegionName','GridConnectivityRegionName'] 
 
-  for node in PT.get_children_from_predicate(d_zsr, lambda n: PT.get_label(n) in labels):
+  for node in PT.get_children_from_predicate(d_zsr, PT.pred.label_in(labels)):
     PT.add_child(p_zsr, node)
-  for node in PT.get_children_from_predicate(d_zsr, lambda n: PT.get_label(n) == 'Descriptor_t' and \
-                                                              PT.get_name(n) not in reg_name):
+  for node in PT.get_children_from_predicate(d_zsr, PT.pred.label_is('Descriptor_t') \
+                                                 & ~PT.pred.name_in(reg_name)):
     PT.add_child(p_zsr, node)
 
 def copy_additional_nodes(dist_zone, part_zone):
   """
   """
-  is_container = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t']
-  is_partial   = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
+  is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t'])
 
   #Zone data
   types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ZoneIterativeData_t', 
@@ -90,7 +86,7 @@ def copy_additional_nodes(dist_zone, part_zone):
 
   # Full containers (FS & DD) -- partial containers are created before
   types = ['GridLocation_t', 'Descriptor_t']
-  for d_fs in PT.iter_children_from_predicate(dist_zone, lambda n : is_container(n) and not is_partial(n)):
+  for d_fs in PT.iter_children_from_predicate(dist_zone, is_container & ~PT.pred.IS_SUBSET):
     p_fs = PT.new_child(part_zone, PT.get_name(d_fs), PT.get_label(d_fs), PT.get_value(d_fs))
     for node in PT.get_children(d_fs):
       if PT.get_label(node) in types:
@@ -124,7 +120,7 @@ def copy_additional_nodes(dist_zone, part_zone):
 def generate_related_zsr(dist_zone, part_zone):
   """
   """
-  is_inter_gc = lambda n: PT.get_label(n).startswith('GridConnectivity') and not MT.conv.is_intra_gc(PT.get_name(n))
+  is_inter_gc = MT.pred.is_gc_of_kind(is_intra=False)
   for d_zsr in PT.iter_nodes_from_predicates(dist_zone, 'ZoneSubRegion_t'):
     bc_descriptor = PT.get_child_from_name(d_zsr, 'BCRegionName')
     gc_descriptor = PT.get_child_from_name(d_zsr, 'GridConnectivityRegionName')
@@ -148,53 +144,54 @@ def generate_related_zsr(dist_zone, part_zone):
 def split_original_joins(p_tree):
   """
   """
+  is_initial_gc = PT.pred.label_is('GridConnectivity_t') & MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)
+  is_nomatch_gc = PT.pred.label_is('GridConnectivity_t') & PT.pred.is_gc_of_kind(is_1to1=False)
   for p_base, p_zone in PT.iter_children_from_predicates(p_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     d_zone_name = MT.conv.get_part_prefix(p_zone[0])
     for zone_gc in PT.get_children_from_label(p_zone, 'ZoneGridConnectivity_t'):
       to_remove = list()
       to_append = list()
-      for gc in PT.get_children_from_label(zone_gc, 'GridConnectivity_t'):
-        if PT.GridConnectivity.is1to1(gc) and not MT.conv.is_intra_gc(gc[0]): #Skip part joins or non 1to1 jns
-          pl       = PT.get_child_from_name(gc, 'PointList')[1]
-          pl_d     = PT.get_child_from_name(gc, 'PointListDonor')[1]
-          lngn     = MT.globalnumbering_value(gc, 'Index')
-          donor    = PT.get_child_from_name(gc, 'Donor')[1]
-          # > List of couples (procs, parts) holding the opposite join
-          opposed_parts = np.unique(donor, axis=0)
-          for i_sub_jn, opp_part in enumerate(opposed_parts):
-            join_n = PT.new_GridConnectivity(name       = MT.conv.add_split_suffix(PT.get_name(gc), i_sub_jn),
-                                             donor_name = MT.conv.add_part_suffix(PT.get_value(gc), *opp_part),
-                                             type       = 'Abutting1to1')
+      for gc in PT.get_children_from_predicate(zone_gc, is_initial_gc):
+        pl       = PT.get_child_from_name(gc, 'PointList')[1]
+        pl_d     = PT.get_child_from_name(gc, 'PointListDonor')[1]
+        lngn     = MT.globalnumbering_value(gc, 'Index')
+        donor    = PT.get_child_from_name(gc, 'Donor')[1]
+        # > List of couples (procs, parts) holding the opposite join
+        opposed_parts = np.unique(donor, axis=0)
+        for i_sub_jn, opp_part in enumerate(opposed_parts):
+          join_n = PT.new_GridConnectivity(name       = MT.conv.add_split_suffix(PT.get_name(gc), i_sub_jn),
+                                           donor_name = MT.conv.add_part_suffix(PT.get_value(gc), *opp_part),
+                                           type       = 'Abutting1to1')
 
-            matching_faces_idx = np.all(donor == opp_part, axis=1)
+          matching_faces_idx = np.all(donor == opp_part, axis=1)
 
-            # Extract sub arrays. OK to modify because indexing return a copy
-            sub_pl   = pl  [:,matching_faces_idx]
-            sub_pl_d = pl_d[:,matching_faces_idx]
-            sub_lngn = lngn[matching_faces_idx]
+          # Extract sub arrays. OK to modify because indexing return a copy
+          sub_pl   = pl  [:,matching_faces_idx]
+          sub_pl_d = pl_d[:,matching_faces_idx]
+          sub_lngn = lngn[matching_faces_idx]
 
-            # Sort both pl and pld according to min joinId to ensure that
-            # order is the same
-            cur_path = p_base[0] + '/' + d_zone_name + '/' + gc[0]
-            opp_path = PT.GridConnectivity.ZoneDonorPath(gc, p_base[0]) + '/' + PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
+          # Sort both pl and pld according to min joinId to ensure that
+          # order is the same
+          cur_path = p_base[0] + '/' + d_zone_name + '/' + gc[0]
+          opp_path = PT.GridConnectivity.ZoneDonorPath(gc, p_base[0]) + '/' + PT.get_value(PT.get_child_from_name(gc, 'GridConnectivityDonorName'))
 
-            ref_pl = sub_pl if cur_path < opp_path else sub_pl_d
-            sort_idx = np.argsort(ref_pl[0])
-            sub_pl  [0]   = sub_pl  [0][sort_idx]
-            sub_pl_d[0]   = sub_pl_d[0][sort_idx]
-            sub_lngn      = sub_lngn[sort_idx]
+          ref_pl = sub_pl if cur_path < opp_path else sub_pl_d
+          sort_idx = np.argsort(ref_pl[0])
+          sub_pl  [0]   = sub_pl  [0][sort_idx]
+          sub_pl_d[0]   = sub_pl_d[0][sort_idx]
+          sub_lngn      = sub_lngn[sort_idx]
 
-            PT.new_IndexArray(name='PointList'     , value=sub_pl      , parent=join_n)
-            PT.new_IndexArray(name='PointListDonor', value=sub_pl_d    , parent=join_n)
-            MT.new_GlobalNumbering({'Index' : sub_lngn}, join_n)
-            #Copy decorative nodes
-            skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'GridConnectivityType']
-            for node in PT.get_children(gc):
-              if PT.get_name(node) not in skip_nodes:
-                PT.add_child(join_n, node)
-            to_append.append(join_n)
+          PT.new_IndexArray(name='PointList'     , value=sub_pl      , parent=join_n)
+          PT.new_IndexArray(name='PointListDonor', value=sub_pl_d    , parent=join_n)
+          MT.new_GlobalNumbering({'Index' : sub_lngn}, join_n)
+          #Copy decorative nodes
+          skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'GridConnectivityType']
+          for node in PT.get_children(gc):
+            if PT.get_name(node) not in skip_nodes:
+              PT.add_child(join_n, node)
+          to_append.append(join_n)
 
-          to_remove.append(PT.get_name(gc))
+        to_remove.append(PT.get_name(gc))
       for node in to_remove:
         PT.rm_children_from_name(zone_gc, node)
       for node in to_append: #Append everything at the end; otherwise we may find a new jn when looking for an old one
@@ -203,16 +200,15 @@ def split_original_joins(p_tree):
       # Now deal non 1to1 JNs : we are unable to cut it properly, but we still
       # need to rename it to have correct naming conventions for other functions (see #165)
       # We use .P?.N? as donor name suffix to emphasize the fact that the join is not really splitted
-      for gc in PT.get_children_from_predicate(zone_gc, lambda n : PT.get_label(n) == 'GridConnectivity_t' and not PT.GridConnectivity.is1to1(n)):
+      for gc in PT.get_children_from_predicate(zone_gc, is_nomatch_gc):
         PT.update_node(gc, name=PT.get_name(gc) + '.0', value=PT.get_value(gc) + '.P?.N?')
 
 def update_gc_donor_name(part_tree, comm):
   """
   Update or add the GridConnectivityDonorName name afted join splitting
   """
-  is_1to1_gc    = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                            and PT.GridConnectivity.is1to1(n)
-  is_initial_gc = lambda n: is_1to1_gc(n) and not MT.conv.is_intra_gc(PT.get_name(n))
+  is_1to1_gc    = PT.pred.is_gc_of_kind(is_1to1=True)
+  is_initial_gc = MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)
   send_l = [list() for n in range(comm.Get_size())]
   for p_base, p_zone in PT.iter_children_from_predicates(part_tree, 'CGNSBase_t/Zone_t', ancestors=True):
     for gc in PT.iter_children_from_predicates(p_zone, ['ZoneGridConnectivity_t', is_initial_gc]):
@@ -241,13 +237,13 @@ def update_gc_donor_name(part_tree, comm):
         PT.new_child(gc, 'GridConnectivityDonorName', 'Descriptor_t', candidate_jns[0])
 
 def hybrid_jns_as_idx(part_tree):
-  for s_zone in PT.get_nodes_from_predicate(part_tree, is_zone_s, depth=2):
+  for s_zone in PT.get_nodes_from_predicate(part_tree, PT.pred.is_zone_of_kind('S'), depth=2):
     pl_as_idx(s_zone, ['ZoneGridConnectivity_t', is_initial_match])
 
 def hybrid_jns_as_ijk(part_tree, comm):
   gc_predicate = ['ZoneGridConnectivity_t', is_initial_match]
   zone_s_data = {}
-  for zone_s_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', is_zone_s]):
+  for zone_s_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', PT.pred.is_zone_of_kind('S')]):
     zone_s = PT.get_node_from_path(part_tree, zone_s_path)
     pl_as_ijk(zone_s, gc_predicate)
     jn_dict = dict()
@@ -256,7 +252,7 @@ def hybrid_jns_as_ijk(part_tree, comm):
     zone_s_data[zone_s_path] = (PT.Zone.CellSize(zone_s), jn_dict)
   zone_s_data_all = comm.allgather(zone_s_data)
 
-  for zone_u_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', is_zone_u]):
+  for zone_u_path in PT.predicates_to_paths(part_tree, ['CGNSBase_t', PT.pred.is_zone_of_kind('U')]):
     basename = PT.utils.path_head(zone_u_path, 1)
     zone_u = PT.get_node_from_path(part_tree, zone_u_path)
     for gc in PT.get_children_from_predicates(zone_u, gc_predicate):

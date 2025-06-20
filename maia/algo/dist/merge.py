@@ -5,6 +5,7 @@ from Pypdm import Pypdm as PDM
 from maia.typing import *
 from maia.pytree.typing import Predicates
 import maia.pytree        as PT
+import maia.pytree.pred   as PTp
 import maia.pytree.maia   as MT
 
 import maia
@@ -16,6 +17,8 @@ from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
+
+HAS_POINTLIST = PTp.has_child_of_name('PointList')
 
 def _append_or_create(d, key, val):
   try:
@@ -46,7 +49,7 @@ def merge_zones_from_family(dist_tree: CGNSDistTree,
 
   Args:
     dist_tree (CGNSDistTree): Input distributed tree
-    family_name (str)       : Name of the family (read from ``FamilyName_t`` node)
+    family_name (str)       : Name of the family (read from ``(Additional)FamilyName_t`` node)
         used to select the zones.
     comm (MPIComm)          : MPI communicator
     kwargs: any argument of :func:`merge_zones`, excepted output_path
@@ -62,11 +65,8 @@ def merge_zones_from_family(dist_tree: CGNSDistTree,
         :dedent: 2
   """
   MT.check_cgns_dist_tree(dist_tree)
-  match_fam = lambda m: PT.get_child_from_label(m, 'FamilyName_t') is not None and \
-                        PT.get_str_value(PT.find_child_from_label(m, 'FamilyName_t')) == family_name
 
-  is_zone_with_fam = lambda n: PT.get_label(n) == 'Zone_t' and match_fam(n)
-
+  is_zone_with_fam = PTp.label_is('Zone_t') & PTp.belongs_to_family(family_name)
   zone_paths = PT.predicates_to_paths(dist_tree, ['CGNSBase_t', is_zone_with_fam])
   if zone_paths:
     base_name = zone_paths[0].split('/')[0]
@@ -224,7 +224,7 @@ def merge_zones(dist_tree: CGNSDistTree,
     GN.concatenate_jns(dist_tree, comm)
 
   # Transfert some nodes on the merged zone, only if they exist everywhere and have same value
-  merge_me = lambda n: PT.get_label(n) in ['FamilyName_t', 'AdditionalFamilyName_t']
+  merge_me = PTp.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
   if len(zone_paths) > 0:
     zone = PT.find_node_from_path(masked_tree, zone_paths[0])
     common = {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
@@ -272,16 +272,11 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
 
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
 
-  is_perio = lambda n : PT.get_child_from_label(n, 'GridConnectivityProperty_t') is not None
-  face_gc_query:Predicates = ['ZoneGridConnectivity_t', \
-                              lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-                              and PT.Subset.GridLocation(n) == 'FaceCenter']
-  vtx_gc_query:Predicates = ['ZoneGridConnectivity_t', \
-                             lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] 
-                             and PT.Subset.GridLocation(n) == 'Vertex']
+  face_gc_query:Predicates = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('FaceCenter')]
+  vtx_gc_query:Predicates  = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('Vertex')]
 
   # Move non 1to1 GC_t to ZoneBC since they have no PointListDonor
-  is_not_1to1 = lambda n : PT.get_label(n) == 'GridConnectivity_t' and not PT.GridConnectivity.is1to1(n)
+  is_not_1to1 = PTp.label_is('GridConnectivity_t') & PTp.is_gc_of_kind(is_1to1=False)
   for zone_path in zone_paths:
     zone = PT.find_node_from_path(tree, zone_path)
     for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
@@ -310,8 +305,8 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
     zone_vl = PT.find_node_from_path(tree_vl, zone_path)
     for zgc in PT.get_children_from_label(zone, 'ZoneGridConnectivity_t'):
       zgc_vl = PT.find_child_from_name(zone_vl, PT.get_name(zgc))
-      for gc_vl in PT.get_children_from_predicate(zgc_vl, lambda n: PT.get_label(n) == 'GridConnectivity_t' \
-          and PT.Subset.GridLocation(n) == 'Vertex'):
+      for gc_vl in PT.get_children_from_predicate(zgc_vl, PTp.label_is('GridConnectivity_t') \
+          & PTp.has_location('Vertex')):
         PT.add_child(zgc, gc_vl)
   
   # Collect interface data
@@ -325,7 +320,7 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
     for zgc, gc in PT.get_children_from_predicates(zone, face_gc_query, ancestors=True):
       opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, base_name)
       if opp_zone_path in zone_to_id:
-        if is_perio(gc):
+        if PT.GridConnectivity.isperiodic(gc):
           PT.new_node('__maia_jn_update__', 'Descriptor_t', value=str(zone_to_id[opp_zone_path]), parent=gc)
         else:
           PT.new_node('__maia_merge__', 'Descriptor_t', parent=gc)
@@ -394,16 +389,15 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   pass
 
 
-  loc_without_pl = lambda n, loc : PT.Subset.GridLocation(n) == loc and PT.get_node_from_name(n, 'PointList') is None
   # Merge all mesh data
   vtx_data_queries = [
                       ['GridCoordinates_t'],
-                      [lambda n: PT.get_label(n) == 'FlowSolution_t' and loc_without_pl(n, 'Vertex')],
-                      [lambda n: PT.get_label(n) == 'DiscreteData_t' and loc_without_pl(n, 'Vertex')],
+                      [PTp.label_is('FlowSolution_t') & PTp.has_location('Vertex') & ~HAS_POINTLIST],
+                      [PTp.label_is('DiscreteData_t') & PTp.has_location('Vertex') & ~HAS_POINTLIST],
                      ]
   cell_data_queries = [
-                       [lambda n: PT.get_label(n) == 'FlowSolution_t' and loc_without_pl(n, 'CellCenter')],
-                       [lambda n: PT.get_label(n) == 'DiscreteData_t' and loc_without_pl(n, 'CellCenter')],
+                       [PTp.label_is('FlowSolution_t') & PTp.has_location('CellCenter') & ~HAS_POINTLIST],
+                       [PTp.label_is('DiscreteData_t') & PTp.has_location('CellCenter') & ~HAS_POINTLIST],
                       ]
   _merge_allmesh_data(mbm_vtx,  zones, merged_zone, vtx_data_queries)
   _merge_allmesh_data(mbm_cell, zones, merged_zone, cell_data_queries)
@@ -492,8 +486,8 @@ def pre_merge_families_per_zone(zone, query, comm):
   """ Pre merge the subset according to their family, for a given zone.
   This is because merge_pl_data only support one node per zone after.
   """
-  bcds_pl    = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, 'PointList') is not None
-  bcds_no_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and PT.get_child_from_name(n, 'PointList') is None
+  bcds_pl    = PTp.label_is('BCDataSet_t') &  HAS_POINTLIST
+  bcds_no_pl = PTp.label_is('BCDataSet_t') & ~HAS_POINTLIST
   fam_to_merge = {}
   for node_list in PT.get_children_from_predicates(zone, query, ancestors=True):
     node = node_list[-1]
@@ -537,21 +531,19 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   Merging by name is not performed for GridConnectivity_t
   """
   #In each case, we need to collect all the nodes, since some can be absent of a given zone
-  has_pl = lambda n : PT.get_child_from_name(n, 'PointList') is not None
-  jn_to_keep = lambda n : PT.get_label(n) == 'GridConnectivity_t' and PT.Subset.GridLocation(n) == 'FaceCenter'\
-      and PT.get_child_from_name(n, '__maia_merge__') is None
+  jn_to_keep = PTp.label_is('GridConnectivity_t') & PTp.has_location('FaceCenter') & ~PTp.has_child_of_name('__maia_merge__')
 
   #Order : FlowSolution/DiscreteData/ZoneSubRegion, BC, BCDataSet, GridConnectivity_t, 
   all_subset_queries = [
-      [lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'] and has_pl(n)],
+      [PTp.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']) & HAS_POINTLIST],
       ['ZoneBC_t', 'BC_t'],
-      ['ZoneBC_t', 'BC_t', lambda n : PT.get_label(n) == 'BCDataSet_t' and has_pl(n)],
+      ['ZoneBC_t', 'BC_t', PTp.label_is('BCDataSet_t') & HAS_POINTLIST],
       ['ZoneGridConnectivity_t', jn_to_keep]
       ]
 
   all_data_queries = [
       ['DataArray_t'],
-      [lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_pl(n), 'BCData_t', 'DataArray_t'],
+      [PTp.label_is('BCDataSet_t') & ~HAS_POINTLIST, 'BCData_t', 'DataArray_t'],
       ['BCData_t', 'DataArray_t'],
       ['PointListDonor'],
       ]
@@ -745,7 +737,7 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
       PT.add_child(merged_node, sub_node)
 
   # Add these nodes only if same name / value on all input nodes
-  merge_me = lambda n : PT.get_label(n) in ['AdditionalFamilyName_t', 'FamilyName_t', 'Descriptor_t']
+  merge_me = PTp.label_in(['AdditionalFamilyName_t', 'FamilyName_t', 'Descriptor_t'])
   common = {(PT.get_name(n), PT.get_label(n), PT.get_value(n)) \
              for n in PT.iter_children_from_predicate(ref_node, merge_me)}
   for subset_node in [x for x in subset_nodes if x is not None]:
@@ -780,8 +772,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     PT.new_DataArray('PEDomain',  dom_id * np.ones_like(pe_bck, dtype=np.int32), parent=ngon_node)
 
   # First, we need to update the PE node to include cells of opposite zone
-  query = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                and PT.get_child_from_name(n, '__maia_merge__') is not None
+  query = PT.pred.IS_GC & PTp.has_child_of_name('__maia_merge__')
 
   for zone_path_send in zone_paths:
     base_n = zone_path_send.split('/')[0]

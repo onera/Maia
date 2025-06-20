@@ -130,10 +130,9 @@ def load_grid_connectivity_property(filename, tree):
   """
   # Prepare paths
   zgc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t'
-  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
   gc_prop_paths = []
   for base,zone,zone_gc in PT.iter_children_from_predicates(tree, zgc_t_path, ancestors=True):
-    for gc in PT.iter_children_from_predicate(zone_gc, is_gc):
+    for gc in PT.iter_children_from_predicate(zone_gc, PT.pred.IS_GC):
       gc_prop = PT.get_child_from_label(gc, 'GridConnectivityProperty_t')
       if gc_prop is not None:
         gc_prop_path = '/'.join([base[0], zone[0], zone_gc[0], gc[0], gc_prop[0]])

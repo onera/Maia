@@ -6,7 +6,7 @@ from   functools import partial
 from maia.pytree.typing import *
 from maia.pytree.meta   import begin_api_export, end_api_export
 
-from maia.pytree.predicate import match_name, match_label, match_value, match_name_label
+from maia.pytree.pred import name_matches, label_matches, value_is
 
 from . import walkers_api as WAPI
 
@@ -65,7 +65,7 @@ def _overload_predicate(function, suffix, predicate_signature):
       def _specialized(root, *args, **kwargs):
         assert len(args) == 1, "Specialized versions of from_predicates accepts only predicate args"
         npredicate  = len(args[0])
-        predicates = [partial(predicate, **{nargs[0] : args[0][i]}) for i in range(npredicate)]
+        predicates = [predicate(**{nargs[0] : args[0][i]}) for i in range(npredicate)]
         return function(root, predicates, **kwargs)
     else:
       def _specialized(root, *args, **kwargs):
@@ -73,7 +73,7 @@ def _overload_predicate(function, suffix, predicate_signature):
         #At execution, replace the generic predicate with the specialized predicate function and 
         # pass runtime arguments as named arguments to the specialized predicate
         # Other kwargs are directly passed to the specialized function
-        return function(root, partial(predicate, **pkwargs), **kwargs)
+        return function(root, predicate(**pkwargs), **kwargs)
 
     return _specialized
 
@@ -141,6 +141,8 @@ def _generate_functions(function, maxdepth, child, easypredicates):
 
 
 # Run generation for Specialization of legacy functions
+def match_name_label(name, label):
+  return name_matches(name) & label_matches(label)
 
 #Generation for Node(s)Walker(s) based funcs
 _base_functions = [
@@ -154,10 +156,10 @@ _generated = {}
 for _base_function in _base_functions:
   #Todo : raise DeprecationWarning
   _easypredicates = {
-    'Name' : (match_name,  ('name',)),
-    'Value': (match_value, ('value',)),
-    'Label': (match_label, ('label',)),
-    'Type' : (match_label, ('label',)),
+    'Name' : (name_matches,  ('name',)),
+    'Value': (value_is, ('value',)),
+    'Label': (label_matches, ('label',)),
+    'Type' : (label_matches, ('label',)),
     'NameAndType'  : (match_name_label,  ('name', 'label',)),
     'NameAndLabel' : (match_name_label,  ('name', 'label',)),
   }

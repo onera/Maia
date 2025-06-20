@@ -96,7 +96,7 @@ Base CGNSBase_t [3,3]:
         pl = PT.get_child_from_name(bcds, 'PointList')
         if pl is not None:
           PT.set_value(pl, np.ones((1,dn), dtype=int, order='F'))
-        is_empty_da = lambda n : PT.get_label(n) == 'DataArray_t' and PT.get_value(n) is None
+        is_empty_da = PT.pred.label_is('DataArray_t') & PT.pred.value_is(None)
         for array in PT.get_nodes_from_predicates(bc, ['BCData_t', is_empty_da]):
           PT.set_value(array, np.empty(dn))
 

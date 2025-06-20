@@ -90,7 +90,7 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Subset.n_elem
   ~maia.pytree.Subset.normal_axis
 
-**Miscellaneous**
+**BCDataSet**
 
 .. autosummary::
   :nosignatures:

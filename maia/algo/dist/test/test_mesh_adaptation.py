@@ -139,7 +139,7 @@ def test_adapt_with_feflo(comm, multi_elt, custom_dir):
   assert PT.get_name(adpt_zone) == 'MyZone'
   assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(zone)
 
-  is_cell_bc = lambda n :PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n) == "CellCenter"
+  is_cell_bc = PT.pred.is_bc_of_location('CellCenter')
   if multi_elt:
     assert len(PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc))==0
   else:

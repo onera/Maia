@@ -62,7 +62,7 @@ Zone.P2.N1 Zone_t:
     assert (PT.get_label(PT.get_node_from_path(dist_zone, 'ZBC/BCB')) == "BC_t")
 
     dist_zone = PT.new_Zone('Zone')
-    queries = ["ZoneBC_t", lambda n : PT.get_label(n) == "BC_t" and PT.get_name(n) != "BCA"]
+    queries = ["ZoneBC_t", PT.pred.label_is("BC_t") & ~PT.pred.name_is("BCA")]
     DFP.discover_nodes_from_matching(dist_zone, part_zones, queries, comm)
     assert (PT.get_node_from_path(dist_zone, 'ZBC/BCA') == None)
     assert (PT.get_label(PT.get_node_from_path(dist_zone, 'ZBC/BCB')) == "BC_t")
@@ -78,7 +78,7 @@ Zone.P2.N1 Zone_t:
     assert PT.get_node_from_path(dist_node, 'BCB') is not None
 
     dist_node = PT.new_node('SomeName', 'UserDefinedData_t')
-    queries = [lambda n : PT.get_label(n) == "BC_t" and PT.get_name(n) != "BCA"]
+    queries = [PT.pred.label_is("BC_t") & ~PT.pred.name_is("BCA")]
     DFP.discover_nodes_from_matching(dist_node, part_nodes, queries, comm)
     assert PT.get_node_from_path(dist_node, 'BCA') is None
     assert (PT.get_label(PT.get_node_from_path(dist_node, 'BCB')) == "BC_t")
@@ -122,7 +122,7 @@ Zone.P2.N1 Zone_t:
 
     # get_value and search with predicate as lambda
     dist_zone = PT.new_Zone('Zone')
-    queries = ["ZoneBC_t", lambda n : PT.get_label(n) == "BC_t" and PT.get_name(n) != "BCA"]
+    queries = ["ZoneBC_t", PT.pred.label_is("BC_t") & ~PT.pred.name_is("BCA")]
     DFP.discover_nodes_from_matching(dist_zone, PT.get_all_Zone_t(part_tree), queries, comm, get_value='all')
     assert PT.get_node_from_path(dist_zone, 'BCA') is None
     assert PT.get_value(PT.get_node_from_path(dist_zone, 'ZBC')) == 'test'
@@ -140,7 +140,7 @@ Zone.P2.N1 Zone_t:
     assert (PT.get_label(PT.get_node_from_path(dist_zone, 'ZBC/BCB/GridLocation')) == "GridLocation_t")
 
     dist_zone = PT.new_Zone('Zone')
-    queries = ["ZoneBC_t", lambda n : PT.get_label(n) == "BC_t" and PT.get_name(n) != "BCA"]
+    queries = ["ZoneBC_t", PT.pred.label_is("BC_t") & ~PT.pred.name_is("BCA")]
     DFP.discover_nodes_from_matching(dist_zone, PT.get_all_Zone_t(part_tree), queries, comm,
                                       child_list=['FamilyName_t', 'GridLocation'])
     assert (PT.get_value(PT.get_node_from_path(dist_zone, 'ZBC/BCB/GridLocation')) == "FaceCenter")
@@ -151,7 +151,7 @@ Zone.P2.N1 Zone_t:
 
     # Exclude from node name
     dist_zone = PT.new_Zone('Zone')
-    queries = ["ZoneBC_t", lambda n : PT.get_label(n) == "BC_t" and not 'A' in PT.get_name(n)]
+    queries = ["ZoneBC_t", PT.pred.label_is("BC_t") & ~PT.pred.name_matches("*A*")]
     DFP.discover_nodes_from_matching(dist_zone, PT.get_all_Zone_t(part_tree), queries, comm,
                                       child_list=['FamilyName_t', 'GridLocation'])
     assert PT.get_node_from_path(dist_zone, 'ZBC/BCA') is None
@@ -159,7 +159,7 @@ Zone.P2.N1 Zone_t:
 
     # Exclude from node content
     dist_zone = PT.new_Zone('Zone')
-    queries = ["ZoneBC_t", lambda n : PT.get_label(n) == "BC_t" and PT.get_child_from_label(n, 'FamilyName_t') is not None]
+    queries = ["ZoneBC_t", PT.pred.label_is('BC_t') & PT.pred.has_child_of_label('FamilyName_t')]
     DFP.discover_nodes_from_matching(dist_zone, PT.get_all_Zone_t(part_tree), queries, comm,
                                       child_list=['FamilyName_t', 'GridLocation'])
     assert PT.get_node_from_path(dist_zone, 'ZBC/BCA') is not None
@@ -497,7 +497,7 @@ def test_recover_dist_tree_s(with_fields, comm):
     assert PT.get_node_from_label(dist_tree, 'FlowSolution_t') is None
 
 
-  PT.rm_nodes_from_predicate(dist_tree, lambda n : PT.get_label(n) in ['BCDataSet_t', 'FlowSolution_t'])
+  PT.rm_nodes_from_predicate(dist_tree, PT.pred.label_in(['BCDataSet_t', 'FlowSolution_t']))
   assert PT.is_same_tree(dist_tree_bck, dist_tree, type_tol=True) #Recover create I4 zones
 
 @pytest_parallel.mark.parallel(3)
@@ -545,7 +545,7 @@ def test_recover_failure(comm):
     :CGNS#GlobalNumbering UserDefinedData_t:
   """)
   if comm.rank == 1:
-    PT.rm_nodes_from_predicate(ptree, lambda n : PT.get_label(n) in ['Family_t', 'Zone_t'])
+    PT.rm_nodes_from_predicate(ptree, PT.pred.label_in(['Family_t', 'Zone_t']))
 
   with pytest.raises(RuntimeError):
     maia.factory.recover_dist_tree(ptree, comm)

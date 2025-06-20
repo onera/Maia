@@ -60,8 +60,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
         global_arrays_list = PT.get_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
         for bcdata in PT.iter_children_from_label(bcds, 'BCData_t'):
           bcdata_path = bcds_path + "/" + bcdata[0]
-          for data_array in PT.iter_children_from_predicate(bcdata, lambda n : PT.get_label(n) == 'DataArray_t' \
-                                                                               and not PT.get_name(n).endswith('#Size')):
+          for data_array in PT.iter_children_from_predicate(bcdata, PT.pred.label_is('DataArray_t') & ~PT.pred.name_matches('*#Size')):
             path = bcdata_path+"/"+data_array[0]
             _path = PT.utils.path_tail(path, -2) if distrib_bcds_n is not None else PT.utils.path_tail(path, -3)
             # BCData can be either local (size == N) or global (size == 1). If they are global,
@@ -95,7 +94,7 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   """
   distrib_vtx  = MT.distribution_value(zone, 'Vertex')
   distrib_cell = MT.distribution_value(zone, 'Cell')
-  is_fs_like = lambda n : PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t']
+  is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t'])
   for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)
     grid_location = PT.Subset.GridLocation(flow_solution)

@@ -52,7 +52,7 @@ def extract_elmt_connectivity_from_pl(zone, elmt_nodes, pl, comm):
   return elmt_conn_idx, elmt_conn[0]
 
 def extract_bcs_from_pl(zone_bc_n, pl, distri_pl, comm,
-                        bc_predicate=lambda n: PT.get_label(n)=='BC_t'):
+                        bc_predicate=PT.pred.label_is('BC_t')):
 
   bc_pls = [PT.get_child_from_name(bc_n, 'PointList')[1][0] \
             for bc_n in PT.iter_children_from_predicate(zone_bc_n, bc_predicate)]
@@ -114,7 +114,7 @@ def extract_zone_edges(dist_zone, pl, comm):
   zone_bc_n  = PT.get_child_from_label(dist_zone, 'ZoneBC_t')
   if zone_bc_n is not None:
     edge_zone_bc_n = extract_bcs_from_pl(zone_bc_n, pl, distri_bar, comm,
-                      bc_predicate=PT.predicate.is_bc_of_loc('EdgeCenter'))
+                      bc_predicate=PT.pred.is_bc_of_location('EdgeCenter'))
     PT.add_child(edge_zone, edge_zone_bc_n)
 
   MT.new_Distribution({'Vertex': distri_vtx, 'Cell': distri_bar} , parent=edge_zone)

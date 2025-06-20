@@ -60,8 +60,7 @@ def transform_affine_zone(zone: CGNSTree,
   # --> This leads to M_gcnew = M_tr * M_gc * (M_tr)^-1
   transf_mat = np_utils._transform_to_homogeneous_matrix(translation_np, rotation_center_np, rotation_angle_np)
   transf_mat_inv = np.linalg.inv(transf_mat)
-  is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+  for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
     if PT.GridConnectivity.isperiodic(gc):
       gc_center = PT.find_node_from_name(gc, 'RotationCenter')
       gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
@@ -160,7 +159,7 @@ def transform_affine(t: CGNSTree,
   for zone in PT.iter_all_Zone_t(t):
     any_gc_n = PT.find_child_from_label(zone, 'GridCoordinates_t')
     cart_names = ['CoordinateX', 'CoordinateY' ,'CoordinateZ']
-    phy_dim = len(PT.get_children_from_predicate(any_gc_n, lambda n : PT.get_name(n) in cart_names))
+    phy_dim = len(PT.get_children_from_predicate(any_gc_n, PT.pred.name_in(cart_names)))
     assert phy_dim in [2,3]
     if rotation_center is None:
       rotation_center = [0.] * phy_dim
@@ -169,7 +168,7 @@ def transform_affine(t: CGNSTree,
     if translation is None:
       translation = [0.] * phy_dim
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
-    any_coord = PT.find_child_from_predicate(any_gc_n, lambda n : PT.get_name(n) in cart_names)
+    any_coord = PT.find_child_from_predicate(any_gc_n, PT.pred.name_in(cart_names))
     vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
     transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
 
@@ -198,7 +197,7 @@ def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
   """
   scaling = 3 * [s] if isinstance(s, (int, float)) else s 
   fields_found = False
-  is_container = lambda n: PT.get_label(n) in ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t']
+  is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
   for zone in PT.iter_all_Zone_t(t):
     for grid_co in PT.get_children_from_label(zone, 'GridCoordinates_t'):
       for idir, dir in enumerate(['X', 'Y', 'Z']):
@@ -375,8 +374,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
           for i, val in enumerate(cyl_values):
             PT.update_node(ordered_fields[i], f'{basename}{cyl_suffix[i]}', value=val)
 
-    is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       if PT.GridConnectivity.isperiodic(gc):
         gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.find_node_from_name(gc, 'Translation')
@@ -469,8 +467,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
           for i, idx in enumerate(idx_order):
             PT.update_node(fields_n[idx], f'{basename}{coords_suffix[i]}', value=cart_values[idx])
 
-    is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       if PT.GridConnectivity.isperiodic(gc):
         gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.find_node_from_name(gc, 'Translation')
@@ -575,8 +572,7 @@ def auxiliary_coords_system(t: CGNSTree,
     coords_n = PT.Zone.coordinates(zone)
     phy_dim = 2 if coords_n[2] is None else 3
     
-    is_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', is_gc]):
+    for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       if PT.GridConnectivity.isperiodic(gc):
         gc_center = PT.find_node_from_name(gc, 'RotationCenter')
         gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')

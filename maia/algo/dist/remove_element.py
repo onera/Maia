@@ -131,7 +131,7 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   elt_size   = PT.Element.NVtx(elt_n)
   elt_offset = PT.Element.Range(elt_n)[0]
 
-  is_elt_bc = lambda n: PT.get_label(n)=='BC_t' and PT.Subset.GridLocation(n)==DIM_TO_LOC[elt_dim]
+  is_elt_bc = PT.pred.is_bc_of_location(DIM_TO_LOC[elt_dim])
 
   ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec   = PT.get_value(ec_n)

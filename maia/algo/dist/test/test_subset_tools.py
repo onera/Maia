@@ -29,7 +29,7 @@ def test_vtx_ids_to_face_ids_ngon(comm):
 def test_vtx_ids_to_face_ids_elmt(comm):
   tree = dcube_nodal_generate(3, 1., [0,0,0], 'HEXA_8', comm)
   zone = PT.get_all_Zone_t(tree)[0]
-  quad = PT.get_node_from_predicate(zone, lambda n: PT.get_label(n)=='Elements_t' and PT.Element.CGNSName(n)=='QUAD_4')
+  quad = PT.get_node_from_predicate(zone, PT.pred.is_element_of_type('QUAD_4'))
   if comm.Get_rank() == 0:
     vtx_ids = np.array([2,4,1,5 , 13,16,22,25], pdm_dtype)
     expected_face_ids = np.array([1, 2, 12], pdm_dtype)

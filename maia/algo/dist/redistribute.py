@@ -9,7 +9,6 @@ from maia.pytree.typing import Predicates
 
 from maia.io.distribution_tree   import interpret_policy
 
-
 # ---------------------------------------------------------------------------------------
 def redistribute_pl_node(node: CGNSTree,
                          distribution: Callable[[int, MPIComm], NDArray],
@@ -42,8 +41,7 @@ def redistribute_pl_node(node: CGNSTree,
   # BCData_t arrays case : can be scalar or vector
   global_data_node = PT.get_child_from_name(distri_n, 'BCDataGlobal')
   global_data_list = PT.get_str_value(global_data_node).split('\n') if global_data_node else []
-  has_subset = lambda n : PT.get_child_from_name(n, 'PointList') is not None or PT.get_child_from_name(n, 'PointRange') is not None
-  bcds_without_pl = lambda n : PT.get_label(n) == 'BCDataSet_t' and not has_subset(n)
+  bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~PT.pred.IS_SUBSET
   bcds_without_pl_query:Predicates = [bcds_without_pl, 'BCData_t', 'DataArray_t']
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_path in PT.predicates_to_paths(node, query):
@@ -53,7 +51,7 @@ def redistribute_pl_node(node: CGNSTree,
         PT.set_value(array_n, MTP.block_to_block(array, node_distrib, new_distrib, comm))
       
   #Additionnal treatement for subnodes with PL (eg bcdataset)
-  has_pl = lambda n : PT.get_name(n) not in ['PointList', 'PointRange'] and has_subset(n)
+  has_pl = ~PT.pred.name_in(['PointList', 'PointRange']) & PT.pred.IS_SUBSET
   for child in [node for node in PT.get_children(node) if has_pl(node)]:
     redistribute_pl_node(child, distribution, comm)
 
@@ -212,8 +210,7 @@ def redistribute_zone(zone: CGNSTree,
     redistribute_pl_node(bc, distribution, comm)
 
   # > GCs
-  gc_pred = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-  for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', gc_pred]):
+  for gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
     redistribute_pl_node(gc, distribution, comm)
 
     

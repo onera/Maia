@@ -286,10 +286,10 @@ def test_bc_name_api(cgns_name, bc_loc, comm):
     assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 9
 
   if len(zone_n) > 0:
-    cnt = PT.get_node_from_label(extracted_tree, 'FlowSolution_t')
+    cnt = PT.find_node_from_label(extracted_tree, 'FlowSolution_t')
     expt_loc  = "Vertex" if bc_loc == 'Vtx' else 'CellCenter'
     assert PT.Subset.GridLocation(cnt) == expt_loc
-    assert PT.get_child_from_predicate(cnt, lambda n : PT.get_name(n) in ['PointList', 'PointRange']) is None
+    assert PT.get_child_from_predicate(cnt, PT.pred.name_in(['PointList', 'PointRange'])) is None
 
 
 @pytest_parallel.mark.parallel(3)
@@ -351,7 +351,7 @@ def test_from_fam_zsr_api(valid, comm):
 
 @pytest_parallel.mark.parallel(1)
 def test_void_extraction(comm):
-  is_empty_tree = lambda t: PT.get_node_from_label(t, 'CGNSBase_t') is None
+  is_empty_tree = ~PT.pred.has_child_of_label('CGNSBase_t')
 
   dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
@@ -373,3 +373,7 @@ def test_void_extraction(comm):
   extractor.exchange_fields(['Geometry_3d'])
   assert is_empty_tree(extractor.get_extract_part_tree())
   assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs
+
+if __name__ == '__main__':
+  from mpi4py.MPI import COMM_WORLD
+  test_from_fam_zsr_api(True, COMM_WORLD)

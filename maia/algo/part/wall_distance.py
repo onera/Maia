@@ -61,9 +61,8 @@ def detect_wall_families(tree: CGNSTree, bcwalls: List[str] = BC_WALLS) -> List[
   """
   Return the list of Families having a FamilyBC_t node whose value is in bcwalls list
   """
-  fam_query = lambda n : PT.get_label(n) == 'Family_t' and \
-                         PT.get_child_from_label(n, 'FamilyBC_t') is not None and \
-                         PT.get_value(PT.find_child_from_label(n, 'FamilyBC_t')) in bcwalls
+  IS_WALL_FAM = PT.pred.NodePredicate(lambda n : PT.get_value(PT.find_child_from_label(n, 'FamilyBC_t')) in bcwalls)
+  fam_query = PT.pred.label_is('Family_t') & PT.pred.has_child_of_label('FamilyBC_t') & IS_WALL_FAM
   return [PT.get_name(family) for family in PT.iter_children_from_predicates(tree, ['CGNSBase_t', fam_query])]
 
 
@@ -344,8 +343,7 @@ class WallDistance:
     
         
     if self.method == "cloud":
-      is_gc_perio = lambda n: PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t']
-      gc_predicate = ['ZoneGridConnectivity_t', is_gc_perio]
+      gc_predicate = ['ZoneGridConnectivity_t', PT.pred.IS_GC]
       
       # Recover existing periodicities
       for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
@@ -505,8 +503,7 @@ def compute_wall_distance(part_tree: CGNSPartTree,
   # Retrieve Wall Families (warning -- if we have a Family_t appearing under two bases 
   # with the same name, it can be wrongly selected)
   wall_bc_families = detect_wall_families(part_tree)
-  is_wall_bc = lambda n : PT.get_value(n) in BC_WALLS or \
-             any([PT.predicate.belongs_to_family(n, wall_bc_family) for wall_bc_family in wall_bc_families])
+  is_wall_bc = PT.pred.value_in(BC_WALLS) | PT.pred.any([PT.pred.belongs_to_family(family) for family in wall_bc_families])
 
   walldist = WallDistance(part_tree, is_wall_bc, comm, point_cloud=point_cloud, out_fs_name=out_fs_name, **options)
   out = walldist.compute()

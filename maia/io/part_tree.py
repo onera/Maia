@@ -55,8 +55,7 @@ def enforce_maia_naming(part_tree: CGNSPartTree,
     PT.set_label(gc, 'GridConnectivity_t')
 
   # Update JNs name for internal joins
-  is_intra_gc = lambda n : PT.get_label(n) in ['GridConnectivity_t', 'GridConnectivity1to1_t'] \
-                 and MT.conv.is_intra_gc(PT.get_name(n))
+  is_intra_gc = MT.pred.is_gc_of_kind(is_intra=True)
   gc_predicates = ['CGNSBase_t', 'Zone_t', 'ZoneGridConnectivity_t', is_intra_gc]
   for _, zone, _, gc in PT.get_children_from_predicates(part_tree, gc_predicates, ancestors=True):
     cur_proc, cur_part = MT.conv.get_part_suffix(PT.get_name(zone))
@@ -122,7 +121,7 @@ def file_to_part_tree(filename: Union[str, PathLike],
     if comm.Get_rank() == 0:
       dont_load_zone = lambda N, labels, S : labels[-1] == 'Zone_t' or not 'Zone_t' in labels
       size_tree = load_tree_partial(filename, dont_load_zone)
-      PT.rm_nodes_from_predicate(size_tree, lambda n : PT.get_label(n) == 'DataArray_t' and PT.get_name(n).endswith('#Size'))
+      PT.rm_nodes_from_predicate(size_tree, PT.pred.label_is('DataArray_t') & PT.pred.name_matches('*#Size'))
     else:
       size_tree = None
 
@@ -153,7 +152,7 @@ def file_to_part_tree(filename: Union[str, PathLike],
     # Remove zones not going to this rank
     for base in PT.get_children_from_label(tree, 'CGNSBase_t'):
       _zones_to_read = [PTu.path_tail(zpath) for zpath in zones_to_read if PTu.path_head(zpath) == PT.get_name(base)]
-      PT.rm_children_from_predicate(base, lambda n: PT.get_label(n) == 'Zone_t' and PT.get_name(n) not in _zones_to_read)
+      PT.rm_children_from_predicate(base, PT.pred.label_is('Zone_t') & ~PT.pred.name_in(_zones_to_read))
 
     # Now load full data of affected zones
     fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
@@ -211,10 +210,10 @@ def part_tree_to_file(part_tree: CGNSPartTree,
   subfilename = base_name + f'_sub_{rank}' + extension
 
   # Get meta data nodes, this allows custom nodes located at tree top level (see #108)
-  glob_nodes = PT.get_children_from_predicate(part_tree, lambda n : PT.get_label(n) != 'CGNSBase_t')
+  glob_nodes = PT.get_children_from_predicate(part_tree, ~PT.pred.label_is('CGNSBase_t'))
   top_tree = PT.new_node('CGNSTree', 'CGNSTree_t', children=glob_nodes)
   # Recover base data and families
-  is_not_zone = lambda n : PT.get_label(n) != 'Zone_t'
+  is_not_zone = ~PT.pred.label_is('Zone_t')
   discover_nodes_from_matching(top_tree, [part_tree], 'CGNSBase_t', comm, get_value='all', child_list=[is_not_zone])
 
   create_parent_folder(filename, comm)
