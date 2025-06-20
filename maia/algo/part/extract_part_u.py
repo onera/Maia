@@ -195,17 +195,12 @@ def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, cont
 
 
 def extract_part_one_domain_u(part_zones, point_list, location, comm,
-                            # equilibrate=True,
-                            graph_part_tool="hilbert"):
+                              equilibrate=True,
+                              graph_part_tool="hilbert"):
   """
   Prepare PDM extract_part object and perform the extraction of one domain.
-  
-  TODO : AJOUTER LE CHOIX PARTIONNEMENT
   """
-  equilibrate=True
-  
   dim = LOC_TO_DIM[location]
-  print("location is", location, "dim", dim)
 
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
@@ -223,14 +218,12 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   dist_zone = PT.new_Zone('Zone')
   gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
   child_list = ['GridLocation', 'FamilyName_t', 'AdditionalFamilyName_t', 'Descriptor_t']
-  #! 2D dispatch
   for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim):
     if LOC_TO_DIM[dim_name]<=dim:
       is_dim_bc = PT.pred.is_bc_of_location(dim_name)
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
-      print("SET GROUPS for", bc_type+1, "WITH", n_gdom_bcs)
       PDM_EP_n_group_set(pdm_ep, bc_type+1, n_gdom_bcs)
 
   # Loop over domain zone : preparing extract part
@@ -239,7 +232,6 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     cx, cy, cz = PT.Zone.coordinates(part_zone)
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
     
-    # ! 2D vérifier entrée PDM
     ngon  = PT.Zone.NGonNode(part_zone)
     nface = PT.Zone.NFaceNode(part_zone)
 
@@ -286,108 +278,111 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   pdm_ep.compute()
 
   # > Reconstruction du maillage de l'extract part
-  n_extract_cell = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_CELL)
-  n_extract_face = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_FACE)
-  n_extract_edge = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_EDGE)
-  n_extract_vtx  = pdm_ep.n_entity_get(0, PDM._PDM_MESH_ENTITY_VTX )
-  
-  # ! Attention dépend de la dim d'entrée -> extraction des edges depuis le 3D pas possible
-  size_by_dim = {0: [[n_extract_vtx, 0             , 0]], # not yet implemented
-                 1:   None                              , # not yet implemented
-                 2: [[n_extract_vtx, n_extract_face, 0]],
-                 3: [[n_extract_vtx, n_extract_cell, 0]] }
+  extract_zones = []
+  for i_part in range(n_part_out):
+    n_extract_cell = pdm_ep.n_entity_get(i_part, PDM._PDM_MESH_ENTITY_CELL)
+    n_extract_face = pdm_ep.n_entity_get(i_part, PDM._PDM_MESH_ENTITY_FACE)
+    n_extract_edge = pdm_ep.n_entity_get(i_part, PDM._PDM_MESH_ENTITY_EDGE)
+    n_extract_vtx  = pdm_ep.n_entity_get(i_part, PDM._PDM_MESH_ENTITY_VTX )
+    
+    size_by_dim = {0: [[n_extract_vtx, 0             , 0]], # not yet implemented
+                  1:   None                              , # not yet implemented
+                  2: [[n_extract_vtx, n_extract_face, 0]],
+                  3: [[n_extract_vtx, n_extract_cell, 0]] }
 
-  # > ExtractPart zone construction
-  extract_zone = PT.new_Zone(MT.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
-                               size=size_by_dim[dim],
-                               type='Unstructured')
+    # > ExtractPart zone construction
+    extract_zone = PT.new_Zone(MT.conv.add_part_suffix('Zone', comm.Get_rank(), i_part),
+                                size=size_by_dim[dim],
+                                type='Unstructured')
 
-  ep_vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VTX)
-  MT.new_GlobalNumbering({"Vertex" : ep_vtx_ln_to_gn}, parent=extract_zone)
+    ep_vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_VTX)
+    MT.new_GlobalNumbering({"Vertex" : ep_vtx_ln_to_gn}, parent=extract_zone)
 
-  # > Grid coordinates
-  cx, cy, cz = layouts.interlaced_to_tuple_coords(pdm_ep.vtx_coord_get(0))
-  extract_grid_coord = PT.new_GridCoordinates(parent=extract_zone)
-  PT.new_DataArray('CoordinateX', cx, parent=extract_grid_coord)
-  PT.new_DataArray('CoordinateY', cy, parent=extract_grid_coord)
-  PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
+    # > Grid coordinates
+    cx, cy, cz = layouts.interlaced_to_tuple_coords(pdm_ep.vtx_coord_get(i_part))
+    extract_grid_coord = PT.new_GridCoordinates(parent=extract_zone)
+    PT.new_DataArray('CoordinateX', cx, parent=extract_grid_coord)
+    PT.new_DataArray('CoordinateY', cy, parent=extract_grid_coord)
+    PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
 
-  if dim == 0:
-    MT.new_GlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extract_zone)
+    if dim == 0:
+      MT.new_GlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extract_zone)
 
-  # > NGON
-  # ! Trucs à faire
-  if dim >= 2:
-    ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
-    ep_face_ln_to_gn = pdm_ep.ln_to_gn_get(0, PDM._PDM_MESH_ENTITY_FACE)
+    # > NGON
+    if dim >= 2:
+      ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
+      ep_face_ln_to_gn = pdm_ep.ln_to_gn_get(i_part, PDM._PDM_MESH_ENTITY_FACE)
 
-    nb_bar = 0
-    if dim == 2:
-      # Retrieve edges on 2D mesh
-      edge_data = PDM.compute_face_edge_from_face_vtx(comm, 
-                                                      [n_extract_face], 
-                                                      [ep_vtx_ln_to_gn.size], 
-                                                      [ep_face_vtx_idx], 
-                                                      [ep_face_vtx], 
-                                                      [ep_face_ln_to_gn], 
-                                                      [ep_vtx_ln_to_gn])[0]
+      nb_bar = 0
+      if dim == 2:
+        # Retrieve edges on 2D mesh
+        edge_data = PDM.compute_face_edge_from_face_vtx(comm, 
+                                                        [n_extract_face], 
+                                                        [ep_vtx_ln_to_gn.size], 
+                                                        [ep_face_vtx_idx], 
+                                                        [ep_face_vtx], 
+                                                        [ep_face_ln_to_gn], 
+                                                        [ep_vtx_ln_to_gn])[0]
 
-      nb_bar = edge_data['np_edge_ln_to_gn'].size
-      bar_n = PT.new_Elements('EdgeElements', 'BAR_2', 
-                              erange=[1, nb_bar], 
-                              econn=edge_data['np_edge_vtx'], 
-                              parent=extract_zone)
-      MT.new_GlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+        nb_bar = edge_data['np_edge_ln_to_gn'].size
+        bar_n = PT.new_Elements('EdgeElements', 'BAR_2', 
+                                erange=[1, nb_bar], 
+                                econn=edge_data['np_edge_vtx'], 
+                                parent=extract_zone)
+        MT.new_GlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
 
-    ngon_n = PT.new_NGonElements('NGonElements',
-                                 erange  = [nb_bar+1, nb_bar+n_extract_face],
-                                 ec      = ep_face_vtx,
-                                 eso     = ep_face_vtx_idx,
-                                 parent  = extract_zone)
+      ngon_n = PT.new_NGonElements('NGonElements',
+                                  erange  = [nb_bar+1, nb_bar+n_extract_face],
+                                  ec      = ep_face_vtx,
+                                  eso     = ep_face_vtx_idx,
+                                  parent  = extract_zone)
 
-    MT.new_GlobalNumbering({'Element' : ep_face_ln_to_gn}, parent=ngon_n)
-    if dim == 2:
-      MT.new_GlobalNumbering({'Cell' : ep_face_ln_to_gn}, parent=extract_zone)
+      MT.new_GlobalNumbering({'Element' : ep_face_ln_to_gn}, parent=ngon_n)
+      if dim == 2:
+        MT.new_GlobalNumbering({'Cell' : ep_face_ln_to_gn}, parent=extract_zone)
 
-  # > NFACES
-  if dim == 3:
-    ep_cell_face_idx, ep_cell_face = pdm_ep.connectivity_get(0, PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
-    nface_n = PT.new_NFaceElements('NFaceElements',
-                                    erange  = [n_extract_face+1, n_extract_face+n_extract_cell],
-                                    ec      = ep_cell_face,
-                                    eso     = ep_cell_face_idx,
-                                    parent  = extract_zone)
+    # > NFACES
+    if dim == 3:
+      ep_cell_face_idx, ep_cell_face = pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE)
+      nface_n = PT.new_NFaceElements('NFaceElements',
+                                      erange  = [n_extract_face+1, n_extract_face+n_extract_cell],
+                                      ec      = ep_cell_face,
+                                      eso     = ep_cell_face_idx,
+                                      parent  = extract_zone)
 
-    ep_cell_ln_to_gn = pdm_ep.ln_to_gn_get(0, PDM._PDM_MESH_ENTITY_CELL)
-    MT.new_GlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
-    MT.new_GlobalNumbering({'Cell' : ep_cell_ln_to_gn}, parent=extract_zone)
+      ep_cell_ln_to_gn = pdm_ep.ln_to_gn_get(i_part, PDM._PDM_MESH_ENTITY_CELL)
+      MT.new_GlobalNumbering({'Element' : ep_cell_ln_to_gn}, parent=nface_n)
+      MT.new_GlobalNumbering({'Cell' : ep_cell_ln_to_gn}, parent=extract_zone)
 
-    maia.algo.nface_to_pe(extract_zone, comm)
+      maia.algo.nface_to_pe(extract_zone, comm)
 
-  # - Get BCs
-  zonebc_n = PT.new_ZoneBC(parent=extract_zone)
-  bc_type = 1
-  for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
-    if LOC_TO_DIM[dim_name]<=dim:
-      for i_bc, bc_path in enumerate(gdom_bcs_path):
-        bc_info = PDM_EP_group_get(pdm_ep, 0, i_bc, bc_type)
-        bc_pl = bc_info['group_entity']
-        bc_gn = bc_info['group_entity_ln_to_gn']
-        if bc_pl.size != 0:
-          dist_bc = PT.get_node_from_path(dist_zone, bc_path)
-          bc_name = bc_path.split('/')[-1]
-          bc_val = PT.get_value(dist_bc) if PT.get_value(dist_bc) is not None else 'Null'
-          bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) else dim_name
-          if bc_loc == 'CellCenter' and dim == 2: # Offset BCs, because we put Edge elts first
-            bc_pl += nb_bar
-          bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
-          for child in PT.get_children_from_predicate(dist_bc, ~PT.pred.name_is('GridLocation')):
-            PT.add_child(bc_n, child)
-          MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
-    bc_type +=1 
+    # - Get BCs
+    zonebc_n = PT.new_ZoneBC(parent=extract_zone)
+    bc_type = 1
+    for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
+      if LOC_TO_DIM[dim_name]<=dim:
+        for i_bc, bc_path in enumerate(gdom_bcs_path):
+          bc_info = PDM_EP_group_get(pdm_ep, i_part, i_bc, bc_type)
+          bc_pl = bc_info['group_entity']
+          bc_gn = bc_info['group_entity_ln_to_gn']
+          if bc_pl.size != 0:
+            dist_bc = PT.get_node_from_path(dist_zone, bc_path)
+            bc_name = bc_path.split('/')[-1]
+            bc_val = PT.get_value(dist_bc) if PT.get_value(dist_bc) is not None else 'Null'
+            bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) else dim_name
+            if bc_loc == 'CellCenter' and dim == 2: # Offset BCs, because we put Edge elts first
+              bc_pl += nb_bar
+            bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
+            for child in PT.get_children_from_predicate(dist_bc, ~PT.pred.name_is('GridLocation')):
+              PT.add_child(bc_n, child)
+            MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
+      bc_type +=1 
+
+    extract_zones.append(extract_zone)
 
   # - Generate intrazones jns
-  # ! A priori OK
+  # TODO : multiple zones (local case)
+  """
   if dim >= 2:
     if dim == 2:
       data = _generate_entity_graph_comm(edge_data['np_edge_ln_to_gn'], comm, 'edge')
@@ -398,6 +393,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     zgc_n = PT.find_child_from_label(extract_zone, 'ZoneGridConnectivity_t')
     if len(PT.get_children(zgc_n)) == 0:
       PT.rm_child(extract_zone, zgc_n)
+  """
 
   # - Get PTP by vertex and cell
   ptp = dict()
@@ -410,14 +406,14 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     
   # - Get parent elt
   parent_elt = dict()
-  parent_elt['Vertex']       = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_VTX)
+  parent_elt['Vertex']       = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_VTX) for i_part in range(n_part_out)]
   if dim >= 2: # NGON
-    parent_elt['FaceCenter'] = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_FACE)
+    parent_elt['FaceCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
   if dim == 3: # NFACE
-    parent_elt['CellCenter'] = pdm_ep.parent_ln_to_gn_get(0,PDM._PDM_MESH_ENTITY_CELL)
+    parent_elt['CellCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_CELL) for i_part in range(n_part_out)]
   
   exch_tool_box = {'part_to_part' : ptp, 'parent_elt' : parent_elt}
 
-  return [extract_zone], exch_tool_box
+  return extract_zones, exch_tool_box
 
 

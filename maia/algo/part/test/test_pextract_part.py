@@ -173,7 +173,7 @@ def test_exch_field(cgns_name, partial, comm):
       gnum = gnum[lnum-1]
     else:
       pl = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
-      gnum = extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex'][pl-1]
+      gnum = extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex'][0][pl-1]
     assert np.array_equal(gnum, data)
   else:
     assert PT.get_label(extr_sol) == 'FlowSolution_t'
@@ -183,7 +183,7 @@ def test_exch_field(cgns_name, partial, comm):
       gnum = MT.globalnumbering_value(zone, 'Vertex')
       gnum = gnum[lnum-1].reshape(PT.Zone.VertexSize(extr_zone), order='F')
     else:
-      gnum = extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex']
+      gnum = extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex'][0]
     assert np.array_equal(data,gnum)
 
 @pytest.mark.parametrize("bc_name" , ['Xmin', 'Zmax'])
@@ -216,7 +216,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
   assert PT.Subset.GridLocation(extr_sol) == 'CellCenter'
   pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
   data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
-  assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][pl-PT.Element.Range(ngon)[0]], data)
+  assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][0][pl-PT.Element.Range(ngon)[0]], data)
 
 
 @pytest_parallel.mark.parallel(3)
@@ -374,6 +374,3 @@ def test_void_extraction(comm):
   assert is_empty_tree(extractor.get_extract_part_tree())
   assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs
 
-if __name__ == '__main__':
-  from mpi4py.MPI import COMM_WORLD
-  test_from_fam_zsr_api(True, COMM_WORLD)

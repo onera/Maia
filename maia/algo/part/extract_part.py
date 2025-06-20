@@ -55,9 +55,10 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
 
 
 class Extractor:
-  def __init__(self,part_tree: CGNSPartTree,patch: List[List[NDArray]],
-               location: str,comm: MPIComm,
-               graph_part_tool: str = "hilbert") -> None:
+  def __init__(self, part_tree:CGNSPartTree, patch:List[List[NDArray]],
+               location:str, comm: MPIComm,
+               equilibrate:bool=True,
+               graph_part_tool:str="hilbert") -> None:
     """Initialize an extractor object to perform extraction of a part of a mesh"""
     self.part_tree     = part_tree
     self.exch_tool_box = dict()
@@ -118,8 +119,8 @@ class Extractor:
         extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.location, comm)
       else:
         extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.location, comm,
-                                                      # equilibrate=equilibrate,
-                                                      graph_part_tool=graph_part_tool)
+                                                       equilibrate=equilibrate,
+                                                       graph_part_tool=graph_part_tool)
       etb['ExtractingCnt'] = None
       self.exch_tool_box[dom_path] = etb
       for extract_zone in extract_zones:
