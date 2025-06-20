@@ -549,6 +549,8 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
 def convert_s_to_ngon(dist_tree:CGNSDistTree, comm:MPIComm) -> None:
   """Shortcut to convert_s_to_u with NGon connectivity and FaceCenter subsets"""
   bases_dim = set(PT.get_np_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree))
+  if len(bases_dim) == 0:
+    return
   assert len(bases_dim) == 1, "Differents CellDimension in same tree are not allowed"
   _subset_loc = 'EdgeCenter' if list(bases_dim)[0] == 2 else 'FaceCenter'
   convert_s_to_u(dist_tree,
