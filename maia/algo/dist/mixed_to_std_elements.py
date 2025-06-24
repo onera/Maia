@@ -155,56 +155,46 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             else:
                 assert elem_eso[1] is not None
                 elem_ec_type_pos = elem_ec[elem_eso[1][:-1]-elem_eso[1][0]] # Type of each element
-                all_elem_pos = {}
-                all_non_cell_pos = []
+                all_elem_pos = {} # For each type, position where elts of this kind are found
+                all_non_cell_pos_tmp = []
                 for elem_type in key_types:
-                    all_elem_pos[elem_type] = np.where(elem_ec_type_pos==elem_type)[0]
+                    indices_elem = np.where(elem_ec_type_pos==elem_type)[0]
+                    all_elem_pos[elem_type] = indices_elem
                     if MPSEU.element_dim(elem_type) != cell_dim:
-                        all_non_cell_pos += list(all_elem_pos[elem_type])
-                all_non_cell_pos = sorted(all_non_cell_pos)
-                all_cell_pos = {}
+                        all_non_cell_pos_tmp.append(indices_elem)
+                all_non_cell_pos = np.sort(np.concatenate(all_non_cell_pos_tmp)) # Positions of elts of lower dim (sorted)
+                all_cell_pos = {} # Position of "cell" elt, in the array of cells only (?)
                 for elem_type in key_types:
+                    indices_elem = all_elem_pos[elem_type]
                     if MPSEU.element_dim(elem_type) == cell_dim:
-                        all_cell_pos[elem_type] = all_elem_pos[elem_type] - np.searchsorted(all_non_cell_pos,all_elem_pos[elem_type])
+                        all_cell_pos[elem_type] = indices_elem - np.searchsorted(all_non_cell_pos, indices_elem)
             for elem_type in key_types:
-                nb_elems_per_type = all_types[elem_type]
+                
+                # Compute offsets :
+                # Remind that on each rank, elem_types is Dict[int, Dict[int,int]]
+                # ({element type -> {id of mixed node -> number of elts}})
+                # so elem_types.get(elem_type, {}).get(p, 0) is the number of local elts of
+                # type elem_type on mixed node n°p (managing defaults)
+
+                # Nb of elts of this kind on previous MIXED nodes (total)
+                from_previous_mixed = sum(sum(rank_types.get(elem_type, {}).get(p, 0) for rank_types in elem_types_all) \
+                                          for p in range(elem_pos))
+                # Nb of elts of this kind on previous ranks for the current MIXED node
+                from_previous_rank = sum(elem_types_all[r].get(elem_type, {}).get(elem_pos, 0) for r in range(rank))
+
                 indices_elem = all_elem_pos[elem_type]
-                old_to_new_element_numbering[indices_elem] = np.arange(len(indices_elem),dtype=elem_ec.dtype) + 1
-                is_cell = MPSEU.element_dim(elem_type) == cell_dim
-                if is_cell:
+                old_to_new_element_numbering[indices_elem] = np.arange(1,len(indices_elem)+1,dtype=elem_ec.dtype) \
+                                                           + (all_elem_previous_types + from_previous_mixed + from_previous_rank)
+
+                all_elem_previous_types += all_types[elem_type] # Update for next type
+                
+                if MPSEU.element_dim(elem_type) == cell_dim:
                     indices_cell = all_cell_pos[elem_type]
-                    old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_ec.dtype)
-                    old_to_new_cell_numbering[indices_cell] += all_cell_previous_types
-                # Add total elements of others (previous) type
-                old_to_new_element_numbering[indices_elem] += all_elem_previous_types
-                # Add number of elements on previous mixed nodes for this rank
-                # Add number of cells on previous mixed nodes for this rank
-                for p in range(elem_pos):
-                    try:
-                        old_to_new_element_numbering[indices_elem] += elem_types[elem_type][p]
-                    except KeyError:
-                        continue
-                    if is_cell:
-                        for r in range(size):
-                            try:
-                                ln_to_gn_cell += elem_types_all[r][elem_type][p]
-                                old_to_new_cell_numbering[indices_cell] += elem_types_all[r][elem_type][p]
-                            except KeyError:
-                                continue
-                # Add number of element on previous procs for this mixed node
-                # Add number of cells on previous procs for this mixed node
-                for r in range(rank):
-                    try:
-                        nb_elem_per_type_per_pos_per_rank = elem_types_all[r][elem_type][elem_pos]
-                    except KeyError:
-                        continue
-                    old_to_new_element_numbering[indices_elem] += nb_elem_per_type_per_pos_per_rank
-                    if is_cell:
-                        ln_to_gn_cell += nb_elem_per_type_per_pos_per_rank
-                        old_to_new_cell_numbering[indices_cell] += nb_elem_per_type_per_pos_per_rank
-                all_elem_previous_types += all_types[elem_type]
-                if is_cell:
-                    all_cell_previous_types += all_types[elem_type]
+                    old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_ec.dtype) \
+                                                            + (all_cell_previous_types + from_previous_mixed + from_previous_rank)
+                    ln_to_gn_cell += (from_previous_mixed + from_previous_rank)
+
+                    all_cell_previous_types += all_types[elem_type] # Update for next type
             
             old_to_new_element_numbering_list.append(old_to_new_element_numbering)
             old_to_new_cell_numbering_list.append(old_to_new_cell_numbering)
