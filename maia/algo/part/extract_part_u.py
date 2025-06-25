@@ -81,8 +81,110 @@ def _generate_entity_graph_comm(entity_gnum, comm, key):
   return {f'np_{key}_part_bound_part_idx' : np_part_bound_part_idx,
           f'np_{key}_part_bound' : np_part_bound}
 
-def exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm) :
+def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
+  _grid_location    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
+  assert len(extract_zones) <= len(part_zones)
 
+  partial_gnum = list()
+  is_own_data = exch_tool_box['ExtractingCnt'] == container_name
+
+  extract_zones_iter = iter(extract_zones)
+
+  for i_part, part_zone in enumerate(part_zones):
+    # Since empty extracted zones are not added in extracted tree, we do not
+    # have len(part_zones) == len(extract_zones). We need to 'consume' the next
+    # extracted zone only if it is not empty
+    # On the other side i_part stills include empty extracted zones
+    if exch_tool_box['parent_elt']['Vertex'][i_part].size == 0:
+      continue # Extracted zone was empty
+
+    extr_zone = next(extract_zones_iter) # Consume extr. zone
+
+    container = PT.get_child_from_name(part_zone, container_name)
+    if container is None:
+      continue # Volumic zone has no fields
+
+
+    grid_location = PT.Subset.GridLocation(container)
+    assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
+
+    # > FlowSolution node def by zone
+    if (mask_label := PT.get_label(container)) in ['FlowSolution_t', 'DiscreteData_t']:
+      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extr_zone)
+      PT.set_label(FS_ep, mask_label)
+      pl_container = container
+    elif PT.get_label(container) == 'ZoneSubRegion_t':
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extr_zone)
+      pl_container = PT.find_node_from_path(part_zone, PT.Subset.ZSRExtent(container, part_zone))
+    else:
+      raise TypeError
+
+    is_partial = PT.get_child_from_name(pl_container, 'PointList') is not None
+
+    parent = exch_tool_box['parent_elt'][grid_location][i_part]
+
+    elt_n = part_zone if grid_location != 'FaceCenter' else PT.Zone.NGonNode(part_zone)
+    base_gnum = MT.globalnumbering_value(elt_n, _grid_location[grid_location])
+
+    if is_partial:
+      # If volumic container is partial, we need to retrieve the position of parent entity (given in gnum)
+      # in the volumic pointlist (lnum)
+      # We can do this with searchsorted if we convert the point_list (vol) in gnum before
+      point_list_n = PT.find_node_from_name(pl_container, 'PointList')
+      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, LOC_TO_DIM[grid_location]) # Gnum start at 1
+
+      point_list_gnum = base_gnum[point_list-1]
+      
+      sorter  = np.argsort(point_list_gnum)
+      idx_tmp = np.searchsorted(point_list_gnum, parent, sorter=sorter)
+
+      # Careful ! searchsorted always return a result, even if parent is not in
+      # point_list_gnum which can happens when the volumic data is partial
+      mask = np.take(point_list_gnum, idx_tmp, mode='clip') == parent
+      idx = idx_tmp[mask]
+
+      # Create PointList if input field is partial
+      # NB : if the container *is* the one we are extracting from, then
+      # extracted field will be full -> transform into FS
+      if is_own_data:
+        assert mask.all()
+        assert PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']
+        PT.set_label(FS_ep, 'FlowSolution_t')
+      else:
+        _extr_pl = np.where(mask)[0]
+        extr_pl = _extr_pl + local_pl_offset(extr_zone, LOC_TO_DIM[grid_location]) + 1
+        PT.new_IndexArray('PointList', value=extr_pl.reshape((1,-1), order='F'), parent=FS_ep)
+
+        # To create gnum associated with PointList
+        elt_n_ext = extr_zone if grid_location != 'FaceCenter' else PT.Zone.NGonNode(extr_zone)
+        base_gnum_ext = MT.globalnumbering_value(elt_n_ext, _grid_location[grid_location])
+        partial_gnum.append(base_gnum_ext[_extr_pl])
+
+    else:
+      # If volumic container is full, there is no pointlist indirection, but out parent entity is
+      # still in gnum so we need to retrieve the local num too
+      sorter = np.argsort(base_gnum)
+      idx    = np.searchsorted(base_gnum, parent, sorter=sorter)
+      
+    # Extract fields and place in extracted container
+    for field in PT.get_children_from_label(container, 'DataArray_t'):
+      PT.new_DataArray(PT.get_name(field), PT.get_np_value(field)[idx], parent=FS_ep)
+
+  # Update global numbering in extracted FS (only in partial case w/o is_own_data)
+  # Again partial_gnum and extract_zones can have different len,
+  # if somes zones have been skipped (no data on volumic zone)
+  # so we need an index to get sub gnum only for with-field
+  # extracted zones
+  if not is_own_data:
+    idx_read = 0
+    sub_partial_gnum = create_sub_numbering(partial_gnum, comm)
+    for extr_zone in extract_zones:
+      if (FS_ep := PT.get_child_from_name(extr_zone, container_name)) is not None:
+        if PT.get_child_from_name(FS_ep, 'PointList') is not None:
+          MT.new_GlobalNumbering({'Index' : sub_partial_gnum[idx_read]}, FS_ep)
+          idx_read += 1
+
+def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
   # > Retrieve fields name + GridLocation + PointList if container is not know by every partition
   mask_container, grid_location, partial_field = discover_containers(part_zones, container_name, 'PointList', 'IndexArray_t', comm)
   if mask_container is None:
@@ -102,12 +204,7 @@ def exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box
   
 
   # > Get PTP and parentElement for the good location
-  equilibrate = len(exch_tool_box['part_to_part']) > 0
-  if equilibrate:
-    ptp         = exch_tool_box['part_to_part'][grid_location]
-  else:
-    # Rebuild PTP from local parent ?
-    pass
+  ptp         = exch_tool_box['part_to_part'][grid_location]
   is_own_data = exch_tool_box['ExtractingCnt'] == container_name
   
   # LN_TO_GN
@@ -185,6 +282,14 @@ def exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box
     if part1_data[i_part].size==0:
       FS_ep = PT.find_child_from_name(extract_zone, container_name)
       PT.rm_child(extract_zone, FS_ep)
+
+
+def exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
+  equilibrate = len(exch_tool_box['part_to_part']) > 0
+  if equilibrate:
+    exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm)
+  else:
+    exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm)
 
 
 def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, container_names, comm) :
