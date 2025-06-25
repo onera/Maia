@@ -220,11 +220,13 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   Returns:
     CGNSTree: Extracted submesh (partitioned)
 
-  Extraction can be controled by the optional kwargs:
+  Extraction can be controled by the optional kwargs (only for U meshes):
 
-    - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones.
+    - ``equilibrate`` (bool) -- If ``False``, the extracted entities remains on their original rank,
+      which simplify data exchanges but leads to poor load balancing. Default is ``True``.
+    - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones (if ``equilibrate=True``)
       Admissible values are ``hilbert, parmetis, ptscotch``. Note that
-      vertex-located extractions require hilbert partitioning. Defaults to ``hilbert``.
+      vertex-located extractions require hilbert partitioning. Default is ``hilbert``.
   
   Important:
     - Input tree must have a U-NGon or Structured connectivity
@@ -264,12 +266,9 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
 def _create_extractor_from_zsr(part_tree: CGNSPartTree, 
                                zsr_path: str,
                                comm: MPIComm,
-                               **options: Dict[str,Any]) -> Extractor:
+                               **options) -> Extractor:
   """Create an extractor object from a ZoneSubRegion path"""
   # Get zones by domains
-
-  graph_part_tool = options.get("graph_part_tool", "hilbert")
-  assert isinstance(graph_part_tool, str)
 
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
@@ -293,8 +292,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   # Get location if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
 
-  return Extractor(part_tree, patch, location, comm,
-                   graph_part_tool=graph_part_tool)
+  return Extractor(part_tree, patch, location, comm, **options)
 
 def create_extractor_from_zsr(part_tree: CGNSPartTree,
                               zsr_path : str, 
