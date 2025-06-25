@@ -191,9 +191,11 @@ def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool
     return
   assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
 
+  # When reequilibrate, each rank have at most one extracted zone
+  extract_zone = extract_zones[0] if len(extract_zones) > 0 else None
 
   # > FlowSolution node def by zone
-  for extract_zone in extract_zones:
+  if extract_zone is not None :
     if (mask_label := PT.get_label(mask_container)) in ['FlowSolution_t', 'DiscreteData_t']:
       FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
       PT.set_label(FS_ep, mask_label)
@@ -210,10 +212,10 @@ def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool
   # LN_TO_GN
   _grid_location    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
   
-  part1_ln_to_gn = []
-  for extract_zone in extract_zones:
-    elt_n = extract_zone if grid_location != 'FaceCenter' else PT.Zone.NGonNode(extract_zone)
-    part1_ln_to_gn.append(MT.globalnumbering_value(elt_n, _grid_location[grid_location]))
+  if extract_zone is not None:
+    elt_n            = extract_zone if grid_location!='FaceCenter' else PT.Zone.NGonNode(extract_zone)
+    if elt_n is None :return
+    part1_ln_to_gn   = [MT.globalnumbering_value(elt_n, _grid_location[grid_location])]
 
   # Get reordering informations if point_list
   # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
@@ -248,41 +250,34 @@ def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool
     part1_stride, part1_data = ptp.reverse_wait(req_id)
 
     # Interpolation and placement
-    for i_part, extract_zone in enumerate(extract_zones):
+    if extract_zone is not None:
+      i_part = 0
       if part1_data[i_part].size!=0:
-        FS_ep = PT.find_child_from_name(extract_zone, container_name)
         PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
   
   # Build PL with the last exchange stride
   if partial_field:
-    partial_part1_lngn = []
-    for i_part, extract_zone in enumerate(extract_zones):
-      FS_ep = PT.find_child_from_name(extract_zone, container_name)
-      if part1_data[i_part].size!=0:
-        new_point_list = np.where(part1_stride[i_part]==1)[0]
-        point_list = new_point_list + local_pl_offset(extract_zone, LOC_TO_DIM[grid_location])+1
-        PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
-        partial_part1_lngn.append(part1_ln_to_gn[i_part][new_point_list])
+    if len(part1_data)!=0 and part1_data[0].size!=0:
+      new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
+      point_list = new_point_list + local_pl_offset(extract_zone, LOC_TO_DIM[grid_location])+1
+      PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
+      partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]]
+    else:
+      partial_part1_lngn = []
 
     # Update global numbering in FS
     partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
-    idx_read = 0
-    for i_part, extract_zone in enumerate(extract_zones):
-      FS_ep = PT.find_child_from_name(extract_zone, container_name)
+    if extract_zone is not None and len(partial_gnum)!=0:
       if is_own_data and PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']:
         # For owndata, output a FlowSolution without PL instead of keep a ZoneSubRegion
         assert (new_point_list == np.arange(point_list.size)).all()
         PT.set_label(FS_ep, 'FlowSolution_t')
         PT.rm_children_from_name(FS_ep, 'PointList')
-      elif part1_data[i_part].size != 0:
-        MT.new_GlobalNumbering({'Index' : partial_gnum[idx_read]}, parent=FS_ep)
-        idx_read += 1
+      else:
+        MT.new_GlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_ep)
 
-  for i_part, extract_zone in enumerate(extract_zones):
-    if part1_data[i_part].size==0:
-      FS_ep = PT.find_child_from_name(extract_zone, container_name)
-      PT.rm_child(extract_zone, FS_ep)
-
+  if part1_data[0].size==0 and extract_zone is not None:
+    PT.rm_child(extract_zone, FS_ep)
 
 def exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
   equilibrate = len(exch_tool_box['part_to_part']) > 0
