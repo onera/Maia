@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import numpy as np
+import operator
 
 import maia
 import maia.pytree        as PT
@@ -330,6 +331,10 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
+
+  # In local mode, 'native' groups (eg face groups if we extract faces) are not yet supported by PDM
+  # so we exclude them from set / get by using < instead of <= in bc parsing
+  bc_op = operator.le if equilibrate else operator.lt
   
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
@@ -345,7 +350,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
   child_list = ['GridLocation', 'FamilyName_t', 'AdditionalFamilyName_t', 'Descriptor_t']
   for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim):
-    if LOC_TO_DIM[dim_name]<=dim:
+    if bc_op(LOC_TO_DIM[dim_name], dim):
       is_dim_bc = PT.pred.is_bc_of_location(dim_name)
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
@@ -392,7 +397,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     # Add BCs info
     bc_type = 1
     for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
-      if LOC_TO_DIM[dim_name]<=dim:
+      if bc_op(LOC_TO_DIM[dim_name], dim):
         for i_bc, bc_path in enumerate(gdom_bcs_path):
           bc_n  = PT.get_node_from_path(part_zone, bc_path)
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
@@ -495,7 +500,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     zonebc_n = PT.new_ZoneBC(parent=extract_zone)
     bc_type = 1
     for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
-      if LOC_TO_DIM[dim_name]<=dim:
+      if bc_op(LOC_TO_DIM[dim_name], dim):
         for i_bc, bc_path in enumerate(gdom_bcs_path):
           bc_info = PDM_EP_group_get(pdm_ep, i_part, i_bc, bc_type)
           bc_pl = bc_info['group_entity']
