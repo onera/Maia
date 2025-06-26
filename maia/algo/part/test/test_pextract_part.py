@@ -262,7 +262,6 @@ def test_extr_U_local(comm):
 
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts, data_transfer='FIELDS')
-  maia.io.part_tree_to_file(part_tree, 'vol.cgns', comm, True)
 
   # NB : BC Xmin is covered by the P0.N0 and P2.N0, BC Xmax by P0.N1 and P2.N0
   for part_zone in PT.get_all_Zone_t(part_tree):
@@ -283,6 +282,15 @@ def test_extr_U_local(comm):
     assert n_cell_extr ==  []
   elif comm.rank == 2:
     assert n_cell_extr ==  [9]
+
+  # Check interfaces
+  if comm.rank == 2:
+    match1 = PT.find_node_from_predicate(extracted_tree, PT.pred.IS_GC & PT.pred.value_is('Zone.P0.N0'))
+    match2 = PT.find_node_from_predicate(extracted_tree, PT.pred.IS_GC & PT.pred.value_is('Zone.P0.N1'))
+    assert (PT.get_np_value(PT.find_child_from_name(match1, 'PointList')) == [3,11,19]).all()
+    assert (PT.get_np_value(PT.find_child_from_name(match1, 'PointListDonor')) == [3,6,9]).all()
+    assert (PT.get_np_value(PT.find_child_from_name(match2, 'PointList')) == [6,14,22]).all()
+    assert (PT.get_np_value(PT.find_child_from_name(match2, 'PointListDonor')) == [5,10,15]).all()
     
   for zone in extracted_zones:
     vtxsol = PT.find_child_from_name(zone, 'VtxSol')

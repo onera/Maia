@@ -25,61 +25,78 @@ PDM_EP_group_set   = PDM.ExtractPart.part_group_set         if EP_OLD_API else P
 PDM_EP_group_get   = PDM.ExtractPart.extract_part_group_get if EP_OLD_API else PDM.ExtractPart.group_get
 PDM_EP_n_group_set = PDM.ExtractPart.part_n_group_set       if EP_OLD_API else PDM.ExtractPart.n_group_set
 
-def _generate_entity_graph_comm(entity_gnum, comm, key):
-  # Simplified version with exactly one partition per rank, waiting for
+def _generate_entity_graph_comm(entity_gnum_l, comm, key):
+  # Simplified version for manifold interfaces, waiting for
   # PDM.generate_entity_graph_comm wrapping
   from maia.transfer import protocols as EP
   from maia.utils import par_utils
   from maia.utils import vstride as vs
 
-  pn = entity_gnum.size
-  stride_one = np.ones(pn, np.int32)
-  distri = par_utils.distribution_from_gnum(entity_gnum, comm, full=True)
+  n_part = len(entity_gnum_l)
+  pn_l = [gn.size for gn in entity_gnum_l]
+  stride_one_l = [np.ones(pn, np.int32) for pn in pn_l]
+  # Avoid managing i_rank + i_part with a combinated 'rankpart' id
+  part_distri = par_utils.dn_to_distribution(n_part, comm)
+  part_distri_f = par_utils.partial_to_full_distribution(part_distri, comm)
+  lid_l = [np.arange(1,pn+1, dtype=np.int32) for pn in pn_l]
+  rank_l = [(part_distri[0]+i_part) * np.ones(pn, np.int32) for i_part, pn in enumerate(pn_l)]
+  distri = par_utils.distribution_from_gnum(entity_gnum_l, comm, full=True)
 
-  GI = EP.GlobalIndexer(distri, entity_gnum, comm, gnum_offset=1)
-  gathered_lid  = GI.Put_v((stride_one, np.arange(1,pn+1, dtype=np.int32)), extend=True)
-  gathered_rank = GI.Put_v((stride_one, comm.rank * np.ones(pn, np.int32)), extend=True)
+  GI = EP.GlobalIndexer(distri, entity_gnum_l, comm, gnum_offset=1)
+  gathered_lid  = GI.Put_v(list(zip(stride_one_l, lid_l)),  extend=True)
+  gathered_rank = GI.Put_v(list(zip(stride_one_l, rank_l)), extend=True)
 
   # Put_v / Take_v pattern brings back rank and lid of entity sharing the same gnum on
   # other ranks
-  lid  = vs.from_counts(*GI.Take_v(gathered_lid))
-  rank = vs.from_counts(*GI.Take_v(gathered_rank))
+  lid  = [vs.from_counts(*data) for data in GI.Take_v(gathered_lid)]
+  rank = [vs.from_counts(*data) for data in GI.Take_v(gathered_rank)]
   # Then we have to
   # - select duplicated entity
   # - remove self entity
   # - sort according to opp. rank order
 
-  is_jn = np.where(lid.counts > 1)[0]
-  lid  = vs.take(lid, is_jn)
-  rank = vs.take(rank, is_jn)
-  if comm.allreduce((lid.counts != 2).any(), MPI.LOR):
+  for i_part in range(n_part):
+    is_jn = np.where(lid[i_part].counts > 1)[0]
+    lid[i_part]  = vs.take(lid[i_part], is_jn)
+    rank[i_part] = vs.take(rank[i_part], is_jn)
+
+  non_manifold = any((lid[i_part].counts != 2).any() for i_part in range(n_part))
+  if comm.allreduce(non_manifold, MPI.LOR):
     mlog.warning("Skip internal JNs reconstrution because extracted mesh is non-manifold")
-    return {f'np_{key}_part_bound_part_idx' : np.zeros(1, np.int32),
-            f'np_{key}_part_bound' : np.empty(0, np.int32)}
+    return [{f'np_{key}_part_bound_part_idx' : np.zeros(1, np.int32),
+             f'np_{key}_part_bound' : np.empty(0, np.int32)} for i_part in range(n_part)]
   
-  opp_mask = rank.values != comm.rank
-  opp_lid = lid.values[opp_mask]
-  opp_rank = rank.values[opp_mask]
-  own_lid = lid.values[~opp_mask]
+  all_result = list()
+  for i_part in range(n_part):
+    rankpart = part_distri[0] + i_part
+    opp_mask = rank[i_part].values != rankpart
+    opp_lid = lid[i_part].values[opp_mask]
+    opp_rank = rank[i_part].values[opp_mask]
+    own_lid = lid[i_part].values[~opp_mask]
   
-  # To ensure PL/PLD symmetry, we have to sort by rank, and then by lid or opp_lid
-  # within each rank (but we must use same lid for 2 sides of the join)
-  # This is done using sorting_lid which is identical on both side + lexsort
-  # (last key is used first)
-  sorting_lid = (comm.rank < opp_rank)*own_lid + (opp_rank < comm.rank)*opp_lid
-  sort_idx = np.lexsort([sorting_lid, opp_rank])
-  opp_rank = opp_rank[sort_idx]
-  _, counts = np_utils.unique_sorted(opp_rank, True)
+    # To ensure PL/PLD symmetry, we have to sort by rank, part and then by lid or opp_lid
+    # within each rank (but we must use same lid for 2 sides of the join)
+    # This is done using sorting_lid which is identical on both side + lexsort
+    # (last key is used first)
+    sorting_lid = (rankpart < opp_rank)*own_lid + (opp_rank < rankpart)*opp_lid
+    sort_idx = np.lexsort([sorting_lid, opp_rank])
+    opp_rank = opp_rank[sort_idx]
+    _, counts = np_utils.unique_sorted(opp_rank, True)
 
-  np_part_bound_part_idx = np_utils.sizes_to_indices(counts)
-  np_part_bound = np.empty(4*counts.sum(), np.int32)
-  np_part_bound[0::4] = own_lid[sort_idx]
-  np_part_bound[1::4] = opp_rank #Already sorted
-  np_part_bound[2::4] = 1 # Only one part, which starts at 1
-  np_part_bound[3::4] = opp_lid[sort_idx]
+    # Split opp_rank (agglomated) into rank + part with binsearch
+    _opp_rank = np.searchsorted(part_distri_f, opp_rank, side='right') - 1
+    _opp_part = opp_rank - part_distri_f[_opp_rank]
 
-  return {f'np_{key}_part_bound_part_idx' : np_part_bound_part_idx,
-          f'np_{key}_part_bound' : np_part_bound}
+    np_part_bound_part_idx = np_utils.sizes_to_indices(counts)
+    np_part_bound = np.empty(4*counts.sum(), np.int32)
+    np_part_bound[0::4] = own_lid[sort_idx]
+    np_part_bound[1::4] = _opp_rank #Already sorted
+    np_part_bound[2::4] = _opp_part + 1 # Already sorted but must start at 1
+    np_part_bound[3::4] = opp_lid[sort_idx]
+
+    all_result.append({f'np_{key}_part_bound_part_idx' : np_part_bound_part_idx,
+                       f'np_{key}_part_bound' : np_part_bound})
+  return all_result
 
 def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
   _grid_location    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
@@ -499,19 +516,17 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     extract_zones.append(extract_zone)
 
   # - Generate intrazones jns
-  # TODO : multiple zones (local case)
-  """
   if dim >= 2:
     if dim == 2:
-      data = _generate_entity_graph_comm(edge_data['np_edge_ln_to_gn'], comm, 'edge')
+      data_l = _generate_entity_graph_comm([edge_data['np_edge_ln_to_gn'] for edge_data in all_edge_data], comm, 'edge')
     elif dim ==3:
-      data = _generate_entity_graph_comm(ep_face_ln_to_gn, comm, 'face')
+      data_l = _generate_entity_graph_comm(all_ep_face_ln_to_gn, comm, 'face')
 
-    pdm_part_to_cgns_zone.zgc_created_pdm_to_cgns(extract_zone, None, None, data, 'FaceCenter')
-    zgc_n = PT.find_child_from_label(extract_zone, 'ZoneGridConnectivity_t')
-    if len(PT.get_children(zgc_n)) == 0:
-      PT.rm_child(extract_zone, zgc_n)
-  """
+    for extr_zone, data in zip(extract_zones, data_l):
+      pdm_part_to_cgns_zone.zgc_created_pdm_to_cgns(extr_zone, None, None, data, 'FaceCenter')
+      zgc_n = PT.find_child_from_label(extr_zone, 'ZoneGridConnectivity_t')
+      if len(PT.get_children(zgc_n)) == 0:
+        PT.rm_child(extr_zone, zgc_n)
 
   # - Get PTP by vertex and cell
   ptp = dict()
