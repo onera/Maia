@@ -180,9 +180,12 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
     sub_partial_gnum = create_sub_numbering(partial_gnum, comm)
     for extr_zone in extract_zones:
       if (FS_ep := PT.get_child_from_name(extr_zone, container_name)) is not None:
-        if PT.get_child_from_name(FS_ep, 'PointList') is not None:
+        if (pl:=PT.get_child_from_name(FS_ep, 'PointList')) is not None:
           MT.new_GlobalNumbering({'Index' : sub_partial_gnum[idx_read]}, FS_ep)
           idx_read += 1
+          # Do cleaning at same time (remove container if PL is empty)
+          if PT.Subset.n_elem(FS_ep) == 0:
+            PT.rm_child(extr_zone, FS_ep)
 
 def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
   # > Retrieve fields name + GridLocation + PointList if container is not know by every partition
@@ -383,6 +386,21 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
   pdm_ep.compute()
 
+  # > Compute edge data here (this is a global operation)
+  # In addition we can not do a double get so we store some extracted data
+  all_ep_vtx_ln_to_gn  = [pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_VTX)   for i_part in range(n_part_out)]
+  if dim >= 2:
+    all_ep_face_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part, PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
+    all_ep_face_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX) for i_part in range(n_part_out)]
+    if dim == 2:
+      all_edge_data = PDM.compute_face_edge_from_face_vtx(comm, 
+                                                          [t.size for t in all_ep_face_ln_to_gn],
+                                                          [t.size for t in all_ep_vtx_ln_to_gn], 
+                                                          [face_vtx[0] for face_vtx in all_ep_face_vtx], 
+                                                          [face_vtx[1] for face_vtx in all_ep_face_vtx], 
+                                                          all_ep_face_ln_to_gn,
+                                                          all_ep_vtx_ln_to_gn)
+
   # > Reconstruction du maillage de l'extract part
   extract_zones = []
   for i_part in range(n_part_out):
@@ -401,7 +419,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                                 size=size_by_dim[dim],
                                 type='Unstructured')
 
-    ep_vtx_ln_to_gn  = pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_VTX)
+    ep_vtx_ln_to_gn  = all_ep_vtx_ln_to_gn[i_part]
     MT.new_GlobalNumbering({"Vertex" : ep_vtx_ln_to_gn}, parent=extract_zone)
 
     # > Grid coordinates
@@ -416,19 +434,13 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
     # > NGON
     if dim >= 2:
-      ep_face_vtx_idx, ep_face_vtx  = pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
-      ep_face_ln_to_gn = pdm_ep.ln_to_gn_get(i_part, PDM._PDM_MESH_ENTITY_FACE)
+      ep_face_vtx_idx, ep_face_vtx  = all_ep_face_vtx[i_part]
+      ep_face_ln_to_gn = all_ep_face_ln_to_gn[i_part]
 
       nb_bar = 0
       if dim == 2:
         # Retrieve edges on 2D mesh
-        edge_data = PDM.compute_face_edge_from_face_vtx(comm, 
-                                                        [n_extract_face], 
-                                                        [ep_vtx_ln_to_gn.size], 
-                                                        [ep_face_vtx_idx], 
-                                                        [ep_face_vtx], 
-                                                        [ep_face_ln_to_gn], 
-                                                        [ep_vtx_ln_to_gn])[0]
+        edge_data = all_edge_data[i_part]
 
         nb_bar = edge_data['np_edge_ln_to_gn'].size
         bar_n = PT.new_Elements('EdgeElements', 'BAR_2', 

@@ -6,7 +6,7 @@ import numpy as np
 import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
-from   maia.utils import s_numbering
+from   maia.utils import s_numbering, par_utils
 from   maia.utils import logging as mlog
 
 from maia.algo.part import extract_part as EP
@@ -217,6 +217,93 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
   pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
   data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
   assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][0][pl-PT.Element.Range(ngon)[0]], data)
+
+@pytest_parallel.mark.parallel(3)
+def test_extr_U_local(comm):
+  
+  dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
+  # Prepare dist tree (add some fields)
+  zone = PT.find_node_from_label(dist_tree, 'Zone_t')
+  dtype = PT.get_np_value(zone).dtype
+  n_vtx = PT.Zone.n_vtx(zone)
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
+
+  co_node = PT.find_child_from_name(zone, 'GridCoordinates')
+
+  # VtxSubRegion --> A Vertex located subregion, only one point over two have a value
+  zsr = PT.deep_copy(co_node)
+  mask_full = np.ones(n_vtx, bool)
+  mask_full[1::2] = False
+  mask_loc = mask_full[vtx_distri[0]:vtx_distri[1]]
+  PT.update_node(zsr, name='VtxSubRegion', label='ZoneSubRegion_t')
+  for arr in PT.get_children_from_label(zsr, 'DataArray_t'):
+    PT.set_value(arr, PT.get_np_value(arr)[mask_loc])
+  pl = np.arange(vtx_distri[0]+1, vtx_distri[1]+1, dtype=dtype)[mask_loc].reshape((1,-1), order='F')
+  PT.new_IndexArray('PointList', pl, zsr)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl.size, comm)}, zsr)
+  PT.add_child(zone, zsr)
+
+  # VtxSol --> A vertex located full FlowSolution
+  fs = PT.deep_copy(co_node)
+  PT.update_node(fs, name='VtxSol', label='FlowSolution_t')
+  PT.add_child(zone, fs)
+
+  # Geometry_2d --> A FaceCenter FlowSolution
+  maia.algo.compute_elements_center(dist_tree, 2, comm)
+
+
+  # Choose splitting to have : 2 parts on rank 0,  0 parts on rank 1,  1 part on rank 2
+  if comm.rank == 0:
+    zone_to_parts = {'Base/zone' : [.25,.25]}
+  elif comm.rank == 1:
+    zone_to_parts = {'Base/zone' : []}
+  elif comm.rank == 2:
+    zone_to_parts = {'Base/zone' : [.5]}
+
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts, data_transfer='FIELDS')
+  maia.io.part_tree_to_file(part_tree, 'vol.cgns', comm, True)
+
+  # NB : BC Xmin is covered by the P0.N0 and P2.N0, BC Xmax by P0.N1 and P2.N0
+  for part_zone in PT.get_all_Zone_t(part_tree):
+    for bc_name in ['Xmin', 'Xmax']:
+      bc = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t')
+      if bc is not None:
+        PT.new_FamilyName('EXTRACT', parent=bc)
+   
+  extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm,
+                                               containers_name=['Geometry_2d', 'VtxSol', 'VtxSubRegion'],
+                                               equilibrate=False)
+  extracted_zones = PT.get_all_Zone_t(extracted_tree)
+  n_cell_extr = [PT.Zone.n_cell(z) for z in extracted_zones]
+
+  if comm.rank == 0:
+    assert n_cell_extr ==  [3, 6]
+  elif comm.rank == 1:
+    assert n_cell_extr ==  []
+  elif comm.rank == 2:
+    assert n_cell_extr ==  [9]
+    
+  for zone in extracted_zones:
+    vtxsol = PT.find_child_from_name(zone, 'VtxSol')
+    assert PT.get_child_from_name(vtxsol, 'PointList') is None
+    assert PT.get_np_value(PT.find_child_from_label(vtxsol, 'DataArray_t')).size == PT.Zone.n_vtx(zone)
+
+    facesol = PT.find_child_from_name(zone, 'Geometry_2d')
+    assert PT.Subset.GridLocation(facesol) == 'CellCenter'
+    assert PT.get_np_value(PT.find_child_from_label(facesol, 'DataArray_t')).size == PT.Zone.n_cell(zone)
+    if PT.get_name(zone) == 'Zone.P0.N0':
+      assert (PT.get_np_value(PT.find_child_from_name(facesol, 'CenterX')) == 0).all()
+    if PT.get_name(zone) == 'Zone.P0.N1':
+      assert (PT.get_np_value(PT.find_child_from_name(facesol, 'CenterX')) == 1).all()
+    
+    vtxzsr = PT.get_child_from_name(zone, 'VtxSubRegion')
+    if PT.get_name(zone) == 'Zone.P0.N0':
+      assert (MT.globalnumbering_value(vtxzsr, 'Index') == [5, 6, 2, 1, 9, 10, 13, 14]).all()
+    if PT.get_name(zone) == 'Zone.P0.N1':
+      assert vtxzsr is None
+    if PT.get_name(zone) == 'Zone.P2.N0':
+      assert (MT.globalnumbering_value(vtxzsr, 'Index') == [6, 7, 3, 2, 8, 4, 10, 11, 12, 14, 15, 16]).all()
 
 
 @pytest_parallel.mark.parallel(3)
