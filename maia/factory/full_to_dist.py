@@ -11,10 +11,6 @@ from maia.algo.dist   import redistribute
 from maia.utils       import par_utils, np_utils
 from typing           import overload
 
-def get_np_value(node:CGNSTree) -> NDArray:
-  assert (value := node[1]) is not None
-  return value
-
 def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   """
   Distribute a standard node having a PointList (and its childs) over several processes,
@@ -25,11 +21,11 @@ def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   distri = par_utils.uniform_distribution(n_elem, comm)
   #PL and PLDonor
   for array_n in PT.get_children_from_predicate(dist_node, 'IndexArray_t'):
-    array = get_np_value(array_n)
+    array = PT.get_np_value(array_n)
     PT.set_value(array_n, array[:, distri[0]:distri[1]])
   # Standard Data Arrays
   for array_n in PT.iter_children_from_label(dist_node, 'DataArray_t'):
-    array = get_np_value(array_n)
+    array = PT.get_np_value(array_n)
     PT.set_value(array_n, array[distri[0]:distri[1]])
   # BCData_t arrays case : can be scalar or vector
   bcds_without_pl = PT.pred.label_is('BCDataSet_t') & ~PT.pred.IS_SUBSET
@@ -38,7 +34,7 @@ def distribute_pl_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   for query in ['BCData_t/DataArray_t', bcds_without_pl_query]:
     for array_path in PT.predicates_to_paths(dist_node, query):
       array_n = PT.find_node_from_path(dist_node, array_path)
-      array = get_np_value(array_n)
+      array = PT.get_np_value(array_n)
       if array.size != 1:
         PT.set_value(array_n, array[distri[0]:distri[1]])
       else:
@@ -66,7 +62,7 @@ def distribute_data_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
 
   for child in PT.get_children(node):
     if PT.get_label(child) == 'DataArray_t':
-      val = get_np_value(child)
+      val = PT.get_np_value(child)
       distri = par_utils.uniform_distribution(val.size, comm)
       PT.new_DataArray(PT.get_name(child),
                       (val.reshape(-1, order='F')[distri[0] : distri[1]]).copy(),
@@ -89,10 +85,10 @@ def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   MT.new_Distribution({'Element' : distri}, dist_node)
 
   ec_n = PT.find_child_from_name(dist_node, 'ElementConnectivity')
-  ec = get_np_value(ec_n)
+  ec = PT.get_np_value(ec_n)
   if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
     eso_n = PT.find_child_from_name(dist_node, 'ElementStartOffset')
-    eso = get_np_value(eso_n)
+    eso = PT.get_np_value(eso_n)
     distri_ec = eso[[distri[0], distri[1], -1]]
     PT.set_value(ec_n, ec[distri_ec[0] : distri_ec[1]])
     PT.set_value(eso_n, eso[distri[0]:distri[1]+1])
@@ -104,7 +100,7 @@ def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
   
   pe_n = PT.get_child_from_name(dist_node, 'ParentElements')
   if pe_n is not None:
-    pe = get_np_value(pe_n)
+    pe = PT.get_np_value(pe_n)
     PT.set_value(pe_n, (pe[distri[0] : distri[1]]).copy(order='F')) #Copy is needed to have contiguous memory
   
   return dist_node

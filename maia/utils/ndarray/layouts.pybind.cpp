@@ -253,7 +253,7 @@ void create_mixed_elts_eso(py::array_t<T>& np_connec, py::array_t<T>& np_eso)
 
   eso[0] = 0;
   size_t pos = 0;
-  for (size_t i = 0; i < n_cell; ++i) {
+  for (ssize_t i = 0; i < n_cell; ++i) {
     int nv = n_vtx_per_type[connec[eso[i]]];
     pos += (nv + 1);
     eso[i+1] = pos;
