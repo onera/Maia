@@ -63,7 +63,7 @@ def _generate_entity_graph_comm(entity_gnum_l, comm, key):
 
   non_manifold = any((lid[i_part].counts != 2).any() for i_part in range(n_part))
   if comm.allreduce(non_manifold, MPI.LOR):
-    mlog.warning("Skip internal JNs reconstrution because extracted mesh is non-manifold")
+    mlog.warning("Skip internal JNs reconstruction because extracted mesh is non-manifold")
     return [{f'np_{key}_part_bound_part_idx' : np.zeros(1, np.int32),
              f'np_{key}_part_bound' : np.empty(0, np.int32)} for i_part in range(n_part)]
   
@@ -71,9 +71,9 @@ def _generate_entity_graph_comm(entity_gnum_l, comm, key):
   for i_part in range(n_part):
     rankpart = part_distri[0] + i_part
     opp_mask = rank[i_part].values != rankpart
-    opp_lid = lid[i_part].values[opp_mask]
-    opp_rank = rank[i_part].values[opp_mask]
-    own_lid = lid[i_part].values[~opp_mask]
+    opp_lid  =  lid[i_part].values[ opp_mask]
+    opp_rank = rank[i_part].values[ opp_mask]
+    own_lid  =  lid[i_part].values[~opp_mask]
   
     # To ensure PL/PLD symmetry, we have to sort by rank, part and then by lid or opp_lid
     # within each rank (but we must use same lid for 2 sides of the join)
@@ -84,7 +84,7 @@ def _generate_entity_graph_comm(entity_gnum_l, comm, key):
     opp_rank = opp_rank[sort_idx]
     _, counts = np_utils.unique_sorted(opp_rank, True)
 
-    # Split opp_rank (agglomated) into rank + part with binsearch
+    # Split opp_rank (agglomerated) into rank + part with binsearch
     _opp_rank = np.searchsorted(part_distri_f, opp_rank, side='right') - 1
     _opp_part = opp_rank - part_distri_f[_opp_rank]
 

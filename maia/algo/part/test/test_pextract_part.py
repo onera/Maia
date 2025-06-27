@@ -253,13 +253,9 @@ def test_extr_U_local(comm):
 
 
   # Choose splitting to have : 2 parts on rank 0,  0 parts on rank 1,  1 part on rank 2
-  if comm.rank == 0:
-    zone_to_parts = {'Base/zone' : [.25,.25]}
-  elif comm.rank == 1:
-    zone_to_parts = {'Base/zone' : []}
-  elif comm.rank == 2:
-    zone_to_parts = {'Base/zone' : [.5]}
-
+  zone_to_parts = [{'Base/zone' : [.25,.25]},
+                   {'Base/zone' : []},
+                   {'Base/zone' : [.5]}][comm.rank]
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts, data_transfer='FIELDS')
 
@@ -276,12 +272,8 @@ def test_extr_U_local(comm):
   extracted_zones = PT.get_all_Zone_t(extracted_tree)
   n_cell_extr = [PT.Zone.n_cell(z) for z in extracted_zones]
 
-  if comm.rank == 0:
-    assert n_cell_extr ==  [3, 6]
-  elif comm.rank == 1:
-    assert n_cell_extr ==  []
-  elif comm.rank == 2:
-    assert n_cell_extr ==  [9]
+  n_cell_extr_expected = [[3,6], [], [9]][comm.rank]
+  assert n_cell_extr == n_cell_extr_expected
 
   # Check interfaces
   if comm.rank == 2:

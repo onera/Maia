@@ -223,7 +223,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   Extraction can be controled by the optional kwargs (only for U meshes):
 
     - ``equilibrate`` (bool) -- If ``False``, the extracted entities remains on their original rank,
-      which simplify data exchanges but leads to poor load balancing. Default is ``True``.
+      which simplifies data exchanges but leads to poor load balancing. Default is ``True``.
     - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones (if ``equilibrate=True``)
       Admissible values are ``hilbert, parmetis, ptscotch``. Note that
       vertex-located extractions require hilbert partitioning. Default is ``hilbert``.
@@ -269,6 +269,9 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
                                **options) -> Extractor:
   """Create an extractor object from a ZoneSubRegion path"""
   # Get zones by domains
+  if options.get("equilibrate", True) == False:
+    if 'graph_part_tool' in options:
+      mlog.warning("extract_part: option `graph_part_tool` is ignored when `equilibrate` is False")
 
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
