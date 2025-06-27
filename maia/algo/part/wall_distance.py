@@ -343,12 +343,11 @@ class WallDistance:
     
         
     if self.method == "cloud":
-      gc_predicate = ['ZoneGridConnectivity_t', PT.pred.IS_GC]
+      gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_of_kind(is_intra=False)]
       
       # Recover existing periodicities
-      for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
-        dist_zone = PT.get_node_from_path(skeleton_tree, dist_zone_path)
-        part_zones = tr_utils.get_partitioned_zones(self.part_tree, dist_zone_path)
+      for dist_zone_path, part_zones in parts_per_dom.items():
+        dist_zone = PT.find_node_from_path(skeleton_tree, dist_zone_path)
         discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, self.mpi_comm,
           child_list=['GridConnectivityProperty_t', 'GridConnectivityType_t'],
           merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
