@@ -5,6 +5,8 @@ from   maia import npy_pdm_gnum_dtype as pdm_dtype
 from   maia.factory  import dist_from_part
 from   .point_cloud_utils  import create_sub_numbering
 
+from maia.typing import *
+
 import numpy as np
 
 LOC_TO_DIM   = {'Vertex':0,
@@ -21,8 +23,9 @@ DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
 def is_elt_of_dim(dim):
   return PT.pred.NodePredicate(lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n)==dim)
 
-def discover_containers(part_zones, container_name, patch_name, patch_type, comm):
-  mask_zone = ['MaskedZone', None, [], 'Zone_t']
+def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_name:str, 
+                        patch_type:str, comm:MPIComm) -> Tuple[Optional[CGNSTree], str, bool]:
+  mask_zone = PT.new_Zone('MaskedZone')
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
   
@@ -41,15 +44,15 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
   gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
   assert not (bc_descriptor_n and gc_descriptor_n)
   if bc_descriptor_n is not None:
-    bc_name      = PT.get_value(bc_descriptor_n)
+    bc_name      = PT.get_str_value(bc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=[patch_name, 'GridLocation_t'])
-    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
+    ref_zsr_node = PT.find_node_from_name_and_label(mask_zone, bc_name, 'BC_t', depth=2)
     patch_node   = PT.get_child_from_predicates(ref_zsr_node, f'{patch_name}')
     assert patch_node is not None, 'Asked patch unfound for subregion extent.'
   elif gc_descriptor_n is not None:
-    gc_name      = PT.get_value(gc_descriptor_n)
+    gc_name      = PT.get_str_value(gc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=[patch_name, 'GridLocation_t'])
-    ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name}')
+    ref_zsr_node = PT.find_node_from_predicate(mask_zone, PT.pred.name_is(gc_name) & PT.pred.IS_GC, depth=2)
     patch_node   = PT.get_child_from_predicates(ref_zsr_node, f'{patch_name}')
     assert patch_node is not None, 'Asked patch unfound for subregion extent.'
   
@@ -73,7 +76,7 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
       fs_data_node = PT.get_node_from_path(pzone, path)
       if fs_data_node is None:
         continue
-      dtype = PT.get_value(fs_data_node).dtype
+      dtype = PT.get_np_value(fs_data_node).dtype
       dtypes[path] = dtype
       break
   # gather all dtypes
@@ -87,12 +90,11 @@ def discover_containers(part_zones, container_name, patch_name, patch_type, comm
     dtypes.update(loc_dtype)
   assert (len(dtypes) == len(paths))
   for full_path, dtype in dtypes.items():
-    PT.set_value(PT.get_node_from_path(mask_zone, full_path),
-                                       np.empty(0, dtype))
+    PT.set_value(PT.find_node_from_path(mask_zone, full_path), np.empty(0, dtype))
         
   return mask_container, grid_location, partial_field
 
-def local_pl_offset(part_zone, dim):
+def local_pl_offset(part_zone:CGNSTree, dim:int) -> int:
   """
   Return the shift related to the element of the dimension to apply to a point_list so it starts to 1.
   This function assumes that there will be only one type of element per dimension on zone
@@ -110,21 +112,21 @@ def local_pl_offset(part_zone, dim):
       ngon = PT.Zone.NGonNode(part_zone)
       return PT.Element.Range(ngon)[0] - 1
     else:
-      elt_n     = PT.get_child_from_predicate(part_zone, is_elt_of_dim(2))
+      elt_n     = PT.find_child_from_predicate(part_zone, is_elt_of_dim(2))
       return PT.Element.Range(elt_n)[0] - 1
   elif dim == 1:
-    elt_n     = PT.get_child_from_predicate(part_zone, is_elt_of_dim(1))
+    elt_n     = PT.find_child_from_predicate(part_zone, is_elt_of_dim(1))
     return PT.Element.Range(elt_n)[0] - 1
   else:
     return 0
 
-def get_relative_pl(container, part_zone):
+def get_relative_pl(container:CGNSTree, part_zone:CGNSTree) -> CGNSTree:
   """Return the point_list node related to a container (from BC, GC or itself)."""
   if PT.get_label(container)=="FlowSolution_t":
     relative_n = container
   else:
-    relative_n = PT.get_node_from_path(part_zone, PT.Subset.ZSRExtent(container, part_zone))
-  return PT.get_child_from_name(relative_n, "PointList")
+    relative_n = PT.find_node_from_path(part_zone, PT.Subset.ZSRExtent(container, part_zone))
+  return PT.find_child_from_name(relative_n, "PointList")
 
 def get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm):
   """
@@ -140,9 +142,9 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
     if container is not None:
       # > Get the right node to get PL (if ZSR linked to BC or GC)
       point_list_n = get_relative_pl(container, part_zone)
-      point_list   = PT.get_value(point_list_n)[0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
+      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
 
-    # Get p2p gnums
+    # Get p2p gnums (remind that ptp is from extracted mesh (part1) to input mesh (part2))
     part_gnum1_idx = ptp.get_gnum1_come_from() [i_part]['come_from_idx'] # Get partition order
     part_gnum1     = ptp.get_gnum1_come_from() [i_part]['come_from']     # Get partition order
     ref_lnum2      = ptp.get_referenced_lnum2()[i_part]                  # Get partition order

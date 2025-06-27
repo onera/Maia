@@ -55,9 +55,10 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
 
 
 class Extractor:
-  def __init__(self,part_tree: CGNSPartTree,patch: List[List[NDArray]],
-               location: str,comm: MPIComm,
-               graph_part_tool: str = "hilbert") -> None:
+  def __init__(self, part_tree:CGNSPartTree, patch:List[List[NDArray]],
+               location:str, comm: MPIComm,
+               equilibrate:bool=True,
+               graph_part_tool:str="hilbert") -> None:
     """Initialize an extractor object to perform extraction of a part of a mesh"""
     self.part_tree     = part_tree
     self.exch_tool_box = dict()
@@ -118,8 +119,8 @@ class Extractor:
         extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.location, comm)
       else:
         extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.location, comm,
-                                                      # equilibrate=equilibrate,
-                                                      graph_part_tool=graph_part_tool)
+                                                       equilibrate=equilibrate,
+                                                       graph_part_tool=graph_part_tool)
       etb['ExtractingCnt'] = None
       self.exch_tool_box[dom_path] = etb
       for extract_zone in extract_zones:
@@ -219,11 +220,13 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   Returns:
     CGNSTree: Extracted submesh (partitioned)
 
-  Extraction can be controled by the optional kwargs:
+  Extraction can be controled by the optional kwargs (only for U meshes):
 
-    - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones.
+    - ``equilibrate`` (bool) -- If ``False``, the extracted entities remains on their original rank,
+      which simplifies data exchanges but leads to poor load balancing. Default is ``True``.
+    - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones (if ``equilibrate=True``)
       Admissible values are ``hilbert, parmetis, ptscotch``. Note that
-      vertex-located extractions require hilbert partitioning. Defaults to ``hilbert``.
+      vertex-located extractions require hilbert partitioning. Default is ``hilbert``.
   
   Important:
     - Input tree must have a U-NGon or Structured connectivity
@@ -263,12 +266,12 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
 def _create_extractor_from_zsr(part_tree: CGNSPartTree, 
                                zsr_path: str,
                                comm: MPIComm,
-                               **options: Dict[str,Any]) -> Extractor:
+                               **options) -> Extractor:
   """Create an extractor object from a ZoneSubRegion path"""
   # Get zones by domains
-
-  graph_part_tool = options.get("graph_part_tool", "hilbert")
-  assert isinstance(graph_part_tool, str)
+  if options.get("equilibrate", True) == False:
+    if 'graph_part_tool' in options:
+      mlog.warning("extract_part: option `graph_part_tool` is ignored when `equilibrate` is False")
 
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
@@ -292,8 +295,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   # Get location if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
 
-  return Extractor(part_tree, patch, location, comm,
-                   graph_part_tool=graph_part_tool)
+  return Extractor(part_tree, patch, location, comm, **options)
 
 def create_extractor_from_zsr(part_tree: CGNSPartTree,
                               zsr_path : str, 

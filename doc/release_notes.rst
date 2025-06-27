@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- extract_part: add local mode for unstructured meshes
+
 🐞 Fixes
 ^^^^^^^^
 - extract_part: fix output cell GlobalNumbering of surfacic S extractions and allow any input basename
