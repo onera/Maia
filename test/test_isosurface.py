@@ -47,11 +47,11 @@ def generate_test_tree(n_vtx,n_part,comm, build_bc_zsr=False):
 
     # Placement
     FS_NC = PT.new_FlowSolution('FlowSolution_NC', loc="Vertex"    , parent=zone)
-    FS_CC = PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", parent=zone)
+    DD_CC = PT.new_DiscreteData('DiscreteData_CC', loc="CellCenter", parent=zone)
     PT.new_DataArray('sphere'  , fld1_nc, parent=FS_NC)
     PT.new_DataArray('cylinder', fld2_nc, parent=FS_NC)
-    PT.new_DataArray('sphere'  , fld1_cc, parent=FS_CC)
-    PT.new_DataArray('cylinder', fld2_cc, parent=FS_CC)
+    PT.new_DataArray('sphere'  , fld1_cc, parent=DD_CC)
+    PT.new_DataArray('cylinder', fld2_cc, parent=DD_CC)
 
     # BCs ZSR
     bcs_pl = np.concatenate([PT.get_value(pl_n)[0] for pl_n in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/PointList')])
@@ -73,7 +73,7 @@ def test_isosurf_U(elt_type,comm, write_output):
   n_part = 2
   part_tree = generate_test_tree(n_vtx, n_part, comm)
 
-  containers    = ['FlowSolution_NC','FlowSolution_CC']
+  containers    = ['FlowSolution_NC','DiscreteData_CC']
   part_tree_iso = ISS.iso_surface(part_tree,
                                   "FlowSolution_NC/cylinder",
                                   comm,
@@ -83,7 +83,7 @@ def test_isosurf_U(elt_type,comm, write_output):
                                   graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t'])
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t', 'DiscreteData_t'])
   
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'isosurf_{elt_type}.yaml')
@@ -108,7 +108,7 @@ def test_plane_slice_U(elt_type,comm, write_output):
   n_part = 2
   part_tree = generate_test_tree(n_vtx, n_part, comm, build_bc_zsr=True)
 
-  containers    = ['FlowSolution_NC','FlowSolution_CC','ZSR_BC']
+  containers    = ['FlowSolution_NC','DiscreteData_CC','ZSR_BC']
   part_tree_iso = ISS.plane_slice(part_tree,
                                   [1.,1.,1.,0.2],
                                   comm,
@@ -117,7 +117,7 @@ def test_plane_slice_U(elt_type,comm, write_output):
                                   graph_part_tool='hilbert') # Parallelism independant
   
   # Part to dist
-  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,'FlowSolution_t')
+  dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
   
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'plane_slice_{elt_type}.yaml')
@@ -142,7 +142,7 @@ def test_spherical_slice_U(elt_type,comm, write_output):
   n_part = 2
   part_tree = generate_test_tree(n_vtx, n_part, comm)
 
-  containers    = ['FlowSolution_NC','FlowSolution_CC']
+  containers    = ['FlowSolution_NC','DiscreteData_CC']
   part_tree_iso = ISS.spherical_slice(part_tree,
                                       [0.,0.,0.,2.],
                                       comm,

@@ -75,11 +75,11 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     # LN_TO_GN
     _gridLocation    = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
     
-    create_fs = True
+    create_container = True
     if iso_part_zone is not None:
       elt_n = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
 
-      create_fs = gridLocation!='FaceCenter' or \
+      create_container = gridLocation!='FaceCenter' or \
                 ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
 
       if elt_n is not None :
@@ -130,11 +130,12 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
 
 
     # > FlowSolution node def in isosurf zone
-    fs_loc = gridLocation if gridLocation!="FaceCenter" else "EdgeCenter"
-    if iso_part_zone is not None and create_fs:
-      FS_iso = PT.new_FlowSolution(container_name, loc=fs_loc, parent=iso_part_zone)
+    container_loc = gridLocation if gridLocation!="FaceCenter" else "EdgeCenter"
+    if iso_part_zone is not None and create_container:
+      container_iso = PT.new_node(name=container_name, label=PT.get_label(mask_container), parent=iso_part_zone)
+      PT.new_GridLocation(container_loc, parent=container_iso)
     else :
-      FS_iso = None # Beware to the loop on containers_name (FS_iso could have been initialised with previous container_name)
+      container_iso = None # Beware to the loop on containers_name (container_iso could have been initialised with previous container_name)
 
     if partial_field:
       pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
@@ -166,14 +167,14 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
       part1_stride, part1_data = ptp.reverse_wait(req_id)
 
       # > Placement
-      if iso_part_zone is not None and create_fs:
+      if iso_part_zone is not None and create_container:
         i_part = 0 # One isosurface partition
         # Ponderation if vertex
         if gridLocation=="Vertex" :
           weighted_fld       = part1_data[i_part]*part1_weight[i_part]
           part1_data[i_part] = np.add.reduceat(weighted_fld, part1_to_part2_idx[i_part][:-1])
         if part1_data[i_part].size!=0:
-          PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_iso)
+          PT.new_DataArray(fld_name, part1_data[i_part], parent=container_iso)
 
     # Build PL with the last exchange stride
     if partial_field:
@@ -181,20 +182,20 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         assert iso_part_zone is not None
         new_point_list = np.where(part1_stride[0]==1)[0]
         point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
-        new_pl_node = PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_iso)
+        new_pl_node = PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=container_iso)
         partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]] 
       else:
         partial_part1_lngn = []
 
       # Update global numbering in FS
       partial_gnum = create_sub_numbering(partial_part1_lngn, comm)
-      if iso_part_zone is not None and create_fs and len(partial_gnum)!=0:
-        MT.new_GlobalNumbering({'Index' : partial_gnum[0]}, parent=FS_iso)
+      if iso_part_zone is not None and create_container and len(partial_gnum)!=0:
+        MT.new_GlobalNumbering({'Index' : partial_gnum[0]}, parent=container_iso)
 
     # Remove node if is empty
-    if FS_iso is not None and len(PT.get_children_from_label(FS_iso, 'DataArray_t'))==0:
+    if container_iso is not None and len(PT.get_children_from_label(container_iso, 'DataArray_t'))==0:
       assert iso_part_zone is not None
-      PT.rm_child(iso_part_zone, FS_iso)
+      PT.rm_child(iso_part_zone, container_iso)
 
 
 def _exchange_field(part_tree: CGNSPartTree, 

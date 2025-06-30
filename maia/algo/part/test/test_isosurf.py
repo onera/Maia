@@ -54,7 +54,7 @@ def test_exchange_field_one_domain(from_api, comm):
       FSolVtx FlowSolution_t:
         GridLocation GridLocation_t "Vertex":
         fieldC DataArray_t [60., 40, 20, 50, 30, 10]:
-      FSolCell FlowSolution_t:
+      DDCell DiscreteData_t:
         GridLocation GridLocation_t "CellCenter":
         fieldA DataArray_t [40., 30., 20., 10.]:
         fieldB DataArray_t [400., 300., 200., 100.]:
@@ -107,7 +107,7 @@ def test_exchange_field_one_domain(from_api, comm):
       FSolVtx FlowSolution_t:
         GridLocation GridLocation_t "Vertex":
         fieldC DataArray_t [70., 80]:
-      FSolCell FlowSolution_t:
+      DDCell DiscreteData_t:
         GridLocation GridLocation_t "CellCenter":
         fieldA DataArray_t [50.]:
         fieldB DataArray_t [500.]:
@@ -130,17 +130,19 @@ def test_exchange_field_one_domain(from_api, comm):
   if from_api:
     iso_tree  = PT.yaml.to_cgns_tree(yt_surf)
     vol_tree  = PT.yaml.to_cgns_tree(yt_vol)
-    ISO._exchange_field(vol_tree, iso_tree, ["FSolCell", "FSolVtx", "FSolBC"], comm)
+    ISO._exchange_field(vol_tree, iso_tree, ["DDCell", "FSolVtx", "FSolBC"], comm)
     iso_zone = PT.get_all_Zone_t(iso_tree)[0]
   else:
     iso_zone  = PT.yaml.to_node(yt_surf)
     vol_zones = PT.yaml.to_nodes(yt_vol)
-    ISO.exchange_field_one_domain(vol_zones, iso_zone, ["FSolCell", "FSolVtx", "FSolBC"], comm)
+    ISO.exchange_field_one_domain(vol_zones, iso_zone, ["DDCell", "FSolVtx", "FSolBC"], comm)
 
-  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolCell")) == "CellCenter"
-  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx")) == "Vertex"
-  assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolCell/fieldA")[1], expected_A)
-  assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolCell/fieldB")[1], expected_B)
+  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "DDCell")) == "CellCenter"
+  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "Vertex"
+  assert PT.get_label(PT.get_node_from_name(iso_zone, "DDCell")) == "DiscreteData_t"
+  assert PT.get_label(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "FlowSolution_t"
+  assert np.array_equal(PT.get_node_from_path(iso_zone, "DDCell/fieldA")[1], expected_A)
+  assert np.array_equal(PT.get_node_from_path(iso_zone, "DDCell/fieldB")[1], expected_B)
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolVtx/fieldC")[1], expected_C)
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolBC/fieldD")[1], expected_D)
   
