@@ -24,14 +24,18 @@ def _compute_elements_center(zone: CGNSTree,
 
 def _compute_elements_measure(zone: CGNSTree,
                               dim: Union[Literal['CellCenter'], int],
-                              comm: Optional[MPIComm] = None) -> NDArray:
+                              comm: Optional[MPIComm] = None,
+                              element_indices: Optional[ArrayLike] = None,
+                              elements_loc: Optional[str] = None) -> NDArray:
   """Dispatch measure computing according to zone dimension and 
-  requested dimension """
+  requested dimension
+  If element_indices is not None, a PointList like array is expected; measure
+  will be computed for the specified elements"""
   if MT.is_cgns_dist_tree(zone):
     assert comm is not None
-    return dist_geometry._compute_elements_measure(zone, dim, comm)
+    return dist_geometry._compute_elements_measure(zone, dim, comm, element_indices, elements_loc)
   else:
-    return part_geometry._compute_elements_measure(zone, dim)
+    return part_geometry._compute_elements_measure(zone, dim, element_indices, elements_loc)
   
 
 def compute_elements_center(t: CGNSTree,

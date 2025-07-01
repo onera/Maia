@@ -3,7 +3,8 @@ import numpy as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from   maia.utils     import np_utils
+from   maia.utils     import np_utils, s_numbering
+from   maia.utils     import vstride as vs
 from   maia.utils     import logging as mlog
 
 from   maia.algo.part import connectivity_utils as CU
@@ -110,53 +111,108 @@ def _compute_elt_volume(zone, elt_node, coords, out):
     np.add.reduceat(face_contrib, cell_face_idx, out=out)
     out *= (1/3.)
 
-def compute_cell_measure(zone):
+def compute_cell_measure(zone, cell_indices=None):
   """ Compute the volume of all cells of a 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
+  if cell_indices is not None:
+    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
+    if cell_indices.size == 0:
+      return np.empty(0, dtype=np.float64)
+
   if PT.Zone.Type(zone) == "Unstructured":
     if PT.Zone.has_ngon_elements(zone):
 
-      ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx     = PT.get_child_from_name(ngon_node, 'ElementConnectivity')[1]
-      face_vtx_idx = PT.get_child_from_name(ngon_node, 'ElementStartOffset')[1]
-      face_vtx_n   = np.diff(face_vtx_idx)
-
       nface_node = PT.Zone.NFaceNode(zone)
-      cell_face_idx = PT.get_child_from_name(nface_node, 'ElementStartOffset')[1]
-      cell_face     = PT.get_child_from_name(nface_node, 'ElementConnectivity')[1]
+      cell_face = MT.Element.connectivity(nface_node)
 
-      local_coords = get_local_coordinates(zone, face_vtx)
+      ngon_node = PT.Zone.NGonNode(zone)
+      face_vtx = MT.Element.connectivity(ngon_node)
 
-      center, normalflux = compute_center_and_flux(local_coords, face_vtx_idx, face_vtx_n)
+      if cell_indices is not None:
+        # 1. Filter cell_face
+        cell_face = vs.take(cell_face, cell_indices[0]-PT.Element.Range(nface_node)[0])
+        # 2. Filter face_vtx : we need to detect appearing faces
+        face_selector = np.zeros(len(face_vtx), bool)
+        face_selector[np.abs(cell_face.values)-PT.Element.Range(ngon_node)[0]] = True
+        face_vtx = vs.take(face_vtx, np.where(face_selector)[0])
+        # 3. Since we filtered faces, we need an indirection to access face_contrib
+        # (which will be computed only on 'active' faces)
+        old_to_new = np.cumsum(face_selector)
+        face_accessor = old_to_new[np.abs(cell_face.values)-1]-1 # At this point keeping sign is useless
+      else:
+        face_accessor = np.abs(cell_face.values)-1
+      local_coords = get_local_coordinates(zone, face_vtx.values)
+
+      center, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
       face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
 
       # Assembly : for each cell, sum the quantities computed on each face
-      measure = (1/3.) * np.add.reduceat(np.sign(cell_face) * face_contrib[np.abs(cell_face)-1], cell_face_idx[:-1])
+      measure = (1/3.) * np.add.reduceat(np.sign(cell_face.values) * face_contrib[face_accessor], cell_face.displs[:-1])
 
     else:
-      measure = np.empty(PT.Zone.n_cell(zone))
+      volumic_sections = PT.Zone.get_ordered_elements_per_dim(zone)[3]
+      if cell_indices is not None:
+        # If cell_indices is provided, we still need to work section by section
+        # The idea is to build "fake sections" where only the referenced elts appears
+        assert PT.Zone.elt_ordering_by_dim(zone) != 0, "Elements sections must be sorted by dim"
+        offset = PT.Element.Range(volumic_sections[0])[0]
+        section_mask = np.zeros(PT.Zone.n_cell(zone), bool)
+        section_mask[cell_indices[0]-offset] = True
+
+        start = 0
+        fake_elts = []
+        for elt in volumic_sections:
+          end = start + PT.Element.Size(elt)
+          cur_section_mask = section_mask[start:end]
+          elt_vtx = MT.Element.connectivity(elt)
+          _elt = PT.new_Elements(f"Fake_{PT.get_name(elt)}", 
+                                 PT.Element.CGNSName(elt), 
+                                 erange=[1, cur_section_mask.sum()], # Size matters but range doesnt
+                                 econn=vs.take(elt_vtx, np.where(cur_section_mask)[0]).values)
+          fake_elts.append(_elt)
+          start = end
+
+        volumic_sections = fake_elts
+
+      measure = np.empty(sum(PT.Element.Size(elt) for elt in volumic_sections))
       start = 0
-      for elt in PT.Zone.get_ordered_elements_per_dim(zone)[3]:
+      for elt in volumic_sections:
         end = start + PT.Element.Size(elt)
         _compute_elt_volume(zone, elt, coords, measure[start:end])
         start = end
+
+      if cell_indices is not None:
+        # We need to reorder measure (which is in section order) to access elts in cell_indices order
+        # Since we filtered elements we have the additional old_to_new indirection
+        old_to_new = np.cumsum(section_mask)
+        measure = measure[old_to_new[cell_indices[0]-offset]-1]
+        
   else:
     measure = cpart_algo.compute_volume_cell_s(*PT.Zone.CellSize(zone), *coords)
+    if cell_indices is not None: # Filtering is done afterward, which is less performant
+      _cell_indices = s_numbering.ijk_to_index_from_loc(*cell_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
+      measure = measure[_cell_indices]
 
   return measure
 
 
-def _compute_elements_measure(zone, dim):
+def _compute_elements_measure(zone, dim, element_indices=None, element_loc=None):
   """Dispatch measures computing according to zone dimension and 
-  requested dimension. Return a raw array"""
+  requested dimension.
+  If element_indices is not None, measure is computed only for the
+  specified elements (in absolute numbering)
+  Return a raw array"""
   if dim == 'CellCenter':
     dim = PT.Zone.CellDimension(zone)
-  return {3: compute_cell_measure,
-          2: compute_face_measure,
-          1: compute_edge_measure}[dim](zone)
+  if dim == 3:
+    return compute_cell_measure(zone, element_indices)
+  elif dim == 2:
+    return compute_face_measure(zone)
+  elif dim == 1:
+    return compute_edge_measure(zone)
 
 def compute_elements_measure(zone, dim):
   """ Implementation of maia.algo.compute_elements_measure for a given partitioned zone.

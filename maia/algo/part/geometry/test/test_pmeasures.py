@@ -8,6 +8,8 @@ import maia.pytree as PT
 
 from maia.algo.part.geometry import measures
 
+from maia.utils import test_utils as TU
+
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("elt_kind", ['QUAD_4', 'Poly'])
@@ -94,3 +96,32 @@ def test_compute_cell_volume(elt_kind, comm):
     assert np.allclose(cell_vol, 0.125)
   elif elt_kind == 'PENTA_6':
     assert np.allclose(cell_vol, 0.0625)
+
+@pytest_parallel.mark.parallel(1)
+def test_compute_measure_indices(comm):
+    # Elt mesh
+    tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 3, np.array([[17,15,17]], order='F'))
+    assert np.array_equal(mes, [0.5, 1, 0.5])
+
+    # S mesh
+    tree = maia.factory.generate_dist_block(3, 'S', comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 3, np.array([[1,2], [1,2], [1,2]], order='F'))
+    assert np.array_equal(mes, [0.125, 0.125])
+    
+    # NGON mesh
+    tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+    maia.algo.dist.convert_elements_to_ngon(tree, comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+    
+    mes = measures._compute_elements_measure(zone, 3, np.array([[20,22,19]], order='F'))
+    assert np.array_equal(mes, [1, 0.5, 1])
+
+   
