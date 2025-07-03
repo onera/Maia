@@ -146,6 +146,8 @@ def test_compute_measure_indices(comm):
 
     mes = measures._compute_elements_measure(zone, 2, np.array([[16,12,11]]))
     assert np.array_equal(mes, [0.25, 0.2, 0.05])
+    mes = measures._compute_elements_measure(zone, 1, np.array([[10,9,8,1,2]]))
+    assert np.array_equal(mes, [0.5, 0.4, 0.1, 0.5, 0.5])
         
     # S mesh, 2D
     tree = PT.deep_copy(tree2d)
@@ -163,3 +165,15 @@ def test_compute_measure_indices(comm):
     
     mes = measures._compute_elements_measure(zone, 2, np.array([[23,19,18]]))
     assert np.array_equal(mes, [0.25, 0.2, 0.05])
+    mes = measures._compute_elements_measure(zone, 1, np.array([[14,13,12,6,7,8]]))
+    assert np.array_equal(mes, [0.5, 0.4, 0.1, 0.5, 0.5, 0.5])
+
+    # Elt mesh, 1D
+    tree = maia.factory.generate_dist_block(5, 'BAR_2', comm)
+    cx = PT.find_node_from_name(tree, 'CoordinateX')
+    PT.set_value(cx, np.array([0, 0.1, 0.3, 0.6, 1.]))
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 1, np.array([[1,4,3,2]]))
+    assert np.allclose(mes, [.1, .4, .3, .2])

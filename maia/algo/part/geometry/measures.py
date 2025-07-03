@@ -15,13 +15,16 @@ from maia.algo.geometry_utils import ELT_FACE_VTX, compute_center_and_flux
 
 import cmaia.part_algo as cpart_algo
 
-def compute_edge_measure(zone):
+def compute_edge_measure(zone, edge_indices=None):
   """ Compute the length of all edges of a 1D, 2D or 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
+  if edge_indices is not None:
+    assert isinstance(edge_indices, np.ndarray) and edge_indices.ndim == 2 and edge_indices.shape[0] == 1
+
   if PT.Zone.Type(zone) == "Unstructured":
-    edge_vtx = CU.cell_vtx_connectivity(zone, dim=1)
+    edge_vtx = CU.cell_vtx_connectivity(zone, 1, edge_indices)
 
     # Compute length : |L| = ||x2 - x1||
     first_vtx  = edge_vtx.values[0::2] - 1
@@ -48,6 +51,8 @@ def compute_face_measure(zone, face_indices=None, face_indices_loc=None):
     if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
       assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
         "Indices location must be specified when filtering faces measure on 3D structured meshes"
+    if face_indices.size == 0:
+      return np.empty(0, dtype=np.float64)
 
   # For S/2D zones, if face_indices is provided, it is faster to rebuild face_vtx filtered cnt,
   # as for unstructured cases. Il faces_indices is None (ie we compute all faces) pybind
@@ -228,7 +233,7 @@ def _compute_elements_measure(zone, dim, element_indices=None, element_loc=None)
   elif dim == 2:
     return compute_face_measure(zone, element_indices, element_loc)
   elif dim == 1:
-    return compute_edge_measure(zone)
+    return compute_edge_measure(zone, element_indices)
 
 def compute_elements_measure(zone, dim):
   """ Implementation of maia.algo.compute_elements_measure for a given partitioned zone.
