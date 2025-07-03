@@ -99,23 +99,28 @@ def test_compute_cell_volume(elt_kind, comm):
 
 @pytest_parallel.mark.parallel(1)
 def test_compute_measure_indices(comm):
-    # Elt mesh
+    # Elt mesh, 3D
     tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
     ptree = maia.factory.partition_dist_tree(tree, comm)
     zone = PT.get_all_Zone_t(ptree)[0]
 
     mes = measures._compute_elements_measure(zone, 3, np.array([[17,15,17]], order='F'))
     assert np.array_equal(mes, [0.5, 1, 0.5])
+    mes = measures._compute_elements_measure(zone, 2, np.array([[1,12,14,4,13]], order='F'))
+    assert np.allclose(mes, [1, 1, 0.5, np.sqrt(2), 0.5])
 
-    # S mesh
+    # S mesh, 3D
     tree = maia.factory.generate_dist_block(3, 'S', comm)
     ptree = maia.factory.partition_dist_tree(tree, comm)
     zone = PT.get_all_Zone_t(ptree)[0]
 
     mes = measures._compute_elements_measure(zone, 3, np.array([[1,2], [1,2], [1,2]], order='F'))
     assert np.array_equal(mes, [0.125, 0.125])
-    
-    # NGON mesh
+
+    mes = measures._compute_elements_measure(zone, 2, np.array([[2,2], [1,1], [1,2]], order='F'), 'IFaceCenter')
+    assert np.array_equal(mes, [0.25, 0.25])
+
+    # NGON mesh, 3D
     tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
     ptree = maia.factory.partition_dist_tree(tree, comm)
@@ -123,5 +128,38 @@ def test_compute_measure_indices(comm):
     
     mes = measures._compute_elements_measure(zone, 3, np.array([[20,22,19]], order='F'))
     assert np.array_equal(mes, [1, 0.5, 1])
+    mes = measures._compute_elements_measure(zone, 2, np.array([[1,18,11,8]], order='F'))
+    assert np.allclose(mes, [0.5, 1, 1, np.sqrt(2)])
 
-   
+
+    # Prepare a 2D meshes having different cell size : 
+    # 1sr column : 0.05, 2n column : 0.2, 3e column: 0.25)
+    tree2d = maia.factory.generate_dist_block([4,3], 'S', comm)
+    cx = PT.find_node_from_name(tree2d, 'CoordinateX')
+    PT.set_value(cx, np.array([0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1]))
+
+    # Elt mesh, 2D
+    tree = PT.deep_copy(tree2d)
+    maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 2, np.array([[16,12,11]]))
+    assert np.array_equal(mes, [0.25, 0.2, 0.05])
+        
+    # S mesh, 2D
+    tree = PT.deep_copy(tree2d)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 2, np.array([[3,2,1], [1,1,2]], order='F'))
+    assert np.array_equal(mes, [0.25, 0.2, 0.05])
+
+    # NGON mesh, 2D
+    tree = PT.deep_copy(tree2d)
+    maia.algo.dist.convert_s_to_ngon(tree, comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+    
+    mes = measures._compute_elements_measure(zone, 2, np.array([[23,19,18]]))
+    assert np.array_equal(mes, [0.25, 0.2, 0.05])

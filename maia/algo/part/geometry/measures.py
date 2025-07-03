@@ -35,7 +35,7 @@ def compute_edge_measure(zone):
   else:
     raise NotImplementedError("Structured zones are not managed")
 
-def compute_face_measure(zone):
+def compute_face_measure(zone, face_indices=None, face_indices_loc=None):
   """ Compute the area of all faces of a 2D or 3D zone and return a raw array"""
 
   coords = PT.Zone.coordinates(zone)
@@ -43,20 +43,31 @@ def compute_face_measure(zone):
   zone_dim = PT.Zone.CellDimension(zone)
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
+  if face_indices is not None:
+    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
+    if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
+      assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
+        "Indices location must be specified when filtering faces measure on 3D structured meshes"
 
-  if PT.Zone.Type(zone) == "Unstructured":
+  # For S/2D zones, if face_indices is provided, it is faster to rebuild face_vtx filtered cnt,
+  # as for unstructured cases. Il faces_indices is None (ie we compute all faces) pybind
+  # function is more efficient
+  if PT.Zone.Type(zone) == "Unstructured" or (zone_dim==2 and face_indices is not None):
 
     if PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
       face_vtx = MT.Element.connectivity(ngon_node)
+      if face_indices is not None:
+        face_vtx = vs.take(face_vtx, face_indices[0]-PT.Element.Range(ngon_node)[0])
     else:
-      face_vtx = CU.cell_vtx_connectivity(zone, dim=2)
+      face_vtx = CU.cell_vtx_connectivity(zone, 2, face_indices)
 
     local_coords = get_local_coordinates(zone, face_vtx.values)
     _, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
     measure = np.linalg.norm(normalflux, axis=1)
 
   else:
+    # This is for 3D S zones or 2D zones w/o filtering
     vtx_size = [1,1,1]
     vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
     # Create cz if zone_dim == 2 & cz is None
@@ -67,6 +78,9 @@ def compute_face_measure(zone):
     else:
       _cz = np.atleast_3d(coords[2])
     measure = cpart_algo.compute_area_face_s(*vtx_size, _cx, _cy, _cz)
+    if face_indices is not None:
+      _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone))
+      measure = measure[_face_indices-1]
 
   return measure
 
@@ -210,7 +224,7 @@ def _compute_elements_measure(zone, dim, element_indices=None, element_loc=None)
   if dim == 3:
     return compute_cell_measure(zone, element_indices)
   elif dim == 2:
-    return compute_face_measure(zone)
+    return compute_face_measure(zone, element_indices, element_loc)
   elif dim == 1:
     return compute_edge_measure(zone)
 
