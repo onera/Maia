@@ -103,3 +103,45 @@ def test_compute_cell_volume(elt_kind, comm):
     assert (cell_vol == 0.125).all()
   elif elt_kind == 'PENTA_6':
     assert (cell_vol == 0.0625).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_compute_measure_indices(comm):
+
+  # Prepare a 2D meshes having different cell size : 
+  # 1sr column : 0.05, 2n column : 0.2, 3e column: 0.25)
+  tree2d = maia.factory.generate_dist_block([4,3], 'S', comm)
+  vtx_distri = MT.distribution_value(PT.get_all_Zone_t(tree2d)[0], 'Vertex')
+  new_cx_val = np.array([0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1])[vtx_distri[0]:vtx_distri[1]]
+  cx = PT.find_node_from_name(tree2d, 'CoordinateX')
+  PT.set_value(cx, new_cx_val)
+
+  # Elt mesh, 2D
+  tree = PT.deep_copy(tree2d)
+  maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
+  zone = PT.find_node_from_label(tree, 'Zone_t')
+
+  idx = [np.array([[10,2,9]]), np.array([[1,8,5,4]])][comm.rank]
+  expected = [[.5, .5, .4], [.5, .1, .1, .5]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 1, comm, idx)
+  assert np.array_equal(mes, expected)
+  # NGON mesh, 2D
+  tree = PT.deep_copy(tree2d)
+  maia.algo.dist.convert_s_to_ngon(tree, comm)
+  zone = PT.find_node_from_label(tree, 'Zone_t')
+  
+  idx = [np.array([[17,4,16]]), np.array([[1,15,9,8]])][comm.rank]
+  expected = [[.5, .5, .4], [.5, .1, .1, .5]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 1, comm, idx)
+  assert np.array_equal(mes, expected)
+
+  # Elt mesh, 1D
+  tree = maia.factory.generate_dist_block(5, 'BAR_2', comm)
+  zone = PT.find_node_from_label(tree, 'Zone_t')
+  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  cx = PT.find_node_from_name(zone, 'CoordinateX')
+  PT.set_value(cx, np.array([0, 0.1, 0.3, 0.6, 1.][vtx_distri[0]:vtx_distri[1]]))
+
+  idx = [np.array([[1,4]]), np.array([[2]])][comm.rank]
+  expected = [[.1, .4], [.2]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 1, comm, idx)
+  assert np.allclose(mes, expected)

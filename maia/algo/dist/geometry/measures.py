@@ -17,14 +17,15 @@ from  .utils  import get_local_coordinates, place_in_container
 from maia.algo.geometry_utils import ELT_FACE_VTX, compute_center_and_flux
 
 
-def compute_edge_measure(zone, comm):
+def compute_edge_measure(zone, comm, edge_indices=None):
   """ Compute the length of all edges of a 1D, 2D or 3D zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
 
   if PT.Zone.Type(zone) == "Unstructured":
     global_distri = PT.Zone.CellDimension == 1
-    edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri)
+    _edge_indices = edge_indices[0] if edge_indices is not None else None
+    edge_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 1, global_distri, _edge_indices)
   else:
     raise NotImplementedError("Structured zones are not managed")
 
@@ -165,14 +166,20 @@ def compute_cell_measure(zone, comm):
   return measure
 
 
-def _compute_elements_measure(zone, dim, comm):
+def _compute_elements_measure(zone, dim, comm, element_indices=None, element_loc=None):
   """Dispatch measures computing according to zone dimension and 
-  requested dimension. Return a raw array"""
+  requested dimension.
+  If element_indices is not None, measure is computed only for the
+  specified elements (in absolute numbering)
+  Return a raw array"""
   if dim == 'CellCenter':
     dim = PT.Zone.CellDimension(zone)
-  return {3: compute_cell_measure,
-          2: compute_face_measure,
-          1: compute_edge_measure}[dim](zone, comm)
+  if dim == 3:
+    return compute_cell_measure(zone, comm)
+  elif dim == 2:
+    return compute_face_measure(zone, comm)
+  elif dim == 1:
+    return compute_edge_measure(zone, comm, element_indices)
 
 def compute_elements_measure(zone, dim, comm):
   """ Implementation of maia.algo.compute_elements_measure for a given distributed zone.
