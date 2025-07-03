@@ -204,11 +204,13 @@ def compute_cell_measure(zone, cell_indices=None):
         old_to_new = np.cumsum(section_mask)
         measure = measure[old_to_new[cell_indices[0]-offset]-1]
         
-  else:
-    measure = cpart_algo.compute_volume_cell_s(*PT.Zone.CellSize(zone), *coords)
-    if cell_indices is not None: # Filtering is done afterward, which is less performant
-      _cell_indices = s_numbering.ijk_to_index_from_loc(*cell_indices, 'CellCenter', PT.Zone.VertexSize(zone)) - 1
-      measure = measure[_cell_indices]
+  else: # Structured meshes
+    if cell_indices is not None:
+      cell_vtx = CU.cell_vtx_connectivity(zone, 3, cell_indices)
+      _elt = PT.new_Elements("Fake_Hexa", "HEXA_8", erange=[1, len(cell_vtx)], econn=cell_vtx.values)
+      _compute_elt_volume(zone, _elt, coords, measure:=np.empty(len(cell_vtx)))
+    else:
+      measure = cpart_algo.compute_volume_cell_s(*PT.Zone.CellSize(zone), *coords)
 
   return measure
 
