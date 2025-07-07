@@ -106,6 +106,34 @@ def test_compute_cell_volume(elt_kind, comm):
 
 @pytest_parallel.mark.parallel(2)
 def test_compute_measure_indices(comm):
+  # Elt mesh, 3D
+  tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  idx = [np.array([[1,13]]), np.array([[12,14,4]])][comm.rank]
+  expected = [[1, .5], [1, .5, np.sqrt(2)]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 2, comm, idx)
+  assert np.array_equal(mes, expected)
+
+  # S mesh, 3D
+  tree = maia.factory.generate_dist_block(3, 'S', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  idx = [np.array([[2,2], [1,1], [1,2]]), np.array([[3,2,1], [2,2,2], [2,2,2]])][comm.rank]
+  expected = [[.25, .25], [.25, .25, .25]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 2, comm, idx, 'IFaceCenter')
+  assert np.array_equal(mes, expected)
+
+  # NGON mesh, 3D
+  tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  
+  idx = [np.array([[1,18]]), np.array([[11,8]])][comm.rank]
+  expected = [[.5, 1], [1, np.sqrt(2)]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 2, comm, idx)
+  assert np.array_equal(mes, expected)
+
 
   # Prepare a 2D meshes having different cell size : 
   # 1sr column : 0.05, 2n column : 0.2, 3e column: 0.25)
@@ -120,15 +148,34 @@ def test_compute_measure_indices(comm):
   maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
   zone = PT.find_node_from_label(tree, 'Zone_t')
 
+  idx = [np.array([[16,11]]), np.array([[12,13,15]])][comm.rank]
+  expected = [[.25, .05], [.2, .25, .2]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 2, comm, idx)
+  assert np.array_equal(mes, expected)
   idx = [np.array([[10,2,9]]), np.array([[1,8,5,4]])][comm.rank]
   expected = [[.5, .5, .4], [.5, .1, .1, .5]][comm.rank]
   mes = GEO._compute_elements_measure(zone, 1, comm, idx)
   assert np.array_equal(mes, expected)
+
+  # S mesh, 2D
+  tree = PT.deep_copy(tree2d)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  idx = [np.array([[3,1],[2,1]]), np.array([[2,3,2],[1,1,2]])][comm.rank]
+  expected = [[.25, .05], [.2, .25, .2]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 2, comm, idx)
+  assert np.array_equal(mes, expected)
+
   # NGON mesh, 2D
   tree = PT.deep_copy(tree2d)
   maia.algo.dist.convert_s_to_ngon(tree, comm)
+  maia.algo.edge_pe_to_ngon(tree, comm)
   zone = PT.find_node_from_label(tree, 'Zone_t')
   
+  idx = [np.array([[23,18]]), np.array([[19,20,22]])][comm.rank]
+  expected = [[.25, .05], [.2, .25, .2]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 2, comm, idx)
+  assert np.array_equal(mes, expected)
   idx = [np.array([[17,4,16]]), np.array([[1,15,9,8]])][comm.rank]
   expected = [[.5, .5, .4], [.5, .1, .1, .5]][comm.rank]
   mes = GEO._compute_elements_measure(zone, 1, comm, idx)

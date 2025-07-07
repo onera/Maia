@@ -38,26 +38,44 @@ def compute_edge_measure(zone, comm, edge_indices=None):
       length += (dircoord[1::2] - dircoord[0::2])**2
   return np.sqrt(length)
 
-def compute_face_measure(zone, comm):
+def compute_face_measure(zone, comm, face_indices=None, face_indices_loc=None):
   """ Compute the area of all faces of a 2D or 3D distributed zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
   zone_dim = PT.Zone.CellDimension(zone)
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face centers"
 
+  if face_indices is not None:
+    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
+    if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
+      assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
+        "Indices location must be specified when filtering faces center on 3D structured meshes"
+
   # First, get face_vtx connectivity
-  if PT.Zone.Type(zone) == "Structured":
-    vtx_size = np.ones(3, zone[1].dtype) # This trick allows to call zonedims_to_ngon even on 2D meshes
-    vtx_size[:zone_dim] = PT.Zone.VertexSize(zone)
-    ngon_node = zonedims_to_ngon(vtx_size, comm)
-    face_vtx = MT.Element.connectivity(ngon_node)
+  if PT.Zone.Type(zone) == "Structured" and zone_dim == 2:
+    face_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim, face_indices)
+  elif PT.Zone.Type(zone) == "Unstructured" and not PT.Zone.has_ngon_elements(zone): # unstructured elements
+    global_distri = PT.Zone.CellDimension(zone) == 2
+    _face_indices = face_indices[0] if face_indices is not None else None
+    face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri, _face_indices)
+
+  # Other cases (Structured 3D or NGON) does not manage idx filtering : we do it manually
   else:
-    if PT.Zone.has_ngon_elements(zone):
+    if PT.Zone.Type(zone) == "Structured" and zone_dim == 3:
+      ngon_node = zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
+      if face_indices is not None:
+        from maia.utils.numbering import s_numbering_funcs
+        _face_indices = s_numbering_funcs.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
+    elif PT.Zone.Type(zone) == "Unstructured" and PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx = MT.Element.connectivity(ngon_node)
-    else:
-      global_distri = PT.Zone.CellDimension(zone) == 2
-      face_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, global_distri)
+      if face_indices is not None:
+        _face_indices = face_indices[0] - PT.Element.Range(ngon_node)[0]
+
+    face_vtx = MT.Element.connectivity(ngon_node)
+    if face_indices is not None:
+      face_distri = MT.distribution_value(ngon_node, 'Element')
+      face_vtx = EP.block_to_part(face_vtx, face_distri, _face_indices, comm)
+
 
   # Get local coordinates
   local_coords = get_local_coordinates(zone, face_vtx.values, comm)
@@ -177,7 +195,7 @@ def _compute_elements_measure(zone, dim, comm, element_indices=None, element_loc
   if dim == 3:
     return compute_cell_measure(zone, comm)
   elif dim == 2:
-    return compute_face_measure(zone, comm)
+    return compute_face_measure(zone, comm, element_indices, element_loc)
   elif dim == 1:
     return compute_edge_measure(zone, comm, element_indices)
 
