@@ -119,6 +119,10 @@ def test_compute_measure_indices(comm):
   tree = maia.factory.generate_dist_block(3, 'S', comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
+  idx = [np.array([[1,2], [1,2], [1,2]]), np.array([[1,2], [2,2], [2,2]])][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 3, comm, idx)
+  assert np.array_equal(mes, [0.125, 0.125])
+
   idx = [np.array([[2,2], [1,1], [1,2]]), np.array([[3,2,1], [2,2,2], [2,2,2]])][comm.rank]
   expected = [[.25, .25], [.25, .25, .25]][comm.rank]
   mes = GEO._compute_elements_measure(zone, 2, comm, idx, 'IFaceCenter')
@@ -128,6 +132,11 @@ def test_compute_measure_indices(comm):
   tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
   maia.algo.dist.convert_elements_to_ngon(tree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
+  
+  idx = [np.array([[20,22,19]]), np.array([[19]])][comm.rank]
+  expected = [[1, .5, 1], [1]][comm.rank]
+  mes = GEO._compute_elements_measure(zone, 3, comm, idx)
+  assert np.array_equal(mes, expected)
   
   idx = [np.array([[1,18]]), np.array([[11,8]])][comm.rank]
   expected = [[.5, 1], [1, np.sqrt(2)]][comm.rank]

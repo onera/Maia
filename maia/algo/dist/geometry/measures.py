@@ -7,7 +7,7 @@ import maia
 from maia.algo.dist import connectivity_utils as CU
 from maia.transfer  import protocols as EP
 
-from maia.utils import np_utils
+from maia.utils import np_utils, s_numbering
 from maia.utils import logging as mlog
 from maia.utils import vstride as vs
 
@@ -64,8 +64,7 @@ def compute_face_measure(zone, comm, face_indices=None, face_indices_loc=None):
     if PT.Zone.Type(zone) == "Structured" and zone_dim == 3:
       ngon_node = zonedims_to_ngon(PT.Zone.VertexSize(zone), comm)
       if face_indices is not None:
-        from maia.utils.numbering import s_numbering_funcs
-        _face_indices = s_numbering_funcs.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
+        _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone)) - 1
     elif PT.Zone.Type(zone) == "Unstructured" and PT.Zone.has_ngon_elements(zone):
       ngon_node = PT.Zone.NGonNode(zone)
       if face_indices is not None:
@@ -112,14 +111,23 @@ def _decompose_sections_to_face_vtx(zone):
   cell_face_idx = np_utils.sizes_to_indices(np.concatenate(all_cell_face_n))
   return face_vtx, cell_face_idx
 
-def compute_cell_measure(zone, comm):
+def compute_cell_measure(zone, comm, cell_indices=None):
   """ Compute the volume of all cells of a 3D distributed zone and return a raw array"""
   coords = PT.Zone.coordinates(zone)
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
+  cell_distri = MT.distribution_value(zone, 'Cell')
+  dn_cell = cell_distri[1] - cell_distri[0]
+
+  if cell_indices is not None:
+    assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
+
   # Trick : if input zone is structured, convert it to unstructured so we can use same formulae
   if PT.Zone.Type(zone) == "Structured":
+    if cell_indices is not None: # Convert indices as well (if any)
+      cell_indices = s_numbering.ijk_to_index(*cell_indices, PT.Zone.CellSize(zone)).reshape((1,-1))
+      cell_indices += PT.Zone.n_face(zone) # Offset with nface, since on NGon faces are first
     _tree = PT.new_CGNSTree()
     _base = PT.new_CGNSBase(parent=_tree)
     _zone = PT.new_Zone(type='Structured', size=zone[1], parent=_base)
@@ -140,14 +148,37 @@ def compute_cell_measure(zone, comm):
     nface_node = PT.Zone.NFaceNode(zone)
     cell_face = MT.Element.connectivity(nface_node)
 
-    local_coords = get_local_coordinates(zone, face_vtx.values, comm)
-    center, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
-    face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
+    if cell_indices is not None:
+      # Filter cell_face to keep only appearing cells
+      cell_GI = EP.GlobalIndexer(cell_distri, cell_indices[0]-PT.Element.Range(nface_node)[0], comm)
+      cell_selector = cell_GI.access_counts > 0
+      cell_face = vs.take(cell_face, np.flatnonzero(cell_selector))
+      # Filter face_vtx to keep only filtered faces
+      face_GI = EP.GlobalIndexer(face_distri, np.abs(cell_face.values)-PT.Element.Range(ngon_node)[0], comm)
+      face_selector = face_GI.access_counts > 0
+      face_vtx = vs.take(face_vtx, np.flatnonzero(face_selector))
+      # Compute face flux on selected faces (+selected vtx)
+      local_coords = get_local_coordinates(zone, face_vtx.values, comm)
+      center, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
+      face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
+      # Send back face flux to cells in which faces appears to compute measure
+      # (this is a Take_v since removed faces have no value for flux)
+      _, face_contrib_loc = face_GI.Take_v((face_selector.astype(np.int32), face_contrib))
+      face_contrib_loc = vs.from_displs(cell_face.displs, face_contrib_loc)
+      measure = (1/3.) * (vs.sign(cell_face) * face_contrib_loc).reduce(vs.ReduceOp.SUM)
+      # Send back cell measure to requesting rank throught cell_indices (again Take_v)
+      _, measure = cell_GI.Take_v((cell_selector.astype(np.int32), measure))
 
-    # Assembly : for each cell, sum the quantities computed on each face
-    face_contrib_loc = EP.block_to_part(face_contrib, face_distri, np.abs(cell_face.values)-1, comm)
-    face_contrib_loc = vs.from_displs(cell_face.displs, face_contrib_loc)
-    measure = (1/3.) * (vs.sign(cell_face) * face_contrib_loc).reduce(vs.ReduceOp.SUM)
+    else:
+
+      local_coords = get_local_coordinates(zone, face_vtx.values, comm)
+      center, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
+      face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
+
+      # Assembly : for each cell, sum the quantities computed on each face
+      face_contrib_loc = EP.block_to_part(face_contrib, face_distri, np.abs(cell_face.values)-1, comm)
+      face_contrib_loc = vs.from_displs(cell_face.displs, face_contrib_loc)
+      measure = (1/3.) * (vs.sign(cell_face) * face_contrib_loc).reduce(vs.ReduceOp.SUM)
 
   else:
     # Compute center in current layout (section by section), then we will exchange to match 
@@ -193,7 +224,7 @@ def _compute_elements_measure(zone, dim, comm, element_indices=None, element_loc
   if dim == 'CellCenter':
     dim = PT.Zone.CellDimension(zone)
   if dim == 3:
-    return compute_cell_measure(zone, comm)
+    return compute_cell_measure(zone, comm, element_indices)
   elif dim == 2:
     return compute_face_measure(zone, comm, element_indices, element_loc)
   elif dim == 1:
