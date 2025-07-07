@@ -48,10 +48,10 @@ def fix_point_ranges(size_tree):
   """
   permuted = False
   gc_t_path = 'CGNSBase_t/Zone_t/ZoneGridConnectivity_t/GridConnectivity1to1_t'
-  for base, zone, zgc, gc in PT.iter_children_from_predicates(size_tree, gc_t_path, ancestors=True):
-    base_name = PT.get_name(base)
-    zone_name = PT.get_name(zone)
-    gc_path     = base_name + '/' + zone_name
+  for nodes in PT.iter_children_from_predicates(size_tree, gc_t_path, ancestors=True):
+    gc_path   = '/'.join([PT.get_name(n) for n in nodes])
+    zone_path = PT.utils.path_head(gc_path, 2)
+    gc = nodes[-1]
     # Some GC are defined as GridConnectivity1to1_t, but are in fact NearMatch -> skip them (see #141)
     if (jtype := PT.get_node_from_path(gc, '.Solver#Property/jtype')) is not None and PT.get_value(jtype) != 'match':
       continue
@@ -68,7 +68,7 @@ def fix_point_ranges(size_tree):
 
       if dir_to_swap.any():
         permuted = True
-        if MJT.gc_is_reference(gc, gc_path):
+        if MJT.gc_is_reference(gc, zone_path):
 
           opp_dir_to_swap = np.empty_like(dir_to_swap)
           opp_dir_to_swap[donor_dir] = dir_to_swap
@@ -79,7 +79,7 @@ def fix_point_ranges(size_tree):
           point_range[dir_to_swap, 0], point_range[dir_to_swap, 1] = \
               point_range[dir_to_swap, 1], point_range[dir_to_swap, 0]
 
-      assert (point_range_d[:,1] == PT.utils.gc_transform_point(gc, point_range[:,1])).all()
+      assert (point_range_d[:,1] == PT.utils.gc_transform_point(gc, point_range[:,1])).all(), f"Invalid Transform specification for GC {gc_path}"
   if permuted:
     logging.error(f"Some GridConnectivity1to1_t PointRange have been swapped because Transform specification was invalid")
 
