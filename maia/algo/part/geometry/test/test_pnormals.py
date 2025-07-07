@@ -12,7 +12,9 @@ from maia.algo.part.geometry import normals as GEO
 @pytest_parallel.mark.parallel(3)
 def test_compute_edge_normal2d(elt_kind, unitary, comm):
   tree = maia.factory.generate_dist_block(3, 'TRI_3', comm)
-  if elt_kind != 'TRI_3':
+  if elt_kind == 'TRI_3':
+    maia.algo.dist.reorder_elt_sections_from_dim(tree)
+  else:
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
@@ -20,7 +22,10 @@ def test_compute_edge_normal2d(elt_kind, unitary, comm):
   PT.rm_nodes_from_name(ptree, 'CoordinateZ')
   zone = PT.get_all_Zone_t(ptree)[0]
   
-  edge_normal = GEO.compute_edge_normal(zone, unitary)
+  edge_indices = None
+  if unitary:
+    edge_indices = np.array([[5,2,3]]) if elt_kind == 'Poly' else np.array([[2]])
+  edge_normal = GEO.compute_edge_normal(zone, unitary, edge_indices)
 
   if elt_kind == 'TRI_3': # Only external edges are computed
     coef = 0.5 if not unitary else 1
@@ -30,6 +35,8 @@ def test_compute_edge_normal2d(elt_kind, unitary, comm):
       expected_edge_normal = coef * np.array([0,1, 1,0, 1,0])
     elif comm.Get_rank() == 2:
       expected_edge_normal = coef * np.array([0,1, -1,0])
+    if edge_indices is not None:
+      expected_edge_normal = expected_edge_normal[[2,3]]
   elif elt_kind == 'Poly':
     ce = 1            if unitary else 0.5
     ci = 1/np.sqrt(2) if unitary else 0.5 
@@ -37,30 +44,35 @@ def test_compute_edge_normal2d(elt_kind, unitary, comm):
       expected_edge_normal = np.array([0,-ce,  -ce,0,  0,-ce,  ci,ci,  ce,0,  ci,ci,  0,ce])
     elif comm.Get_rank() == 1:
       expected_edge_normal = np.array([-ci,-ci,  ce,0,  0,ce,  -ce,0,  ci,ci,  ce,0,  0,ce])
-    elif comm.Get_rank() == 2:
+    else:
       expected_edge_normal = np.array([0,-ce,  -ce,0,  ci,ci,  ce,0,  0,ce])
+    if edge_indices is not None:
+      expected_edge_normal = expected_edge_normal[[8,9, 2,3, 4,5]]
 
   assert (edge_normal == expected_edge_normal).all()
 
+@pytest.mark.parametrize('subset', [False, True])
 @pytest.mark.parametrize('elt_kind', ['S', 'BAR_2'])
-@pytest_parallel.mark.parallel(2)
-def test_compute_edge_normal_1d(elt_kind, comm):
+@pytest_parallel.mark.parallel(1)
+def test_compute_edge_normal_1d(elt_kind, subset, comm):
   # NB this test compute edge normal even if CellDim is 1, because PhyDim is 2
   tree = maia.factory.generate_dist_block([5], elt_kind, comm, origin=[0,0], length=[(2,1)])
   # Make a "roof" shape to have different normals
   cy = PT.get_np_value(PT.find_node_from_name(tree, 'CoordinateY'))
-  if comm.rank == 1:
-    cy[:] = [.25, 0]
+  cy[3:] = [.25, 0]
+
+  if subset:
+    elt_indices = np.array([[3,4,1]])
+    expected = np.array([-0.25,-0.5,  -0.25,-0.5,   0.25,-0.5])
+  else:
+    elt_indices = None
+    expected = np.array([ 0.25,-0.5,   0.25,-0.5,  -0.25,-0.5,  -0.25,-0.5])
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
-  PT.rm_nodes_from_name(ptree, 'CoordinateZ') # Bug in BAR_2 : CZ is created
   zone = PT.get_all_Zone_t(ptree)[0]
-  edge_normal = GEO._compute_elements_normal(zone)
+  edge_normal = GEO._compute_elements_normal(zone, element_indices=elt_indices)
 
-  if comm.rank == 0:
-    assert (edge_normal == np.array([ 0.25,-0.5,   0.25,-0.5])).all()
-  elif comm.rank == 1:
-    assert (edge_normal == np.array([-0.25,-0.5,  -0.25,-0.5])).all()
+  assert (edge_normal == expected).all()
 
 @pytest.mark.parametrize('unitary', [False, True])
 @pytest_parallel.mark.parallel(2)
@@ -130,6 +142,62 @@ def test_compute_face_normal2d(elt_kind, comm):
   assert (PT.find_node_from_name(tree, 'NormalX')[1] == [-0.5, 0.5]).all()
   assert (PT.find_node_from_name(tree, 'NormalY')[1] == [0., 0.]).all()
   assert (PT.find_node_from_name(tree, 'NormalZ')[1] == [0.5, 0.5]).all()
+
+def test_compute_face_normal_subset(comm):
+  # Celldim = 2 (roof shape)
+  base_tree = maia.factory.generate_dist_block([3,3], 'S', comm, length=[2,1])
+  cz = PT.get_np_value(PT.find_node_from_name(base_tree, 'CoordinateZ'))
+  cz[[1,4,7]] += 1
+
+  # > S 
+  tree = PT.deep_copy(base_tree)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  face_normal = GEO._compute_elements_normal(zone, False, np.array([[1,2,2], [1,2,1]]))
+  assert np.array_equal(face_normal, [-0.5,0,0.5,  0.5,0,0.5,  0.5,0,0.5])
+  # > Elt
+  tree = PT.deep_copy(base_tree)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
+  maia.algo.dist.convert_ngon_to_elements(tree, comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  face_normal = GEO._compute_elements_normal(zone, False, np.array([[9,12,10]]))
+  assert np.array_equal(face_normal, [-0.5,0,0.5,  0.5,0,0.5,  0.5,0,0.5])
+  # NG
+  tree = PT.deep_copy(base_tree)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  face_normal = GEO._compute_elements_normal(zone, False, np.array([[13,16,14]]))
+  assert np.array_equal(face_normal, [-0.5,0,0.5,  0.5,0,0.5,  0.5,0,0.5])
+
+  # Celldim = 3
+  base_tree = maia.factory.generate_dist_block([5,3,2], 'S', comm)
+  cy = PT.get_np_value(PT.find_node_from_name(base_tree, 'CoordinateY'))
+  cy[5:10] += 0.25
+  cy[20:25] += 0.25
+
+  # > S 
+  tree = PT.deep_copy(base_tree)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  face_normal = GEO._compute_elements_normal(zone, False, np.array([[2,4,2],[1,1,2], [1,1,2]]), 'KFaceCenter')
+  assert np.array_equal(face_normal, [0,0,-0.1875,  0,0,-0.1875,  0,0,0.0625])
+  # > Elt
+  tree = PT.deep_copy(base_tree)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
+  maia.algo.dist.convert_ngon_to_elements(tree, comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  face_normal = GEO._compute_elements_normal(zone, False, np.array([[14,16,26]]))
+  assert np.array_equal(face_normal, [0,0,-0.1875,  0,0,-0.1875,  0,0,0.0625])
+  # > NG
+  tree = PT.deep_copy(base_tree)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+  zone = PT.get_all_Zone_t(ptree)[0]
+  face_normal = GEO._compute_elements_normal(zone, False, np.array([[24,26,36]]))
+  assert np.array_equal(face_normal, [0,0,-0.1875,  0,0,-0.1875,  0,0,0.0625])
 
 @pytest.mark.parametrize('cell_dim', [2,3])
 @pytest_parallel.mark.parallel(1)
