@@ -1,3 +1,4 @@
+import hashlib
 import numpy as np
 import mpi4py.MPI as MPI
 import itertools
@@ -455,9 +456,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
   create a corresponding 1to1 Vertex matching join.
 
   Input tree is modified inplace: Vertex ``GridConnectivity_t`` nodes
-  are stored under distinct containers named from the original ones, suffixed
-  with `#Vtx`. Similarly, vertex GC nodes uses the original name suffixed
-  with `#Vtx`.
+  are created using ``#Vtx`` suffix (long names are hashed).
 
   Only unstructured-NGon based meshes are supported.
 
@@ -532,18 +531,25 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
 
       if j == 1: #Swap pl/pld for opposite jn
         pl_vtx, pl_vtx_opp = pl_vtx_opp, pl_vtx
-      jn_vtx = PT.new_GridConnectivity(PT.get_name(gc)+'#Vtx', PT.get_str_value(gc), \
+      jn_name = PT.get_name(gc) + '#Vtx'
+      if len(jn_name) > 32:
+        jn_name = hashlib.sha1(jn_name.encode()).hexdigest()[:16]
+      jn_vtx = PT.new_GridConnectivity(jn_name, PT.get_str_value(gc), \
           loc='Vertex', type='Abutting1to1', parent=zgc)
       PT.new_IndexArray('PointList',      pl_vtx.reshape(1,-1), parent=jn_vtx)
       PT.new_IndexArray('PointListDonor', pl_vtx_opp.reshape(1,-1), parent=jn_vtx)
       MT.new_Distribution({'Index' : distri_jn}, jn_vtx)
+      if len(PT.get_name(gc)) > 28:
+        PT.new_Descriptor('OriginalName', PT.get_name(gc) + '#Vtx', parent=jn_vtx)
 
       PT.add_child(jn_vtx, PT.get_child_from_label(gc, 'GridConnectivityProperty_t'))
       PT.add_child(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceId'))
       PT.add_child(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceOrd'))
       donor_name_node = PT.get_child_from_name(gc, 'GridConnectivityDonorName')
       if donor_name_node is not None:
-        PT.new_node('GridConnectivityDonorName', 'Descriptor_t', \
-            PT.get_str_value(donor_name_node)+'#Vtx', parent=jn_vtx)
+        jn_opp_name = PT.get_str_value(donor_name_node) + '#Vtx'
+        if len(jn_opp_name) > 32:
+          jn_opp_name = hashlib.sha1(jn_opp_name.encode()).hexdigest()[:16]
+        PT.new_Descriptor('GridConnectivityDonorName', jn_opp_name, parent=jn_vtx)
 
 
