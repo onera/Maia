@@ -334,7 +334,7 @@ def localize_points(src_tree: CGNSPartTree,
       sol = PT.update_child(tgt_part, "Localization", "DiscreteData_t")
       PT.new_GridLocation(location, sol)
       data = located_data[i_dom][i_part]
-      n_tgts = data['located_ids'].size + data['unlocated_ids'].size,
+      n_tgts = data['located_ids'].size + data['unlocated_ids'].size
       src_gnum = -np.ones(n_tgts, dtype=pdm_gnum_dtype) #Init with -1 to carry unlocated points
       src_dom  = -np.ones(n_tgts, dtype=np.int32)
       src_gnum[data['located_ids']] = data['location']
