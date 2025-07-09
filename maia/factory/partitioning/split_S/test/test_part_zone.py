@@ -251,7 +251,7 @@ def test_create_subset_2d(comm):
     assert (PT.get_node_from_path(part_zone, 'ZSR_FaceBnd/PointRange')[1] == [[1,2],[1,1]]).all()
 
 def test_create_zone_gnums():
-  dist_zone_cell = np.array([6,8,4])
+  dist_zone_cell = (6,8,4)
   cell_window = np.array([[4,6], [6,8], [1,3]])
   vtx_gnum, edge_gnum, face_gnum, cell_gnum = splitS.create_zone_gnums(cell_window, dist_zone_cell, dtype=np.int32)
 
@@ -268,7 +268,7 @@ def test_create_zone_gnums():
   assert vtx_gnum.dtype == face_gnum.dtype == cell_gnum.dtype == np.int32
 
   # 2D
-  dist_zone_cell = np.array([6,8])
+  dist_zone_cell = (6,8)
   cell_window = np.array([[4,6], [6,9]])
   vtx_gnum, edge_gnum, face_gnum, cell_gnum = splitS.create_zone_gnums(cell_window, dist_zone_cell, dtype=np.int32)
 
