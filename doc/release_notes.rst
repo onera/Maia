@@ -19,7 +19,7 @@ Development version
 🐞 Fixes
 ^^^^^^^^
 - extract_part: fix output cell GlobalNumbering of surfacic S extractions and allow any input basename
-- maia_poly_old_to_new: fix conversion of MIXED elements on large meshes
+- maia_poly_old_to_new/maia_poly_new_to_old: prevent overflows when converting large meshes
 - convert_mixed_to_elements: correct BC conversion on meshes having multiple MIXED nodes
 
 v1.7 (May 2024)

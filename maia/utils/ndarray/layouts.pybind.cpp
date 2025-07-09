@@ -198,7 +198,7 @@ indexed_to_interleaved_connectivity(py::array_t<T>& np_idx, py::array_t<T>& np_d
   auto np_interleaved = py::array_t<T>(np_idx.size()-1+np_data.size());
   auto interleaved    = np_interleaved.mutable_data();
 
-  int idx_write(0);
+  size_t idx_write(0);
   for (int i = 0; i < np_idx.size()-1; ++i) {
     interleaved[idx_write++] = idx[i+1] - idx[i];
     for (int j=idx[i]; j < idx[i+1]; ++j) {
@@ -221,8 +221,8 @@ interleaved_to_indexed_connectivity(int n_elem, py::array_t<T>& np_interleaved)
   auto values = np_values.mutable_data();
 
   offset[0] = 0;
-  int i_elem = 0;
-  int i = 0;
+  size_t i_elem = 0;
+  size_t i = 0;
   while (i < np_interleaved.size()) {
     offset[i_elem+1] = offset[i_elem] + interleaved[i];
     for (int j = 0; j < offset[i_elem+1] - offset[i_elem]; ++j) {
