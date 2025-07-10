@@ -19,7 +19,7 @@ PointCloud = Dict[str, Any]
 def _shift_face_num(cgns_ids:NDArray, zone:CGNSTree, reverse:bool=False) -> NDArray:
   """ Shift CGNS face numbering to start at 1 """
   if PT.Zone.has_ngon_elements(zone):
-    offset = PT.Element.Range(PT.Zone.NGonNode(zone))[0] - 1
+    offset = int(PT.Element.Range(PT.Zone.NGonNode(zone))[0]) - 1
   else:
     ordering = PT.Zone.elt_ordering_by_dim(zone)
     if ordering == 1: #Increasing elements : substract starting point of 2D

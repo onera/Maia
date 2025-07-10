@@ -25,12 +25,12 @@ def test_shift_face_num():
       ElementRange IndexRange_t [1, 25]:
   """)
   # NGON first
-  assert (connect_match._shift_face_num([4,6,10], zone) == [4,6,10]).all()
+  assert (connect_match._shift_face_num(np.array([4,6,10]), zone) == [4,6,10]).all()
   # NFace first
   er = PT.get_node_from_name(zone, 'ElementRange')[1]
   er[0] = 11
-  assert (connect_match._shift_face_num([20,15], zone) == [10,5]).all()
-  assert (connect_match._shift_face_num([10,5], zone, True) == [20,15]).all()
+  assert (connect_match._shift_face_num(np.array([20,15]), zone) == [10,5]).all()
+  assert (connect_match._shift_face_num(np.array([10,5]), zone, True) == [20,15]).all()
 
   # Elements
   zone = PT.yaml.to_node(f"""
@@ -42,7 +42,7 @@ def test_shift_face_num():
     Tri2 Elements_t [5,0]:
       ElementRange IndexRange_t [31, 40]:
   """)
-  assert (connect_match._shift_face_num([38,22,40], zone) == [18,2,20]).all()
+  assert (connect_match._shift_face_num(np.array([38,22,40]), zone) == [18,2,20]).all()
 
 def test_nodal_sections_to_face_vtx():
   sections = [

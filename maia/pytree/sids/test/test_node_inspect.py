@@ -245,6 +245,38 @@ def test_zone_s_size():
   assert SIDS.Zone.n_face(zone_s) == 10*(5-1)*(2-1) + (10-1)*5*(2-1) + (10-1)*(5-1)*2 # 10*9*1 + 9*5*1 + 9*4*2
   assert SIDS.Zone.n_vtx_bnd(zone_s) == 0
 
+def test_zone_size_dtype():
+  zone = N.new_Zone('Zone', size=np.array([[100, 36, 0]], np.int32), type='Unstructured')
+  elt = N.new_NGonElements(erange=np.array([1, 15], np.int32), parent=zone)
+  assert all(isinstance(k, int) for k in SIDS.Zone.VertexSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.CellSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.FaceSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.VertexBoundarySize(zone))
+  assert isinstance(SIDS.Zone.n_vtx(zone), int)
+  assert isinstance(SIDS.Zone.n_cell(zone), int)
+  assert isinstance(SIDS.Zone.n_face(zone), int)
+  assert isinstance(SIDS.Zone.n_vtx_bnd(zone), int)
+
+  assert isinstance(SIDS.Element.Size(elt), int)
+  for rng in SIDS.Zone.get_elt_range_per_dim(zone):
+    assert all(isinstance(r, int) for r in rng)
+
+  zone = N.new_Zone('Zone', size=np.array([[10,9,0], [5,4,0], [2,1,0]], np.int64), type='Structured')
+  assert all(isinstance(k, int) for k in SIDS.Zone.VertexSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.CellSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.FaceSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.IFaceSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.JFaceSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.KFaceSize(zone))
+  assert all(isinstance(k, int) for k in SIDS.Zone.VertexBoundarySize(zone))
+  assert isinstance(SIDS.Zone.n_vtx(zone), int)
+  assert isinstance(SIDS.Zone.n_cell(zone), int)
+  assert isinstance(SIDS.Zone.n_face(zone), int)
+  assert isinstance(SIDS.Zone.n_vtx_bnd(zone), int)
+
+  assert isinstance(SIDS.Subset.n_elem(N.new_BC(point_range=np.array([[1,4], [1,4]], np.int32))), int)
+  assert isinstance(SIDS.Subset.n_elem(N.new_BC(point_list=np.array([[1,2,3]], np.int32))), int)
+
 def test_get_ordered_elements():
   zone = N.new_Zone()
   N.new_Elements('ElemA', erange=[11, 53], parent=zone)

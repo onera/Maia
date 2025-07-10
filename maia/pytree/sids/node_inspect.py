@@ -174,7 +174,7 @@ class Zone:
       >>> PT.Zone.VertexSize(zone)
       (11, 6, 2)
     """
-    return tuple(N.get_np_value(zone_node)[:,0])
+    return tuple(int(k) for k in N.get_np_value(zone_node)[:,0])
 
   @staticmethod
   def CellSize(zone_node:CGNSTree) -> Tuple[int, ...]:
@@ -190,7 +190,7 @@ class Zone:
       >>> PT.Zone.CellSize(zone)
       (10,)
     """
-    return tuple(N.get_np_value(zone_node)[:,1])
+    return tuple(int(k) for k in N.get_np_value(zone_node)[:,1])
 
   @staticmethod
   def FaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
@@ -217,9 +217,7 @@ class Zone:
       n_face = tuple(math.prod(func(zone_node)) for func in dirfacesize)
     elif Zone.Type(zone_node) == "Unstructured":
       ngon_node = Zone.NGonNode(zone_node)
-      er = W.find_child_from_name(ngon_node, 'ElementRange')[1]
-      assert er is not None
-      n_face = (er[1] - er[0] + 1,)
+      n_face = (Element.Size(ngon_node),)
     else:
       raise TypeError(f"Unable to determine the ZoneType for Zone {N.get_name(zone_node)}")
     return n_face
@@ -336,7 +334,7 @@ class Zone:
     return utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
 
   @staticmethod
-  def VertexBoundarySize(zone_node:CGNSTree) -> Tuple[int]:
+  def VertexBoundarySize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
     Return the number of boundary vertices per direction of a Zone_t node
 
@@ -349,7 +347,7 @@ class Zone:
       >>> PT.Zone.VertexBoundarySize(zone)
       (0, 0)
     """
-    return tuple(N.get_np_value(zone_node)[:,2])
+    return tuple(int(k) for k in N.get_np_value(zone_node)[:,2])
 
   @staticmethod
   def Type(zone_node:CGNSTree) -> str:
@@ -581,8 +579,8 @@ class Zone:
     for i_dim, elt_dim in enumerate(sorted_elts_by_dim):
       # Element is sorted
       if(len(elt_dim) > 0):
-        range_by_dim[i_dim][0] = Element.Range(elt_dim[0 ])[0]
-        range_by_dim[i_dim][1] = Element.Range(elt_dim[-1])[1]
+        range_by_dim[i_dim][0] = int(Element.Range(elt_dim[0 ])[0])
+        range_by_dim[i_dim][1] = int(Element.Range(elt_dim[-1])[1])
 
     # Check if element range were not interlaced
     for first, second in itertools.combinations(range_by_dim, 2):
@@ -793,7 +791,7 @@ class Element:
       20
     """
     er = Element.Range(elt_node)
-    return er[1] - er[0] + 1
+    return int(er[1] - er[0] + 1)
 
 
 
@@ -1126,7 +1124,7 @@ class PointRange:
 
   @staticmethod
   def n_elem(point_range_node:CGNSTree) -> int:
-    return PointRange.SizePerIndex(point_range_node).prod()
+    return int(PointRange.SizePerIndex(point_range_node).prod())
 
 
 # --------------------------------------------------------------------------

@@ -443,7 +443,6 @@ def create_zone_gnums(cell_window, dist_zone_cell_size, dtype=pdm_dtype):
 
   idx_dim = len(dist_zone_cell_size)
   dist_cell_per_dir = dist_zone_cell_size
-  part_cell_per_dir = cell_window[:,1] - cell_window[:,0]
   dist_vtx_per_dir  = tuple(k+1 for k in dist_zone_cell_size)
 
   # Vertex

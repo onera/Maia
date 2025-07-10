@@ -103,13 +103,13 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
                         ngon_n)
 
     # Create NFACE
-    nface_er  = np.array([1, n_cell], dtype=zone[1].dtype) + n_face
+    nface_er  = np.array([1+n_face, n_cell+n_face], dtype=zone[1].dtype)
     nface_ec  = np_utils.safe_int_cast(dcell_face, nface_er.dtype)
     nface_eso = np_utils.safe_int_cast(dcell_face_idx, nface_er.dtype)
     nface_eso += distrib_cell_face[i_rank]
 
     nfac_n = PT.new_NFaceElements(erange=nface_er, eso=nface_eso, ec=nface_ec, parent=zone)
-    MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(distrib_cell, comm),
+    MT.new_Distribution({'Element' :            par_utils.full_to_partial_distribution(distrib_cell, comm),
                         'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_cell_face, comm)},
                          nfac_n)
 
