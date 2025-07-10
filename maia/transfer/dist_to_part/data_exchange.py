@@ -128,8 +128,7 @@ def _dist_to_part_sollike(dist_zone: CGNSDistTree,
         else:
           p_sol = PT.update_child(part_zone, PT.get_name(d_sol), PT.get_label(d_sol), PT.get_value(d_sol))
           PT.update_child(p_sol, 'GridLocation', 'GridLocation_t', location)
-          _shape = PT.Zone.VertexSize(part_zone) if location == 'Vertex' else PT.Zone.CellSize(part_zone)
-          shape = tuple(int(k) for k in _shape)
+          shape = PT.Zone.VertexSize(part_zone) if location == 'Vertex' else PT.Zone.CellSize(part_zone)
         for data_name, data in part_data.items():
           #F is mandatory to keep shared reference. Normally no copy is done
           shaped_data = data[ipart].reshape(shape, order='F')

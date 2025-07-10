@@ -257,7 +257,7 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   zones = PT.get_all_Zone_t(tree)
   assert min([PT.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
 
-  expected_elt_tot = sum([int(PT.Zone.n_cell(z)) + int(PT.Zone.n_face(z)) for z in zones])
+  expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones])
   output_dtype = PT.get_np_value(zones[0]).dtype
   if expected_elt_tot > np.iinfo(np.int32).max:
     if pdm_dtype == np.int32:

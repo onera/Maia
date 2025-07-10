@@ -48,7 +48,7 @@ def _struct3d_connectivity(zone: CGNSTree) -> Tuple[NDArray, NDArray]:
   face_vtx, _ = s_numbering.ngon_dconnectivity_from_gnum(bounds, PT.Zone.VertexSize(zone), dtype=np.int32)
   return face_vtx_idx, face_vtx
 
-def _pr_to_face_pl(n_vtx_zone: Tuple[Union[int,np.integer], ...], pr: NDArray, input_loc: str) -> NDArray:
+def _pr_to_face_pl(n_vtx_zone: Tuple[int, ...], pr: NDArray, input_loc: str) -> NDArray:
   """
   Transform a (partitioned) PointRange pr of any location input_loc into a PointList
   supported by the faces or edges. n_vtx_zone is the number of vertices of the zone to which the

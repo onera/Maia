@@ -19,7 +19,7 @@ def indexed_to_interleaved_connectivity(node: CGNSTree) -> None:
 def interlaced_to_indexed_connectivity(node: CGNSTree) -> None:
   n_elem = PT.Element.Size(node)
   connec = PT.find_child_from_name(node, 'ElementConnectivity')
-  idx, array = np_utils.interlaced_to_indexed(int(n_elem), PT.get_np_value(connec))
+  idx, array = np_utils.interlaced_to_indexed(n_elem, PT.get_np_value(connec))
 
   PT.new_DataArray('ElementStartOffset', value=idx, parent=node)
   PT.set_value(connec, array)

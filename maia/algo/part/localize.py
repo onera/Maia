@@ -57,7 +57,7 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
     edge_face = edge_pe[is_internal]
     edge_counts = is_internal[0::2].astype(np.int32) + is_internal[1::2].astype(np.int32)
     edge_face = vs.from_counts(edge_counts, edge_face)
-    face_edge = PDM_connectivity_transpose(int(PT.Element.Size(ngon)), edge_face)
+    face_edge = PDM_connectivity_transpose(PT.Element.Size(ngon), edge_face)
 
     return [face_edge.displs, face_edge.values, cell_ln_to_gn, edge_vtx, vtx_coords, vtx_ln_to_gn]
 

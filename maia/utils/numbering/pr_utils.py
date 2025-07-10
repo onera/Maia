@@ -6,7 +6,7 @@ import maia.pytree as PT
 from .s_numbering_funcs import ijk_to_index_from_loc, ij_to_index_from_loc
 
 def normal_index_shift(point_range: NDArray,
-                       n_vtx: Sequence[Union[int,np.integer]],
+                       n_vtx: Sequence[int],
                        bnd_axis: int,
                        input_loc: str, 
                        output_loc: str) -> int:
@@ -72,7 +72,7 @@ def unroll_pr(pr: NDArray) -> NDArray:
 
   return out
 
-def _ijk_to_func(idx_arrays:Sequence[NDArray], loc:str, n_vtx_S:Sequence[Union[int,np.integer]], order:str) -> NDArray:
+def _ijk_to_func(idx_arrays:Sequence[NDArray], loc:str, n_vtx_S:Sequence[int], order:str) -> NDArray:
   """
   Wraps the relevant ijk_to_func depening of dimension and location, and call it in a vectorial way
   """
@@ -100,7 +100,7 @@ def _ijk_to_func(idx_arrays:Sequence[NDArray], loc:str, n_vtx_S:Sequence[Union[i
 
 
 def compute_pointList_from_pointRanges(sub_pr_list: List[NDArray],
-                                       n_vtx_S: Sequence[Union[int, np.integer]],
+                                       n_vtx_S: Sequence[int],
                                        loc: str,
                                        order: str = 'F',
                                        dtype:DTypeLike=None) -> NDArray:

@@ -248,7 +248,7 @@ def _partitioning(dist_tree: CGNSDistTree,
   n_cell     = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(part_tree)])
   n_cell_all = comm.allreduce(n_cell, MPI.SUM)
   mlog.info(f"Partitioning completed ({end-start:.2f} s) -- "
-            f"Nb of cells for current rank is {mlog.size_to_str(int(n_cell))} "
+            f"Nb of cells for current rank is {mlog.size_to_str(n_cell)} "
             f"(Σ={mlog.size_to_str(n_cell_all)})")
 
   return part_tree

@@ -24,7 +24,7 @@ def get_stats(extract_tree: CGNSTree, dim: int,
     else:
       n_cell = sum([PT.Zone.n_cell(zone) for zone in PT.iter_all_Zone_t(extract_tree)])
     n_cell_all = comm.allreduce(n_cell, MPI.SUM)
-    return elts_kind, int(n_cell), n_cell_all
+    return elts_kind, n_cell, n_cell_all
 
 
 def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,

@@ -106,10 +106,9 @@ import numpy as np
 from maia.typing import *
 from cmaia.utils import numbering as cnumbering
 
-Int = Union[int, np.integer]
 IntArray = NDArray[np.integer]
 
-def ijk_to_index_from_loc(i:IntArray, j:IntArray, k:IntArray, loc: str, n_vtx: Sequence[Int]) -> IntArray:
+def ijk_to_index_from_loc(i:IntArray, j:IntArray, k:IntArray, loc: str, n_vtx: Sequence[int]) -> IntArray:
   """Dispatch ijk to index for 3D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -124,7 +123,7 @@ def ijk_to_index_from_loc(i:IntArray, j:IntArray, k:IntArray, loc: str, n_vtx: S
     return ijk_to_facekIndex(i,j,k,n_cell,n_vtx)
   raise ValueError(f"Unsupported location '{loc}'.")
 
-def index_to_ijk_from_loc(idx: IntArray, loc: str, n_vtx: Sequence[Int]) -> Tuple[IntArray, IntArray, IntArray]:
+def index_to_ijk_from_loc(idx: IntArray, loc: str, n_vtx: Sequence[int]) -> Tuple[IntArray, IntArray, IntArray]:
   """Dispatch index to ijk for 3D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -139,7 +138,7 @@ def index_to_ijk_from_loc(idx: IntArray, loc: str, n_vtx: Sequence[Int]) -> Tupl
     return facekIndex_to_ijk(idx, n_cell, n_vtx)
   raise ValueError(f"Unsupported location '{loc}'.")
 
-def ij_to_index_from_loc(i: IntArray, j: IntArray, loc: str, n_vtx: Sequence[Int]) -> IntArray:
+def ij_to_index_from_loc(i: IntArray, j: IntArray, loc: str, n_vtx: Sequence[int]) -> IntArray:
   """Dispatch ij to index for 2D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -152,7 +151,7 @@ def ij_to_index_from_loc(i: IntArray, j: IntArray, loc: str, n_vtx: Sequence[Int
     return ij_to_edgejIndex(i,j,n_cell,n_vtx)
   raise ValueError(f"Unsupported location '{loc}'.")
 
-def index_to_ij_from_loc(idx: IntArray, loc: str, n_vtx: Sequence[Int]) -> Tuple[IntArray, IntArray]:
+def index_to_ij_from_loc(idx: IntArray, loc: str, n_vtx: Sequence[int]) -> Tuple[IntArray, IntArray]:
   """Dispatch index to ij for 2D meshes, depending of grid location"""
   n_cell = tuple(k-1 for k in n_vtx)
   if loc == 'Vertex':
@@ -167,35 +166,35 @@ def index_to_ij_from_loc(idx: IntArray, loc: str, n_vtx: Sequence[Int]) -> Tuple
 
 ## 3D funcs
 
-def ijk_to_index(i: IntArray, j: IntArray, k: IntArray, n_elmt: Sequence[Int]) -> IntArray:
+def ijk_to_index(i: IntArray, j: IntArray, k: IntArray, n_elmt: Sequence[int]) -> IntArray:
   """ (I,J,K) -> Idx for cells or vertices """
   return i + (j-1)*n_elmt[0] + (k-1)*n_elmt[0]*n_elmt[1]
 
 
-def index_to_ijk(idx: IntArray, n_elmt: Sequence[Int]) -> Tuple[IntArray, IntArray, IntArray]:
+def index_to_ijk(idx: IntArray, n_elmt: Sequence[int]) -> Tuple[IntArray, IntArray, IntArray]:
   """ Idx -> (I,J,K) for cells or vertices """
   k = ((idx - 1) // (n_elmt[0]*n_elmt[1])) + 1
   j = (idx - (k-1)*(n_elmt[0]*n_elmt[1]) - 1) // n_elmt[0] + 1
   i = idx - (j-1)*n_elmt[0] - (k-1)*(n_elmt[0]*n_elmt[1])
   return i,j,k
 
-def ijk_to_faceiIndex(i: IntArray, j: IntArray, k: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> IntArray:
+def ijk_to_faceiIndex(i: IntArray, j: IntArray, k: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> IntArray:
   """ (I,J,K) -> Idx for I-normal faces """
   return i + (j-1)*n_vtx[0] + (k-1)*n_vtx[0]*n_cell[1]
 
-def faceiIndex_to_ijk(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> Tuple[IntArray, IntArray, IntArray]:
+def faceiIndex_to_ijk(idx: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> Tuple[IntArray, IntArray, IntArray]:
   """ Idx -> (I,J,K) for I-normal faces """
   k = ((idx - 1) // (n_vtx[0]*n_cell[1])) + 1
   j = (idx - (k-1)*(n_vtx[0]*n_cell[1]) - 1) // n_vtx[0] + 1
   i = idx - (j-1)*n_vtx[0] - (k-1)*(n_vtx[0]*n_cell[1])
   return i,j,k
 
-def ijk_to_facejIndex(i: IntArray, j: IntArray, k: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> IntArray:
+def ijk_to_facejIndex(i: IntArray, j: IntArray, k: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> IntArray:
   """ (I,J,K) -> Idx for J-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   return i + (j-1)*n_cell[0] + (k-1)*n_vtx[1]*n_cell[0] + nbFacesi
 
-def facejIndex_to_ijk(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> Tuple[IntArray, IntArray, IntArray]:
+def facejIndex_to_ijk(idx: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> Tuple[IntArray, IntArray, IntArray]:
   """ Idx -> (I,J,K) for J-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   k = ((idx - 1 - nbFacesi) // (n_vtx[1]*n_cell[0])) + 1
@@ -203,13 +202,13 @@ def facejIndex_to_ijk(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]
   i = idx - (j-1)*n_cell[0] - (k-1)*(n_vtx[1]*n_cell[0]) - nbFacesi
   return i,j,k
 
-def ijk_to_facekIndex(i: IntArray, j: IntArray, k: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> IntArray:
+def ijk_to_facekIndex(i: IntArray, j: IntArray, k: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> IntArray:
   """ (I,J,K) -> Idx for K-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   nbFacesj = n_vtx[1]*n_cell[0]*n_cell[2]
   return i + (j-1)*n_cell[0] + (k-1)*n_cell[0]*n_cell[1] + nbFacesi + nbFacesj
 
-def facekIndex_to_ijk(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> Tuple[IntArray, IntArray, IntArray]:
+def facekIndex_to_ijk(idx: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> Tuple[IntArray, IntArray, IntArray]:
   """ Idx -> (I,J,K) for K-normal faces """
   nbFacesi = n_vtx[0]*n_cell[1]*n_cell[2]
   nbFacesj = n_vtx[1]*n_cell[0]*n_cell[2]
@@ -221,32 +220,32 @@ def facekIndex_to_ijk(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]
 
 ## 2D funcs
 
-def ij_to_index(i: IntArray, j: IntArray, n_elmt: Sequence[Int]) -> IntArray:
+def ij_to_index(i: IntArray, j: IntArray, n_elmt: Sequence[int]) -> IntArray:
   """ (I,J) -> Idx for cells or vertices """
   return i + (j-1)*n_elmt[0]
 
-def index_to_ij(idx: IntArray, n_elmt: Sequence[Int]) -> Tuple[IntArray, IntArray]:
+def index_to_ij(idx: IntArray, n_elmt: Sequence[int]) -> Tuple[IntArray, IntArray]:
   """ Idx -> (I,J) for cells or vertices """
   j = (idx-1) // n_elmt[0] + 1
   i = idx - (j-1)*n_elmt[0]
   return i,j
 
-def ij_to_edgeiIndex(i: IntArray, j: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> IntArray:
+def ij_to_edgeiIndex(i: IntArray, j: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> IntArray:
   """ (I,J) -> Idx for I-normal 2D edges """
   return i + (j-1)*n_vtx[0]
 
-def edgeiIndex_to_ij(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> Tuple[IntArray, IntArray]:
+def edgeiIndex_to_ij(idx: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> Tuple[IntArray, IntArray]:
   """ Idx -> (I,J) for I-normal 2D edges """
   j = (idx - 1) // n_vtx[0] + 1
   i = idx - (j-1)*n_vtx[0]
   return i,j
 
-def ij_to_edgejIndex(i: IntArray, j: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> IntArray:
+def ij_to_edgejIndex(i: IntArray, j: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> IntArray:
   """ (I,J) -> Idx for J-normal 2D edges """
   nbEdgei = n_vtx[0]*n_cell[1]
   return i + (j-1)*n_cell[0] + nbEdgei
 
-def edgejIndex_to_ij(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int]) -> Tuple[IntArray, IntArray]:
+def edgejIndex_to_ij(idx: IntArray, n_cell: Sequence[int], n_vtx: Sequence[int]) -> Tuple[IntArray, IntArray]:
   """ Idx -> (I,J) for J-normal 2D edges """
   nbEdgei = n_vtx[0]*n_cell[1]
   j = (idx - 1 - nbEdgei) // n_cell[0] + 1
@@ -258,7 +257,7 @@ def edgejIndex_to_ij(idx: IntArray, n_cell: Sequence[Int], n_vtx: Sequence[Int])
 
 ###############################################################################
 def ngon_dconnectivity_from_gnum(bounds: Sequence[int],
-                                 n_vtx: Sequence[Int],
+                                 n_vtx: Sequence[int],
                                  dtype: DTypeLike) -> Tuple[NDArray, NDArray]:
   """
   Generate a distributed ngon connectivity between the indicated face gnum ids for

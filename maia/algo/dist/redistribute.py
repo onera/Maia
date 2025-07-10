@@ -156,7 +156,7 @@ def redistribute_elements_node(node: CGNSTree,
 
 # ---------------------------------------------------------------------------------------
 def redistribute_zone(zone: CGNSTree,
-                      distribution: Callable[[Union[int, np.integer], MPIComm], NDArray],
+                      distribution: Callable[[int, MPIComm], NDArray],
                       comm: MPIComm) -> None:
 
   # Get distribution
