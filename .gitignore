@@ -4,4 +4,4 @@ __pycache__
 *.bak
 .nfs*
 share/_generated/*
-build*
+build/*

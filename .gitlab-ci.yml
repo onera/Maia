@@ -49,10 +49,10 @@ job:build:
   stage: build
   script:
     - cd $CUSTOM_CI_DIR
-    - mkdir -p build && cd build
+    - mkdir -p build/socle6_int32 && cd build/socle6_int32
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
 
 # This build documentation after main build, only if branch is dev or for MR events
@@ -62,7 +62,7 @@ job:doc:
   rules:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   script:
-    - cd $CUSTOM_CI_DIR/build
+    - cd $CUSTOM_CI_DIR/build/socle6_int32
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh
@@ -74,23 +74,23 @@ job:doc:
 job:ctest:
   stage: test
   script:
-    - cd $CUSTOM_CI_DIR/build
+    - cd $CUSTOM_CI_DIR/build/socle6_int32
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh
     - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../maia
-    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
+    - mpirun -np 4 python3 -m pytest ../../maia
+    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
 
 job:doc_snippets:
   stage: test
   script:
-    - cd $CUSTOM_CI_DIR/build
+    - cd $CUSTOM_CI_DIR/build/socle6_int32
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh; unset PYTEST_PLUGINS
-    - mpirun -np 1 python3 -m pytest ../doc
-    - python3 ../maia/pytree/test/run_docstring.py
+    - mpirun -np 1 python3 -m pytest ../../doc
+    - python3 ../../maia/pytree/test/run_docstring.py
 
 job:portability_gnum:
   stage: test
@@ -100,19 +100,19 @@ job:portability_gnum:
     - cd $CUSTOM_CI_DIR
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - mkdir -p build_int64 && cd build_int64
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - mkdir -p build/socle6_int64 && cd build/socle6_int64
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
     - source source.sh
     - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../maia/
-    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
+    - mpirun -np 4 python3 -m pytest ../../maia/
+    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
 
 job:coverage:
   stage: test
   before_script:
     - |
-      cat > $CUSTOM_CI_DIR/build/.coveragerc << EOF
+      cat > $CUSTOM_CI_DIR/build/socle6_int32/.coveragerc << EOF
       [coverage:run]
       parallel = true
       source = maia
@@ -120,13 +120,13 @@ job:coverage:
   script:
     - INIT_ORIGINAL_FOLDER=$(pwd)
     - rm -rf $INIT_ORIGINAL_FOLDER/reports # Cleanup old builds reports if existing
-    - cd $CUSTOM_CI_DIR/build
+    - cd $CUSTOM_CI_DIR/build/socle6_int32
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - source $ELSASPIRO/.env_elsA   # Get Converter
     - module load gcc/10.2.0
     - export PATH=$FEFLOPATH:$PATH  # Get Feflo
     - source source.sh
-    - mpirun -np 4 coverage run -m pytest ../maia
+    - mpirun -np 4 coverage run -m pytest ../../maia
 
     - coverage combine
     - coverage report --sort=cover --fail-under=95
@@ -155,13 +155,13 @@ job:portability_openmpi:
   script:
     - cd $CUSTOM_CI_DIR
     - source /tmp_user/juno/sonics/dist/socle_cfd7/source.sh
-    - mkdir -p build_cfd7 && cd build_cfd7
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - mkdir -p build/socle7_int32 && cd build/socle7_int32
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
     - source source.sh
     - mpiexec -np 4 test/maia_doctest_unit_tests
-    - mpiexec -np 4 pytest ../maia/
-    - mpiexec -np 4 pytest ../test/ 
+    - mpiexec -np 4 pytest ../../maia/
+    - mpiexec -np 4 pytest ../../test/ 
 
 job:portability_llvm:
   stage: test
@@ -172,13 +172,13 @@ job:portability_llvm:
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi
     - export CC=icx; export CXX=icpx
-    - mkdir -p build_llvm && cd build_llvm
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - mkdir -p build/socle6_llvm_int32 && cd build/socle6_llvm_int32
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
     - source source.sh
     - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../maia/
-    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic
+    - mpirun -np 4 python3 -m pytest ../../maia/
+    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
 
 job:portability_optim:
   stage: test
@@ -188,15 +188,15 @@ job:portability_optim:
     - cd $CUSTOM_CI_DIR
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - mkdir -p build_cfd6_optim && cd build_cfd6_optim
+    - mkdir -p build/socle6_optim_int32 && cd build/socle6_optim_int32
     - export CFLAGS="-O3 -g -DNDEBUG -ftree-vectorize -ftree-loop-vectorize -fvect-cost-model=unlimited -ftree-loop-optimize -march=native -fopenmp-simd -mtune=intel -mprefer-vector-width=512"
     - export CXXFLAGS=$CFLAGS
-    - cmake -DCMAKE_BUILD_TYPE=Release -Dmaia_ENABLE_TESTS=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    - cmake -DCMAKE_BUILD_TYPE=Release -Dmaia_ENABLE_TESTS=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
     - source source.sh
     - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../maia/
-    - mpirun -np 8 python3 -m pytest ../test --scheduler=dynamic -k "not test_wall_distance_U"
+    - mpirun -np 4 python3 -m pytest ../../maia/
+    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic -k "not test_wall_distance_U"
 
 # Deploy the documentation sphinx documentation to the site and pages, only if branch is dev
 pages:
@@ -207,7 +207,7 @@ pages:
     - rm -rf public
     - mkdir public
     - cp -r /tmp_user/juno/sonics/usr/maia/doc/html/* public/
-    - cp -r $CUSTOM_CI_DIR/build/doc/sphinx/html public/dev
+    - cp -r $CUSTOM_CI_DIR/build/socle6_int32/doc/sphinx/html public/dev
     - |
       cat > public/index.html << EOF
       <head>
