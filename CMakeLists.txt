@@ -2,26 +2,25 @@
 # General CMake settings
 # ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_policy(SET CMP0074 NEW) # force find_package to take <PackageName>_ROOT variables into account
 
 if(NOT DEFINED PROJECT_ROOT)
   set(PROJECT_ROOT ${CMAKE_SOURCE_DIR} CACHE PATH "Root directory, where the submodules are populated")
 endif()
 
 # Bootstrap project_utils
-set(sub_repo_path "${PROJECT_ROOT}/external/project_utils")
-file(GLOB sub_repo_files ${sub_repo_path}/*)
-list(LENGTH sub_repo_files sub_repo_nb_files)
-if(sub_repo_nb_files EQUAL 0)
+file(GLOB project_utils_files "${PROJECT_ROOT}/external/project_utils/*")
+list(LENGTH project_utils_files n_file_project_utils)
+if(n_file_project_utils EQUAL 0)
   message(FATAL_ERROR
-    "${sub_repo_path} is empty.
+    "external/project_utils is empty.
     Maybe you forgot to initialize it with \"git submodule update --init\""
   )
 endif()
 set(PROJECT_UTILS_DIR ${PROJECT_ROOT}/external/project_utils)
 set(PROJECT_UTILS_CMAKE_DIR ${PROJECT_UTILS_DIR}/cmake)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_UTILS_CMAKE_DIR}/find_package") # for custom Find*.cmake files
-include(${PROJECT_UTILS_CMAKE_DIR}/initialize.cmake)
-include(${PROJECT_UTILS_CMAKE_DIR}/dependency_management.cmake) # project_add_subdirectory, project_find_package and target_install
+include(${PROJECT_UTILS_CMAKE_DIR}/dependency_management.cmake) # project_add_subdirectory, project_find_package and target_install...
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
@@ -40,6 +39,15 @@ option(${PROJECT_NAME}_ENABLE_COVERAGE "Enable coverage for ${PROJECT_NAME}" OFF
 option(${PROJECT_NAME}_ENABLE_DOCUMENTATION "Build ${PROJECT_NAME} documentation" OFF)
 option(${PROJECT_NAME}_BUILD_EMBEDDED_PDM "Build the included copy of ParaDiGM" ON)
 option(${PROJECT_NAME}_ENABLE_TESTS "Make CTest run the tests" ON)
+
+# Check repo and submodules validity
+include(${PROJECT_UTILS_CMAKE_DIR}/check_repo_validity.cmake) # check all submodules are present
+if (${PROJECT_NAME}_BUILD_EMBEDDED_PDM)
+  set(optional_submodules " ")
+else()
+  set(optional_submodules "paradigm")
+endif()
+check_repo_validity(${optional_submodules})
 
 ## Compiler flags
 ### C++ standard
