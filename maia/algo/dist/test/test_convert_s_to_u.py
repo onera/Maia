@@ -221,7 +221,7 @@ def test_s_to_u_3d_elt(comm):
     expected_zmax_pl = np.array([[17,18]], pdm_dtype)
     expected_zmax_distri = np.array([0,2,6], pdm_dtype)
   elif comm.rank == 1:
-    expected_quad_ec = np.array([3,4,16,15, 10,9,22,21, 11,10,23,22, 12,11,24,23, 1,5,6,2, 2,6,7,3, 3,7,8,4], pdm_dtype)
+    expected_quad_ec = np.array([3,4,16,15, 9,21,22,10, 10,22,23,11, 11,23,24,12, 1,5,6,2, 2,6,7,3, 3,7,8,4], pdm_dtype)
     expected_quad_distri = np.array([6,13,22], pdm_dtype)
     expected_hexa_ec = np.array([3,4,8,7,15,16,20,19, 5,6,10,9,17,18,22,21], pdm_dtype)
     expected_hexa_distri = np.array([2,4,6], pdm_dtype)
@@ -236,15 +236,15 @@ def test_s_to_u_3d_elt(comm):
     expected_zmax_pl = np.array([[21,22]], pdm_dtype)
     expected_zmax_distri = np.array([4,6,6], pdm_dtype)
   
-  expected_bar = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([1,22], pdm_dtype), econn=expected_quad_ec)
-  MT.new_Distribution({'Element' : expected_quad_distri}, expected_bar)
-  expected_quad = PT.new_Elements('HEXA_8', 'HEXA_8', erange=np.array([23,28], pdm_dtype), econn=expected_hexa_ec)
-  MT.new_Distribution({'Element' : expected_hexa_distri}, expected_quad)
+  expected_quad = PT.new_Elements('QUAD_4', 'QUAD_4', erange=np.array([1,22], pdm_dtype), econn=expected_quad_ec)
+  MT.new_Distribution({'Element' : expected_quad_distri}, expected_quad)
+  expected_hexa = PT.new_Elements('HEXA_8', 'HEXA_8', erange=np.array([23,28], pdm_dtype), econn=expected_hexa_ec)
+  MT.new_Distribution({'Element' : expected_hexa_distri}, expected_hexa)
   expected_zmax = PT.new_BC('Zmax', 'Null', loc='FaceCenter', point_list=expected_zmax_pl)
   MT.new_Distribution({'Index' : expected_zmax_distri}, expected_zmax)
 
-  assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_bar)
-  assert PT.is_same_tree(PT.get_node_from_name(tree, 'HEXA_8'), expected_quad)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'QUAD_4'), expected_quad)
+  assert PT.is_same_tree(PT.get_node_from_name(tree, 'HEXA_8'), expected_hexa)
   assert PT.is_same_tree(PT.get_node_from_name(tree, 'Zmax'), expected_zmax)
 
 @pytest_parallel.mark.parallel([1,3])

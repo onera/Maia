@@ -307,7 +307,7 @@ g_num n_face_j = n_vtx[1]*n_cell[0]*n_cell[2];
       vtx4 = i   + (j-1)*n_vtx[0] + (k  )*n_vtx[0]*n_vtx[1];
 
       if (j==n_vtx[1]) {
-        std::swap(vtx1, vtx2);
+        std::swap(vtx2, vtx4);
       }
     }
     // Face is k-normal

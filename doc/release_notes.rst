@@ -21,6 +21,7 @@ Development version
 - extract_part: fix output cell GlobalNumbering of surfacic S extractions and allow any input basename
 - maia_poly_old_to_new/maia_poly_new_to_old: prevent overflows when converting large meshes
 - convert_mixed_to_elements: correct BC conversion on meshes having multiple MIXED nodes
+- convert_s_to_u: fix jmax boundary faces for standard elements output
 
 v1.7 (May 2024)
 ---------------

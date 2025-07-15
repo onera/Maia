@@ -158,12 +158,8 @@ def test_compute_elements_normal_face_placement(cell_dim, comm):
   # > U
   expt_loc = 'FaceCenter' if cell_dim == 3 else 'CellCenter'
   for cnt in ['Poly', 'Standard']:
-    # > Poly
     tree = PT.deep_copy(base_tree)
-    maia.algo.dist.convert_s_to_ngon(tree, comm)
-    if cnt == 'Standard':
-      # NB : convert_s_to_u with STD elements seems to produce bad face orientation !
-      maia.algo.dist.convert_ngon_to_elements(tree, comm)
+    maia.algo.dist.convert_s_to_u(tree, cnt, comm)
 
     zone = PT.get_all_Zone_t(tree)[0]
     GEO.compute_elements_normal(zone, comm, unitary=True)
