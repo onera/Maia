@@ -1,0 +1,107 @@
+Bootstrap: docker
+From: alpine:{{ VERSION }}
+Stage: build
+
+
+%arguments
+  VERSION=3.22
+
+
+%post
+  # 1. Install what we can with apk
+  apk update
+  apk add bash git curl openssh # openssh needed by git
+  apk add make cmake gcc g++ gfortran 
+  apk add python3 python3-dev py3-numpy py3-numpy-dev cython py3-pybind11 py3-yaml py3-pytest
+  apk add openmpi openmpi-dev py3-mpi4py
+
+  # 2. Install binary libraries
+  export CC=gcc
+  export CXX=g++
+  export FC=gfortran
+
+  # 2.1. HDF5
+  cd /opt
+  mkdir hdf5 && cd hdf5
+  mkdir install
+  git clone --depth=1 --branch hdf5_1.14.4.3 https://github.com/HDFGroup/hdf5 hdf5-src
+  cd hdf5-src
+  CC=mpicc ./configure --enable-parallel --enable-shared prefix=/opt/hdf5/install
+  make -j && make install
+
+  # 2.2. ParMetis (i.e. gklib, metis, parmetis)
+  mkdir -p /opt/parmetis
+  mkdir -p /opt/parmetis/install
+
+  cd /opt/parmetis
+  git clone https://github.com/KarypisLab/GKlib gklib-src
+  git clone https://github.com/KarypisLab/METIS metis-src
+  git clone https://github.com/KarypisLab/ParMETIS parmetis-src
+
+  cd /opt/parmetis/gklib-src
+  git checkout 6e7951358fd896e2abed7887196b6871aac9f2f8 # 2025-07
+  make config shared=1 prefix=/opt/parmetis/install
+  make -j install
+  ln -s /opt/parmetis/install/lib/libGKlib.so.0 /opt/parmetis/install/lib/libGKlib.so # thank you gklib, you made me loose 2 hours of my life
+
+  cd /opt/parmetis/metis-src
+  git checkout v5.2.1
+  make config shared=1 i64=1 r64=1 prefix=/opt/parmetis/install
+  make -j install
+
+  cd /opt/parmetis/parmetis-src
+  git checkout 8ee6a372ca703836f593e3c450ca903f04be14df # 2023, is the most recent commit in 2025-07
+  make config shared=1 prefix=/opt/parmetis/install
+  make -j install
+
+
+  # 2.3. PtScotch
+  cd /opt
+  mkdir ptscotch && cd ptscotch
+  mkdir install
+  PTSCOTCH_VERSION=7.0.8
+  curl -L -o scotch-v${PTSCOTCH_VERSION}.tar.bz2 https://gitlab.inria.fr/scotch/scotch/-/archive/v${PTSCOTCH_VERSION}/scotch-v${PTSCOTCH_VERSION}.tar.bz2
+  tar xf scotch-v${PTSCOTCH_VERSION}.tar.bz2
+  cd scotch-v${PTSCOTCH_VERSION}
+  mkdir build && cd build
+  apk add bison flex
+  cmake -S .. -DBUILD_SHARED_LIBS=ON -DBUILD_LIBSCOTCHMETIS=OFF -DINTSIZE=64 -DSCOTCH_DETERMINISTIC=FULL -DPTHREAD_AFFINITY_LINUX_OK=no
+  make -j && make install
+
+  # 2.4. Clean tmp files
+  cd /opt
+  rm -rf /opt/hdf5/hdf5-src
+  rm -rf /opt/parmetis/gklib-src
+  rm -rf /opt/parmetis/metis-src
+  rm -rf /opt/parmetis/parmetis-src
+  rm -rf /opt/ptscotch/scotch-v${PTSCOTCH_VERSION}
+
+  # 3. Install Python packages that rely on previously compiled libraries
+  apk add py3-pip
+  mkdir /opt/python
+  CC=mpicc HDF5_MPI=ON HDF5_DIR=/opt/hdf5/install/ pip install --no-binary=h5py h5py --prefix=/opt/python
+
+
+%environment
+  export CC=gcc
+  export CXX=g++
+  export FC=gfortran
+  export HDF5_ROOT=/opt/hdf5/install
+  export PARMETIS_ROOT=/opt/parmetis/install
+  export METIS_ROOT=${PARMETIS_ROOT}
+  export PTSCOTCH_ROOT=/opt/ptscotch/install
+  export LD_LIBRARY_PATH=${HDF5_ROOT}/lib:${LD_LIBRARY_PATH}
+  export LD_LIBRARY_PATH=${PARMETIS_ROOT}/lib:${LD_LIBRARY_PATH}
+  export LD_LIBRARY_PATH=${PTSCOTCH_ROOT}/lib:${LD_LIBRARY_PATH}
+  export PYTHONPATH=/opt/python/lib/python3.12/site-packages
+
+
+%labels
+    Author Berenger.Berthoul@onera.fr
+    Version v0.0.1
+
+
+%help
+    Apptainer image with Alpine stack for Maia (https://github.com/onera/maia)
+    This is image does not contain Maia itself
+    The Alpine distribution comes with OpenMPI version 4.1.6-r1

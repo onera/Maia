@@ -198,6 +198,24 @@ job:portability_optim:
     - mpirun -np 4 python3 -m pytest ../../maia/
     - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic -k "not test_wall_distance_U"
 
+
+job:portability_apptainer: # Apptainer image with Alpine image for the stack (in particular with Numpy 2)
+  stage: test
+  tags:
+    - juno-slurm
+  variables:
+    SCHEDULER_PARAMETERS: "--ntasks=24 --nodes=1-1 --time=00:30:00"
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  script:
+    - cd $CUSTOM_CI_DIR
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module use --append /tmp_user/juno/sonics/prod/spack/share/spack/modules/linux-rocky8-icelake/
+    - module load apptainer
+     # build and test maia on an alpine image where the maia software stack has been installed
+    - export MAIA_SOURCE_DIR=$CUSTOM_CI_DIR
+    - apptainer exec /stck/sonics/apptainer/alpine_socle_maia.sif $MAIA_SOURCE_DIR/share/apptainer/build_and_test.sh
+
 # Deploy the documentation sphinx documentation to the site and pages, only if branch is dev
 pages:
   stage: deploy
