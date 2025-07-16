@@ -334,7 +334,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
   # In local mode, 'native' groups (eg face groups if we extract faces) are not yet supported by PDM
   # so we exclude them from set / get by using < instead of <= in bc parsing
-  bc_op = operator.le if equilibrate else operator.lt
+  bc_op = operator.lt if (dim == 3 or not equilibrate) else operator.le
   
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
