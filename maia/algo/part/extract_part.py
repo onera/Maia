@@ -175,9 +175,6 @@ def _extract_part_from_zsr(part_tree: CGNSPartTree,
 
   l_containers_name = [name for name in containers_name]
   if transfer_dataset:
-    # This will be usefull to detect self data exchange later
-    for subdict in extractor.exch_tool_box.values():
-      subdict['ExtractingCnt'] = zsr_name
     if zsr_name not in l_containers_name:
       l_containers_name += [zsr_name]
   if l_containers_name:
@@ -294,7 +291,11 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   # Get location if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
 
-  return Extractor(part_tree, patch, location, comm, **options)
+  extractor = Extractor(part_tree, patch, location, comm, **options)
+  # This will be usefull to detect self data exchange later
+  for subdict in extractor.exch_tool_box.values():
+    subdict['ExtractingCnt'] = zsr_path
+  return extractor
 
 def create_extractor_from_zsr(part_tree: CGNSPartTree,
                               zsr_path : str, 
