@@ -69,16 +69,25 @@ def test_compute_face_normal3d_ngon(unitary, comm):
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   
-  face_normal = GEO.compute_face_normal(zone, unitary)
+  GEO.compute_elements_normal(zone, unitary)
+  # Back to dist tree for // independant comparison
+  maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
 
-  # Somehow both ranks have same cell numbering => cell normals
   # All face area are 0.25
   coef = 0.25 if not unitary else 1
-  expected_face_normal = coef * np.array([
-      0,0,-1,   0,0,-1,  0,0,-1,  0,0,-1,  0, 0,1,  0, 0,1,  0, 0,1,  0, 0,1,  -1,0,0,  -1,0,0, 
-    -1,0, 0,  -1,0, 0,  1,0, 0,  1,0, 0,  0,-1,0,  0,-1,0,  0,-1,0,  0,-1,0,   0,1,0,   0,1,0])
+  if comm.rank == 0:
+    expected_x = coef*np.array([0,0,0,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,-1], float)
+    expected_y = coef*np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], float)
+    expected_z = coef*np.array([-1,-1,-1,-1,-1,-1,-1,-1,1,1,1,1,0,0,0,0,0,0], float)
+  elif comm.rank == 1:
+    expected_x = coef*np.array([-1,-1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0], float)
+    expected_y = coef*np.array([0,0,0,0,0,0,-1,-1,-1,-1,-1,-1,-1,-1,1,1,1,1], float)
+    expected_z = coef*np.array([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], float)
 
-  assert (face_normal == expected_face_normal).all()
+  prefix = 'UnitNormal' if unitary else 'Normal'
+  assert np.array_equal(PT.get_np_value(PT.find_node_from_name(tree, prefix+'X')), expected_x)
+  assert np.array_equal(PT.get_np_value(PT.find_node_from_name(tree, prefix+'Y')), expected_y)
+  assert np.array_equal(PT.get_np_value(PT.find_node_from_name(tree, prefix+'Z')), expected_z)
 
 @pytest.mark.parametrize('unitary', [False, True])
 @pytest_parallel.mark.parallel(1)

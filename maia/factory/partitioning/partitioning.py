@@ -52,6 +52,7 @@ def set_default(dist_tree, comm):
              'save_all_connectivities' : False,
              'additional_ln_to_gn'     : [],
              'keep_empty_sections'     : False,
+             'target_part'             : None,
              'dump_pdm_output'         : False }
 
   if pdm_has_parmetis:

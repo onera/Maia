@@ -218,6 +218,62 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
   data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
   assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][0][pl-PT.Element.Range(ngon)[0]], data)
 
+def portable_partitioning(dist_tree, comm):
+  """ Create a custom partioning (chosing cells for each part) to ensure portability 
+  The switch will be remove when PDM 2.6 is no longer supported
+  """
+  from Pypdm.Pypdm import MultiPart
+  if hasattr(MultiPart, 'dpart_id_set'):
+    zone_to_parts = [{'Base/zone' : [.25,.25]},
+                     {'Base/zone' : []},
+                     {'Base/zone' : [.5]}][comm.rank]
+    target_part = [[np.array([0,0,1,2,2,1,2,2,2], np.int32)],
+                   [np.array([0,0,1,2,2,1,2,2,2], np.int32)],
+                   [np.array([0,0,1,2,2,1,2,2,2], np.int32)]][comm.rank]
+    
+    return maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts,
+                                            target_part=target_part, data_transfer='ALL')
+  from maia.transfer import protocols as MEP
+  from maia.algo.dist.localize import minimal_partitioning
+  from maia.factory.partitioning import post_split
+  # Reorder cells, to give to each rank its wanted cells
+  maia.algo.pe_to_nface(dist_tree, comm)
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+  wanted_cell = [np.array([0,1,9,10,18,19]),
+                 np.array([2,5,11,14,20,23]),
+                 np.array([3,4,6,7,8,12,13,15,16,17,21,22,24,25,26])][comm.rank]
+  nface = PT.Zone.NFaceNode(zone)
+  cell_face = MT.Element.connectivity(nface)
+  selected_cell_face = MEP.block_to_part(cell_face, MT.distribution_value(nface, 'Element'), wanted_cell, comm)
+  PT.set_value(PT.find_child_from_name(nface, 'ElementStartOffset'), selected_cell_face.displs)
+  PT.set_value(PT.find_child_from_name(nface, 'ElementConnectivity'), selected_cell_face.values)
+  MT.new_Distribution({'Element' : par_utils.dn_to_distribution(len(wanted_cell), comm),
+                       'ElementConnectivity' : par_utils.dn_to_distribution(selected_cell_face.dsize, comm)}, nface)
+  MT.new_Distribution({'Cell' : par_utils.dn_to_distribution(len(wanted_cell), comm)}, zone)
+  # Call minimal_partitioning and reconstruct partitions
+  data = minimal_partitioning(zone, comm)
+  ptree = PT.new_CGNSTree()
+  pbase = PT.new_CGNSBase(parent=ptree)
+  pzone = PT.new_Zone(f'zone.P{comm.rank}.N0', type='Unstructured', size=[[data[7].size, data[5].size, 0]], parent=pbase)
+  PT.new_GridCoordinates(fields={f'Coordinate{d}': data[4][i::3] for i,d in enumerate('XYZ')}, parent=pzone)
+  elt = PT.new_NGonElements(erange=[1,data[6].size], eso=data[2], ec=data[3], parent=pzone)
+  MT.new_GlobalNumbering({'Element' : data[6]}, elt)
+  elt = PT.new_NFaceElements(erange=[data[6].size+1, data[6].size+data[5].size], eso=data[0], ec=data[1], parent=pzone)
+  MT.new_GlobalNumbering({'Element' : data[5]}, elt)
+  MT.new_GlobalNumbering({'Vertex' : data[7], 'Cell' : data[5]}, pzone)
+  # Complete partition with post_split + transfer
+  post_split.post_partitioning(dist_tree, ptree, comm)
+  maia.transfer.dist_tree_to_part_tree_all(dist_tree, ptree, comm)
+  # P0 was supposed to have 2 partitions
+  if comm.rank == 1:
+    comm.send(PT.find_node_from_name(ptree, 'zone.P1.N0'), dest=0)
+    PT.rm_nodes_from_label(ptree, 'Zone_t')
+  if comm.rank == 0:
+    zone = comm.recv(source=1)
+    PT.set_name(zone, 'zone.P0.N1')
+    PT.add_child(pbase, zone)
+  return ptree
+
 @pytest_parallel.mark.parallel(3)
 def test_extr_U_local(comm):
   
@@ -252,12 +308,16 @@ def test_extr_U_local(comm):
   maia.algo.compute_elements_center(dist_tree, 2, comm)
 
 
+  """
   # Choose splitting to have : 2 parts on rank 0,  0 parts on rank 1,  1 part on rank 2
+  # --> not portable (with openmpi / alpine), replace with custom func
   zone_to_parts = [{'Base/zone' : [.25,.25]},
                    {'Base/zone' : []},
                    {'Base/zone' : [.5]}][comm.rank]
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts, data_transfer='FIELDS')
+  """
+  part_tree = portable_partitioning(dist_tree, comm)
 
   # NB : BC Xmin is covered by the P0.N0 and P2.N0, BC Xmax by P0.N1 and P2.N0
   for part_zone in PT.get_all_Zone_t(part_tree):
