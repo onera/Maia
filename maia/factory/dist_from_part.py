@@ -360,9 +360,9 @@ def _recover_BC(dist_zone: CGNSDistTree,
     comm: MPI communicator
   """
   bc_predicate = ['ZoneBC_t', 'BC_t']
-
+  child_list = ['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'AdditionalFamilyName_t', 'Descriptor_t']
   discover_nodes_from_matching(dist_zone, part_zones, bc_predicate, comm,
-        child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'AdditionalFamilyName_t'], get_value='all')
+                               child_list=child_list, get_value='all')
 
   for bc_path in PT.predicates_to_paths(dist_zone, bc_predicate):
     if PT.Zone.Type(dist_zone) == 'Unstructured':
@@ -383,7 +383,7 @@ def _recover_GC(dist_zone: CGNSDistTree, part_zones: List[CGNSPartTree], comm: M
 
   discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
         child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
-                    'GridConnectivityDonorName', 'Transform', 'FamilyName_t', 'AdditionalFamilyName_t'],
+                    'Descriptor_t', 'Transform', 'FamilyName_t', 'AdditionalFamilyName_t'],
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
 
   #After GC discovery, cleanup donor name suffix
