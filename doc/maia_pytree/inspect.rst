@@ -65,7 +65,6 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Element.NVtx
   ~maia.pytree.Element.Range
   ~maia.pytree.Element.Size
-  ~maia.pytree.Element.Type
 
 **GridConnectivity** *These functions apply to GridConnectivity_t and GridConnectivity1to1_t nodes*
 

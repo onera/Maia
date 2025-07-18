@@ -691,21 +691,6 @@ class Element:
   """The following functions apply to any Element_t node"""
 
   @staticmethod
-  def Type(elt_node:CGNSTree) -> int:
-    """ Return the type of an Element_t node
-
-    Args:
-      elt_node (CGNSTree): Input Element_t node
-    Returns:
-      int : CGNS code corresponding to this element kind
-    Example:
-      >>> elt = PT.new_Elements(type='TETRA_4')
-      >>> PT.Element.Type(elt)
-      10
-    """
-    return int(N.get_np_value(elt_node)[0])
-
-  @staticmethod
   def CGNSName(elt_node:CGNSTree) -> str:
     """ Return the generic name of an Element_t node
 
@@ -718,7 +703,8 @@ class Element:
       >>> PT.Element.CGNSName(elt)
       'NFACE_n'
     """
-    return EU.id_to_name(Element.Type(elt_node))
+    id = int(N.get_np_value(elt_node)[0])
+    return EU.id_to_name(id)
 
   @staticmethod
   def Dimension(elt_node:CGNSTree) -> int:
@@ -733,7 +719,8 @@ class Element:
       >>> PT.Element.Dimension(elt)
       2
     """
-    dim = EU.id_to_dim(Element.Type(elt_node))
+    id = int(N.get_np_value(elt_node)[0])
+    dim = EU.id_to_dim(id)
     assert dim is not None, "Input element does not have valid dimension"
     return dim
 
@@ -750,7 +737,8 @@ class Element:
       >>> PT.Element.NVtx(elt)
       5
     """
-    n_vtx = EU.id_to_nvtx(Element.Type(elt_node))
+    id = int(N.get_np_value(elt_node)[0])
+    n_vtx = EU.id_to_nvtx(id)
     assert n_vtx is not None, "Input element does not have valid number of vertices"
     return n_vtx
 
