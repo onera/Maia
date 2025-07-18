@@ -509,14 +509,6 @@ class Zone:
     return factory._make([val_or_none(W.get_child_from_name(grid_coord_node, key)) for key in factory._fields])
 
   @staticmethod
-  def ngon_connectivity(zone_node:CGNSTree) -> Tuple[Optional[NDArray], Optional[NDArray], Optional[NDArray]]:
-    ngon_node = Zone.NGonNode(zone_node)
-    face_vtx_idx = N.get_value(W.find_child_from_name(ngon_node, "ElementStartOffset"), True)
-    face_vtx     = N.get_value(W.find_child_from_name(ngon_node, "ElementConnectivity"), True)
-    ngon_pe      = N.get_value(W.find_child_from_name(ngon_node, "ParentElements"), True)
-    return face_vtx_idx, face_vtx, ngon_pe
-
-  @staticmethod
   def get_ordered_elements(zone_node:CGNSTree) -> List[CGNSTree]:
     """ Return the Elements under a Zone_t node, sorted according to their ElementRange
     
