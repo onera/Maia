@@ -314,13 +314,13 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
 
   data_in_l = list()
   cst_stride = 0
-  elt_id   = 0
+  elt_id   = ''
   min_section_gn = np.iinfo(pdm_gnum_dtype).max
   max_section_gn = 0
   for ipart, part_zone in enumerate(part_zones):
     elt_n = PT.get_child_from_name(part_zone, elem_name)
     if elt_n is not None:
-      elt_id = PT.Element.Type(elt_n)
+      elt_id = PT.Element.CGNSName(elt_n)
       cst_stride = PT.Element.NVtx(elt_n)
 
       # Retrieve the ElementRange within the given dimension

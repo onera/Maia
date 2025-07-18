@@ -8,6 +8,8 @@ import maia.pytree.maia as MT
 from maia.transfer   import protocols     as EP
 from maia.utils      import par_utils
 
+from maia.pytree.sids import elements_utils as EU
+
 def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
     """
     Transform an element based connectivity into a mixed connectivity.
@@ -40,7 +42,7 @@ def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         for element in PT.Zone.get_ordered_elements(zone):
             assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']
             
-            elem_type = PT.Element.Type(element)
+            elem_type = EU.name_to_id(PT.Element.CGNSName(element))
             elem_er = PT.Element.Range(element)
             elem_ec = PT.get_np_value(PT.find_child_from_name(element,'ElementConnectivity'))
             elem_distrib = MT.distribution_value(element, 'Element')
