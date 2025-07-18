@@ -214,7 +214,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
     n_elt_loc = cell_ids.size
     distri = par_utils.dn_to_distribution(n_elt_loc, comm)
     if distri[-1] > 0:
-      n_vtx_per_elt = EU.element_number_of_nodes(EU.cgns_name_to_id(elt_kind))
+      n_vtx_per_elt = EU.name_to_nvtx(elt_kind)
       assert n_vtx_per_elt is not None
       elt = PT.new_Elements(elt_kind, elt_kind,
                             erange=np.array([elt_shift+1, elt_shift+distri[-1]], zone_dtype),

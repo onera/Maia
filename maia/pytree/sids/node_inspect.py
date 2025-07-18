@@ -718,7 +718,7 @@ class Element:
       >>> PT.Element.CGNSName(elt)
       'NFACE_n'
     """
-    return EU.element_name(Element.Type(elt_node))
+    return EU.id_to_name(Element.Type(elt_node))
 
   @staticmethod
   def Dimension(elt_node:CGNSTree) -> int:
@@ -733,7 +733,7 @@ class Element:
       >>> PT.Element.Dimension(elt)
       2
     """
-    dim = EU.element_dim(Element.Type(elt_node))
+    dim = EU.id_to_dim(Element.Type(elt_node))
     assert dim is not None, "Input element does not have valid dimension"
     return dim
 
@@ -750,7 +750,7 @@ class Element:
       >>> PT.Element.NVtx(elt)
       5
     """
-    n_vtx = EU.element_number_of_nodes(Element.Type(elt_node))
+    n_vtx = EU.id_to_nvtx(Element.Type(elt_node))
     assert n_vtx is not None, "Input element does not have valid number of vertices"
     return n_vtx
 

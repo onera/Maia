@@ -136,7 +136,7 @@ def dcube_nodal_generate(n_vtx: Union[int, Sequence[int]],
 
   t_elmt = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
   cgns_elt_index = [prop[0] for prop in EU.elements_properties].index(cgns_elmt_name)
-  cell_dim = EU.element_dim(cgns_elt_index)
+  cell_dim = EU.id_to_dim(cgns_elt_index)
   assert cell_dim is not None
 
   # Manage 2D meshes with 2D PhyDim

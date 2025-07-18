@@ -84,7 +84,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                     if elem_type not in elem_types.keys():
                         elem_types[elem_type] = {}
                     elem_types[elem_type][elem_pos] = nb_elems_per_types_loc[e]
-                    nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
+                    nb_nodes_per_elem = MPSEU.id_to_nvtx(elem_type)
                     assert nb_nodes_per_elem is not None
                     ec_per_type = np.empty(nb_nodes_per_elem*nb_elems_per_types_loc[e],dtype=elem_cnt.dtype)
                     # Retrive start idx of mixed elements having this type
@@ -111,12 +111,12 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         #    decreased dimensions : 3D->2D->1D->0D
         #    Without this limitation, replace the following lines by:
         #        `key_types = np.array(list(all_types.keys()),dtype=np.int32)`
-        key_types = sorted(all_types.keys(), key=MPSEU.element_dim, reverse=True) #type:ignore #(element_dim does not return None on std elements)
+        key_types = sorted(all_types.keys(), key=MPSEU.id_to_dim, reverse=True) #type:ignore #(id_to_dim does not return None on std elements)
         
         
         # 4/ Create old to new element numbering (to update PointList/PointRange)
         #    and old to new cell numbering (to update CellCenter FlowSolution)
-        cell_dim = max([MPSEU.element_dim(k) for k in key_types]) #type:ignore #(element_dim does not return None on std elements)
+        cell_dim = max([MPSEU.id_to_dim(k) for k in key_types]) #type:ignore #(id_to_dim does not return None on std elements)
         ln_to_gn_element_list = []
         ln_to_gn_cell_list = []
         old_to_new_element_numbering_list = []
@@ -128,7 +128,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             nb_cell_loc = 0
             for et in elem_types:
-                if MPSEU.element_dim(et) == cell_dim:
+                if MPSEU.id_to_dim(et) == cell_dim:
                     try:
                         nb_cell_loc += elem_types[et][elem_pos]
                     except KeyError:
@@ -149,7 +149,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                 all_elem_pos[PT.Element.Type(element)] = np.arange(nb_elem_loc)
                 all_cell_pos = {}
                 for elem_type in key_types:
-                    if MPSEU.element_dim(elem_type) == cell_dim:
+                    if MPSEU.id_to_dim(elem_type) == cell_dim:
                         all_cell_pos[elem_type] = np.arange(nb_elem_loc) if PT.Element.Type(element) == elem_type else np.empty(0, int)
                         
             else:
@@ -160,13 +160,13 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                 for elem_type in key_types:
                     indices_elem = np.where(elem_ec_type_pos==elem_type)[0]
                     all_elem_pos[elem_type] = indices_elem
-                    if MPSEU.element_dim(elem_type) != cell_dim:
+                    if MPSEU.id_to_dim(elem_type) != cell_dim:
                         all_non_cell_pos_tmp.append(indices_elem)
                 all_non_cell_pos = np.sort(np.concatenate(all_non_cell_pos_tmp)) # Positions of elts of lower dim (sorted)
                 all_cell_pos = {} # Position of "cell" elt, in the array of cells only (?)
                 for elem_type in key_types:
                     indices_elem = all_elem_pos[elem_type]
-                    if MPSEU.element_dim(elem_type) == cell_dim:
+                    if MPSEU.id_to_dim(elem_type) == cell_dim:
                         all_cell_pos[elem_type] = indices_elem - np.searchsorted(all_non_cell_pos, indices_elem)
             for elem_type in key_types:
                 
@@ -188,7 +188,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
 
                 all_elem_previous_types += all_types[elem_type] # Update for next type
                 
-                if MPSEU.element_dim(elem_type) == cell_dim:
+                if MPSEU.id_to_dim(elem_type) == cell_dim:
                     indices_cell = all_cell_pos[elem_type]
                     old_to_new_cell_numbering[indices_cell] = np.arange(len(indices_cell),dtype=elem_ec.dtype) \
                                                             + (all_cell_previous_types + from_previous_mixed + from_previous_rank)
@@ -209,7 +209,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             nb_elems_per_type = all_types[elem_type]
             part_data_ec = []
             ln_to_gn_list = []
-            nb_nodes_per_elem = MPSEU.element_number_of_nodes(elem_type)
+            nb_nodes_per_elem = MPSEU.id_to_nvtx(elem_type)
             erange = [beg_erange, beg_erange+nb_elems_per_type-1]
             
             if elem_type in ec_per_elem_type_loc:
@@ -234,7 +234,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             econn = GI_elem.Put(part_data_ec, count=nb_nodes_per_elem)
             
             beg_erange += nb_elems_per_type
-            label = MPSEU.element_name(elem_type)
+            label = MPSEU.id_to_name(elem_type)
             elem_n = PT.new_Elements(label.capitalize(),label,erange=erange,econn=econn,parent=zone)
             MT.new_Distribution({'Element' : elem_distrib}, parent=elem_n)
 
