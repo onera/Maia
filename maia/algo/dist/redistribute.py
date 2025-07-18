@@ -83,7 +83,7 @@ def redistribute_elements_node(node: CGNSTree,
 
   assert PT.get_label(node) == 'Elements_t'
 
-  has_eso = PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']
+  has_eso = PT.Element.Type(node) in ['NGON_n', 'NFACE_n', 'MIXED']
 
   # Get element distribution
   elt_distrib = MT.distribution_value(node, "Element")

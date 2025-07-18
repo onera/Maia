@@ -126,7 +126,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   # > For mesh with various 3d element type, feflo doesn't write groups...
   multi_elmt = PT.get_child_from_predicate(input_zone, lambda n : PT.get_label(n) == 'Elements_t' and\
                                                                   PT.Element.Dimension(n) == 3 and\
-                                                                  PT.Element.CGNSName(n) != 'TETRA_4') is not None
+                                                                  PT.Element.Type(n) != 'TETRA_4') is not None
   if multi_elmt:
     tree_info["bc_names"]["CellCenter"] = list()
     mlog.warning("feflo.a do not seems to manage cell BCs in multi-element meshes, they will be missing in resulting CGNS.")

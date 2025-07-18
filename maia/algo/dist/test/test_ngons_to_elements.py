@@ -34,7 +34,7 @@ def test_basic(comm):
 
   for i,kind in enumerate(['TRI_3', 'QUAD_4', 'PENTA_6', 'HEXA_8']):
     elt = PT.get_child_from_name(zone, kind)
-    assert PT.Element.CGNSName(elt) == kind
+    assert PT.Element.Type(elt) == kind
     assert np.array_equal(PT.get_child_from_name(elt, "ElementRange")[1], expected_range[i])
     assert np.array_equal(PT.get_child_from_name(elt, "ElementConnectivity")[1], expected_ec[i])
 
@@ -64,7 +64,7 @@ def test_all_kinds(comm):
 
   for i,kind in enumerate(['TRI_3', 'QUAD_4', 'TETRA_4', 'PYRA_5', 'PENTA_6', 'HEXA_8']):
     elt = PT.get_child_from_name(zone, kind)
-    assert PT.Element.CGNSName(elt) == kind
+    assert PT.Element.Type(elt) == kind
     assert np.array_equal(PT.get_child_from_name(elt, "ElementRange")[1], expected_range[i])
     assert np.array_equal(PT.get_child_from_name(elt, "ElementConnectivity")[1], expected_ec[i]) # Checks
 

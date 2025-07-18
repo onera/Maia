@@ -65,7 +65,7 @@ def create_zone_eso_elements_filter(elmt, zone_path, hdf_filter):
   if ec:
     if eso_path is None:
       raise RuntimeError(f"Missing ElementStartOffset array for elements {PT.get_name(elmt)}"
-                         f" (kind={PT.Element.CGNSName(elmt)}). Please convert your input file"
+                         f" (kind={PT.Element.Type(elmt)}). Please convert your input file"
                          f" to CGNS4 standard using maia_poly_old_to_new.")
     ec_path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
     hdf_filter[ec_path] = partial(load_element_connectivity_from_eso, elmt, zone_path)
@@ -100,7 +100,7 @@ def create_zone_elements_filter(zone_tree, zone_path, hdf_filter):
   """
   zone_elmts = gen_elemts(zone_tree)
   for elmt in zone_elmts:
-    if PT.Element.CGNSName(elmt) in ['NGON_n', 'NFACE_n', 'MIXED']:
+    if PT.Element.Type(elmt) in ['NGON_n', 'NFACE_n', 'MIXED']:
       create_zone_eso_elements_filter(elmt, zone_path, hdf_filter)
     else:
       create_zone_std_elements_filter(elmt, zone_path, hdf_filter)

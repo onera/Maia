@@ -40,15 +40,15 @@ def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         # 1/ Create local mixed connectivity and element start offeset tab for each element node
         #    and deduce the local number of each element type        
         for element in PT.Zone.get_ordered_elements(zone):
-            assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']
+            assert PT.Element.Type(element) not in ['NGON_n', 'NFACE_n']
             
-            elem_type = EU.name_to_id(PT.Element.CGNSName(element))
+            elem_type = EU.name_to_id(PT.Element.Type(element))
             elem_er = PT.Element.Range(element)
             elem_ec = PT.get_np_value(PT.find_child_from_name(element,'ElementConnectivity'))
             elem_distrib = MT.distribution_value(element, 'Element')
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
 
-            if PT.Element.CGNSName(element) == 'MIXED':
+            if PT.Element.Type(element) == 'MIXED':
                 eso = PT.get_np_value(PT.find_child_from_name(element, 'ElementStartOffset'))
                 mixed_partial_ec = elem_ec
                 mixed_partial_eso = eso[:-1] + nb_nodes_prev

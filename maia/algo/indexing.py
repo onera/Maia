@@ -23,7 +23,7 @@ def get_pe_local(node: CGNSTree) -> NDArray:
   indices.
   If PE array was already local, no copy is done
   """
-  assert PT.Element.CGNSName(node) in ['BAR_2', 'NGON_n']
+  assert PT.Element.Type(node) in ['BAR_2', 'NGON_n']
   pe_n = PT.get_child_from_name(node, "ParentElements")
   if pe_n is None:
     raise RuntimeError(f"ParentElements node not found on node {node[0]}")

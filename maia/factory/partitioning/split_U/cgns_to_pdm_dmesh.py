@@ -237,7 +237,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   sorted_elts_by_dim = PT.Zone.get_ordered_elements_per_dim(dist_zone)
   for elt_dim in sorted_elts_by_dim:
     for elt in elt_dim:
-      assert PT.Element.CGNSName(elt) not in ["NGON_n", "NFACE_n"]
+      assert PT.Element.Type(elt) not in ["NGON_n", "NFACE_n"]
       if PT.Element.Dimension(elt) > 0:
         n_elt_per_dim[PT.Element.Dimension(elt)-1] += PT.Element.Size(elt)
 
@@ -270,7 +270,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   to_elmt_size = lambda e : MT.distribution_value(e, 'Element')[1] - MT.distribution_value(e, 'Element')[0]
 
   for i_dim, elts in enumerate(sorted_elts_by_dim):
-    elt_pdm_types = np.array([MT.pdm_elts.cgns_elt_name_to_pdm_element_type(PT.Element.CGNSName(e)) for e in elts], dtype=np.int32)
+    elt_pdm_types = np.array([MT.pdm_elts.cgns_elt_name_to_pdm_element_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
     elt_lengths   = np.array([to_elmt_size(e) for e in elts], dtype=np.int32)
     elmts_connectivities = [as_pdm_gnum(PT.get_child_from_name(e, "ElementConnectivity")[1]) for e in elts]
     dmesh_nodal.set_sections(MT.pdm_elts.elements_dim_to_pdm_kind[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)

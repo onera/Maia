@@ -128,11 +128,11 @@ def pdm_elmt_to_cgns_elmt(p_zone, d_zone, dims, data, connectivity_as="Element",
     for elt in PT.iter_children_from_label(d_zone, 'Elements_t'):
       if PT.Zone.has_ngon_elements(d_zone):
         # Input element zone + ouput ngon zone --> don't reuse elt names
-        if PT.Element.CGNSName(elt) == 'BAR_2':
+        if PT.Element.Type(elt) == 'BAR_2':
           nedge_name = PT.get_name(elt)
-        if PT.Element.CGNSName(elt) == 'NGON_n':
+        if PT.Element.Type(elt) == 'NGON_n':
           ngon_name = PT.get_name(elt)
-        elif PT.Element.CGNSName(elt) == 'NFACE_n':
+        elif PT.Element.Type(elt) == 'NFACE_n':
           nface_name = PT.get_name(elt)
 
     n_face = dims['n_face']

@@ -235,7 +235,7 @@ def _merge_ngons(zone, comm):
   ln_to_gn_elem_l = []
   ngon_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[2]
   for ngon_n in ngon_nodes:
-    assert PT.Element.CGNSName(ngon_n) == 'NGON_n'
+    assert PT.Element.Type(ngon_n) == 'NGON_n'
     er  = PT.find_child_from_name(ngon_n, 'ElementRange')[1]
     ec  = PT.find_child_from_name(ngon_n, 'ElementConnectivity')[1]
     eso = PT.find_child_from_name(ngon_n, 'ElementStartOffset')[1]
@@ -612,7 +612,7 @@ def extrude(dist_tree: CGNSDistTree,
     if PT.Zone.Type(zone) == 'Structured':
       _extrusion_2d_s(zone, extrusion_vector, comm, zone_to_align[zone_path], ksubset_as=ksubset_as)
     elif PT.Zone.Type(zone) == 'Unstructured':
-      all_element_types = set([PT.Element.CGNSName(e) for e in PT.get_children_from_label(zone, 'Elements_t')])
+      all_element_types = set([PT.Element.Type(e) for e in PT.get_children_from_label(zone, 'Elements_t')])
       if all_element_types <= {'NODE', 'BAR_2', 'NGON_n'}:
         _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as=ksubset_as)
       elif all_element_types <= {'NODE', 'BAR_2', 'TRI_3', 'QUAD_4'}:

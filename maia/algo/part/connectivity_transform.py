@@ -32,7 +32,7 @@ def enforce_boundary_pe_left(zone_node: CGNSTree) -> None:
                              PT.find_child_from_name(ngon, 'ParentElements')[1])
 
   elif z_dim == 2:
-    bar_elts = [e for e in PT.iter_children_from_label(zone_node, 'Elements_t') if PT.Element.CGNSName(e) == 'BAR_2']
+    bar_elts = [e for e in PT.iter_children_from_label(zone_node, 'Elements_t') if PT.Element.Type(e) == 'BAR_2']
     if len(bar_elts) > 1:
       raise RuntimeError("Multiple BAR elements are not managed")
     elif len(bar_elts) == 1:

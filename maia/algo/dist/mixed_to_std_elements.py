@@ -62,11 +62,11 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         # 1/ Create local element connectivity for each element type found in each mixed node
         #    and deduce the local number of each element type
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
-            assert PT.Element.CGNSName(element) not in ['NGON_n', 'NFACE_n']  
-            if PT.Element.CGNSName(element) != 'MIXED':                       
+            assert PT.Element.Type(element) not in ['NGON_n', 'NFACE_n']  
+            if PT.Element.Type(element) != 'MIXED':                       
                 elem_ec  = PT.get_np_value(PT.find_child_from_name(element,'ElementConnectivity'))
                 elem_distri = MT.distribution_value(element, 'Element')
-                elem_type = PT.Element.CGNSName(element)
+                elem_type = PT.Element.Type(element)
                 elem_size = elem_distri[1] - elem_distri[0]
                 elem_types[elem_type][elem_pos] = elem_size
                 ec_per_elem_type_loc[elem_type].append(elem_ec)
@@ -113,7 +113,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         old_to_new_cell_numbering_list = []
         nb_elem_prev_element_t_nodes = 0
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
-            is_std_elt = PT.Element.CGNSName(element) != 'MIXED'
+            is_std_elt = PT.Element.Type(element) != 'MIXED'
             elem_distrib = MT.distribution_value(element, 'Element')
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             nb_cell_loc = 0
@@ -136,11 +136,11 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             
             if is_std_elt:
                 all_elem_pos = {elt_type : np.empty(0, int) for elt_type in key_types}
-                all_elem_pos[PT.Element.CGNSName(element)] = np.arange(nb_elem_loc)
+                all_elem_pos[PT.Element.Type(element)] = np.arange(nb_elem_loc)
                 all_cell_pos = {}
                 for elem_type in key_types:
                     if MPSEU.name_to_dim(elem_type) == cell_dim:
-                        all_cell_pos[elem_type] = np.arange(nb_elem_loc) if PT.Element.CGNSName(element) == elem_type else np.empty(0, int)
+                        all_cell_pos[elem_type] = np.arange(nb_elem_loc) if PT.Element.Type(element) == elem_type else np.empty(0, int)
                         
             else:
                 assert elem_eso[1] is not None

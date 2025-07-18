@@ -151,8 +151,8 @@ def test_ElementSize():
   assert SIDS.Element.Size(elt2) == 1
 
 def test_ElementCGNSName():
-  assert SIDS.Element.CGNSName(N.new_node("Toto", "Elements_t", [22, 0])) == "NGON_n"
-  assert SIDS.Element.CGNSName(N.new_node("Toto", "Elements_t", [42, 0])) == "TRI_15"
+  assert SIDS.Element.Type(N.new_node("Toto", "Elements_t", [22, 0])) == "NGON_n"
+  assert SIDS.Element.Type(N.new_node("Toto", "Elements_t", [42, 0])) == "TRI_15"
 
 def test_ElementDimension():
   assert SIDS.Element.Dimension(N.new_node("Toto", "Elements_t", [22, 0])) == 2

@@ -71,7 +71,7 @@ def compute_face_measure(zone):
 
 def _compute_elt_volume(zone, elt_node, coords, out):
   assert out.size == PT.Element.Size(elt_node)
-  elt_kind = PT.Element.CGNSName(elt_node)
+  elt_kind = PT.Element.Type(elt_node)
 
   ec = PT.get_child_from_name(elt_node, 'ElementConnectivity')[1]
 

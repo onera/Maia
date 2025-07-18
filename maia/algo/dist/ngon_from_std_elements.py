@@ -32,7 +32,7 @@ def predict_face_vtx_size(zone, dim):
   elt_predicate = lambda n : PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n) >= dim - 1 
   for elt in PT.iter_children_from_predicate(zone, elt_predicate):
     try:
-      face_vtx_size += PT.Element.Size(elt) * n_vtx_mult[PT.Element.CGNSName(elt)]
+      face_vtx_size += PT.Element.Size(elt) * n_vtx_mult[PT.Element.Type(elt)]
     except KeyError:
       pass
   return face_vtx_size

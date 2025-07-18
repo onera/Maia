@@ -320,7 +320,7 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   for ipart, part_zone in enumerate(part_zones):
     elt_n = PT.get_child_from_name(part_zone, elem_name)
     if elt_n is not None:
-      elt_id = PT.Element.CGNSName(elt_n)
+      elt_id = PT.Element.Type(elt_n)
       cst_stride = PT.Element.NVtx(elt_n)
 
       # Retrieve the ElementRange within the given dimension

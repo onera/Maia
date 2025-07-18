@@ -76,7 +76,7 @@ def _decompose_sections_to_face_vtx(zone):
   for elt in PT.Zone.get_ordered_elements_per_dim(zone)[3]:
     ec = PT.get_child_from_name(elt, 'ElementConnectivity')[1]
     elt_distri = MT.distribution_value(elt, 'Element')
-    elt_kind = PT.Element.CGNSName(elt)
+    elt_kind = PT.Element.Type(elt)
     n_elt = elt_distri[1] - elt_distri[0]
 
     base_n, base_seq = ELT_FACE_VTX[elt_kind]

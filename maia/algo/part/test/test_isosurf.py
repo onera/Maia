@@ -190,7 +190,7 @@ def test_compute_spherical_slice(comm):
   iso_zone = PT.get_all_Zone_t(slice_tree)[0]
   assert PT.Zone.n_cell(iso_zone) == 1008 and PT.Zone.n_vtx(iso_zone) == 506
   elts = PT.get_nodes_from_label(iso_zone, 'Elements_t')
-  assert len(elts) == 1 and PT.Element.CGNSName(elts[0]) == 'TRI_3'
+  assert len(elts) == 1 and PT.Element.Type(elts[0]) == 'TRI_3'
   assert maia.pytree.get_child_from_name(iso_zone, "FlowSolution") is not None
   assert (PT.get_node_from_name(iso_zone, 'i_rank')[1] == 0).all()
 

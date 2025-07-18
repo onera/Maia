@@ -314,7 +314,7 @@ class Zone:
     Raises:
       RuntimeError: if not exactly one ``NGON_n`` element node exists in zone
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NGON_n'
     ngons = W.get_children_from_predicate(zone_node, predicate)
     return utils.expects_one(ngons, ("NGon node", f"zone {N.get_name(zone_node)}"))
 
@@ -329,7 +329,7 @@ class Zone:
     Raises:
       RuntimeError: if not exactly one ``NFACE_n`` element node exists in zone
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NFACE_n'
     nfaces = W.get_children_from_predicate(zone_node, predicate)
     return utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
 
@@ -447,7 +447,7 @@ class Zone:
       >>> PT.Zone.has_ngon_elements(zone)
       True
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NGON_n'
     return W.get_child_from_predicate(zone_node, predicate) is not None
 
   @staticmethod
@@ -463,7 +463,7 @@ class Zone:
       >>> PT.Zone.has_nface_elements(zone)
       False
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NFACE_n'
     return W.get_child_from_predicate(zone_node, predicate) is not None
 
   @staticmethod
@@ -643,13 +643,13 @@ class Zone:
     elif Zone.has_ngon_elements(zone_node):
       dimension = 2 if W.get_child_from_name(Zone.NGonNode(zone_node), 'ParentElements') is None else 3
     else:
-      elt_type = [Element.CGNSName(n) for n in W.get_children_from_label(zone_node, 'Elements_t')]
+      elt_type = [Element.Type(n) for n in W.get_children_from_label(zone_node, 'Elements_t')]
       if 'MIXED' in elt_type:
         raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has "MIXED" elements')
       elt_dim = []
       for elem_n in W.get_children_from_label(zone_node, 'Elements_t'):
         dim = Element.Dimension(elem_n)
-        if (dim == 2 or Element.CGNSName(elem_n).startswith('BAR')) and (W.get_child_from_name(elem_n, 'ParentElements') is not None): dim += 1 
+        if (dim == 2 or Element.Type(elem_n).startswith('BAR')) and (W.get_child_from_name(elem_n, 'ParentElements') is not None): dim += 1 
         elt_dim.append(dim)
       if len(elt_dim)==0:
         raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has no elements')
@@ -691,7 +691,7 @@ class Element:
   """The following functions apply to any Element_t node"""
 
   @staticmethod
-  def CGNSName(elt_node:CGNSTree) -> str:
+  def Type(elt_node:CGNSTree) -> str:
     """ Return the generic name of an Element_t node
 
     Args:
@@ -700,11 +700,16 @@ class Element:
       str : CGNS name corresponding to this element kind
     Example:
       >>> elt = PT.new_NFaceElements('MyElements')
-      >>> PT.Element.CGNSName(elt)
+      >>> PT.Element.Type(elt)
       'NFACE_n'
     """
     id = int(N.get_np_value(elt_node)[0])
     return EU.id_to_name(id)
+
+  @staticmethod
+  def CGNSName(elt_node:CGNSTree) -> str:
+    warnings.warn('Element.CGNSName is deprecated in favor of Element.Type', DeprecationWarning, stacklevel=3)
+    return Element.Type(elt_node)
 
   @staticmethod
   def Dimension(elt_node:CGNSTree) -> int:

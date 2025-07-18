@@ -35,7 +35,7 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   i_rank = comm.Get_rank()
   elt_distri = MT.distribution_value(elt_n, 'Element')
   delt_vtx   = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
-  if PT.Element.CGNSName(elt_n)=='NGON_n':
+  if PT.Element.Type(elt_n)=='NGON_n':
     delt_vtx_idx = PT.get_child_from_name(elt_n, 'ElementStartOffset')[1]
   else:
     elt_size     = PT.Element.NVtx(elt_n)

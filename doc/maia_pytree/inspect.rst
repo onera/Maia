@@ -60,7 +60,7 @@ Here is a summary of the available functions, depending of the input node:
 .. autosummary::
   :nosignatures:
 
-  ~maia.pytree.Element.CGNSName
+  ~maia.pytree.Element.Type
   ~maia.pytree.Element.Dimension
   ~maia.pytree.Element.NVtx
   ~maia.pytree.Element.Range

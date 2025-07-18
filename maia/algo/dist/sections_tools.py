@@ -33,7 +33,7 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
 
     to_gather:Dict[str, List[CGNSTree]] = {}
     for elt in PT.get_children_from_label(zone, 'Elements_t'):
-      if (kind := PT.Element.CGNSName(elt)) in to_gather:
+      if (kind := PT.Element.Type(elt)) in to_gather:
         to_gather[kind].append(elt)
       else:
         to_gather[kind] = [elt]
@@ -133,7 +133,7 @@ def reorder_sections(tree:CGNSTree, permutation:Callable[[List[CGNSTree]], List[
       erange += offset[i]
       
       # Special case of NFace (connectivity is signed, and does not indicates vertices)
-      if PT.Element.CGNSName(elt) == 'NFACE_n':
+      if PT.Element.Type(elt) == 'NFACE_n':
         ec = PT.find_child_from_name(elt, 'ElementConnectivity')
         ec_val = PT.get_np_value(ec)
         sign = np.sign(ec_val)
@@ -204,7 +204,7 @@ def reorder_elt_sections_from_dim(dist_tree: CGNSDistTree, reverse: bool = False
   base_elts = ['NODE', 'BAR', 'TRI', 'QUAD', 'NGON', 'TETRA', 'PYRA', 'PENTA', 'HEXA', 'NFACE']
   sign = -1 if reverse else 1 # To have increasing of decreasing dim order
   def key_func(e):
-    idx = base_elts.index(PT.Element.CGNSName(e).split('_')[0])
+    idx = base_elts.index(PT.Element.Type(e).split('_')[0])
     return (sign * PT.Element.Dimension(e), idx)
 
   reorder_sections(dist_tree, lambda elts: sorted(elts, key=key_func))

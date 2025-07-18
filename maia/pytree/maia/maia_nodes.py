@@ -82,7 +82,7 @@ class Zone:
 
   @staticmethod
   def EdgeNode(zone_node:CGNSTree) -> CGNSTree:
-    is_edge = lambda n : N.get_label(n) == 'Elements_t' and S.Element.CGNSName(n) == 'BAR_2'
+    is_edge = lambda n : N.get_label(n) == 'Elements_t' and S.Element.Type(n) == 'BAR_2'
     edge_elts_nodes = W.get_children_from_predicate(zone_node, is_edge)
     assert len(edge_elts_nodes) == 1, "Exactly one EdgeElements_t node must be defined"
     return edge_elts_nodes[0]
@@ -103,7 +103,7 @@ class Element:
         eso_val = eso[1] - eso[1][0] if is_distri else eso[1]
         return vs.from_displs(eso_val, ec[1])
       else:
-        assert S.Element.CGNSName(elt_node) not in ['NGON_n', 'NFACE_n', 'MIXED']
+        assert S.Element.Type(elt_node) not in ['NGON_n', 'NFACE_n', 'MIXED']
         counts = S.Element.NVtx(elt_node)
         return vs.from_counts(ec[1].dtype.type(counts), ec[1])
       

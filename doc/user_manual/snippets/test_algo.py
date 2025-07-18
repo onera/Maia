@@ -519,7 +519,7 @@ def test_convert_ngon_to_elements():
   maia.algo.dist.convert_ngon_to_elements(dist_tree, MPI.COMM_WORLD)
 
   elts = PT.get_nodes_from_label(dist_tree, 'Elements_t')
-  assert [PT.Element.CGNSName(e) for e in elts] == ['QUAD_4', 'HEXA_8']
+  assert [PT.Element.Type(e) for e in elts] == ['QUAD_4', 'HEXA_8']
   #convert_ngon_to_elements@end
 
 def test_convert_elements_to_ngon():
@@ -578,7 +578,7 @@ def test_concatenate_elt_sections():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'H_elt_and_s.yaml', MPI.COMM_WORLD)
 
   is_quad_elt = lambda n : PT.get_label(n) == 'Elements_t' and \
-                           PT.Element.CGNSName(n) == 'QUAD_4'
+                           PT.Element.Type(n) == 'QUAD_4'
 
   assert len(PT.get_nodes_from_predicate(dist_tree, is_quad_elt)) > 1 # Several QUAD sections
   maia.algo.dist.concatenate_elt_sections(dist_tree, MPI.COMM_WORLD)

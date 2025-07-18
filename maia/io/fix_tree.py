@@ -193,14 +193,14 @@ def ensure_PE_global_indexing(dist_tree):
   n_shifted = 0
   for zone in PT.get_all_Zone_t(dist_tree):
     elts = PT.get_children_from_label(zone, 'Elements_t')
-    ngon_nodes = [elt for elt in elts if PT.Element.CGNSName(elt)=='NGON_n']
-    oth_nodes  = [elt for elt in elts if PT.Element.CGNSName(elt)!='NGON_n']
+    ngon_nodes = [elt for elt in elts if PT.Element.Type(elt)=='NGON_n']
+    oth_nodes  = [elt for elt in elts if PT.Element.Type(elt)!='NGON_n']
     if ngon_nodes == []:
       continue
     elif len(ngon_nodes) == 1:
       if PT.get_child_from_name(ngon_nodes[0], 'ParentElements') is None: # Skip next checks to allow 2D zones with NGON & BAR
         continue
-      if len(oth_nodes) > 1 or (len(oth_nodes) == 1 and PT.Element.CGNSName(oth_nodes[0]) != 'NFACE_n'):
+      if len(oth_nodes) > 1 or (len(oth_nodes) == 1 and PT.Element.Type(oth_nodes[0]) != 'NFACE_n'):
         raise RuntimeError(f"Zone {PT.get_name(zone)} has both NGon and Std elements nodes, which is not supported")
     else:
       raise RuntimeError(f"Multiple NGon nodes found in zone {PT.get_name(zone)}")

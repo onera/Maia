@@ -63,7 +63,7 @@ def test_generate_dcube_elts(cgns_elmt_name, comm, write_output):
   # > Volumic + boundary elements are defined in the mesh (all boundary are merged)
   n_bnd_elem_node = 2 if cgns_elmt_name == "PENTA_6" else 1
   assert len(elem_nodes) == 1 + n_bnd_elem_node
-  main_elem_n = [e for e in elem_nodes if PT.Element.CGNSName(e) == cgns_elmt_name]
+  main_elem_n = [e for e in elem_nodes if PT.Element.Type(e) == cgns_elmt_name]
   assert len(main_elem_n) == 1
 
   assert MT.get_Distribution(zone) is not None

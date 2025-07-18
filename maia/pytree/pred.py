@@ -128,7 +128,7 @@ def is_bc_of_location(loc:str):
 
 def is_element_of_type(type:str):
   """ Label of node is Elements_t and its str type (*eg* ``QUAD_4``) is ``type`` """
-  predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==type
+  predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.Type(n)==type
   return NodePredicate(predicate)
 
 def is_zone_of_kind(kind:Optional[str]=None, cell_dim:Optional[int]=None):
@@ -146,7 +146,7 @@ def is_zone_of_kind(kind:Optional[str]=None, cell_dim:Optional[int]=None):
     else: # U, Poly, Std : zone need to be Unstructured
       pred &= NodePredicate(lambda z: S.Zone.Type(z) == 'Unstructured')
     if kind != 'U': # Poly or std
-      elts_ok = NodePredicate(lambda z: _py_all(S.Element.CGNSName(e) in
+      elts_ok = NodePredicate(lambda z: _py_all(S.Element.Type(e) in
         ['BAR_2', 'NGON_n', 'NFACE_n'] for e in W.get_children_from_label(z, 'Elements_t')))
       is_poly = elts_ok & ~_celldim_is(1)
       if kind == 'Poly':

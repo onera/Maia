@@ -86,7 +86,7 @@ def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
 
   ec_n = PT.find_child_from_name(dist_node, 'ElementConnectivity')
   ec = PT.get_np_value(ec_n)
-  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
+  if PT.Element.Type(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
     eso_n = PT.find_child_from_name(dist_node, 'ElementStartOffset')
     eso = PT.get_np_value(eso_n)
     distri_ec = eso[[distri[0], distri[1], -1]]
