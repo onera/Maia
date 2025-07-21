@@ -284,8 +284,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
       zsr_node = PT.get_node_from_path(part_zone, zsr_path)
       if zsr_node is not None:
         #Follow BC or GC link
-        related_node = PT.Subset.ZSRExtent(zsr_node, part_zone)
-        zsr_node     = PT.find_node_from_path(part_zone, related_node)
+        zsr_node = PT.Container.SubsetNode(zsr_node, part_zone)
         patch_domain.append(PT.get_np_value(PT.Subset.getPatch(zsr_node)))
         location = PT.Subset.GridLocation(zsr_node)
       else: # ZSR does not exists on this partition
@@ -455,8 +454,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
         if fam_node is not None:
 
           if PT.get_label(fam_node)=="ZoneSubRegion_t":
-            related_path = PT.Subset.ZSRExtent(fam_node, part_zone)
-            fam_node = PT.find_node_from_path(part_zone, related_path)
+            fam_node = PT.Container.SubsetNode(fam_node, part_zone)
 
           pl_n = PT.find_child_from_name(fam_node, 'PointList')
           fam_pl.append(PT.get_np_value(pl_n))

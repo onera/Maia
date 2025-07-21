@@ -471,7 +471,17 @@ def test_getZoneDonorPath():
   assert SIDS.GridConnectivity.ZoneDonorPath(jn2, 'BaseXX') == 'BaseXX/ZoneYY'
 
 
-def test_getSubregionExtent():
+def test_container_subset_node_path():
+  zone = N.new_Zone('Zone')
+  zbc  = N.new_ZoneBC(parent=zone)
+  bc = N.new_BC('BC', parent=zbc)
+  bcds_rel = N.new_BCDataSet('RelatedDS', parent=bc)
+  bcds_sub = N.new_BCDataSet('SubsetDS', loc='Vertex', point_list=[[1,2,3]], parent=bc)
+  assert SIDS.Container.SubsetNodePath(bcds_rel, zone) == 'ZoneBC/BC'
+  assert SIDS.Container.SubsetNodePath(bcds_sub, zone) == 'ZoneBC/BC/SubsetDS'
+  assert SIDS.Container.SubsetNodePath(bcds_rel, bc) == ''
+  assert SIDS.Container.SubsetNodePath(bcds_sub, bc) == 'SubsetDS'
+
   yt = """
 Zone Zone_t:
   ZoneBC ZoneBC_t:
@@ -497,11 +507,11 @@ Zone Zone_t:
   import maia.pytree as PT
   zone = parse_yaml_cgns.to_node(yt)
 
-  assert SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
-  assert SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZoneBC/BC2'
-  assert SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
+  assert SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
+  assert SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZoneBC/BC2'
+  assert SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
 
   with pytest.raises(ValueError):
-    SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'OrphelanZSR'), zone)
+    SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'OrphelanZSR'), zone)
   with pytest.raises(CGNSLabelNotEqualError):
-    SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'WrongZSR'), zone)
+    SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'WrongZSR'), zone)

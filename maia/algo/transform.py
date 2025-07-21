@@ -236,7 +236,7 @@ def _get_subset_container(nodes: Sequence[CGNSTree]) -> CGNSTree:
   zone = nodes[0]
   last = nodes[-1]
   if PT.get_label(last) == 'ZoneSubRegion_t':
-    return PT.find_node_from_path(zone, PT.Subset.ZSRExtent(last, zone))
+    return PT.Container.SubsetNode(last, zone)
   elif PT.get_label(last) == 'BCData_t':
     parent_ds, parent_bc = nodes[-2], nodes[-3] 
     parent_ds_children =[PT.get_name(n) for n in PT.get_children(parent_ds)] 

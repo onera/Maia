@@ -125,7 +125,7 @@ def get_relative_pl(container:CGNSTree, part_zone:CGNSTree) -> CGNSTree:
   if PT.get_label(container)=="FlowSolution_t":
     relative_n = container
   else:
-    relative_n = PT.find_node_from_path(part_zone, PT.Subset.ZSRExtent(container, part_zone))
+    relative_n = PT.Container.SubsetNode(container, part_zone)
   return PT.find_child_from_name(relative_n, "PointList")
 
 def get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm):

@@ -85,9 +85,18 @@ Here is a summary of the available functions, depending of the input node:
 
   ~maia.pytree.Subset.getPatch
   ~maia.pytree.Subset.GridLocation
-  ~maia.pytree.Subset.ZSRExtent
   ~maia.pytree.Subset.n_elem
   ~maia.pytree.Subset.normal_axis
+
+**Container** *These functions apply to nodes storing data on mesh entities*
+
+.. autosummary::
+  :nosignatures:
+
+  ~maia.pytree.Container.GridLocation
+  ~maia.pytree.Container.fields
+  ~maia.pytree.Container.SubsetNode
+
 
 **BCDataSet**
 
@@ -117,6 +126,8 @@ Methods detail
 .. autoclass:: maia.pytree.GridConnectivity
   :members:
 .. autoclass:: maia.pytree.Subset
+  :members:
+.. autoclass:: maia.pytree.Container
   :members:
 .. autoclass:: maia.pytree.BCDataSet
   :members:

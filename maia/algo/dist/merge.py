@@ -559,10 +559,9 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   for zone in zones:
     for zsr in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
       #Copy PL when related to bc/gc to avoid specific treatement
-      if PT.get_child_from_name(zsr, 'BCRegionName') is not None or \
-         PT.get_child_from_name(zsr, 'GridConnectivityRegionName') is not None:
-        related = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone))
-        PT.add_child(zsr, PT.get_child_from_name(related, 'PointList'))
+      related = PT.Container.SubsetNode(zsr, zone)
+      if related is not zsr:
+        PT.add_child(zsr, PT.find_child_from_name(related, 'PointList'))
 
   i_query = 0
   for query, rules in zip(all_subset_queries, all_data_queries):

@@ -164,7 +164,7 @@ def _distribute_tree(tree: CGNSTree, comm: MPIComm) -> CGNSDistTree:
     zone_subregions = PT.get_children_from_label(zone, 'ZoneSubRegion_t')
     for zone_subregion in zone_subregions:
       # Trick if related to an other node -> add pl
-      matching_region_path = PT.Subset.ZSRExtent(zone_subregion, zone)
+      matching_region_path = PT.Container.SubsetNodePath(zone_subregion, zone)
       if matching_region_path != PT.get_name(zone_subregion):
         PT.add_child(zone_subregion, PT.get_node_from_path(zone, matching_region_path + '/PointList'))
         PT.add_child(zone_subregion, PT.get_node_from_path(zone, matching_region_path + '/PointRange'))

@@ -690,8 +690,7 @@ def extrude(dist_tree: CGNSDistTree,
           distrib_idx = MT.distribution_value(container, 'Index')
         elif PT.get_label(container) == 'ZoneSubRegion_t': # Related ZSR *or* PR defined ZSR
           maybe_pl = None
-          zsr_extent = PT.Subset.ZSRExtent(container, zone)
-          extent_node = PT.find_node_from_path(zone, zsr_extent)
+          extent_node = PT.Container.SubsetNode(container, zone)
           distrib_idx = MT.distribution_value(extent_node, 'Index')
         else: # Full containers
           maybe_pl = None
@@ -739,8 +738,7 @@ def extrude(dist_tree: CGNSDistTree,
         vertex_size = PT.Zone.VertexSize(zone)
       for container in PT.get_children_from_predicate(zone, is_container & is_vertex & ~is_partial):
         if PT.get_label(container) == 'ZoneSubRegion_t': # Break ZSR link
-          zsr_extent = PT.Subset.ZSRExtent(container, zone)
-          extent_node = PT.find_node_from_path(zone, zsr_extent)
+          extent_node = PT.Container.SubsetNode(container, zone)
           PT.add_child(container, PT.deep_copy(PT.Subset.getPatch(extent_node)))
           PT.add_child(container, PT.deep_copy(MT.find_Distribution(extent_node)))
           PT.rm_children_from_name(container, '*RegionName')

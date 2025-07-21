@@ -133,7 +133,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
       pl_container = container
     elif PT.get_label(container) == 'ZoneSubRegion_t':
       FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extr_zone)
-      pl_container = PT.find_node_from_path(part_zone, PT.Subset.ZSRExtent(container, part_zone))
+      pl_container = PT.Container.SubsetNode(container, part_zone)
     else:
       raise TypeError
 

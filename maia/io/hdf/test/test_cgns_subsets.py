@@ -253,5 +253,5 @@ Base CGNSBase_t [3,3]:
 """
   size_tree = PT.yaml.to_cgns_tree(yt)
   hdf_filter = dict()
-  with pytest.raises(RuntimeError):
+  with pytest.raises(Exception):
     cgns_subsets.create_zone_subregion_filter(PT.get_all_Zone_t(size_tree)[0], "Base/Zone", hdf_filter)

@@ -19,5 +19,6 @@ __all__ = [
   'Element',
   'GridConnectivity',
   'Subset',
+  'Container',
   'BCDataSet',
 ]
