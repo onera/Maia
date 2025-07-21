@@ -774,7 +774,7 @@ def extrude(dist_tree: CGNSDistTree,
       if PT.Zone.Type(zone) == 'Structured' and PT.get_name(subset) not in ['InitialSurface', 'ExtrudedSurface'] :
         pr_n = PT.find_child_from_name(subset, 'PointRange')
         _extend_pr(pr_n, [1,2])
-        MT.new_Distribution({'Index' : par_utils.uniform_distribution(PT.PointRange.n_elem(pr_n), comm)}, subset)
+        MT.new_Distribution({'Index' : par_utils.uniform_distribution(PT.Subset.n_elem(subset), comm)}, subset)
         if PT.get_label(subset) == 'GridConnectivity1to1_t':
           donor_path = PT.GridConnectivity.ZoneDonorPath(subset, PT.get_name(base))
           _extend_pr(PT.find_child_from_name(subset, 'PointRangeDonor'), [1,2])

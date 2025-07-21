@@ -163,10 +163,10 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
               j_ar  = np.arange(sub_pr_loc[1,0], sub_pr_loc[1,1]+1, dtype=pdm_dtype).reshape(-1,1)
               if idx_dim == 2:
                 assert False
-                bcds_lntogn = s_numbering.ij_to_index(i_ar, j_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
+                bcds_lntogn = s_numbering.ij_to_index(i_ar, j_ar, PT.Subset.SizePerIndex(dist_bc)).flatten()
               elif idx_dim == 3:
                 k_ar  = np.arange(sub_pr_loc[2,0], sub_pr_loc[2,1]+1, dtype=pdm_dtype).reshape(-1,1,1)
-                bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.PointRange.SizePerIndex(dist_bc_pr_n)).flatten()
+                bcds_lntogn = s_numbering.ijk_to_index(i_ar, j_ar, k_ar, PT.Subset.SizePerIndex(dist_bc)).flatten()
             assert bcds_lntogn.size == PT.Subset.n_elem(part_bc)
             MT.new_GlobalNumbering({'Index' : bcds_lntogn}, part_bc)
           else: #GC are put with bc and treated afterward

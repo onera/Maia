@@ -110,11 +110,12 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
     is_related = ds_point_range is None
     if not is_related: #BCDS has its own location / pr
       ds_distri = MT.distribution_value(bcds, 'Index')
+      ds_size = PT.Subset.SizePerIndex(bcds)
     if is_related: #BCDS has same location / pr than bc
       ds_point_range = PT.get_child_from_name(bc_s, 'PointRange')
       ds_distri = MT.distribution_value(bc_s, 'Index')
+      ds_size = PT.Subset.SizePerIndex(bc_s)
     ds_loc = PT.BCDataSet.GridLocation(bcds, bc_s)
-    ds_size = PT.PointRange.SizePerIndex(ds_point_range)
     ds_slabs = HFR2S.compute_slabs(ds_size, ds_distri[0:2])
     ds_sub_pr_list = [np.asarray(slab, ds_point_range[1].dtype) for slab in ds_slabs]
     if len(n_vtx_zone) == 2:

@@ -399,25 +399,24 @@ def test_zone_phy_dim():
   with pytest.raises(ValueError):
     SIDS.Zone.PhysicalDimension(zone)
 
-def test_PointRange():
-  pr = N.new_IndexRange('StandardPR', [1,3, 3,5, 1,3])
-  assert (SIDS.PointRange.SizePerIndex(pr) == [3,3,3]).all()
-  assert (SIDS.PointRange.n_elem(pr) == 3*3*3)
+def test_subset_size():
+  pr = N.new_BC('StandardPR', point_range=[1,3, 3,5, 1,3])
+  assert SIDS.Subset.SizePerIndex(pr) == (3,3,3)
+  assert SIDS.Subset.n_elem(pr) == 3*3*3
 
-  pr = N.new_IndexRange('GCLikePR', [7,1, 9,9, 5,1])
-  assert (SIDS.PointRange.SizePerIndex(pr) == [7,1,5]).all()
-  assert (SIDS.PointRange.n_elem(pr) == 7*1*5)
+  pr = N.new_GridConnectivity1to1('GCLikePR', point_range=[7,1, 9,9, 5,1])
+  assert SIDS.Subset.SizePerIndex(pr) == (7,1,5)
+  assert SIDS.Subset.n_elem(pr) == 7*1*5
 
-  pr = N.new_IndexRange('ULike', [[1,15]]) # PR must be 2d
-  assert (SIDS.PointRange.SizePerIndex(pr) == [15]).all()
-  assert (SIDS.PointRange.n_elem(pr) == 15)
+  pr = N.new_BC('ULike', point_range=[[1,15]]) # PR must be 2d
+  assert SIDS.Subset.SizePerIndex(pr) == (15,)
+  assert SIDS.Subset.n_elem(pr) == 15
 
-def test_PointList():
-  pl = N.new_IndexArray('StandartPL', [[1,6,12]])
-  assert SIDS.PointList.n_elem(pl) == 3
+  pl = N.new_BC('StandartPL', point_list=[[1,6,12]])
+  assert SIDS.Subset.n_elem(pl) == 3
 
-  pl = N.new_IndexArray('SLike', [[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
-  assert SIDS.PointList.n_elem(pl) == 5
+  pl = N.new_BC('SLike', point_list=[[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
+  assert SIDS.Subset.n_elem(pl) == 5
 
 def test_Patch():
   bc = N.new_BC(point_range=[[1,5],[1,1]])
@@ -444,7 +443,7 @@ def test_Subset():
 
   assert SIDS.Subset.GridLocation(sol) == 'Vertex'
   assert SIDS.Subset.getPatch(sol) is pl
-  assert SIDS.Subset.n_elem(sol) == SIDS.PointList.n_elem(pl)
+  assert SIDS.Subset.n_elem(sol) == 3
 
   with pytest.raises(AssertionError):
     pr = N.new_IndexRange('PointRange', [[1,15]], parent=sol)

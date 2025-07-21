@@ -20,6 +20,4 @@ __all__ = [
   'GridConnectivity',
   'Subset',
   'BCDataSet',
-  'PointRange',
-  'PointList',
 ]

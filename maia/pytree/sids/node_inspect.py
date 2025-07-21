@@ -938,8 +938,17 @@ class Subset:
       >>> PT.Subset.n_elem(bc)
       4
     """
+    return math.prod(Subset.SizePerIndex(subset_node))
+
+  @staticmethod
+  def SizePerIndex(subset_node:CGNSTree) -> Tuple[int, ...]:
     patch = Subset.getPatch(subset_node)
-    return PointList.n_elem(patch) if N.get_label(patch) == 'IndexArray_t' else PointRange.n_elem(patch)
+    val = N.get_np_value(patch)
+    if N.get_label(patch) == 'IndexArray_t':
+      return (val.shape[1],)
+    else:
+      return tuple(int(abs(k)+1) for k in val[:,1]-val[:,0])
+   
 
   @staticmethod
   def GridLocation(subset_node:CGNSTree) -> str:
@@ -1093,31 +1102,3 @@ class BCDataSet:
     else:
       assert (pl is None) ^ (pr is None)
       return pl if pl is not None else pr #type:ignore
-
-
-# --------------------------------------------------------------------------
-@for_all_methods(check_is_label("IndexRange_t"))
-class PointRange:
-
-  @staticmethod
-  def SizePerIndex(point_range_node:CGNSTree) -> NDArray:
-    """
-    Allow point_range to be inverted (PR[:,1] < PR[:,0]) as it can occurs in struct GCs
-    """
-    pr_values = N.get_np_value(point_range_node)
-    return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
-
-  @staticmethod
-  def n_elem(point_range_node:CGNSTree) -> int:
-    return int(PointRange.SizePerIndex(point_range_node).prod())
-
-
-# --------------------------------------------------------------------------
-@for_all_methods(check_is_label("IndexArray_t"))
-class PointList:
-
-  @staticmethod
-  def n_elem(point_list_node:CGNSTree) -> int:
-    pl_values = N.get_np_value(point_list_node)
-    return pl_values.shape[1]
-
