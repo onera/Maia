@@ -324,7 +324,7 @@ def test_localize_points():
   maia.algo.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(tree_tgt):
     loc_container = PT.get_child_from_name(tgt_zone, 'Localization')
-    assert PT.Subset.GridLocation(loc_container) == 'CellCenter'
+    assert PT.Container.GridLocation(loc_container) == 'CellCenter'
   #localize_points@end
 
 def test_find_closest_points():
@@ -345,7 +345,7 @@ def test_find_closest_points():
   maia.algo.find_closest_points(part_tree_src, part_tree_tgt, 'Vertex', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(part_tree_tgt):
     loc_container = PT.get_child_from_name(tgt_zone, 'ClosestPoint')
-    assert PT.Subset.GridLocation(loc_container) == 'Vertex'
+    assert PT.Container.GridLocation(loc_container) == 'Vertex'
   #find_closest_points@end
 
 def test_interpolate():
@@ -368,7 +368,7 @@ def test_interpolate():
   maia.algo.interpolate(part_tree_src, part_tree_tgt, comm,\
       ['FlowSolution'], 'Vertex')
   tgt_sol = PT.get_node_from_name(part_tree_tgt, 'FlowSolution')
-  assert tgt_sol is not None and PT.Subset.GridLocation(tgt_sol) == 'Vertex'
+  assert tgt_sol is not None and PT.Container.GridLocation(tgt_sol) == 'Vertex'
   #interpolate@end
 
 def test_centers_to_nodes():
@@ -389,7 +389,7 @@ def test_centers_to_nodes():
 
   for part in PT.get_all_Zone_t(part_tree):
     vtx_sol = PT.get_node_from_name(part, 'Geometry_3d#Vtx')
-    assert PT.Subset.GridLocation(vtx_sol) == 'Vertex'
+    assert PT.Container.GridLocation(vtx_sol) == 'Vertex'
   #centers_to_nodes@end
 
 def test_nodes_to_centers():
@@ -412,7 +412,7 @@ def test_nodes_to_centers():
 
   for part in PT.get_all_Zone_t(part_tree):
     cell_sol = PT.get_node_from_name(part, 'FSol#Cell')
-    assert PT.Subset.GridLocation(cell_sol) == 'CellCenter'
+    assert PT.Container.GridLocation(cell_sol) == 'CellCenter'
   #nodes_to_centers@end
 
 def test_pe_to_nface():

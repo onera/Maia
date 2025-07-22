@@ -4,7 +4,7 @@ import math
 import itertools
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import check_is_label, check_in_labels, for_all_methods
+from maia.pytree.meta   import check_is_label, check_in_labels, check_is_subset, for_all_methods
 
 from maia.pytree         import node as N
 from maia.pytree         import walk as W
@@ -900,13 +900,11 @@ class GridConnectivity:
     return opp if '/' in opp else cur_base_name + '/' + opp
 
 
-@for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \
-        "BC_t", "BCDataSet_t", "GridConnectivity_t", "GridConnectivity1to1_t", "ArbitraryGridMotion_t"]))
+@for_all_methods(check_is_subset())
 class Subset:
   """
   A subset is a node defining a subregion of the mesh through a PointList or a PointRange node
   (eg BC_t, *some* ZoneSubRegion_t, ...).
-
   """
   
   @staticmethod
@@ -970,10 +968,11 @@ class Subset:
       'FaceCenter'
     """
     grid_loc_n = W.get_child_from_label(subset_node, 'GridLocation_t')
-    if N.get_label(subset_node) == 'BCDataSet_t' and grid_loc_n is None:
-      msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
-            ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
-      warnings.warn(msg, RuntimeWarning, stacklevel=3)
+    if N.get_label(subset_node) == 'BCDataSet_t':
+      if not Container._is_subset(subset_node):
+        msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
+              ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
+        warnings.warn(msg, RuntimeWarning, stacklevel=3)
     return N.get_str_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
   @staticmethod
@@ -1011,53 +1010,32 @@ class Subset:
 
   @staticmethod
   def ZSRExtent(zsr_node:CGNSTree, zone_node:CGNSTree) -> str:
-    """
-    Return the path of the node to which the ZoneSubRegion node maps
+    ###
+    #Return the path of the node to which the ZoneSubRegion node maps
 
-    Path start from zone_node and can point to a BC, a GC or the ZSR itself.
-    This function only make sense for ZoneSubRegion_t nodes.
+    #Path start from zone_node and can point to a BC, a GC or the ZSR itself.
+    #This function only make sense for ZoneSubRegion_t nodes.
 
-    Args:
-      zsr_node (CGNSTree): Input ZoneSubRegion_t node
-      zone_node (CGNSTree): Parent Zone_t node
-    Returns:
-      str : path of zone defining the ZSR extent
-    Example:
-      >>> zone = PT.new_Zone('Zone')
-      >>> bc   = PT.new_BC('RelevantBC', parent=PT.new_ZoneBC(parent=zone))
-      >>> zsr  = PT.new_ZoneSubRegion('ZSR', bc_name='RelevantBC')
-      >>> PT.Subset.ZSRExtent(zsr, zone)
-      'ZoneBC/RelevantBC'
-    """
-    import maia.pytree as PT
-    bc_region_name = W.get_child_from_name(zsr_node, "BCRegionName")
-    gc_region_name = W.get_child_from_name(zsr_node, "GridConnectivityRegionName")
-    if bc_region_name is not None:
-      is_bc = lambda n: N.get_label(n) == "BC_t" and \
-                        N.get_name(n) == N.get_value(bc_region_name)
-      paths = PT.predicates_to_paths(zone_node, ['ZoneBC_t', is_bc])
-    elif gc_region_name is not None:
-      is_gc = lambda n: N.get_label(n) in ["GridConnectivity1to1_t", "GridConnectivity_t"] and \
-                        N.get_name(n) == N.get_value(gc_region_name)
-      paths = PT.predicates_to_paths(zone_node, ['ZoneGridConnectivity_t', is_gc])
-    else:
-      paths = [N.get_name(zsr_node)]
+    #Args:
+    #  zsr_node (CGNSTree): Input ZoneSubRegion_t node
+    #  zone_node (CGNSTree): Parent Zone_t node
+    #Returns:
+    #  str : path of zone defining the ZSR extent
+    ###
+    warnings.warn('Subset.ZSRExtent is deprecated in favor of Container.SubsetNode', DeprecationWarning, stacklevel=3)
+    return Container.SubsetNodePath(zsr_node, zone_node)
 
-    try:
-      return utils.expects_one(paths)
-    except RuntimeError:
-      raise ValueError("ZoneSubRegion {0} has no valid extent".format(N.get_name(zsr_node)))
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t",
-                                 "BCDataSet_t", "ArbitraryGridMotion_t"]))
+                                 "GridCoordinates_t", "BCDataSet_t", "ArbitraryGridMotion_t"]))
 class Container:
   """
   A container is node designed to store fields, such as FlowSolution_t, ZoneSubRegion_t, ...
   """
   @staticmethod
   def GridLocation(cnt_node:CGNSTree, parent_node:Optional[CGNSTree]=None) -> str:
-    """ Return the GridLocation value of a container node;
+    """ Return the GridLocation value of a container node
 
     If the container does not defines its own subset (eg. a ZoneSubRegion with a BCRegionName),
     the parent zone node must be passed in ``parent_node`` argument (for BCDataSet containers,
@@ -1213,14 +1191,9 @@ class BCDataSet:
     Returns:
       str : One of 'Null', 'UserDefined', 'Vertex', 'CellCenter', 'FaceCenter',
       'IFaceCenter', 'JFaceCenter', 'KFaceCenter', or 'EdgeCenter'
-    Example:
-      >>> bc = PT.new_BC('BC', loc='FaceCenter')
-      >>> bcds = PT.new_BCDataSet(parent=bc)
-      >>> PT.BCDataSet.GridLocation(bcds, bc)
-      'FaceCenter'
     """
-    grid_loc_n = W.get_child_from_label(bcds_node, 'GridLocation_t')
-    return N.get_str_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
+    warnings.warn('BCDataSet.GridLocation is deprecated in favor of Container.GridLocation', DeprecationWarning, stacklevel=3)
+    return Container.GridLocation(bcds_node, bc_node)
 
   @staticmethod
   def getPatch(bcds_node:CGNSTree, bc_node:CGNSTree) -> CGNSTree:
@@ -1234,22 +1207,6 @@ class BCDataSet:
       bc_node (CGNSTree): Related BC node
     Returns:
       CGNSTree : PointList or PointRange node
-    Example:
-      >>> bc = PT.new_BC(point_range=[[1,5],[1,1]])
-      >>> ds1 = PT.new_BCDataSet('DataSet1', point_range=[[1,2],[1,1]], parent=bc)
-      >>> ds2 = PT.new_BCDataSet('DataSet2', parent=bc)
-      >>> PT.BCDataSet.getPatch(ds1, bc)
-      ['PointRange', array([[1, 2],
-             [1, 1]], dtype=int32), [], 'IndexRange_t']
-      >>> PT.BCDataSet.getPatch(ds2, bc)
-      ['PointRange', array([[1, 5],
-             [1, 1]], dtype=int32), [], 'IndexRange_t']
     """
-    from maia import pytree as PT
-    pl = W.get_child_from_name(bcds_node, 'PointList')
-    pr = W.get_child_from_name(bcds_node, 'PointRange')
-    if (pl is None) and (pr is None):
-      return Subset.getPatch(bc_node)
-    else:
-      assert (pl is None) ^ (pr is None)
-      return pl if pl is not None else pr #type:ignore
+    warnings.warn('BCDataSet.getPatch is deprecated in favor of Container.SubsetNode + Subset.getPatch', DeprecationWarning, stacklevel=3)
+    return Subset.getPatch(Container.SubsetNode(bcds_node, bc_node))

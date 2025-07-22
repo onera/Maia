@@ -172,9 +172,9 @@ def test_GridLocation():
   assert SIDS.Subset.GridLocation(bc_loc   ) == 'JFaceCenter'
 
   bcds_no_loc = N.new_BCDataSet('BCDS1', parent=bc_loc)
-  bcds_loc    = N.new_BCDataSet('BCDS2', loc='Vertex', parent=bc_loc)
-  assert SIDS.BCDataSet.GridLocation(bcds_no_loc, bc_loc) == 'JFaceCenter'
-  assert SIDS.BCDataSet.GridLocation(bcds_loc   , bc_loc) == 'Vertex'
+  bcds_loc    = N.new_BCDataSet('BCDS2', loc='Vertex', point_list=[15,25], parent=bc_loc)
+  assert SIDS.Container.GridLocation(bcds_no_loc, bc_loc) == 'JFaceCenter'
+  assert SIDS.Container.GridLocation(bcds_loc   , bc_loc) == 'Vertex'
 
 def test_GridConnectivity_Type():
   gc = N.new_node("gc", "GridConnectivity1to1_t")
@@ -418,6 +418,7 @@ def test_subset_size():
   pl = N.new_BC('SLike', point_list=[[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
   assert SIDS.Subset.n_elem(pl) == 5
 
+@pytest.mark.filterwarnings("ignore:BCDataSet.getPatch")
 def test_Patch():
   bc = N.new_BC(point_range=[[1,5],[1,1]])
   bcds_patch   = N.new_BCDataSet('DataSet1', point_range=[[1,2],[1,1]], parent=bc)
@@ -504,7 +505,6 @@ Zone Zone_t:
   WrongZSR WrongType_t:
     BCRegionName Descriptor_t "BC":
   """
-  import maia.pytree as PT
   zone = parse_yaml_cgns.to_node(yt)
 
   assert SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
@@ -515,3 +515,21 @@ Zone Zone_t:
     SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'OrphelanZSR'), zone)
   with pytest.raises(CGNSLabelNotEqualError):
     SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'WrongZSR'), zone)
+
+def test_container_fields():
+  fs = N.new_FlowSolution('Sol')
+  assert len(SIDS.Container.fields(fs)) == 0
+
+  N.new_DataArray('Temperature', [21, 29], parent=fs)
+  N.new_DataArray('Pressure', [1004, 1010], parent=fs)
+  assert len(fields := SIDS.Container.fields(fs)) == 2
+  assert np.array_equal(fields['Temperature'], np.array([21,29], np.int32))
+  assert np.array_equal(fields['Pressure'], np.array([1004, 1010], np.int32))
+
+  ds = N.new_BCDataSet()
+  N.new_BCData('DirichletData', fields={'Pressure' : [21, 29]}, parent=ds)
+  N.new_BCData('NeumannData', fields={'Pressure' : [29, 21], 'Temperature' : [1004, 1010]}, parent=ds)
+  assert len(fields := SIDS.Container.fields(ds)) == 3
+  assert np.array_equal(fields['DirichletData/Pressure'], np.array([21,29], np.int32))
+  assert np.array_equal(fields['NeumannData/Pressure'], np.array([29, 21], np.int32))
+  assert np.array_equal(fields['NeumannData/Temperature'], np.array([1004, 1010], np.int32))
