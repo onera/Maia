@@ -114,7 +114,7 @@ def test_localize_points(input_kind, comm):
   assert PT.is_same_tree(tree_src_back, tree_src)
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
-  assert loc_node is not None and PT.Subset.GridLocation(loc_node) == 'CellCenter'
+  assert loc_node is not None and PT.Container.GridLocation(loc_node) == 'CellCenter'
   assert PT.get_value(PT.get_child_from_name(loc_node, 'DomainList')) == "Base/zone"
 
   # Check result on dist tree to not rely on partitioning
@@ -145,7 +145,7 @@ def test_localize_2d(cnt_kind, comm):
   assert PT.is_same_tree(tree_src_back, tree_src)
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   loc_node = PT.get_node_from_name_and_label(tgt_zone, 'Localization', 'DiscreteData_t')
-  assert loc_node is not None and PT.Subset.GridLocation(loc_node) == 'CellCenter'
+  assert loc_node is not None and PT.Container.GridLocation(loc_node) == 'CellCenter'
   assert PT.get_value(PT.get_child_from_name(loc_node, 'DomainList')) == "Base/zone"
 
   # Check result on dist tree to not rely on partitioning

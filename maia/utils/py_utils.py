@@ -48,7 +48,7 @@ def loop_from(L: List[T], i: int):
   yield from L[i:]
   yield from L[:i]
 
-def find_tensor_names(names: List[str], axis: List[str]) -> List[str]:
+def find_tensor_names(names: Iterable[str], axis: List[str]) -> List[str]:
   """ Return the name of the fields appearing to be a tensor """
   assert len(axis) >= 1
   names = [name for name in names if len(name) > 2] #Exclude crazy cases
@@ -67,7 +67,7 @@ def find_tensor_names(names: List[str], axis: List[str]) -> List[str]:
   common = suffix_names[0].intersection(*suffix_names[1:])
   return sorted(common)
 
-def find_vector_names(names: List[str], axis: List[str]) -> List[str]:
+def find_vector_names(names: Iterable[str], axis: List[str]) -> List[str]:
   """ Return the name of the fields appearing to be a vector """
   assert len(axis) >= 1
 

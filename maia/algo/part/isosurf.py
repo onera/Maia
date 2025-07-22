@@ -51,23 +51,19 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     if mask_container is None:
       raise ValueError("[maia-isosurfaces] asked container for exchange is not in tree")
 
-    # > Manage BC and GC ZSR
-    ref_zsr_node:Optional[CGNSTree] = mask_container
+    # > Manage BC and GC ZSR (bring related node)
     bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
     gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
     assert not (bc_descriptor_n and gc_descriptor_n)
     if bc_descriptor_n is not None:
       bc_name      = PT.get_str_value(bc_descriptor_n)
       dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
-      ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneBC_t/{bc_name}')
     elif gc_descriptor_n is not None:
       gc_name      = PT.get_str_value(gc_descriptor_n)
       dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
-      ref_zsr_node = PT.get_child_from_predicates(mask_zone, f'ZoneGridConnectivity_t/{gc_name})')
     
-    assert ref_zsr_node is not None
-    gridLocation = PT.Subset.GridLocation(ref_zsr_node)
-    partial_field = PT.get_child_from_name(ref_zsr_node, 'PointList') is not None
+    partial_field = PT.pred.IS_SUBSET(mask_container) or PT.get_label(mask_container) == 'ZoneSubRegion_t'
+    gridLocation = PT.Container.GridLocation(mask_container, mask_zone)
     assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
 
@@ -479,7 +475,7 @@ def _iso_surface(part_tree: CGNSPartTree,
       # Check : vertex centered solution (PDM_isosurf doesnt work with cellCentered field)
       flowsol_node = PT.find_child_from_name(part_zone, fs_name)
       field_node   = PT.find_child_from_name(flowsol_node, field_name)
-      assert PT.Subset.GridLocation(flowsol_node) == "Vertex"
+      assert PT.Container.GridLocation(flowsol_node) == "Vertex"
       field_values.append(PT.get_np_value(field_node) - iso_val)
 
     iso_part_zone    = iso_surface_one_domain(part_zones, "FIELD", field_values, elt_type, graph_part_tool, comm)

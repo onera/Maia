@@ -199,7 +199,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
     # Other data (as ZSR) are self contained
     to_remove = list()
     container = PT.new_child(dist_zone, '__maia::isSubset', 'ZoneBC_t')
-    for node in PT.get_children_from_predicate(dist_zone, is_container & is_fcenter & PT.pred.IS_SUBSET):
+    for node in PT.get_children_from_predicate(dist_zone, is_container & PT.pred.IS_SUBSET & is_fcenter):
       PT.new_Descriptor('__maia::initialLabel', PT.get_label(node), parent=node)
       PT.set_label(node, 'BC_t')
       to_remove.append(PT.get_name(node))

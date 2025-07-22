@@ -123,7 +123,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
       continue # Volumic zone has no fields
 
 
-    grid_location = PT.Subset.GridLocation(container)
+    grid_location = PT.Container.GridLocation(container)
     assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
 
     # > FlowSolution node def by zone

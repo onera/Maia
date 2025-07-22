@@ -17,7 +17,7 @@ def _reshape_S_arrays(tree: CGNSTree) -> None:
         assert (array_val:=array[1]) is not None
         PT.set_value(array, array_val.reshape(loc_to_shape['Vertex'], order='F'))
       for container in PT.get_nodes_from_label(zone, 'FlowSolution_t'):
-        wanted_shape = loc_to_shape[PT.Subset.GridLocation(container)]
+        wanted_shape = loc_to_shape[PT.Container.GridLocation(container)]
         for array in PT.get_nodes_from_label(container, 'DataArray_t'):
           assert (array_val:=array[1]) is not None
           PT.set_value(array, array_val.reshape(wanted_shape, order='F'))

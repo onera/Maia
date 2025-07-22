@@ -137,8 +137,8 @@ def test_exchange_field_one_domain(from_api, comm):
     vol_zones = PT.yaml.to_nodes(yt_vol)
     ISO.exchange_field_one_domain(vol_zones, iso_zone, ["DDCell", "FSolVtx", "FSolBC"], comm)
 
-  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "DDCell")) == "CellCenter"
-  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "Vertex"
+  assert PT.Container.GridLocation(PT.get_node_from_name(iso_zone, "DDCell")) == "CellCenter"
+  assert PT.Container.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "Vertex"
   assert PT.get_label(PT.get_node_from_name(iso_zone, "DDCell")) == "DiscreteData_t"
   assert PT.get_label(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "FlowSolution_t"
   assert np.array_equal(PT.get_node_from_path(iso_zone, "DDCell/fieldA")[1], expected_A)

@@ -107,7 +107,7 @@ def test_compute_elements_center(parallel, comm):
         assert len(PT.get_children_from_label(sol, 'DataArray_t')) == phy_dim
       # All zones have computed CellCenter
       cc_sol = PT.get_child_from_name(zone, f'Geometry_{cell_dim}d')
-      assert PT.Subset.GridLocation(cc_sol) == 'CellCenter'
+      assert PT.Container.GridLocation(cc_sol) == 'CellCenter'
       # Test existance of splitted containers for S3D zone
       if PT.Zone.Type(zone) == 'Structured':
         if cell_dim == 3:
@@ -139,7 +139,7 @@ def test_compute_elements_center(parallel, comm):
           expected = geometry._compute_elements_center(zone, dim, comm)
           assert np.allclose(computed, expected)
 
-          if PT.Subset.GridLocation(sol) in ['FaceCenter', 'EdgeCenter']:
+          if PT.Container.GridLocation(sol) in ['FaceCenter', 'EdgeCenter']:
             pl = PT.get_child_from_name(sol, 'PointList')[1][0]
             elt_d_range = PT.Zone.get_elt_range_per_dim(zone)[dim]
             if parallel == 'part':
@@ -234,7 +234,7 @@ def test_compute_elements_measure(parallel, comm):
         assert len(PT.get_children_from_label(sol, 'DataArray_t')) == 1
       # All zones have computed CellCenter
       cc_sol = PT.get_child_from_name(zone, f'Geometry_{cell_dim}d')
-      assert PT.Subset.GridLocation(cc_sol) == 'CellCenter'
+      assert PT.Container.GridLocation(cc_sol) == 'CellCenter'
       # Test existance of splitted containers for S3D zone
       if PT.Zone.Type(zone) == 'Structured':
         if cell_dim == 3:
@@ -260,7 +260,7 @@ def test_compute_elements_measure(parallel, comm):
           expected = geometry._compute_elements_measure(zone, dim, comm)
           assert np.allclose(computed, expected)
 
-          if PT.Subset.GridLocation(sol) in ['FaceCenter', 'EdgeCenter']:
+          if PT.Container.GridLocation(sol) in ['FaceCenter', 'EdgeCenter']:
             pl = PT.get_child_from_name(sol, 'PointList')[1][0]
             elt_d_range = PT.Zone.get_elt_range_per_dim(zone)[dim]
             if parallel == 'part':

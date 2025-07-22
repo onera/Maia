@@ -40,7 +40,7 @@ def test_update_container():
 
   cont = GU.update_container(zone, 'MyContainer', 'CellCenter', fields)
   assert PT.get_name(cont) == 'MyContainer' and PT.get_label(cont) == 'DiscreteData_t'
-  assert PT.Subset.GridLocation(cont) == 'CellCenter'
+  assert PT.Container.GridLocation(cont) == 'CellCenter'
   assert PT.get_child_from_name_and_label(cont, 'SolA', 'DataArray_t')[1].size == 10
 
   # Container should not be erased

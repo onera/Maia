@@ -97,7 +97,7 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t'])
   for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)
-    grid_location = PT.Subset.GridLocation(flow_solution)
+    grid_location = PT.Container.GridLocation(flow_solution)
     distrib_ud_n = MT.get_Distribution(flow_solution)
     if distrib_ud_n:
       distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]

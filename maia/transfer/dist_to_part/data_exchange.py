@@ -96,7 +96,7 @@ def _dist_to_part_sollike(dist_zone: CGNSDistTree,
   #Get distribution
   for mask_sol in PT.get_children(mask_tree):
     d_sol = PT.find_child_from_name(dist_zone, PT.get_name(mask_sol)) #True container
-    location = PT.Subset.GridLocation(d_sol)
+    location = PT.Container.GridLocation(d_sol)
     has_pl   = PT.get_child_from_name(d_sol, 'PointList') is not None
     if has_pl:
       distribution = te_utils.get_cgns_distribution(d_sol, 'Index')

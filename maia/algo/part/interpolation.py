@@ -121,7 +121,7 @@ def interpolate(src_tree:CGNSPartTree,
   # Guess location of input fields using first input zone
   try:
     first_part = next(PT.iter_all_Zone_t(src_tree))
-    input_loc = PT.Subset.GridLocation(PT.find_child_from_name(first_part, containers_name[0]))
+    input_loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, containers_name[0]))
   except StopIteration:
     input_loc = ''
   input_loc = comm.allreduce(input_loc, op=MPI.MAX)

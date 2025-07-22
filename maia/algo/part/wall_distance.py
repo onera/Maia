@@ -37,18 +37,18 @@ def _create_output_container(zone, point_cloud, out_fs_name):
   if point_cloud in ['Vertex', 'CellCenter']:
     output_loc = point_cloud
   else:
-    output_loc = PT.Subset.GridLocation(PT.get_child_from_name(zone, point_cloud))
+    output_loc = PT.Container.GridLocation(PT.get_child_from_name(zone, point_cloud))
   
   # Test if FlowSolution already exists or create it
   fs_node = PT.get_child_from_name(zone, out_fs_name)
   if fs_node is None:
     fs_node = PT.new_DiscreteData(name=out_fs_name, loc=output_loc, parent=zone)
-  assert PT.Subset.GridLocation(fs_node) == output_loc
+  assert PT.Container.GridLocation(fs_node) == output_loc
 
   return fs_node
 
 def _get_output_shape(zone, out_container):
-  output_loc = PT.Subset.GridLocation(out_container)
+  output_loc = PT.Container.GridLocation(out_container)
   if output_loc == "CellCenter":
     shape = PT.Zone.CellSize(zone)
   elif output_loc == "Vertex":

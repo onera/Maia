@@ -188,7 +188,7 @@ def redistribute_zone(zone: CGNSTree,
   sols = PT.get_children_from_label(zone, 'FlowSolution_t') + PT.get_children_from_label(zone, 'DiscreteData_t')
   for sol in sols:
     if PT.get_child_from_name(sol, 'PointList') is None:
-      loc = PT.Subset.GridLocation(sol).replace('Center', '') # Remove 'Center' to use loc as dict key
+      loc = PT.Container.GridLocation(sol).replace('Center', '') # Remove 'Center' to use loc as dict key
       redistribute_data_node(sol, old_distrib[loc], new_distrib[loc], comm)
     else:
       redistribute_pl_node(sol, distribution, comm)

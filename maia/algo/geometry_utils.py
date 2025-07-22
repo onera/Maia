@@ -59,7 +59,7 @@ def update_container(zone: CGNSTree,
   """ Utility to retrieve a container from its name, or create it """
   container = PT.get_child_from_name(zone, container_name)
   if container is not None: # Container exists
-    cnt_loc = PT.Subset.GridLocation(container) 
+    cnt_loc = PT.Container.GridLocation(container) 
     if cnt_loc != loc:
       raise RuntimeError(f"Container {container_name} already exists in zone "
                          f"{PT.get_name(zone)} but has incompatible GridLocation "

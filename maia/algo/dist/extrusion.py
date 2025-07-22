@@ -709,7 +709,7 @@ def extrude(dist_tree: CGNSDistTree,
       # Specific treatment of BCDS (they are skipped above because of get_children).
       # Duplicate data and PL/PR if present in BCDS
       for _, bc, bcds in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t', ancestors=True):
-        if PT.Subset.GridLocation(bcds) == 'Vertex':
+        if PT.Container.GridLocation(bcds, bc) == 'Vertex':
           pl_ower = bcds if is_partial(bcds) else bc
           pl_n = PT.get_child_from_name(pl_ower, 'PointList')
           assert (pl_n is None) ^ (PT.Zone.Type(zone) == 'Unstructured'), "Required S zone + PR or U zone + PL"

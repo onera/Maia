@@ -91,7 +91,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_op=None
     if not par_utils.exists_anywhere(part_zones, PT.get_name(d_sol), comm):
       continue #Skip FS that remains on dist_tree but are not present on part tree
 
-    location = PT.Subset.GridLocation(d_sol)
+    location = PT.Container.GridLocation(d_sol)
     has_pl   = PT.get_child_from_name(d_sol, 'PointList') is not None
 
     if has_pl:

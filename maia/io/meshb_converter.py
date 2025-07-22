@@ -34,8 +34,8 @@ def get_tree_info(dist_tree, container_names):
   # > Container field names
   field_names = dict()
   for container_name in container_names:
-    container = PT.get_node_from_name(zone_n, container_name)
-    assert PT.Subset.GridLocation(container) == 'Vertex'
+    container = PT.find_node_from_name(zone_n, container_name)
+    assert PT.Container.GridLocation(container) == 'Vertex'
     field_names[container_name] = [PT.get_name(n) for n in PT.iter_children_from_label(container, 'DataArray_t')]
 
   return {"bc_names"    : bc_names,

@@ -136,7 +136,7 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
 
   # Guess location of input fields using first input zone
   first_part = next(PT.iter_all_Zone_t(src_tree))
-  input_loc = PT.Subset.GridLocation(PT.get_child_from_name(first_part, containers_name[0]))
+  input_loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, containers_name[0]))
 
   # Create interpolator
   interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)

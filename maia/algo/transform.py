@@ -88,9 +88,8 @@ def transform_affine_zone(zone: CGNSTree,
       fields_nodes += PT.get_children_from_label(bc, "BCDataSet_t")
     for fields_node in fields_nodes:
       is_full_vtx = PT.get_label(fields_node) in ['FlowSolution_t', 'DiscreteData_t'] and \
-                    PT.Subset.GridLocation(fields_node) == 'Vertex' and \
-                    PT.get_child_from_name(fields_node, 'PointList') is None and \
-                    PT.get_child_from_name(fields_node, 'PointRange') is None
+                    PT.Container.GridLocation(fields_node) == 'Vertex' and \
+                    not PT.pred.IS_SUBSET(fields_node)
       data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
       cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names, phy_dim)
       for basename in cartesian_vectors_basenames:
@@ -228,26 +227,6 @@ COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
                  'Vertex'      : lambda z,c : PT.get_node_from_predicates(z, 'GridCoordinates_t/CoordinateTheta')[1] #type:ignore #(request not yet av)
                  }
 
-def _get_subset_container(nodes: Sequence[CGNSTree]) -> CGNSTree:
-  """
-  Return the parent node containing the PointList or PointRange information.
-  Container stack should start at Zone level
-  """
-  zone = nodes[0]
-  last = nodes[-1]
-  if PT.get_label(last) == 'ZoneSubRegion_t':
-    return PT.Container.SubsetNode(last, zone)
-  elif PT.get_label(last) == 'BCData_t':
-    parent_ds, parent_bc = nodes[-2], nodes[-3] 
-    parent_ds_children =[PT.get_name(n) for n in PT.get_children(parent_ds)] 
-    if 'PointList' in parent_ds_children or 'PointRange' in parent_ds_children: #BCDS with own subset 
-      return parent_ds
-    else: #BCDS with inherited subset  
-      return parent_bc
-  else: # Other cases: return node directly
-    return last
-
-
 def shrink_to_subset(array, zone, subset, comm):
   """
   Extract a subpart of a full array (eg defined on all Vertex) on a specific 
@@ -346,26 +325,25 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
 
     predicates = ['GridCoordinates_t'] # Always treat coordinates, + fields if apply_to_fields
     if apply_to_fields:
-      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
+      predicates += ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
 
     loc_to_theta:Dict[str, Optional[NDArray]]  = {key: None for key in COMPUTE_THETA.keys()}
 
     for predicate in predicates:
-      for container_stack in PT.get_children_from_predicates(zone, predicate, ancestors=True):
-        container = container_stack[-1]
-        datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
-        vectors_basenames = py_utils.find_vector_names(datanames, coords_suffix)
-        if PT.get_label(container) != "GridCoordinates_t" and len(vectors_basenames) > 0:
-          subset_container = _get_subset_container([zone] + list(container_stack)) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
-          loc_container = PT.Subset.GridLocation(subset_container)
+      for container in PT.get_children_from_predicates(zone, predicate):
+        datapaths = PT.Container.fields(container).keys()
+        vectors_basepaths = py_utils.find_vector_names(datapaths, coords_suffix)
+        if PT.get_label(container) != "GridCoordinates_t" and len(vectors_basepaths) > 0:
+          loc_container = PT.Container.GridLocation(container, zone)
           loc_container = 'FaceCenter' if loc_container.endswith("FaceCenter") else loc_container #Remove I,J,K prefix
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]
-          theta = shrink_to_subset(theta, zone, subset_container, comm)
-        for basename in vectors_basenames:
-
-          fields_n = [PT.find_child_from_name(container, f'{basename}{suffix}') for suffix in coords_suffix]
+          if PT.get_label(container) not in ['FlowSolution_t', 'DiscreteData_t'] or PT.pred.IS_SUBSET(container):
+            theta = shrink_to_subset(theta, zone, PT.Container.SubsetNode(container, zone), comm)
+        for basepath in vectors_basepaths:
+          basename = basepath.split('/')[-1]
+          fields_n = [PT.find_node_from_path(container, f'{basepath}{suffix}') for suffix in coords_suffix]
           ordered_fields = [fields_n[i] for i in idx_order]
           if basename == "Coordinate":
             cyl_values = _to_rthetaz(*[PT.get_np_value(n) for n in ordered_fields])
@@ -437,7 +415,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
     coords_suffix = ['Xi', 'Eta', 'Zeta'] if transform_matrix_n is not None else ['X', 'Y', 'Z']
 
     if apply_to_fields:
-      predicates = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t']
+      predicates = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t']
     else:
       predicates = []
     predicates += ['GridCoordinates_t'] # Always treat coordinates (last because needed for centers)
@@ -445,20 +423,20 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
     loc_to_theta:Dict[str, Optional[NDArray]]  = {key: None for key in COMPUTE_THETA.keys()}
   
     for predicate in predicates:
-      for container_stack in PT.get_children_from_predicates(zone, predicate, ancestors=True):
-        container = container_stack[-1]
-        datanames = [PT.get_name(data) for data in PT.iter_nodes_from_label(container, "DataArray_t")]
-        cylindric_vectors_basenames = py_utils.find_vector_names(datanames, ['R', 'Theta', 'Z'])
-        if PT.get_label(container) != "GridCoordinates_t" and len(cylindric_vectors_basenames) > 0:
-          subset_container = _get_subset_container([zone] + list(container_stack)) # In some case (eg bc), GridLoc & Pl are stored in parent nodes  
-          loc_container = PT.Subset.GridLocation(subset_container)
+      for container in PT.get_children_from_predicates(zone, predicate):
+        datapaths = PT.Container.fields(container).keys()
+        cylindric_vectors_basepaths = py_utils.find_vector_names(datapaths, ['R', 'Theta', 'Z'])
+        if PT.get_label(container) != "GridCoordinates_t" and len(cylindric_vectors_basepaths) > 0:
+          loc_container = PT.Container.GridLocation(container, zone)
           loc_container = 'FaceCenter' if loc_container.endswith("FaceCenter") else loc_container #Remove I,J,K prefix
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]
-          theta = shrink_to_subset(theta, zone, subset_container, comm)
-        for basename in cylindric_vectors_basenames:
-          fields_n = [PT.find_child_from_name(container, f'{basename}{suffix}') for suffix in ['R', 'Theta', 'Z']]
+          if PT.get_label(container) not in ['FlowSolution_t', 'DiscreteData_t'] or PT.pred.IS_SUBSET(container):
+            theta = shrink_to_subset(theta, zone, PT.Container.SubsetNode(container, zone), comm)
+        for basepath in cylindric_vectors_basepaths:
+          basename = basepath.split('/')[-1]
+          fields_n = [PT.find_node_from_path(container, f'{basepath}{suffix}') for suffix in ['R', 'Theta', 'Z']]
           if basename == "Coordinate":
             cart_values = _to_xyz(*[PT.get_value(n) for n in fields_n])
           else:

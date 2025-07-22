@@ -400,25 +400,25 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   # Verification
   # CellCenter containers
   container = PT.get_node_from_name(zone, f'DD_woPL#CellCenter')
-  assert PT.Subset.GridLocation(container) == 'CellCenter'
+  assert PT.Container.GridLocation(container) == 'CellCenter'
   assert PT.get_child_from_name(container, 'PointList') is None
   assert (PT.get_child_from_name(container, 'Id')[1] == [17,18,19,20,21,22,23,24]).all() # Data is unchanged
   container = PT.get_node_from_name(zone, f'FS_wPL#CellCenter')
-  assert PT.Subset.GridLocation(container) == 'CellCenter'
+  assert PT.Container.GridLocation(container) == 'CellCenter'
   assert (PT.get_child_from_name(container, 'Id')[1] == [23,24]).all() # Data is unchanged
   assert (PT.get_child_from_name(container, 'PointList')[1] == [39,40]).all()
 
   # Vertex containers
   tile_value = 2 if dupl_vtx_data else 1
   container = PT.get_node_from_name(zone, f'DD_woPL#Vertex')
-  assert PT.Subset.GridLocation(container) == 'Vertex'
+  assert PT.Container.GridLocation(container) == 'Vertex'
   assert (PT.get_child_from_name(container, 'Id')[1] == np.tile(np.arange(9)+1, tile_value)).all()
   if dupl_vtx_data:
     assert PT.get_child_from_name(container, 'PointList') is None
   else:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == np.arange(9)+1).all()
   container = PT.get_node_from_name(zone, f'FS_wPL#Vertex')
-  assert PT.Subset.GridLocation(container) == 'Vertex'
+  assert PT.Container.GridLocation(container) == 'Vertex'
   expected_pl = [1,2,3,10,11,12] if dupl_vtx_data else [1,2,3]
   assert (PT.get_child_from_name(container, 'Id')[1] == np.tile([1,2,3], tile_value)).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == expected_pl).all()
@@ -432,7 +432,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
 
   # Face containers
   container = PT.get_node_from_name(zone, f'ZSR_wPL#EdgeCenter')
-  assert PT.Subset.GridLocation(container) == 'FaceCenter'
+  assert PT.Container.GridLocation(container) == 'FaceCenter'
   assert (PT.get_child_from_name(container, 'Id')[1] == [4,6,11,13]).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == [4,6,11,13]).all()
 
@@ -441,18 +441,18 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   assert (PT.get_node_from_name(xmin, 'PointList')[1][0] == [2,10]).all()
 
   container = PT.get_node_from_name(zone, 'BCDS_wpl#CellCenter')
-  assert PT.Subset.GridLocation(container) == 'CellCenter'
+  assert PT.Container.GridLocation(container) == 'CellCenter'
   assert (PT.get_node_from_name(container, 'Id')[1] == [1,5]).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == [33,37]).all()
   container = PT.get_node_from_name(zone, 'BCDS_wpl#Vertex')
-  assert PT.Subset.GridLocation(container) == 'Vertex'
+  assert PT.Container.GridLocation(container) == 'Vertex'
   assert (PT.get_node_from_name(container, 'Id')[1] == np.tile([1,2,3], tile_value)).all()
   if dupl_vtx_data:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == [1,2,3,10,11,12]).all()
   else:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == [1,2,3]).all()
   container = PT.get_node_from_name(zone, 'BCDS_wpl#EdgeCenter')
-  assert PT.Subset.GridLocation(container) == 'FaceCenter'
+  assert PT.Container.GridLocation(container) == 'FaceCenter'
   assert (PT.get_node_from_name(container, 'Id')[1] == [2,10]).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == [2,10]).all()
 
