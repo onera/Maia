@@ -108,12 +108,12 @@ def test_bcds_s_to_bcds_u(output_loc):
 
   # Unrelated DS keeps its location and get a new PL
   ds = PT.get_child_from_name(bc_u, 'CustomVertexDS')
-  assert PT.BCDataSet.GridLocation(ds, bc_u) == 'Vertex'
+  assert PT.Container.GridLocation(ds, bc_u) == 'Vertex'
   assert np.array_equal(PT.get_child_from_name(ds, 'PointList')[1], [[54,55,58,59]])
   assert PT.get_node_from_name(ds, 'array') is not None
 
   ds = PT.get_child_from_name(bc_u, 'CustomFaceDS')
-  assert PT.BCDataSet.GridLocation(ds, bc_u) == 'FaceCenter'
+  assert PT.Container.GridLocation(ds, bc_u) == 'FaceCenter'
   assert np.array_equal(PT.get_child_from_name(ds, 'PointList')[1], [[100,101,102,103,104,105,106,107,108]])
   assert PT.get_node_from_name(ds, 'array') is not None
 
@@ -324,11 +324,11 @@ def test_s_to_u_2d_dataset(bc_loc_edge, comm):
 
   # Unrelated DS keeps its location and get a new PL
   ds = PT.get_child_from_name(ymax, 'CustomVertexDS')
-  assert PT.BCDataSet.GridLocation(ds, ymax) == 'Vertex'
+  assert PT.Container.GridLocation(ds, ymax) == 'Vertex'
   assert (PT.get_child_from_name(ds, 'PointList')[1] == [[13,14,15]]).all()
 
   ds = PT.get_child_from_name(ymax, 'CustomEdgeDS')
-  assert PT.BCDataSet.GridLocation(ds, ymax) == 'EdgeCenter'
+  assert PT.Container.GridLocation(ds, ymax) == 'EdgeCenter'
   assert (PT.get_child_from_name(ds, 'PointList')[1] == [[23,24,25,26,27]]).all()
 
 @pytest_parallel.mark.parallel(2)

@@ -98,15 +98,6 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Container.SubsetNode
 
 
-**BCDataSet**
-
-.. autosummary::
-  :nosignatures:
-
-  ~maia.pytree.BCDataSet.GridLocation
-  ~maia.pytree.BCDataSet.getPatch
-
-
 .. note:: Functions are displayed below as static methods, gathered into classes.
   This is an implementation detail to put functions into namespaces : they should
   be used as usual, with their name prefixed by the label name:
@@ -129,7 +120,3 @@ Methods detail
   :members:
 .. autoclass:: maia.pytree.Container
   :members:
-.. autoclass:: maia.pytree.BCDataSet
-  :members:
-
-

@@ -23,10 +23,8 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
   """
   point_lists = []
   for query in query_list:
-    for nodes in PT.iter_children_from_predicates(dist_zone, query, ancestors=True):
-      parents, node = nodes[:-1], nodes[-1]
-      is_bcds = PT.get_label(node) == 'BCDataSet_t'
-      loc = PT.BCDataSet.GridLocation(node, parents[-1]) if is_bcds else PT.Subset.GridLocation(node)
+    for node in PT.iter_children_from_predicates(dist_zone, query):
+      loc = PT.Subset.GridLocation(node) if PT.pred.IS_SUBSET(node) else PT.Container.GridLocation(node, dist_zone)
       if filter_loc is None or loc in filter_loc:
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')
@@ -56,8 +54,7 @@ def create_part_pointlists(dist_zone: CGNSDistTree,
   for pl_path in pl_pathes:
     for nodes in PT.iter_children_from_predicates(dist_zone, pl_path, ancestors=True):
       ancestors, node = nodes[:-1], nodes[-1]
-      is_bcds = PT.get_label(node) == 'BCDataSet_t'
-      loc = PT.BCDataSet.GridLocation(node, ancestors[-1]) if is_bcds else PT.Subset.GridLocation(node)
+      loc = PT.Subset.GridLocation(node) if PT.pred.IS_SUBSET(node) else PT.Container.GridLocation(node, dist_zone)
       if loc in locations:
         pl_n = PT.get_child_from_name(node, 'PointList')
         pr_n = PT.get_child_from_name(node, 'PointRange')

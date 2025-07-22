@@ -484,7 +484,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
           bcds_type  = PT.get_str_value(bcds_n)
           bcds_loc_n = PT.get_child_from_label(bcds_n, 'GridLocation_t')
-          bcds_loc   = PT.BCDataSet.GridLocation(bcds_n, bc_n) if bcds_loc_n is not None else None
+          bcds_loc   = PT.Container.GridLocation(bcds_n, bc_n) if bcds_loc_n is not None else None
 
           bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
           if bcds_pl_n is not None:

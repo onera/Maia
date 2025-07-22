@@ -65,9 +65,7 @@ def create_part_pl_gnum(dist_zone: CGNSDistTree,
   for p_zone in part_zones:
     node = PT.get_node_from_path(p_zone, node_path)
     if node:
-      if is_bcds := PT.get_label(node) == 'BCDataSet_t':
-        bc_parent = PT.find_node_from_path(p_zone, PT.utils.path_head(node_path))
-      location = PT.BCDataSet.GridLocation(node, bc_parent) if is_bcds else PT.Subset.GridLocation(node)
+      location = PT.Subset.GridLocation(node) if PT.pred.IS_SUBSET(node) else PT.Container.GridLocation(node, p_zone)
       if location == 'Vertex':
         ln_to_gn = MT.globalnumbering_value(p_zone, 'Vertex')
       else:
@@ -190,7 +188,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
     if ancestor_n:
       for node in PT.iter_children_from_predicate(ancestor_n, name_predicate):
         part_pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))
-        loc = PT.BCDataSet.GridLocation(node, ancestor_n) if PT.get_label(node) == 'BCDataSet_t' else PT.Subset.GridLocation(node)
+        loc = PT.Subset.GridLocation(node) if PT.pred.IS_SUBSET(node) else PT.Container.GridLocation(node, part_zone)
         if PT.Zone.Type(part_zone) == 'Unstructured':
           if loc == 'Vertex':
             ln_to_gn = MT.globalnumbering_value(part_zone, 'Vertex')

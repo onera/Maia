@@ -870,7 +870,7 @@ def iter_all_subsets(root:CGNSTree, filter_loc:Optional[Sequence[str]]=None) -> 
           yield root
 
   get_location = lambda node, ancst: PT.Subset.GridLocation(node) if PT.get_label(node) != 'BCDataSet_t' \
-                                                                  else PT.BCDataSet.GridLocation(node, ancst[-1])
+                                                                  else PT.Container.GridLocation(node, ancst[-1])
   for path in subset_paths:
     for subset_n in iter_children_from_predicates(root, path, ancestors=True):
       ancestors, child = subset_n[:-1], subset_n[-1]
