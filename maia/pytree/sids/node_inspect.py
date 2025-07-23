@@ -1070,7 +1070,12 @@ class Container:
       
 
   @staticmethod
-  def _is_subset(cnt_node) -> bool:
+  def _is_partial(cnt_node:CGNSTree) -> bool:
+    # True if the data is not defined on a whole mesh entity 
+    return N.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t'] or Container._is_subset(cnt_node)
+
+  @staticmethod
+  def _is_subset(cnt_node:CGNSTree) -> bool:
     # Not yet in doc, because not sure of how to call it
     # What should return a ZSR related to a BC ? The ZSR is n
     return W.get_child_from_name(cnt_node, 'PointRange') is not None \

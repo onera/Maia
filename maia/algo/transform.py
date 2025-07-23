@@ -339,7 +339,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]
-          if PT.get_label(container) not in ['FlowSolution_t', 'DiscreteData_t'] or PT.pred.IS_SUBSET(container):
+          if PT.Container._is_partial(container):
             theta = shrink_to_subset(theta, zone, PT.Container.SubsetNode(container, zone), comm)
         for basepath in vectors_basepaths:
           basename = basepath.split('/')[-1]
@@ -432,7 +432,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
           if loc_to_theta[loc_container] is None:
             loc_to_theta[loc_container] = COMPUTE_THETA[loc_container](zone, comm)
           theta = loc_to_theta[loc_container]
-          if PT.get_label(container) not in ['FlowSolution_t', 'DiscreteData_t'] or PT.pred.IS_SUBSET(container):
+          if PT.Container._is_partial(container):
             theta = shrink_to_subset(theta, zone, PT.Container.SubsetNode(container, zone), comm)
         for basepath in cylindric_vectors_basepaths:
           basename = basepath.split('/')[-1]

@@ -54,7 +54,7 @@ def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_nam
     assert patch_node is not None, 'Asked patch unfound for subregion extent.'
 
   grid_location = PT.Container.GridLocation(mask_container, mask_zone)
-  partial_field = PT.pred.IS_SUBSET(mask_container) or PT.get_label(mask_container) == 'ZoneSubRegion_t'
+  partial_field = PT.Container._is_partial(mask_container)
 
   # list all FS and ZSR paths
   is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])

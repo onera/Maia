@@ -62,7 +62,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
       gc_name      = PT.get_str_value(gc_descriptor_n)
       dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
     
-    partial_field = PT.pred.IS_SUBSET(mask_container) or PT.get_label(mask_container) == 'ZoneSubRegion_t'
+    partial_field = PT.Container._is_partial(mask_container)
     gridLocation = PT.Container.GridLocation(mask_container, mask_zone)
     assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
 
