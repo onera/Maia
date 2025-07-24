@@ -35,7 +35,7 @@ def generate_dist_line(n_point: int,
   length      = np.array(end)-np.array(start)
   delta       = length/(n_point-1)
   vtx_distrib = par_utils.uniform_distribution(n_point, comm)
-  dn_vtx      = vtx_distrib[1]-vtx_distrib[0]
+  
   coords = {}
   for i in range(phy_dim):
     key = 'Coordinate' + 'XYZ'[i]

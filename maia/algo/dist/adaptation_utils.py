@@ -639,9 +639,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   elt_vtx     = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
   elt_distri  = MT.distribution_value(elt_n, 'Element')
   
-  dn_vtx      = MT.distribution_value(zone ,'Vertex')
-  dn_face     = MT.distribution_value(elt_n,'Element')
-
   # > Fake extract bc to have 2 domain in PDM.interface_vertex_to_face(...)
   for bc_name in [bc_names[1],bc_names[0]]: # ordre important pour bc_vtx_pl en dehors de la boucle
     bc_n    = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
@@ -660,7 +657,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
     elt_vtx_idx = np.arange(0,n_face+1, dtype=np.int32)*elt_size
     assert elt_vtx_idx.size==n_face+1
     assert bc_elt_vtx.size==elt_vtx_idx[-1]
-    zones_dn_vtx      .append(dn_vtx[1]-dn_vtx[0])
+    zones_dn_vtx      .append(MT.Zone.dn_vtx(zone))
     zones_dn_face     .append(n_face)
     zones_face_vtx_idx.append(elt_vtx_idx)
     zones_face_vtx    .append(as_pdm_gnum(bc_elt_vtx))

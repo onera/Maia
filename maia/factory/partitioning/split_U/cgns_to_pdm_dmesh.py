@@ -36,8 +36,7 @@ def cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, comm):
   """
   Create a pdm_dmesh structure for distributed having only vertices
   """
-  distrib_vtx = MT.distribution_value(dist_zone, 'Vertex')
-  dn_vtx      = distrib_vtx[1] - distrib_vtx[0]
+  dn_vtx      = MT.Zone.dn_vtx(dist_zone)
 
   if dn_vtx > 0:
     cx, cy, cz = PT.Zone.coordinates(dist_zone)
@@ -59,8 +58,6 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
-  distrib_vtx      = MT.distribution_value(dist_zone, 'Vertex')
-  distrib_cell     = MT.distribution_value(dist_zone, 'Cell')
 
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
@@ -81,8 +78,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   distrib_face     = as_pdm_gnum(MT.distribution_value(ngon_node, 'Element'))
   distrib_face_vtx = as_pdm_gnum(MT.distribution_value(ngon_node, 'ElementConnectivity'))
 
-  dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
-  dn_cell = distrib_cell[1] - distrib_cell[0]
+  dn_vtx  = MT.Zone.dn_vtx(dist_zone)
+  dn_cell = MT.Zone.dn_cell(dist_zone)
   dn_face = distrib_face[1] - distrib_face[0]
   dn_edge = -1 #Not used
 
@@ -96,7 +93,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     if ngon_first:
       dcell_face = nface_ec
     else:
-      dcell_face = nface_ec - distrib_cell[2]
+      dcell_face = nface_ec - PT.Zone.n_cell(dist_zone)
   if has_pe: #Use PE to set face_cell
     dface_cell = np.empty(2*dn_face, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
     layouts.pe_cgns_to_pdm_face_cell(ngon_pe, dface_cell)

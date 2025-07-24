@@ -133,8 +133,7 @@ def test_meshb_to_cgns(multi_elt, comm):
     bc_cell_groups = []
 
   zone = PT.get_all_Zone_t(dist_tree)[0]
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
-  dn_vtx = vtx_distri[1] - vtx_distri[0]
+  dn_vtx = MT.Zone.dn_vtx(zone)
   fields = {"Zeros": np.zeros(dn_vtx), "Range": np.arange(dn_vtx, dtype=float)}
   PT.new_FlowSolution('FlowSolution', loc='Vertex', fields=fields, parent=zone)
 
