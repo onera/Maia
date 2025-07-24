@@ -35,20 +35,14 @@ def compute_face_normal(zone, unitary=False, face_indices=None, face_indices_loc
     # Careful : if zone is poly2d, the ngon element may be absent
     if PT.pred.IS_POLY2D_ZONE(zone) and not PT.Zone.has_ngon_elements(zone):
       maia.algo.edge_pe_to_ngon(zone, None)
-    if PT.Zone.has_ngon_elements(zone):
-      ngon_node = PT.Zone.NGonNode(zone)
-      face_vtx = MT.Element.connectivity(ngon_node)
-      if face_indices is not None:
-        face_vtx = vs.take(face_vtx, face_indices[0] - PT.Element.Range(ngon_node)[0])
-    else: # Zone has std elements
-      face_vtx = CU.cell_vtx_connectivity(zone, 2, face_indices)
+    face_vtx = CU.cell_vtx_connectivity(zone, 2, face_indices)
   elif PT.Zone.Type(zone) == 'Structured':
     if zone_dim == 3:
       ngon_node = S2U.zonedims_to_ngon(PT.Zone.VertexSize(zone), MPI.COMM_SELF)
       face_vtx = MT.Element.connectivity(ngon_node)
       if face_indices is not None:
         assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
-          "Indices location must be specified when filtering faces normal on 3D structured meshes"
+          "Indices location must be specified when filtering faces on 3D structured meshes"
         _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone))
         face_vtx = vs.take(face_vtx, _face_indices-1)
     elif zone_dim == 2:
@@ -91,7 +85,7 @@ def compute_edge_normal(zone, unitary=False, edge_indices=None, edge_indices_loc
       edge_vtx = MT.Element.connectivity(edge_node)
       if edge_indices is not None:
         assert edge_indices_loc in ['IEdgeCenter', 'JEdgeCenter'], \
-          "Indices location must be specified when filtering edges normal on 2D structured meshes"
+          "Indices location must be specified when filtering normal on 2D structured meshes"
         _edge_indices = s_numbering.ij_to_index_from_loc(*edge_indices, edge_indices_loc, PT.Zone.VertexSize(zone))
         edge_vtx = vs.take(edge_vtx, _edge_indices-1)
     if zone_dim == 1:
@@ -118,7 +112,19 @@ def compute_edge_normal(zone, unitary=False, edge_indices=None, edge_indices_loc
 def _compute_elements_normal(zone, unitary=False, element_indices=None, element_loc=None):
   """
   Partitioned implementation of _compute_elements_normal, which compute normal vectors
-  and return a raw vector (phydim component per entity)
+  and return a raw vector (phydim component per entity).
+
+  Output vector are normalized if unitary is True, otherwise their norm is
+  equal to the face area or edge lenght.
+
+  If element_indices is None, normal is computed for all elements
+  of relevant dimension of the grid.
+  Otherwise, a PointList-like array is expected: normal will be computed
+  only for the specified indices. Indices must be provided in 'cgns numbering',
+  (ie. refering to ElementRange_t ids, independantly of element dimension).
+  In addition, element_loc is mandatory when filtering faces (resp edges) on 
+  3D/S (resp. 2D/S) meshes, to specify if faces (resp. edges) are in I,J, or K
+  direction (using IFaceCenter, JFaceCenter, ... JEdgeCenter value).
   """
   cell_dim = PT.Zone.CellDimension(zone)
   phy_dim = PT.Zone.PhysicalDimension(zone)

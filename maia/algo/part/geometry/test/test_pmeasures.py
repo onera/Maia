@@ -138,6 +138,9 @@ def test_compute_measure_indices(comm):
     cx = PT.find_node_from_name(tree2d, 'CoordinateX')
     PT.set_value(cx, np.array([0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1]))
 
+    expected_area = np.array([0.25, 0.2, 0.05])
+    expected_length = np.array([0.5, 0.4, 0.1, 0.5, 0.5])
+
     # Elt mesh, 2D
     tree = PT.deep_copy(tree2d)
     maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
@@ -145,9 +148,9 @@ def test_compute_measure_indices(comm):
     zone = PT.get_all_Zone_t(ptree)[0]
 
     mes = measures._compute_elements_measure(zone, 2, np.array([[16,12,11]]))
-    assert np.array_equal(mes, [0.25, 0.2, 0.05])
+    assert np.array_equal(mes, expected_area)
     mes = measures._compute_elements_measure(zone, 1, np.array([[10,9,8,1,2]]))
-    assert np.array_equal(mes, [0.5, 0.4, 0.1, 0.5, 0.5])
+    assert np.array_equal(mes, expected_length)
         
     # S mesh, 2D
     tree = PT.deep_copy(tree2d)
@@ -155,7 +158,7 @@ def test_compute_measure_indices(comm):
     zone = PT.get_all_Zone_t(ptree)[0]
 
     mes = measures._compute_elements_measure(zone, 2, np.array([[3,2,1], [1,1,2]], order='F'))
-    assert np.array_equal(mes, [0.25, 0.2, 0.05])
+    assert np.array_equal(mes, expected_area)
 
     # NGON mesh, 2D
     tree = PT.deep_copy(tree2d)
@@ -164,9 +167,9 @@ def test_compute_measure_indices(comm):
     zone = PT.get_all_Zone_t(ptree)[0]
     
     mes = measures._compute_elements_measure(zone, 2, np.array([[23,19,18]]))
-    assert np.array_equal(mes, [0.25, 0.2, 0.05])
-    mes = measures._compute_elements_measure(zone, 1, np.array([[14,13,12,6,7,8]]))
-    assert np.array_equal(mes, [0.5, 0.4, 0.1, 0.5, 0.5, 0.5])
+    assert np.array_equal(mes, expected_area)
+    mes = measures._compute_elements_measure(zone, 1, np.array([[14,13,12,6,7]]))
+    assert np.array_equal(mes, expected_length)
 
     # Elt mesh, 1D
     tree = maia.factory.generate_dist_block(5, 'BAR_2', comm)

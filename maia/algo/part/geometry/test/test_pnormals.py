@@ -12,9 +12,7 @@ from maia.algo.part.geometry import normals as GEO
 @pytest_parallel.mark.parallel(3)
 def test_compute_edge_normal2d(elt_kind, unitary, comm):
   tree = maia.factory.generate_dist_block(3, 'TRI_3', comm)
-  if elt_kind == 'TRI_3':
-    maia.algo.dist.reorder_elt_sections_from_dim(tree)
-  else:
+  if elt_kind != 'TRI_3':
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
@@ -24,7 +22,10 @@ def test_compute_edge_normal2d(elt_kind, unitary, comm):
   
   edge_indices = None
   if unitary:
-    edge_indices = np.array([[5,2,3]]) if elt_kind == 'Poly' else np.array([[2]])
+    if elt_kind == 'Poly':
+      edge_indices = np.array([[5,2,3]])
+    else:
+      edge_indices = np.array([[1 + PT.Zone.get_elt_range_per_dim(zone)[1][0]]]) # edge n°2
   edge_normal = GEO.compute_edge_normal(zone, unitary, edge_indices)
 
   if elt_kind == 'TRI_3': # Only external edges are computed
@@ -148,13 +149,14 @@ def test_compute_face_normal_subset(comm):
   base_tree = maia.factory.generate_dist_block([3,3], 'S', comm, length=[2,1])
   cz = PT.get_np_value(PT.find_node_from_name(base_tree, 'CoordinateZ'))
   cz[[1,4,7]] += 1
+  expected_face_normal = np.array([-0.5,0,0.5,  0.5,0,0.5,  0.5,0,0.5]) # Same for all 2D meshes
 
   # > S 
   tree = PT.deep_copy(base_tree)
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   face_normal = GEO._compute_elements_normal(zone, False, np.array([[1,2,2], [1,2,1]]))
-  assert np.array_equal(face_normal, [-0.5,0,0.5,  0.5,0,0.5,  0.5,0,0.5])
+  assert np.array_equal(face_normal, expected_face_normal)
   # > Elt
   tree = PT.deep_copy(base_tree)
   maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
@@ -162,27 +164,28 @@ def test_compute_face_normal_subset(comm):
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   face_normal = GEO._compute_elements_normal(zone, False, np.array([[9,12,10]]))
-  assert np.array_equal(face_normal, [-0.5,0,0.5,  0.5,0,0.5,  0.5,0,0.5])
+  assert np.array_equal(face_normal, expected_face_normal)
   # NG
   tree = PT.deep_copy(base_tree)
   maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   face_normal = GEO._compute_elements_normal(zone, False, np.array([[13,16,14]]))
-  assert np.array_equal(face_normal, [-0.5,0,0.5,  0.5,0,0.5,  0.5,0,0.5])
+  assert np.array_equal(face_normal, expected_face_normal)
 
   # Celldim = 3
   base_tree = maia.factory.generate_dist_block([5,3,2], 'S', comm)
   cy = PT.get_np_value(PT.find_node_from_name(base_tree, 'CoordinateY'))
   cy[5:10] += 0.25
   cy[20:25] += 0.25
+  expected_face_normal = np.array([0,0,-0.1875,  0,0,-0.1875,  0,0,0.0625]) # Same for all 3D meshes
 
   # > S 
   tree = PT.deep_copy(base_tree)
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   face_normal = GEO._compute_elements_normal(zone, False, np.array([[2,4,2],[1,1,2], [1,1,2]]), 'KFaceCenter')
-  assert np.array_equal(face_normal, [0,0,-0.1875,  0,0,-0.1875,  0,0,0.0625])
+  assert np.array_equal(face_normal, expected_face_normal)
   # > Elt
   tree = PT.deep_copy(base_tree)
   maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
@@ -190,14 +193,14 @@ def test_compute_face_normal_subset(comm):
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   face_normal = GEO._compute_elements_normal(zone, False, np.array([[14,16,26]]))
-  assert np.array_equal(face_normal, [0,0,-0.1875,  0,0,-0.1875,  0,0,0.0625])
+  assert np.array_equal(face_normal, expected_face_normal)
   # > NG
   tree = PT.deep_copy(base_tree)
   maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
   ptree = maia.factory.partition_dist_tree(tree, comm)
   zone = PT.get_all_Zone_t(ptree)[0]
   face_normal = GEO._compute_elements_normal(zone, False, np.array([[24,26,36]]))
-  assert np.array_equal(face_normal, [0,0,-0.1875,  0,0,-0.1875,  0,0,0.0625])
+  assert np.array_equal(face_normal, expected_face_normal)
 
 @pytest.mark.parametrize('cell_dim', [2,3])
 @pytest_parallel.mark.parallel(1)

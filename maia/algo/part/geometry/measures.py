@@ -50,7 +50,7 @@ def compute_face_measure(zone, face_indices=None, face_indices_loc=None):
     assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
     if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
       assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
-        "Indices location must be specified when filtering faces measure on 3D structured meshes"
+        "Indices location must be specified when filtering faces on 3D structured meshes"
     if face_indices.size == 0:
       return np.empty(0, dtype=np.float64)
 
@@ -222,9 +222,16 @@ def compute_cell_measure(zone, cell_indices=None):
 
 def _compute_elements_measure(zone, dim, element_indices=None, element_loc=None):
   """Dispatch measures computing according to zone dimension and 
-  requested dimension.
-  If element_indices is not None, measure is computed only for the
-  specified elements (in absolute numbering)
+  requested dimension (1,2,3 or 'CellCenter').
+  If element_indices is None, measure is computed for all elements
+  of relevant dimension of the grid.
+  Otherwise, a PointList-like array is expected: measure will be computed
+  only for the specified indices. Indices must be provided in 'cgns numbering',
+  (ie. refering to ElementRange_t ids, independantly of element dimension).
+  In addition, element_loc is mandatory when filtering faces (resp edges) on 
+  3D/S (resp. 2D/S) meshes, to specify if faces (resp. edges) are in I,J, or K
+  direction (using IFaceCenter, JFaceCenter, ... JEdgeCenter value).
+  
   Return a raw array"""
   if dim == 'CellCenter':
     dim = PT.Zone.CellDimension(zone)

@@ -17,6 +17,12 @@ def PDM_connectivity_transpose(n_opp:int, connec:vs.VStrideArray):
   return vs.from_displs(*PDM.connectivity_transpose(int(n_opp), connec.displs, connec.values))
 
 def cell_vtx_connectivity_S(zone_S, dim, cell_subset=None) :
+    """
+    Return a cell_vtx like connectivity for S meshes.
+    If cell_subset, this is computed for all 'cells' of requested dim.
+    Otherwise, cell_subset must be a pointlist like array (shape = (dim,N))
+    storing the indices of cells for which cell_vtx must be computed
+    """
     vertex_size = PT.Zone.VertexSize(zone_S)
 
     if cell_subset is not None:

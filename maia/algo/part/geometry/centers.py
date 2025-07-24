@@ -124,7 +124,7 @@ def compute_face_center(zone, face_indices=None, face_indices_loc=None):
     assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
     if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
       assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
-        "Indices location must be specified when filtering faces center on 3D structured meshes"
+        "Indices location must be specified when filtering faces on 3D structured meshes"
     if face_indices.size == 0:
       return np.empty(0, dtype=np.float64)
 

@@ -27,6 +27,8 @@ def compute_face_normal(zone, comm, unitary=False, face_indices=None, face_indic
   assert zone_dim >= 2, "CellDimension of zone must be >= 2 to compute face normals"
   assert phy_dim  == 3, "PhysicalDimension of zone must be 3 to compute face normals"
 
+  if face_indices is not None:
+    assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
 
   # Get face_vtx
   if PT.Zone.Type(zone) == "Unstructured":
@@ -49,7 +51,7 @@ def compute_face_normal(zone, comm, unitary=False, face_indices=None, face_indic
       face_vtx = MT.Element.connectivity(ngon_node)
       if face_indices is not None:
         assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
-          "Indices location must be specified when filtering faces normal on 3D structured meshes"
+          "Indices location must be specified when filtering faces on 3D structured meshes"
         _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone))
         face_distri = MT.distribution_value(ngon_node, 'Element')
         face_vtx = EP.block_to_part(face_vtx, face_distri, _face_indices-1, comm)
@@ -96,7 +98,7 @@ def compute_edge_normal(zone, comm, unitary=False, edge_indices=None, edge_indic
       edge_vtx = MT.Element.connectivity(edge_node)
       if edge_indices is not None:
         assert edge_indices_loc in ['IEdgeCenter', 'JEdgeCenter'], \
-          "Indices location must be specified when filtering edges normal on 2D structured meshes"
+          "Indices location must be specified when filtering edges on 2D structured meshes"
         _edge_indices = s_numbering.ij_to_index_from_loc(*edge_indices, edge_indices_loc, PT.Zone.VertexSize(zone))
         edge_distri = MT.distribution_value(edge_node, 'Element')
         edge_vtx = EP.block_to_part(edge_vtx, edge_distri, _edge_indices-1, comm)
@@ -118,6 +120,18 @@ def _compute_elements_normal(zone, comm, unitary=False, element_indices=None, el
   """
   Distributed implementation of _compute_elements_normal, which compute normal vectors
   and return a raw vector (phydim component per entity)
+
+  Output vector are normalized if unitary is True, otherwise their norm is
+  equal to the face area or edge lenght.
+
+  If element_indices is None, normal is computed for all elements
+  of relevant dimension of the grid (distributed).
+  Otherwise, a PointList-like array is expected: normal will be computed
+  only for the specified indices. Indices must be provided in absolute 'cgns numbering',
+  (ie. refering to ElementRange_t ids, independantly of element dimension).
+  In addition, element_loc is mandatory when filtering faces (resp edges) on 
+  3D/S (resp. 2D/S) meshes, to specify if faces (resp. edges) are in I,J, or K
+  direction (using IFaceCenter, JFaceCenter, ... JEdgeCenter value).
   """
   cell_dim = PT.Zone.CellDimension(zone)
   phy_dim = PT.Zone.PhysicalDimension(zone)

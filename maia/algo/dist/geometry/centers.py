@@ -95,7 +95,7 @@ def compute_face_center(zone, comm, face_indices=None, face_indices_loc=None):
     assert isinstance(face_indices, np.ndarray) and face_indices.ndim == 2
     if PT.Zone.Type(zone) == 'Structured' and zone_dim == 3:
       assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
-        "Indices location must be specified when filtering faces center on 3D structured meshes"
+        "Indices location must be specified when filtering faces on 3D structured meshes"
 
   if PT.Zone.Type(zone) == "Structured" and zone_dim == 2:
     face_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim, face_indices)
