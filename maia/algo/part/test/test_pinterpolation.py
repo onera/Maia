@@ -220,7 +220,7 @@ def test_interpolate_fields(comm):
 
   for tgt_zone in PT.get_all_Zone_t(tgt_tree):
     fs = PT.get_node_from_name(tgt_zone, 'MySolution')
-    assert PT.Subset.GridLocation(fs) == 'Vertex'
+    assert PT.Container.GridLocation(fs) == 'Vertex'
     assert (PT.get_child_from_name(fs, 'val')[1] == expected_sol).all()
 
 
@@ -266,7 +266,7 @@ def test_interpolation_api(comm):
 
   for i_tgt, tgt_zone in enumerate(PT.get_all_Zone_t(tgt_tree)):
     fs = PT.get_child_from_name(tgt_zone, 'MySolution')
-    assert PT.Subset.GridLocation(fs) == 'Vertex'
+    assert PT.Container.GridLocation(fs) == 'Vertex'
     assert (PT.get_child_from_name(fs, 'val')[1] == expected_vtx_sol[i_tgt]).all()
 
 @pytest_parallel.mark.parallel(2)

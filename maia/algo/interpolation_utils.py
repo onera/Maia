@@ -152,7 +152,7 @@ class Interpolator:
     for src_part in self.src_parts:
       container = PT.find_node_from_path(src_part, container_name)
       container_label = PT.get_label(container)
-      assert PT.Subset.GridLocation(container) == self.input_loc
+      assert PT.Container.GridLocation(container) == self.input_loc
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
       fields_per_part.append(fields_name)
     if len(fields_per_part) > 0:

@@ -324,7 +324,7 @@ def test_localize_points():
   maia.algo.localize_points(tree_src, tree_tgt, 'CellCenter', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(tree_tgt):
     loc_container = PT.get_child_from_name(tgt_zone, 'Localization')
-    assert PT.Subset.GridLocation(loc_container) == 'CellCenter'
+    assert PT.Container.GridLocation(loc_container) == 'CellCenter'
   #localize_points@end
 
 def test_find_closest_points():
@@ -345,7 +345,7 @@ def test_find_closest_points():
   maia.algo.find_closest_points(part_tree_src, part_tree_tgt, 'Vertex', comm)
   for tgt_zone in maia.pytree.get_all_Zone_t(part_tree_tgt):
     loc_container = PT.get_child_from_name(tgt_zone, 'ClosestPoint')
-    assert PT.Subset.GridLocation(loc_container) == 'Vertex'
+    assert PT.Container.GridLocation(loc_container) == 'Vertex'
   #find_closest_points@end
 
 def test_interpolate():
@@ -368,7 +368,7 @@ def test_interpolate():
   maia.algo.interpolate(part_tree_src, part_tree_tgt, comm,\
       ['FlowSolution'], 'Vertex')
   tgt_sol = PT.get_node_from_name(part_tree_tgt, 'FlowSolution')
-  assert tgt_sol is not None and PT.Subset.GridLocation(tgt_sol) == 'Vertex'
+  assert tgt_sol is not None and PT.Container.GridLocation(tgt_sol) == 'Vertex'
   #interpolate@end
 
 def test_centers_to_nodes():
@@ -389,7 +389,7 @@ def test_centers_to_nodes():
 
   for part in PT.get_all_Zone_t(part_tree):
     vtx_sol = PT.get_node_from_name(part, 'Geometry_3d#Vtx')
-    assert PT.Subset.GridLocation(vtx_sol) == 'Vertex'
+    assert PT.Container.GridLocation(vtx_sol) == 'Vertex'
   #centers_to_nodes@end
 
 def test_nodes_to_centers():
@@ -412,7 +412,7 @@ def test_nodes_to_centers():
 
   for part in PT.get_all_Zone_t(part_tree):
     cell_sol = PT.get_node_from_name(part, 'FSol#Cell')
-    assert PT.Subset.GridLocation(cell_sol) == 'CellCenter'
+    assert PT.Container.GridLocation(cell_sol) == 'CellCenter'
   #nodes_to_centers@end
 
 def test_pe_to_nface():
@@ -519,7 +519,7 @@ def test_convert_ngon_to_elements():
   maia.algo.dist.convert_ngon_to_elements(dist_tree, MPI.COMM_WORLD)
 
   elts = PT.get_nodes_from_label(dist_tree, 'Elements_t')
-  assert [PT.Element.CGNSName(e) for e in elts] == ['QUAD_4', 'HEXA_8']
+  assert [PT.Element.Type(e) for e in elts] == ['QUAD_4', 'HEXA_8']
   #convert_ngon_to_elements@end
 
 def test_convert_elements_to_ngon():
@@ -578,7 +578,7 @@ def test_concatenate_elt_sections():
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'H_elt_and_s.yaml', MPI.COMM_WORLD)
 
   is_quad_elt = lambda n : PT.get_label(n) == 'Elements_t' and \
-                           PT.Element.CGNSName(n) == 'QUAD_4'
+                           PT.Element.Type(n) == 'QUAD_4'
 
   assert len(PT.get_nodes_from_predicate(dist_tree, is_quad_elt)) > 1 # Several QUAD sections
   maia.algo.dist.concatenate_elt_sections(dist_tree, MPI.COMM_WORLD)

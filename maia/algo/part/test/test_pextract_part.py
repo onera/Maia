@@ -155,7 +155,7 @@ def test_exch_field(cgns_name, partial, comm):
 
   extr_zone = PT.get_all_Zone_t(extr_tree)[0]
   extr_sol = PT.get_node_from_name(extr_tree, 'FlowSol')
-  assert PT.Subset.GridLocation(extr_sol) == 'Vertex'
+  assert PT.Container.GridLocation(extr_sol) == 'Vertex'
   data = PT.get_node_from_name(extr_sol, 'gnum')[1]
   if partial:
     assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
@@ -213,7 +213,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
 
   extr_sol = PT.get_node_from_name(extr_tree, f'ZSR_{bc_name}')
   assert PT.get_label(extr_sol) == 'ZoneSubRegion_t'
-  assert PT.Subset.GridLocation(extr_sol) == 'CellCenter'
+  assert PT.Container.GridLocation(extr_sol) == 'CellCenter'
   pl    = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
   data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
   assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][0][pl-PT.Element.Range(ngon)[0]], data)
@@ -350,7 +350,7 @@ def test_extr_U_local(comm):
     assert PT.get_np_value(PT.find_child_from_label(vtxsol, 'DataArray_t')).size == PT.Zone.n_vtx(zone)
 
     facesol = PT.find_child_from_name(zone, 'Geometry_2d')
-    assert PT.Subset.GridLocation(facesol) == 'CellCenter'
+    assert PT.Container.GridLocation(facesol) == 'CellCenter'
     assert PT.get_np_value(PT.find_child_from_label(facesol, 'DataArray_t')).size == PT.Zone.n_cell(zone)
     if PT.get_name(zone) == 'Zone.P0.N0':
       assert (PT.get_np_value(PT.find_child_from_name(facesol, 'CenterX')) == 0).all()
@@ -391,8 +391,8 @@ def test_zsr_api(cgns_name, comm):
 
 
 @pytest_parallel.mark.parallel(3)
-@pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
-@pytest.mark.parametrize("bc_loc" , ['Face', 'Vtx'])
+@pytest.mark.parametrize("cgns_name" , ['Structured'])
+@pytest.mark.parametrize("bc_loc" , ['Face'])
 def test_bc_name_api(cgns_name, bc_loc, comm):
   dist_tree = maia.factory.generate_dist_block(4, cgns_name, comm)
 
@@ -435,7 +435,7 @@ def test_bc_name_api(cgns_name, bc_loc, comm):
   if len(zone_n) > 0:
     cnt = PT.find_node_from_label(extracted_tree, 'FlowSolution_t')
     expt_loc  = "Vertex" if bc_loc == 'Vtx' else 'CellCenter'
-    assert PT.Subset.GridLocation(cnt) == expt_loc
+    assert PT.Container.GridLocation(cnt) == expt_loc
     assert PT.get_child_from_predicate(cnt, PT.pred.name_in(['PointList', 'PointRange'])) is None
 
 

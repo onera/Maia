@@ -72,5 +72,5 @@ def is_bc_of_loc(grid_loc):
   return predicate
 
 def is_elmt_of_type(cgns_name):
-  predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.CGNSName(n)==cgns_name
+  predicate = lambda n: N.get_label(n)=='Elements_t' and S.Element.Type(n)==cgns_name
   return predicate

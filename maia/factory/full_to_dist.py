@@ -86,7 +86,7 @@ def distribute_element_node(node:CGNSTree, comm:MPIComm) -> CGNSTree:
 
   ec_n = PT.find_child_from_name(dist_node, 'ElementConnectivity')
   ec = PT.get_np_value(ec_n)
-  if PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
+  if PT.Element.Type(node) in ['NGON_n', 'NFACE_n', 'MIXED']:
     eso_n = PT.find_child_from_name(dist_node, 'ElementStartOffset')
     eso = PT.get_np_value(eso_n)
     distri_ec = eso[[distri[0], distri[1], -1]]
@@ -164,7 +164,7 @@ def _distribute_tree(tree: CGNSTree, comm: MPIComm) -> CGNSDistTree:
     zone_subregions = PT.get_children_from_label(zone, 'ZoneSubRegion_t')
     for zone_subregion in zone_subregions:
       # Trick if related to an other node -> add pl
-      matching_region_path = PT.Subset.ZSRExtent(zone_subregion, zone)
+      matching_region_path = PT.Container.SubsetNodePath(zone_subregion, zone)
       if matching_region_path != PT.get_name(zone_subregion):
         PT.add_child(zone_subregion, PT.get_node_from_path(zone, matching_region_path + '/PointList'))
         PT.add_child(zone_subregion, PT.get_node_from_path(zone, matching_region_path + '/PointRange'))

@@ -228,12 +228,12 @@ def test_compute_elements_normal_face_placement(cell_dim, comm):
     assert PT.get_node_from_name(zone, 'Geometry_2d') is None
     for dir in ['I', 'J', 'K']:
       container = PT.find_node_from_name(zone, f'Geometry_2d_{dir}')
-      assert PT.Subset.GridLocation(container) == f'{dir}FaceCenter'
+      assert PT.Container.GridLocation(container) == f'{dir}FaceCenter'
       #assert PT.get_child_from_name(container, 'PointRange') is not None
       assert PT.get_child_from_name(container, 'NormalZ') is not None
   else:
     container = PT.find_node_from_name(zone, f'Geometry_2d')
-    assert PT.Subset.GridLocation(container) == 'CellCenter'
+    assert PT.Container.GridLocation(container) == 'CellCenter'
     assert PT.get_child_from_name(container, 'PointRange') is None
     assert PT.get_child_from_name(container, 'NormalZ') is not None
   
@@ -250,7 +250,7 @@ def test_compute_elements_normal_face_placement(cell_dim, comm):
     GEO.compute_elements_normal(zone, unitary=True)
 
     container = PT.find_node_from_name(zone, 'Geometry_2d')
-    assert PT.Subset.GridLocation(container) == expt_loc
+    assert PT.Container.GridLocation(container) == expt_loc
     assert (PT.get_child_from_name(container, 'PointList') is not None) == (cell_dim == 3)
     assert PT.get_child_from_name(container, 'UnitNormalZ') is not None
 
@@ -271,13 +271,13 @@ def test_compute_elements_normal_edge_placement(cell_dim, comm):
     assert PT.get_node_from_name(zone, 'Geometry_1d') is None
     for dir in ['I', 'J']:
       container = PT.find_node_from_name(zone, f'Geometry_1d_{dir}')
-      assert PT.Subset.GridLocation(container) == f'{dir}EdgeCenter'
+      assert PT.Container.GridLocation(container) == f'{dir}EdgeCenter'
       #assert PT.get_child_from_name(container, 'PointRange') is not None
       assert PT.get_child_from_name(container, 'UnitNormalY') is not None
       assert PT.get_child_from_name(container, 'UnitNormalZ') is None
   else:
     container = PT.find_node_from_name(zone, f'Geometry_1d')
-    assert PT.Subset.GridLocation(container) == 'CellCenter'
+    assert PT.Container.GridLocation(container) == 'CellCenter'
     assert PT.get_child_from_name(container, 'PointRange') is None
     assert PT.get_child_from_name(container, 'UnitNormalY') is not None
     assert PT.get_child_from_name(container, 'UnitNormalZ') is None
@@ -300,7 +300,7 @@ def test_compute_elements_normal_edge_placement(cell_dim, comm):
     maia.algo.compute_elements_normal(tree)
 
     container = PT.find_node_from_name(zone, 'Geometry_1d')
-    assert PT.Subset.GridLocation(container) == expt_loc
+    assert PT.Container.GridLocation(container) == expt_loc
     assert (PT.get_child_from_name(container, 'PointList') is not None) == (cell_dim == 2)
     assert PT.get_child_from_name(container, 'NormalY') is not None
     assert PT.get_child_from_name(container, 'NormalZ') is None

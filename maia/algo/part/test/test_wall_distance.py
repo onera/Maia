@@ -63,7 +63,7 @@ def test_wall_distance_U(perio, comm):
     WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
 
   fs = PT.get_child_from_name(zone, 'WallDistance')
-  assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+  assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
   for array in PT.iter_children_from_label(fs, 'DataArray_t'):
     assert array[1].shape == (4,)
   assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
@@ -74,7 +74,7 @@ def test_wall_distance_U(perio, comm):
   WD.compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
 
   fs = PT.get_child_from_name(zone, 'MyWallDistance')
-  assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+  assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
   for array in PT.iter_children_from_label(fs, 'DataArray_t'):
     assert array[1].shape == (4,)
   assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
@@ -108,7 +108,7 @@ def test_projection_to(comm):
   WD.compute_projection_to(part_tree, PT.pred.label_is('BC_t'), comm)
 
   fs = PT.get_child_from_name(zone, 'SurfDistance')
-  assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+  assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
   assert (PT.get_child_from_name(fs, 'Distance')[1] == expected_wd).all()
   assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
@@ -185,7 +185,7 @@ def test_walldistance_perio(comm):
 
   for z, zone in enumerate(PT.get_all_Zone_t(part_tree)):
     fs = PT.get_child_from_name_and_label(zone, 'WallDistance', 'DiscreteData_t')
-    assert fs is not None and PT.Subset.GridLocation(fs) == 'CellCenter'
+    assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
     assert np.allclose(PT.get_value(PT.get_child_from_name(fs, 'TurbulentDistance')), expected_wd, rtol=1e-10)
     assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltGnum'))  == expected_gnum[z]).all()
     assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltDomId')) == expected_dom_id[z]).all()
@@ -267,7 +267,7 @@ def test_walldistance_vtx(comm):
   WD.compute_wall_distance(part_tree, comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
 
   fs = PT.get_child_from_name(zone, 'MyWallDistance')
-  assert fs is not None and PT.Subset.GridLocation(fs) == 'Vertex'
+  assert fs is not None and PT.Container.GridLocation(fs) == 'Vertex'
   assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
   assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
 
@@ -337,7 +337,7 @@ def test_wall_distance_no_wall(comm):
 
   for zone in PT.get_all_Zone_t(part_tree):
     fs_node = PT.get_child_from_name(zone, 'WallDistance')
-    assert PT.Subset.GridLocation(fs_node) == 'CellCenter'
+    assert PT.Container.GridLocation(fs_node) == 'CellCenter'
     assert (PT.get_child_from_name(fs_node, 'TurbulentDistance')[1] == np.inf).all()
     assert (PT.get_child_from_name(fs_node, 'ClosestEltGnum')[1] == -1).all()
     assert (PT.get_child_from_name(fs_node, 'ClosestEltDomId')[1] == -1).all()

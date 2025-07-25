@@ -150,14 +150,9 @@ def test_ElementSize():
   assert SIDS.Element.Size(elt1) == 100
   assert SIDS.Element.Size(elt2) == 1
 
-def test_ElementType():
-  elt1 = N.new_Elements(type='QUAD_4', erange=[1,100])
-  elt_type = SIDS.Element.Type(elt1)
-  assert  isinstance(elt_type, int) and elt_type == 7
-
 def test_ElementCGNSName():
-  assert SIDS.Element.CGNSName(N.new_node("Toto", "Elements_t", [22, 0])) == "NGON_n"
-  assert SIDS.Element.CGNSName(N.new_node("Toto", "Elements_t", [42, 0])) == "TRI_15"
+  assert SIDS.Element.Type(N.new_node("Toto", "Elements_t", [22, 0])) == "NGON_n"
+  assert SIDS.Element.Type(N.new_node("Toto", "Elements_t", [42, 0])) == "TRI_15"
 
 def test_ElementDimension():
   assert SIDS.Element.Dimension(N.new_node("Toto", "Elements_t", [22, 0])) == 2
@@ -177,9 +172,9 @@ def test_GridLocation():
   assert SIDS.Subset.GridLocation(bc_loc   ) == 'JFaceCenter'
 
   bcds_no_loc = N.new_BCDataSet('BCDS1', parent=bc_loc)
-  bcds_loc    = N.new_BCDataSet('BCDS2', loc='Vertex', parent=bc_loc)
-  assert SIDS.BCDataSet.GridLocation(bcds_no_loc, bc_loc) == 'JFaceCenter'
-  assert SIDS.BCDataSet.GridLocation(bcds_loc   , bc_loc) == 'Vertex'
+  bcds_loc    = N.new_BCDataSet('BCDS2', loc='Vertex', point_list=[15,25], parent=bc_loc)
+  assert SIDS.Container.GridLocation(bcds_no_loc, bc_loc) == 'JFaceCenter'
+  assert SIDS.Container.GridLocation(bcds_loc   , bc_loc) == 'Vertex'
 
 def test_GridConnectivity_Type():
   gc = N.new_node("gc", "GridConnectivity1to1_t")
@@ -404,26 +399,26 @@ def test_zone_phy_dim():
   with pytest.raises(ValueError):
     SIDS.Zone.PhysicalDimension(zone)
 
-def test_PointRange():
-  pr = N.new_IndexRange('StandardPR', [1,3, 3,5, 1,3])
-  assert (SIDS.PointRange.SizePerIndex(pr) == [3,3,3]).all()
-  assert (SIDS.PointRange.n_elem(pr) == 3*3*3)
+def test_subset_size():
+  pr = N.new_BC('StandardPR', point_range=[1,3, 3,5, 1,3])
+  assert SIDS.Subset.SizePerIndex(pr) == (3,3,3)
+  assert SIDS.Subset.n_elem(pr) == 3*3*3
 
-  pr = N.new_IndexRange('GCLikePR', [7,1, 9,9, 5,1])
-  assert (SIDS.PointRange.SizePerIndex(pr) == [7,1,5]).all()
-  assert (SIDS.PointRange.n_elem(pr) == 7*1*5)
+  pr = N.new_GridConnectivity1to1('GCLikePR', point_range=[7,1, 9,9, 5,1])
+  assert SIDS.Subset.SizePerIndex(pr) == (7,1,5)
+  assert SIDS.Subset.n_elem(pr) == 7*1*5
 
-  pr = N.new_IndexRange('ULike', [[1,15]]) # PR must be 2d
-  assert (SIDS.PointRange.SizePerIndex(pr) == [15]).all()
-  assert (SIDS.PointRange.n_elem(pr) == 15)
+  pr = N.new_BC('ULike', point_range=[[1,15]]) # PR must be 2d
+  assert SIDS.Subset.SizePerIndex(pr) == (15,)
+  assert SIDS.Subset.n_elem(pr) == 15
 
-def test_PointList():
-  pl = N.new_IndexArray('StandartPL', [[1,6,12]])
-  assert SIDS.PointList.n_elem(pl) == 3
+  pl = N.new_BC('StandartPL', point_list=[[1,6,12]])
+  assert SIDS.Subset.n_elem(pl) == 3
 
-  pl = N.new_IndexArray('SLike', [[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
-  assert SIDS.PointList.n_elem(pl) == 5
+  pl = N.new_BC('SLike', point_list=[[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
+  assert SIDS.Subset.n_elem(pl) == 5
 
+@pytest.mark.filterwarnings("ignore:BCDataSet.getPatch")
 def test_Patch():
   bc = N.new_BC(point_range=[[1,5],[1,1]])
   bcds_patch   = N.new_BCDataSet('DataSet1', point_range=[[1,2],[1,1]], parent=bc)
@@ -449,7 +444,7 @@ def test_Subset():
 
   assert SIDS.Subset.GridLocation(sol) == 'Vertex'
   assert SIDS.Subset.getPatch(sol) is pl
-  assert SIDS.Subset.n_elem(sol) == SIDS.PointList.n_elem(pl)
+  assert SIDS.Subset.n_elem(sol) == 3
 
   with pytest.raises(AssertionError):
     pr = N.new_IndexRange('PointRange', [[1,15]], parent=sol)
@@ -477,7 +472,17 @@ def test_getZoneDonorPath():
   assert SIDS.GridConnectivity.ZoneDonorPath(jn2, 'BaseXX') == 'BaseXX/ZoneYY'
 
 
-def test_getSubregionExtent():
+def test_container_subset_node_path():
+  zone = N.new_Zone('Zone')
+  zbc  = N.new_ZoneBC(parent=zone)
+  bc = N.new_BC('BC', parent=zbc)
+  bcds_rel = N.new_BCDataSet('RelatedDS', parent=bc)
+  bcds_sub = N.new_BCDataSet('SubsetDS', loc='Vertex', point_list=[[1,2,3]], parent=bc)
+  assert SIDS.Container.SubsetNodePath(bcds_rel, zone) == 'ZoneBC/BC'
+  assert SIDS.Container.SubsetNodePath(bcds_sub, zone) == 'ZoneBC/BC/SubsetDS'
+  assert SIDS.Container.SubsetNodePath(bcds_rel, bc) == ''
+  assert SIDS.Container.SubsetNodePath(bcds_sub, bc) == 'SubsetDS'
+
   yt = """
 Zone Zone_t:
   ZoneBC ZoneBC_t:
@@ -500,14 +505,31 @@ Zone Zone_t:
   WrongZSR WrongType_t:
     BCRegionName Descriptor_t "BC":
   """
-  import maia.pytree as PT
   zone = parse_yaml_cgns.to_node(yt)
 
-  assert SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
-  assert SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZoneBC/BC2'
-  assert SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
+  assert SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'UnLinkedZSR'), zone) == 'UnLinkedZSR'
+  assert SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'BCLinkedZSR'), zone) == 'ZoneBC/BC2'
+  assert SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'GCLinkedZSR'), zone) == 'ZGC/GC1to1B'
 
   with pytest.raises(ValueError):
-    SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'OrphelanZSR'), zone)
+    SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'OrphelanZSR'), zone)
   with pytest.raises(CGNSLabelNotEqualError):
-    SIDS.Subset.ZSRExtent(W.get_node_from_name(zone, 'WrongZSR'), zone)
+    SIDS.Container.SubsetNodePath(W.find_node_from_name(zone, 'WrongZSR'), zone)
+
+def test_container_fields():
+  fs = N.new_FlowSolution('Sol')
+  assert len(SIDS.Container.fields(fs)) == 0
+
+  N.new_DataArray('Temperature', [21, 29], parent=fs)
+  N.new_DataArray('Pressure', [1004, 1010], parent=fs)
+  assert len(fields := SIDS.Container.fields(fs)) == 2
+  assert np.array_equal(fields['Temperature'], np.array([21,29], np.int32))
+  assert np.array_equal(fields['Pressure'], np.array([1004, 1010], np.int32))
+
+  ds = N.new_BCDataSet()
+  N.new_BCData('DirichletData', fields={'Pressure' : [21, 29]}, parent=ds)
+  N.new_BCData('NeumannData', fields={'Pressure' : [29, 21], 'Temperature' : [1004, 1010]}, parent=ds)
+  assert len(fields := SIDS.Container.fields(ds)) == 3
+  assert np.array_equal(fields['DirichletData/Pressure'], np.array([21,29], np.int32))
+  assert np.array_equal(fields['NeumannData/Pressure'], np.array([29, 21], np.int32))
+  assert np.array_equal(fields['NeumannData/Temperature'], np.array([1004, 1010], np.int32))

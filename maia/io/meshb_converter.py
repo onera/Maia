@@ -34,8 +34,8 @@ def get_tree_info(dist_tree, container_names):
   # > Container field names
   field_names = dict()
   for container_name in container_names:
-    container = PT.get_node_from_name(zone_n, container_name)
-    assert PT.Subset.GridLocation(container) == 'Vertex'
+    container = PT.find_node_from_name(zone_n, container_name)
+    assert PT.Container.GridLocation(container) == 'Vertex'
     field_names[container_name] = [PT.get_name(n) for n in PT.iter_children_from_label(container, 'DataArray_t')]
 
   return {"bc_names"    : bc_names,
@@ -243,7 +243,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
     for elmts in PT.Zone.get_ordered_elements_per_dim(zone):
       for elmt_n in elmts:
-        elmt_name  = PT.Element.CGNSName(elmt_n)
+        elmt_name  = PT.Element.Type(elmt_n)
         elmt_pdm_t = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elmt_name)
 
         pdm_n_elmt    [elmt_pdm_t].append(PT.Element.Size(elmt_n))

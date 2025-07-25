@@ -91,7 +91,7 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_op=None
     if not par_utils.exists_anywhere(part_zones, PT.get_name(d_sol), comm):
       continue #Skip FS that remains on dist_tree but are not present on part tree
 
-    location = PT.Subset.GridLocation(d_sol)
+    location = PT.Container.GridLocation(d_sol)
     has_pl   = PT.get_child_from_name(d_sol, 'PointList') is not None
 
     if has_pl:
@@ -190,9 +190,8 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   for mask_zsr in PT.get_children(mask_tree):
     d_zsr = PT.get_child_from_name(dist_zone, PT.get_name(mask_zsr)) #True ZSR
     # Search matching region
-    matching_region_path = PT.Subset.ZSRExtent(d_zsr, dist_zone)
-    matching_region = PT.get_node_from_path(dist_zone, matching_region_path)
-    assert matching_region is not None
+    matching_region_path = PT.Container.SubsetNodePath(d_zsr, dist_zone)
+    matching_region = PT.find_node_from_path(dist_zone, matching_region_path)
 
     #Get distribution
     distribution = te_utils.get_cgns_distribution(matching_region, 'Index')

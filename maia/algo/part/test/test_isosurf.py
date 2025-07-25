@@ -137,8 +137,8 @@ def test_exchange_field_one_domain(from_api, comm):
     vol_zones = PT.yaml.to_nodes(yt_vol)
     ISO.exchange_field_one_domain(vol_zones, iso_zone, ["DDCell", "FSolVtx", "FSolBC"], comm)
 
-  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "DDCell")) == "CellCenter"
-  assert PT.Subset.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "Vertex"
+  assert PT.Container.GridLocation(PT.get_node_from_name(iso_zone, "DDCell")) == "CellCenter"
+  assert PT.Container.GridLocation(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "Vertex"
   assert PT.get_label(PT.get_node_from_name(iso_zone, "DDCell")) == "DiscreteData_t"
   assert PT.get_label(PT.get_node_from_name(iso_zone, "FSolVtx"))  == "FlowSolution_t"
   assert np.array_equal(PT.get_node_from_path(iso_zone, "DDCell/fieldA")[1], expected_A)
@@ -190,7 +190,7 @@ def test_compute_spherical_slice(comm):
   iso_zone = PT.get_all_Zone_t(slice_tree)[0]
   assert PT.Zone.n_cell(iso_zone) == 1008 and PT.Zone.n_vtx(iso_zone) == 506
   elts = PT.get_nodes_from_label(iso_zone, 'Elements_t')
-  assert len(elts) == 1 and PT.Element.CGNSName(elts[0]) == 'TRI_3'
+  assert len(elts) == 1 and PT.Element.Type(elts[0]) == 'TRI_3'
   assert maia.pytree.get_child_from_name(iso_zone, "FlowSolution") is not None
   assert (PT.get_node_from_name(iso_zone, 'i_rank')[1] == 0).all()
 

@@ -39,7 +39,7 @@ def test_generate_dist_sphere():
   import maia.pytree as PT
 
   dist_tree = maia.factory.generate_dist_sphere(10, 'TRI_3', MPI.COMM_WORLD)
-  assert PT.Element.CGNSName(PT.get_node_from_label(dist_tree, 'Elements_t')) == 'TRI_3'
+  assert PT.Element.Type(PT.get_node_from_label(dist_tree, 'Elements_t')) == 'TRI_3'
   #generate_dist_sphere@end
 
 def test_full_to_dist_tree():

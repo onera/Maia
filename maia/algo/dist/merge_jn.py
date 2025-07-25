@@ -178,8 +178,9 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 
   #Trick to add a PL to each subregion to be able to use same algo
   for zsr in zsr_list:
-    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
-      pl_node = PT.get_node_from_path(zone, PT.Subset.ZSRExtent(zsr, zone) + '/PointList')
+    subset_node = PT.Container.SubsetNode(zsr, zone)
+    if subset_node is not zsr:
+      pl_node = PT.find_child_from_name(subset_node, 'PointList')
       PT.add_child(zsr, PT.deep_copy(pl_node))
 
   #Get new index for every PL at once
@@ -202,7 +203,7 @@ def _update_cgns_subsets(zone, location, entity_distri, old_to_new_face, base_na
 
   #Cleanup after trick
   for zsr in zsr_list:
-    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
+    if PT.Container.SubsetNode(zsr, zone) is not zsr:
       PT.rm_children_from_name(zsr, 'PointList')
       PT.rm_children_from_name(zsr, ':CGNS#Distribution')
 
@@ -283,7 +284,7 @@ def _update_pl_pld_in_jn(dist_tree, zone_path):
       assert PT.get_child_from_label(o_gc, 'DataArray_t') is None, \
           "Can not reorder a GridConnectivity PointList to which data is related"
       for zsr in PT.iter_children_from_label(o_zone, 'ZoneSubRegion_t'):
-        assert PT.Subset.ZSRExtent(zsr, o_zone) != PT.get_name(o_zgc) + '/' + PT.get_name(o_gc), \
+        assert PT.Container.SubsetNodePath(zsr, o_zone) != PT.get_name(o_zgc) + '/' + PT.get_name(o_gc), \
             "Can not reorder a GridConnectivity PointList to which data is related"
     except KeyError:
       pass

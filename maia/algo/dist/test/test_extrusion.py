@@ -179,9 +179,9 @@ def test_extrude_tri_to_prism_and_tris(align):
 
   # Verification
   penta = tri # Old tri is now penta
-  assert PT.get_name(penta) == 'PENTA_6.1'   and PT.Element.CGNSName(penta) == 'PENTA_6'
-  assert PT.get_name(new_tri1) == 'TRI_3.1a' and PT.Element.CGNSName(new_tri1) == 'TRI_3'
-  assert PT.get_name(new_tri2) == 'TRI_3.1b' and PT.Element.CGNSName(new_tri2) == 'TRI_3'
+  assert PT.get_name(penta) == 'PENTA_6.1'   and PT.Element.Type(penta) == 'PENTA_6'
+  assert PT.get_name(new_tri1) == 'TRI_3.1a' and PT.Element.Type(new_tri1) == 'TRI_3'
+  assert PT.get_name(new_tri2) == 'TRI_3.1b' and PT.Element.Type(new_tri2) == 'TRI_3'
 
   assert (get_elt_ec(penta) == [1,2,3,26,27,28, 1,3,4,26,28,29]).all()
   assert (PT.Element.Range(penta) == PT.Element.Range(old_tri)).all()
@@ -210,9 +210,9 @@ def test_extrude_quad_to_hexa_and_quads(align):
 
   # Verification
   hexa = quad # Old quad is now hexa
-  assert PT.get_name(hexa) == 'HEXA_8.1'       and PT.Element.CGNSName(hexa) == 'HEXA_8'
-  assert PT.get_name(new_quad1) == 'QUAD_4.1a' and PT.Element.CGNSName(new_quad1) == 'QUAD_4'
-  assert PT.get_name(new_quad2) == 'QUAD_4.1b' and PT.Element.CGNSName(new_quad2) == 'QUAD_4'
+  assert PT.get_name(hexa) == 'HEXA_8.1'       and PT.Element.Type(hexa) == 'HEXA_8'
+  assert PT.get_name(new_quad1) == 'QUAD_4.1a' and PT.Element.Type(new_quad1) == 'QUAD_4'
+  assert PT.get_name(new_quad2) == 'QUAD_4.1b' and PT.Element.Type(new_quad2) == 'QUAD_4'
 
   assert (get_elt_ec(hexa) == [1,2,5,4,26,27,30,29, 2,3,6,5,27,28,31,30]).all()
   assert (PT.Element.Range(hexa) == PT.Element.Range(old_quad)).all()
@@ -238,7 +238,7 @@ def test_extrude_bar_to_quad(align):
 
   # Verification
   quad = bar # Old bar is now quad
-  assert PT.get_name(quad) == 'QUAD_4.1' and PT.Element.CGNSName(quad) == 'QUAD_4'
+  assert PT.get_name(quad) == 'QUAD_4.1' and PT.Element.Type(quad) == 'QUAD_4'
 
   assert (PT.Element.Range(quad) == PT.Element.Range(old_bar)).all()
 
@@ -400,25 +400,25 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   # Verification
   # CellCenter containers
   container = PT.get_node_from_name(zone, f'DD_woPL#CellCenter')
-  assert PT.Subset.GridLocation(container) == 'CellCenter'
+  assert PT.Container.GridLocation(container) == 'CellCenter'
   assert PT.get_child_from_name(container, 'PointList') is None
   assert (PT.get_child_from_name(container, 'Id')[1] == [17,18,19,20,21,22,23,24]).all() # Data is unchanged
   container = PT.get_node_from_name(zone, f'FS_wPL#CellCenter')
-  assert PT.Subset.GridLocation(container) == 'CellCenter'
+  assert PT.Container.GridLocation(container) == 'CellCenter'
   assert (PT.get_child_from_name(container, 'Id')[1] == [23,24]).all() # Data is unchanged
   assert (PT.get_child_from_name(container, 'PointList')[1] == [39,40]).all()
 
   # Vertex containers
   tile_value = 2 if dupl_vtx_data else 1
   container = PT.get_node_from_name(zone, f'DD_woPL#Vertex')
-  assert PT.Subset.GridLocation(container) == 'Vertex'
+  assert PT.Container.GridLocation(container) == 'Vertex'
   assert (PT.get_child_from_name(container, 'Id')[1] == np.tile(np.arange(9)+1, tile_value)).all()
   if dupl_vtx_data:
     assert PT.get_child_from_name(container, 'PointList') is None
   else:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == np.arange(9)+1).all()
   container = PT.get_node_from_name(zone, f'FS_wPL#Vertex')
-  assert PT.Subset.GridLocation(container) == 'Vertex'
+  assert PT.Container.GridLocation(container) == 'Vertex'
   expected_pl = [1,2,3,10,11,12] if dupl_vtx_data else [1,2,3]
   assert (PT.get_child_from_name(container, 'Id')[1] == np.tile([1,2,3], tile_value)).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == expected_pl).all()
@@ -432,7 +432,7 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
 
   # Face containers
   container = PT.get_node_from_name(zone, f'ZSR_wPL#EdgeCenter')
-  assert PT.Subset.GridLocation(container) == 'FaceCenter'
+  assert PT.Container.GridLocation(container) == 'FaceCenter'
   assert (PT.get_child_from_name(container, 'Id')[1] == [4,6,11,13]).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == [4,6,11,13]).all()
 
@@ -441,18 +441,18 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   assert (PT.get_node_from_name(xmin, 'PointList')[1][0] == [2,10]).all()
 
   container = PT.get_node_from_name(zone, 'BCDS_wpl#CellCenter')
-  assert PT.Subset.GridLocation(container) == 'CellCenter'
+  assert PT.Container.GridLocation(container) == 'CellCenter'
   assert (PT.get_node_from_name(container, 'Id')[1] == [1,5]).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == [33,37]).all()
   container = PT.get_node_from_name(zone, 'BCDS_wpl#Vertex')
-  assert PT.Subset.GridLocation(container) == 'Vertex'
+  assert PT.Container.GridLocation(container) == 'Vertex'
   assert (PT.get_node_from_name(container, 'Id')[1] == np.tile([1,2,3], tile_value)).all()
   if dupl_vtx_data:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == [1,2,3,10,11,12]).all()
   else:
     assert (PT.get_child_from_name(container, 'PointList')[1][0] == [1,2,3]).all()
   container = PT.get_node_from_name(zone, 'BCDS_wpl#EdgeCenter')
-  assert PT.Subset.GridLocation(container) == 'FaceCenter'
+  assert PT.Container.GridLocation(container) == 'FaceCenter'
   assert (PT.get_node_from_name(container, 'Id')[1] == [2,10]).all()
   assert (PT.get_child_from_name(container, 'PointList')[1][0] == [2,10]).all()
 
@@ -489,7 +489,7 @@ def test_extrusion_2d_cart_elem(element_type, comm):
   assert len(PT.get_nodes_from_predicate(zone, IS_BAR)) == 0
 
   allowed_elts = ['TRI_3', 'QUAD_4', 'PENTA_6'] if element_type == 'TRI_3' else ['QUAD_4', 'HEXA_8']
-  assert all(PT.Element.CGNSName(e) in allowed_elts for e in PT.get_children_from_label(zone, 'Elements_t'))
+  assert all(PT.Element.Type(e) in allowed_elts for e in PT.get_children_from_label(zone, 'Elements_t'))
 
   assert [len(e) for e in PT.Zone.get_ordered_elements_per_dim(zone)] == [0, 0, 3, 1]
 

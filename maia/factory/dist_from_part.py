@@ -226,7 +226,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
   discover_nodes_from_matching(fake_zone, part_zones, 'Elements_t', comm, get_value='leaf')
   discover_nodes_from_matching(fake_zone, part_zones, 'Elements_t/ParentElements', comm)
   elt_names = [PT.get_name(elt)         for elt in PT.get_children_from_label(fake_zone, 'Elements_t')]
-  elt_kinds = [PT.Element.CGNSName(elt) for elt in PT.get_children_from_label(fake_zone, 'Elements_t')]
+  elt_kinds = [PT.Element.Type(elt) for elt in PT.get_children_from_label(fake_zone, 'Elements_t')]
   has_ngon  = 'NGON_n'  in elt_kinds
   has_nface = 'NFACE_n' in elt_kinds
   has_edge  = 'BAR_2'   in elt_kinds

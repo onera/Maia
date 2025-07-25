@@ -39,7 +39,7 @@ def compute_subset_distribution(node, comm, distri_func):
 
   if(pr_n):
     assert pl_n is None
-    pr_lenght = PT.PointRange.n_elem(pr_n)
+    pr_lenght = PT.Subset.n_elem(node)
     MT.new_Distribution({'Index' : distri_func(pr_lenght, comm)}, parent=node)
 
   if(pl_n):

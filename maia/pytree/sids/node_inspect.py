@@ -4,7 +4,7 @@ import math
 import itertools
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import check_is_label, check_in_labels, for_all_methods
+from maia.pytree.meta   import check_is_label, check_in_labels, check_is_subset, for_all_methods
 
 from maia.pytree         import node as N
 from maia.pytree         import walk as W
@@ -314,7 +314,7 @@ class Zone:
     Raises:
       RuntimeError: if not exactly one ``NGON_n`` element node exists in zone
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NGON_n'
     ngons = W.get_children_from_predicate(zone_node, predicate)
     return utils.expects_one(ngons, ("NGon node", f"zone {N.get_name(zone_node)}"))
 
@@ -329,7 +329,7 @@ class Zone:
     Raises:
       RuntimeError: if not exactly one ``NFACE_n`` element node exists in zone
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NFACE_n'
     nfaces = W.get_children_from_predicate(zone_node, predicate)
     return utils.expects_one(nfaces, ("NFace node", f"zone {N.get_name(zone_node)}"))
 
@@ -447,7 +447,7 @@ class Zone:
       >>> PT.Zone.has_ngon_elements(zone)
       True
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NGON_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NGON_n'
     return W.get_child_from_predicate(zone_node, predicate) is not None
 
   @staticmethod
@@ -463,7 +463,7 @@ class Zone:
       >>> PT.Zone.has_nface_elements(zone)
       False
     """
-    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.CGNSName(n) == 'NFACE_n'
+    predicate = lambda n: N.get_label(n) == "Elements_t" and Element.Type(n) == 'NFACE_n'
     return W.get_child_from_predicate(zone_node, predicate) is not None
 
   @staticmethod
@@ -507,14 +507,6 @@ class Zone:
     
     val_or_none = lambda n : N.get_value(n) if n is not None else None
     return factory._make([val_or_none(W.get_child_from_name(grid_coord_node, key)) for key in factory._fields])
-
-  @staticmethod
-  def ngon_connectivity(zone_node:CGNSTree) -> Tuple[Optional[NDArray], Optional[NDArray], Optional[NDArray]]:
-    ngon_node = Zone.NGonNode(zone_node)
-    face_vtx_idx = N.get_value(W.find_child_from_name(ngon_node, "ElementStartOffset"), True)
-    face_vtx     = N.get_value(W.find_child_from_name(ngon_node, "ElementConnectivity"), True)
-    ngon_pe      = N.get_value(W.find_child_from_name(ngon_node, "ParentElements"), True)
-    return face_vtx_idx, face_vtx, ngon_pe
 
   @staticmethod
   def get_ordered_elements(zone_node:CGNSTree) -> List[CGNSTree]:
@@ -651,13 +643,13 @@ class Zone:
     elif Zone.has_ngon_elements(zone_node):
       dimension = 2 if W.get_child_from_name(Zone.NGonNode(zone_node), 'ParentElements') is None else 3
     else:
-      elt_type = [Element.CGNSName(n) for n in W.get_children_from_label(zone_node, 'Elements_t')]
+      elt_type = [Element.Type(n) for n in W.get_children_from_label(zone_node, 'Elements_t')]
       if 'MIXED' in elt_type:
         raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has "MIXED" elements')
       elt_dim = []
       for elem_n in W.get_children_from_label(zone_node, 'Elements_t'):
         dim = Element.Dimension(elem_n)
-        if (dim == 2 or Element.CGNSName(elem_n).startswith('BAR')) and (W.get_child_from_name(elem_n, 'ParentElements') is not None): dim += 1 
+        if (dim == 2 or Element.Type(elem_n).startswith('BAR')) and (W.get_child_from_name(elem_n, 'ParentElements') is not None): dim += 1 
         elt_dim.append(dim)
       if len(elt_dim)==0:
         raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has no elements')
@@ -699,22 +691,7 @@ class Element:
   """The following functions apply to any Element_t node"""
 
   @staticmethod
-  def Type(elt_node:CGNSTree) -> int:
-    """ Return the type of an Element_t node
-
-    Args:
-      elt_node (CGNSTree): Input Element_t node
-    Returns:
-      int : CGNS code corresponding to this element kind
-    Example:
-      >>> elt = PT.new_Elements(type='TETRA_4')
-      >>> PT.Element.Type(elt)
-      10
-    """
-    return int(N.get_np_value(elt_node)[0])
-
-  @staticmethod
-  def CGNSName(elt_node:CGNSTree) -> str:
+  def Type(elt_node:CGNSTree) -> str:
     """ Return the generic name of an Element_t node
 
     Args:
@@ -723,10 +700,16 @@ class Element:
       str : CGNS name corresponding to this element kind
     Example:
       >>> elt = PT.new_NFaceElements('MyElements')
-      >>> PT.Element.CGNSName(elt)
+      >>> PT.Element.Type(elt)
       'NFACE_n'
     """
-    return EU.element_name(Element.Type(elt_node))
+    id = int(N.get_np_value(elt_node)[0])
+    return EU.id_to_name(id)
+
+  @staticmethod
+  def CGNSName(elt_node:CGNSTree) -> str:
+    warnings.warn('Element.CGNSName is deprecated in favor of Element.Type', DeprecationWarning, stacklevel=3)
+    return Element.Type(elt_node)
 
   @staticmethod
   def Dimension(elt_node:CGNSTree) -> int:
@@ -741,7 +724,8 @@ class Element:
       >>> PT.Element.Dimension(elt)
       2
     """
-    dim = EU.element_dim(Element.Type(elt_node))
+    id = int(N.get_np_value(elt_node)[0])
+    dim = EU.id_to_dim(id)
     assert dim is not None, "Input element does not have valid dimension"
     return dim
 
@@ -758,7 +742,8 @@ class Element:
       >>> PT.Element.NVtx(elt)
       5
     """
-    n_vtx = EU.element_number_of_nodes(Element.Type(elt_node))
+    id = int(N.get_np_value(elt_node)[0])
+    n_vtx = EU.id_to_nvtx(id)
     assert n_vtx is not None, "Input element does not have valid number of vertices"
     return n_vtx
 
@@ -797,6 +782,9 @@ class Element:
 
 @for_all_methods(check_in_labels(["GridConnectivity_t", "GridConnectivity1to1_t"]))
 class GridConnectivity:
+  """
+  The GridConnectivity namespace gather GridConnectivity_t and GridConnectivity1to1_t nodes
+  """
 
   @staticmethod
   def Type(gc_node:CGNSTree) -> str:
@@ -912,11 +900,11 @@ class GridConnectivity:
     return opp if '/' in opp else cur_base_name + '/' + opp
 
 
-@for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t", \
-        "BC_t", "BCDataSet_t", "GridConnectivity_t", "GridConnectivity1to1_t", "ArbitraryGridMotion_t"]))
+@for_all_methods(check_is_subset())
 class Subset:
   """
-  A subset is a node having a PointList or a PointRange
+  A subset is a node defining a subregion of the mesh through a PointList or a PointRange node
+  (eg BC_t, *some* ZoneSubRegion_t, ...).
   """
   
   @staticmethod
@@ -953,8 +941,17 @@ class Subset:
       >>> PT.Subset.n_elem(bc)
       4
     """
+    return math.prod(Subset.SizePerIndex(subset_node))
+
+  @staticmethod
+  def SizePerIndex(subset_node:CGNSTree) -> Tuple[int, ...]:
     patch = Subset.getPatch(subset_node)
-    return PointList.n_elem(patch) if N.get_label(patch) == 'IndexArray_t' else PointRange.n_elem(patch)
+    val = N.get_np_value(patch)
+    if N.get_label(patch) == 'IndexArray_t':
+      return (val.shape[1],)
+    else:
+      return tuple(int(abs(k)+1) for k in val[:,1]-val[:,0])
+   
 
   @staticmethod
   def GridLocation(subset_node:CGNSTree) -> str:
@@ -971,10 +968,11 @@ class Subset:
       'FaceCenter'
     """
     grid_loc_n = W.get_child_from_label(subset_node, 'GridLocation_t')
-    if N.get_label(subset_node) == 'BCDataSet_t' and grid_loc_n is None:
-      msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
-            ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
-      warnings.warn(msg, RuntimeWarning, stacklevel=3)
+    if N.get_label(subset_node) == 'BCDataSet_t':
+      if not Container._is_subset(subset_node):
+        msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
+              ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
+        warnings.warn(msg, RuntimeWarning, stacklevel=3)
     return N.get_str_value(grid_loc_n) if grid_loc_n else 'Vertex'
 
   @staticmethod
@@ -1012,42 +1010,172 @@ class Subset:
 
   @staticmethod
   def ZSRExtent(zsr_node:CGNSTree, zone_node:CGNSTree) -> str:
-    """
-    Return the path of the node to which the ZoneSubRegion node maps
+    ###
+    #Return the path of the node to which the ZoneSubRegion node maps
 
-    Path start from zone_node and can point to a BC, a GC or the ZSR itself.
-    This function only make sense for ZoneSubRegion_t nodes.
+    #Path start from zone_node and can point to a BC, a GC or the ZSR itself.
+    #This function only make sense for ZoneSubRegion_t nodes.
+
+    #Args:
+    #  zsr_node (CGNSTree): Input ZoneSubRegion_t node
+    #  zone_node (CGNSTree): Parent Zone_t node
+    #Returns:
+    #  str : path of zone defining the ZSR extent
+    ###
+    warnings.warn('Subset.ZSRExtent is deprecated in favor of Container.SubsetNode', DeprecationWarning, stacklevel=3)
+    return Container.SubsetNodePath(zsr_node, zone_node)
+
+
+# --------------------------------------------------------------------------
+@for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t",
+                                 "GridCoordinates_t", "BCDataSet_t", "ArbitraryGridMotion_t"]))
+class Container:
+  """
+  A container is node designed to store fields, such as FlowSolution_t, ZoneSubRegion_t, ...
+  """
+  @staticmethod
+  def GridLocation(cnt_node:CGNSTree, parent_node:Optional[CGNSTree]=None) -> str:
+    """ Return the GridLocation value of a container node
+
+    If the container does not defines its own subset (eg. a ZoneSubRegion with a BCRegionName),
+    the parent zone node must be passed in ``parent_node`` argument (for BCDataSet containers,
+    parent BC_t node is also accepted).
 
     Args:
-      zsr_node (CGNSTree): Input ZoneSubRegion_t node
-      zone_node (CGNSTree): Parent Zone_t node
+      cnt_node (CGNSTree): Input container node
+      parent_node (CGNSTree): parent of the container node (see above)
     Returns:
-      str : path of zone defining the ZSR extent
+      str : One of 'Null', 'UserDefined', 'Vertex', 'CellCenter', 'FaceCenter',
+      'IFaceCenter', 'JFaceCenter', 'KFaceCenter', or 'EdgeCenter'
+    Example:
+      >>> fs = PT.new_FlowSolution('Fields@Cell@Init', loc='CellCenter')
+      >>> PT.Container.GridLocation(fs)
+      'CellCenter'
+      >>> zone = PT.new_Zone('Zone')
+      >>> bc   = PT.new_BC('RelevantBC', loc='FaceCenter', parent=PT.new_ZoneBC(parent=zone))
+      >>> zsr  = PT.new_ZoneSubRegion('ZSR', bc_name='RelevantBC')
+      >>> PT.Container.GridLocation(zsr, zone)
+      'FaceCenter'
+    """
+    def _GridLocation(node):
+      grid_loc_n = W.get_child_from_label(node, 'GridLocation_t')
+      return N.get_str_value(grid_loc_n) if grid_loc_n else 'Vertex'
+
+    label = N.get_label(cnt_node)
+    if label not in ['BCDataSet_t', 'ZoneSubRegion_t'] or Container._is_subset(cnt_node):
+      return _GridLocation(cnt_node)
+    else:
+      assert parent_node is not None, f"parent_node is mandatory for related container node"
+      return _GridLocation(Container.SubsetNode(cnt_node, parent_node))
+      
+
+  @staticmethod
+  def _is_partial(cnt_node:CGNSTree) -> bool:
+    # True if the data is not defined on a whole mesh entity 
+    return N.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t'] or Container._is_subset(cnt_node)
+
+  @staticmethod
+  def _is_subset(cnt_node:CGNSTree) -> bool:
+    # Not yet in doc, because not sure of how to call it
+    # What should return a ZSR related to a BC ? The ZSR is n
+    return W.get_child_from_name(cnt_node, 'PointRange') is not None \
+        or W.get_child_from_name(cnt_node, 'PointList')  is not None
+
+
+  @staticmethod
+  def SubsetNode(cnt_node:CGNSTree, parent_node:CGNSTree) -> CGNSTree:
+    """ Return the subset node related to the input container node.
+     
+    This function mainly makes sense for ZoneSubRegion_t or BCDataSet_t containers,
+    since their geometrical patch can be defined by an other node.
+    The result can be the input node itself if the container defines its own 
+    geometrical patch.
+
+    Args:
+      cnt_node (CGNSTree): Input ZoneSubRegion_t node
+      parent_node (CGNSTree): Parent Zone_t node. For BCDataSet containers,
+        parent BC_t node is also accepted.
+    Returns:
+      CGNSTree : related subset node
     Example:
       >>> zone = PT.new_Zone('Zone')
       >>> bc   = PT.new_BC('RelevantBC', parent=PT.new_ZoneBC(parent=zone))
       >>> zsr  = PT.new_ZoneSubRegion('ZSR', bc_name='RelevantBC')
-      >>> PT.Subset.ZSRExtent(zsr, zone)
-      'ZoneBC/RelevantBC'
+      >>> PT.get_label(PT.Container.SubsetNode(zsr, zone))
+      'BC_t'
+      >>> zsr  = PT.new_ZoneSubRegion('ZSR', point_list=[1,2,3,4], parent=zone)
+      >>> PT.get_label(PT.Container.SubsetNode(zsr, zone))
+      'ZoneSubRegion_t'
     """
-    import maia.pytree as PT
-    bc_region_name = W.get_child_from_name(zsr_node, "BCRegionName")
-    gc_region_name = W.get_child_from_name(zsr_node, "GridConnectivityRegionName")
-    if bc_region_name is not None:
-      is_bc = lambda n: N.get_label(n) == "BC_t" and \
-                        N.get_name(n) == N.get_value(bc_region_name)
-      paths = PT.predicates_to_paths(zone_node, ['ZoneBC_t', is_bc])
-    elif gc_region_name is not None:
-      is_gc = lambda n: N.get_label(n) in ["GridConnectivity1to1_t", "GridConnectivity_t"] and \
-                        N.get_name(n) == N.get_value(gc_region_name)
-      paths = PT.predicates_to_paths(zone_node, ['ZoneGridConnectivity_t', is_gc])
+    return W.find_node_from_path(parent_node, Container.SubsetNodePath(cnt_node, parent_node))
+
+  @staticmethod
+  def SubsetNodePath(cnt_node:CGNSTree, parent_node:CGNSTree) -> str:
+    label = N.get_label(cnt_node)
+    is_subset = Container._is_subset(cnt_node)
+    if label == 'ZoneSubRegion_t':
+      bc_region_name = W.get_child_from_name(cnt_node, "BCRegionName")
+      gc_region_name = W.get_child_from_name(cnt_node, "GridConnectivityRegionName")
+      if bc_region_name is not None:
+        is_bc = lambda n: N.get_label(n) == "BC_t" and \
+                          N.get_name(n) == N.get_value(bc_region_name)
+        nodes = W.get_children_from_predicates(parent_node, ['ZoneBC_t', is_bc], ancestors=True)
+      elif gc_region_name is not None:
+        is_gc = lambda n: N.get_label(n) in ["GridConnectivity1to1_t", "GridConnectivity_t"] and \
+                          N.get_name(n) == N.get_value(gc_region_name)
+        nodes = W.get_children_from_predicates(parent_node, ['ZoneGridConnectivity_t', is_gc], ancestors=True)
+      else:
+        nodes = [(cnt_node,)] if is_subset else []
+
+    elif label == 'BCDataSet_t':
+      assert N.get_label(parent_node) in ['Zone_t', 'BC_t']
+      preds = [lambda n: n is cnt_node]
+      if N.get_label(parent_node) == 'Zone_t':
+        preds = ['ZoneBC_t', 'BC_t'] + preds
+      nodes = W.get_children_from_predicates(parent_node, preds, ancestors=True)
+      if not is_subset:
+        nodes = [ancs[:-1] for ancs in nodes] # Remove BCDS itself from result list, since subset node is parent BC
+
     else:
-      paths = [N.get_name(zsr_node)]
+      nodes = [(cnt_node,)] if is_subset else []
 
     try:
-      return utils.expects_one(paths)
+      node = utils.expects_one(nodes)
     except RuntimeError:
-      raise ValueError("ZoneSubRegion {0} has no valid extent".format(N.get_name(zsr_node)))
+      raise ValueError(f"Container {N.get_name(cnt_node)} does not have a valid subset")
+    return '/'.join(N.get_name(n) for n in node)
+  
+  @staticmethod
+  def fields(cnt_node) -> Dict[str, NDArray]:
+    """ Return the value of fields found under the container node.
+    
+    Result is returned as a dictionnary mapping field name (str) to
+    field value (ndarray).
+    Note that if container is a BCDataSet, keys of the dictionnary are actually
+    the path of data array, including the name of the intermediary BCData node.
+
+    Args:
+      cnt_node (CGNSTree): Input container node
+    Returns:
+      dict : field name to field value mapping
+    Example:
+      >>> zsr = PT.new_ZoneSubRegion('ZSR')
+      >>> PT.new_DataArray('Temperature', [21, 29], parent=zsr)
+      >>> PT.new_DataArray('Pressure', [1004, 1010], parent=zsr)
+      >>> PT.Container.fields(zsr)
+      {'Temperature': array([21, 29], dtype=int32), 'Pressure': array([1004, 1010], dtype=int32)}
+    """
+    if N.get_label(cnt_node) == 'BCDataSet_t':
+      fields_dict = {}
+      for bcdata in W.get_children_from_label(cnt_node, 'BCData_t'):
+        name = N.get_name(bcdata)
+        fields_dict.update({f'{name}/{N.get_name(node)}' : N.get_np_value(node) \
+                            for node in W.get_children_from_label(bcdata, 'DataArray_t')})
+    else:
+      fields_dict = {N.get_name(node) : N.get_np_value(node) for node in 
+                     W.get_children_from_label(cnt_node, 'DataArray_t')}
+    return fields_dict
+
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("BCDataSet_t"))
@@ -1068,14 +1196,9 @@ class BCDataSet:
     Returns:
       str : One of 'Null', 'UserDefined', 'Vertex', 'CellCenter', 'FaceCenter',
       'IFaceCenter', 'JFaceCenter', 'KFaceCenter', or 'EdgeCenter'
-    Example:
-      >>> bc = PT.new_BC('BC', loc='FaceCenter')
-      >>> bcds = PT.new_BCDataSet(parent=bc)
-      >>> PT.BCDataSet.GridLocation(bcds, bc)
-      'FaceCenter'
     """
-    grid_loc_n = W.get_child_from_label(bcds_node, 'GridLocation_t')
-    return N.get_str_value(grid_loc_n) if grid_loc_n else Subset.GridLocation(bc_node)
+    warnings.warn('BCDataSet.GridLocation is deprecated in favor of Container.GridLocation', DeprecationWarning, stacklevel=3)
+    return Container.GridLocation(bcds_node, bc_node)
 
   @staticmethod
   def getPatch(bcds_node:CGNSTree, bc_node:CGNSTree) -> CGNSTree:
@@ -1089,50 +1212,6 @@ class BCDataSet:
       bc_node (CGNSTree): Related BC node
     Returns:
       CGNSTree : PointList or PointRange node
-    Example:
-      >>> bc = PT.new_BC(point_range=[[1,5],[1,1]])
-      >>> ds1 = PT.new_BCDataSet('DataSet1', point_range=[[1,2],[1,1]], parent=bc)
-      >>> ds2 = PT.new_BCDataSet('DataSet2', parent=bc)
-      >>> PT.BCDataSet.getPatch(ds1, bc)
-      ['PointRange', array([[1, 2],
-             [1, 1]], dtype=int32), [], 'IndexRange_t']
-      >>> PT.BCDataSet.getPatch(ds2, bc)
-      ['PointRange', array([[1, 5],
-             [1, 1]], dtype=int32), [], 'IndexRange_t']
     """
-    from maia import pytree as PT
-    pl = W.get_child_from_name(bcds_node, 'PointList')
-    pr = W.get_child_from_name(bcds_node, 'PointRange')
-    if (pl is None) and (pr is None):
-      return Subset.getPatch(bc_node)
-    else:
-      assert (pl is None) ^ (pr is None)
-      return pl if pl is not None else pr #type:ignore
-
-
-# --------------------------------------------------------------------------
-@for_all_methods(check_is_label("IndexRange_t"))
-class PointRange:
-
-  @staticmethod
-  def SizePerIndex(point_range_node:CGNSTree) -> NDArray:
-    """
-    Allow point_range to be inverted (PR[:,1] < PR[:,0]) as it can occurs in struct GCs
-    """
-    pr_values = N.get_np_value(point_range_node)
-    return np.abs(pr_values[:,1] - pr_values[:,0]) + 1
-
-  @staticmethod
-  def n_elem(point_range_node:CGNSTree) -> int:
-    return int(PointRange.SizePerIndex(point_range_node).prod())
-
-
-# --------------------------------------------------------------------------
-@for_all_methods(check_is_label("IndexArray_t"))
-class PointList:
-
-  @staticmethod
-  def n_elem(point_list_node:CGNSTree) -> int:
-    pl_values = N.get_np_value(point_list_node)
-    return pl_values.shape[1]
-
+    warnings.warn('BCDataSet.getPatch is deprecated in favor of Container.SubsetNode + Subset.getPatch', DeprecationWarning, stacklevel=3)
+    return Subset.getPatch(Container.SubsetNode(bcds_node, bc_node))

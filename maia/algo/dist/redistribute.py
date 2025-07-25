@@ -83,7 +83,7 @@ def redistribute_elements_node(node: CGNSTree,
 
   assert PT.get_label(node) == 'Elements_t'
 
-  has_eso = PT.Element.CGNSName(node) in ['NGON_n', 'NFACE_n', 'MIXED']
+  has_eso = PT.Element.Type(node) in ['NGON_n', 'NFACE_n', 'MIXED']
 
   # Get element distribution
   elt_distrib = MT.distribution_value(node, "Element")
@@ -188,7 +188,7 @@ def redistribute_zone(zone: CGNSTree,
   sols = PT.get_children_from_label(zone, 'FlowSolution_t') + PT.get_children_from_label(zone, 'DiscreteData_t')
   for sol in sols:
     if PT.get_child_from_name(sol, 'PointList') is None:
-      loc = PT.Subset.GridLocation(sol).replace('Center', '') # Remove 'Center' to use loc as dict key
+      loc = PT.Container.GridLocation(sol).replace('Center', '') # Remove 'Center' to use loc as dict key
       redistribute_data_node(sol, old_distrib[loc], new_distrib[loc], comm)
     else:
       redistribute_pl_node(sol, distribution, comm)
@@ -197,7 +197,7 @@ def redistribute_zone(zone: CGNSTree,
   zone_subregions = PT.get_children_from_label(zone, 'ZoneSubRegion_t')
   for zone_subregion in zone_subregions:
     # Trick if related to an other node -> add pl
-    matching_region_path = PT.Subset.ZSRExtent(zone_subregion, zone)
+    matching_region_path = PT.Container.SubsetNodePath(zone_subregion, zone)
     if matching_region_path != PT.get_name(zone_subregion):
       distri_node = PT.find_node_from_path(zone, matching_region_path + '/:CGNS#Distribution')
       PT.add_child(zone_subregion, PT.deep_copy(distri_node))

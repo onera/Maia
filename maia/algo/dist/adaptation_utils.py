@@ -639,9 +639,6 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   elt_vtx     = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
   elt_distri  = MT.distribution_value(elt_n, 'Element')
   
-  dn_vtx      = MT.distribution_value(zone ,'Vertex')
-  dn_face     = MT.distribution_value(elt_n,'Element')
-
   # > Fake extract bc to have 2 domain in PDM.interface_vertex_to_face(...)
   for bc_name in [bc_names[1],bc_names[0]]: # ordre important pour bc_vtx_pl en dehors de la boucle
     bc_n    = PT.get_child_from_name_and_label(zone_bc_n, bc_name, 'BC_t')
@@ -660,7 +657,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
     elt_vtx_idx = np.arange(0,n_face+1, dtype=np.int32)*elt_size
     assert elt_vtx_idx.size==n_face+1
     assert bc_elt_vtx.size==elt_vtx_idx[-1]
-    zones_dn_vtx      .append(dn_vtx[1]-dn_vtx[0])
+    zones_dn_vtx      .append(MT.Zone.dn_vtx(zone))
     zones_dn_face     .append(n_face)
     zones_face_vtx_idx.append(elt_vtx_idx)
     zones_face_vtx    .append(as_pdm_gnum(bc_elt_vtx))
@@ -726,7 +723,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   elt_offset = PT.Element.Range(elt_n)[0]
   ec_n       = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec         = PT.get_value(ec_n)
-  elt_name   = PT.Element.CGNSName(elt_n)
+  elt_name   = PT.Element.Type(elt_n)
   elt_distri = MT.distribution_value(elt_n, 'Element')
   assert elt_name=='TETRA_4'
 
@@ -734,7 +731,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   tgt_elt_offset = PT.Element.Range(tgt_elt_n)[0]
   tgt_ec_n       = PT.get_child_from_name(tgt_elt_n, 'ElementConnectivity')
   tgt_ec         = PT.get_value(tgt_ec_n)
-  tgt_elt_name   = PT.Element.CGNSName(tgt_elt_n)
+  tgt_elt_name   = PT.Element.Type(tgt_elt_n)
   tgt_elt_distri_n = MT.find_Distribution(tgt_elt_n, 'Element')
   tgt_elt_distri   = PT.get_value(tgt_elt_distri_n)
   assert tgt_elt_name=='TRI_3'
@@ -887,9 +884,9 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
   PT.new_Family('GCS', parent=base)
 
   elts = PT.get_nodes_from_label(zone, 'Elements_t')
-  tri_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='TRI_3']
-  tetra_elts = [elt for elt in elts if PT.Element.CGNSName(elt)=='TETRA_4']
-  bar_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='BAR_2']
+  tri_elts   = [elt for elt in elts if PT.Element.Type(elt)=='TRI_3']
+  tetra_elts = [elt for elt in elts if PT.Element.Type(elt)=='TETRA_4']
+  bar_elts   = [elt for elt in elts if PT.Element.Type(elt)=='BAR_2']
   assert len(tri_elts) == len(tetra_elts) == 1, f"Multiple elts nodes are not managed"
   assert len(bar_elts) <= 1, f"Multiple elts nodes are not managed"
   tetra_elt = tetra_elts[0]
@@ -1037,9 +1034,9 @@ def retrieve_initial_domain(tree, jn_pairs_and_values, new_vtx_num, bcs_to_retri
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
 
   elts = PT.get_nodes_from_label(zone, 'Elements_t')
-  bar_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='BAR_2']
-  tri_elts   = [elt for elt in elts if PT.Element.CGNSName(elt)=='TRI_3']
-  tetra_elts = [elt for elt in elts if PT.Element.CGNSName(elt)=='TETRA_4']
+  bar_elts   = [elt for elt in elts if PT.Element.Type(elt)=='BAR_2']
+  tri_elts   = [elt for elt in elts if PT.Element.Type(elt)=='TRI_3']
+  tetra_elts = [elt for elt in elts if PT.Element.Type(elt)=='TETRA_4']
   assert len(tri_elts) == len(tetra_elts) == 1, f"Multiple elts nodes are not managed"
   assert len(bar_elts) <= 1, f"Multiple elts nodes are not managed"
   tri_elt   = tri_elts[0]

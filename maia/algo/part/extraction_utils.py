@@ -36,31 +36,25 @@ def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_nam
     raise ValueError(f"[maia-extract_part] asked container \"{container_name}\" for exchange is not in tree")
   if PT.get_child_from_label(mask_container, 'DataArray_t') is None:
     return None, '', False
-  patch_node     = PT.get_child_from_name(mask_container, patch_name)
 
   # > Manage BC and GC ZSR
-  ref_zsr_node    = mask_container
   bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
   gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
   assert not (bc_descriptor_n and gc_descriptor_n)
   if bc_descriptor_n is not None:
     bc_name      = PT.get_str_value(bc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=[patch_name, 'GridLocation_t'])
-    ref_zsr_node = PT.find_node_from_name_and_label(mask_zone, bc_name, 'BC_t', depth=2)
-    patch_node   = PT.get_child_from_predicates(ref_zsr_node, f'{patch_name}')
-    assert patch_node is not None, 'Asked patch unfound for subregion extent.'
   elif gc_descriptor_n is not None:
     gc_name      = PT.get_str_value(gc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=[patch_name, 'GridLocation_t'])
-    ref_zsr_node = PT.find_node_from_predicate(mask_zone, PT.pred.name_is(gc_name) & PT.pred.IS_GC, depth=2)
+  
+  if PT.get_label(mask_container)=='ZoneSubRegion_t':
+    ref_zsr_node = PT.Container.SubsetNode(mask_container, mask_zone)
     patch_node   = PT.get_child_from_predicates(ref_zsr_node, f'{patch_name}')
     assert patch_node is not None, 'Asked patch unfound for subregion extent.'
-  
-  if PT.get_label(mask_container)=='ZoneSubRegion_t' and patch_node is None:
-    raise ValueError('Asked patch unfound for ZSR container extent.')
 
-  grid_location = PT.Subset.GridLocation(ref_zsr_node)
-  partial_field = PT.get_child_from_name(ref_zsr_node, patch_name) is not None
+  grid_location = PT.Container.GridLocation(mask_container, mask_zone)
+  partial_field = PT.Container._is_partial(mask_container)
 
   # list all FS and ZSR paths
   is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
@@ -125,7 +119,7 @@ def get_relative_pl(container:CGNSTree, part_zone:CGNSTree) -> CGNSTree:
   if PT.get_label(container)=="FlowSolution_t":
     relative_n = container
   else:
-    relative_n = PT.find_node_from_path(part_zone, PT.Subset.ZSRExtent(container, part_zone))
+    relative_n = PT.Container.SubsetNode(container, part_zone)
   return PT.find_child_from_name(relative_n, "PointList")
 
 def get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm):

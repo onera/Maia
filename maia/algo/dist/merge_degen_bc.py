@@ -98,9 +98,8 @@ def _remove_subset_fictive_faces(zone, comm):
 
   #Trick to add a PL to each subregion to be able to use same algo
   for zsr in PT.get_children_from_label(zone, 'ZoneSubRegion_t'):
-    zsr_extent = PT.Subset.ZSRExtent(zsr, zone)
-    zsr_extent_n = PT.find_node_from_path(zone, zsr_extent)
-    if  zsr_extent != PT.get_name(zsr):
+    zsr_extent_n = PT.Container.SubsetNode(zsr, zone)
+    if  zsr_extent_n is not zsr:
       PT.add_child(zsr, PT.deep_copy(PT.find_child_from_name(zsr_extent_n, 'PointList')))
       PT.add_child(zsr, PT.deep_copy(MT.find_Distribution(zsr_extent_n)))
   #Trick to add a PL to DataSet (for same reason)
@@ -137,7 +136,7 @@ def _remove_subset_fictive_faces(zone, comm):
 
   #Cleanup after trick
   for zsr in PT.get_children_from_label(zone, 'ZoneSubRegion_t'):
-    if PT.Subset.ZSRExtent(zsr, zone) != PT.get_name(zsr):
+    if PT.Container.SubsetNodePath(zsr, zone) != PT.get_name(zsr):
       PT.rm_children_from_name(zsr, 'PointList')
       PT.rm_children_from_name(zsr, ':CGNS#Distribution')
   name_to_remove = ['GridLocation', 'PointList', ':CGNS#Distribution']
@@ -258,8 +257,7 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
       if PT.pred.belongs_to_family(degen_family)(bc_n):
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(bc_n)))
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
-      zsr_extent_path = PT.Subset.ZSRExtent(zsr_n, zone_n)
-      zsr_extent_n = PT.find_node_from_path(zone_n, zsr_extent_path)
+      zsr_extent_n = PT.Container.SubsetNode(zsr_n, zone_n)
       if PT.pred.belongs_to_family(degen_family)(zsr_n):
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(zsr_extent_n)))
     if len(pl_degen_faces_list) == 0:

@@ -294,13 +294,20 @@ class Test_change_basis_simple:
 
       # Create fields in zone
       PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
-      dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
+      dd = PT.new_DiscreteData('DiscreteData', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.set_label(dd, 'DiscreteData_t')
-      PT.new_ZoneSubRegion('SubRegionCC', loc='CellCenter', fields={f'Field{d}' : np.random.rand(*n_cell) for d in ['X', 'Y', 'Z']}, parent=zone),
-      PT.new_ZoneSubRegion('SubRegionVtx', loc='Vertex', fields={f'Field{d}' : np.random.rand(*n_vtx) for d in ['X', 'Y', 'Z']}, parent=zone)
+      PT.new_FlowSolution('FlowSolCC', loc='CellCenter', fields={f'Field{d}' : np.random.rand(*n_cell) for d in ['X', 'Y', 'Z']}, parent=zone)
+      PT.new_FlowSolution('FlowSolVtx', loc='Vertex', fields={f'Field{d}' : np.random.rand(*n_vtx) for d in ['X', 'Y', 'Z']}, parent=zone)
       if PT.Zone.Type(zone) == 'Unstructured':
+        ng = PT.Zone.NGonNode(zone)
         n_face = PT.Zone.n_face(zone) if partitioned else np.diff(MT.distribution_value(PT.Zone.NGonNode(zone), 'Element'))[0]
-        PT.new_ZoneSubRegion('SubRegionFace', loc='FaceCenter', fields={f'Field{d}' : np.random.rand(n_face) for d in ['X', 'Y', 'Z']}, parent=zone)
+        zsr = PT.new_ZoneSubRegion('SubRegionFace', loc='FaceCenter', fields={f'Field{d}' : np.random.rand(n_face) for d in ['X', 'Y', 'Z']},
+                                   point_list=np.arange(1, n_face+1).reshape((1,-1)), parent=zone)
+        if partitioned:
+          MT.new_GlobalNumbering({'Index': MT.globalnumbering_value(ng, 'Element')}, parent=zsr)
+        else:
+          MT.new_Distribution({'Index': MT.distribution_value(ng, 'Element')}, parent=zsr)
+
         bc = PT.get_node_from_name(zone, 'Xmax')
         if bc is not None:
           pl = PT.get_child_from_name(bc, 'PointList')[1] 
@@ -421,7 +428,7 @@ class Test_cart_to_cyl:
       fields.update({'VectorX' : -0.5*np.ones(n_vtx), 'VectorY' : 0.5*np.ones(n_vtx), 'VectorZ' : 0*np.ones(n_vtx)}) # Vectorial field -> use fields formulae
       # Somehow these values leads to (1,0,0) in (eta, zeta, xi) basis
       PT.new_FlowSolution('FlowSolution', fields=fields, parent=zone)
-      PT.new_ZoneSubRegion('ZoneSubRegion', fields=fields, parent=zone)
+      PT.new_DiscreteData('DiscreteData', fields=fields, parent=zone)
     
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
     transform.cartesian_to_cylindrical(part_tree, revolution_axis)
@@ -452,7 +459,7 @@ class Test_cart_to_cyl:
       
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
-      for container_name in ['GridCoordinates', 'FlowSolution', 'ZoneSubRegion']:
+      for container_name in ['GridCoordinates', 'FlowSolution', 'DiscreteData']:
         container = PT.get_child_from_name(zone, container_name)
         val_r, val_theta, val_z = [PT.get_node_from_name(container, f'*{d}')[1] for d in ['R', 'Theta', 'Z']]
 

@@ -91,7 +91,7 @@ def compute_face_measure(zone, face_indices=None, face_indices_loc=None):
 
 def _compute_elt_volume(zone, elt_node, coords, out):
   assert out.size == PT.Element.Size(elt_node)
-  elt_kind = PT.Element.CGNSName(elt_node)
+  elt_kind = PT.Element.Type(elt_node)
 
   ec = PT.get_child_from_name(elt_node, 'ElementConnectivity')[1]
 
@@ -188,7 +188,7 @@ def compute_cell_measure(zone, cell_indices=None):
           cur_section_mask = section_mask[start:end]
           elt_vtx = MT.Element.connectivity(elt)
           _elt = PT.new_Elements(f"Fake_{PT.get_name(elt)}", 
-                                 PT.Element.CGNSName(elt), 
+                                 PT.Element.Type(elt), 
                                  erange=[1, cur_section_mask.sum()], # Size matters but range doesnt
                                  econn=vs.take(elt_vtx, np.where(cur_section_mask)[0]).values)
           fake_elts.append(_elt)

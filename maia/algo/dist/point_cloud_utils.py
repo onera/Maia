@@ -33,13 +33,12 @@ def get_point_cloud(zone, comm, location):
   else: #Try to catch a container with the given name
     container = PT.get_child_from_name(zone, location)
     if container:
-      assert PT.get_child_from_name(container, 'PointList') is None
-      assert PT.get_child_from_name(container, 'PointRange') is None
+      assert not PT.pred.IS_SUBSET(container)
       coords = [PT.get_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
       int_coords = np_utils.interweave_arrays(coords)
-      if PT.Subset.GridLocation(container) == 'Vertex':
+      if PT.Container.GridLocation(container) == 'Vertex':
         ln_to_gn = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype) + 1
-      elif PT.Subset.GridLocation(container) == 'CellCenter':
+      elif PT.Container.GridLocation(container) == 'CellCenter':
         ln_to_gn = np.arange(cell_distri[0], cell_distri[1], dtype=cell_distri.dtype) + 1
       return int_coords, ln_to_gn
 

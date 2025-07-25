@@ -24,7 +24,7 @@ def extract_elmt_connectivity_from_pl(zone, elmt_nodes, pl, comm):
     elmt_range   = PT.Element.Range(elmt_n)
     elmt_conn    = PT.get_child_from_name(elmt_n, 'ElementConnectivity')[1]
     elmt_gnum    = np.arange(elmt_distrib[0], elmt_distrib[1], dtype=pdm_dtype) + elmt_range[0]
-    if PT.Element.CGNSName(elmt_n) in ["NGON_n", "NFACE_n"]:
+    if PT.Element.Type(elmt_n) in ["NGON_n", "NFACE_n"]:
       elmt_conn_idx  = PT.get_child_from_name(elmt_n, 'ElementStartOffset')[1]
       elmt_conn_strd = np.diff(elmt_conn_idx).astype(np.int32, copy=False)
     else:

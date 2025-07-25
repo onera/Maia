@@ -94,7 +94,7 @@ def _decompose_section_to_face_vtx(elt, elt_mask_loc=None):
       
   ec = PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity'))
   elt_distri = MT.distribution_value(elt, 'Element')
-  elt_kind = PT.Element.CGNSName(elt)
+  elt_kind = PT.Element.Type(elt)
   n_elt = elt_distri[1] - elt_distri[0]
 
   if elt_mask_loc is not None:
@@ -211,7 +211,7 @@ def compute_cell_measure(zone, comm, cell_indices=None):
       local_coords = get_local_coordinates(zone, face_vtx.values, comm)
       center, normalflux = compute_center_and_flux(local_coords, face_vtx.displs, face_vtx.counts)
       face_contrib = np.sum(center*normalflux, axis=1) # Scalar product face_center * normal_flux
-      face_contrib = vs.from_counts(ELT_FACE_VTX[PT.Element.CGNSName(elt)][0].size, face_contrib)
+      face_contrib = vs.from_counts(ELT_FACE_VTX[PT.Element.Type(elt)][0].size, face_contrib)
       measure_elt = (1/3.) * face_contrib.reduce(vs.ReduceOp.SUM)
       all_measure_elt.append(measure_elt)
 

@@ -97,7 +97,7 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t'])
   for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)
-    grid_location = PT.Subset.GridLocation(flow_solution)
+    grid_location = PT.Container.GridLocation(flow_solution)
     distrib_ud_n = MT.get_Distribution(flow_solution)
     if distrib_ud_n:
       distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
@@ -129,9 +129,7 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
     zone_subregion_path = zone_path+"/"+zone_subregion[0]
 
     # Search matching region
-    matching_region_path = PT.Subset.ZSRExtent(zone_subregion, zone)
-    matching_region = PT.get_node_from_path(zone, matching_region_path)
-    assert(matching_region is not None)
+    matching_region = PT.Container.SubsetNode(zone_subregion, zone)
 
     distrib_ud_n = MT.get_Distribution(matching_region)
     if not distrib_ud_n:

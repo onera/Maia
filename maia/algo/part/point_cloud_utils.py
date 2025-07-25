@@ -60,7 +60,7 @@ def get_point_cloud(zone: CGNSTree, location: str = 'CellCenter') -> Tuple[NDArr
     if container:
       coords = [PT.get_np_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
       int_coords = np_utils.interweave_arrays(coords)
-      ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, PT.Subset.GridLocation(container))
+      ln_to_gn = _get_zone_ln_to_gn_from_loc(zone, PT.Container.GridLocation(container))
       return int_coords, ln_to_gn
 
   raise RuntimeError("Unknow location or node")

@@ -174,7 +174,7 @@ def new_Elements(name:str='Elements',
   """
   from maia.pytree.sids import elements_utils as EU
   if isinstance(type, str):
-    _value = [EU.cgns_name_to_id(type), 0]
+    _value = [EU.name_to_id(type), 0]
   elif isinstance(type, int):
     _value = [type, 0]
   else:

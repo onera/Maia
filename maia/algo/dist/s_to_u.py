@@ -78,7 +78,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   'Vertex', 'FaceCenter', 'CellCenter').
   """
   input_loc = PT.Subset.GridLocation(bc_s)
-  point_range = PT.get_value(PT.get_child_from_name(bc_s, 'PointRange'))
+  point_range = PT.get_np_value(PT.find_child_from_name(bc_s, 'PointRange'))
 
   bnd_axis = PT.Subset.normal_axis(bc_s)
   #Compute slabs from attended location (better load balance)
@@ -103,18 +103,14 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   PT.new_GridLocation(output_loc, parent=bc_u)
   PT.new_IndexArray(value=point_list, parent=bc_u)
 
-  # Manage datasets -- Data is already distributed, we just have to retrive the PointList
+  # Manage datasets -- Data is already distributed, we just have to retrieve the PointList
   # of the corresponding elements following same procedure than BCs
   for bcds in PT.iter_children_from_label(bc_s, 'BCDataSet_t'):
-    ds_point_range = PT.get_child_from_name(bcds, 'PointRange')
-    is_related = ds_point_range is None
-    if not is_related: #BCDS has its own location / pr
-      ds_distri = MT.distribution_value(bcds, 'Index')
-    if is_related: #BCDS has same location / pr than bc
-      ds_point_range = PT.get_child_from_name(bc_s, 'PointRange')
-      ds_distri = MT.distribution_value(bc_s, 'Index')
-    ds_loc = PT.BCDataSet.GridLocation(bcds, bc_s)
-    ds_size = PT.PointRange.SizePerIndex(ds_point_range)
+    subset_node = PT.Container.SubsetNode(bcds, bc_s)
+    ds_point_range = PT.find_child_from_name(subset_node, 'PointRange')
+    ds_distri = MT.distribution_value(subset_node, 'Index')
+    ds_size = PT.Subset.SizePerIndex(subset_node)
+    ds_loc = PT.Subset.GridLocation(subset_node)
     ds_slabs = HFR2S.compute_slabs(ds_size, ds_distri[0:2])
     ds_sub_pr_list = [np.asarray(slab, ds_point_range[1].dtype) for slab in ds_slabs]
     if len(n_vtx_zone) == 2:
@@ -124,6 +120,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
       sub_pr[:,1] += ds_point_range[1][:,0] - 1
     ds_output_loc = ds_loc[1:] if ds_loc[0] in 'IJK' else ds_loc
 
+    is_related = subset_node is bc_s
     if not (is_related and ds_output_loc == output_loc): #Otherwise, point list has already been computed
       _loc = _s_location(ds_output_loc, bnd_axis)
       ds_pl = pr_utils.compute_pointList_from_pointRanges(ds_sub_pr_list, n_vtx_zone, _loc, dtype=point_range.dtype)

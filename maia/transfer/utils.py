@@ -31,7 +31,7 @@ def get_cgns_distribution(dist_node: CGNSTree, name: str) -> NDArray:
 def get_subset_distribution(zone: CGNSTree, node: CGNSTree) -> NDArray:
   """ Return the distribution node to which a Subset is related, 
   ie an Index distribution array or a Cell/Vertex distribution array"""
-  location = PT.Subset.GridLocation(node)
+  location = PT.Container.GridLocation(node, zone)
   distri_n = None
   if PT.get_node_from_name(node, 'PointList') is not None:
     distri_n = MT.get_Distribution(node, 'Index')

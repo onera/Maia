@@ -25,7 +25,7 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm: MPIComm, elt_min_dim: int =0) -
   vtx_data = dmesh_nodal.dmesh_nodal_get_vtx(comm)
   cx, cy, cz = layouts.interlaced_to_tuple_coords(vtx_data['np_vtx'])
   coords = {'CoordinateX' : cx, 'CoordinateY' : cy, 'CoordinateZ' : cz}
-  grid_coord = PT.new_GridCoordinates(fields=coords, parent=zone)
+  PT.new_GridCoordinates(fields=coords, parent=zone)
 
   # Carefull ! Getting elt of dim > cell_dim is not allowed
   pdm_section_kind = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE,
@@ -136,7 +136,7 @@ def dcube_nodal_generate(n_vtx: Union[int, Sequence[int]],
 
   t_elmt = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
   cgns_elt_index = [prop[0] for prop in EU.elements_properties].index(cgns_elmt_name)
-  cell_dim = EU.element_dim(cgns_elt_index)
+  cell_dim = EU.id_to_dim(cgns_elt_index)
   assert cell_dim is not None
 
   # Manage 2D meshes with 2D PhyDim

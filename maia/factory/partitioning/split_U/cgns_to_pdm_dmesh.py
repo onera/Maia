@@ -36,8 +36,7 @@ def cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, comm):
   """
   Create a pdm_dmesh structure for distributed having only vertices
   """
-  distrib_vtx = MT.distribution_value(dist_zone, 'Vertex')
-  dn_vtx      = distrib_vtx[1] - distrib_vtx[0]
+  dn_vtx      = MT.Zone.dn_vtx(dist_zone)
 
   if dn_vtx > 0:
     cx, cy, cz = PT.Zone.coordinates(dist_zone)
@@ -59,8 +58,6 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
-  distrib_vtx      = MT.distribution_value(dist_zone, 'Vertex')
-  distrib_cell     = MT.distribution_value(dist_zone, 'Cell')
 
   # > Try to hook NGon
   ngon_node = PT.Zone.NGonNode(dist_zone)
@@ -81,8 +78,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
   distrib_face     = as_pdm_gnum(MT.distribution_value(ngon_node, 'Element'))
   distrib_face_vtx = as_pdm_gnum(MT.distribution_value(ngon_node, 'ElementConnectivity'))
 
-  dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
-  dn_cell = distrib_cell[1] - distrib_cell[0]
+  dn_vtx  = MT.Zone.dn_vtx(dist_zone)
+  dn_cell = MT.Zone.dn_cell(dist_zone)
   dn_face = distrib_face[1] - distrib_face[0]
   dn_edge = -1 #Not used
 
@@ -96,7 +93,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
     if ngon_first:
       dcell_face = nface_ec
     else:
-      dcell_face = nface_ec - distrib_cell[2]
+      dcell_face = nface_ec - PT.Zone.n_cell(dist_zone)
   if has_pe: #Use PE to set face_cell
     dface_cell = np.empty(2*dn_face, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
     layouts.pe_cgns_to_pdm_face_cell(ngon_pe, dface_cell)
@@ -237,7 +234,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   sorted_elts_by_dim = PT.Zone.get_ordered_elements_per_dim(dist_zone)
   for elt_dim in sorted_elts_by_dim:
     for elt in elt_dim:
-      assert PT.Element.CGNSName(elt) not in ["NGON_n", "NFACE_n"]
+      assert PT.Element.Type(elt) not in ["NGON_n", "NFACE_n"]
       if PT.Element.Dimension(elt) > 0:
         n_elt_per_dim[PT.Element.Dimension(elt)-1] += PT.Element.Size(elt)
 
@@ -270,7 +267,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   to_elmt_size = lambda e : MT.distribution_value(e, 'Element')[1] - MT.distribution_value(e, 'Element')[0]
 
   for i_dim, elts in enumerate(sorted_elts_by_dim):
-    elt_pdm_types = np.array([MT.pdm_elts.element_pdm_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
+    elt_pdm_types = np.array([MT.pdm_elts.cgns_elt_name_to_pdm_element_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
     elt_lengths   = np.array([to_elmt_size(e) for e in elts], dtype=np.int32)
     elmts_connectivities = [as_pdm_gnum(PT.get_child_from_name(e, "ElementConnectivity")[1]) for e in elts]
     dmesh_nodal.set_sections(MT.pdm_elts.elements_dim_to_pdm_kind[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)

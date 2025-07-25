@@ -24,7 +24,7 @@ def test_elements_to_mixed(comm, write_output):
   
   mixed_node = PT.Zone.get_ordered_elements(zone)[0]
 
-  assert PT.Element.CGNSName(mixed_node) == 'MIXED'
+  assert PT.Element.Type(mixed_node) == 'MIXED'
   
   assert PT.get_child_from_name(mixed_node, 'ElementConnectivity')
   assert PT.get_child_from_name(mixed_node, 'ElementStartOffset')

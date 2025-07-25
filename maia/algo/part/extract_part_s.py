@@ -28,6 +28,7 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
   if mask_container is None:
     return
   assert grid_location in ['Vertex', 'IFaceCenter', 'JFaceCenter', 'KFaceCenter', 'CellCenter']
+  out_grid_location = DIMM_TO_DIMF[mesh_dim][grid_location]
 
   if partial_field:
     part1_pr, part1_gnum1, part1_in_part2 = build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm)
@@ -42,10 +43,10 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
       continue # Pass if no recovering
 
     if (mask_label := PT.get_label(mask_container)) in ['FlowSolution_t', 'DiscreteData_t']:
-      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      FS_ep = PT.new_FlowSolution(container_name, loc=out_grid_location, parent=extract_zone)
       PT.set_label(FS_ep, mask_label)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
-      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=out_grid_location, parent=extract_zone)
     else:
       raise TypeError
 
@@ -55,9 +56,9 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
         # If output zone is 2D, we need to remove the useless direction in output PR
         extract_dir = etb['@@maia_extract_direction@@']
         part1_pr[i_zone] = np.delete(part1_pr[i_zone], extract_dir, axis=0)
-      if is_own_data and PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']:
+      if is_own_data and out_grid_location in ['CellCenter', 'Vertex']:
         # For owndata, output a FlowSolution without PR instead of keep a ZoneSubRegion
-        zsize = PT.Zone.CellSize(extract_zone) if PT.Subset.GridLocation(FS_ep) == 'CellCenter' else \
+        zsize = PT.Zone.CellSize(extract_zone) if out_grid_location == 'CellCenter' else \
                 PT.Zone.VertexSize(extract_zone)
         assert (part1_pr[i_zone][:,0] == 1).all() and (part1_pr[i_zone][:,1] == zsize).all()
         PT.set_label(FS_ep, 'FlowSolution_t')

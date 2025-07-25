@@ -114,7 +114,7 @@ def test_closest_points_lowdim(comm):
   maia.algo.find_closest_points(tree_src, tree_tgt, 'CellCenter', comm)
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
-  assert clo_node is not None and PT.Subset.GridLocation(clo_node) == 'CellCenter'
+  assert clo_node is not None and PT.Container.GridLocation(clo_node) == 'CellCenter'
   assert PT.get_value(PT.get_child_from_name(clo_node, 'DomainList')) == "Base/zone"
 
   # Check result on dist tree to not rely on partitioning
@@ -138,7 +138,7 @@ def test_closest_points(comm):
   assert PT.is_same_tree(tree_src_back, tree_src)
   tgt_zone = PT.get_all_Zone_t(tree_tgt)[0]
   clo_node = PT.get_node_from_name_and_label(tgt_zone, 'ClosestPoint', 'DiscreteData_t')
-  assert clo_node is not None and PT.Subset.GridLocation(clo_node) == 'CellCenter'
+  assert clo_node is not None and PT.Container.GridLocation(clo_node) == 'CellCenter'
   assert PT.get_value(PT.get_child_from_name(clo_node, 'DomainList')) == "Base/zone"
 
   # Check result on dist tree to not rely on partitioning

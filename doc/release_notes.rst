@@ -23,6 +23,11 @@ Development version
 - convert_mixed_to_elements: correct BC conversion on meshes having multiple MIXED nodes
 - convert_s_to_u: fix jmax boundary faces for standard elements output
 
+🚧 API change
+^^^^^^^^^^^^^
+- pytree: Element.Type now return the ElementType value (*eg* TRI_3) instead of enumeration number (*eg* 5)
+- pytree: Subset.ZSRExtent and the whole Subset.BCDataSet namespace are deprecated
+
 v1.7 (May 2024)
 ---------------
 

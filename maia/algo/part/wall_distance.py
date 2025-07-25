@@ -37,18 +37,18 @@ def _create_output_container(zone, point_cloud, out_fs_name):
   if point_cloud in ['Vertex', 'CellCenter']:
     output_loc = point_cloud
   else:
-    output_loc = PT.Subset.GridLocation(PT.get_child_from_name(zone, point_cloud))
+    output_loc = PT.Container.GridLocation(PT.get_child_from_name(zone, point_cloud))
   
   # Test if FlowSolution already exists or create it
   fs_node = PT.get_child_from_name(zone, out_fs_name)
   if fs_node is None:
     fs_node = PT.new_DiscreteData(name=out_fs_name, loc=output_loc, parent=zone)
-  assert PT.Subset.GridLocation(fs_node) == output_loc
+  assert PT.Container.GridLocation(fs_node) == output_loc
 
   return fs_node
 
 def _get_output_shape(zone, out_container):
-  output_loc = PT.Subset.GridLocation(out_container)
+  output_loc = PT.Container.GridLocation(out_container)
   if output_loc == "CellCenter":
     shape = PT.Zone.CellSize(zone)
   elif output_loc == "Vertex":
@@ -248,7 +248,9 @@ class WallDistance:
       coords = [c for c in PT.Zone.coordinates(part_zone) if c is not None]
       assert len(coords) == 3, "PhyDim != 3 is not supported"
       vtx_coords = np_utils.interweave_arrays(coords)
-      face_vtx_idx, face_vtx, _ = PT.Zone.ngon_connectivity(part_zone)
+
+      ngon = PT.Zone.NFaceNode(part_zone)
+      face_vtx = MT.Element.connectivity(ngon)
 
       nface = PT.Zone.NFaceNode(part_zone)
       cell_face = MT.Element.connectivity(nface)
@@ -264,13 +266,13 @@ class WallDistance:
       assert(center_cell.size == 3*n_cell)
 
       # Keep numpy alive
-      for array in (cell_face, cell_ln_to_gn, face_vtx_idx, face_vtx, face_ln_to_gn, \
+      for array in (cell_face, cell_ln_to_gn, face_vtx, face_ln_to_gn, \
           vtx_coords, vtx_ln_to_gn, center_cell):
         self._keep_alive.append(array)
 
       self._walldist.vol_mesh_part_set(i_part,
                                        n_cell, cell_face.displs, cell_face.values, center_cell, cell_ln_to_gn,
-                                       n_face, face_vtx_idx, face_vtx, face_ln_to_gn,
+                                       n_face, face_vtx.displs, face_vtx.values, face_ln_to_gn,
                                        n_vtx, vtx_coords, vtx_ln_to_gn)
 
   def _get(self, 

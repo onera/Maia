@@ -235,7 +235,7 @@ def _merge_ngons(zone, comm):
   ln_to_gn_elem_l = []
   ngon_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[2]
   for ngon_n in ngon_nodes:
-    assert PT.Element.CGNSName(ngon_n) == 'NGON_n'
+    assert PT.Element.Type(ngon_n) == 'NGON_n'
     er  = PT.find_child_from_name(ngon_n, 'ElementRange')[1]
     ec  = PT.find_child_from_name(ngon_n, 'ElementConnectivity')[1]
     eso = PT.find_child_from_name(ngon_n, 'ElementStartOffset')[1]
@@ -612,7 +612,7 @@ def extrude(dist_tree: CGNSDistTree,
     if PT.Zone.Type(zone) == 'Structured':
       _extrusion_2d_s(zone, extrusion_vector, comm, zone_to_align[zone_path], ksubset_as=ksubset_as)
     elif PT.Zone.Type(zone) == 'Unstructured':
-      all_element_types = set([PT.Element.CGNSName(e) for e in PT.get_children_from_label(zone, 'Elements_t')])
+      all_element_types = set([PT.Element.Type(e) for e in PT.get_children_from_label(zone, 'Elements_t')])
       if all_element_types <= {'NODE', 'BAR_2', 'NGON_n'}:
         _extrusion_2d_u_ngon(zone, extrusion_vector, comm, ksubset_as=ksubset_as)
       elif all_element_types <= {'NODE', 'BAR_2', 'TRI_3', 'QUAD_4'}:
@@ -690,8 +690,7 @@ def extrude(dist_tree: CGNSDistTree,
           distrib_idx = MT.distribution_value(container, 'Index')
         elif PT.get_label(container) == 'ZoneSubRegion_t': # Related ZSR *or* PR defined ZSR
           maybe_pl = None
-          zsr_extent = PT.Subset.ZSRExtent(container, zone)
-          extent_node = PT.find_node_from_path(zone, zsr_extent)
+          extent_node = PT.Container.SubsetNode(container, zone)
           distrib_idx = MT.distribution_value(extent_node, 'Index')
         else: # Full containers
           maybe_pl = None
@@ -710,7 +709,7 @@ def extrude(dist_tree: CGNSDistTree,
       # Specific treatment of BCDS (they are skipped above because of get_children).
       # Duplicate data and PL/PR if present in BCDS
       for _, bc, bcds in PT.get_children_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t', ancestors=True):
-        if PT.Subset.GridLocation(bcds) == 'Vertex':
+        if PT.Container.GridLocation(bcds, bc) == 'Vertex':
           pl_ower = bcds if is_partial(bcds) else bc
           pl_n = PT.get_child_from_name(pl_ower, 'PointList')
           assert (pl_n is None) ^ (PT.Zone.Type(zone) == 'Unstructured'), "Required S zone + PR or U zone + PL"
@@ -739,8 +738,7 @@ def extrude(dist_tree: CGNSDistTree,
         vertex_size = PT.Zone.VertexSize(zone)
       for container in PT.get_children_from_predicate(zone, is_container & is_vertex & ~is_partial):
         if PT.get_label(container) == 'ZoneSubRegion_t': # Break ZSR link
-          zsr_extent = PT.Subset.ZSRExtent(container, zone)
-          extent_node = PT.find_node_from_path(zone, zsr_extent)
+          extent_node = PT.Container.SubsetNode(container, zone)
           PT.add_child(container, PT.deep_copy(PT.Subset.getPatch(extent_node)))
           PT.add_child(container, PT.deep_copy(MT.find_Distribution(extent_node)))
           PT.rm_children_from_name(container, '*RegionName')
@@ -774,7 +772,7 @@ def extrude(dist_tree: CGNSDistTree,
       if PT.Zone.Type(zone) == 'Structured' and PT.get_name(subset) not in ['InitialSurface', 'ExtrudedSurface'] :
         pr_n = PT.find_child_from_name(subset, 'PointRange')
         _extend_pr(pr_n, [1,2])
-        MT.new_Distribution({'Index' : par_utils.uniform_distribution(PT.PointRange.n_elem(pr_n), comm)}, subset)
+        MT.new_Distribution({'Index' : par_utils.uniform_distribution(PT.Subset.n_elem(subset), comm)}, subset)
         if PT.get_label(subset) == 'GridConnectivity1to1_t':
           donor_path = PT.GridConnectivity.ZoneDonorPath(subset, PT.get_name(base))
           _extend_pr(PT.find_child_from_name(subset, 'PointRangeDonor'), [1,2])
