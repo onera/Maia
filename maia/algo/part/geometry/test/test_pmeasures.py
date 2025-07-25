@@ -8,6 +8,8 @@ import maia.pytree as PT
 
 from maia.algo.part.geometry import measures
 
+from maia.utils import test_utils as TU
+
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("elt_kind", ['QUAD_4', 'Poly'])
@@ -94,3 +96,87 @@ def test_compute_cell_volume(elt_kind, comm):
     assert np.allclose(cell_vol, 0.125)
   elif elt_kind == 'PENTA_6':
     assert np.allclose(cell_vol, 0.0625)
+
+@pytest_parallel.mark.parallel(1)
+def test_compute_measure_indices(comm):
+    # Elt mesh, 3D
+    tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 3, np.array([[17,15,17]], order='F'))
+    assert np.array_equal(mes, [0.5, 1, 0.5])
+    mes = measures._compute_elements_measure(zone, 2, np.array([[1,12,14,4,13]], order='F'))
+    assert np.allclose(mes, [1, 1, 0.5, np.sqrt(2), 0.5])
+
+    # S mesh, 3D
+    tree = maia.factory.generate_dist_block(3, 'S', comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 3, np.array([[1,2], [1,2], [1,2]], order='F'))
+    assert np.array_equal(mes, [0.125, 0.125])
+
+    mes = measures._compute_elements_measure(zone, 2, np.array([[2,2], [1,1], [1,2]], order='F'), 'IFaceCenter')
+    assert np.array_equal(mes, [0.25, 0.25])
+
+    # NGON mesh, 3D
+    tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+    maia.algo.dist.convert_elements_to_ngon(tree, comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+    
+    mes = measures._compute_elements_measure(zone, 3, np.array([[20,22,19]], order='F'))
+    assert np.array_equal(mes, [1, 0.5, 1])
+    mes = measures._compute_elements_measure(zone, 2, np.array([[1,18,11,8]], order='F'))
+    assert np.allclose(mes, [0.5, 1, 1, np.sqrt(2)])
+
+
+    # Prepare a 2D meshes having different cell size : 
+    # 1sr column : 0.05, 2n column : 0.2, 3e column: 0.25)
+    tree2d = maia.factory.generate_dist_block([4,3], 'S', comm)
+    cx = PT.find_node_from_name(tree2d, 'CoordinateX')
+    PT.set_value(cx, np.array([0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1]))
+
+    expected_area = np.array([0.25, 0.2, 0.05])
+    expected_length = np.array([0.5, 0.4, 0.1, 0.5, 0.5])
+
+    # Elt mesh, 2D
+    tree = PT.deep_copy(tree2d)
+    maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 2, np.array([[16,12,11]]))
+    assert np.array_equal(mes, expected_area)
+    mes = measures._compute_elements_measure(zone, 1, np.array([[10,9,8,1,2]]))
+    assert np.array_equal(mes, expected_length)
+        
+    # S mesh, 2D
+    tree = PT.deep_copy(tree2d)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 2, np.array([[3,2,1], [1,1,2]], order='F'))
+    assert np.array_equal(mes, expected_area)
+
+    # NGON mesh, 2D
+    tree = PT.deep_copy(tree2d)
+    maia.algo.dist.convert_s_to_ngon(tree, comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+    
+    mes = measures._compute_elements_measure(zone, 2, np.array([[23,19,18]]))
+    assert np.array_equal(mes, expected_area)
+    mes = measures._compute_elements_measure(zone, 1, np.array([[14,13,12,6,7]]))
+    assert np.array_equal(mes, expected_length)
+
+    # Elt mesh, 1D
+    tree = maia.factory.generate_dist_block(5, 'BAR_2', comm)
+    cx = PT.find_node_from_name(tree, 'CoordinateX')
+    PT.set_value(cx, np.array([0, 0.1, 0.3, 0.6, 1.]))
+    ptree = maia.factory.partition_dist_tree(tree, comm)
+    zone = PT.get_all_Zone_t(ptree)[0]
+
+    mes = measures._compute_elements_measure(zone, 1, np.array([[1,4,3,2]]))
+    assert np.allclose(mes, [.1, .4, .3, .2])

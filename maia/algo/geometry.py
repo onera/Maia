@@ -13,8 +13,16 @@ def _compute_elements_center(zone: CGNSTree,
                              elements_loc: Optional[str] = None) -> NDArray:
   """Dispatch centers computing according to zone dimension and 
   requested dimension
-  If element_indices is not None, a PointList like array is expected; center
-  will be computed for the specified elements.
+
+  If element_indices is not None, a PointList like array is expected; centers
+  will be computed for the specified elements. Indices must be provided in absolute
+  'cgns numbering', (ie. refering to ElementRange_t ids, independantly of element dimension).
+  In addition, element_loc is mandatory when filtering faces (resp edges) on 
+  3D/S (resp. 2D/S) meshes, to specify if faces (resp. edges) are in I,J, or K
+  direction (using IFaceCenter, JFaceCenter, ... JEdgeCenter value).
+
+  If element_indices is None, centers are computed for all elements of the requested dimension.
+
   """
   if MT.is_cgns_dist_tree(zone):
     assert comm is not None
@@ -24,14 +32,26 @@ def _compute_elements_center(zone: CGNSTree,
 
 def _compute_elements_measure(zone: CGNSTree,
                               dim: Union[Literal['CellCenter'], int],
-                              comm: Optional[MPIComm] = None) -> NDArray:
+                              comm: Optional[MPIComm] = None,
+                              element_indices: Optional[ArrayLike] = None,
+                              elements_loc: Optional[str] = None) -> NDArray:
   """Dispatch measure computing according to zone dimension and 
-  requested dimension """
+  requested dimension
+
+  If element_indices is not None, a PointList like array is expected; measures
+  will be computed for the specified elements. Indices must be provided in absolute
+  'cgns numbering', (ie. refering to ElementRange_t ids, independantly of element dimension).
+  In addition, element_loc is mandatory when filtering faces (resp edges) on 
+  3D/S (resp. 2D/S) meshes, to specify if faces (resp. edges) are in I,J, or K
+  direction (using IFaceCenter, JFaceCenter, ... JEdgeCenter value).
+
+  If element_indices is None, measures are computed for all elements of the requested dimension.
+  """
   if MT.is_cgns_dist_tree(zone):
     assert comm is not None
-    return dist_geometry._compute_elements_measure(zone, dim, comm)
+    return dist_geometry._compute_elements_measure(zone, dim, comm, element_indices, elements_loc)
   else:
-    return part_geometry._compute_elements_measure(zone, dim)
+    return part_geometry._compute_elements_measure(zone, dim, element_indices, elements_loc)
   
 
 def compute_elements_center(t: CGNSTree,

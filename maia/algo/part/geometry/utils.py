@@ -3,16 +3,35 @@ import numpy as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.utils import np_utils
+from maia.utils import np_utils, s_numbering
 
 from maia.algo.geometry_utils import DIM_TO_LOC, update_container
 
 def get_local_coordinates(zone, vtx_ids):
   """ Return a tuple similar to PT.Zone.coordinates, but with coordinates of vertex requested by vtx_ids.
   vtx_ids must start at 1.
+  If input zone is structured, vtx_ids must still be given as 1d global index array.
   """
+  assert vtx_ids.ndim == 1
   coords = PT.Zone.coordinates(zone)
-  access_idx = vtx_ids - 1
+  if PT.Zone.Type(zone) == 'Unstructured':
+    access_idx = vtx_ids - 1
+  else:
+    # Because of F order, coords can not been seen as contiguous array (shape = (-1,))
+    # so we can either convert vtx_ids to ijk indices *or* use `flatten`
+    # First method seems faster on "small" vtx_ids arrays
+    # (empiric tests highlight a ratio of coords.size / vtx_ids.size = 20)
+    if 20*vtx_ids.size < coords[0].size:
+      numb_fn = {1 : lambda idx,_ : (idx,),
+                 2 : s_numbering.index_to_ij, 
+                 3 : s_numbering.index_to_ijk}[PT.Zone.IndexDimension(zone)]
+      access_idx = numb_fn(vtx_ids, PT.Zone.VertexSize(zone))
+      for array in access_idx:
+        array -= 1
+    else:
+      coords = coords._make([c.flatten(order='F') if c is not None else None for c in coords])
+      access_idx = vtx_ids - 1
+
   return coords._make([c[access_idx] if c is not None else None for c in coords])
 
 def place_in_container(zone, rq_dim, fields):

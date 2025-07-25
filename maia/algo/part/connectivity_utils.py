@@ -16,20 +16,40 @@ def PDM_combine_connectivity(first:vs.VStrideArray, second:vs.VStrideArray):
 def PDM_connectivity_transpose(n_opp:int, connec:vs.VStrideArray):                                             
   return vs.from_displs(*PDM.connectivity_transpose(int(n_opp), connec.displs, connec.values))
 
-def cell_vtx_connectivity_S(zone_S, dim) :
-    n_cell = PT.Zone.n_cell(zone_S)
+def cell_vtx_connectivity_S(zone_S, dim, cell_subset=None) :
+    """
+    Return a cell_vtx like connectivity for S meshes.
+    If cell_subset, this is computed for all 'cells' of requested dim.
+    Otherwise, cell_subset must be a pointlist like array (shape = (dim,N))
+    storing the indices of cells for which cell_vtx must be computed
+    """
     vertex_size = PT.Zone.VertexSize(zone_S)
+
+    if cell_subset is not None:
+      if dim == 1:
+        i = cell_subset[0]
+      elif dim == 2:
+        i, j = cell_subset
+      elif dim == 3:
+        i, j, k = cell_subset
+      n_cell = i.size
+    else:
+      if dim >= 1:
+        i = np.arange(1, vertex_size[0])
+      if dim >= 2:
+        j = np.arange(1, vertex_size[1]).reshape(-1,1)
+      if dim >= 3:
+        k = np.arange(1, vertex_size[2]).reshape(-1,1,1)
+      n_cell = PT.Zone.n_cell(zone_S)
     
     if dim == 1:
       cell_vtx_idx = 2*np.arange(0, n_cell+1, dtype=np.int32)
       cell_vtx = np.zeros(2*n_cell, dtype=np.int32)
-      cell_vtx[0::2] = np.arange(1, vertex_size[0])
-      cell_vtx[1::2] = np.arange(1+1, vertex_size[0]+1)
+      cell_vtx[0::2] = i
+      cell_vtx[1::2] = i+1
     elif dim == 2:
       cell_vtx_idx = 4*np.arange(0, n_cell+1, dtype=np.int32)
       cell_vtx = np.zeros(4*n_cell, dtype=np.int32)
-      i = np.arange(1, vertex_size[0])
-      j = np.arange(1, vertex_size[1]).reshape(-1,1)
       cell_vtx[0::4] = s_numbering.ij_to_index(i,   j,   vertex_size).flatten()
       cell_vtx[1::4] = s_numbering.ij_to_index(i+1, j,   vertex_size).flatten()
       cell_vtx[2::4] = s_numbering.ij_to_index(i+1, j+1, vertex_size).flatten()
@@ -37,9 +57,6 @@ def cell_vtx_connectivity_S(zone_S, dim) :
     elif dim == 3:
       cell_vtx_idx = 8*np.arange(0, n_cell+1, dtype=np.int32)
       cell_vtx = np.zeros(8*n_cell, dtype=np.int32)
-      i = np.arange(1, vertex_size[0])
-      j = np.arange(1, vertex_size[1]).reshape(-1,1)
-      k = np.arange(1, vertex_size[2]).reshape(-1,1,1)
       cell_vtx[0::8] = s_numbering.ijk_to_index(i,   j,   k,   vertex_size).flatten()
       cell_vtx[1::8] = s_numbering.ijk_to_index(i+1, j,   k,   vertex_size).flatten()
       cell_vtx[2::8] = s_numbering.ijk_to_index(i+1, j+1, k,   vertex_size).flatten()
@@ -96,13 +113,13 @@ def cell_vtx_connectivity(zone, dim=3, elts_subset=None):
 
   If elts_subset is None, cell_vtx connectivity is computed for all elements of the zone.
   Otherwise, a 2d numpy array of element indices (in absolute numbering) must be provided;
-  cell_vtx connectivity for the requested indices (only U meshes)
+  cell_vtx connectivity for the requested indices
   """
   assert dim in [1,2,3]
   assert PT.Zone.Type(zone) in ['Structured', 'Unstructured']
   
   if PT.Zone.Type(zone) == 'Structured':
-    cell_vtx = cell_vtx_connectivity_S(zone, dim)
+    cell_vtx = cell_vtx_connectivity_S(zone, dim, elts_subset)
   else:
     if PT.Zone.has_ngon_elements(zone):
       if dim == 1:
@@ -112,10 +129,9 @@ def cell_vtx_connectivity(zone, dim=3, elts_subset=None):
     else: # zone has standard elements
       cell_vtx = cell_vtx_connectivity_elts(zone, dim)
   
-  if elts_subset is not None:
-    assert PT.Zone.Type(zone) == 'Unstructured'
-    offset = PT.Zone.get_elt_range_per_dim(zone)[dim][0]
-    _elts_ids = elts_subset[0] - offset
-    cell_vtx = vs.take(cell_vtx, _elts_ids)
+    if elts_subset is not None:
+      offset = PT.Zone.get_elt_range_per_dim(zone)[dim][0]
+      _elts_ids = elts_subset[0] - offset
+      cell_vtx = vs.take(cell_vtx, _elts_ids)
 
   return cell_vtx
