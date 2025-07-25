@@ -15,6 +15,7 @@ Development version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - extract_part: add local mode for unstructured meshes
+- maia_print_tree: trees are loaded much faster, which allows to print large files
 
 🐞 Fixes
 ^^^^^^^^

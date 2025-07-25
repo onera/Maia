@@ -251,7 +251,7 @@ def test_load_node_partial(partial, ref_hdf_file):
 
   if partial:
     # Load only one array
-    HCG._load_node_partial(gid, parent, lambda N,L,s : N[-1] != 'CoordinateY', ancestors_stack)
+    HCG._load_node_partial(gid, parent, lambda N,L,s : N[-1] != 'CoordinateY', HCG.add_size_node, ancestors_stack)
     yt = """
     ZoneU Zone_t:
       GridCoordinates GridCoordinates_t:
@@ -260,7 +260,7 @@ def test_load_node_partial(partial, ref_hdf_file):
         CoordinateY#Size DataArray_t I8 [6]:
     """
   else:
-    HCG._load_node_partial(gid, parent, lambda N,L,s : True, ancestors_stack)
+    HCG._load_node_partial(gid, parent, lambda N,L,s : True, HCG.add_size_node, ancestors_stack)
     yt = """
     ZoneU Zone_t:
       GridCoordinates GridCoordinates_t:

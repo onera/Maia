@@ -161,7 +161,7 @@ def file_to_part_tree(filename: Union[str, PathLike],
       PT.rm_children_from_label(base, 'Zone_t')
       for zone_name in zone_names:
         gid = open_from_path(fid, f'{PT.get_name(base)}/{zone_name}')
-        _load_node_partial(gid, base, lambda X,Y,s:True, ([],[]))
+        _load_node_partial(gid, base, lambda X,Y,s:True, None, ([],[]))
         gid.close()
     fid.close()
 

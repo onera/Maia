@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import warnings
+import math
 
 # Don't display h5py spurious warning about numpy.float128
 with warnings.catch_warnings():
@@ -20,13 +21,7 @@ from .fix_tree      import fix_point_ranges, corr_index_range_names,\
 
 from maia.utils import logging as mlog
 
-def _prod(seq):
-  out = 1
-  for elt in seq:
-    out *= elt
-  return out
-
-def load_data(names, labels, data_shape):
+def load_data(names, labels, hdf_dataset):
   """ Function used to determine if the data is heavy or not """
   if len(names) == 1: #First level (Base, CGLibVersion, ...) -> always load + early return
     return True
@@ -41,7 +36,7 @@ def load_data(names, labels, data_shape):
     if names[-2] in [':CGNS#GlobalNumbering']:
       return False
     if labels[-2] == 'BCData_t' and labels[-3] == 'BCDataSet_t': # Load FamilyBCDataSet, but not BCDataSet
-      return _prod(data_shape) == 1 # BCData_t arrays can have scalar (load) of vectorial (dont load) size
+      return math.prod(hdf_dataset.shape) == 1 # BCData_t arrays can have scalar (load) of vectorial (dont load) size
   return True
 
 def load_size_tree(filename, comm):

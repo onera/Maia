@@ -1,9 +1,41 @@
 #!/usr/bin/env python3
 
 import argparse
+import math
 from pathlib import Path
 
 import maia
+
+from maia.pytree.node.print import num_data_max_print_size, print_tree
+
+class FakeArray:
+    """ This class mimics a ndarray by providing shape, dtype and size,
+    but no data is actually stored """
+    def __init__(self, shape, dtype):
+        self.shape = tuple(shape)
+        self.dtype = dtype
+        self.size = math.prod(shape)
+
+def load_data(names, labels, hdf_dataset):
+    """ We must load the node value when print_tree will try to display it, ie:
+    - if value are characters
+    - if value size is <= 9
+    """
+    if hdf_dataset is None:
+        return True
+    else:
+        ds_size = math.prod(hdf_dataset.shape)
+        return hdf_dataset.dtype.char == 'b' or ds_size <= num_data_max_print_size
+
+def noload_fn(node, parent, hdf_dataset):
+    """ If not is not loaded (cause it's heavy), create a FakeArray object to display
+    it's shape and dtype """
+    if hdf_dataset is not None:
+        shape = hdf_dataset.shape[::-1]
+        dtype = hdf_dataset.dtype
+        node[1] = FakeArray(shape, dtype)
+    parent[2].append(node)
+
 
 parser = argparse.ArgumentParser(description='Display a CGNS Tree from a file')
 parser.add_argument('input', metavar='cgns_file', type=Path, help='input file', nargs=1)
@@ -13,5 +45,12 @@ parser.add_argument('--depth', help='stop printing once depth is reached', type=
 args = parser.parse_args()
 
 fname = str(args.input[0])
-t = maia.io.read_tree(fname)
-maia.pytree.print_tree(t, verbose=args.verbose, colors=args.no_colors, max_depth=args.depth)
+if args.verbose:
+    # Full read is required
+    t = maia.io.read_tree(fname)
+else:
+    # Save time with a partial read (no heavy data loaded)
+    from maia.io.hdf._hdf_cgns import load_tree_partial
+    t = load_tree_partial(fname, load_data, noload_fn)
+
+print_tree(t, verbose=args.verbose, colors=args.no_colors, max_depth=args.depth)

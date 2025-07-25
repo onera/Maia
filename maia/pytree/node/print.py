@@ -17,6 +17,8 @@ label_color  = "\u001b[38;5;246m"
 bold  = "\u001b[1m"
 reset = "\u001b[0m"
 
+num_data_max_print_size = 9
+
 def _n_nodes(tree):
   n_nodes = 0
   for node in W.iter_nodes_from_predicate(tree, lambda n: True, explore='deep'):
@@ -100,7 +102,7 @@ def _render_value(value, line_prefix, verbose):
 
   else: #Data arrays
     cg_dtype = CGK.dtype_to_cgns[value.dtype]
-    if value.size <= 9:
+    if value.size <= num_data_max_print_size:
       array_str = np.array2string(value).replace('\n', '')
       out = f"{cg_dtype} {array_str}"
     else:

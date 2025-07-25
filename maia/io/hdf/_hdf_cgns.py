@@ -259,7 +259,17 @@ def write_link(gid, node_name, target_file, target_node):
 
   node_id.links.create_external(" link".encode(), target_file.encode(), target_node.encode())
 
-def _load_node_partial(gid, parent, load_if, ancestors_stack):
+def add_size_node(node, parent, hdf_dataset):
+  if hdf_dataset is not None:
+    _shape = hdf_dataset.shape[::-1]
+    size_node = [node[0] + '#Size', 
+                 np.array(_shape),
+                 [],
+                 'DataArray_t']
+    parent[2].append(size_node)
+  parent[2].append(node)
+  
+def _load_node_partial(gid, parent, load_if, noload_fn, ancestors_stack):
   """ Internal recursive implementation for load_tree_partial.  """
 
   attr_reader = AttributeRW()
@@ -277,30 +287,26 @@ def _load_node_partial(gid, parent, load_if, ancestors_stack):
   ancestors_stack[0].append(name)
   ancestors_stack[1].append(label)
 
-  if b_kind != b'MT':
-    _data = h5d.open(gid, b' data')
-    _shape = _data.shape[::-1]
-  else:
-    _shape = ()
-
-  if load_if(*ancestors_stack, _shape):
-    if b_kind != b'MT':
-      value = load_data(gid)
-      if b_kind==b'C1':
-        value.dtype = 'S1'
-  elif b_kind != b'MT':
-    size_node = [name + '#Size', 
-                 np.array(_shape),
-                 [],
-                 'DataArray_t']
-    parent[2].append(size_node)
+  _data = h5d.open(gid, b' data') if b_kind != b'MT' else None
 
   pynode = [name, value, [], label]
-  parent[2].append(pynode)
+
+  if load_if(*ancestors_stack, _data):
+    # Load dataset and add node in parent's child
+    if b_kind != b'MT':
+      pynode[1] = load_data(gid)
+      if b_kind==b'C1':
+        pynode[1].dtype = 'S1'
+
+    parent[2].append(pynode)
+  else:
+    # Give back hand to user callback (default is: add node with empty data + create #Size node)
+    noload_fn(pynode, parent, _data)
+
 
   # Define the function that will be applied to the child of the current hdf node
   # thought iterate : we just start next recursion level if child is not a dataset
-  iter_func = lambda n : _load_node_partial(h5g.open(gid, n), pynode, load_if, ancestors_stack) \
+  iter_func = lambda n : _load_node_partial(h5g.open(gid, n), pynode, load_if, noload_fn, ancestors_stack) \
       if h5o.get_info(gid, n).type == h5o.TYPE_GROUP else None
 
   idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(gid) else h5.INDEX_NAME
@@ -340,7 +346,7 @@ def _write_node_partial(gid, node, write_if, ancestors_stack):
   ancestors_stack[1].pop()
 
 
-def load_tree_partial(filename, load_predicate):
+def load_tree_partial(filename, load_predicate, noload_fn=add_size_node):
   """
   Create a pyCGNS tree from the (partial) read of an hdf file.
 
@@ -358,7 +364,7 @@ def load_tree_partial(filename, load_predicate):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
   rootid = h5g.open(fid, b'/')
 
-  iter_func = lambda n : _load_node_partial(h5g.open(rootid, n), tree, load_predicate, ([],[])) \
+  iter_func = lambda n : _load_node_partial(h5g.open(rootid, n), tree, load_predicate, noload_fn, ([],[])) \
       if h5o.get_info(rootid, n).type == h5o.TYPE_GROUP else None
   idx_type = h5.INDEX_CRT_ORDER if knows_crt_order(rootid) else h5.INDEX_NAME
   rootid.links.iterate(iter_func, idx_type=idx_type)

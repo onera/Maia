@@ -3,6 +3,7 @@ import pytest_parallel
 
 import numpy as np
 from pathlib import Path
+import h5py
 
 import maia.pytree as PT
 
@@ -11,27 +12,32 @@ import maia.utils.test_utils as TU
 from maia.io import _hdf_io_h5py as IOH
 
 def test_load_data():
+  # Create a fake hdf file (in memory) to provide dataset objects
+  f = h5py.File('in_memory', 'w', driver='core', backing_store=False)
+  scalar_ds = f.create_dataset("scalar", shape=(1,), dtype='i4')
+  vector_ds = f.create_dataset("vector", shape=(100,), dtype='i4')
+  matrix_ds = f.create_dataset("matrix", shape=(20,50), dtype='f8')
   names, labels = 'Base/Zone', 'CGNSBase_t/Zone_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), (3,)) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), None) == True
   names, labels = 'Base/Zone/GCo/CX', 'CGNSBase_t/Zone_t/GridCoordinates_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), (20,50)) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), matrix_ds) == False
   names, labels = 'Base/Zone/GCo/CX', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), (20,50)) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), matrix_ds) == True
   names, labels = 'GC/GCP/Perio/RotationAngle', 'GridConnectivity_t/GridConnectivityProperty_t/Periodic_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), (100,)) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), vector_ds) == True
   names, labels = 'ZBC/BC/PointList', 'ZoneBC_t/BC_t/IndexArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), ()) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), None) == False
   names, labels = 'Base/Zone/:elsA#Hybrid/IndexNGONCrossTable', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), ()) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), None) == False
   names, labels = 'Base/Zone/.cedre#Geometry/CustomData', 'CGNSBase_t/Zone_t/UserDefinedData_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), ()) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), None) == False
   names, labels = 'ZBC/BC/PointRange', 'ZoneBC_t/BC_t/IndexRange_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), (2,3)) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), matrix_ds) == True
   names, labels = 'FSSeq/GM/Coeff', 'FlowEquationSet_t/GasModel_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), (1,)) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), scalar_ds) == True
   names, labels = 'BC/BCDataSet/NeumannData/Pressure', 'BC_t/BCDataSet_t/BCData_t/DataArray_t'
-  assert IOH.load_data(names.split('/'), labels.split('/'), (100,)) == False
-  assert IOH.load_data(names.split('/'), labels.split('/'), (1,)) == True
+  assert IOH.load_data(names.split('/'), labels.split('/'), vector_ds) == False
+  assert IOH.load_data(names.split('/'), labels.split('/'), scalar_ds) == True
 
 @pytest_parallel.mark.parallel(3)
 def test_load_size_tree(comm):
