@@ -133,3 +133,28 @@ def test_dist_block_generate_transformed_cube(cgns_elmt_name, comm):
   assert isclose(comm.allreduce(np.min(coord_x), MPI.MIN), bounds[0][0]) and isclose(comm.allreduce(np.max(coord_x), MPI.MAX), bounds[0][1])
   assert isclose(comm.allreduce(np.min(coord_y), MPI.MIN), bounds[1][0]) and isclose(comm.allreduce(np.max(coord_y), MPI.MAX), bounds[1][1])
   assert isclose(comm.allreduce(np.min(coord_z), MPI.MIN), bounds[2][0]) and isclose(comm.allreduce(np.max(coord_z), MPI.MAX), bounds[2][1])
+
+
+@pytest.mark.parametrize("cgns_elmt_name", ["Poly"])
+@pytest_parallel.mark.parallel([1,3])
+def test_dist_block_generate_scaled_cube(cgns_elmt_name, comm):
+  dist_tree = dcube_generator.generate_dist_block([11,16,6], cgns_elmt_name, comm,
+                                                  origin=[-1.,-1.,-1.],
+                                                  length=[3.,-0.5,1.])
+
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+  ncell = PT.get_value(zone)[0][1]
+
+  assert PT.get_value(zone).dtype == pdm_gnum_dtype
+  assert isclose(ncell, 10*15*5)
+
+  xmin_n = PT.get_node_from_name_and_label(zone, "Xmin", "BC_t")
+  ymin_n = PT.get_node_from_name_and_label(zone, "Ymin", "BC_t")
+  zmin_n = PT.get_node_from_name_and_label(zone, "Zmin", "BC_t")
+  xmin_size = PT.get_value(PT.get_child_from_name_and_label(xmin_n, "PointList", "IndexArray_t")).shape[1]
+  ymin_size = PT.get_value(PT.get_child_from_name_and_label(ymin_n, "PointList", "IndexArray_t")).shape[1]
+  zmin_size = PT.get_value(PT.get_child_from_name_and_label(zmin_n, "PointList", "IndexArray_t")).shape[1]
+
+  assert isclose(comm.allreduce(xmin_size, MPI.SUM), 15*5)
+  assert isclose(comm.allreduce(ymin_size, MPI.SUM), 10*5)
+  assert isclose(comm.allreduce(zmin_size, MPI.SUM), 10*15)
