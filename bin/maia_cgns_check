@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+import argparse
+from pathlib import Path
+
+import warnings
+warnings.simplefilter("ignore", UserWarning, lineno=493) # Disable h5py/np interaction warning
+
+def parse_args():
+    # 1ère passe : parser minimal pour détecter --explain
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument('--explain', type=str)
+    pre_args, remaining_argv = pre_parser.parse_known_args()
+
+    # 2ème passe : parser complet selon la présence de --explain
+    parser = argparse.ArgumentParser(description="Analyse a CGNSFile")
+
+    if pre_args.explain is None:
+        # filename obligatoire seulement si --explain pas donné
+        parser.add_argument('filename', metavar='cgns_file', type=Path, help="file to analyse")
+    else:
+        # filename optionnel / interdit si --explain donné
+        parser.add_argument('filename', nargs='?', help=argparse.SUPPRESS)  # cache l'argument dans l'aide
+
+    parser.add_argument('--ignore', type=str, default='', help="disable the provided codes")
+    parser.add_argument('--explain', type=str, help="Mode explication (pas besoin du fichier)")
+
+    args = parser.parse_args()
+
+    return args
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    if args.explain is not None:
+        # Explain mode
+        from _cgns_check.explain import explain
+        explain(args)
+
+    else:
+        # Analyse mode
+        from _cgns_check.check import check
+        check(args)
