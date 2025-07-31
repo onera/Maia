@@ -8,7 +8,6 @@ import maia.pytree.maia   as MT
 from maia.pytree.sids import elements_utils as EU
 from maia.utils import np_utils, par_utils, layouts
 from maia       import npy_pdm_gnum_dtype           as pdm_gnum_dtype
-from maia.algo.dist.s_to_u import convert_s_to_ngon
 
 from .dline_generator import generate_dist_line
 import Pypdm.Pypdm as PDM
@@ -381,13 +380,11 @@ def generate_dist_block(n_vtx: Union[int, Sequence[int]],
   elif cgns_elmt_name.upper() in ["POLY", "NFACE_N"]:
     if not isinstance(n_vtx, int): # Poly/NFACE_n generation in ParaDIGM does not supports variable number of vertices
       dist_tree = generate_dist_block(n_vtx, 'Structured', comm, origin=(0., 0., 0.), length=1.0)
-      convert_s_to_ngon(dist_tree, comm)
-      maia.algo.pe_to_nface(dist_tree, comm)
+      maia.algo.dist.convert_s_to_ngon(dist_tree, comm)
     else:
       dist_tree = dcube_generate(n_vtx, 1., (0,0,0), comm)
-      if cgns_elmt_name.upper() == "NFACE_N":
-        for zone in PT.get_all_Zone_t(dist_tree):
-          maia.algo.pe_to_nface(zone, comm, removePE=True)
+    if cgns_elmt_name.upper() == "NFACE_N":
+      maia.algo.pe_to_nface(dist_tree, comm, removePE=True)
   else:
     dist_tree = dcube_nodal_generate(n_vtx, 1., [0.]*phy_dim, cgns_elmt_name, comm)
 
