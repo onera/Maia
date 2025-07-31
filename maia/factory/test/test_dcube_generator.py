@@ -133,3 +133,26 @@ def test_dist_block_generate_transformed_cube(cgns_elmt_name, comm):
   assert isclose(comm.allreduce(np.min(coord_x), MPI.MIN), bounds[0][0]) and isclose(comm.allreduce(np.max(coord_x), MPI.MAX), bounds[0][1])
   assert isclose(comm.allreduce(np.min(coord_y), MPI.MIN), bounds[1][0]) and isclose(comm.allreduce(np.max(coord_y), MPI.MAX), bounds[1][1])
   assert isclose(comm.allreduce(np.min(coord_z), MPI.MIN), bounds[2][0]) and isclose(comm.allreduce(np.max(coord_z), MPI.MAX), bounds[2][1])
+
+
+@pytest_parallel.mark.parallel([1,3])
+def test_dist_block_generate_scaled_cube(comm):
+  dist_tree = dcube_generator.generate_dist_block([11,16,6], 'Poly', comm,
+                                                  origin=[-1.,-1.,-1.],
+                                                  length=[3.,-0.5,1.])
+
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  assert PT.get_np_value(zone).dtype == pdm_gnum_dtype
+  assert PT.Zone.n_cell(zone) == 10*15*5
+
+  xmin_n = PT.find_node_from_name(zone, "Xmin")
+  ymin_n = PT.find_node_from_name(zone, "Ymin")
+  zmin_n = PT.find_node_from_name(zone, "Zmin")
+  xmin_size = PT.Subset.n_elem(xmin_n)
+  ymin_size = PT.Subset.n_elem(ymin_n)
+  zmin_size = PT.Subset.n_elem(zmin_n)
+
+  assert comm.allreduce(xmin_size, MPI.SUM) == 15*5
+  assert comm.allreduce(ymin_size, MPI.SUM) == 10*5
+  assert comm.allreduce(zmin_size, MPI.SUM) == 10*15

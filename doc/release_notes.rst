@@ -16,6 +16,7 @@ Development version
 ^^^^^^^^^^^^^^^^^^^^^^^
 - extract_part: add local mode for unstructured meshes
 - maia_print_tree: trees are loaded much faster, which allows to print large files
+- generate_dist_block: manage non uniform Nx,Ny,Nz for Poly case
 
 🐞 Fixes
 ^^^^^^^^
