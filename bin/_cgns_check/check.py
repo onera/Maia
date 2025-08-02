@@ -4,8 +4,7 @@ from pathlib import Path
 
 from maia.typing import *
 
-from maia.pytree.graph.utils import list_iterator
-from maia.pytree.graph import algo as graph_algo
+import maia.pytree.graph as PTG
 
 class Colors:
     HEADER = '\033[95m'
@@ -43,6 +42,12 @@ def lazy_load_cgns(filename:Path) -> CGNSTree:
             shape = hdf_dataset.shape[::-1]
             dtype = hdf_dataset.dtype
             node[1] = FakeArray(shape, dtype)
+
+            # Special case of ElementStartOffset: we need to load the last
+            # value, to compare it later with ElementConnectivity.size
+            h5py_dset = h5py.Dataset(hdf_dataset)
+            if h5py_dset.parent.name.endswith('ElementStartOffset'):
+                node[1].last_value = h5py_dset[-1]
         parent[2].append(node)
 
     from maia.io.hdf._hdf_cgns import load_tree_partial
@@ -87,9 +92,9 @@ class HDF5GraphAdaptor:
     to use graph iterators """
     def __init__(self, root):
         self.root = root
-    def root_iterator(self) -> list_iterator:
+    def root_iterator(self) -> PTG.utils.list_iterator:
         return iter([self.root])
-    def child_iterator(self, node) -> list_iterator:
+    def child_iterator(self, node) -> PTG.utils.list_iterator:
         # Links are automatically traversed by the iterator if they exist
         # Otherwise, no exception is raised because .values() returns None for
         # 'broken' links, and other nodes are still visited.
@@ -130,7 +135,7 @@ def run_stage_1(filename:Path, ignore_list:List[str]) -> bool:
     # Now test hdf rules using DFS traversal
     rules = {key:val for key, val in GROUP_RULES.items() if key not in ignore_list}
     with h5py.File(filename) as f:
-        graph_algo.depth_first_search(HDF5GraphAdaptor(f), HDFChecker(rules))
+        PTG.algo.depth_first_search(HDF5GraphAdaptor(f), HDFChecker(rules))
 
     return True
 
@@ -142,7 +147,7 @@ def run_stage_2(filename:Path, ignore_list:List[str]) -> bool:
     tree = lazy_load_cgns(filename)
     # Prepare tree visitor
     rules = {key:val for key, val in NODE_RULES.items() if key not in ignore_list}
-    graph_algo.depth_first_search(tree, CGNSChecker(rules), depth='all')
+    PTG.cgns.depth_first_search(tree, CGNSChecker(rules), depth='all')
 
     return True
 
@@ -159,4 +164,4 @@ def check(args):
     if not st:
         exit(1)
 
-    #run_stage_2(args.filename, ignore_list)
+    run_stage_2(args.filename, ignore_list)

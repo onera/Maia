@@ -14,7 +14,6 @@ LABEL_PROPS = {
 
         ],
         "DOC": 'https://cgns.org/standard/SIDS/time.html#arbitrary-grid-motion-structure-definition-arbitrarygridmotion-t',
-        # NB : ArbitraryGridMotionType interdit aussi
     },
     'AreaType_t': {}, # Terminal enum,   AreaTypeNull, AreaTypeUserDefined, BleedArea, CaptureArea
     'Area_t': {
@@ -621,6 +620,25 @@ LABEL_PROPS = {
         "DOC": 'https://cgns.org/standard/SIDS/hierarchy.html#zone-structure-definition-zone-t',
     },
 }
+
+# Build table of reserved names
+for label in LABEL_PROPS.values():
+    if "ALLOWED_CHILDREN" in label:
+        reserved = {}
+        for child in label["ALLOWED_CHILDREN"]:
+            if len(child) > 2:
+                reserved_lbl = child[0]
+                reserved_name = child[2]
+                if isinstance(reserved_name, str):
+                    reserved[reserved_name] = reserved_lbl
+                else: # List
+                    for rsvd_name in reserved_name:
+                        reserved[rsvd_name] = reserved_lbl
+
+        label["RESERVED_NAMES"] = reserved
+# Add particular cases
+LABEL_PROPS['ArbitraryGridMotion_t']["RESERVED_NAMES"]['ArbitraryGridMotionType'] = None
+LABEL_PROPS['Zone_t']["RESERVED_NAMES"]['GridCoordinates'] = 'GridCoordinates_t'
 
 ALL_LABELS = set(LABEL_PROPS.keys()) \
            | {T[0] for D in LABEL_PROPS.values() for T in D.get('ALLOWED_CHILDREN', [])}
