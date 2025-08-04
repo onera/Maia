@@ -1,3 +1,4 @@
+import difflib
 import sys
 import inspect
 import collections
@@ -10,7 +11,7 @@ from maia.pytree.typing import List, CGNSTree # Strangly import * brings NamedTu
 
 from maia.pytree.cgns_keywords import dtype_to_cgns
 
-from .data import LABEL_PROPS, ALL_LABELS
+from .data import LABEL_PROPS, ALL_LABELS, UNITS_ENUM, UNITS_NAME, DATANAME_IDENTIFIERS
 
 OK = ''
 class Colors:
@@ -21,6 +22,18 @@ class Colors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+class DictDifflibCache(dict):
+    def __init__(self, possibilities, n, cutoff):
+        self.possibilities = possibilities
+        self.n = n
+        self.cutoff = cutoff
+    def __missing__(self, key):
+        val = difflib.get_close_matches(key, self.possibilities, self.n, self.cutoff)
+        self[key] = val
+        return val
+
+difflib_cache = DictDifflibCache(DATANAME_IDENTIFIERS, 1, 0.75)
 
 def sibling_zones_inttype_consistency(nodes:List[CGNSTree]) -> str: 
     """E202 - Sibling zones integer type consistency
@@ -78,32 +91,16 @@ def zone_inttype_consistency(nodes:List[CGNSTree]) -> str:
     #TODO : maybe call directly on relevant nodes instead of zone
     last = nodes[-1]
 
-    if PT.get_label(last) != 'Zone_t':
-        return OK
+    elt_names = ['ElementConnectivity', 'ElementStartOffset', 'ParentElements']
+    check = PT.get_label(last) in ['IndexRange_t', 'IndexArray_t'] \
+         or PT.get_name(last) in elt_names and PT.get_label(nodes[-2]) == 'Elements_t'
 
-    ztype = PT.get_np_value(last).dtype
-    wrong = None
+    if check:
+        ztype = PT.get_value_type(nodes[2])
+        if (ntype := PT.get_value_type(last)) != 'MT' and ntype != ztype:
+            return f"Datatype of connectivity data ({ntype}) is not equal to zone datatype ({ztype})"
 
-    names = ['ElementRange', 'ElementConnectivity', 'ElementStartOffset', 'ParentElements']
-    for elt, node in PT.iter_children_from_predicates(last, ['Elements_t', PTp.name_in(names)], ancestors=True):
-        if (nval := node[1]) is not None and (ntype := nval.dtype) != ztype:
-            wrong = (f'{elt[0]}/{node[0]}', ntype)
-            break
-
-    if wrong is None:
-        labels = ['IndexRange_t', 'IndexArray_t']
-        for sub in PT.iter_all_subsets(last):
-            for node in PT.iter_children_from_predicate(sub, PT.pred.label_in(labels)):
-                if (nval := node[1]) is not None and (ntype := nval.dtype) != ztype:
-                    wrong = (f'{sub[0]}/{node[0]}', ntype)
-                break
-
-    if wrong is not None:
-        wpath, wtype = wrong
-        return f"Integer type of zone is {dtype_to_cgns[ztype]}," \
-               f" but some connectivity arrays are of kind {dtype_to_cgns[wtype]} (eg. {wpath})"
-    else:
-        return OK
+    return OK
 
 
 def zone_coords_size(nodes:List[CGNSTree]) -> str: 
@@ -462,6 +459,502 @@ def S_zone_size(nodes:List[CGNSTree]) -> str:
                    f"dimension should be used instead (CellSize={cell_size})"
 
         return OK
+    return OK
+
+def unexpected_value(nodes:List[CGNSTree]) -> str:
+    """E218 - Unexpected value for MT node
+
+    Some label have 'MT' kind, so corresponding nodes should have no
+    value.
+
+    Erroneous tree example:
+
+    row_2_flux_1_Main_Blade_inlet Zone_t I4 [[17 16 0] [85 85 0] [21 20 0]]
+    ├───ZoneType ZoneType_t "Structured"
+    └───GridCoordinates GridCoordinates_t \033[91m"Cartesian" # Node should be MT\033[0m
+    """
+    last = nodes[-1]
+    label = PT.get_label(last)
+    props = LABEL_PROPS[label]
+    if props.get('TYPE', '') == 'MT':
+        if PT.get_value(last) is not None:
+            return f"Unexpected value for {label} node, which should be MT"
+    return OK
+
+def missing_value(nodes:List[CGNSTree]) -> str:
+    """E219 - Missing value for non-MT node
+
+    Some label have non-'MT' kind, so corresponding nodes should have
+    a value.
+
+    Erroneous tree example:
+
+    row_2_flux_1_Main_Blade_inlet Zone_t I4 [[17 16 0] [85 85 0] [21 20 0]]
+    ├───ZoneType ZoneType_t \033[91m # Missing 'C1' value \033[0m
+    └───GridCoordinates GridCoordinates_t
+    """
+    last = nodes[-1]
+    label = PT.get_label(last)
+    props = LABEL_PROPS[label]
+    if props.get('TYPE', 'MT') != 'MT':
+        if PT.get_value(last) is None and label != 'ZoneSubRegion_t':
+            return f"Missing value for {label} node, which should of kind {props['TYPE']}"
+    return OK
+
+def invalid_datatype(nodes:List[CGNSTree]) -> str:
+    """E220 - Invalid data type
+
+    Some nodes require their value to have a specific type.
+
+    Erroneous tree example:
+
+    ATB91 CGNSBase_t I4 [3 3]
+    └───zone Zone_t I4 [[11193 7200 0]]
+        ├───ZoneType ZoneType_t "Unstructured"
+        └───NGonElements Elements_t \033[91mR8\033[0m [22 0] \033[91m# Type should be I4\033[0m
+    """
+    # Note: DataArray_t is not treated in this generic func because kind can be almost eveything
+    last = nodes[-1]
+    label = PT.get_label(last)
+    props = LABEL_PROPS[label]
+    expt_type = props.get('TYPE', 'MT')
+    if label == 'IndexArray_t':
+        expt_type = 'R' if PT.get_name(last) == 'InwardNormalList' else 'I'
+    if expt_type != 'MT':
+        if (type:=PT.get_value_type(last)) != 'MT':
+            if type[:len(expt_type)] != expt_type: # Cut to compare if expt_type is only 'I' or 'R'
+                return f"Invalid datatype for {label} node: expected {expt_type}, got {type}"
+    return OK
+
+def invalid_datashape(nodes:List[CGNSTree]) -> str:
+    """E221 - Invalid data shape
+
+    Some nodes require their value to have a specific shape.
+
+    Erroneous tree example:
+
+    ATB91 CGNSBase_t I4 [3 3]
+    └───zone Zone_t I4 [[11193 7200 0]]
+        ├───ZoneType ZoneType_t "Unstructured"
+        └───NGonElements Elements_t I4 \033[91m[22]   # Shape should be (2,)\033[0m
+    """
+    # Note: DataArray_t is not treated in this generic func because shape can be almost eveything
+    last = nodes[-1]
+    label = PT.get_label(last)
+    props = LABEL_PROPS[label]
+    expt_shape = props.get('SHAPE', None)
+    # Compute expected shape for these labels (depens on idx_dim)
+    if label in ['IndexRange_t', 'Rind_t', 'Zone_t']:
+        idx_dim = 1 if PT.Zone.Type(nodes[2]) == 'Unstructured' else PT.get_np_value(nodes[1])[0]
+        if label == 'IndexRange_t':
+            expt_shape = (2,) if PT.get_label(nodes[-2]) == 'Elements_t' else (idx_dim, 2)
+        elif label == 'Rind_t':
+            expt_shape = (2*idx_dim,)
+        elif label == 'Zone_t':
+            expt_shape = (idx_dim, 3)
+
+    if expt_shape is not None:
+        if (val:=PT.get_value(last, True)) is not None:
+            shape = val.shape
+            if shape != expt_shape:
+                return f"Invalid shape for {label} node: expected {expt_shape}, got {shape}"
+
+    # Deal IndexArray_t : only first dim can be checked
+    if label == 'IndexArray_t':
+        if (val:=PT.get_value(last, True)) is not None:
+            shape = val.shape
+            if PT.get_name(last) == 'InwardNormalList':
+                expt = PT.Zone.PhysicalDimension(nodes[2])
+            elif PT.get_name(last) in ['PointListDonor', 'CellListDonor']:
+                opp_zone_path = PT.GridConnectivity.ZoneDonorPath(nodes[-2], PT.get_name(nodes[1]))
+                opp_zone = PT.find_node_from_path(nodes[0], opp_zone_path)
+                expt = PT.Zone.IndexDimension(opp_zone)
+            else:
+                expt = PT.Zone.IndexDimension(nodes[2])
+            if shape[0] != expt:
+                return f"Invalid shape for IndexArray_t node: expected ({expt}, N), got {shape}"
+
+    return OK
+
+def invalid_datavalue(nodes:List[CGNSTree]) -> str:
+    """E222 - Invalid data value
+
+    Some nodes, especially terminal enumerated nodes, require their value
+    to belong to a specific set.
+
+    Erroneous tree example:
+
+    ATB91 CGNSBase_t I4 [3 3]
+    └───zone Zone_t I4 [[11193 7200 0]]
+        ├───ZoneType ZoneType_t \033[91m"Polyedric" # Invalid value for ZoneType_t enum\033[0m
+        └───NGonElements Elements_t I4 [22 0]
+    """
+    # Note: DataArray_t is not treated in this generic func because shape can be almost eveything
+    last = nodes[-1]
+    label = PT.get_label(last)
+    props = LABEL_PROPS[label]
+    expt_value = props.get('ALLOWED_VALUE', None)
+
+    if expt_value is not None:
+        if (value:=PT.get_value(last)) is not None:
+            if value not in expt_value:
+                return f"'{value}' is not a admissible value for a {label} node"
+    if PT.get_label(last) in ['DimensionalUnits_t', 'AdditionalUnits_t']:
+        expt_list  = UNITS_ENUM[:5] if PT.get_label(last) == 'DimensionalUnits_t' else UNITS_ENUM[5:]
+        units_name = UNITS_NAME[:5] if PT.get_label(last) == 'DimensionalUnits_t' else UNITS_NAME[5:]
+        if (value:=PT.get_value(last)) is not None:
+            for i, (v, expt) in enumerate(zip(value, expt_list)):
+                if v not in expt:
+                    name = f"{units_name[i]}Units"
+                    return f"'{v}' is not a admissible value for {i+1}th field ({name}) of {label} node"
+        
+    return OK
+
+def invalid_name(nodes:List[CGNSTree]) -> str:
+    """E223 - Invalid node name
+
+    Name of nodes must be shorten than 32 characters and should contain
+    only ascii characters.
+
+    Erroneous tree example:
+
+    FlowSolution FlowSolution_t
+    ├───GridLocation GridLocation_t "CellCenter"
+    └───\033[91msource_term_rans(turbulence_closure)\033[0m DataArray_t (7200,)  \033[91m# Name is too long\033[0m
+    """
+    last = nodes[-1]
+    name = PT.get_name(last)
+    if len(name) > 32:
+        return f"Maximal len for node name is 32"
+    if not name.isascii():
+        return f"Name contains non ascii characters"
+    if '/' in name:
+        return f"Name should not contain '/' character"
+    return OK
+
+def invalid_gridlocation_value(nodes:List[CGNSTree]) -> str:
+    """E224 - Unexpected value for GridLocation node
+
+    Depending of the kind and CellDimension of the parent zone,
+    GridLocation_t values are restricted to:
+
+    - Structured zones
+        + CellDim=3 : CellCenter, {I|J|K}FaceCenter, {I|J|K}EdgeCenter, Vertex
+        + CellDim=2 : CellCenter, {I|J}EdgeCenter, Vertex
+        + CellDim=1 : CellCenter, Vertex
+    - Unstructured zones
+        + CellDim=3 : CellCenter, FaceCenter, EdgeCenter, Vertex
+        + CellDim=2 : CellCenter, EdgeCenter, Vertex
+        + CellDim=1 : CellCenter, Vertex
+
+    Erroneous tree example:
+
+    Stator Zone_t I4 [[72254 60288  0]]
+    ├───ZoneType ZoneType_t \033[32m"Unstructured"\033[0m
+    └───ZoneBC ZoneBC_t
+        ├───bc_moyeu.4 BC_t "FamilySpecified"
+        │   ├───GridLocation GridLocation_t \033[91m"IFaceCenter" # Not for unstructured zones\033[0m
+        │   └───PointList IndexArray_t I4 (1, 864)
+        └───bc_carter.5 BC_t "FamilySpecified"
+            ├───GridLocation GridLocation_t \033[32m"FaceCenter"\033[0m
+            └───PointList IndexArray_t I4 (1, 1632)
+    """
+    last = nodes[-1]
+    if PT.get_label(last) == 'GridLocation_t':
+        zone = nodes[2]
+        loc = PT.get_str_value(last)
+        if loc in ['EdgeCenter', 'FaceCenter'] and PT.Zone.Type(zone) == 'Structured':
+            suff = '|'.join('IJK'[:PT.Zone.IndexDimension(zone)])
+            return f"{loc} value can not be used for GridLocation on a structured zone, use {{{suff}}}{loc}"
+        if loc[0] in 'IJK' and loc[1:] in ['EdgeCenter', 'FaceCenter'] and PT.Zone.Type(zone) == 'Unstructured':
+            return f"{loc} value can not be used for GridLocation on an unstructured zone, use {loc[1:]}"
+        if ('FaceCenter' in loc or loc[0] == 'K') and (celldim:=PT.Zone.CellDimension(zone)) < 3:
+            return f"{loc} value can not be used for GridLocation on a CellDim={celldim} zone"
+        if 'EdgeCenter' in loc and (celldim:=PT.Zone.CellDimension(zone)) < 2:
+            return f"{loc} value can not be used for GridLocation on a CellDim={celldim} zone"
+    return OK
+
+def zone_elements_mixup(nodes:List[CGNSTree]) -> str:
+    """E225 - Incompatible elements type
+
+    The elements sections belonging to a same Zone_t node
+    must be either polyedric elements or standard elements,
+    but not a mix of the two.
+
+    Erroneous tree example:
+
+    Zone Zone_t I4 [[1000 2187 0]]
+    ├───NFaceElements Elements_t I4 [23 0]           \033[32m#Polyedric\033[0m
+    │   └───ElementRange IndexRange_t I4 [   1 2187]
+    ├───TRI Elements_t I4 [5 0]                      \033[91m#Standard\033[0m
+    │   └───ElementRange IndexRange_t I4 [2188 2673]
+    └───QUAD Elements_t I4 [ 7 0]                    \033[91m#Standard\033[0m
+        └───ElementRange IndexRange_t I4 [2674 2916]
+    """
+    last = nodes[-1]
+    if not PT.get_label(last) == 'Zone_t':
+        return OK
+    
+    elts = {PT.Element.Type(e) for e in PT.iter_children_from_label(nodes[-1], 'Elements_t')}
+    if 'NFACE_n' in elts or 'NGON_n' in elts:
+        poly = elts & {'NFACE_n', 'NGON_n'}
+        std = elts - {'NFACE_n', 'NGON_n', 'BAR_2', 'NODE'}
+        if len(std) > 0:
+            return f"Standard sections {std} and polyedric sections {poly} can not be used together"
+ 
+    return OK
+
+def missing_zsr_subset(nodes:List[CGNSTree]) -> str:
+    """E226 - Missing ZSR related node
+
+    When a ZoneSubRegion_t defines its related subset through
+    a BCRegionName or a GridConnectivityRegionName child,
+    the related subset must exists in tree.
+
+    Erroneous tree example:
+
+    Stator Zone_t I4 [[72254 60288  0]]
+    ├───ZoneBC ZoneBC_t:
+    │   └───bc_142 BC_t "BCWall"
+    └───ZSR ZoneSubRegion_t
+        └───BCRegionName Descriptor_t \033[91m"bc_146" # BC does not exists in tree\033[0m
+    """
+    last = nodes[-1]
+    if PT.get_label(last) == 'ZoneSubRegion_t' and not PT.Container._is_subset(last):
+        try:
+            PT.Container.SubsetNodePath(last, nodes[-2])
+        except ValueError:
+            linked_names = ['BCRegioName', 'GridConnectivityRegionName']
+            refnode = PT.find_child_from_predicate(last, PTp.name_in(linked_names))
+            return f"ZoneSubRegion_t related subset {PT.get_str_value(refnode)} does not exists"
+
+    return OK
+
+def pointrange_normal_axis(nodes:List[CGNSTree]) -> str:
+    """W227 - Structured subset GridLocation
+
+    When a structured subset has {I|J|K}{Face|Edge}Center
+    location, the related PointRange should have a consistent
+    constant axis.
+    This rule is warning because the difference can be desired,
+    especially if internal edges or faces are described.
+
+    Erroneous tree example:
+
+    bc_7_005 BC_t "FamilySpecified"
+    ├───GridLocation GridLocation_t "Vertex"
+    ├───PointRange IndexRange_t I4 [[1 21] [1 1] [1 141]]
+    └───BCDataSet#Init BCDataSet_t "Null"
+        ├───GridLocation GridLocation_t \033[93m"IFaceCenter"\033[0m
+        └───PointRange IndexRange_t I4 \033[93m[[1 20] [1 1] [1 140]] #Seems to be JFaceCenter\033[0m
+
+    """
+    last = nodes[-1]
+    grid_loc = PT.get_child_from_name(last, 'GridLocation')
+    pr = PT.get_child_from_name(last, 'PointRange')
+    if pr is not None and grid_loc is not None and PT.get_str_value(grid_loc)[0] in 'IJK':
+        pr_val = PT.get_np_value(pr)
+        loc_val = PT.get_str_value(grid_loc)
+        cst_axis = (pr_val[:,0] == pr_val[:,1]).tolist()
+        if sum(cst_axis) == 1:
+            axis = cst_axis.index(True)
+            if loc_val[0] != 'IJK'[axis]:
+                return f"GridLocation value is {loc_val}, but PointRange {pr_val.tolist()}" \
+                       f" seems to be {'IJK'[axis]}{loc_val[1:]}"
+            
+    return OK
+
+
+def field_shape(nodes:List[CGNSTree]) -> str:
+    """E228 - Data field shape
+
+    Under fields containers (FlowSolution, ZoneSubRegion, BCDataSet, ...),
+    the shape of DataArray must be consistent with the number of elements
+    of the related PointList/PointRange if any, or with zone shape
+    otherwise (for FlowSolution_t/DiscreteData_t).
+
+    Erroneous tree examples:
+
+    Stator Zone_t I4 [[72254 60288  0]]
+    └───ZSR ZoneSubRegion_t
+        ├───GridLocation GridLocation_t "CellCenter"
+        ├───PointList IndexArray_t I4 \033[32m(1, 894)\033[0m
+        └───Pressure DataArray_t R8 \033[91m(800,) # Shape should be (894,)\033[0m
+
+    row_1_down Zone_t I4 [[\033[32m21\033[0m 20 0] [\033[32m85\033[0m 84 0] [\033[32m141\033[0m 140 0]]
+    └───FlowSolution#Init FlowSolution_t
+        ├───GridLocation GridLocation_t "Vertex"
+        └───Density DataArray_t R8 \033[91m(251685,) #Shape should be (21,85,141)\033[0m
+    """
+    last = nodes[-1]
+    if PT.get_label(last) != 'DataArray_t':
+        return OK
+
+    parent = nodes[-2]
+    parent_label = PT.get_label(parent)
+    expt_shape = None
+    if parent_label in ["FlowSolution_t", "DiscreteData_t"]:
+        if PT.Container._is_subset(parent):
+            expt_shape = (PT.Subset.n_elem(parent),)
+        else:
+            assert (loc:=PT.Container.GridLocation(parent)) in ['CellCenter', 'Vertex']
+            zone = nodes[2]
+            expt_shape = PT.Zone.CellSize(zone) if loc == 'CellCenter' else PT.Zone.VertexSize(zone)
+    elif parent_label == 'ZoneSubRegion_t':
+        expt_shape = (PT.Subset.n_elem(PT.Container.SubsetNode(parent, nodes[2])),)
+    elif parent_label == 'BCData_t':
+        pparent = nodes[-3]
+        if PT.get_label(pparent) == 'BCDataSet_t':
+            expt_shape = (PT.Subset.n_elem(PT.Container.SubsetNode(pparent, nodes[2])),)
+        else: #FamilyBCDataSet_t
+            expt_shape = (1,)
+
+    if expt_shape is not None:
+        val = PT.get_value(last, True)
+        if val is None:
+            return f"Missing value for DataArray_t node: expected shape is {expt_shape}"
+        # NB : array of shape (1,) are allowed under BCData_t nodes
+        elif (shape:=val.shape) != expt_shape and not (parent_label == 'BCData_t' and shape==(1,)):
+            return f"Invalid shape for DataArray_t node: expected {expt_shape}, got {val.shape}"
+    
+    return OK
+
+def unexpected_field_component(nodes:List[CGNSTree]) -> str:
+    """W229 - Unexpected tensorial field component
+
+    The number of fields used to describe a vectorial or tensorial
+    cartesiant field must be consistent with the physical dimension
+    of the mesh.
+
+    Erroneous tree examples:
+
+    Base CGNSBase_t I4 [2 \033[32m2\033[0m]
+    └───zone Zone_t I4 [[876 1633  0]]
+        └───FlowSolution@Vertex@Init FlowSolution_t
+            ├───Density IndexArray_t R8 (876,)
+            ├───\033[32mMomentumX\033[0m IndexArray_t R8 (876,)
+            ├───\033[32mMomentumY\033[0m IndexArray_t R8 (876,)
+            └───\033[93mMomentumZ\033[0m IndexArray_t R8 (876,) \033[93m# Unexpected because phydim=2\033[0m
+    """
+    # Only cartesian for now
+    containers = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCData_t']
+    last = nodes[-1]
+    if PT.get_label(last) == 'DataArray_t' and PT.get_label(nodes[-2]) in containers:
+        phydim = PT.get_np_value(nodes[1])[1]
+        forbidden = set()
+        if phydim < 3:
+            forbidden |= {'Z', 'XZ', 'YZ', 'ZX', 'ZY', 'ZZ'}
+        if phydim < 2:
+            forbidden |= {'Y', 'XY', 'YX', 'YY'}
+        for suff in forbidden:
+            if PT.get_name(last).endswith(suff):
+                return f"Component {suff} of tensorial field is unexepected since PhysicalDimension of mesh is {phydim}"
+            
+    return OK
+
+def vectorial_field_component(nodes:List[CGNSTree]) -> str:
+    """W230 - Missing tensorial field component
+
+    The number of fields used to describe a vectorial or tensorial
+    cartesiant field must be consistent with the physical dimension
+    of the mesh.
+
+    Erroneous tree examples:
+
+    Base CGNSBase_t I4 [3 \033[32m3\033[0m]
+    └───zone Zone_t I4 [[876 1633  0]]
+        └───FlowSolution@Vertex@Init FlowSolution_t
+            ├───Density IndexArray_t R8 (876,)
+            ├───\033[32mMomentumX\033[0m IndexArray_t R8 (876,)
+            ├───\033[32mMomentumY\033[0m IndexArray_t R8 (876,)
+            ╵╴╴╴\033[93mMissing MomentumZ component (because phydim=3)\033[0m
+    """
+    # Only cartesian for now
+    containers = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCData_t']
+    last = nodes[-1]
+    if PT.get_label(last) == 'DataArray_t' and PT.get_label(nodes[-2]) in containers:
+        phydim = PT.get_np_value(nodes[1])[1]
+        field = PT.get_name(last)
+        tensor = set()
+        vector = set()
+        if phydim >= 2:
+            tensor |= {'XX', 'XY', 'YX', 'YY'}
+            vector |= {'X', 'Y'}
+        if phydim >= 3:
+            tensor |= {'XZ', 'YZ', 'ZX', 'ZY', 'ZZ'}
+            vector |= {'Z'}
+        # Maybe we should check at container level to raise the error only once,
+        # but more difficult to report all fields at once
+        if any(field.endswith(suff) for suff in tensor):
+            missing = {s for s in tensor if PT.get_child_from_name(nodes[-2], field[:-2]+s) is None}
+            if len(missing) > 0:
+                maybe_symetric = missing == {'YX', 'ZX', 'ZY'} if phydim == 3 else missing == {'YX'}
+                if maybe_symetric:
+                    return f"Missing lower component(s) for tensorial field {field[:-2]}"\
+                           f" (this may be intentional if field is symmetric)"
+                else:
+                    return f"Missing {missing} component(s) for tensorial field {field[:-2]}"
+        elif any(field.endswith(suff) for suff in vector):
+            missing = [v for v in vector if PT.get_child_from_name(nodes[-2], field[:-1]+v) is None]
+            if len(missing) > 0:
+                return f"Missing {missing} component(s) for vectorial field {field[:-1]}"
+            
+    return OK
+
+def close_to_dataname_identifier(nodes:List[CGNSTree]) -> str:
+    """W231 - Close to dataname identifier
+
+    Data fields should be named from conventional identifiers:
+    https://cgns.org/standard/SIDS/convention.html
+
+    This rule warn the user if the name of the field is close
+    to a known identifier.
+
+    Erroneous tree examples:
+
+    FlowSolution@Vertex@Init FlowSolution_t
+    ├───\033[32mDensity\033[0m IndexArray_t R8 (876,)
+    ├───\033[93mTemprature\033[0m IndexArray_t R8 (876,) \033[93m# Did you mean Temperature ?\033[0m
+    └───\033[32mPressure\033[0m IndexArray_t R8 (876,)
+    """
+    # 2 rules so we can disable the second one
+    containers = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCData_t']
+    last = nodes[-1]
+    if PT.get_label(last) == 'DataArray_t' and PT.get_label(nodes[-2]) in containers:
+        field = PT.get_name(last)
+        if not field in DATANAME_IDENTIFIERS:
+            closest = difflib_cache[field]
+            if len(closest) > 0:
+                return f"Unconventional field name, did you mean '{closest[0]}' ?"
+            
+    return OK
+
+def unconventional_identifier(nodes:List[CGNSTree]) -> str:
+    """W232 - Not a conventional identifier
+
+    Data fields should be named from conventional identifiers:
+    https://cgns.org/standard/SIDS/convention.html
+
+    This rule warn the user if the name of the field is not
+    a known identifier.
+
+    Erroneous tree examples:
+
+    FlowSolution@Vertex@Init FlowSolution_t
+    ├───\033[32mDensity\033[0m IndexArray_t R8 (876,)
+    ├───\033[93mextrp_on(temp)\033[0m IndexArray_t R8 (876,) \033[93m# Unknow dataname identifier\033[0m
+    └───\033[32mPressure\033[0m IndexArray_t R8 (876,)
+    """
+    # 1 rule or two rules ? Maybe two so we can disable the second one
+    containers = ['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'BCData_t']
+    last = nodes[-1]
+    if PT.get_label(last) == 'DataArray_t' and PT.get_label(nodes[-2]) in containers:
+        field = PT.get_name(last)
+        if not field in DATANAME_IDENTIFIERS:
+            closest = difflib_cache[field]
+            if len(closest) == 0:
+                return f"Unconventional field name"
+            
     return OK
 
 def too_many_children(nodes:List[CGNSTree]) -> str:
@@ -840,6 +1333,8 @@ def gc_transform_relation(nodes:List[CGNSTree]) -> str:
         return f"Invalid relation between Transform, PointRange and PointRangeDonor"
     return OK
 
+# TODO Empty container (?)
+
 # Pour chaque noeud, on veut représetner: 
 # - une liste de labels autorisés
 # - le nombre d'elts associé à chaque label (1, N ou open bar)
@@ -851,7 +1346,7 @@ def gc_transform_relation(nodes:List[CGNSTree]) -> str:
 #
 #
 
-
+# TODO : BC FamilySpecified w/o FamilyName -> Error
 
 class CGNSRule:
     def __init__(self, name, code, doc, check) -> None:
