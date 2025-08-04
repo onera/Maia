@@ -78,6 +78,6 @@ ZoneB Zone_t [[1,1,0]]:
   keep_alive = []
 
   mpart = PDM.MultiPart(2, np.array([1,2], dtype=np.int32), 0, 1, 1, None, comm)
-  partU.set_mpart_dmeshes(mpart, dzones, comm, keep_alive)
+  partU.set_mpart_dmeshes(mpart, dzones, comm, True, keep_alive)
   assert len(keep_alive) == len(dzones)
 

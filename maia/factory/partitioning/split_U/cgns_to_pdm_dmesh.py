@@ -54,7 +54,7 @@ def cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, comm):
 
   return dmesh
 
-def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
+def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm, needs_bc=False):
   """
   Create a pdm_dmesh structure from a distributed zone
   """
@@ -101,9 +101,13 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm):
       np_utils.shift_nonzeros(dface_cell, -distrib_face[2])
     
 
-  # > Prepare bnd
-  dface_bound_idx = np.zeros(1, dtype=np.int32)
-  dface_bound     = np.empty(0, dtype=pdm_gnum_dtype)
+  # > Prepare bnd (needed for HPC renumbering)
+  if needs_bc:
+    point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'], filter_loc=['FaceCenter'])
+    dface_bound_idx, dface_bound = np_utils.concatenate_point_list(point_lists, pdm_gnum_dtype)
+  else:
+    dface_bound_idx = np.zeros(1, dtype=np.int32)
+    dface_bound     = np.empty(0, dtype=pdm_gnum_dtype)
 
   dmesh = DistributedMesh(comm, dn_cell, dn_face, dn_edge, dn_vtx)
 

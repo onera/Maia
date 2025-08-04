@@ -110,7 +110,7 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
 
   keep_alive.append(cacheblocking_props)
 
-def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
+def set_mpart_dmeshes(multi_part, u_zones, comm, needs_bc, keep_alive):
 
   for i_zone, zone in enumerate(u_zones):
     if PT.Zone.n_cell(zone) == 0: # Zone has only vertex
@@ -122,7 +122,7 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
     maia.algo.edge_pe_to_ngon(zone, comm) # For 2D Poly zones, NG is required
     if PT.Zone.has_ngon_elements(zone):
       if PT.pred.IS_POLY3D_ZONE(zone):
-        dmesh    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
+        dmesh    = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm, needs_bc=needs_bc)
         keep_alive.append(dmesh)
         multi_part.dmesh_set(i_zone, dmesh)
       else:
@@ -130,7 +130,7 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive):
         keep_alive.append(dmesh)
         multi_part.dmesh_set(i_zone, dmesh)
     else:
-      dmesh_nodal = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
+      dmesh_nodal = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=needs_bc)
       keep_alive.append(dmesh_nodal)
       multi_part.dmesh_nodal_set(i_zone, dmesh_nodal)
 
@@ -237,7 +237,9 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   # Setup
   u_zones = [zone for zones in bases_to_block_u.values() for zone in zones]
-  set_mpart_dmeshes(multi_part, u_zones, comm, keep_alive)
+  needs_bc = any(["HPC" in part_options['reordering'][f'{entity}_renum_method'] 
+                  for entity in ['cell', 'face', 'vtx']])
+  set_mpart_dmeshes(multi_part, u_zones, comm, needs_bc, keep_alive)
   set_mpart_reordering(multi_part, part_options['reordering'], keep_alive)
   
   # Debug/Reproductible mode where each input cell knows its attributed partition id
@@ -261,6 +263,7 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
   del(multi_part) # Force multi_part object to be deleted before n_part_per_zone array
   for zone in u_zones:
     PT.rm_children_from_name(zone, ':CGNS#MultiPart')
+    PT.rm_children_from_name(zone, ':CGNS#DMeshNodal#Bnd*')
 
   i = 0
   j = 0
