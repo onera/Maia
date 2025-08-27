@@ -336,17 +336,18 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
   for dist_zone in PT.iter_all_Zone_t(dist_tree):
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
+    
+    zone_families = {PT.get_str_value(n) for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t')}
 
     # > If all families, we need to discover them first
     if families=='*':
-      families = list()
-      for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t'):
-        if PT.get_value(n) not in families:
-          families.append(PT.get_str_value(n))
-
+        _families = sorted(zone_families)
+    else:
+        _families = [f for f in families if f in zone_families]
+      
     # > Merge bc nodes from a same family
     zone_bc_n = PT.find_node_from_label(dist_zone, "ZoneBC_t")
-    for family in families:
+    for family in _families:
 
       # > Predicates to find family BCs
       is_subset_container = PT.pred.label_is('ZoneBC_t')
