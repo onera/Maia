@@ -17,7 +17,7 @@ AverageInterfaceType = {'AverageInterfaceTypeNull', 'AverageInterfaceTypeUserDef
                         'AverageCircumferential', 'AverageRadial', 'AverageI', 'AverageJ', 'AverageK'}
 BCTypeSimple = {'BCTypeNull', 'BCTypeUserDefined', 'BCAxisymmetricWedge', 'BCDegenerateLine',
                 'BCDegeneratePoint', 'BCDirichlet', 'BCExtrapolate', 'BCGeneral', 'BCInflowSubsonic',
-                'BCInflowSupersonic', 'BCNeumann', 'BCOutflowSubsonic', 'BCOutflowSupersonic',
+                'BCInflowSupersonic', 'BCNeumann', 'BCOutflowSubsonic', 'BCOutflowSupersonic', 'BCSymmetryPlane',
                 'BCSymmetryPolar', 'BCTunnelInflow', 'BCTunnelOutflow', 'BCWall', 'BCWallInviscid',
                 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal', 'FamilySpecified'}
 BCTypeCompound = {'BCTypeNull', 'BCTypeUserDefined', 'BCInflow', 'BCOutflow', 'BCFarfield'}

@@ -117,7 +117,7 @@ class CGNSChecker:
                 print(f"{path}: {color}{rule_id}{Colors.ENDC} {out}")
         if len(raised) > 0:
             path = '/'.join(n[0] for n in nodes)
-            print(f"{path}: {Colors.HEADER}Exception raised when checking {Colors.ENDC}{','.join(raised)}")
+            print(f"{path}: {Colors.HEADER}Unable to check {','.join(raised)} due to other errors{Colors.ENDC}")
 
 
 class HDF5GraphAdaptor:
@@ -206,6 +206,7 @@ def check(args):
 
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
+
     if comm.rank == 0:
         st = run_stage_1(args.filename, ignore_list)
     else:
@@ -214,4 +215,7 @@ def check(args):
     if not st:
         exit(1)
 
-    run_stage_2(args.filename, ignore_list)
+    # For now stage 2 is serial also // We should distribute
+    # checks zones over ranks
+    if comm.rank == 0:
+        st = run_stage_2(args.filename, ignore_list)

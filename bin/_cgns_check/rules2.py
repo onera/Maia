@@ -674,8 +674,13 @@ def zone_cell_dimension(nodes:List[CGNSTree]) -> str:
     assert PT.get_label(base) == 'CGNSBase_t'
     cell_dim = PT.get_np_value(base)[0]
     
+    #Skip if zone has mixed elements (check will be done in phase 3)
+    zone_elts = set(PT.Element.Type(e) for e in PT.iter_children_from_label(last, 'Elements_t'))
+    if 'MIXED' in zone_elts:
+        return OK
+
     if (zdim := PT.Zone.CellDimension(last)) != cell_dim:
-        return f"Number of coordinates array is not consistent with physical dimension of the parent base:" \
+        return f"Maximal dimension of zone elements not consistent with cell dimension of the parent base:" \
                f" expected {cell_dim}, got {zdim}"
 
     return OK
@@ -782,6 +787,18 @@ def zone_number_of_elements(nodes:List[CGNSTree]) -> str:
     if PT.get_label(last) != 'Zone_t' or PT.Zone.Type(last) == 'Structured':
         return OK
 
+    #Skip if zone has mixed elements (check will be done in phase 3)
+    zone_elts = set(PT.Element.Type(e) for e in PT.iter_children_from_label(last, 'Elements_t'))
+    if 'MIXED' in zone_elts:
+        return OK
+    # Also skip polyedric zones with only PE (check will be done in phase 3)
+    if PTp.IS_POLY2D_ZONE(last):
+        if not PT.Zone.has_ngon_elements(last):
+            return OK
+    elif PTp.IS_POLY3D_ZONE(last):
+        if not PT.Zone.has_nface_elements(last):
+            return OK
+
     celldim = PT.Zone.CellDimension(last)
     native_elts = PT.Zone.get_ordered_elements_per_dim(last)[celldim]
     tot_elts = sum(PT.Element.Size(e) for e in native_elts)
@@ -870,6 +887,12 @@ def zone_ordered_elt_range(nodes:List[CGNSTree]) -> str:
     last = nodes[-1]
     if PT.get_label(last) != 'Zone_t':
         return OK
+
+    #Skip if zone has mixed elements (not relevant)
+    zone_elts = set(PT.Element.Type(e) for e in PT.iter_children_from_label(last, 'Elements_t'))
+    if 'MIXED' in zone_elts:
+        return OK
+
     if PT.Zone.elt_ordering_by_dim(last) == 0:
         return 'Element sections are not ordered according to their dimension'
     else:
@@ -946,6 +969,8 @@ def zone_coords_size(nodes:List[CGNSTree]) -> str:
     """
     if len(nodes) < 2 or PT.get_label(nodes[-2]) != 'GridCoordinates_t':
         return OK
+    if PT.get_label(nodes[-1]) != 'DataArray_t' or PT.get_name(nodes[-1]) == 'CoordinateTransform':
+        return OK
 
     zone = nodes[2]
     co = nodes[-1]
@@ -989,6 +1014,7 @@ def invalid_gridlocation_value(nodes:List[CGNSTree]) -> str:
     """
     last = nodes[-1]
     if PT.get_label(last) == 'GridLocation_t':
+        base = nodes[1]
         zone = nodes[2]
         loc = PT.get_str_value(last)
         if loc in ['EdgeCenter', 'FaceCenter'] and PT.Zone.Type(zone) == 'Structured':
@@ -996,9 +1022,9 @@ def invalid_gridlocation_value(nodes:List[CGNSTree]) -> str:
             return f"{loc} value can not be used for GridLocation on a structured zone, use {{{suff}}}{loc}"
         if loc[0] in 'IJK' and loc[1:] in ['EdgeCenter', 'FaceCenter'] and PT.Zone.Type(zone) == 'Unstructured':
             return f"{loc} value can not be used for GridLocation on an unstructured zone, use {loc[1:]}"
-        if ('FaceCenter' in loc or loc[0] == 'K') and (celldim:=PT.Zone.CellDimension(zone)) < 3:
+        if ('FaceCenter' in loc or loc[0] == 'K') and (celldim:=PT.get_np_value(base)[0]) < 3:
             return f"{loc} value can not be used for GridLocation on a CellDim={celldim} zone"
-        if 'EdgeCenter' in loc and (celldim:=PT.Zone.CellDimension(zone)) < 2:
+        if 'EdgeCenter' in loc and (celldim:=PT.get_np_value(base)[0]) < 2:
             return f"{loc} value can not be used for GridLocation on a CellDim={celldim} zone"
     return OK
 
