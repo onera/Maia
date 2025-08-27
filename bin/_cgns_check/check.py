@@ -1,5 +1,6 @@
 import h5py
 import math
+import os
 from pathlib import Path
 
 from maia.typing import *
@@ -12,6 +13,7 @@ class Colors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
+    LINK = '\033[36m'
     UNDERLINE = '\033[4m'
 
 def lazy_load_cgns(filename:Path) -> CGNSTree:
@@ -105,8 +107,12 @@ class HDFChecker:
     """ Graph visitor used to collect link information """
     def __init__(self, rules):
         self.rules = rules
+        self.names = [''] # Path of node in main structure
 
     def pre(self, node):
+        if node.name == '/': # Store current file to check external link
+            self.file = node.file
+            self.filedir = Path(self.file.filename).resolve().parent
         raised = []
         for rule_id, rule_fn in self.rules.items():
             try:
@@ -116,10 +122,24 @@ class HDFChecker:
                 out = ''
             if out != '':
                 color = Colors.FAIL if rule_id.startswith('E') else Colors.WARNING
-                print(f"{node.name}: {color}{rule_id}{Colors.ENDC} {out}")
+                path = '/'.join(self.names) if len(self.names) > 1 else '/'
+                if node.file != self.file: # Internal link not yet managed
+                    # Here we add the linked file / path in output
+                    linked_file = Path(node.file.filename)
+                    rel_file = os.path.relpath(linked_file.resolve(), self.filedir)
+                    path += f' {Colors.LINK}(-> {rel_file}::{node.name}){Colors.ENDC}'
+                print(f"{path}: {color}{rule_id}{Colors.ENDC} {out}")
         if len(raised) > 0:
             print(f"{node.name}: {Colors.HEADER}Exception raised when checking {Colors.ENDC}{','.join(raised)}")
-
+    
+    def down(self, parent, child):
+        is_link = parent.file != child.file # Internal link not yet managed (maybe child.parent != parent)
+        if not is_link:
+            self.names.append(child.name.split('/')[-1])
+    def up(self, child, parent):
+        is_link = parent.file != child.file # Internal link not yet managed (maybe child.parent != parent)
+        if not is_link:
+            self.names.pop()
 
 def run_stage_1(filename:Path, ignore_list:List[str]) -> bool:
 
@@ -135,7 +155,7 @@ def run_stage_1(filename:Path, ignore_list:List[str]) -> bool:
     # Now test hdf rules using DFS traversal
     rules = {key:val for key, val in GROUP_RULES.items() if key not in ignore_list}
     with h5py.File(filename) as f:
-        PTG.algo.depth_first_search(HDF5GraphAdaptor(f), HDFChecker(rules))
+        PTG.algo.depth_first_search(HDF5GraphAdaptor(f['/']), HDFChecker(rules))
 
     return True
 
