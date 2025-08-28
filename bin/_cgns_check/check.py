@@ -7,6 +7,8 @@ from maia.typing import *
 
 import maia.pytree.graph as PTG
 
+OK = ''
+
 class Colors:
     HEADER = '\033[95m'
     WARNING = '\033[93m'
@@ -90,19 +92,8 @@ class CGNSChecker:
     """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
     def __init__(self, rules) -> None:
         self.rules = rules
-
-    """
-    def pre(self, nodes: List[CGNSTree]):
-        # Class impl
-        for rule in self.rules:
-            if not (rule.code in self.ignore_list or rule.check(nodes)):
-                path = '/'.join(n[0] for n in nodes)
-                color = Colors.FAIL if rule.code.startswith('E') else Colors.WARNING
-                print(f"{path}: {color}{rule.code}{Colors.ENDC} {rule.out}")
-    """
     
     def pre(self, nodes: List[CGNSTree]):
-        # Pure fn impl
         raised = []
 
         for rule_id, rule_fn in self.rules.items():
@@ -110,8 +101,8 @@ class CGNSChecker:
                 out = rule_fn(nodes)
             except Exception:
                 raised.append(rule_id)
-                out = ''
-            if out != '':
+                out = OK
+            if out != OK:
                 path = '/'.join(n[0] for n in nodes)
                 color = Colors.FAIL if rule_id.startswith('E') else Colors.WARNING
                 print(f"{path}: {color}{rule_id}{Colors.ENDC} {out}")
@@ -150,8 +141,8 @@ class HDFChecker:
                 out = rule_fn(node)
             except Exception:
                 raised.append(rule_id)
-                out = ''
-            if out != '':
+                out = OK
+            if out != OK:
                 color = Colors.FAIL if rule_id.startswith('E') else Colors.WARNING
                 path = '/'.join(self.names) if len(self.names) > 1 else '/'
                 if node.file != self.file: # Internal link not yet managed
@@ -177,7 +168,7 @@ def run_stage_1(filename:Path, ignore_list:List[str]) -> bool:
     from .rules1 import FILE_RULES, GROUP_RULES
     # First pass to test file rules (errors are fatal)
     for rule_id, rule_fn in FILE_RULES.items():
-        if (out := rule_fn(filename)) != '':
+        if (out := rule_fn(filename)) != OK:
             msg = f"Execution aborted due to {Colors.FAIL}fatal error {rule_id}{Colors.ENDC}:" \
                   f" {out}"
             print(msg)

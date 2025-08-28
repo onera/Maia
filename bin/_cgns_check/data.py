@@ -1,14 +1,4 @@
-#Specific check for :
-#AdditionalUnits_t
-#DimensionalUnits
-#IndexArray / IndexRange
-# Rind : 2 x IdxDim
-# ZoneSubRegion (value optional)
-#DataArray
-
-
-# Pas de dtype pour DataArray, IndexArray
-# Pas de shape pour ['DataArray_t', 'IndexArray_t', 'IndexRange_t', 'Rind_t', 'Zone_t']
+# Enum values list
 
 ArbitraryGridMotionType = {'ArbitraryGridMotionTypeNull', 'ArbitraryGridMotionTypeUserDefined',
                            'NonDeformingGrid', 'DeformingGrid'}
@@ -81,6 +71,14 @@ UNITS_ENUM = [MassUnits, LengthUnits, TimeUnits, TemperatureUnits, AngleUnits,
               ElectricCurrentUnits, SubstanceAmountUnits, LuminousIntensityUnits]
 UNITS_NAME = ['Mass', 'Length', 'Time', 'Temperature', 'Angle',
               'ElectricCurrent', 'SubstanceAmount', 'LuminousIntensity']
+
+# Characteristics for each label: datatype, datashape, allowed_values, allowed_children, 
+# constrains on children
+
+# Nb: for some nodes, the type/shape can vary so it's not writen here:
+# DataArray, IndexArray, IndexRange, Rind, Zone
+# In addition value is not writen for AdditionalUnits, DimensionalUnits (because a list
+# of enum value is expected) nor for ZoneSubRegion (value is optional)
 
 LABEL_PROPS = {
     'AdditionalExponents_t': {
@@ -956,6 +954,7 @@ for value_set in ALL_ENUMS:
 
 
 
+"""
 # Debug section
 # List cardinal symbols
 symbs = set()
@@ -970,3 +969,4 @@ resvd = set()
 for data in LABEL_PROPS.values():
     reserved = data.get("RESERVED_NAMES", {})
     resvd |= set(reserved.keys())
+"""
