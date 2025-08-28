@@ -7,27 +7,25 @@ import warnings
 warnings.simplefilter("ignore", UserWarning, lineno=493) # Disable h5py/np interaction warning
 
 def parse_args():
-    # 1ère passe : parser minimal pour détecter --explain
+    # Pre parser just to detect if mode is explain
     pre_parser = argparse.ArgumentParser(add_help=False)
     pre_parser.add_argument('--explain', type=str)
-    pre_args, remaining_argv = pre_parser.parse_known_args()
+    pre_args, _ = pre_parser.parse_known_args()
 
-    # 2ème passe : parser complet selon la présence de --explain
-    parser = argparse.ArgumentParser(description="Analyse a CGNSFile")
+    # True parser, with options depending of --explain presence
+    parser = argparse.ArgumentParser(description="Reports errors in a CGNS database")
 
     if pre_args.explain is None:
-        # filename obligatoire seulement si --explain pas donné
+        # Analyse mode --> filename is mandatory, ignore list is optionnal
         parser.add_argument('filename', metavar='cgns_file', type=Path, help="file to analyse")
+        parser.add_argument('--ignore', type=str, default='', help="disable the provided codes (comma separated list)")
     else:
-        # filename optionnel / interdit si --explain donné
-        parser.add_argument('filename', nargs='?', help=argparse.SUPPRESS)  # cache l'argument dans l'aide
+        # Explain mode --> nothing needed
+        pass
 
-    parser.add_argument('--ignore', type=str, default='', help="disable the provided codes")
-    parser.add_argument('--explain', type=str, help="Mode explication (pas besoin du fichier)")
+    parser.add_argument('--explain', type=str, help="explain the specified error code")
 
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
