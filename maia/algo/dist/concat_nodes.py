@@ -348,7 +348,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         bc_pl  = PT.get_np_value(PT.Subset.getPatch(bc_n))[0]
         bcds_n = PT.new_BCDataSet(":maia#concatenate", parent=bc_n)
         PT.new_BCData('DirichletData',
-                      fields={'OriginalBCId':np.full(bc_pl.size, i_bc)},
+                      fields={'OriginalBCId':np.full(bc_pl.size, i_bc, dtype=np.int32)},
                       parent=bcds_n)
         ord_n = PT.get_child_from_label(bc_n, 'Ordinal_t')
 
