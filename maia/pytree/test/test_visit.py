@@ -17,7 +17,7 @@ Base CGNSBase_t:
 # same as t0 but NGon/NFace swapped
 t1 = PT.yaml.to_node("""
 Base CGNSBase_t:
-  ZoneI1 Zone_t:
+  ZoneI0 Zone_t:
     NFace Elements_t [23,0]:
     NGon Elements_t [22,0]:
     ZGCB ZoneGridConnectivity_t:
@@ -107,12 +107,15 @@ def test_zip_tree_algo():
 
   expected_s = \
     'Base | Base\n' \
-    'ZoneI0 | ZoneI1\n' \
+    'ZoneI0 | ZoneI0\n' \
     'NFace | NFace\n' \
     'NGon | NGon\n' \
-    'ZGCA | ZGCB\n' \
-    'gc1 | gc1\n' \
-    'Index_i | Index_i\n' \
+    'ZGCA | [None]\n' \
+    'gc1 | [None]\n' \
+    'Index_i | [None]\n' \
+    '[None] | ZGCB\n' \
+    '[None] | gc1\n' \
     '[None] | Index_h\n' \
+    '[None] | Index_i\n' \
     '[None] | Index_j\n'
   assert v.s == expected_s

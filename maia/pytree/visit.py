@@ -2,9 +2,20 @@ from maia.pytree.typing import *
 
 from .graph.algo  import Step, depth_first_search
 from .graph.utils import list_iterator_type
-from maia.pytree.algo_utils import set_intersection_difference
 
 __all__ = ['scan', 'visit', 'Step']
+
+def _get_children(n):
+  # A twisted implem of get_children that return [] if input is None
+  return n[2] if n is not None else []
+
+def _get_child_from_name(node, name):
+  # A twisted implem of get_child_from_name that return None if input is None
+  try:
+    child = next(n for n in _get_children(node) if n[0] == name)
+  except StopIteration:
+    child = None
+  return child
 
 class PytreeAdaptor:
   # Expose the graph interface for a CGNSTree
@@ -16,35 +27,30 @@ class PytreeAdaptor:
   def root_iterator(self) -> list_iterator_type:
     return iter([self.tree])
 
-def _get_sorted_children(n):
-  return sorted(n[2]) if n is not None else []
-def _value_or_none(l, i):
-  return l[i] if i < len(l) else None
-def _zip_lists(ls):
-  assert len(ls) == 2
 
-  inter_x, diff_x, inter_y, diff_y = set_intersection_difference(ls[0],
-                                                                 ls[1], 
-                                                                 lambda x,y: x[0] < y[0])
 
-  sz = max(len(diff_x),len(diff_y))
+def _zip_children_from_name(nodes):
+  # Zip the children of input nodes, according to their name
+  # If a child exist in one (or more) nodes, but not all, None is used
+  # for node who don't have this child
+  child_names = [{child[0] for child in _get_children(node)} for node in nodes]
+  all_names = set.union(*child_names) 
 
-  zipped = [[inter_x[i], inter_y[i]] for i in range(len(inter_x))] \
-         + [[_value_or_none(diff_x, i), _value_or_none(diff_y, i)] for i in range(sz)]
-
+  zipped = [[_get_child_from_name(node, name) for node in nodes] \
+            for name in sorted(all_names)]
   return zipped
 
-class PytreeZipAdaptor:
-  def __init__(self, ts):
-    self.ts = ts
 
-  def child_iterator(self, ns) -> list_iterator_type:
-    sorted_ns = [_get_sorted_children(n) for n in ns]
-    cs = _zip_lists(sorted_ns)
+class PytreeZipAdaptor:
+  def __init__(self, trees):
+    self.trees = trees
+
+  def child_iterator(self, nodes) -> list_iterator_type:
+    cs = _zip_children_from_name(nodes)
     return iter(cs)
 
   def root_iterator(self) -> list_iterator_type:
-    return iter([self.ts])
+    return iter([self.trees])
 
 
 def cgns_depth_first_search(tree, visitor, depth='node'):
@@ -175,3 +181,7 @@ def visit(tree:CGNSTree, visitor, ancestors:bool=False):
   cgns_depth_first_search(tree, visitor, depth)
 
 
+def visit_zipped(trees, visitor, ancestors:bool=False):
+  # Not yet in doc
+  depth = 'all' if ancestors else 'node'
+  zip_depth_first_search(trees, visitor, depth)
