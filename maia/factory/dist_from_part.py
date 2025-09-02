@@ -15,10 +15,9 @@ from maia.transfer.part_to_dist import index_exchange     as IPTB
 from maia.transfer.part_to_dist import tree_api           as part_to_dist
 from maia.utils                 import py_utils, par_utils, np_utils
 from maia                       import npy_pdm_gnum_dtype as pdm_dtype
-from maia.pytree.graph.algo import step
 
 class UDDCollector:
-  """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
+  """ A visitor for PT.visit that collect the paths of UserDefinedData nodes """
   def __init__(self) -> None:
     self.ud_paths:List[str] = list()
   def pre(self, nodes: List[CGNSTree]):
@@ -33,7 +32,7 @@ class UDDCollector:
         elif PT.get_label(node) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
           path = PT.utils.update_path_elt(path,i, lambda s: MT.conv.get_split_prefix(s))
       self.ud_paths.append(PT.utils.path_tail(path, 1))
-      return step.over # Stop exploring this level after search
+      return PT.Step.over # Stop exploring this level after search
 
 def discover_nodes_from_matching(dist_node: CGNSTree,
                                  part_nodes: Sequence[CGNSTree],
@@ -595,7 +594,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     labels = [label for label in part_to_dist.LABELS if label in data_transfer]
   # UserDefinedData
   if 'UserDefinedData_t' in data_transfer or 'ALL' in data_transfer:
-    PT.graph.cgns.depth_first_search(part_tree, v := UDDCollector(), depth='all')
+    PT.visit(part_tree, v := UDDCollector(), ancestors=True)
     # Propagate paths across ranks
     ud_paths = sorted(set([path for rank_paths in comm.allgather(v.ud_paths) for path in rank_paths]))
   else:
