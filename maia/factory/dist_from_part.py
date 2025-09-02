@@ -32,7 +32,7 @@ class UDDCollector:
         elif PT.get_label(node) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
           path = PT.utils.update_path_elt(path,i, lambda s: MT.conv.get_split_prefix(s))
       self.ud_paths.append(PT.utils.path_tail(path, 1))
-      return PT.Step.over # Stop exploring this level after search
+      return PT.Step.OVER # Stop exploring this level after search
 
 def discover_nodes_from_matching(dist_node: CGNSTree,
                                  part_nodes: Sequence[CGNSTree],

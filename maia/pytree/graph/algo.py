@@ -1,15 +1,15 @@
 from enum import Enum
 from maia.pytree.graph.algo_interface import dfs_interface_report
 
-class step(Enum):
+class Step(Enum):
   """ Information on what to do when a node is visited by a tree traversal algorithm:
-    - `step.into`: go down and visit children
-    - `step.over`: do not visit children and continue with the next sibling
-    - `step.out`: stop the traversal
+    - `Step.INTO`: go down and visit children
+    - `Step.OVER`: do not visit children and continue with the next sibling
+    - `Step.OUT`: stop the traversal
   """
-  into = 0
-  over = 1
-  out = 2
+  INTO = 0
+  OVER = 1
+  OUT = 2
 
 
 class graph_traversal_stack:
@@ -100,11 +100,11 @@ def _depth_first_search_stack(S, f):
   while not S.is_done():
     if not S.level_is_done():
       next_step = f.pre(S.nodes())
-      if next_step == step.out: # stop
+      if next_step == Step.OUT: # stop
         return False
-      if next_step == step.over: # prune
+      if next_step == Step.OVER: # prune
         S.push_done_level()
-      if next_step is None or next_step == step.into: # go down
+      if next_step is None or next_step == Step.INTO: # go down
         S.push_level()
         if not S.level_is_done():
           f.down(S.nodes())
@@ -203,7 +203,7 @@ def depth_first_search(g, f, depth='node'):
       - If `depth=='all', passes the list of all the ancestors as the only argument to `pre` and `post`
 
   - `pre` is called on a node when it is traversed for the first time (going from parents to children).
-  - `pre` can return a `step` to tell the algorithm to step over the node or to stop. By default will continue the search. See :class:`step` for more info.
+  - `pre` can return a `Step` to tell the algorithm to step over the node or to stop. By default will continue the search. See :class:`Step` for more info.
   - `post` works as `pre` but is called once all the children of the node have been visited.
   - `up` and `down` are called once the algorithm is moving from a parent to its child or inversely.
   - `down` takes the parent then the child as its arguments.

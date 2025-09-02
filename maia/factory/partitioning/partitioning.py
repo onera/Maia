@@ -29,7 +29,7 @@ class UDDCollector:
     last = nodes[-1]
     if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) != ':CGNS#Distribution':
       self.ud_paths.append(PT.utils.path_tail(path, 1))
-      return PT.Step.over # Stop exploring this level after search
+      return PT.Step.OVER # Stop exploring this level after search
 
 def set_default(dist_tree, comm):
 

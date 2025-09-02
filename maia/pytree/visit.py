@@ -1,7 +1,7 @@
 from maia.pytree.typing import *
 
 from .graph.cgns import depth_first_search
-from .graph.algo import step as Step
+from .graph.algo import Step
 
 __all__ = ['scan', 'visit', 'Step']
 
@@ -82,11 +82,11 @@ def visit(tree:CGNSTree, visitor, ancestors:bool=False):
   At each level, the return value of ``pre`` function can be used to decide how to continue the recursion::
 
     class Step(Enum):
-      into = 0 # continue normally: go down in children of current node
-      over = 1 # stop current level: do not visit children, go up and continue
-      out  = 2 # stop visit process: rewind to top level and exit
+      INTO = 0 # continue normally: go down in children of current node
+      OVER = 1 # stop current level: do not visit children, go up and continue
+      OUT  = 2 # stop visit process: rewind to top level and exit
 
-  If ``pre`` returns nothing, the recusion continues normally, which is equivalent to ``Step.into``.
+  If ``pre`` returns nothing, the recusion continues normally, which is equivalent to ``Step.INTO``.
 
   Args:
     tree (CGNSTree): Input tree
@@ -111,7 +111,7 @@ def visit(tree:CGNSTree, visitor, ancestors:bool=False):
     ...     last = nodes[-1]
     ...     PT.set_children(last, sorted(PT.get_children(last)))
     ...     if len(nodes) >= self.level:
-    ...       return PT.Step.over
+    ...       return PT.Step.OVER
     >>> PT.visit(tree, TreeSorter(2), ancestors=True)
     >>> PT.print_tree(tree)
     CGNSTree CGNSTree_t 

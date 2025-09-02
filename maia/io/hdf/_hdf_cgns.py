@@ -402,7 +402,7 @@ def load_tree_links(filename):
         path = '/'.join([self.attr_reader.read_str_33(id, b'name') for id in node_ids[1:]])
         link.append(path) #Current path
         self.links.append(link)
-        return algo.step.over
+        return algo.Step.OVER
 
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
   rootid = h5g.open(fid, b'/')

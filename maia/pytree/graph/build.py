@@ -53,7 +53,7 @@ def depth_first_build(g, node_constructor, pre=None):
         `to_children` is a list of the previous sub-graphs of `g_out`
         `to_node` is the new graph node that is to be created.
 
-    pre: tells the algorithm what to do on each node traversed (step.into, step.over, step.out)
+    pre: tells the algorithm what to do on each node traversed (Step.INTO, Step.OVER, Step.OUT)
         More precisely, `pre` is a function of argument `node` and returning a `graph.algo.step` value.
   """
   ts = depth_first_build_trees(g, node_constructor, pre)

@@ -1,5 +1,5 @@
 from maia.pytree.graph.build import depth_first_build_trees, depth_first_build
-from maia.pytree.graph.algo import step
+from maia.pytree.graph.algo import Step
 
 from maia.pytree.graph.f_graph import VALUE, rooted_f_graph_example, multiply_rooted_f_graph_example
 
@@ -55,10 +55,10 @@ def test_depth_first_build():
   # 2. Exit early
   def step_over_2_and_out_10(node):
     if node[VALUE]==2:
-      return step.over
+      return Step.OVER
     if node[VALUE]==10:
-      return step.out
-    return step.into
+      return Step.OUT
+    return Step.INTO
 
   s = depth_first_build(g, indented_tree_ctor, pre=step_over_2_and_out_10)
 

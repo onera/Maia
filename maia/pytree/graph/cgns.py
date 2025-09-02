@@ -1,6 +1,6 @@
 import maia.pytree as PT
 from maia.pytree.graph import algo
-from maia.pytree.graph.algo import step
+from maia.pytree.graph.algo import Step
 from maia.pytree.algo_utils import set_intersection_difference
 from maia.pytree.graph.utils import list_iterator_type
 
