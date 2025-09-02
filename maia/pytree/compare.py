@@ -3,7 +3,7 @@ import numpy as np
 from maia.pytree.typing import *
 
 import maia.pytree as PT
-from maia.pytree.graph.cgns import Step, zip_depth_first_search
+from maia.pytree.visit import Step, zip_depth_first_search
 
 __all__ = ['is_same_node', 'is_same_tree', 'diff_tree']
 
