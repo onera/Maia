@@ -296,7 +296,7 @@ def test_split_structured(comm):
   elif comm.Get_rank() == 1:
     expected_range = np.array([[5,7], [1,7], [6,10]], order='F')
   assert PT.get_label(dist_cell_size) == 'DataArray_t' and (PT.get_value(dist_cell_size) == [10,10,10]).all()
-  assert PT.get_label(dist_cell_range) == 'IndexRange_t' and (PT.get_value(dist_cell_range) == expected_range).all()
+  assert PT.get_label(dist_cell_range) == 'DataArray_t' and (PT.get_value(dist_cell_range) == expected_range).all()
 
   bcds_n_l = PT.get_nodes_from_name(part_tree, 'BCDataSet')
   sum_size_bcds = 0

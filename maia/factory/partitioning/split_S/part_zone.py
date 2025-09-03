@@ -525,7 +525,7 @@ def part_s_zone(d_zone, d_zone_weights, comm, g_rank):
     gn_node = MT.new_GlobalNumbering(entities_gnum_dict, parent=part_zone)
     _cell_bounds = np.copy(cell_bounds, order='F')
     _cell_bounds[:,1] -= 1
-    PT.new_node("CellRange", "IndexRange_t", _cell_bounds, parent=gn_node)
+    PT.new_DataArray("CellRange", _cell_bounds, parent=gn_node)
     PT.new_DataArray("CellSize", PT.Zone.CellSize(d_zone), parent=gn_node)
 
     create_bcs(d_zone, part_zone, cell_bounds[:,0])

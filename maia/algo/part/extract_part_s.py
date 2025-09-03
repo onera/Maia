@@ -261,7 +261,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
         face_lntogn = compute_face_gnum(dist_cell_per_dir, cell_window)
         
         gn_node = MT.find_GlobalNumbering(extract_zone)
-        PT.new_node("CellRange", "IndexRange_t", cell_range, parent=gn_node)
+        PT.new_DataArray("CellRange", cell_range, parent=gn_node)
         PT.new_DataArray("CellSize", cell_size[:,1], parent=gn_node)
         PT.new_DataArray("Face", face_lntogn, parent=gn_node)
   else:
