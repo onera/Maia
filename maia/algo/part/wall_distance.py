@@ -293,13 +293,13 @@ class WallDistance:
 
       # Wall distance
       wall_dist = np.sqrt(fields['ClosestEltDistance'])
-      PT.new_DataArray('Distance', value=wall_dist.reshape(shape,order='F'), parent=fs_node)
+      PT.update_child(fs_node, 'Distance', 'DataArray_t', value=wall_dist.reshape(shape,order='F'))
 
       # Closest projected element
       closest_elt_proj = np.copy(fields['ClosestEltProjected'])
-      PT.new_DataArray('ClosestEltProjectedX', closest_elt_proj[0::3].reshape(shape,order='F'), parent=fs_node)
-      PT.new_DataArray('ClosestEltProjectedY', closest_elt_proj[1::3].reshape(shape,order='F'), parent=fs_node)
-      PT.new_DataArray('ClosestEltProjectedZ', closest_elt_proj[2::3].reshape(shape,order='F'), parent=fs_node)
+      PT.update_child(fs_node, 'ClosestEltProjectedX', 'DataArray_t', closest_elt_proj[0::3].reshape(shape,order='F'))
+      PT.update_child(fs_node, 'ClosestEltProjectedY', 'DataArray_t', closest_elt_proj[1::3].reshape(shape,order='F'))
+      PT.update_child(fs_node, 'ClosestEltProjectedZ', 'DataArray_t', closest_elt_proj[2::3].reshape(shape,order='F'))
 
       # Closest gnum element (face)
       closest_elt_gnum = np.copy(fields['ClosestEltGnum'])
@@ -318,7 +318,7 @@ class WallDistance:
           domain_id = np.concatenate([domain_id, domain_id_loc])
           nb_dom_prev += len(group)
         closest_surf_domain = domain_id[closest_surf_domain]
-      PT.new_DataArray("ClosestEltDomId", value=closest_surf_domain.reshape(shape,order='F'), parent=fs_node)
+      PT.update_child(fs_node, "ClosestEltDomId", "DataArray_t", value=closest_surf_domain.reshape(shape,order='F'))
 
       # Reput closest face gnum in shifted numbering, but ignoring periodic patches
       n_face_bnd_orig_tot_idx = np.array(self._n_face_orig_bnd_tot_idx)
@@ -435,7 +435,7 @@ class WallDistance:
       for part_zone in part_zones:
         fs_node = PT.get_child_from_name(part_zone, self.out_fs_n)
         shape = PT.get_child_from_name(fs_node, 'Distance')[1].shape
-        PT.new_DataArray("ClosestEltGnum", value=closest_parent_face[i_part].reshape(shape, order='F'), parent=fs_node)
+        PT.update_child(fs_node, "ClosestEltGnum", "DataArray_t", value=closest_parent_face[i_part].reshape(shape, order='F'))
         i_part += 1
 
     # Free unnecessary numpy
@@ -517,16 +517,18 @@ def compute_wall_distance(part_tree: CGNSPartTree,
       fs_node = _create_output_container(part_zone, point_cloud, out_fs_name)
       shape = _get_output_shape(part_zone, fs_node)
 
-      PT.new_DataArray("ClosestEltGnum",       np.full(shape, -1, dtype=pdm_dtype, order='F'), parent=fs_node)
-      PT.new_DataArray("ClosestEltDomId",      np.full(shape, -1, dtype=pdm_dtype, order='F'), parent=fs_node)
-      PT.new_DataArray('TurbulentDistance',    np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
-      PT.new_DataArray('ClosestEltProjectedX', np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
-      PT.new_DataArray('ClosestEltProjectedY', np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
-      PT.new_DataArray('ClosestEltProjectedZ', np.full(shape, np.inf, dtype=float, order='F'), parent=fs_node)
+      PT.update_child(fs_node, "ClosestEltGnum",       "DataArray_t", np.full(shape, -1, dtype=pdm_dtype, order='F'))
+      PT.update_child(fs_node, "ClosestEltDomId",      "DataArray_t", np.full(shape, -1, dtype=pdm_dtype, order='F'))
+      PT.update_child(fs_node, 'TurbulentDistance',    "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
+      PT.update_child(fs_node, 'ClosestEltProjectedX', "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
+      PT.update_child(fs_node, 'ClosestEltProjectedY', "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
+      PT.update_child(fs_node, 'ClosestEltProjectedZ', "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
       
   else:
     mlog.info(f"Wall distance computed ({end-start:.2f} s)")
     for zone in PT.iter_all_Zone_t(part_tree): #Rename Distance -> TurbulentDistance
-      node = PT.find_node_from_path(zone, out_fs_name+"/Distance")
+      container = PT.find_child_from_name(zone, out_fs_name)
+      PT.rm_children_from_name(container, 'TurbulenceDistance') # Cleanup
+      node = PT.find_child_from_name(container, "Distance")
       PT.set_name(node, 'TurbulentDistance')
 

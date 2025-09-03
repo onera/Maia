@@ -318,6 +318,7 @@ def test_walldistance_2d_S(is_perio, comm):
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
   WD.compute_wall_distance(ptree, comm)
+  WD.compute_wall_distance(ptree, comm) # Double compute should work
   maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
   if comm.Get_rank() == 0:
     expected_wd = np.array([7,5,3,1,  7,5]) / 8.
