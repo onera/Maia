@@ -103,11 +103,11 @@ class CGNSChecker:
                 raised.append(rule_id)
                 out = OK
             if out != OK:
-                path = '/'.join(n[0] for n in nodes)
+                path = '/' if len(nodes) == 1 else '/'.join(n[0] for n in nodes)[8:]
                 color = Colors.FAIL if rule_id.startswith('E') else Colors.WARNING
                 print(f"{path}: {color}{rule_id}{Colors.ENDC} {out}")
         if len(raised) > 0:
-            path = '/'.join(n[0] for n in nodes)
+            path = '/' if len(nodes) == 1 else '/'.join(n[0] for n in nodes)[8:]
             print(f"{path}: {Colors.HEADER}Unable to check {','.join(raised)} due to other errors{Colors.ENDC}")
 
 

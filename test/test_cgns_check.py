@@ -97,11 +97,11 @@ def test_simple_check(tmp_path):
 
   out = subprocess.run(['maia_cgns_check', filepath], capture_output=True)
   assert out.stdout.decode() == f"""\
-CGNSTree/Base/Zone_t: {RED}E214{ENDC} Missing value for Zone_t node, which should of kind I
-CGNSTree/Base/Zone_t: {RED}E226{ENDC} Missing required child of label ZoneType_t
-CGNSTree/Base/Zone_t: {PURPLE}Unable to check E233,E216,E231,E235 due to other errors{ENDC}
-CGNSTree/Base/Zone_t/ZoneBC/BC: {RED}E227{ENDC} Exactly one child among ('PointList', 'PointRange') is required, but none were found
-CGNSTree/Base/Zone_t/ZoneBC/BC/GridLocation: {PURPLE}Unable to check E241 due to other errors{ENDC}
+/Base/Zone_t: {RED}E214{ENDC} Missing value for Zone_t node, which should of kind I
+/Base/Zone_t: {RED}E226{ENDC} Missing required child of label ZoneType_t
+/Base/Zone_t: {PURPLE}Unable to check E233,E216,E231,E235 due to other errors{ENDC}
+/Base/Zone_t/ZoneBC/BC: {RED}E227{ENDC} Exactly one child among ('PointList', 'PointRange') is required, but none were found
+/Base/Zone_t/ZoneBC/BC/GridLocation: {PURPLE}Unable to check E241 due to other errors{ENDC}
 """
 
 
