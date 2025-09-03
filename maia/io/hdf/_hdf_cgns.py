@@ -253,6 +253,7 @@ def write_link(gid, node_name, target_file, target_node):
   attr_writter.write_str_33(node_id, b'name',  node_name)
   attr_writter.write_str_33(node_id, b'label', '')
   attr_writter.write_str_3 (node_id, b'type',  'LK')
+  attr_writter.write_flag(node_id) 
 
   write_data(node_id, np.array(tuple(target_file+'\0'), 'S1'), b' file')
   write_data(node_id, np.array(tuple(target_node+'\0'), 'S1'), b' path')

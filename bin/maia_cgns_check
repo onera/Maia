@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+
+import argparse
+from pathlib import Path
+
+import warnings
+warnings.simplefilter("ignore", UserWarning, lineno=493) # Disable h5py/np interaction warning
+
+def split(s):
+    return [sub for sub in s.split(',') if len(sub) > 0]
+
+def parse_args():
+    # Pre parser just to detect if mode is explain
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument('--explain', type=str)
+    pre_args, _ = pre_parser.parse_known_args()
+
+    # True parser, with options depending of --explain presence
+    parser = argparse.ArgumentParser(description="Reports errors in a CGNS database")
+
+    if pre_args.explain is None:
+        # Analyse mode --> filename is mandatory, ignore list is optionnal
+        parser.add_argument('filename', metavar='cgns_file', type=Path, help="file to analyse")
+        parser.add_argument('--ignore', type=str, default='', help="disable the provided codes (comma separated list)")
+        parser.add_argument('--exclude', type=str, default='', help="skip analysis of the provided node")
+    else:
+        # Explain mode --> nothing needed
+        pass
+
+    parser.add_argument('--explain', type=str, help="explain the specified error code")
+
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    if args.explain is not None:
+        # Explain mode
+        from _cgns_check.explain import explain
+        explain(args)
+
+    else:
+        # Analyse mode
+        from _cgns_check.check import check
+        args.exclude = split(args.exclude)
+        args.ignore  = split(args.ignore)
+        check(args)
