@@ -26,7 +26,7 @@ class FakeArray:
         self.dtype = dtype
         self.size = math.prod(shape)
 
-def lazy_load_cgns(filename:Path) -> CGNSTree:
+def lazy_load_cgns(filename:Path, exclude:List[str]) -> CGNSTree:
     # Here we rewritted a CGNS reader to prevent crashes in the following cases:
     # - if b_kind is not MT but ' data' does not exists (use MT value)
     # - if a link can not be followed (remove node)
@@ -81,7 +81,7 @@ def lazy_load_cgns(filename:Path) -> CGNSTree:
 
     with h5py.File(filename) as f:
         from maia.pytree.graph.build import depth_first_build
-        t = depth_first_build(HDF5GraphAdaptor(f['/']), tree_creator)
+        t = depth_first_build(HDF5GraphAdaptor(f['/'], exclude), tree_creator)
         # Update root node name / label
         t[0] = 'CGNSTree'
         t[3] = 'CGNSTree_t'
@@ -114,8 +114,9 @@ class CGNSChecker:
 class HDF5GraphAdaptor:
     """ A class exposing the 'graph interface' for hdf files in order
     to use graph iterators """
-    def __init__(self, root):
+    def __init__(self, root, exclude_l=[]):
         self.root = root
+        self.exclude_l = exclude_l
     def root_iterator(self) -> PTG.utils.list_iterator:
         return iter([self.root])
     def child_iterator(self, node) -> PTG.utils.list_iterator:
@@ -123,7 +124,7 @@ class HDF5GraphAdaptor:
         # Otherwise, no exception is raised because .values() returns None for
         # 'broken' links, and other nodes are still visited.
         # This is exactly what we want; we will report 'broken' links during checks
-        return (g for g in node.values() if isinstance(g, h5py.Group))
+        return (g for g in node.values() if (isinstance(g, h5py.Group) and g.name not in self.exclude_l))
 
 class HDFChecker:
     """ Graph visitor used to collect link information """
@@ -163,7 +164,7 @@ class HDFChecker:
         if not is_link:
             self.names.pop()
 
-def run_stage_1(filename:Path, ignore_list:List[str]) -> bool:
+def run_stage_1(filename:Path, ignore_list:List[str], exclude_list:List[str]) -> bool:
 
     from .rules1 import FILE_RULES, GROUP_RULES
     # First pass to test file rules (errors are fatal)
@@ -177,15 +178,15 @@ def run_stage_1(filename:Path, ignore_list:List[str]) -> bool:
     # Now test hdf rules using DFS traversal
     rules = {key:val for key, val in GROUP_RULES.items() if key not in ignore_list}
     with h5py.File(filename) as f:
-        PTG.algo.depth_first_search(HDF5GraphAdaptor(f['/']), HDFChecker(rules))
+        PTG.algo.depth_first_search(HDF5GraphAdaptor(f['/'], exclude_list), HDFChecker(rules))
 
     return True
 
 
-def run_stage_2(filename:Path, ignore_list:List[str]) -> bool: 
+def run_stage_2(filename:Path, ignore_list:List[str], exclude:List[str]) -> bool: 
     from .rules2 import NODE_RULES
     # Partial load of cgnsfile : heavy data are not loaded
-    tree = lazy_load_cgns(filename)
+    tree = lazy_load_cgns(filename, exclude)
     # Prepare tree visitor
     rules = {key:val for key, val in NODE_RULES.items() if key not in ignore_list}
     PTG.cgns.depth_first_search(tree, CGNSChecker(rules), depth='all')
@@ -193,13 +194,23 @@ def run_stage_2(filename:Path, ignore_list:List[str]) -> bool:
     return True
 
 def check(args):
-    ignore_list = args.ignore.split(',')
+
+    # Format exclude list to start as hdf path
+    if '/' in args.exclude:
+        return
+    for i,path in enumerate(args.exclude):
+        if path[-1] == '/': # Remove last '/' if provided
+            path = path[:-1]
+        if path.startswith('CGNSTree'): # Remove CGNSTree if used
+            args.exclude[i] = path[8:]
+        elif path[0] != '/': # Add first '/' if missing
+            args.exclude[i] = '/' + path
 
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
 
     if comm.rank == 0:
-        st = run_stage_1(args.filename, ignore_list)
+        st = run_stage_1(args.filename, args.ignore, args.exclude)
     else:
         st = False
     st = comm.bcast(st, root=0)
@@ -209,4 +220,4 @@ def check(args):
     # For now stage 2 is serial also // We should distribute
     # checks zones over ranks
     if comm.rank == 0:
-        st = run_stage_2(args.filename, ignore_list)
+        st = run_stage_2(args.filename, args.ignore, args.exclude)

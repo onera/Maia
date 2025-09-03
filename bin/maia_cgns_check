@@ -6,6 +6,9 @@ from pathlib import Path
 import warnings
 warnings.simplefilter("ignore", UserWarning, lineno=493) # Disable h5py/np interaction warning
 
+def split(s):
+    return [sub for sub in s.split(',') if len(sub) > 0]
+
 def parse_args():
     # Pre parser just to detect if mode is explain
     pre_parser = argparse.ArgumentParser(add_help=False)
@@ -19,6 +22,7 @@ def parse_args():
         # Analyse mode --> filename is mandatory, ignore list is optionnal
         parser.add_argument('filename', metavar='cgns_file', type=Path, help="file to analyse")
         parser.add_argument('--ignore', type=str, default='', help="disable the provided codes (comma separated list)")
+        parser.add_argument('--exclude', type=str, default='', help="skip analysis of the provided node")
     else:
         # Explain mode --> nothing needed
         pass
@@ -38,4 +42,6 @@ if __name__ == "__main__":
     else:
         # Analyse mode
         from _cgns_check.check import check
+        args.exclude = split(args.exclude)
+        args.ignore  = split(args.ignore)
         check(args)
