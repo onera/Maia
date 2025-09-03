@@ -2,6 +2,7 @@ import pytest
 import h5py
 import subprocess
 import re
+import os
 
 import maia
 import maia.pytree as PT
@@ -14,6 +15,17 @@ YELLOW = '\033[93m'
 CYAN = '\033[36m'
 
 
+def subprocess_run(*args, **kwargs):
+  """ If tests are launched with mpirun, we have a strange crash
+  because maia_cgns_check try to initialize MPI
+  This function remove MPI env variables to simulate a sequential execution
+  """
+  env = os.environ.copy()
+  for var in list(env.keys()):
+    if any(var.startswith(s) for s in ["MPI_", "PMI_", "PMIX_", "I_MPI"]):
+      del env[var]
+  return subprocess.run(*args, **kwargs, env=env)
+
 def strip_ansi_sequences(text):
   """
   Removes ANSI escape sequences from a given string.
@@ -21,29 +33,29 @@ def strip_ansi_sequences(text):
   return ANSI_ESCAPE.sub('', text)
 
 def test_usage():
-  out = subprocess.run(['maia_cgns_check'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check'], capture_output=True)
   assert out.returncode != 0
   assert b'the following arguments are required: cgns_file' in out.stderr
 
   # Can not use explain with filename
-  out = subprocess.run(['maia_cgns_check', 'out.cgns', '--explain', 'E212'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', 'out.cgns', '--explain', 'E212'], capture_output=True)
   assert out.returncode != 0
   assert b'maia_cgns_check: error: unrecognized arguments: out.cgns' in out.stderr
 
 
 def test_explain():
-  out = subprocess.run(['maia_cgns_check', '--explain', 'E212'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', '--explain', 'E212'], capture_output=True)
   assert out.stdout.startswith(b'E212 - Invalid label\n\n')
 
   # Code 'E' can be ommit
-  out = subprocess.run(['maia_cgns_check', '--explain', '212'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', '--explain', '212'], capture_output=True)
   assert out.stdout.startswith(b'E212 - Invalid label\n\n')
 
-  out = subprocess.run(['maia_cgns_check', '--explain', 'E512'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', '--explain', 'E512'], capture_output=True)
   assert out.stdout == b'Rule E512 is not a valid rule\n'
 
 def test_fatal(tmp_path):
-  out = subprocess.run(['maia_cgns_check', tmp_path / 'missing.cgns'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', tmp_path / 'missing.cgns'], capture_output=True)
   assert out.returncode != 0
   assert f'Execution aborted due to {RED}fatal error' in out.stdout.decode()
 
@@ -80,7 +92,7 @@ def test_stage1_links(tmp_path):
   """)
   maia.io.write_tree(tree, tmp_path / 'main.cgns', links=[['', './FIELDS/fields.cgns', 'TempFields/Fields@2', 'Base/Zone/FlowSolution']])
 
-  out = subprocess.run(['maia_cgns_check', tmp_path/'main.cgns'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', tmp_path/'main.cgns'], capture_output=True)
   assert out.stdout.decode() == \
     f"/Base/Zone/FlowSolution {CYAN}(-> FIELDS/fields.cgns::/TempFields/Fields@2){ENDC}: {YELLOW}W115{ENDC} Unexpected HDF5 attributes: {{'unexpected'}} \n"
 
@@ -95,7 +107,7 @@ def test_simple_check(tmp_path):
   filepath = tmp_path / 'test.cgns'
   maia.io.write_tree(tree, filepath)
 
-  out = subprocess.run(['maia_cgns_check', filepath], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', filepath], capture_output=True)
   assert out.stdout.decode() == f"""\
 /Base/Zone_t: {RED}E214{ENDC} Missing value for Zone_t node, which should of kind I
 /Base/Zone_t: {RED}E226{ENDC} Missing required child of label ZoneType_t
@@ -112,9 +124,9 @@ def test_ignore(tmp_path):
   filepath = tmp_path / 'test.cgns'
   maia.io.write_tree(tree, filepath)
 
-  out = subprocess.run(['maia_cgns_check', filepath], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', filepath], capture_output=True)
   assert b'Child of label Descriptor_t is not allowed under a CGNSTree_t parent' in out.stdout
 
   # Error is ignored
-  out = subprocess.run(['maia_cgns_check', filepath, '--ignore', 'E222'], capture_output=True)
+  out = subprocess_run(['maia_cgns_check', filepath, '--ignore', 'E222'], capture_output=True)
   assert out.stdout == b''

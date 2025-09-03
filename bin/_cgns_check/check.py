@@ -36,9 +36,10 @@ def lazy_load_cgns(filename:Path, exclude:List[str]) -> CGNSTree:
         # hdf_node is the current node from graph 1 (=hdf graph)
         # py_children is the list of already build children for graph 2 (pytree)
 
+        attrs = hdf_node.attrs
         name = hdf_node.name.split('/')[-1]
-        label = hdf_node.attrs['label'].decode()
-        kind = hdf_node.attrs['type']
+        label = attrs['label'].decode() if 'label' in attrs else ''
+        kind = attrs['type']            if 'type'  in attrs else 'MT'
         value = None
 
         if kind == b'LK':
