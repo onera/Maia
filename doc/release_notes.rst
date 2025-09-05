@@ -24,6 +24,7 @@ Development version
 - maia_poly_old_to_new/maia_poly_new_to_old: prevent overflows when converting large meshes
 - convert_mixed_to_elements: correct BC conversion on meshes having multiple MIXED nodes
 - convert_s_to_u: fix jmax boundary faces for standard elements output
+- connect_1to1_families: prevent internal faces to be wrongly report as unmatched
 
 🚧 API change
 ^^^^^^^^^^^^^

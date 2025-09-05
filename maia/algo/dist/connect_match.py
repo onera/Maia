@@ -243,7 +243,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   clouds = []
 
   for cloud_path in clouds_path:
-    convert_subset_as_facelist(dist_tree, cloud_path, comm) # Only ngon
+    convert_subset_as_facelist(dist_tree, cloud_path, comm, True) # Only ngon
 
   cached_dmesh:Dict[CGNSPath, Any] = {} #Use caching to avoid translate zone->dmesh 2 times
   for cloud_path in subset_paths[0]:

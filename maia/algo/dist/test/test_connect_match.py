@@ -12,9 +12,12 @@ from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.factory.dcube_generator import dcube_generate, dcube_struct_generate
 
 from maia.utils import par_utils
+from maia.utils import vstride as vs
+
+from maia.algo.dist import fix_orient
+from maia.algo.dist import redistribute
 
 from maia.algo.dist import connect_match
-from maia.algo.dist import redistribute
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 
@@ -235,3 +238,102 @@ def test_periodic_simple(mesh_kind, comm):         #    __
     assert (PT.get_node_from_predicates(zone, ['Xmin_0', 'PointList'])[1] == [[17,18,19,20]]).all()
     assert (PT.get_node_from_predicates(zone, ['Xmax_0', 'PointList'])[1] == [[21,22,23,24]]).all()
 
+
+@pytest_parallel.mark.parallel(1)
+def test_wrong_internal_faces(comm):
+  # This test comes from issue #208 where the configuration is a small
+  # cube embedded in a shallow cube. Some internal faces in the small
+  # cube have all their vertices in the boundary vertex list, without
+  # beeig themselves a boundary.
+  # Internal faces were wrongly reported as unmatched faces
+
+  # This test creates a similar configuration
+
+
+  # Step 1. Create 3x1x3 mesh using extrusion + duplication
+  # Middle cell has to be splitted in 2 tris to have conformity
+  ftree = PT.yaml.to_cgns_tree("""
+  External Zone_t [[8,4,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t R8 [0,1,2,3,0,1,2,3]:
+      CoordinateY DataArray_t R8 [0,0,0,0,0,0,0,0]:
+      CoordinateZ DataArray_t R8 [0,0,0,0,1,1,1,1]:
+    QUAD Elements_t [7, 0]:
+      ElementRange IndexRange_t [1,2]:
+      ElementConnectivity DataArray_t [1,2,6,5, 3,4,8,7]:
+    TRI Elements_t [5, 0]:
+      ElementRange IndexRange_t [3,4]:
+      ElementConnectivity DataArray_t [2,3,6, 3,7,6]:
+  """)
+  tree = maia.factory.full_to_dist_tree(ftree, comm)
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  maia.algo.dist.extrude(tree, (0,1,0), comm)
+  jn1path = 'Base/External/ZoneGridConnectivity/InitialSurface'
+  jn2path = 'Base/External/ZoneGridConnectivity/ExtrudedSurface'
+  maia.algo.dist.duplicate_from_periodic_jns(tree, ['Base/External'], ([jn1path], [jn2path]), 2, comm)
+  zone_paths = [f"Base/{PT.get_name(z)}" for z in PT.get_all_Zone_t(tree)]
+  maia.algo.dist.merge_zones(tree, zone_paths, comm, output_path='Base/External')
+  PT.rm_nodes_from_label(tree, 'ZoneGridConnectivity_t')
+  # Step 2. Remove middle cell (7&8) to create a hole (go back to fulltree)
+  # Also remove faces that no longer exist (21, 25 & 29)
+  tree = maia.factory.dist_to_full_tree(tree, comm)
+  zone = PT.find_node_from_label(tree, 'Zone_t')
+  zval = PT.get_np_value(zone)
+  maia.algo.pe_to_nface(zone, None, True)
+  nf = PT.Zone.NFaceNode(zone)
+  ng = PT.Zone.NGonNode(zone)
+  face_vtx = MT.Element.connectivity(ng)
+  face_vtx = vs.delete(face_vtx, [20,24,28])
+  cell_face = MT.Element.connectivity(nf)
+  cell_face = vs.delete(cell_face, [6,7])
+  # ! We need to shift cell->face values because we removed some faces
+  offset = np.zeros(cell_face.dsize, int)
+  for val in [21,25,29]:
+      offset[np.abs(cell_face.values) > val] += 1
+  new_val = np.sign(cell_face.values) * (np.abs(cell_face.values) - offset)
+  cell_face.values[:] = new_val
+  PT.rm_nodes_from_label(zone, 'Elements_t')
+  PT.new_NGonElements(erange=[1,46], eso=face_vtx.displs, ec=face_vtx.values, parent=zone)
+  PT.new_NFaceElements(erange=[47,56], eso=cell_face.displs, ec=cell_face.values, parent=zone)
+  zval[0,1] -= 2
+
+  # Store Vtx ids of interfacetree
+  vtx_list = np.array([[10,11,14,15,18,19,22,23]], zval.dtype, order='F')
+  PT.new_BC('Interface', point_list=vtx_list, family='ITRF_EXT', parent=PT.new_ZoneBC(parent=zone))
+  tree = maia.factory.full_to_dist_tree(tree, comm)
+  base = PT.get_all_CGNSBase_t(tree)[0]
+
+  fix_orient.enforce_boundary_pe_left(tree, comm)
+  fix_orient.fix_normal_orientation(tree, comm)
+
+  # Step 3. Create small (internal) zone
+  int_tree_f = PT.yaml.to_node("""
+  Internal Zone_t [[8,2,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t R8 [1,2,1,2,1,2,1,2]:
+      CoordinateY DataArray_t R8 [1,1,2,2,1,1,2,2]:
+      CoordinateZ DataArray_t R8 [0,0,0,0,1,1,1,1]:
+    NGON_n Elements_t [22, 0]:
+      ElementRange IndexRange_t [1,9]:
+      ElementStartOffset DataArray_t [0,4,8,12,16,19,22,25,28,32]:
+      ElementConnectivity DataArray_t [1,3,4,2, 5,6,8,7,  7,3,1,5, 8,6,2,4, 5,1,2, 2,6,5, 7,4,3, 7,8,4, 7,5,2,4]:
+      ParentElements DataArray_t [[10,0],[11,0],[10,0],[11,0],[10,0],[11,0],[10,0],[11,0],[10,11]]:
+    ZoneBC ZoneBC_t:
+      Interface BC_t "Null":
+        PointList IndexArray_t [[1,2,3,4,5,6,7,8]]:
+        FamilyName FamilyName_t "ITRF_INT":
+  """)
+  int_zone = maia.factory.full_to_dist_tree(int_tree_f, comm)
+  PT.add_child(base, int_zone)
+
+
+  connect_match.connect_1to1_families(tree, ('ITRF_INT', 'ITRF_EXT'), comm)
+
+  unmatched = PT.find_node_from_path(tree, 'Base/Internal/ZoneBC/Interface_unmatched')
+  pl = PT.get_np_value(PT.find_child_from_name(unmatched, 'PointList'))
+  assert (pl == [[1,2]]).all()
+  # We still have faces 1 & 2 reported as unmatched in small zone, because vtx defined
+  # boundary are not well posed. But thanks to the patch internal face (9) is not
+  # reported anymore

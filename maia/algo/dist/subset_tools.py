@@ -3,6 +3,7 @@ import numpy as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
+import maia
 from maia.transfer import protocols as EP
 from maia.utils    import np_utils, par_utils
 
@@ -32,7 +33,6 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   are returned.
   Otherwise, faces having at least one vertex in vtx_ids are returned.
   """
-  i_rank = comm.Get_rank()
   elt_distri = MT.distribution_value(elt_n, 'Element')
   delt_vtx   = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
   if PT.Element.Type(elt_n)=='NGON_n':
@@ -52,14 +52,24 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
 
   return np_utils.safe_int_cast(face_ids, vtx_ids.dtype)
 
-def convert_subset_as_facelist(dist_tree, subset_path, comm):
-  node = PT.get_node_from_path(dist_tree, subset_path)
+def convert_subset_as_facelist(dist_tree, subset_path, comm, only_bnd=False):
+  node = PT.find_node_from_path(dist_tree, subset_path)
   zone_path = PT.utils.path_head(subset_path, 2)
   if PT.Subset.GridLocation(node) == 'Vertex':
-    zone = PT.get_node_from_path(dist_tree, zone_path)
-    pl_vtx = PT.get_child_from_name(node, 'PointList')[1][0]
+    zone = PT.find_node_from_path(dist_tree, zone_path)
+    pl_vtx = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
     face_list = vtx_ids_to_face_ids(pl_vtx, PT.Zone.NGonNode(zone), comm, True)
-    PT.update_child(node, 'GridLocation', value='FaceCenter')
+
+    if only_bnd:
+      # Exclude internal faces (see #73, #208)
+      maia.algo.nface_to_pe(zone, comm)
+      ng = PT.Zone.NGonNode(zone)
+      pe = PT.get_np_value(PT.find_child_from_name(ng, 'ParentElements'))
+      offset = MT.distribution_value(ng, 'Element')[0] + 1
+      is_boundary = pe[face_list-offset, 1] == 0
+      face_list = face_list[is_boundary]
+
+    PT.update_child(node, 'GridLocation', 'GridLocation_t', value='FaceCenter')
     PT.update_child(node, 'PointList', value=face_list.reshape((1,-1), order='F'))
     MT.new_Distribution({'Index' : par_utils.dn_to_distribution(face_list.size, comm)}, node)
   elif PT.Subset.GridLocation(node) != 'FaceCenter':
