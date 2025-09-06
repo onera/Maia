@@ -384,6 +384,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
     if PT.Zone.CellDimension(part_zone) == 3:
+      parent_dim = 3
       assert dim != 1, "[MAIA] Error : dimensions 1 not yet implemented for 3D zone"
       nface = PT.Zone.NFaceNode(part_zone)
       cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset" )[1]
@@ -401,6 +402,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       edge_vtx      = None
       edge_ln_to_gn = None
     else:
+      parent_dim = 2
       assert dim < 3, "[MAIA] Error : dimensions 1 not yet implemented for 2D zone"
       cell_face_idx = None
       cell_face     = None
@@ -460,15 +462,24 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     all_ep_edge_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX) for i_part in range(n_part_out)]
   if dim >= 2:
     all_ep_face_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part, PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
-    all_ep_face_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX) for i_part in range(n_part_out)]
-    if dim == 2:
-      all_edge_data = PDM.compute_face_edge_from_face_vtx(comm,
-                                                          [t.size for t in all_ep_face_ln_to_gn],
-                                                          [t.size for t in all_ep_vtx_ln_to_gn],
-                                                          [face_vtx[0] for face_vtx in all_ep_face_vtx],
-                                                          [face_vtx[1] for face_vtx in all_ep_face_vtx],
-                                                          all_ep_face_ln_to_gn,
-                                                          all_ep_vtx_ln_to_gn)
+    if parent_dim == 3:
+      all_ep_face_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX) for i_part in range(n_part_out)]
+      if dim == 2:
+        all_edge_data = PDM.compute_face_edge_from_face_vtx(comm,
+                                                            [t.size for t in all_ep_face_ln_to_gn],
+                                                            [t.size for t in all_ep_vtx_ln_to_gn],
+                                                            [face_vtx[0] for face_vtx in all_ep_face_vtx],
+                                                            [face_vtx[1] for face_vtx in all_ep_face_vtx],
+                                                            all_ep_face_ln_to_gn,
+                                                            all_ep_vtx_ln_to_gn)
+        all_ep_edge_ln_to_gn = [all_edge_data[i_part]['np_edge_ln_to_gn']  for i_part in range(n_part_out)]
+        all_ep_edge_vtx = [all_edge_data[i_part]['np_edge_vtx']  for i_part in range(n_part_out)]
+    else:
+      all_ep_edge_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_EDGE)   for i_part in range(n_part_out)]
+      all_ep_edge_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX) for i_part in range(n_part_out)]
+      all_ep_face_edge = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE) for i_part in range(n_part_out)]
+      all_ep_face_vtx = [PDM.combine_connectivity(all_ep_face_edge[i_part][0], all_ep_face_edge[i_part][1],
+                                                  all_ep_edge_vtx[i_part][0], all_ep_edge_vtx[i_part][1]) for i_part in range(n_part_out)]
 
   # > Reconstruction du maillage de l'extract part
   extract_zones = []
@@ -521,14 +532,14 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       nb_bar = 0
       if dim == 2:
         # Retrieve edges on 2D mesh
-        edge_data = all_edge_data[i_part]
-
-        nb_bar = edge_data['np_edge_ln_to_gn'].size
+        ep_edge_ln_to_gn = all_ep_edge_ln_to_gn[i_part]
+        ep_edge_vtx = all_ep_edge_vtx[i_part]
+        nb_bar = ep_edge_ln_to_gn.size
         bar_n = PT.new_Elements('EdgeElements', 'BAR_2',
                                 erange=[1, nb_bar],
-                                econn=edge_data['np_edge_vtx'],
+                                econn=ep_edge_vtx[1],
                                 parent=extract_zone)
-        MT.new_GlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+        MT.new_GlobalNumbering({'Element' : ep_edge_ln_to_gn}, parent=bar_n)
 
       ngon_n = PT.new_NGonElements('NGonElements',
                                   erange  = [nb_bar+1, nb_bar+n_extract_face],
@@ -592,7 +603,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
   if dim >= 2:
     if dim == 2:
-      data_l = _generate_entity_graph_comm([edge_data['np_edge_ln_to_gn'] for edge_data in all_edge_data], comm, 'edge')
+      data_l = _generate_entity_graph_comm(all_ep_edge_ln_to_gn, comm, 'edge')
     elif dim ==3:
       data_l = _generate_entity_graph_comm(all_ep_face_ln_to_gn, comm, 'face')
 
