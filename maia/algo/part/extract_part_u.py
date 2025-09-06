@@ -385,7 +385,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
     if PT.Zone.CellDimension(part_zone) == 3:
       parent_dim = 3
-      assert dim != 1, "[MAIA] Error : dimensions 1 not yet implemented for 3D zone"
+      assert dim != 1, "[MAIA] Error : dimension 1 not implemented for 3D zone"
       nface = PT.Zone.NFaceNode(part_zone)
       cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset" )[1]
       cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
@@ -403,7 +403,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       edge_ln_to_gn = None
     else:
       parent_dim = 2
-      assert dim < 3, "[MAIA] Error : dimensions 1 not yet implemented for 2D zone"
+      assert dim < 3, "[MAIA] Error : dimension 3 not available for 2D zone"
       cell_face_idx = None
       cell_face     = None
       cell_ln_to_gn = None
