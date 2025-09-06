@@ -86,7 +86,7 @@ class Extractor:
       return
 
     self.dim = LOC_TO_DIM[location]
-    assert self.dim in [0,2,3], "[MAIA] Error : dimensions 1 not yet implemented"
+    assert self.dim in [0,1,2,3]
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
     if location == 'Vertex':
       if self.is_struct:
