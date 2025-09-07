@@ -47,7 +47,7 @@ def filter_vtx_coordinates(grid_coords_node, distri_vtx, requested_vtx_ids, comm
 
   part_data = EP.block_to_part(dist_data, distri_vtx, requested_vtx_ids-1, comm)
 
-  cx, cy, cz = part_data['CoordinateX'], part_data['CoordinateY'], part_data['CoordinateZ']
+  cx, cy, cz = part_data['CoordinateX'], part_data['CoordinateY'], part_data['CoordinateZ'] # cz can be undetermined
 
   return np.array([cx,cy,cz], order='F').transpose()
 
@@ -216,9 +216,9 @@ def _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx, pl_face_vtx, pld_fa
   #Apply transformation
   if PT.GridConnectivity.isperiodic(jn):
     perio_vals = PT.GridConnectivity.periodic_values(jn)
-    opp_received_coords = np_utils.transform_cart_matrix(opp_received_coords.T, 
-                                                         perio_vals.Translation, 
-                                                         perio_vals.RotationCenter, 
+    opp_received_coords = np_utils.transform_cart_matrix(opp_received_coords.T,
+                                                         perio_vals.Translation,
+                                                         perio_vals.RotationCenter,
                                                          perio_vals.RotationAngle).T
 
 
@@ -252,7 +252,7 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
   Return the array indices of theses faces
   """
   pl_face_vtx = face_ids_to_vtx_ids(pl, ngon_node, comm)
-  
+
   GI = EP.GlobalIndexer(vtx_distri, pl_face_vtx.values-1, comm)
   vtx_n_occur_full = GI.access_counts
 
@@ -265,7 +265,7 @@ def get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm):
 
   return isolated_face
 
-def generate_jn_vertex_list(dist_tree: CGNSDistTree, 
+def generate_jn_vertex_list(dist_tree: CGNSDistTree,
                             jn_path: str,
                             comm: MPIComm) -> Tuple[NDArray, NDArray, NDArray]:
   """
@@ -276,19 +276,26 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
   """
   MT.check_cgns_dist_tree(dist_tree)
   jn = PT.find_node_from_path(dist_tree, jn_path)
-  assert PT.Subset.GridLocation(jn) == 'FaceCenter'
+  assert PT.Subset.GridLocation(jn) in ['EdgeCenter', 'FaceCenter']
 
   base_name, zone_name = jn_path.split('/')[0:2]
   zone   = PT.find_node_from_path(dist_tree, base_name + '/' + zone_name)
   zone_d = PT.find_node_from_path(dist_tree, PT.GridConnectivity.ZoneDonorPath(jn, base_name))
+  dim = PT.Zone.CellDimension(zone)
 
-  ngon_node   = PT.Zone.NGonNode(zone)
+  if dim == 3:
+    face_node = PT.Zone.NGonNode(zone)
+  else:
+    face_node = MT.Zone.EdgeNode(zone)
   vtx_distri  = MT.distribution_value(zone, 'Vertex')
-  face_distri = MT.distribution_value(ngon_node, 'Element')
+  face_distri = MT.distribution_value(face_node, 'Element')
 
-  ngon_node_d   = PT.Zone.NGonNode(zone_d)
+  if dim == 3:
+    face_node_d = PT.Zone.NGonNode(zone_d)
+  else:
+    face_node_d = MT.Zone.EdgeNode(zone_d)
   vtx_distri_d  = MT.distribution_value(zone_d, 'Vertex')
-  face_distri_d = MT.distribution_value(ngon_node_d, 'Element')
+  face_distri_d = MT.distribution_value(face_node_d, 'Element')
 
   distri_jn = MT.distribution_value(jn, 'Index')
   pl   = PT.get_np_value(PT.find_child_from_name(jn, 'PointList'     ))[0]
@@ -297,12 +304,15 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
 
   dn_vtx  = [vtx_distri[1] - vtx_distri[0],   vtx_distri_d[1] - vtx_distri_d[0]]
   dn_face = [face_distri[1] - face_distri[0], face_distri_d[1] - face_distri_d[0]]
+  if dim == 3:
+    dface_vtx_idx = [shifted_eso(ng)  for ng in [face_node, face_node_d]]
+  else:
+    dface_vtx_idx = [2*np.arange(PT.get_np_value(PT.find_node_from_path(ng, 'ElementConnectivity')).shape[0]//2+1)  for ng in [face_node, face_node_d]]
 
-  dface_vtx_idx = [shifted_eso(ng)  for ng in [ngon_node, ngon_node_d]]
   dface_vtx     = [as_pdm_gnum(PT.get_np_value(PT.find_node_from_path(ng, 'ElementConnectivity'))) \
-                   for ng in [ngon_node, ngon_node_d]]
+                   for ng in [face_node, face_node_d]]
 
-  isolated_face_loc = get_pl_isolated_faces(ngon_node, pl, vtx_distri, comm)
+  isolated_face_loc = get_pl_isolated_faces(face_node, pl, vtx_distri, comm)
   not_isolated_face_loc = np.arange(pl.size)[np_utils.others_mask(pl, isolated_face_loc)]
 
   solo_face = comm.allreduce(isolated_face_loc.size > 0, MPI.LOR)
@@ -312,8 +322,8 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
   pld_vtx_l = []
 
   if solo_face:
-    pld_face_vtx = face_ids_to_vtx_ids(pl_d, ngon_node_d, comm)
-    pl_face_vtx  = face_ids_to_vtx_ids(pl, ngon_node, comm)
+    pld_face_vtx = face_ids_to_vtx_ids(pl_d, face_node_d, comm)
+    pl_face_vtx  = face_ids_to_vtx_ids(pl, face_node, comm)
 
     pl_face_vtx_e  = vstride.take(pl_face_vtx,  isolated_face_loc)
     pld_face_vtx_e = vstride.take(pld_face_vtx, isolated_face_loc)
@@ -364,7 +374,7 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
 
   return pl_vtx, pld_vtx, distri_jn_vtx
 
-def _generate_jns_vertex_list(dist_tree: CGNSDistTree, 
+def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
                               interface_pathes: List[CGNSPath],
                               comm: MPIComm) -> Tuple[List[NDArray], List[NDArray], List[NDArray]]:
   """
@@ -384,15 +394,18 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
     zone_to_id[zone_path] = i
 
     zone = PT.find_node_from_path(dist_tree, zone_path)
-    ngon = PT.Zone.NGonNode(zone)
-
-    face_distri = MT.distribution_value(ngon, 'Element')
+    dim = PT.Zone.CellDimension(zone)
+    if dim == 3:
+      face = PT.Zone.NGonNode(zone)
+    else:
+      face = MT.Zone.EdgeNode(zone)
+    face_distri = MT.distribution_value(face, 'Element')
     vtx_distri  = MT.distribution_value(zone, 'Vertex')
 
     dn_vtx.append(vtx_distri[1] - vtx_distri[0])
     dn_face.append(face_distri[1] - face_distri[0])
 
-    _face_vtx = MT.Element.connectivity(ngon)
+    _face_vtx = MT.Element.connectivity(face)
     dface_vtx_idx.append(_face_vtx.displs.astype(np.int32, copy=False))
     dface_vtx.append(as_pdm_gnum(_face_vtx.values))
 
@@ -423,7 +436,7 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
                                                 dface_vtx_idx,
                                                 dface_vtx,
                                                 comm)
-  
+
   # Unpack results
   all_pl_vtx = []
   all_pld_vtx = []
@@ -444,12 +457,12 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
 
     all_pl_vtx.append(pl_vtx)
     all_pld_vtx.append(pld_vtx)
-    
-  return all_pl_vtx, all_pld_vtx, all_distri_vtx
-    
 
-def generate_jns_vertex_list(dist_tree: CGNSDistTree, 
-                             comm: MPIComm, 
+  return all_pl_vtx, all_pld_vtx, all_distri_vtx
+
+
+def generate_jns_vertex_list(dist_tree: CGNSDistTree,
+                             comm: MPIComm,
                              have_isolated_faces: bool = False) -> None:
   """
   For each 1to1 FaceCenter matching join found in the distributed tree,
@@ -479,26 +492,34 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
   #Build join ids to identify opposite joins
   MJT.add_joins_donor_name(dist_tree, comm)
 
-  match_jns = MJT.get_matching_jns(dist_tree, PT.pred.has_location('FaceCenter'))
+  zones = PT.get_all_Zone_t(dist_tree)
+  dim = PT.Zone.CellDimension(zones[0])
+  if dim == 3:
+    match_jns = MJT.get_matching_jns(dist_tree, PT.pred.has_location('FaceCenter'))
+  else:
+    match_jns = MJT.get_matching_jns(dist_tree, PT.pred.has_location('EdgeCenter'))
   interface_pathes_cur = [pair[0] for pair in match_jns]
   interface_pathes_opp = [pair[1] for pair in match_jns]
 
   if len(match_jns) == 0:
     return
-    
+
   if have_isolated_faces:
     #Filter interfaces having isolated faces; they will be treated one by one, while other will be grouped
     have_isolated = []
     for interface_path_cur in interface_pathes_cur:
       zone_path = '/'.join(interface_path_cur.split('/')[:2])
       zone_node = PT.find_node_from_path(dist_tree, zone_path)
-      ngon_node = PT.Zone.NGonNode(zone_node)
-      n_isolated = get_pl_isolated_faces(ngon_node, 
+      if dim == 3:
+        face_node = PT.Zone.NGonNode(zone_node)
+      else:
+        face_node = MT.Zone.EdgeNode(zone_node)
+      n_isolated = get_pl_isolated_faces(face_node,
                                          PT.get_np_value(PT.find_node_from_path(dist_tree, interface_path_cur + '/PointList'))[0],
                                          MT.distribution_value(zone_node, 'Vertex'),
                                          comm).size
       have_isolated.append(bool(comm.allreduce(n_isolated, MPI.SUM) > 0))
-    
+
     itrf_cur_with_iso    = [itrf for i,itrf in enumerate(interface_pathes_cur) if have_isolated[i]]
     itrf_cur_without_iso = [itrf for i,itrf in enumerate(interface_pathes_cur) if not have_isolated[i]]
 

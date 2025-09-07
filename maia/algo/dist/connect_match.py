@@ -18,7 +18,14 @@ PointCloud = Dict[str, Any]
 
 def _shift_face_num(cgns_ids:NDArray, zone:CGNSTree, reverse:bool=False) -> NDArray:
   """ Shift CGNS face numbering to start at 1 """
-  if PT.Zone.has_ngon_elements(zone):
+  bar = None
+  try:
+    bar = MT.Zone.EdgeNode(zone)
+  except:
+    pass
+  if bar is not None:
+    offset = int(PT.Element.Range(bar)[0]) - 1
+  elif PT.Zone.has_ngon_elements(zone):
     offset = int(PT.Element.Range(PT.Zone.NGonNode(zone))[0]) - 1
   else:
     ordering = PT.Zone.elt_ordering_by_dim(zone)
@@ -39,7 +46,7 @@ def _nodal_sections_to_face_vtx(sections: List[Dict[str, Any]],
   elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=MT.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
 
   face_n_vtx_list = [elem_n_vtx(section['pdm_type']) for section in sections]
-  
+
   elem_dn_list = [section['np_distrib'][rank+1] - section['np_distrib'][rank] for section in sections]
 
   face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_dn_list), dtype=np.int32)
@@ -64,46 +71,67 @@ def _point_merge(clouds:List[PointCloud], comm:MPIComm, rel_tol:float) -> Dict[s
 
   return pdm_point_merge.make_interface()
 
-def _get_cloud(dmesh, gnum:NDArray, comm:MPIComm) -> PointCloud:
-  """ 
+def _get_cloud(dmesh, dim:np.int32, gnum:NDArray, comm:MPIComm) -> PointCloud:
+  """
   Extract surfacic mesh from a list of (face) gnum. Return connectivities
   of extracted mesh + link with parent volumic mesh
   """
-  dmesh_extractor = PDM.DMeshExtract(2, comm)
+  if dim == 2:
+    dim_extract = 1
+    extracted_entity = PDM._PDM_MESH_ENTITY_EDGE
+    extracted_conn   = PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX
+    extracted_geom   = PDM._PDM_GEOMETRY_KIND_RIDGE
+  else:
+    dim_extract = 2
+    extracted_entity = PDM._PDM_MESH_ENTITY_FACE
+    extracted_conn   = PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX
+    extracted_geom   = PDM._PDM_GEOMETRY_KIND_SURFACIC
+  dmesh_extractor = PDM.DMeshExtract(dim_extract, comm)
   if isinstance(dmesh, PDM.DistributedMesh):
     dmesh_extractor.register_dmesh(dmesh)
   elif isinstance(dmesh, PDM.DistributedMeshNodal):
     dmesh_extractor.register_dmesh_nodal(dmesh)
 
   _gnum = as_pdm_gnum(gnum)
-  dmesh_extractor.set_gnum_to_extract(PDM._PDM_MESH_ENTITY_FACE, _gnum)
+  dmesh_extractor.set_gnum_to_extract(extracted_entity, _gnum)
 
   dmesh_extractor.compute()
 
   if isinstance(dmesh, PDM.DistributedMesh):
     dmesh_extracted = dmesh_extractor.get_dmesh()
     coords  = dmesh_extracted.dmesh_vtx_coord_get()
-    face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
+    face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(extracted_conn)
   elif isinstance(dmesh, PDM.DistributedMeshNodal):
     dmesh_extracted = dmesh_extractor.get_dmesh_nodal()
     coords = dmesh_extracted.dmesh_nodal_get_vtx(comm)['np_vtx']
     # Rebuild face_vtx from sections
-    sections = dmesh_extracted.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)['sections']
+    sections = dmesh_extracted.dmesh_nodal_get_sections(extracted_geom, comm)['sections']
     face_vtx_idx, face_vtx = _nodal_sections_to_face_vtx(sections, comm.Get_rank())
   else:
     raise ValueError("Unexpected dmesh kind")
 
   parent_vtx  = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VTX)
-  parent_face = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_FACE)
+  parent_face = dmesh_extractor.get_extract_parent_gnum(extracted_entity)
 
-  carac_length = PDM.compute_vtx_characteristic_length(comm,
-                                                       face_vtx_idx.size-1, #dn_face
-                                                       0,                   #dn_edge
-                                                       coords.size//3,      #dn_vtx
-                                                       face_vtx_idx,
-                                                       face_vtx,
-                                                       None,                #edge_vtx
-                                                       coords)
+  if dim == 2:
+    face_vtx_idx = 2*np.arange(face_vtx.size//2+1, dtype=np.int32)
+    carac_length = PDM.compute_vtx_characteristic_length(comm,
+                                                         0,                   #dn_face
+                                                         face_vtx_idx.size-1, #dn_edge
+                                                         coords.size//3,      #dn_vtx
+                                                         None,
+                                                         None,
+                                                         face_vtx,            #edge_vtx
+                                                         coords)
+  else:
+    carac_length = PDM.compute_vtx_characteristic_length(comm,
+                                                         face_vtx_idx.size-1, #dn_face
+                                                         0,                   #dn_edge
+                                                         coords.size//3,      #dn_vtx
+                                                         face_vtx_idx,
+                                                         face_vtx,
+                                                         None,                #edge_vtx
+                                                         coords)
 
   return {'coords'       : coords,
           'carac_length' : carac_length,
@@ -111,7 +139,7 @@ def _get_cloud(dmesh, gnum:NDArray, comm:MPIComm) -> PointCloud:
           'face_vtx'     : face_vtx,
           'parent_vtx'   : parent_vtx,
           'parent_face'  : parent_face}
-           
+
 
 def _convert_match_result_to_faces(out_vtx, clouds, comm):
   """
@@ -187,14 +215,22 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
   """
   Wrapper extracting the surfacic meshes and parent data from the input tree
   and a list of node paths.
-  Node path must refer to nodes having a FaceCenter PointList 
+  Node path must refer to nodes having a FaceCenter PointList
   """
   zone_path = PTu.path_head(subset_path, 2)
   zone = PT.find_node_from_path(dist_tree, zone_path)
+  dim = PT.Zone.CellDimension(zone)
   try:
     dmesh = dmesh_cache[zone_path]
   except KeyError:
-    if PT.Zone.has_ngon_elements(zone):
+    bar = None
+    try:
+      bar = MT.Zone.EdgeNode(zone)
+    except:
+      pass
+    if bar is not None: # has_edge_elements would be useful
+      dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_2d(zone, comm)
+    elif PT.Zone.has_ngon_elements(zone):
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
     else:
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
@@ -202,11 +238,11 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
     dmesh_cache[zone_path] = dmesh
 
   node = PT.find_node_from_path(dist_tree, subset_path)
-  assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
+  assert PT.Subset.GridLocation(node) in ['EdgeCenter', 'FaceCenter'], "Only face center nodes are managed"
   pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
   _pl = _shift_face_num(pl, zone)
 
-  cloud = _get_cloud(dmesh, _pl, comm)
+  cloud = _get_cloud(dmesh, dim, _pl, comm)
   return cloud
 
 def apply_periodicity(cloud:PointCloud, periodic):
@@ -286,7 +322,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
     cloud_pair = matching_vtx['np_cloud_pair']
     gnum_cur   = matching_vtx['lgnum_cur']
     gnum_opp   = matching_vtx['lgnum_opp']
-  elif output_loc == 'FaceCenter':
+  elif output_loc in ['EdgeCenter', 'FaceCenter']:
     cloud_pair = matching_face['np_cloud_pair']
     gnum_cur   = matching_face['lgnum_cur']
     gnum_opp   = matching_face['lgnum_opp']
@@ -367,7 +403,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
     if comm.allreduce(unfound.size, MPI.SUM) > 0:
       input_node = PT.find_node_from_path(dist_tree, cloud_path)
       PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
-      PT.update_child(input_node, 'GridLocation', value='FaceCenter')
+      PT.update_child(input_node, 'GridLocation', value='FaceCenter') # switch to EdgeCenter in 2D
       PT.update_child(input_node, 'PointList', value=unfound.reshape((1,-1), order='F'))
       MT.new_Distribution({'Index':  par_utils.dn_to_distribution(unfound.size, comm)}, input_node)
     else:
