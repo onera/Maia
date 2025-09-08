@@ -127,7 +127,8 @@ def concatenate_bc_nodes(bc_nodes: List[CGNSTree],
           PT.set_value(data_array, np.full(subset_size, da_value[0], da_value.dtype))
   bc_n = concatenate_subset_nodes(bc_nodes, comm, output_name=output_name,
                                   additional_data_queries=additional_data_queries+[bcds_point_list, bcd_data_array],
-                                  additional_child_queries=additional_child_queries+[bcds_grid_loc])
+                                  additional_child_queries=additional_child_queries+[bcds_grid_loc],
+                                  master=master)
   return bc_n
 
 
