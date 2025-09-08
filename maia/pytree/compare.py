@@ -132,7 +132,8 @@ def _report_diff(x, ref, is_equal):
     return False, str(x) + ' <> ' + str(ref), ''
   else:
     n_not_eq = x.size - np.count_nonzero(is_equal)
-    return False, f'{n_not_eq} values are different', ''
+    plural = 's are' if n_not_eq > 1 else ' is'
+    return False, f'{n_not_eq} value{plural} different', ''
 
 class EqualArray:
   """
@@ -219,6 +220,17 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
   is_ok = False
   warn_report = ''
 
+  if hasattr(value_comp, 'is_same_value_shape'):
+    shape_comp = value_comp.is_same_value_shape
+  else:
+    def shape_comp_report(stack_1, stack_2):
+      n1 = stack_1[-1]
+      n2 = stack_2[-1]
+      if not is_same_value_shape(n1, n2):
+        return False, f"{n1[1].shape} <> {n2[1].shape}", ''
+      return True, '', ''
+    shape_comp = shape_comp_report
+
   next_step = step.over # do not continue comparing children for now
   if n0 is None:
     err_report = '> ' + path + PT.get_name(n1) + '\n'
@@ -238,21 +250,23 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
       err_report = path + PT.get_name(n0) + ' -- Labels differ: ' + PT.get_label(n0) + ' <> ' + PT.get_label(n1) + '\n'
     elif not is_same_value_type(n0, n1, strict_value_type):
       err_report = path + PT.get_name(n0) + ' -- Value types differ: ' + str(PT.get_value_type(n0)) + ' <> ' + str(PT.get_value_type(n1)) + '\n'
-    elif not is_same_value_shape(n0, n1) and vkind != 'C1': #Filter str, because we do a full print for it
-      err_report = path + PT.get_name(n0) + ' -- Value shape differ: ' + str(n0[1].shape) + ' <> ' + str(n1[1].shape) + '\n'
     else:
+      err_kind = "Values"
       if vkind == 'MT':
         is_ok, err_report, warn_report = True, '', ''
       elif vkind == 'C1': # STR
         is_ok, err_report, warn_report = str_comp(stack_1, stack_2)
+      elif not (diff:= shape_comp(stack_1, stack_2))[0]:
+        err_kind = "Values shape"
+        is_ok, err_report, warn_report = diff
       else: #Numerics -> call value_comp
         is_ok, err_report, warn_report = value_comp(stack_1, stack_2)
         if hasattr(value_comp,'modify_name'):
           name = value_comp.modify_name(name)
       if err_report != '':
-        err_report = path + name + ' -- Values differ: ' + err_report + '\n'
+        err_report = path + name + f' -- {err_kind} differ: ' + err_report + '\n'
       if warn_report != '':
-        warn_report = path + name + ' -- Values differ: ' + warn_report + '\n'
+        warn_report = path + name + f' -- {err_kind} differ: ' + warn_report + '\n'
 
   return next_step, is_ok, err_report, warn_report
 

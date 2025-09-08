@@ -1,6 +1,22 @@
 from mpi4py import MPI
 import numpy as np
+from math import prod
+
 import maia.pytree as PT
+
+from maia.utils import par_utils
+from maia.transfer import protocols as EP
+
+def is_distributed(stack):
+  last = stack[-1]
+  label = PT.get_label(last)
+  if label == 'IndexArray_t':
+    return True
+  elif label == 'DataArray_t':
+    parent_label = PT.get_label(stack[-2])
+    return parent_label in ['GridCoordinates_t', 'FlowSolution_t', 'DiscreteData_t', \
+        'ZoneSubRegion_t', 'Elements_t', 'ArbitraryGridMotion_t', 'BCData_t']
+  return False
 
 def sq_norm(x):
   return np.sum(x*x)
@@ -40,11 +56,55 @@ def equal_array_report(x, ref, comm):
 class EqualArray:
   def __init__(self, comm=MPI.COMM_SELF):
     self.comm = comm
+
+  def is_same_value_shape(self, stack1, stack2):
+    shape1 = PT.get_np_value(stack1[-1]).shape
+    shape2 = PT.get_np_value(stack2[-1]).shape
+    if is_distributed(stack1):
+      size1 = par_utils.dn_to_distribution(prod(shape1), self.comm)[-1]
+      size2 = par_utils.dn_to_distribution(prod(shape2), self.comm)[-1]
+      last = stack1[-1]
+      if PT.get_name(last) == 'ParentElements' and PT.get_label(stack1[-2]) == 'Elements_t':
+        shape1 = (size1 // 2, 2)
+        shape2 = (size2 // 2, 2)
+      elif PT.get_label(last) == 'IndexArray_t':
+        shape1 = (shape1[0], size1 // shape1[0])
+        shape2 = (shape2[0], size2 // shape2[0])
+      else:
+        shape1 = (size1,)
+        shape2 = (size2,)
+    if shape1 != shape2:
+      return False, f'{shape1} <> {shape2}', ''
+    return True, '', ''
+
+  def redistribute_value_as(self, x, ref):
+    x_distri   = par_utils.dn_to_distribution(x.size, self.comm)
+    ref_distri = par_utils.dn_to_distribution(ref.size, self.comm)
+    x_distri_f   = par_utils.partial_to_full_distribution(x_distri, self.comm)
+    ref_distri_f = par_utils.partial_to_full_distribution(ref_distri, self.comm)
+    if not (x_distri_f == ref_distri_f).all():
+      # Redistribute X to compare
+      x = EP.block_to_block(x, x_distri_f, ref_distri_f, self.comm).reshape(ref.shape, order='F')
+    return x, ref
+
+
   def __call__(self, stack1, stack2):
-    node_x,node_ref = stack1[-1], stack2[-1]
-    x   = PT.get_value(node_x)
-    ref = PT.get_value(node_ref)
-    return equal_array_report(x, ref, self.comm)
+    node_x, node_ref = stack1[-1], stack2[-1]
+    x   = PT.get_np_value(node_x)
+    ref = PT.get_np_value(node_ref)
+    
+    if len(stack1) > 1 and PT.get_name(stack1[-2]) == ':CGNS#Distribution':
+      # Distribution index itself : compare full value
+      x = par_utils.partial_to_full_distribution(x, self.comm)
+      ref = par_utils.partial_to_full_distribution(ref, self.comm)
+      return equal_array_report(x, ref, MPI.COMM_SELF)
+    elif not is_distributed(stack1):
+      # Standard non distributed array --> all ranks have all data
+      return equal_array_report(x, ref, MPI.COMM_SELF)
+    else:
+      # Distributed array -> ensure distribution is same before parallel comparison
+      x, ref = self.redistribute_value_as(x, ref)
+      return equal_array_report(x, ref, self.comm)
 
 
 def _close_in_relative_norm(x, ref, tol, comm):
@@ -133,22 +193,24 @@ class FieldComparison(EqualArray):
     self.tol = tol
   def __call__(self, stack1, stack2):
     node_x,node_ref = stack1[-1], stack2[-1]
-    x   = PT.get_value(node_x,raw=True)
-    ref = PT.get_value(node_ref,raw=True)
+    x   = PT.get_np_value(node_x)
+    ref = PT.get_np_value(node_ref)
     if x.dtype.kind == 'f':
-      return relative_norm_comparison(self.tol, self.comm)(x, ref)
-    else:
+      if is_distributed(stack1):
+        x, ref = self.redistribute_value_as(x, ref)
+        return relative_norm_comparison(self.tol, self.comm)(x, ref)
+      else:
+        return relative_norm_comparison(self.tol, MPI.COMM_SELF)(x, ref)
+    else: # Redistribution is done in EqualArray if necessary
       return EqualArray.__call__(self, stack1, stack2)
 
 
-def _relative_tensor_norm_comparison(tol, comm, x_nodes, ref_nodes, tensor_rank):
-  x_val   = [PT.get_value(x_node  ) for x_node   in x_nodes  ]
-  ref_val = [PT.get_value(ref_node) for ref_node in ref_nodes]
+def _relative_tensor_norm_comparison(tol, comm, x_val, ref_val, tensor_rank):
 
   x_cat   = np.concatenate(x_val)
   ref_cat = np.concatenate(ref_val)
 
-  return relative_norm_comparison(tol, comm, n_dim=len(x_nodes))(x_cat, ref_cat)
+  return relative_norm_comparison(tol, comm, n_dim=len(x_val))(x_cat, ref_cat)
 
 def _sym_to_full_rank_2_tensor(flds, dim):
   if dim == 2:
@@ -254,20 +316,31 @@ class TensorFieldComparison(EqualArray):
 
   def __call__(self, stack1, stack2):
     node_x,node_ref = stack1[-1], stack2[-1]
-    name_x = PT.get_name(node_x)
-    x   = PT.get_value(node_x,raw=True)
-    ref = PT.get_value(node_ref,raw=True)
-    if PT.get_label(node_x) == 'DataArray_t' and x.dtype.kind == 'f':
+
+    if PT.get_label(node_x) == 'DataArray_t' and PT.get_value_kind(node_x) == 'R':
       parent_x,parent_ref = stack1[-2], stack2[-2]
-      tensor_rank, is_first_component, tensor_name = _tensor_info(name_x)
+      tensor_rank, is_first_component, tensor_name = _tensor_info(PT.get_name(node_x))
       if tensor_rank>0:
         x_nodes   = find_and_check_tensor_fields(parent_x  , tensor_name, tensor_rank)
         ref_nodes = find_and_check_tensor_fields(parent_ref, tensor_name, tensor_rank)
         if is_first_component:
-          return _relative_tensor_norm_comparison(self.tol, self.comm, x_nodes, ref_nodes, tensor_rank)
+          x = [PT.get_np_value(n) for n in x_nodes]
+          ref = [PT.get_np_value(n) for n in ref_nodes]
+          if is_distributed(stack1):
+            out = (self.redistribute_value_as(_x, _ref) for _x,_ref in zip(x, ref))
+            x, ref = zip(*out) # Unzip output
+            return _relative_tensor_norm_comparison(self.tol, self.comm, x, ref, tensor_rank)
+          else:
+            return _relative_tensor_norm_comparison(self.tol, MPI.COMM_SELF, x, ref, tensor_rank)
         else:
           return True, '', '' # Other component are actually tested within by the first component
       else: # scalar
-        return relative_norm_comparison(self.tol, self.comm)(x, ref)
+        x   = PT.get_np_value(node_x)
+        ref = PT.get_np_value(node_ref)
+        if is_distributed(stack1):
+          x, ref = self.redistribute_value_as(x, ref)
+          return relative_norm_comparison(self.tol, self.comm)(x, ref)
+        else:
+          return relative_norm_comparison(self.tol, MPI.COMM_SELF)(x, ref)
     else:
       return EqualArray.__call__(self, stack1, stack2)
