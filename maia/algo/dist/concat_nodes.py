@@ -116,6 +116,18 @@ def concatenate_bc_nodes(bc_nodes: List[CGNSTree],
   bcds_point_list = "BCDataSet_t/PointList"
   bcd_data_array  = "BCDataSet_t/BCData_t/DataArray_t"
   bcds_grid_loc   = "BCDataSet_t/GridLocation_t"
+  # handling of scalar/tables combination (sets scalars to constant tables)
+  for bc in bc_nodes :
+    pl_node     = PT.get_child_from_name(bc, 'PointList')
+    point_list  = PT.get_value(pl_node)
+    bc_data_set = PT.get_child_from_label(bc, 'BCDataSet_t')
+    if (bc_data_set is not None) :
+      bc_data     = PT.get_child_from_label(bc_data_set, 'BCData_t')
+      if (bc_data is not None) :
+        for data_array in PT.iter_nodes_from_label(bc_data, 'DataArray_t'):
+          da_value = PT.get_value(data_array)
+          if ((1 < point_list.size) and (da_value.size == 1)) :
+            PT.set_value(data_array, da_value[0] * np.ones(point_list.size))
   bc_n = concatenate_subset_nodes(bc_nodes, comm, output_name=output_name,
                                   additional_data_queries=additional_data_queries+[bcds_point_list, bcd_data_array],
                                   additional_child_queries=additional_child_queries+[bcds_grid_loc])
