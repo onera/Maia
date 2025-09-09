@@ -25,12 +25,14 @@ def test_concatenate_subset_nodes(default_bcds, comm):
     BCDataSet BCDataSet_t:
       BCData BCData_t:
         Data DataArray_t [10., 20., 30., 40.]:
+        Sca DataArray_t [24.]:
   BCb BC_t "BCFarfield":
     GridLocation GridLocation_t "FaceCenter":
     PointList IndexArray_t [[10, 20, 30, 40, 50, 60, 70, 80]]:
     BCDataSet BCDataSet_t:
       BCData BCData_t:
         Data DataArray_t [1., 2., 3., 4., 5., 6., 7., 8.]:
+        Sca DataArray_t [42.]:
   """
   subset_nodes_f = PT.yaml.to_nodes(yt)
   subset_nodes = [F2D.distribute_pl_node(node, comm) for node in subset_nodes_f]
@@ -39,13 +41,16 @@ def test_concatenate_subset_nodes(default_bcds, comm):
   if comm.Get_size() == 1:
     expected_pl = [[1,2,3,4, 10,20,30,40,50,60,70,80]]
     expected_data = [10,20,30,40, 1.,2.,3.,4.,5.,6.,7.,8]
+    expected_data_sca = [24.,24,24,24, 42,42,42,42,42,42,42,42]
   elif comm.Get_size() == 2:
     if comm.Get_rank() == 0:
       expected_pl = [[1,2, 10,20,30,40]]
       expected_data = [10,20, 1.,2.,3.,4]
+      expected_data_sca = [24.,24, 42,42,42,42]
     elif comm.Get_rank() == 1:
       expected_pl = [[3,4, 50,60,70,80]]
       expected_data = [30,40, 5.,6.,7.,8]
+      expected_data_sca = [24.,24, 42,42,42,42]
 
   if default_bcds:
     node = GN.concatenate_subset_nodes(subset_nodes, comm, output_name='BothBC', \
@@ -60,6 +65,9 @@ def test_concatenate_subset_nodes(default_bcds, comm):
 
   assert PT.get_label(PT.get_node_from_path(node, 'BCDataSet/BCData')) == 'BCData_t'
   assert (PT.get_node_from_name(node, 'Data')[1] == expected_data).all()
+  if not default_bcds:
+    assert (PT.get_node_from_name(node, 'Sca')[1] == expected_data_sca).all()
+    assert PT.get_node_from_name(node, 'Sca')[1].dtype == np.float32
 
 @pytest_parallel.mark.parallel([1])
 def test_concatenate_jns_all_types(comm):

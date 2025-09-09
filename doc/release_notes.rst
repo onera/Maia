@@ -26,6 +26,7 @@ Development version
 - convert_s_to_u: fix jmax boundary faces for standard elements output
 - connect_1to1_families: prevent internal faces to be wrongly report as unmatched
 - PT.diff_tree: prevent deadlock when input trees have a different distribution
+- concatenate_subsets_from_families: prevent a crash when families do not span over all zones
 
 🚧 API change
 ^^^^^^^^^^^^^

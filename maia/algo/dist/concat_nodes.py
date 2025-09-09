@@ -116,9 +116,19 @@ def concatenate_bc_nodes(bc_nodes: List[CGNSTree],
   bcds_point_list = "BCDataSet_t/PointList"
   bcd_data_array  = "BCDataSet_t/BCData_t/DataArray_t"
   bcds_grid_loc   = "BCDataSet_t/GridLocation_t"
+  # handling of scalar/tables combination (sets scalars to constant tables)
+  for bc in bc_nodes :
+    for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
+      subset = PT.Container.SubsetNode(bcds, bc)
+      subset_size = PT.Subset.n_elem(subset)
+      for data_array in PT.iter_children_from_predicates(bcds, 'BCData_t/DataArray_t'):
+        da_value = PT.get_np_value(data_array)
+        if (1 < subset_size) and (da_value.size == 1):
+          PT.set_value(data_array, np.full(subset_size, da_value[0], da_value.dtype))
   bc_n = concatenate_subset_nodes(bc_nodes, comm, output_name=output_name,
                                   additional_data_queries=additional_data_queries+[bcds_point_list, bcd_data_array],
-                                  additional_child_queries=additional_child_queries+[bcds_grid_loc])
+                                  additional_child_queries=additional_child_queries+[bcds_grid_loc],
+                                  master=master)
   return bc_n
 
 
@@ -326,17 +336,18 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
   for dist_zone in PT.iter_all_Zone_t(dist_tree):
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
+    
+    zone_families = {PT.get_str_value(n) for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t')}
 
     # > If all families, we need to discover them first
     if families=='*':
-      families = list()
-      for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t'):
-        if PT.get_value(n) not in families:
-          families.append(PT.get_str_value(n))
-
+        _families = sorted(zone_families)
+    else:
+        _families = [f for f in families if f in zone_families]
+      
     # > Merge bc nodes from a same family
     zone_bc_n = PT.find_node_from_label(dist_zone, "ZoneBC_t")
-    for family in families:
+    for family in _families:
 
       # > Predicates to find family BCs
       is_subset_container = PT.pred.label_is('ZoneBC_t')
@@ -348,7 +359,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         bc_pl  = PT.get_np_value(PT.Subset.getPatch(bc_n))[0]
         bcds_n = PT.new_BCDataSet(":maia#concatenate", parent=bc_n)
         PT.new_BCData('DirichletData',
-                      fields={'OriginalBCId':np.full(bc_pl.size, i_bc)},
+                      fields={'OriginalBCId':np.full(bc_pl.size, i_bc, dtype=np.int32)},
                       parent=bcds_n)
         ord_n = PT.get_child_from_label(bc_n, 'Ordinal_t')
 
