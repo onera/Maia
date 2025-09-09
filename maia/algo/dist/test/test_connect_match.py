@@ -7,6 +7,7 @@ import Pypdm.Pypdm as PDM
 import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+import maia.factory       as FT
 
 from maia             import npy_pdm_gnum_dtype as pdm_dtype
 from maia.factory.dcube_generator import dcube_generate, dcube_struct_generate
@@ -83,7 +84,7 @@ def test_simple(input_loc, output_loc, comm):                    #    __
       PT.update_child(node, 'GridLocation', value='Vertex')
       PT.update_child(node, 'PointList', value=pl[vtx_distri[0]:vtx_distri[1]].reshape((1,-1), order='F'))
       MT.new_Distribution({'Index' : vtx_distri}, node)
-
+  
   connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm, location=output_loc)
 
   assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 10
@@ -337,3 +338,34 @@ def test_wrong_internal_faces(comm):
   # We still have faces 1 & 2 reported as unmatched in small zone, because vtx defined
   # boundary are not well posed. But thanks to the patch internal face (9) is not
   # reported anymore
+  
+#@pytest_parallel.mark.parallel(2)
+#def test_simple_2d(comm):
+  
+#  n_vtx=3
+#  dcarres = [maia.factory.generate_dist_block(n_vtx, 'QUAD_4', comm),
+#            maia.factory.generate_dist_block(n_vtx, 'QUAD_4', comm, (1,0,0))] 
+  
+#  zones = [PT.get_all_Zone_t(dcarre)[0] for dcarre in dcarres]
+#  tree = PT.new_CGNSTree()
+#  base = PT.new_CGNSBase(parent=tree)
+  
+#  for i_zone,zone in enumerate(zones):
+#    zone[0] = f"zone{i_zone+1}"
+#    PT.add_child(base, zone)
+  
+#  xmax = PT.get_node_from_name(zones[0], 'Xmax')
+#  PT.new_child(xmax, 'FamilyName', 'FamilyName_t', 'matchA')
+#  xmin = PT.get_node_from_name(zones[1], 'Xmin')
+#  PT.new_child(xmin, 'FamilyName', 'FamilyName_t', 'matchB')
+  
+#  maia.io.dist_tree_to_file(tree, 'test_simple_2d.cgns', comm)  
+    
+#  maia.algo.dist.convert_elements_to_ngon(tree, comm) 
+  
+#  maia.io.dist_tree_to_file(tree, 'test_simple_2d_ngon.cgns', comm) 
+  
+#  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm, location='EdgeCenter')
+  
+#  maia.algo.dist.merge_connected_zones(tree, comm)
+#  maia.algo.ngon_to_edge_pe(tree, comm)
