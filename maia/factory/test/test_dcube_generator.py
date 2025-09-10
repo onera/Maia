@@ -136,7 +136,7 @@ def test_dist_block_generate_transformed_cube(cgns_elmt_name, comm):
 
 
 @pytest_parallel.mark.parallel([1,3])
-def test_dist_block_generate_scaled_cube(comm):
+def test_dist_block_generate_non_uniform_vtx(comm):
   dist_tree = dcube_generator.generate_dist_block([11,16,6], 'Poly', comm,
                                                   origin=[-1.,-1.,-1.],
                                                   length=[3.,-0.5,1.])

@@ -1129,9 +1129,11 @@ class Container:
 
     elif label == 'BCDataSet_t':
       assert N.get_label(parent_node) in ['Zone_t', 'BC_t']
-      preds = [lambda n: n is cnt_node]
+      pred:Predicate = lambda n: n is cnt_node
       if N.get_label(parent_node) == 'Zone_t':
-        preds = ['ZoneBC_t', 'BC_t'] + preds
+        preds = ['ZoneBC_t', 'BC_t', pred]
+      else:
+        preds = [pred]
       nodes = W.get_children_from_predicates(parent_node, preds, ancestors=True)
       if not is_subset:
         nodes = [ancs[:-1] for ancs in nodes] # Remove BCDS itself from result list, since subset node is parent BC

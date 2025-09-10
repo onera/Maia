@@ -135,7 +135,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
                          bar_n)
 
     # Create NGON (combine face_edge + edge_vtx)
-    ngon_er = np.array([1, n_face], dtype=zone[1].dtype) + n_edge
+    ngon_er = np.array([1+n_edge, n_face+n_edge], dtype=zone[1].dtype)
     ngon_ec = PDM.compute_dfacevtx_from_face_and_edge(comm, distrib_face, distrib_edge, dface_edge_idx, dface_edge, dedge_vtx)
     ngon_ec  = np_utils.safe_int_cast(ngon_ec, ngon_er.dtype)
     ngon_eso = np_utils.safe_int_cast(dface_edge_idx, ngon_er.dtype)

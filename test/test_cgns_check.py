@@ -1,3 +1,4 @@
+import mpi4py
 import pytest
 import h5py
 import subprocess
@@ -14,6 +15,10 @@ ENDC = '\x1b[0m'
 YELLOW = '\033[93m'
 CYAN = '\033[36m'
 
+vendor, version = mpi4py.MPI.get_vendor()
+MPI_ENV_VARS = ["MPI_", "PMI_", "PMI_", "PMIX_", "I_MPI_"]
+if vendor == 'Open MPI' and version[0] == 4:
+  MPI_ENV_VARS.append('OMPI_')
 
 def subprocess_run(*args, **kwargs):
   """ If tests are launched with mpirun, we have a strange crash
@@ -22,7 +27,7 @@ def subprocess_run(*args, **kwargs):
   """
   env = os.environ.copy()
   for var in list(env.keys()):
-    if any(var.startswith(s) for s in ["MPI_", "PMI_", "PMIX_", "I_MPI"]):
+    if any(var.startswith(s) for s in MPI_ENV_VARS):
       del env[var]
   return subprocess.run(*args, **kwargs, env=env)
 
