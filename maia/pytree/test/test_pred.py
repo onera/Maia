@@ -7,6 +7,22 @@ from maia.pytree      import pred      as P
 
 from maia.pytree.yaml   import parse_yaml_cgns
 
+def test_escape_str():
+  assert P._escape_str('flux') == 'flux'
+  assert P._escape_str('flux*') == 'flux*'
+  assert P._escape_str('flux[RO]') == 'flux[[]RO[]]'
+  assert P._escape_str('flux[[RO]]') == 'flux[[][[]RO[]][]]'
+  assert P._escape_str('flux[R*]') == 'flux[[]R*[]]'
+
+def test_tt():
+  import maia
+  import maia.pytree as PT
+  from mpi4py import MPI
+  tree = maia.factory.generate_dist_block(21, 'Poly', MPI.COMM_SELF)
+  z = PT.get_all_Zone_t(tree)[0]
+  PT.set_name(z, 'zone[12]')
+  assert PT.get_node_from_name(tree, 'zone[12]') is not None
+  assert PT.get_node_from_name(tree, 'zone[1*]') is not None
 
 def test_matches():
   nface = ['NFace', np.array([23, 0], np.int32), [], 'Elements_t']
@@ -17,14 +33,14 @@ def test_matches():
   assert P.value_is(np.array([23,0]))(nface)
   assert P.label_matches('Elements_t')(nface)
   assert P.label_matches('Elemen*')(nface)
-  assert P.label_matches(CGL.Elements_t)(nface)
+  assert P.label_is(CGL.Elements_t)(nface)
 
   # Try composition
   assert (P.name_matches('NFace') & P.label_matches('Elements_t'))(nface)
-  assert (P.name_matches('NFace') & P.label_matches(CGL.Elements_t))(nface)
+  assert (P.name_matches('NFace') & P.label_is(CGL.Elements_t))(nface)
   assert not (P.name_matches('NFAce') & P.label_matches('Elements'))(nface)
   assert not (P.name_matches('NFace') & P.label_matches('Elements'))(nface)
-  assert not (P.name_matches('NFace') & P.label_matches(CGL.Zone_t))(nface)
+  assert not (P.name_matches('NFace') & P.label_is(CGL.Zone_t))(nface)
 
   node = ['FamilyName', np.array([b'F', b'A', b'M', b'I', b'L', b'Y']), [], 'FamilyName_t']
   assert P.value_is('FAMILY')(node)

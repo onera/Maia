@@ -3,7 +3,17 @@ import numpy as np
 from   maia.pytree.node import check
 import maia.pytree.cgns_keywords as CGK
 
-from maia.pytree.pred import name_matches, label_matches, value_is
+from maia.pytree import pred
+
+def _has_wildcard(s):
+  return isinstance(s, str) and '*' in s
+
+def name_matches(name):
+  return pred.name_matches(name) if _has_wildcard(name) else pred.name_is(name)
+def label_matches(label):
+  return label_matches(label) if _has_wildcard(label) else pred.label_is(label)
+def value_is(val):
+  return pred.value_is(val)
 
 def auto_predicate(query):
   if isinstance(query, str):
@@ -12,7 +22,7 @@ def auto_predicate(query):
     else:
       predicate = name_matches(query)
   elif isinstance(query, CGK.Label):
-    predicate = label_matches(query)
+    predicate = pred.label_is(query)
   elif callable(query):
     predicate = query
   elif isinstance(query, np.ndarray):

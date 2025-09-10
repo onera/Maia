@@ -9,6 +9,15 @@ from   maia.pytree      import node as N
 from   maia.pytree      import walk as W
 from   maia.pytree      import sids as S
 
+def _escape_str(s):
+  s = s.replace(']', '¤')
+  s = s.replace('[', '[[]').replace('¤', '[]]')
+  s = s.replace('?', '[?]')
+  return s
+
+def _fnmatch(s, target):
+  return fnmatch.fnmatch(s, _escape_str(target)) if '*' in target else s == target
+
 class NodePredicate:
   def __init__(self, func):
     self.func = func
@@ -37,6 +46,7 @@ def predicate_generator(func):
   def wrapper(*args, **kwargs):
     return NodePredicate(lambda X: func(X, *args, **kwargs))
   return wrapper
+
 def name_is(name: str) -> NodePredicate:
   """ Name of the node is exactly equal to the provided ``name`` """
   return NodePredicate(lambda n : n[0] == name)
@@ -47,6 +57,7 @@ def name_in(name_l:List[str]) -> NodePredicate:
   return NodePredicate(lambda n : n[0] in name_l)
 def name_matches(name: str) -> NodePredicate:
   """ Name of the node matches the provided ``name``, for which wildcard ``*`` is accepted """
+  name = _escape_str(name)
   return NodePredicate(lambda n : fnmatch.fnmatch(n[0], name))
 
 def __value_is(n:CGNSTree, value) -> bool:
@@ -70,12 +81,10 @@ def label_is(label) -> NodePredicate:
   _label = label.name if isinstance(label, CGK.Label) else label
   return NodePredicate(lambda n : n[3] == _label)
 
-def label_matches(label) -> NodePredicate:
+def label_matches(label:str) -> NodePredicate:
   """ Label of the node matches the provided ``label``, for which wildcard ``*`` is accepted """
-  if isinstance(label, CGK.Label):
-    return NodePredicate(lambda n : n[3] == label.name)
-  else:
-    return NodePredicate(lambda n : fnmatch.fnmatch(n[3], label))
+  label = _escape_str(label)
+  return NodePredicate(lambda n : fnmatch.fnmatch(n[3], label))
 
 def label_in(label_l:List) -> NodePredicate:
   """ Label of the node belongs to the provided ``label_l`` list """
@@ -107,12 +116,12 @@ def __belongs_to_family(n:CGNSTree, target_family:str, allow_additional=True):
   family_name_n = W.get_child_from_label(n, 'FamilyName_t')
   if family_name_n:
     fam_val = N.get_str_value(family_name_n)
-    if fnmatch.fnmatch(fam_val, target_family):
+    if _fnmatch(fam_val, target_family):
       return True
   if allow_additional:
     for additional_family_n in W.iter_children_from_label(n, 'AdditionalFamilyName_t'):
       fam_val = N.get_str_value(additional_family_n)
-      if fnmatch.fnmatch(fam_val, target_family):
+      if _fnmatch(fam_val, target_family):
         return True
   return False
 

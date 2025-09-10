@@ -1,9 +1,9 @@
 from maia.pytree.typing import *
 
-from maia.pytree.pred  import name_matches, label_matches, value_is
 from maia.pytree.utils import path_head, path_tail
 
 from .walkers_api import get_node_from_path
+from .auto_pred import name_matches, label_matches, value_is
 
 
 def _rm_nodes_from_predicate_with_level__(parent, predicate, depth, level=1):
