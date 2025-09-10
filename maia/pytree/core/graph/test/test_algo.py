@@ -1,8 +1,8 @@
-from maia.pytree.graph.algo import Step, depth_first_search
-from maia.pytree.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack, unwind # if the search needs to be restarted
-
-from maia.pytree.graph.f_graph import rooted_f_graph_example, VALUE
 import pytest
+from maia.pytree.core.graph import Step, depth_first_search, list_iterator_type
+from maia.pytree.core.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack, unwind # if the search needs to be restarted
+
+from maia.pytree.core.graph.f_graph import rooted_f_graph_example, VALUE
 
 
 class visitor_to_test_depth_first_scan:
@@ -351,7 +351,6 @@ def test_step_over_does_not_ask_for_children():
       return Step.OVER
 
   class graph_example():
-    from maia.pytree.graph.utils import list_iterator_type
 
     def child_iterator(self, n) -> list_iterator_type:
       raise RuntimeError()

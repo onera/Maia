@@ -1,7 +1,6 @@
 from maia.pytree.typing import *
 
-from .graph.algo  import Step, depth_first_search
-from .graph.utils import list_iterator_type
+from .core.graph  import Step, depth_first_search, list_iterator_type
 
 __all__ = ['scan', 'visit', 'Step']
 

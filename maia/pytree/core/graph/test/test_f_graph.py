@@ -1,5 +1,5 @@
-from maia.pytree.graph.algo import dfs_interface_report
-from maia.pytree.graph.fb_graph import rooted_fb_graph_example, VALUE
+from maia.pytree.core.graph.algo import dfs_interface_report
+from maia.pytree.core.graph.fb_graph import rooted_fb_graph_example, VALUE
 
 
 def test_f_graph():

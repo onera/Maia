@@ -1,7 +1,7 @@
-from maia.pytree.graph.build import depth_first_build_trees, depth_first_build
-from maia.pytree.graph.algo import Step
+from maia.pytree.core.graph.build import depth_first_build_trees, depth_first_build
+from maia.pytree.core.graph import Step
 
-from maia.pytree.graph.f_graph import VALUE, rooted_f_graph_example, multiply_rooted_f_graph_example
+from maia.pytree.core.graph.f_graph import VALUE, rooted_f_graph_example, multiply_rooted_f_graph_example
 
 
 def indent(s):

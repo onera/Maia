@@ -1,5 +1,5 @@
 from enum import Enum
-from maia.pytree.graph.algo_interface import dfs_interface_report
+from .algo_interface import dfs_interface_report
 
 class Step(Enum):
   """ Information on what to do when a node is visited by a tree traversal algorithm:

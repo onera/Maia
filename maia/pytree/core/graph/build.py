@@ -1,4 +1,4 @@
-from maia.pytree.graph import algo
+from .algo import depth_first_search
 
 
 class _build_tree_visitor:
@@ -37,7 +37,7 @@ class _build_tree_visitor:
 
 def depth_first_build_trees(g, node_constructor, pre=None):
   v = _build_tree_visitor(node_constructor, pre)
-  algo.depth_first_search(g, v)
+  depth_first_search(g, v)
   return v.retrieve_composition_term()
 
 def depth_first_build(g, node_constructor, pre=None):

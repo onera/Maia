@@ -1,6 +1,6 @@
 import weakref
-from maia.pytree.graph.utils import list_iterator_type
-from maia.pytree.graph.algo import Step, depth_first_search
+from .utils import list_iterator_type
+from .algo import Step, depth_first_search
 
 INDENT_SIZE = 4
 
