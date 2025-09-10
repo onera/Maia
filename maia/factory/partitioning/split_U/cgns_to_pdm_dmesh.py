@@ -161,7 +161,8 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
 
 
   cx, cy, cz = PT.Zone.coordinates(dist_zone)
-  cz = np.zeros(cx.shape[0], dtype=cx.dtype) # avoid nan when not avaialble in CGNS
+  if cz is None:
+      cz = np.zeros_like(cx)
   dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
 
 
@@ -185,6 +186,7 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
   PT.new_DataArray('dedge_vtx', dedge_vtx, parent=multi_part_node)
   PT.new_DataArray('dedge_face', dedge_face, parent=multi_part_node)
+  PT.new_DataArray('dedge_vtx_idx', dedge_vtx_idx, parent=multi_part_node)
 
   return dmesh
 
