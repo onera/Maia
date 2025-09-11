@@ -18,23 +18,19 @@ PointCloud = Dict[str, Any]
 
 def _shift_face_num(cgns_ids:NDArray, zone:CGNSTree, reverse:bool=False) -> NDArray:
   """ Shift CGNS face numbering to start at 1 """
-  bar = None
-  try:
-    bar = MT.Zone.EdgeNode(zone)
-  except:
-    pass
-  if bar is not None:
-    offset = int(PT.Element.Range(bar)[0]) - 1
-  elif PT.Zone.has_ngon_elements(zone):
+  if PT.pred.IS_POLY2D_ZONE(zone):
+    offset = int(PT.Element.Range(MT.Zone.EdgeNode(zone))[0]) - 1
+  elif PT.pred.IS_POLY3D_ZONE(zone):
     offset = int(PT.Element.Range(PT.Zone.NGonNode(zone))[0]) - 1
   else:
     ordering = PT.Zone.elt_ordering_by_dim(zone)
-    if ordering == 1: #Increasing elements : substract starting point of 2D
-      offset = PT.Zone.get_elt_range_per_dim(zone)[2][0] - 1
-    elif ordering == -1: #Decreasing elements : substract number of 3D
-      offset = PT.Zone.get_elt_range_per_dim(zone)[3][1]
+    dim = PT.Zone.CellDimension(zone)
+    if ordering == 1: #Increasing elements : substract starting point of 2D (or 1D)
+      offset = PT.Zone.get_elt_range_per_dim(zone)[dim-1][0] - 1
+    elif ordering == -1: #Decreasing elements : substract ending point of 3D (or 2D)
+      offset = PT.Zone.get_elt_range_per_dim(zone)[dim][1]
     else:
-      raise RuntimeError("Unable to extract unordered faces")
+      raise RuntimeError("Unable to extract unordered faces or edges")
   if reverse:
     return cgns_ids + offset
   else:
@@ -223,14 +219,10 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
   try:
     dmesh = dmesh_cache[zone_path]
   except KeyError:
-    bar = None
-    try:
-      bar = MT.Zone.EdgeNode(zone)
-    except:
-      pass
-    if bar is not None: # has_edge_elements would be useful
+
+    if PT.pred.IS_POLY2D_ZONE(zone):
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_2d(zone, comm)
-    elif PT.Zone.has_ngon_elements(zone):
+    elif PT.pred.IS_POLY3D_ZONE(zone):
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
     else:
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)

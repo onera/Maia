@@ -23,10 +23,13 @@ dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
 
 
 def test_shift_face_num():
+  # Poly3D
   zone = PT.yaml.to_node(f"""
   Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
     NGON Elements_t [22,0]:
       ElementRange IndexRange_t [1, 25]:
+      ParentElements DataArray_t:
   """)
   # NGON first
   assert (connect_match._shift_face_num(np.array([4,6,10]), zone) == [4,6,10]).all()
@@ -36,9 +39,22 @@ def test_shift_face_num():
   assert (connect_match._shift_face_num(np.array([20,15]), zone) == [10,5]).all()
   assert (connect_match._shift_face_num(np.array([10,5]), zone, True) == [20,15]).all()
 
+  # Poly2D
+  zone = PT.yaml.to_node(f"""
+  Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
+    Edge Elements_t [3, 0]:
+      ElementRange IndexRange_t [1, 10]:
+    NGON Elements_t [22,0]:
+      ElementRange IndexRange_t [11, 20]:
+  """)
+  assert (connect_match._shift_face_num(np.array([4,6,10]), zone) == [4,6,10]).all()
+
+
   # Elements
   zone = PT.yaml.to_node(f"""
   Zone Zone_t:
+    ZoneType ZoneType_t "Unstructured":
     Tetra Elements_t [10,0]:
       ElementRange IndexRange_t [1, 20]:
     Tri1 Elements_t [5,0]:
