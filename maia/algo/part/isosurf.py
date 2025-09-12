@@ -37,31 +37,33 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
                               containers_name: List[str], 
                               comm: MPIComm) -> None:
 
+  # Create a fake tree for discovering phase, where dtype of arrays is present
+  _part_zones = list()
+  for pzone in part_zones:
+    _pzone = PT.new_node(PT.get_name(pzone), PT.get_label(pzone))
+    for container_name in containers_name:
+      if (cnt := PT.get_child_from_name(pzone, container_name)) is not None:
+        _cnt = PT.new_node(PT.get_name(cnt), PT.get_label(cnt), parent=_pzone)
+        for da in PT.get_children_from_label(cnt, "DataArray_t"):
+          PT.new_DataArray(PT.get_name(da), value=PT.get_np_value(da).dtype.str, parent=_cnt)
+        # If working on linked ZSR, copy PL / GridLoc so we don't need to exchange related subset
+        if PT.Container._is_partial(cnt):
+          PT.new_IndexArray('PointList', parent=_cnt)
+        PT.new_GridLocation(PT.Container.GridLocation(cnt, pzone), parent=_cnt)
+    _part_zones.append(_pzone) 
+
   for container_name in containers_name:
 
     # > Retrieve fields name + GridLocation + PointList if container
     #   is not know by every partition
     mask_zone = PT.new_Zone('MaskedZone')
-    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
-      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
+    dist_from_part.discover_nodes_from_matching(mask_zone, _part_zones, container_name, comm, \
+      child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName', 'DataArray_t', 'IndexArray_t'])
   
-    fields_query = PT.pred.label_in(['DataArray_t', 'IndexArray_t'])
-    dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
     mask_container = PT.get_child_from_name(mask_zone, container_name)
     if mask_container is None:
       raise ValueError("[maia-isosurfaces] asked container for exchange is not in tree")
 
-    # > Manage BC and GC ZSR (bring related node)
-    bc_descriptor_n = PT.get_child_from_name(mask_container, 'BCRegionName')
-    gc_descriptor_n = PT.get_child_from_name(mask_container, 'GridConnectivityRegionName')
-    assert not (bc_descriptor_n and gc_descriptor_n)
-    if bc_descriptor_n is not None:
-      bc_name      = PT.get_str_value(bc_descriptor_n)
-      dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneBC_t', bc_name], comm, child_list=['PointList', 'GridLocation_t'])
-    elif gc_descriptor_n is not None:
-      gc_name      = PT.get_str_value(gc_descriptor_n)
-      dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=['PointList', 'GridLocation_t'])
-    
     partial_field = PT.Container._is_partial(mask_container)
     gridLocation = PT.Container.GridLocation(mask_container, mask_zone)
     assert gridLocation in ['Vertex', 'FaceCenter', 'CellCenter']
@@ -146,7 +148,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         fld_data = list()
         for i_part, part_zone in enumerate(part_zones) :
           fld_n = PT.get_node_from_path(part_zone,fld_path)
-          fld_data_tmp = PT.get_np_value(fld_n) if fld_n is not None else np.empty(0, dtype=np.float64)
+          fld_data_tmp = PT.get_np_value(fld_n) if fld_n is not None else np.empty(0, dtype=PT.get_str_value(fld_node))
           fld_data.append(fld_data_tmp[pl_gnum1[i_part]])
         p2p_type = PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM
       

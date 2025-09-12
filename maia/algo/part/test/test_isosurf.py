@@ -5,6 +5,7 @@ from mpi4py import MPI
 
 import maia
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 
 from maia.algo.part import isosurf as ISO
 
@@ -146,6 +147,21 @@ def test_exchange_field_one_domain(from_api, comm):
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolVtx/fieldC")[1], expected_C)
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolBC/fieldD")[1], expected_D)
   
+
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
+def test_exchange_empty_field(comm):
+  # A reproducer for #214: we had a crash if partial containers (as ZSR) are not 
+  # know by every procs *and* some arrays are not of kind R8
+  tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  bc = PT.find_node_from_name(zone, 'Xmax')
+  distri = PT.get_np_value(MT.find_Distribution(bc, 'Index'))
+  dn_elt = distri[1] - distri[0]
+  zsr = PT.new_ZoneSubRegion('ZSR', bc_name='Xmax', fields={'One': np.ones(dn_elt), 
+                                                            'Two': 2*np.ones(dn_elt, float)}, parent=zone)
+  ptree = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=True, data_transfer='ALL')
+  stree = maia.algo.part.plane_slice(ptree, [1,0,0,0.9032], comm, ['ZSR'])
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(2)
