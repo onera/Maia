@@ -3,7 +3,7 @@ import numpy as np
 from maia.pytree.typing import *
 
 import maia.pytree as PT
-from maia.pytree.graph.cgns import step, zip_depth_first_search
+from maia.pytree.visit import visit_zipped
 
 __all__ = ['is_same_node', 'is_same_tree', 'diff_tree']
 
@@ -97,9 +97,9 @@ class same_tree_visitor:
   def pre(self, ns):
     if ns[0] is None or ns[1] is None or not is_same_node(ns[0], ns[1], self.abs_tol, self.type_tol):
       self.is_same = False
-      return step.out
+      return PT.Step.OUT
     else:
-      return step.into
+      return PT.Step.INTO
 
 def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> bool:
   """
@@ -119,7 +119,7 @@ def is_same_tree(t1:CGNSTree, t2:CGNSTree, abs_tol:float=0, type_tol=False) -> b
     False
   """
   v = same_tree_visitor(abs_tol, type_tol)
-  zip_depth_first_search([t1,t2], v)
+  visit_zipped([t1,t2], v)
   return v.is_same
 
 # --------------------------------------------------------------------------
@@ -231,7 +231,7 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
       return True, '', ''
     shape_comp = shape_comp_report
 
-  next_step = step.over # do not continue comparing children for now
+  next_step = PT.Step.OVER # do not continue comparing children for now
   if n0 is None:
     err_report = '> ' + path + PT.get_name(n1) + '\n'
   elif n1 is None:
@@ -241,7 +241,7 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
                + '> ' + path + PT.get_name(n1) + '\n'
 
   else:
-    next_step = step.into # since everything it the same up to now, continue comparing children
+    next_step = PT.Step.INTO # since everything it the same up to now, continue comparing children
 
     name = PT.get_name(n0)
     vkind = PT.get_value_type(n0)
@@ -325,5 +325,5 @@ def diff_tree(t1:CGNSTree, t2:CGNSTree, strict_value_type:bool = True, comp:Opti
   if comp is None:
     comp = EqualArray()
   v = diff_tree_visitor(strict_value_type, comp)
-  zip_depth_first_search([t1,t2], v, depth='all')
+  visit_zipped([t1,t2], v, ancestors=True)
   return DiffReport(v.is_ok, v.err_report, v.warn_report)

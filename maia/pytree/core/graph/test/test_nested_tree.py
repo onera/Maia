@@ -1,6 +1,6 @@
 import pytest
-from maia.pytree.graph.nested_tree import Tree, ForwardBackwardTree, SYMBOLIC_ROOT
-from maia.pytree.graph.algo import depth_first_search
+from maia.pytree.core.graph.nested_tree import Tree, ForwardBackwardTree, SYMBOLIC_ROOT
+from maia.pytree.core.graph import depth_first_search
 
 t =  Tree('A', [
        Tree('B',[

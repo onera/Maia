@@ -3,8 +3,7 @@ import copy
 import h5py
 from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 
-from maia.pytree.graph import algo
-from maia.pytree.graph.utils import list_iterator
+from maia.pytree.core import graph as PTg
 
 C33_t = h5t.C_S1.copy()
 C33_t.set_size(33)
@@ -72,9 +71,9 @@ class HDF5GraphAdaptor:
   to use graph iterators """
   def __init__(self, root_id):
     self.root_id = root_id
-  def root_iterator(self) -> list_iterator:
+  def root_iterator(self) -> PTg.list_iterator_type:
     return iter([self.root_id])
-  def child_iterator(self, node_id) -> list_iterator:
+  def child_iterator(self, node_id) -> PTg.list_iterator_type:
     return (h5g.open(node_id, child_name) for child_name in node_id \
             if h5o.get_info(node_id, child_name).type == h5o.TYPE_GROUP)
 
@@ -402,13 +401,13 @@ def load_tree_links(filename):
         path = '/'.join([self.attr_reader.read_str_33(id, b'name') for id in node_ids[1:]])
         link.append(path) #Current path
         self.links.append(link)
-        return algo.step.over
+        return PTg.Step.OVER
 
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
   rootid = h5g.open(fid, b'/')
 
   visitor = LinkVisitor()
-  algo.depth_first_search(HDF5GraphAdaptor(rootid), visitor, depth='all')
+  PTg.depth_first_search(HDF5GraphAdaptor(rootid), visitor, depth='all')
   fid.close()
   return visitor.links
 

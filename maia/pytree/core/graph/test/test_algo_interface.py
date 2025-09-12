@@ -1,5 +1,5 @@
-from maia.pytree.graph.algo_interface import dfs_interface_report
-from maia.pytree.graph.utils import list_iterator_type
+from maia.pytree.core.graph import list_iterator_type
+from maia.pytree.core.graph.algo_interface import dfs_interface_report
 
 def test_dfs_interface_report():
   class graph_type_0:

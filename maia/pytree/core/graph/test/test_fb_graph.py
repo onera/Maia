@@ -1,5 +1,5 @@
-from maia.pytree.graph.algo import dfs_interface_report, depth_first_search
-from maia.pytree.graph.fb_graph import fb_graph_example, rooted_fb_graph_example, VALUE, BACKWARD, backward_tree_adaptor, depth_first_build_fb_tree
+from maia.pytree.core.graph.algo import dfs_interface_report, depth_first_search
+from maia.pytree.core.graph.fb_graph import fb_graph_example, rooted_fb_graph_example, VALUE, BACKWARD, backward_tree_adaptor, depth_first_build_fb_tree
 from maia.pytree.algo_utils import find
 
 

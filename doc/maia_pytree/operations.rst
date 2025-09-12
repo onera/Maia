@@ -29,6 +29,16 @@ The following functions construct a new tree from logical operations:
 Tree editing
 ------------
 
+Visitor patterns
+^^^^^^^^^^^^^^^^
+
+These functions allow users to apply a function to every node in a tree, which is
+traversed in a `depth-first search <https://en.wikipedia.org/wiki/Depth-first_search>`_
+manner.
+
+.. autofunction:: maia.pytree.scan
+.. autofunction:: maia.pytree.visit
+
 Removing nodes
 ^^^^^^^^^^^^^^
 

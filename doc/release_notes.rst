@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
+💡 New Features
+^^^^^^^^^^^^^^^
+- Pytree: add ``visit`` and ``scan`` fucntions to apply a callable to every node of the tree
+
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - extract_part: add local mode for unstructured meshes

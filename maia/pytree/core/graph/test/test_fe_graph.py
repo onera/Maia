@@ -1,5 +1,5 @@
-from maia.pytree.graph.algo import dfs_interface_report, depth_first_search
-from maia.pytree.graph.fe_graph import rooted_fe_graph_example
+from maia.pytree.core.graph.algo import dfs_interface_report, depth_first_search
+from maia.pytree.core.graph.fe_graph import rooted_fe_graph_example
 
 def test_fe_graph_tree_adaptor_is_depth_first_searchable():
   t = rooted_fe_graph_example()

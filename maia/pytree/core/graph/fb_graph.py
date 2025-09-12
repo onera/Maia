@@ -92,6 +92,6 @@ class fb_tree_ctor:
 
 
 def depth_first_build_fb_tree(g):
-  from maia.pytree.graph.build import depth_first_build
+  from maia.pytree.core.graph import depth_first_build
   return depth_first_build(g, fb_tree_ctor())
 # dfs build }

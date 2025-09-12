@@ -13,7 +13,6 @@ from maia.utils     import logging as mlog
 
 from maia.transfer.dist_to_part import data_exchange  as BTP
 from maia.transfer.dist_to_part import tree_api       as dist_to_part
-from maia.pytree.graph.algo import step
 
 from .load_balancing import setup_partition_weights as SPW
 from .split_S import part_zone      as partS
@@ -22,7 +21,7 @@ from .post_split import post_partitioning as post_split
 from .load_balancing import balancing_quality
 
 class UDDCollector:
-  """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
+  """ A visitor for PT.visit that collect the paths of UserDefinedData nodes """
   def __init__(self):
       self.ud_paths = list()
   def pre(self, nodes):
@@ -30,7 +29,7 @@ class UDDCollector:
     last = nodes[-1]
     if PT.get_label(last) == 'UserDefinedData_t' and PT.get_name(last) != ':CGNS#Distribution':
       self.ud_paths.append(PT.utils.path_tail(path, 1))
-      return step.over # Stop exploring this level after search
+      return PT.Step.OVER # Stop exploring this level after search
 
 def set_default(dist_tree, comm):
 
@@ -161,7 +160,7 @@ def partition_dist_tree(dist_tree: CGNSDistTree,
       labels = [label for label in dist_to_part.LABELS if label in data_transfer]
     # UserDefinedData
     if 'UserDefinedData_t' in data_transfer or 'ALL' in data_transfer:
-      PT.graph.cgns.depth_first_search(dist_tree, v := UDDCollector(), depth='all')
+      PT.visit(dist_tree, v := UDDCollector(), ancestors=True)
       ud_paths = v.ud_paths
     else:
       ud_paths = []

@@ -1,6 +1,6 @@
 import weakref
-from maia.pytree.graph.utils import list_iterator_type
-from maia.pytree.graph.algo import step, depth_first_search
+from .utils import list_iterator_type
+from .algo import Step, depth_first_search
 
 INDENT_SIZE = 4
 
@@ -78,9 +78,9 @@ def is_sub_tree(potential_sub_tree, tree):
     def pre(self, sub):
       if sub is potential_sub_tree:
         self.found = True
-        return step.out
+        return Step.OUT
       else:
-        return step.into
+        return Step.INTO
   v = visitor()
   depth_first_search(tree, v)
   return v.found

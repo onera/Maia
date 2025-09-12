@@ -21,22 +21,20 @@ def dtree_nbytes(tree:CGNSTree) -> Tuple[int,int,int]:
   - global data size (size of undistributed data; distribution arrays [start,end,tot] also counted here)
   - distributed data size (local size of distributed arrays)
   """
-  class size_recorder:
-    def __init__(self):
-      self.meta_size = 0
-      self.glob_size = 0
-      self.dist_size = 0
+  
+  sizes = {key:0 for key in ['meta', 'glob', 'dist']}
 
-    def pre(self, parent, node):
-      self.meta_size += sys.getsizeof(node) + sys.getsizeof(node[0]) + sys.getsizeof(node[2]) + sys.getsizeof(node[3])
-      if node[1] is not None:
-        if _is_distributed(node, parent):
-          self.dist_size += node[1].nbytes
-        else:
-          self.glob_size += node[1].nbytes
+  def size_recorder(nodes):
+    node = nodes[-1]
+    sizes['meta'] += sys.getsizeof(node) + sys.getsizeof(node[0]) + sys.getsizeof(node[2]) + sys.getsizeof(node[3])
+    if node[1] is not None:
+      parent = nodes[-2]
+      if _is_distributed(node, parent):
+        sizes['dist'] += node[1].nbytes
+      else:
+        sizes['glob'] += node[1].nbytes
 
-  v = size_recorder()
-  PT.graph.cgns.depth_first_search(tree, v, depth='parent')
+  PT.scan(tree, size_recorder, ancestors=True)
 
-  return (v.meta_size, v.glob_size, v.dist_size)
+  return (sizes['meta'], sizes['glob'], sizes['dist'])
 

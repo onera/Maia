@@ -1,8 +1,8 @@
-from maia.pytree.graph.algo import step, depth_first_search
-from maia.pytree.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack, unwind # if the search needs to be restarted
-
-from maia.pytree.graph.f_graph import rooted_f_graph_example, VALUE
 import pytest
+from maia.pytree.core.graph import Step, depth_first_search, list_iterator_type
+from maia.pytree.core.graph.algo import graph_traversal_stack, depth_first_search_stack, adapt_visitor, advance_stack, unwind # if the search needs to be restarted
+
+from maia.pytree.core.graph.f_graph import rooted_f_graph_example, VALUE
 
 
 class visitor_to_test_depth_first_scan:
@@ -88,9 +88,9 @@ class visitor_to_test_depth_first_find(visitor_to_test_depth_first_scan):
   def pre(self, x):
     visitor_to_test_depth_first_scan.pre(self,x)
     if x[VALUE] == 3:
-      return step.out
+      return Step.OUT
     else:
-      return step.into
+      return Step.INTO
 
 def test_depth_first_find():
   #  Reminder:
@@ -143,9 +143,9 @@ class visitor_to_test_depth_first_prune(visitor_to_test_depth_first_scan):
   def pre(self, x):
     visitor_to_test_depth_first_scan.pre(self,x)
     if x[VALUE] == 2:
-      return step.over
+      return Step.OVER
     else:
-      return step.into
+      return Step.INTO
 
 def test_depth_first_prune():
   #  Reminder:
@@ -200,9 +200,9 @@ def test_depth_first_prune():
 class visitor_to_test_dfs(visitor_to_test_depth_first_scan):
   def pre(self,x):
     visitor_to_test_depth_first_scan.pre(self,x)
-    if x[VALUE] == 8: return step.out
-    if x[VALUE] == 2: return step.over
-    else: return step.into
+    if x[VALUE] == 8: return Step.OUT
+    if x[VALUE] == 2: return Step.OVER
+    else: return Step.INTO
 
 def test_depth_first_search():
   #  Reminder:
@@ -245,9 +245,9 @@ def test_depth_first_search():
 
 class modifying_visitor_to_test_dfs(visitor_to_test_depth_first_scan):
   def pre(self, x):
-    if   x[VALUE] == 10: s = step.out
-    elif x[VALUE] == 2 : s = step.over
-    else               : s = step.into
+    if   x[VALUE] == 10: s = Step.OUT
+    elif x[VALUE] == 2 : s = Step.OVER
+    else               : s = Step.INTO
 
     x[VALUE] += 100
     return s
@@ -283,7 +283,7 @@ class visitor_to_test_restarting_find:
     self.s += '[pre ] ' + str(x[VALUE]) + '\n'
     if x[VALUE] % 2 == 0:
       self.found.append(x[VALUE])
-      return step.out
+      return Step.OUT
 
   def post(self, x):
     self.s += '[post] ' + str(x[VALUE]) + '\n'
@@ -348,10 +348,9 @@ def test_depth_first_search_stack(exit_early):
 def test_step_over_does_not_ask_for_children():
   class visitor_step_over:
     def pre(self, x):
-      return step.over
+      return Step.OVER
 
   class graph_example():
-    from maia.pytree.graph.utils import list_iterator_type
 
     def child_iterator(self, n) -> list_iterator_type:
       raise RuntimeError()

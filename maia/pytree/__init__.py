@@ -5,6 +5,7 @@ from .node import *
 
 from .compare    import *
 from .logical_op import *
+from .visit      import *
 
 from . import utils
 from . import pred

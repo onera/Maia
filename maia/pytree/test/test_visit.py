@@ -2,7 +2,7 @@ import pytest
 
 import maia.pytree as PT
 
-from maia.pytree.graph.cgns import depth_first_search, zip_depth_first_search, pytree_zip_adaptor
+from maia.pytree.visit import zip_depth_first_search
 
 t0 = PT.yaml.to_node("""
 Base CGNSBase_t:
@@ -17,7 +17,7 @@ Base CGNSBase_t:
 # same as t0 but NGon/NFace swapped
 t1 = PT.yaml.to_node("""
 Base CGNSBase_t:
-  ZoneI1 Zone_t:
+  ZoneI0 Zone_t:
     NFace Elements_t [23,0]:
     NGon Elements_t [22,0]:
     ZGCB ZoneGridConnectivity_t:
@@ -27,7 +27,7 @@ Base CGNSBase_t:
         Index_j IndexArray_t:
 """)
 
-class node_name_recorder:
+class NodeNameRecorder:
   def __init__(self):
     self.s = ''
 
@@ -35,9 +35,6 @@ class node_name_recorder:
     self.s += PT.get_name(n) + '\n'
 
 def test_tree_algo():
-  v = node_name_recorder()
-  depth_first_search(t0, v)
-
   expected_s = \
     'Base\n' \
     'ZoneI0\n' \
@@ -46,14 +43,27 @@ def test_tree_algo():
     'ZGCA\n' \
     'gc1\n' \
     'Index_i\n'
+
+  v = NodeNameRecorder()
+  PT.visit(t0, v)
   assert v.s == expected_s
 
+  # Same with simple fn
+  s2 = ''
+  def node_name_recorder(node):
+    nonlocal s2
+    s2 += PT.get_name(node) + '\n'
+  PT.scan(t0, node_name_recorder) 
+  assert s2 == expected_s
 
-class node_and_parent_name_recorder:
+
+class NodeAndParentNameRecorder:
   def __init__(self):
     self.s = ''
 
-  def pre(self, parent, node):
+  def pre(self, nodes):
+    node = nodes[-1]
+    parent = nodes[-2] if len(nodes) > 1 else None
     if parent is None:
       self.s += '[None] '
     else:
@@ -61,8 +71,8 @@ class node_and_parent_name_recorder:
     self.s += PT.get_name(node) + '\n'
 
 def test_tree_algo_with_ancestors():
-  v = node_and_parent_name_recorder()
-  depth_first_search(t0, v, depth='parent')
+  v = NodeAndParentNameRecorder()
+  PT.visit(t0, v, ancestors=True)
 
   expected_s = \
     '[None] Base\n' \
@@ -97,12 +107,15 @@ def test_zip_tree_algo():
 
   expected_s = \
     'Base | Base\n' \
-    'ZoneI0 | ZoneI1\n' \
+    'ZoneI0 | ZoneI0\n' \
     'NFace | NFace\n' \
     'NGon | NGon\n' \
-    'ZGCA | ZGCB\n' \
-    'gc1 | gc1\n' \
-    'Index_i | Index_i\n' \
+    'ZGCA | [None]\n' \
+    'gc1 | [None]\n' \
+    'Index_i | [None]\n' \
+    '[None] | ZGCB\n' \
+    '[None] | gc1\n' \
     '[None] | Index_h\n' \
+    '[None] | Index_i\n' \
     '[None] | Index_j\n'
   assert v.s == expected_s

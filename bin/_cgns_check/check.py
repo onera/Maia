@@ -5,7 +5,8 @@ from pathlib import Path
 
 from maia.typing import *
 
-import maia.pytree.graph as PTG
+import maia.pytree as PT
+import maia.pytree.core.graph as PTG
 
 OK = ''
 
@@ -81,8 +82,7 @@ def lazy_load_cgns(filename:Path, exclude:List[str]) -> CGNSTree:
         return [name, value, nolink_children, label]
 
     with h5py.File(filename) as f:
-        from maia.pytree.graph.build import depth_first_build
-        t = depth_first_build(HDF5GraphAdaptor(f['/'], exclude), tree_creator)
+        t = PTG.depth_first_build(HDF5GraphAdaptor(f['/'], exclude), tree_creator)
         # Update root node name / label
         t[0] = 'CGNSTree'
         t[3] = 'CGNSTree_t'
@@ -118,9 +118,9 @@ class HDF5GraphAdaptor:
     def __init__(self, root, exclude_l=[]):
         self.root = root
         self.exclude_l = exclude_l
-    def root_iterator(self) -> PTG.utils.list_iterator:
+    def root_iterator(self) -> PTG.list_iterator_type:
         return iter([self.root])
-    def child_iterator(self, node) -> PTG.utils.list_iterator:
+    def child_iterator(self, node) -> PTG.list_iterator_type:
         # Links are automatically traversed by the iterator if they exist
         # Otherwise, no exception is raised because .values() returns None for
         # 'broken' links, and other nodes are still visited.
@@ -179,7 +179,7 @@ def run_stage_1(filename:Path, ignore_list:List[str], exclude_list:List[str]) ->
     # Now test hdf rules using DFS traversal
     rules = {key:val for key, val in GROUP_RULES.items() if key not in ignore_list}
     with h5py.File(filename) as f:
-        PTG.algo.depth_first_search(HDF5GraphAdaptor(f['/'], exclude_list), HDFChecker(rules))
+        PTG.depth_first_search(HDF5GraphAdaptor(f['/'], exclude_list), HDFChecker(rules))
 
     return True
 
@@ -190,7 +190,7 @@ def run_stage_2(filename:Path, ignore_list:List[str], exclude:List[str]) -> bool
     tree = lazy_load_cgns(filename, exclude)
     # Prepare tree visitor
     rules = {key:val for key, val in NODE_RULES.items() if key not in ignore_list}
-    PTG.cgns.depth_first_search(tree, CGNSChecker(rules), depth='all')
+    PT.visit(tree, CGNSChecker(rules), ancestors=True)
 
     return True
 
