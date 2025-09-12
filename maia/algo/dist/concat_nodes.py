@@ -9,26 +9,20 @@ from maia.algo.dist import matching_jns_tools as MJT
 import numpy as np
 
 
-def find_suffix(perio_node, perio_refs, add_opp_perio=False):
+def find_suffix(perio:PT.PeriodicValues, perio_refs:List[PT.PeriodicValues], add_opp_perio=False):
   found = False
-  for i,ref in enumerate(perio_refs):
-    if PT.is_same_tree(perio_node, ref):
+  for i,perio_ref in enumerate(perio_refs):
+    if all([np.allclose(a,b,1e-5,1e-16) for a,b in zip(perio, perio_ref)]):
       suffix = f'.P{i}'
       found = True
       break
   if not found:
-    perio_refs.append(perio_node)
+    perio_refs.append(perio)
     suffix = f'.P{len(perio_refs)-1}'
     if add_opp_perio:
-      perio_refs.append(opp_perio(perio_node))
+      perio_refs.append(-perio)
   return suffix
   
-def opp_perio(perio_node):
-  opp_perio = PT.deep_copy(perio_node)
-  for da in PT.get_children_from_predicates(opp_perio, ['Periodic','DataArray_t']):
-    PT.set_value(da, -PT.get_np_value(da))
-  return opp_perio
-
 
 def concatenate_subset_nodes(nodes: List[CGNSTree],
                              comm: MPIComm,
@@ -146,8 +140,8 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   MJT.add_joins_donor_name(tree, comm)
   
   
-  match_perio_refs:List[CGNSTree]   = []
-  nomatch_perio_refs:List[CGNSTree] = []
+  match_perio_refs:List[PT.PeriodicValues]   = []
+  nomatch_perio_refs:List[PT.PeriodicValues] = []
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     
     zone_path = '/'.join([PT.get_name(node) for node in [base, zone]])
@@ -181,11 +175,11 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   
         #Manage periodic -- merge only if periodic values are identical
         if is_perio_gc:
-          perio_node = PT.get_child_from_label(jn, 'GridConnectivityProperty_t')
+          perio = PT.GridConnectivity.periodic_values(jn)
           if type=="Abutting1to1":
-            suffix = find_suffix(perio_node, match_perio_refs, add_opp_perio=intra_gc)
+            suffix = find_suffix(perio, match_perio_refs, add_opp_perio=intra_gc)
           elif type=="Abutting":
-            suffix = find_suffix(perio_node, nomatch_perio_refs)
+            suffix = find_suffix(perio, nomatch_perio_refs)
         #Manage intrazone -- prevent merge of two sides into one
         elif intra_gc:
           id = 0 if cur_jn_path < opp_jn_path else 1
@@ -200,7 +194,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
         elif suffix == '.I1':
           opp_suffix = '.I0'
         elif (suffix.startswith(".P")):
-          opp_suffix = find_suffix(opp_perio(perio_node), match_perio_refs)
+          opp_suffix = find_suffix(-perio, match_perio_refs)
         else:
           opp_suffix = suffix
   
@@ -268,22 +262,22 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
               opp_suffix = gc_d_n[gc_d_n.rfind('.P'):]
               opp_suffix_index = int(opp_suffix[2:])
               opp_perio_node = match_perio_refs[opp_suffix_index]
-              suffix = find_suffix(opp_perio(opp_perio_node), match_perio_refs)
+              suffix = find_suffix(-opp_perio_node, match_perio_refs)
               try:
                 index_opp = key_index(match_jns_to_merge[location], f"{zone_path}{opp_suffix}")
                 index = min(index, index_opp)
               except ValueError:
                 pass
             elif (not intra_gc) and PT.GridConnectivity.isperiodic(first_jn):
-              perio_node = PT.get_child_from_label(first_jn, 'GridConnectivityProperty_t')
-              suffix = find_suffix(perio_node, match_perio_refs)
+              perio = PT.GridConnectivity.periodic_values(first_jn)
+              suffix = find_suffix(perio, match_perio_refs)
             else:
               suffix = ""
           else:
             index = key_index(nomatch_jns_to_merge[location], donor_path)
             if PT.GridConnectivity.isperiodic(first_jn):
-              perio_node = PT.get_child_from_label(first_jn, 'GridConnectivityProperty_t')
-              suffix = find_suffix(perio_node, match_perio_refs)
+              perio = PT.GridConnectivity.periodic_values(first_jn)
+              suffix = find_suffix(perio, match_perio_refs)
             else:
               suffix = ""
           

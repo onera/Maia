@@ -24,6 +24,8 @@ class PeriodicValues(NamedTuple):
                'translation' : self.Translation}
     else:
       return self._asdict()
+  def __neg__(self):
+    return PeriodicValues._make(-x for x in self)
     
 class CartesianCoordinates(NamedTuple):
   CoordinateX:Optional[NDArray]
