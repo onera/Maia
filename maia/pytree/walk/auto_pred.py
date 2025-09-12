@@ -11,7 +11,7 @@ def _has_wildcard(s):
 def name_matches(name):
   return pred.name_matches(name) if _has_wildcard(name) else pred.name_is(name)
 def label_matches(label):
-  return label_matches(label) if _has_wildcard(label) else pred.label_is(label)
+  return pred.label_matches(label) if _has_wildcard(label) else pred.label_is(label)
 def value_is(val):
   return pred.value_is(val)
 
