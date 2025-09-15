@@ -241,7 +241,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
   PT.rm_nodes_from_name_and_label(tree, 'PERIODIC', 'Family_t', depth=2)
   PT.rm_nodes_from_name_and_label(tree, 'GCS',      'Family_t', depth=2)
   for zone in PT.get_all_Zone_t(tree):
-    PT.rm_children_from_name_and_label(zone, 'maia_topo','FlowSolution_t')
+    PT.rm_children_from_name_and_label(zone, 'maia_topo','DiscreteData_t')
     PT.rm_nodes_from_name_and_label(zone, 'tetra_4_periodic*','BC_t', depth=2)
 
   # > Set family name in BCs for connect_match
@@ -273,7 +273,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
                           metric: Union[None, str, List[str]],
                           comm: MPIComm,
-                          container_names: List[str],
+                          container_names: Union[List[str], Literal['ALL']],
                           periodic: bool = False,
                           feflo_opts: str = "",
                           **options) -> CGNSDistTree:
@@ -352,6 +352,13 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   tmp_dir = options.get('tmp_dir', './TMP_adapt_dir')
   constraints = options.get('constraints', None)
 
+  if container_names == 'ALL':
+    # Discover container names: FS, Vtx located, existing on all zones
+    pred = PT.pred.label_is('FlowSolution_t') & PT.pred.has_location('Vertex')
+    cnt_per_zones = [{PT.get_name(node) for node in PT.iter_children_from_predicate(zone, pred)}
+                    for zone in PT.get_all_Zone_t(dist_tree)]
+    container_names = sorted(set.intersection(*cnt_per_zones)) if len(cnt_per_zones) > 0 else []
+
   if periodic:
     adapted_dist_tree = _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts, tmp_dir)
   else:
@@ -359,7 +366,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
     maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
 
     adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts, tmp_dir)
-    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
+    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','DiscreteData_t')
 
     # > Recover original dist_tree
     maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)

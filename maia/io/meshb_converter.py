@@ -109,7 +109,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
     groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
 
   # > Add FlowSolution for vtx tag
-  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
+  fs_vtx_tag = PT.new_DiscreteData('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
 
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)

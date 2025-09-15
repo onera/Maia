@@ -129,7 +129,7 @@ def test_adapt_with_feflo(comm, multi_elt, custom_dir):
   adpt_dist_tree = MA.adapt_mesh_with_feflo(dist_tree,
                                             "FlowSolution/metric",
                                             comm,
-                                            container_names=["FlowSolution"],
+                                            container_names='ALL',
                                             feflo_opts="-c 100 -cmax 100 -p 4",
                                             **options)
 
