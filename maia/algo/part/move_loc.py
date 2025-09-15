@@ -3,6 +3,7 @@ from mpi4py import MPI
 
 import maia
 from maia.typing import *
+from maia.pytree.typing import Predicate
 import maia.pytree as PT
 import maia.pytree.maia as MT
 from maia.utils import np_utils
@@ -13,7 +14,25 @@ from . import connectivity_utils
 from . import geometry
 import Pypdm.Pypdm as PDM
 
+def set_intersection(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
+  # Intersection of two set, allowing None as input (skip)
+  if   s1 is None: return s2
+  elif s2 is None: return s1
+  else: return s1 & s2
+
+def collect_names(zones:List[CGNSPartTree], pred:Predicate, comm:MPIComm) -> List[str]:
+
+  cnt_per_zones = [{PT.get_name(node) for node in PT.iter_children_from_predicate(zone, pred)}
+                   for zone in zones]
+  loc_cnt = set.intersection(*cnt_per_zones) if len(zones) > 0 else None
+  glob_cnt = comm.allreduce(loc_cnt, set_intersection)
+
+  return sorted(glob_cnt)
+
 class CenterToNode:
+
+  CONTAINER_PRED = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
+                 & PT.pred.has_location('CellCenter')
 
   def __init__(self, tree: CGNSPartTree, comm: MPIComm, 
                idw_power: int = 1, cross_domain: bool = True):
@@ -21,6 +40,7 @@ class CenterToNode:
     self.parts    = []
     self.weights  = []
     self.vtx_cell = []
+    self.comm     = comm
 
     parts_per_dom = get_parts_per_blocks(tree, comm)
     vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
@@ -67,6 +87,8 @@ class CenterToNode:
 
     self.gmean = PDM.GlobalMean(gnum_list, comm)
 
+  def all_containers(self) -> List[str]:
+    return collect_names(self.parts, CenterToNode.CONTAINER_PRED, self.comm)
 
   def move_fields(self, container_name: str) -> None:
 
@@ -107,12 +129,17 @@ class CenterToNode:
         PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
+
+  CONTAINER_PRED = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
+                 & PT.pred.has_location('Vertex')
+
   def __init__(self, tree: CGNSPartTree, comm: MPIComm, idw_power: int = 1) -> None:
 
     self.parts        = []
     self.weights      = []
     self.weightssum   = []
     self.cell_vtx     = []
+    self.comm         = comm
 
     for base in PT.get_all_CGNSBase_t(tree):
       dim = PT.get_np_value(base)[0]
@@ -140,6 +167,9 @@ class NodeToCenter:
         self.weightssum.append(np.add.reduceat(weights, cell_vtx.displs[:-1]))
         self.cell_vtx.append(cell_vtx)
           
+
+  def all_containers(self) -> List[str]:
+    return collect_names(self.parts, NodeToCenter.CONTAINER_PRED, self.comm)
 
   def move_fields(self, container_name: str) -> None:
 
@@ -173,7 +203,7 @@ class NodeToCenter:
 
 def centers_to_nodes(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
-                     containers_name: List[str] = [], 
+                     containers_name: Union[List[str], Literal['ALL']] = [], 
                      **options) -> None:
   """ Create Vertex located fields from CellCenter located fields.
 
@@ -212,12 +242,14 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   C2N = CenterToNode(part_tree, comm, **options)
 
+  if containers_name == 'ALL':
+    containers_name = C2N.all_containers()
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
 def nodes_to_centers(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
-                     containers_name: List[str] = [], 
+                     containers_name: Union[List[str], Literal['ALL']] = [], 
                      **options) -> None:
   """ Create CellCenter located fields from Vertex located fields.
 
@@ -252,5 +284,7 @@ def nodes_to_centers(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   N2C = NodeToCenter(part_tree, comm, **options)
 
+  if containers_name == 'ALL':
+    containers_name = N2C.all_containers()
   for container_name in containers_name:
     N2C.move_fields(container_name)
