@@ -413,6 +413,10 @@ def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
 
     for bc_n in PT.get_nodes_from_label(zone, 'BC_t'):
       PT.new_node('FamilyName', label='FamilyName_t', value='ALL_BCS', parent=bc_n)
+      if PT.get_name(bc_n) in ['Xmin', 'Ymin', 'Zmin']:
+        PT.new_ZoneSubRegion(PT.get_name(bc_n), bc_name=PT.get_name(bc_n), parent=zone)
+  # Move fields to ZSR, since we can not ask BCDS transfer in container_names
+  PT.subregion_fields_from_bcdataset(part_tree)
 
   part_base = PT.get_child_from_label(part_tree, 'CGNSBase_t')
   PT.new_Family('ALL_BCS', parent=part_base)
@@ -421,7 +425,7 @@ def test_extract_bcs_from_family_U(graph_part_tool, comm, write_output):
   part_tree_ep = EXP.extract_part_from_family(part_tree, "ALL_BCS", comm,
                                               transfer_dataset=True,
                                               graph_part_tool=graph_part_tool,
-                                              containers_name=['FlowSolution_NC'],
+                                              containers_name=['FlowSolution_NC', 'Xmin', 'Ymin', 'Zmin'],
                                               )
 
   # # > For paraview visu

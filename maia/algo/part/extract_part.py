@@ -16,6 +16,12 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
+def set_intersection(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
+  # Intersection of two set, allowing None as input (skip)
+  if   s1 is None: return s2
+  elif s2 is None: return s1
+  else: return s1 & s2
+
 def get_stats(extract_tree: CGNSTree, dim: int,
               comm: MPIComm) -> Tuple[str, int, int]:
     elts_kind = ['vtx', 'edges', 'faces', 'cells'][dim]
@@ -506,40 +512,55 @@ def extract_part_from_family(part_tree: CGNSPartTree,
   local_part_tree, fam_node_paths = _prepare_extract_from_family(part_tree, family_name, comm)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
      
-  # Adding ZSR to tree
-  there_is_bcdataset = dict((path, False) for path in fam_node_paths)
   if transfer_dataset:
+    # First pass : collect fields name + values in nodes referenced by the input Family
+    fields_per_part = list()
     for domain, part_zones in part_tree_per_dom.items():
       for part_zone in part_zones:
-
         for path in fam_node_paths:
           fam_node = PT.get_node_from_path(part_zone, path)
           if fam_node is not None:
-
-            if PT.get_label(fam_node)=='BC_t':
-              bc_name = PT.get_name(fam_node)
-              zsr_bc_n = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name)
-              there_is_bcdataset[path] = set_transfer_dataset(fam_node, zsr_bc_n, PT.Zone.Type(part_zone))
-              if PT.get_child_from_label(zsr_bc_n, 'DataArray_t') is not None:
-                PT.add_child(part_zone, zsr_bc_n)
-
-            if PT.get_label(fam_node)=="ZoneSubRegion_t":
-              if PT.get_child_from_label(fam_node, 'DataArray_t') is not None:
-                there_is_bcdataset[path] = True
+            if PT.get_label(fam_node) == "ZoneSubRegion_t":
+              fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
+                                      for n in PT.get_children_from_label(fam_node, 'DataArray_t')})
+            elif PT.get_label(fam_node) == 'BC_t':
+              set_transfer_dataset(fam_node, tmp_zsr:=PT.new_ZoneSubRegion(), PT.Zone.Type(part_zone))
+              fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
+                                      for n in PT.get_children_from_label(tmp_zsr, 'DataArray_t')})
 
 
-  l_containers_name = [name for name in containers_name]
-  # Synchronize container names
-  for node_path, there_is in there_is_bcdataset.items():
-    if transfer_dataset and comm.allreduce(there_is, MPI.LOR):
-      node_name = node_path.split('/')[-1]
-      if node_name not in l_containers_name:
-        l_containers_name.append(node_name) # not to change the initial containers_name list
+    # Filter names to keep only mergeable arrays, ie appearing on all subsets
+    field_names = [set(fields.keys()) for fields in fields_per_part]
+    loc_cnt = set.intersection(*field_names) if len(fields_per_part) > 0 else None
+    g_cnt = sorted(comm.allreduce(loc_cnt, set_intersection))
+    transfer_dataset = len(g_cnt) > 0
+
+  if transfer_dataset:
+    # Concatenate arrays and store them in tmp ZSR for extraction
+    _fields_per_part = iter(fields_per_part)
+    for domain, part_zones in part_tree_per_dom.items():
+      for part_zone in part_zones:
+        fake_zsr = PT.get_child_from_name(part_zone, f'__{family_name}')
+        if fake_zsr is not None: # Cat fields
+          gathered_fields = {key: [] for key in g_cnt}
+          for path in fam_node_paths:
+            if PT.get_node_from_path(part_zone, path) is not None:
+              tt = next(_fields_per_part) # Consume stored value
+              for field in gathered_fields:
+                gathered_fields[field].append(tt[field])
+          for fname, fields in gathered_fields.items():
+            PT.new_DataArray(fname, np_utils.concatenate_np_arrays(fields)[1], parent=fake_zsr)
+
 
   extract_tree, dim = _extract_part_from_zsr(local_part_tree, f"__{family_name}", comm, 
-                                             transfer_dataset=False,
-                                             containers_name=l_containers_name,
-                                           **options)
+                                             transfer_dataset, containers_name, **options)
+  # Rename native container
+  if transfer_dataset:
+    for ext_zone in PT.get_all_Zone_t(extract_tree):
+      cnt = PT.get_child_from_name(ext_zone, f'__{family_name}')
+      if cnt is not None:
+        PT.update_node(cnt, name=family_name)
+
   end = time.time()
 
 
