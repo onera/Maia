@@ -529,8 +529,13 @@ def test_void_extraction(comm):
 
 
 @pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@pytest.mark.parametrize("equilibrate", [True, False])
 @pytest_parallel.mark.parallel([2])
-def test_extract_from_zsr_U_2d(graph_part_tool, comm):
+def test_extract_from_zsr_U_2d(graph_part_tool, equilibrate, comm):
+
+  # Prefix for reference file
+  prefix = ''
+  if not equilibrate: prefix = 'local_'
 
   # > Generate tree
   n_vtx  = 6
@@ -563,7 +568,7 @@ def test_extract_from_zsr_U_2d(graph_part_tool, comm):
   pl_faces.astype(zone[1].dtype)
   ngon = PT.Zone.NGonNode(zone)
   distrib_faces = MT.distribution_value(zone, 'Cell')
-  pl_faces += PT.Element.Range(ngon)[0] + distrib_faces[0] + pl_faces[0]
+  pl_faces += PT.Element.Range(ngon)[0] + distrib_faces[0]
   zsr_faces = PT.new_ZoneSubRegion("ZSR_Faces", point_list=pl_faces.reshape((1,-1), order='F'), loc='FaceCenter', fields={'cx': fcx}, parent=zone)
   MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_faces.size, comm)}, zsr_faces)
   # GridLocation should be CellCenter -> Trick for LOC_TO_DIM
@@ -575,7 +580,7 @@ def test_extract_from_zsr_U_2d(graph_part_tool, comm):
   pl_edges.astype(zone[1].dtype)
   bar_2 = MT.Zone.EdgeNode(zone)
   distrib_edges = MT.distribution_value(bar_2, 'Element')
-  pl_edges += PT.Element.Range(bar_2)[0] + distrib_edges[0] + pl_edges[0]
+  pl_edges += PT.Element.Range(bar_2)[0] + distrib_edges[0]
   zsr_edges = PT.new_ZoneSubRegion("ZSR_Edges", point_list=pl_edges.reshape((1,-1), order='F'), loc='EdgeCenter', fields={'cx': ecx}, parent=zone)
   MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_edges.size, comm)}, zsr_edges)
 
@@ -597,55 +602,55 @@ def test_extract_from_zsr_U_2d(graph_part_tool, comm):
 
   # Extract part Faces
   part_tree_ep = EP.extract_part_from_zsr( part_tree, "ZSR_Faces", comm,
-                                            # equilibrate=1,
-                                            transfer_dataset=False,
-                                            graph_part_tool=graph_part_tool,
-                                            # containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_Faces']
-                                            containers_name=['FlowSolution_NC','FlowSolution_CC']
-                                            )
+                                           equilibrate=equilibrate,
+                                           transfer_dataset=False,
+                                           graph_part_tool=graph_part_tool,
+                                           # containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_Faces']
+                                           containers_name=['FlowSolution_NC','FlowSolution_CC']
+                                           )
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
 
   # > Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'extract_face_from_zsr_2d.yaml')
+  ref_file = os.path.join(ref_dir, f'{prefix}extract_face_from_zsr_2d.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
-  # Recover dist tree force R4 so use type_tol=True
+    # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
   # Extract part Edges
   part_tree_ep = EP.extract_part_from_zsr( part_tree, "ZSR_Edges", comm,
-                                            # equilibrate=1,
-                                            transfer_dataset=False,
-                                            graph_part_tool=graph_part_tool,
-                                            containers_name=['FlowSolution_NC','ZSR_Edges']
-                                            )
+                                           equilibrate=equilibrate,
+                                           transfer_dataset=False,
+                                           graph_part_tool=graph_part_tool,
+                                           containers_name=['FlowSolution_NC','ZSR_Edges']
+                                           )
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
 
   # > Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'extract_edge_from_zsr_2d.yaml')
+  ref_file = os.path.join(ref_dir, f'{prefix}extract_edge_from_zsr_2d.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
-  # Recover dist tree force R4 so use type_tol=True
+    # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
 
   # Extract part Vertices
   part_tree_ep = EP.extract_part_from_zsr( part_tree, "ZSR_Vtx", comm,
-                                            # equilibrate=1,
-                                            transfer_dataset=False,
-                                            graph_part_tool=graph_part_tool,
-                                            containers_name=['FlowSolution_NC','ZSR_Vtx']
-                                            )
+                                           equilibrate=equilibrate,
+                                           transfer_dataset=False,
+                                           graph_part_tool=graph_part_tool,
+                                           containers_name=['FlowSolution_NC','ZSR_Vtx']
+                                           )
 
   # > Part to dist
   dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
 
   # > Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'extract_vtx_from_zsr_2d.yaml')
+  ref_file = os.path.join(ref_dir, f'{prefix}extract_vtx_from_zsr_2d.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
-  # Recover dist tree force R4 so use type_tol=True
+    # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
