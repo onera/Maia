@@ -53,3 +53,17 @@ def test_convert_subset_as_facelist(comm):
   assert PT.Subset.GridLocation(xmax) == 'FaceCenter'
   assert pl.ndim == 2
   assert (pl[0] == [3,6,9,12][distri[0]:distri[1]]).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_convert_subset_as_facelist_edge(comm):
+  tree = maia.factory.generate_dist_block([4,4], 'S', comm)
+  maia.algo.dist.convert_s_to_u(tree, 'Poly', comm)
+
+  subset_tools.convert_subset_as_facelist(tree, 'Base/zone/ZoneBC/Xmax', comm)
+
+  xmax = PT.find_node_from_name(tree, 'Xmax')
+  distri = MT.distribution_value(xmax, 'Index')
+  pl = PT.get_np_value(PT.find_child_from_name(xmax, 'PointList'))
+  assert PT.Subset.GridLocation(xmax) == 'EdgeCenter'
+  assert pl.ndim == 2
+  assert (pl[0] == [4,8,12][distri[0]:distri[1]]).all()
