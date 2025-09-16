@@ -12,7 +12,7 @@ from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.factory.partitioning import part_bound_orient as PBO
-from maia.utils    import np_utils, layouts
+from maia.utils    import np_utils, layouts, par_utils
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
 
@@ -62,7 +62,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
   
     mask_container = PT.get_child_from_name(mask_zone, container_name)
     if mask_container is None:
-      raise ValueError("[maia-isosurfaces] asked container for exchange is not in tree")
+      raise ValueError(f"[maia-isosurfaces] asked container for exchange '{container_name}' is not in tree")
 
     partial_field = PT.Container._is_partial(mask_container)
     gridLocation = PT.Container.GridLocation(mask_container, mask_zone)
@@ -206,12 +206,20 @@ def _exchange_field(part_tree: CGNSPartTree,
   # Get zones by domains
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
+  # Multidomain: allow containers_name that appear in at least one initial domain
+  containers_name_per_dom = {key : [name for name in containers_name if par_utils.exists_anywhere(parts, name, comm)]
+                              for key,parts in part_tree_per_dom.items()}
+  for name in containers_name:
+    if not any([name in vals for vals in containers_name_per_dom.values()]):
+      raise ValueError(f"[maia-isosurfaces] asked container for exchange '{name}' is not in tree")
+
+
   # Loop over domains
   for domain_path, part_zones in part_tree_per_dom.items():
     # Get zone from isosurf (one zone by domain)
     iso_part_zones = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}")
     iso_part_zone  = iso_part_zones[0] if len(iso_part_zones)!=0 else None
-    exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
+    exchange_field_one_domain(part_zones, iso_part_zone, containers_name_per_dom[domain_path], comm)
 
 
 
