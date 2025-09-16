@@ -338,7 +338,6 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
   start = time.time()
 
   # Local copy of the part_tree to add ZSR 
-  l_containers_name = [name for name in containers_name]
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
@@ -348,20 +347,26 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
     for part_zone in part_zones:
       bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
       if bc_n is not None:
-        zsr_bc_n  = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
+        zsr_bc_n  = PT.new_ZoneSubRegion(name=f'__{bc_name}', bc_name=bc_name, parent=part_zone)
         if transfer_dataset:
           there_is_bcdataset = set_transfer_dataset(bc_n, zsr_bc_n, PT.Zone.Type(part_zone))
 
   _transfer_dataset = False
   if transfer_dataset and comm.allreduce(there_is_bcdataset, MPI.LOR):
     _transfer_dataset = True
-    l_containers_name.append(bc_name) # not to change the initial containers_name list
 
 
-  extract_tree, dim = _extract_part_from_zsr(local_part_tree, bc_name, comm,
+  extract_tree, dim = _extract_part_from_zsr(local_part_tree, f'__{bc_name}', comm,
                                              transfer_dataset=_transfer_dataset,
-                                             containers_name=l_containers_name,
+                                             containers_name=containers_name,
                                            **options)
+  # Rename native container
+  if transfer_dataset:
+    for ext_zone in PT.get_all_Zone_t(extract_tree):
+      cnt = PT.get_child_from_name(ext_zone, f'__{bc_name}')
+      if cnt is not None:
+        PT.update_node(cnt, name=bc_name)
+
   end = time.time()
 
   # > Print some light stats
@@ -389,9 +394,9 @@ def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
     for part_zone in part_zones:
       bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
       if bc_n is not None:
-        PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
+        PT.new_ZoneSubRegion(name=f'__{bc_name}', bc_name=bc_name, parent=part_zone)
 
-  extractor = _create_extractor_from_zsr(local_part_tree, bc_name, comm, **options)
+  extractor = _create_extractor_from_zsr(local_part_tree, f'__{bc_name}', comm, **options)
   if extractor.location == '':
     mlog.warning(f"BC \"{bc_name}\" does not exist in input tree, "
                  f"an empty extractor is returned from create_extractor_from_bc_name")
