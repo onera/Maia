@@ -346,15 +346,22 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   Prepare PDM extract_part object and perform the extraction of one domain.
   """
   dim = LOC_TO_DIM[location]
-  parent_dim = -1 # should be cell_dim
+
+  parent_dim = -1
+  for i_part, part_zone in enumerate(part_zones):
+    if PT.Zone.CellDimension(part_zone) == 3:
+      parent_dim = 3
+    if PT.Zone.CellDimension(part_zone) == 2:
+      parent_dim = 2
+  parent_dim = comm.allreduce(parent_dim, MPI.MAX)
 
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
 
   # In local mode, 'native' groups (eg face groups if we extract faces) are not yet supported by PDM
   # so we exclude them from set / get by using < instead of <= in bc parsing
-  bc_op = operator.lt if ((dim == 3 and location == 'CellCenter') or (dim == 2 and location == 'FaceCenter') or not equilibrate) else operator.le
-  # to be adjusted depending on LOC_TO_DIM+cell_dim ? for safety
+  bc_op = operator.lt if ((parent_dim == 3 and dim == 3 and location == 'CellCenter') or
+                          (parent_dim == 2 and dim == 2 and location == 'FaceCenter') or not equilibrate) else operator.le
 
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
@@ -390,7 +397,6 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
     if PT.Zone.CellDimension(part_zone) == 3:
-      parent_dim = 3
       assert dim != 1, "[MAIA] Error : dimension 1 not implemented for 3D zone"
       nface = PT.Zone.NFaceNode(part_zone)
       cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset" )[1]
@@ -408,7 +414,6 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       edge_vtx      = None
       edge_ln_to_gn = None
     else:
-      parent_dim = 2
       assert dim < 3, "[MAIA] Error : dimension 3 not available for 2D zone"
       cell_face_idx = None
       cell_face     = None
@@ -459,7 +464,6 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       bc_type +=1
 
   pdm_ep.compute()
-  parent_dim = comm.allreduce(parent_dim, MPI.MAX)
 
   # > Compute edge data here (this is a global operation)
   # In addition we can not do a double get so we store some extracted data
@@ -467,6 +471,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   if dim == 1:
     all_ep_edge_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_EDGE)   for i_part in range(n_part_out)]
     all_ep_edge_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX) for i_part in range(n_part_out)]
+    all_ep_edge_vtx = [all_ep_edge_vtx[i_part][1] for i_part in range(n_part_out)]
   if dim >= 2:
     all_ep_face_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part, PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
     if parent_dim == 3:
@@ -487,6 +492,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       all_ep_face_edge = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE) for i_part in range(n_part_out)]
       all_ep_face_vtx = [PDM.combine_connectivity(all_ep_face_edge[i_part][0], all_ep_face_edge[i_part][1],
                                                   all_ep_edge_vtx[i_part][0], all_ep_edge_vtx[i_part][1]) for i_part in range(n_part_out)]
+      all_ep_edge_vtx = [all_ep_edge_vtx[i_part][1] for i_part in range(n_part_out)]
 
   # > Reconstruction du maillage de l'extract part
   extract_zones = []
@@ -528,7 +534,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       nb_bar = ep_edge_ln_to_gn.size
       bar_n = PT.new_Elements('EdgeElements', 'BAR_2',
                               erange=[1, nb_bar],
-                              econn=ep_edge_vtx[1],
+                              econn=ep_edge_vtx,
                               parent=extract_zone)
       MT.new_GlobalNumbering({'Element' : ep_edge_ln_to_gn,
                               'Sections': ep_edge_ln_to_gn}, parent=bar_n)
@@ -546,7 +552,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
         nb_bar = ep_edge_ln_to_gn.size
         bar_n = PT.new_Elements('EdgeElements', 'BAR_2',
                                 erange=[1, nb_bar],
-                                econn=ep_edge_vtx[1],
+                                econn=ep_edge_vtx,
                                 parent=extract_zone)
         MT.new_GlobalNumbering({'Element' : ep_edge_ln_to_gn}, parent=bar_n)
 
@@ -588,8 +594,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
             dist_bc = PT.get_node_from_path(dist_zone, bc_path)
             bc_name = bc_path.split('/')[-1]
             bc_val = PT.get_value(dist_bc) if PT.get_value(dist_bc) is not None else 'Null'
-            bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) else dim_name
-            bc_loc = 'CellCenter' if (dim_name == 'EdgeCenter' and dim == 1) else dim_name
+            bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) or (dim_name == 'EdgeCenter' and dim == 1) else dim_name
             if bc_loc == 'CellCenter' and dim == 2: # Offset BCs, because we put Edge elts first
               bc_pl += nb_bar
             bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
