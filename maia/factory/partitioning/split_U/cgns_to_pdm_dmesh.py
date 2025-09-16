@@ -264,6 +264,8 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   if needs_vertex:
     if dn_vtx > 0:
       cx, cy, cz = PT.Zone.coordinates(dist_zone)
+      if cz is None:
+        cz = np.zeros_like(cx)
       dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
     else:
       dvtx_coord = np.empty(0, dtype='float64', order='F')

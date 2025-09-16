@@ -231,12 +231,16 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
   cloud = _get_cloud(dmesh, dim, _pl, comm)
   return cloud
 
-def apply_periodicity(cloud:PointCloud, periodic):
+def apply_periodicity(cloud:PointCloud, phydim, periodic):
   coords = cloud['coords']
   cx = coords[0::3]
   cy = coords[1::3]
   cz = coords[2::3]
-  cx_p, cy_p, cz_p = np_utils.transform_cart_vectors(cx,cy,cz, **periodic)
+  if phydim == 2:
+    cx_p, cy_p = np_utils.transform_cart_vectors_2d(cx,cy, **periodic)
+    cz_p = cz # Should be array of 0 for PDM
+  else:
+    cx_p, cy_p, cz_p = np_utils.transform_cart_vectors(cx,cy,cz, **periodic)
   coords_p = np_utils.interweave_arrays([cx_p, cy_p, cz_p])
   cloud['coords'] = coords_p
 
@@ -256,9 +260,12 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   # 6.  Create output for matched faces
   # 7.  Check resulting faces vs input faces
 
-  base_dims = {PT.get_np_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree)}
-  assert len(base_dims) == 1, "All bases must have same CellDimension"
-  dim = base_dims.pop()
+  cell_dims = {PT.get_np_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree)}
+  phy_dims  = {PT.get_np_value(base)[1] for base in PT.iter_all_CGNSBase_t(dist_tree)}
+  assert len(cell_dims) == 1, "All bases must have same CellDimension"
+  assert len(phy_dims) == 1, "All bases must have same PhysicalDimension"
+  dim = cell_dims.pop()
+  phy_dim = phy_dims.pop()
 
   assert len(subset_paths) == 2
   tol = options.get("tol", 1e-2)
@@ -277,7 +284,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   for cloud_path in subset_paths[0]:
     cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
     if periodic is not None:
-      apply_periodicity(cloud, periodic)
+      apply_periodicity(cloud, phy_dim, periodic)
     clouds.append(cloud)
   for cloud_path in subset_paths[1]:
     cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
@@ -320,6 +327,11 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
     gnum_opp   = matching_face['lgnum_opp']
 
   if periodic is not None:
+    if phy_dim == 2:
+      # Replace defaults for phydim == 2 (size of arrays differs)
+      periodic = {'translation'     : periodic.get('translation', np.zeros(2, np.float32)),
+                  'rotation_center' : periodic.get('rotation_center', np.zeros(2, np.float32)),
+                  'rotation_angle'  : periodic.get('rotation_angle', np.zeros(1, np.float32))}
     perio_opp = {'translation'     : - periodic.get('translation', np.zeros(3, np.float32)),
                  'rotation_center' :   periodic.get('rotation_center', np.zeros(3, np.float32)),
                  'rotation_angle'  : - periodic.get('rotation_angle', np.zeros(3, np.float32))}

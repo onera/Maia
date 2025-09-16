@@ -15,6 +15,8 @@ def interweave_arrays(array_list: Sequence[NDArray]) -> NDArray:
   number = len(array_list)
   output = np.empty(number*first.size, first.dtype)
   for i,array in enumerate(array_list):
+    if array is None:
+      raise ValueError(f"None array not accepted ({i})")
     output[i::number] = array
   return output
 

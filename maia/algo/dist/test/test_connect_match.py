@@ -394,10 +394,56 @@ def test_connect_2d(comm):
   MT.new_Distribution({'Index' : distri}, expected_B)
 
   assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
+  assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 3*2
   assert PT.is_same_tree(expected_A, PT.find_node_from_path(tree, 'Base/zone1/ZoneGridConnectivity/Xmax_0'))
   assert PT.is_same_tree(expected_B, PT.find_node_from_path(tree, 'Base/zone2/ZoneGridConnectivity/Xmin_0'))
   assert PT.get_node_from_path(tree, 'Base/zone1/ZoneBC/Xmax') is None # BC should have been removed
   assert PT.get_node_from_path(tree, 'Base/zone2/ZoneBC/Xmin') is None
+
+@pytest_parallel.mark.parallel(1)
+def test_connect_2d_perio(comm):
+  # First test w/o periodic => unmatched
+  tree = maia.factory.generate_dist_block(3, 'QUAD_4', comm)
+  connect_match.connect_1to1_from_paths(tree, (['Base/zone/ZoneBC/Xmax'], ['Base/zone/ZoneBC/Xmin']), comm)
+  
+  ztype = PT.get_np_value(PT.find_node_from_label(tree, 'Zone_t')).dtype
+  unmatchedA = PT.new_BC("Xmin_unmatched", loc='EdgeCenter', point_list=np.array([[9,10]], ztype))
+  MT.new_Distribution({'Index' : np.array([0,2,2], pdm_dtype)}, unmatchedA)
+  unmatchedB = PT.new_BC("Xmax_unmatched", loc='EdgeCenter', point_list=np.array([[11,12]], ztype))
+  MT.new_Distribution({'Index' : np.array([0,2,2], pdm_dtype)}, unmatchedB)
+  assert PT.is_same_tree(unmatchedA, PT.find_node_from_name(tree, 'Xmin_unmatched'))
+  assert PT.is_same_tree(unmatchedB, PT.find_node_from_name(tree, 'Xmax_unmatched'))
+
+  # Second test with periodic
+  tree = maia.factory.generate_dist_block(3, 'QUAD_4', comm)
+  connect_match.connect_1to1_from_paths(tree, (['Base/zone/ZoneBC/Xmax'], ['Base/zone/ZoneBC/Xmin']), comm,
+                                        periodic={'translation' : np.array([-1.,0,0], np.float32)})
+
+  assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
+  assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 2
+  matchA = PT.find_node_from_name(tree, 'Xmax_0')
+  matchB = PT.find_node_from_name(tree, 'Xmin_0')
+  assert (PT.get_np_value(PT.find_child_from_name(matchA, 'PointList')) == [[11,12]]).all()
+  assert (PT.get_np_value(PT.find_child_from_name(matchB, 'PointList')) == [[9,10]]).all()
+  assert all(np.allclose(x,y) for x, y in zip(PT.GridConnectivity.periodic_values(matchA),
+                                           PT.PeriodicValues([0,0,0], [0,0,0], [-1,0,0])))
+  assert all(np.allclose(x,y) for x, y in zip(PT.GridConnectivity.periodic_values(matchB),
+                                           PT.PeriodicValues([0,0,0], [0,0,0], [1,0,0])))
+
+  # Last test in true 2D (w/ CoordinateZ)
+  tree = maia.factory.generate_dist_block(3, 'QUAD_4', comm, origin=[0,0])
+  connect_match.connect_1to1_from_paths(tree, (['Base/zone/ZoneBC/Xmax'], ['Base/zone/ZoneBC/Xmin']), comm,
+                                        periodic={'translation' : np.array([-1., 0], np.float32)})
+  assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
+  assert len(PT.get_nodes_from_label(tree, 'BC_t')) == 2
+  matchA = PT.find_node_from_name(tree, 'Xmax_0')
+  matchB = PT.find_node_from_name(tree, 'Xmin_0')
+  assert (PT.get_np_value(PT.find_child_from_name(matchA, 'PointList')) == [[11,12]]).all()
+  assert (PT.get_np_value(PT.find_child_from_name(matchB, 'PointList')) == [[9,10]]).all()
+  assert all(np.allclose(x,y) for x, y in zip(PT.GridConnectivity.periodic_values(matchA),
+                                           PT.PeriodicValues([0,0], 0, [-1,0])))
+  assert all(np.allclose(x,y) for x, y in zip(PT.GridConnectivity.periodic_values(matchB),
+                                           PT.PeriodicValues([0,0], 0, [1,0])))
 
 
 @pytest_parallel.mark.parallel(2)
