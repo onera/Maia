@@ -15,9 +15,9 @@ LOC_TO_DIM   = {'Vertex':0,
                 'CellCenter':3}
 
 DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
-                 1: {'Vertex':'Vertex', 'EdgeCenter':'CellCenter', 'FaceCenter':'CellCenter', 'CellCenter':'CellCenter'},
+                 1: {'Vertex':'Vertex', 'EdgeCenter':'CellCenter'},
                  2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter',
-                     'IFaceCenter': 'CellCenter', 'JFaceCenter': 'CellCenter', 'KFaceCenter': 'CellCenter'},
+                     'IFaceCenter': 'CellCenter', 'JFaceCenter': 'CellCenter', 'KFaceCenter': 'CellCenter', 'CellCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
 def is_elt_of_dim(dim):

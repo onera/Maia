@@ -85,6 +85,12 @@ class Extractor:
       self.dim = None
       return
 
+    # LOC_TO_DIM could be indexed by cell_dim from CGNS_Base_t to match advised GridLocation ?
+    # LOC_TO_DIM = { 0: {'Vertex':0},
+    #                1: {'Vertex':0, 'EdgeCenter':1},
+    #                2: {'Vertex':0, 'EdgeCenter':1, 'CellCenter':2},
+    #                3: {'Vertex':0, 'EdgeCenter':1, 'FaceCenter':2, 'CellCenter':3}}
+    # + error if cell_dim < 2
     self.dim = LOC_TO_DIM[location]
     assert self.dim in [0,1,2,3]
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
@@ -99,18 +105,18 @@ class Extractor:
               cell_dim = idx.size
         cell_dim = comm.allreduce(cell_dim, op=MPI.MAX)
       else:
-        cell_dim = 3    
+        cell_dim = 3
     else:
-      cell_dim = self.dim 
-    
+      cell_dim = self.dim
+
     assert graph_part_tool in ["hilbert","parmetis","ptscotch"]
     assert not( (self.dim==0) and graph_part_tool in ['parmetis', 'ptscotch']),\
-           '[MAIA] Vertex extraction not available with parmetis or ptscotch partitioning. Please check your script.' 
+           '[MAIA] Vertex extraction not available with parmetis or ptscotch partitioning. Please check your script.'
 
     # ExtractPart CGNSTree
     base_name = next(iter(part_tree_per_dom.keys())).split('/')[0] #Only one base
     extract_tree = PT.new_CGNSTree()
-    extract_base = PT.new_CGNSBase(base_name, cell_dim=cell_dim, phy_dim=3, parent=extract_tree)
+    extract_base = PT.new_CGNSBase(base_name, cell_dim=cell_dim, phy_dim=3, parent=extract_tree) #phy_dim should be the same as in the input tree ? (see test on cz in extract_part_u)
     # Compute extract part of each domain
     for i_domain, dom_part_zones in enumerate(part_tree_per_dom.items()):
       dom_path   = dom_part_zones[0]
@@ -164,7 +170,7 @@ class Extractor:
     return self.extract_tree
 
 
-def _extract_part_from_zsr(part_tree: CGNSPartTree, 
+def _extract_part_from_zsr(part_tree: CGNSPartTree,
                            zsr_name: str,
                            comm: MPIComm,
                            transfer_dataset: bool = True,
@@ -203,7 +209,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   Data fields existing in the volumic mesh can be transfered to the extracted mesh by two ways:
 
   - if ``transfer_dataset`` is set to ``True``, fields found under the ZoneSubRegion are transfered on the
-    extracted mesh, where they are stored in a FlowSolution_t container since they cover all cells (or vertices). 
+    extracted mesh, where they are stored in a FlowSolution_t container since they cover all cells (or vertices).
   - Other containers of label FlowSolution_t, DiscreteData_t or ZoneSubRegion_t are transfered if their name
     is requested in the ``containers_name`` list. They are stored in a container of corresponding label in
     extracted tree.
@@ -227,16 +233,16 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
     - ``graph_part_tool`` (str) -- Partitioning tool used to balance the extracted zones (if ``equilibrate=True``)
       Admissible values are ``hilbert, parmetis, ptscotch``. Note that
       vertex-located extractions require hilbert partitioning. Default is ``hilbert``.
-  
+
   Important:
     - Input tree must have a U-NGon or Structured connectivity
     - Partitions must come from a single initial domain on input tree.
-  
+
   See also:
     :func:`create_extractor_from_zsr` takes the same parameters, excepted ``containers_name`` and ``transfer_dataset``,
     and returns an Extractor object which can be used to exchange containers more than once through its
     ``Extractor.exchange_fields(container_name)`` method.
-  
+
   Example:
     .. literalinclude:: snippets/test_algo.py
       :start-after: #extract_from_zsr@start
@@ -263,7 +269,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   return extract_tree
 
 
-def _create_extractor_from_zsr(part_tree: CGNSPartTree, 
+def _create_extractor_from_zsr(part_tree: CGNSPartTree,
                                zsr_path: str,
                                comm: MPIComm,
                                **options) -> Extractor:
@@ -297,8 +303,8 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   return Extractor(part_tree, patch, location, comm, **options)
 
 def create_extractor_from_zsr(part_tree: CGNSPartTree,
-                              zsr_path : str, 
-                              comm: MPIComm, 
+                              zsr_path : str,
+                              comm: MPIComm,
                               **options) -> Extractor:
   """Same as extract_part_from_zsr, but return the extractor object."""
   # Get zones by domains
@@ -312,14 +318,14 @@ def create_extractor_from_zsr(part_tree: CGNSPartTree,
 def extract_part_from_bc_name(part_tree: CGNSPartTree,
                               bc_name: str,
                               comm: MPIComm,
-                              transfer_dataset: Optional[bool] = True, 
+                              transfer_dataset: Optional[bool] = True,
                               containers_name: List[str] = [],
                               **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
 
   Behaviour and arguments of this function are similar to those of :func:`extract_part_from_zsr`:
-  ``zsr_name`` becomes ``bc_name`` and optional ``transfer_dataset`` argument allows to 
+  ``zsr_name`` becomes ``bc_name`` and optional ``transfer_dataset`` argument allows to
   transfer BCDataSet (without PointList or PointRange) from BC to the extracted mesh (default to ``True``).
 
   See also:
@@ -336,7 +342,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
-  # Local copy of the part_tree to add ZSR 
+  # Local copy of the part_tree to add ZSR
   l_containers_name = [name for name in containers_name]
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
@@ -345,7 +351,7 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
   there_is_bcdataset = False
   for domain, part_zones in part_tree_per_dom.items():
     for part_zone in part_zones:
-      bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
+      bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t')
       if bc_n is not None:
         zsr_bc_n  = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
         if transfer_dataset:
@@ -379,14 +385,14 @@ def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
                                   comm: MPIComm,**options) -> Extractor:
   """Create an extractor object from a BC name"""
   MT.check_cgns_part_tree(part_tree)
-  # Local copy of the part_tree to add ZSR 
+  # Local copy of the part_tree to add ZSR
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
   # Adding ZSR to tree
   for domain, part_zones in part_tree_per_dom.items():
     for part_zone in part_zones:
-      bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t') 
+      bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t')
       if bc_n is not None:
         PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
 
@@ -400,12 +406,12 @@ def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
 def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
                                  comm: MPIComm) -> Tuple[CGNSPartTree, List[CGNSPath]]:
   """Internal function to prepare extraction from a family name"""
-  
+
   has_struct_zone = any(PT.Zone.Type(zone) == 'Structured' for zone in PT.get_all_Zone_t(part_tree))
   if comm.allreduce(has_struct_zone, MPI.LOR):
     raise RuntimeError(f'extract_part_from_family function is not implemented for Structured meshes.')
 
-  # Local copy of the part_tree to add ZSR 
+  # Local copy of the part_tree to add ZSR
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
@@ -419,7 +425,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
   fam_node_paths = list()
   for domain, part_zones in part_tree_per_dom.items():
     # Create a "fake" dist zone including:
-    #   - ZSR belonging to provided family, 
+    #   - ZSR belonging to provided family,
     #   - BC  belonging to the provided family OR referenced by a previoulsy found ZSR
     #   - GC  referenced by a previously found ZSR
     dist_zone = PT.new_Zone('Zone')
@@ -467,15 +473,15 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
   return local_part_tree, fam_node_paths
 
 
-def extract_part_from_family(part_tree: CGNSPartTree, 
-                             family_name: str, 
+def extract_part_from_family(part_tree: CGNSPartTree,
+                             family_name: str,
                              comm: MPIComm,
                              transfer_dataset: bool = True,
                              containers_name: List[str] = [],
                              **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided family name from the input volumic
   partitioned tree.
-  
+
   Family related nodes can be labelled either as BC_t or ZoneSubRegion_t, but their
   GridLocation must have the same value. They generate a merged output on the resulting extracted tree.
 
@@ -499,7 +505,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
 
   local_part_tree, fam_node_paths = _prepare_extract_from_family(part_tree, family_name, comm)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
-     
+
   # Adding ZSR to tree
   there_is_bcdataset = dict((path, False) for path in fam_node_paths)
   if transfer_dataset:
@@ -530,7 +536,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
       if node_name not in l_containers_name:
         l_containers_name.append(node_name) # not to change the initial containers_name list
 
-  extract_tree, dim = _extract_part_from_zsr(local_part_tree, f"__{family_name}", comm, 
+  extract_tree, dim = _extract_part_from_zsr(local_part_tree, f"__{family_name}", comm,
                                              transfer_dataset=False,
                                              containers_name=l_containers_name,
                                            **options)
@@ -550,7 +556,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
   return extract_tree
 
 
-  
+
 def create_extractor_from_family(part_tree: CGNSPartTree, family_name: str,
                                  comm: MPIComm, **options) -> Extractor:
   """Create an extractor object from a family name"""

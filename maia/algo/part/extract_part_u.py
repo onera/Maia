@@ -346,13 +346,15 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   Prepare PDM extract_part object and perform the extraction of one domain.
   """
   dim = LOC_TO_DIM[location]
+  parent_dim = -1 # should be cell_dim
 
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
 
   # In local mode, 'native' groups (eg face groups if we extract faces) are not yet supported by PDM
   # so we exclude them from set / get by using < instead of <= in bc parsing
-  bc_op = operator.lt if (dim == 3 or not equilibrate) else operator.le
+  bc_op = operator.lt if ((dim == 3 and location == 'CellCenter') or (dim == 2 and location == 'FaceCenter') or not equilibrate) else operator.le
+  # to be adjusted depending on LOC_TO_DIM+cell_dim ? for safety
 
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
@@ -375,12 +377,16 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
       PDM_EP_n_group_set(pdm_ep, bc_type+1, n_gdom_bcs)
 
+  has_czn = False
   # Loop over domain zone : preparing extract part
   for i_part, part_zone in enumerate(part_zones):
     # Get NGon + NFac
     cx, cy, cz = PT.Zone.coordinates(part_zone)
-    if PT.Zone.CellDimension(part_zone) == 2:
-      cz = np.zeros(cx.shape[0], dtype=cx.dtype) # avoid nan
+    czn = PT.get_node_from_name(part_zone, 'CoordinateZ')
+    if czn is None:
+      cz = np.zeros(cx.shape[0], dtype=cx.dtype) # avoid nan in PDM
+    else:
+      has_czn = True
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
     if PT.Zone.CellDimension(part_zone) == 3:
@@ -453,6 +459,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       bc_type +=1
 
   pdm_ep.compute()
+  parent_dim = comm.allreduce(parent_dim, MPI.MAX)
 
   # > Compute edge data here (this is a global operation)
   # In addition we can not do a double get so we store some extracted data
@@ -507,7 +514,8 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     extract_grid_coord = PT.new_GridCoordinates(parent=extract_zone)
     PT.new_DataArray('CoordinateX', cx, parent=extract_grid_coord)
     PT.new_DataArray('CoordinateY', cy, parent=extract_grid_coord)
-    PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord) # only in 3D ?
+    if has_czn:
+      PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
 
     if dim == 0:
       MT.new_GlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extract_zone)
@@ -522,7 +530,8 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                               erange=[1, nb_bar],
                               econn=ep_edge_vtx[1],
                               parent=extract_zone)
-      MT.new_GlobalNumbering({'Element' : ep_edge_ln_to_gn}, parent=bar_n)
+      MT.new_GlobalNumbering({'Element' : ep_edge_ln_to_gn,
+                              'Sections': ep_edge_ln_to_gn}, parent=bar_n)
 
     # > NGON
     if dim >= 2:
@@ -619,8 +628,10 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     ptp['Vertex']       = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_VTX)
     if dim == 1:
       ptp['EdgeCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_EDGE)
-    if dim >= 2: # NGON
+    if dim >= 2 and parent_dim == 3: # NGON
       ptp['FaceCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_FACE)
+    if dim == 2 and parent_dim == 2:
+      ptp['CellCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_FACE)
     if dim == 3: # NFACE
       ptp['CellCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_CELL)
 
@@ -629,13 +640,13 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
   parent_elt['Vertex']       = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_VTX) for i_part in range(n_part_out)]
   if dim == 1: # BAR_2
     parent_elt['EdgeCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_EDGE) for i_part in range(n_part_out)]
-  if dim >= 2: # NGON
+  if dim >= 2 and parent_dim == 3: # NGON
     parent_elt['FaceCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
+  if dim == 2 and parent_dim == 2:
+    parent_elt['CellCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
   if dim == 3: # NFACE
     parent_elt['CellCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_CELL) for i_part in range(n_part_out)]
 
   exch_tool_box = {'part_to_part' : ptp, 'parent_elt' : parent_elt}
 
   return extract_zones, exch_tool_box
-
-

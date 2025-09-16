@@ -2,14 +2,20 @@ from mpi4py import MPI
 import pytest
 import pytest_parallel
 import numpy as np
+import os
 
 import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
+import maia.factory     as MF
+import maia.io          as Mio
 from   maia.utils import s_numbering, par_utils
 from   maia.utils import logging as mlog
 
 from maia.algo.part import extract_part as EP
+
+# > Reference directory
+ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 
 class LogCapture():
   def __init__(self):
@@ -33,7 +39,7 @@ def test_extract_part_simple_u(location, comm):
   part_tree = sample_part_tree('Poly', comm)
 
   pl = np.array([[1,2]], np.int32)
-  if location=='CellCenter': 
+  if location=='CellCenter':
     pl += PT.Zone.n_face(PT.get_all_Zone_t(part_tree)[0])
 
   ex_zone, ptp_data = EP.extract_part_one_domain_u(PT.get_all_Zone_t(part_tree), \
@@ -123,7 +129,7 @@ def test_extract_part_obj(cgns_name, comm):
   else:
     assert len(PT.get_all_Zone_t(extracted_tree)) == 1
     assert (PT.get_all_CGNSBase_t(extracted_tree)[0][1] == [2,3]).all()
-  
+
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
 @pytest.mark.parametrize('partial', [False, True])
@@ -219,7 +225,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
   assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][0][pl-PT.Element.Range(ngon)[0]], data)
 
 def portable_partitioning(dist_tree, comm):
-  """ Create a custom partioning (chosing cells for each part) to ensure portability 
+  """ Create a custom partioning (chosing cells for each part) to ensure portability
   The switch will be remove when PDM 2.6 is no longer supported
   """
   from Pypdm.Pypdm import MultiPart
@@ -230,7 +236,7 @@ def portable_partitioning(dist_tree, comm):
     target_part = [[np.array([0,0,1,2,2,1,2,2,2], np.int32)],
                    [np.array([0,0,1,2,2,1,2,2,2], np.int32)],
                    [np.array([0,0,1,2,2,1,2,2,2], np.int32)]][comm.rank]
-    
+
     return maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts,
                                             target_part=target_part, data_transfer='ALL')
   from maia.transfer import protocols as MEP
@@ -276,7 +282,7 @@ def portable_partitioning(dist_tree, comm):
 
 @pytest_parallel.mark.parallel(3)
 def test_extr_U_local(comm):
-  
+
   dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
   # Prepare dist tree (add some fields)
   zone = PT.find_node_from_label(dist_tree, 'Zone_t')
@@ -325,7 +331,7 @@ def test_extr_U_local(comm):
       bc = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t')
       if bc is not None:
         PT.new_FamilyName('EXTRACT', parent=bc)
-   
+
   extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm,
                                                containers_name=['Geometry_2d', 'VtxSol', 'VtxSubRegion'],
                                                equilibrate=False)
@@ -343,7 +349,7 @@ def test_extr_U_local(comm):
     assert (PT.get_np_value(PT.find_child_from_name(match1, 'PointListDonor')) == [3,6,9]).all()
     assert (PT.get_np_value(PT.find_child_from_name(match2, 'PointList')) == [6,14,22]).all()
     assert (PT.get_np_value(PT.find_child_from_name(match2, 'PointListDonor')) == [5,10,15]).all()
-    
+
   for zone in extracted_zones:
     vtxsol = PT.find_child_from_name(zone, 'VtxSol')
     assert PT.get_child_from_name(vtxsol, 'PointList') is None
@@ -356,7 +362,7 @@ def test_extr_U_local(comm):
       assert (PT.get_np_value(PT.find_child_from_name(facesol, 'CenterX')) == 0).all()
     if PT.get_name(zone) == 'Zone.P0.N1':
       assert (PT.get_np_value(PT.find_child_from_name(facesol, 'CenterX')) == 1).all()
-    
+
     vtxzsr = PT.get_child_from_name(zone, 'VtxSubRegion')
     if PT.get_name(zone) == 'Zone.P0.N0':
       assert (MT.globalnumbering_value(vtxzsr, 'Index') == [5, 6, 2, 1, 9, 10, 13, 14]).all()
@@ -413,7 +419,7 @@ def test_bc_name_api(cgns_name, bc_loc, comm):
     distri[:] = [5*irank, 16 if irank==2 else 5*(irank+1), 16]
     _pl = (np.arange(1, 4**3, 4, dtype=pl[1].dtype)[distri[0]:distri[1]]).reshape((1,-1), order='F')
     PT.set_value(pl, _pl)
-  
+
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
   # Add a (full) field to the BC
@@ -421,7 +427,7 @@ def test_bc_name_api(cgns_name, bc_loc, comm):
   if bc is not None:
     bcds = PT.new_BCDataSet(parent=bc)
     PT.new_BCData('DirichletData', fields={'range': np.arange(PT.Subset.n_elem(bc))}, parent=bcds)
-  
+
   extracted_tree = EP.extract_part_from_bc_name(part_tree, 'Xmin', comm)
 
   zone_n = PT.get_all_Zone_t(extracted_tree)
@@ -448,14 +454,14 @@ def test_from_fam_api(dim_zsr, comm):
   part_zone = PT.get_node_from_label(part_tree, 'Zone_t')
   bc_n = PT.get_node_from_name(part_zone, 'Xmin')
   PT.new_node('FamilyName', label='FamilyName_t', value='EXTRACT', parent=bc_n)
-  
+
   if dim_zsr=="FaceCenter":
     if PT.get_node_from_name(part_zone, 'Xmax') is not None:
       zsr_n = PT.new_ZoneSubRegion("ZSR", bc_name='Xmax', family='EXTRACT', parent=part_zone)
     extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
     n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
     assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 18
-  
+
   elif dim_zsr=="CellCenter":
     zsr_n = PT.new_ZoneSubRegion("ZSR", loc=dim_zsr,
       point_list=np.array([[1]], dtype=np.int32), family='EXTRACT', parent=part_zone)
@@ -486,7 +492,7 @@ def test_from_fam_zsr_api(valid, comm):
     zsr_n = PT.new_ZoneSubRegion("ZSR_Xmax", bc_name='Xmax', family='EXTRACT', parent=part_zone)
     if not valid:
       PT.set_value(PT.get_child_from_name(bc_n ,'GridLocation'), 'Vertex')
-  
+
   if valid:
     extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
     n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
@@ -521,3 +527,125 @@ def test_void_extraction(comm):
   assert is_empty_tree(extractor.get_extract_part_tree())
   assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs
 
+
+@pytest.mark.parametrize("graph_part_tool", ["hilbert"])
+@pytest_parallel.mark.parallel([2])
+def test_extract_from_zsr_U_2d(graph_part_tool, comm):
+
+  # > Generate tree
+  n_vtx  = 6
+  n_part = 2
+  dist_tree = MF.generate_dist_block(n_vtx, 'QUAD_4', comm, [-2.5, -2.5, -2.5], 5.)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # Create CC FlowSolution
+  face_center = maia.algo.dist.geometry._compute_elements_center(zone, 2, comm)
+  fcx = face_center[0::3]
+  fcy = face_center[1::3]
+  PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", fields={'cx': fcx}, parent=zone)
+
+  # Create EC FlowSolution (not supported)
+  edge_center = maia.algo.dist.geometry._compute_elements_center(zone, 1, comm)
+  ecx = edge_center[0::3]
+  ecy = edge_center[1::3]
+  # PT.new_FlowSolution('FlowSolution_EC', loc="EdgeCenter", fields={'cx': ecx}, parent=zone)
+
+  # Create NC FlowSolution
+  gc = PT.get_child_from_name(zone, 'GridCoordinates')
+  cx = PT.get_child_from_name(gc, 'CoordinateX')[1]
+  cy = PT.get_child_from_name(gc, 'CoordinateY')[1]
+  PT.new_FlowSolution('FlowSolution_NC', loc="Vertex", fields={'cx': cx}, parent=zone)
+
+  # Create ZSR on Faces with FlowSolution
+  pl_faces = np.where(fcy > 0.)[0]
+  fcx = fcx[pl_faces]
+  pl_faces.astype(zone[1].dtype)
+  ngon = PT.Zone.NGonNode(zone)
+  distrib_faces = MT.distribution_value(zone, 'Cell')
+  pl_faces += PT.Element.Range(ngon)[0] + distrib_faces[0] + pl_faces[0]
+  zsr_faces = PT.new_ZoneSubRegion("ZSR_Faces", point_list=pl_faces.reshape((1,-1), order='F'), loc='FaceCenter', fields={'cx': fcx}, parent=zone)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_faces.size, comm)}, zsr_faces)
+  # GridLocation should be CellCenter -> Trick for LOC_TO_DIM
+  # requires to change API -> also necessary to extract container ZSR_Faces
+
+  # Create ZSR on Edges with FlowSolution
+  pl_edges = np.where(ecy > 0.)[0]
+  ecx = ecx[pl_edges]
+  pl_edges.astype(zone[1].dtype)
+  bar_2 = MT.Zone.EdgeNode(zone)
+  distrib_edges = MT.distribution_value(bar_2, 'Element')
+  pl_edges += PT.Element.Range(bar_2)[0] + distrib_edges[0] + pl_edges[0]
+  zsr_edges = PT.new_ZoneSubRegion("ZSR_Edges", point_list=pl_edges.reshape((1,-1), order='F'), loc='EdgeCenter', fields={'cx': ecx}, parent=zone)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_edges.size, comm)}, zsr_edges)
+
+  # Create ZSR on Vertices with FlowSolution
+  pl_vtx = np.where(cy > 0.)[0]
+  cx = cx[pl_vtx]
+  pl_vtx.astype(zone[1].dtype)
+  distrib_vtx = MT.distribution_value(zone, 'Vertex')
+  pl_vtx += 1 + distrib_vtx[0]
+  zsr_vtx = PT.new_ZoneSubRegion("ZSR_Vtx", point_list=pl_vtx.reshape((1,-1), order='F'), loc='Vertex', fields={'cx': cx}, parent=zone)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_vtx.size, comm)}, zsr_vtx)
+
+  # Partionning option
+  zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, comm, n_part)
+  part_tree     = MF.partition_dist_tree(dist_tree, comm,
+                                         zone_to_parts=zone_to_parts,
+                                         data_transfer='ALL',
+                                         preserve_orientation=True)
+
+  # Extract part Faces
+  part_tree_ep = EP.extract_part_from_zsr( part_tree, "ZSR_Faces", comm,
+                                            # equilibrate=1,
+                                            transfer_dataset=False,
+                                            graph_part_tool=graph_part_tool,
+                                            # containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_Faces']
+                                            containers_name=['FlowSolution_NC','FlowSolution_CC']
+                                            )
+
+  # > Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
+
+  # > Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_face_from_zsr_2d.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
+
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
+
+  # Extract part Edges
+  part_tree_ep = EP.extract_part_from_zsr( part_tree, "ZSR_Edges", comm,
+                                            # equilibrate=1,
+                                            transfer_dataset=False,
+                                            graph_part_tool=graph_part_tool,
+                                            containers_name=['FlowSolution_NC','ZSR_Edges']
+                                            )
+
+  # > Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
+
+  # > Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_edge_from_zsr_2d.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
+
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
+
+  # Extract part Vertices
+  part_tree_ep = EP.extract_part_from_zsr( part_tree, "ZSR_Vtx", comm,
+                                            # equilibrate=1,
+                                            transfer_dataset=False,
+                                            graph_part_tool=graph_part_tool,
+                                            containers_name=['FlowSolution_NC','ZSR_Vtx']
+                                            )
+
+  # > Part to dist
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
+
+  # > Compare to reference solution
+  ref_file = os.path.join(ref_dir, f'extract_vtx_from_zsr_2d.yaml')
+  ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
+
+  # Recover dist tree force R4 so use type_tol=True
+  assert maia.pytree.is_same_tree(ref_sol, dist_tree_ep, abs_tol=1e-14, type_tol=True)
