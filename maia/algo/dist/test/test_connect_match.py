@@ -357,107 +357,48 @@ def test_wrong_internal_faces(comm):
 
 @pytest_parallel.mark.parallel(2)
 def test_connect_2d(comm):
-  
-  yaml_expected_tree = \
-  """   
-CGNSTree CGNSTree_t:
-  CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
-  Base CGNSBase_t I4 [2, 3]:
-    zone1 Zone_t I4 [[9, 4, 0]]:
-      ZoneType ZoneType_t 'Unstructured':
-      GridCoordinates GridCoordinates_t:
-        CoordinateX DataArray_t R8 [0.0, 0.5, 1.0, 0.0, 0.5, 1.0, 0.0, 0.5, 1.0]:
-        CoordinateY DataArray_t R8 [0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0]:
-        CoordinateZ DataArray_t R8 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]:
-      ZoneBC ZoneBC_t:
-        Ymin BC_t 'Null':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[1, 3]]:
-        Ymax BC_t 'Null':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[10, 12]]:
-        Xmin BC_t 'Null':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[2, 8]]:
-      EdgeElements Elements_t I4 [3, 0]:
-        ElementRange IndexRange_t I4 [1, 12]:
-        ElementConnectivity DataArray_t I4 [1, 2, 4, 1, 2, 3, 2, 5, 5, 4, 3, 6, 6, 5, 7, 4, 5, 8, 8, 7, 6, 9, 9, 8]:
-        ParentElements DataArray_t:
-          I4 : [[13, 0], [13, 0], [14, 0], [13, 14], [13, 15], [14, 0], [14, 16], [15, 0], [15, 16], [15, 0], [16, 0], [16,
-                0]]
-      NGonElements Elements_t I4 [22, 0]:
-        ElementRange IndexRange_t I4 [13, 16]:
-        ElementStartOffset DataArray_t I4 [0, 4, 8, 12, 16]:
-        ElementConnectivity DataArray_t I4 [1, 2, 5, 4, 5, 2, 3, 6, 4, 5, 8, 7, 8, 5, 6, 9]:
-      ZoneGridConnectivity ZoneGridConnectivity_t:
-        Xmax_0 GridConnectivity_t 'Base/zone2':
-          GridConnectivityType GridConnectivityType_t 'Abutting1to1':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[6, 11]]:
-          PointListDonor IndexArray_t I4 [[2, 8]]:
-          GridConnectivityDonorName Descriptor_t 'Xmin_0':
-          FamilyName FamilyName_t 'matchA':
-    zone2 Zone_t I4 [[9, 4, 0]]:
-      ZoneType ZoneType_t 'Unstructured':
-      GridCoordinates GridCoordinates_t:
-        CoordinateX DataArray_t R8 [1.0, 1.5, 2.0, 1.0, 1.5, 2.0, 1.0, 1.5, 2.0]:
-        CoordinateY DataArray_t R8 [0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0]:
-        CoordinateZ DataArray_t R8 [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]:
-      ZoneBC ZoneBC_t:
-        Ymin BC_t 'Null':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[1, 3]]:
-        Ymax BC_t 'Null':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[10, 12]]:
-        Xmax BC_t 'Null':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[6, 11]]:
-      EdgeElements Elements_t I4 [3, 0]:
-        ElementRange IndexRange_t I4 [1, 12]:
-        ElementConnectivity DataArray_t I4 [1, 2, 4, 1, 2, 3, 2, 5, 5, 4, 3, 6, 6, 5, 7, 4, 5, 8, 8, 7, 6, 9, 9, 8]:
-        ParentElements DataArray_t:
-          I4 : [[13, 0], [13, 0], [14, 0], [13, 14], [13, 15], [14, 0], [14, 16], [15, 0], [15, 16], [15, 0], [16, 0], [16,
-                0]]
-      NGonElements Elements_t I4 [22, 0]:
-        ElementRange IndexRange_t I4 [13, 16]:
-        ElementStartOffset DataArray_t I4 [0, 4, 8, 12, 16]:
-        ElementConnectivity DataArray_t I4 [1, 2, 5, 4, 5, 2, 3, 6, 4, 5, 8, 7, 8, 5, 6, 9]:
-      ZoneGridConnectivity ZoneGridConnectivity_t:
-        Xmin_0 GridConnectivity_t 'Base/zone1':
-          GridConnectivityType GridConnectivityType_t 'Abutting1to1':
-          GridLocation GridLocation_t 'EdgeCenter':
-          PointList IndexArray_t I4 [[2, 8]]:
-          PointListDonor IndexArray_t I4 [[6, 11]]:
-          GridConnectivityDonorName Descriptor_t 'Xmax_0':
-          FamilyName FamilyName_t 'matchB':
-  """
-  
-  n_vtx=3
+  n_vtx = 3
   dcarres = [maia.factory.generate_dist_block(n_vtx, 'QUAD_4', comm),
-            maia.factory.generate_dist_block(n_vtx, 'QUAD_4', comm, (1,0,0))] 
+             maia.factory.generate_dist_block(n_vtx, 'QUAD_4', comm, (1,0,0))] 
  
   zones = [PT.get_all_Zone_t(dcarre)[0] for dcarre in dcarres]
   tree = PT.new_CGNSTree()
   base = PT.new_CGNSBase(cell_dim=2, parent=tree)
- 
   for i_zone,zone in enumerate(zones):
-    zone[0] = f"zone{i_zone+1}"
+    PT.set_name(zone, f"zone{i_zone+1}")
     PT.add_child(base, zone)
  
-  xmax = PT.get_node_from_name(zones[0], 'Xmax')
+  xmax = PT.find_node_from_name(zones[0], 'Xmax')
   PT.new_child(xmax, 'FamilyName', 'FamilyName_t', 'matchA')
-  xmin = PT.get_node_from_name(zones[1], 'Xmin')
+  xmin = PT.find_node_from_name(zones[1], 'Xmin')
   PT.new_child(xmin, 'FamilyName', 'FamilyName_t', 'matchB')
  
   maia.algo.dist.convert_elements_to_ngon(tree, comm) 
  
-  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm, location='EdgeCenter')
-   
-  full_expected_tree = PT.yaml.to_cgns_tree(yaml_expected_tree)
-  full_tree = FT.dist_to_full_tree(tree, comm)
-    
-  if comm.rank == 0: assert PT.is_same_tree(full_expected_tree, full_tree)
+  connect_match.connect_1to1_families(tree, ('matchA', 'matchB'), comm)
+
+  ztype = PT.get_np_value(zones[0]).dtype
+  plA = [np.array([[6]], ztype), np.array([[11]], ztype)][comm.rank]
+  plB = [np.array([[2]], ztype), np.array([[8]],  ztype)][comm.rank]
+  distri = [np.array([0,1,2], pdm_dtype), np.array([1,2,2], pdm_dtype)][comm.rank]
+
+  expected_A = PT.new_GridConnectivity('Xmax_0', 'Base/zone2', 'Abutting1to1', loc='EdgeCenter',
+                                        point_list=plA, point_list_donor=plB)
+  PT.new_Descriptor('GridConnectivityDonorName', 'Xmin_0', parent=expected_A)
+  PT.new_node('FamilyName', 'FamilyName_t', 'matchA', parent=expected_A)
+  MT.new_Distribution({'Index' : distri}, expected_A)
+  expected_B = PT.new_GridConnectivity('Xmin_0', 'Base/zone1', 'Abutting1to1', loc='EdgeCenter',
+                                        point_list=plB, point_list_donor=plA)
+  PT.new_Descriptor('GridConnectivityDonorName', 'Xmax_0', parent=expected_B)
+  PT.new_node('FamilyName', 'FamilyName_t', 'matchB', parent=expected_B)
+  MT.new_Distribution({'Index' : distri}, expected_B)
+
+  assert len(PT.get_nodes_from_label(tree, 'GridConnectivity_t')) == 2
+  assert PT.is_same_tree(expected_A, PT.find_node_from_path(tree, 'Base/zone1/ZoneGridConnectivity/Xmax_0'))
+  assert PT.is_same_tree(expected_B, PT.find_node_from_path(tree, 'Base/zone2/ZoneGridConnectivity/Xmin_0'))
+  assert PT.get_node_from_path(tree, 'Base/zone1/ZoneBC/Xmax') is None # BC should have been removed
+  assert PT.get_node_from_path(tree, 'Base/zone2/ZoneBC/Xmin') is None
+
 
 @pytest_parallel.mark.parallel(2)
 def test_merge_2d(comm):

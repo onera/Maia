@@ -67,22 +67,16 @@ def _point_merge(clouds:List[PointCloud], comm:MPIComm, rel_tol:float) -> Dict[s
 
   return pdm_point_merge.make_interface()
 
-def _get_cloud(dmesh, dim:np.int32, gnum:NDArray, comm:MPIComm) -> PointCloud:
+def _get_cloud(dmesh, dim:int, gnum:NDArray, comm:MPIComm) -> PointCloud:
   """
   Extract surfacic mesh from a list of (face) gnum. Return connectivities
   of extracted mesh + link with parent volumic mesh
   """
-  if dim == 2:
-    dim_extract = 1
-    extracted_entity = PDM._PDM_MESH_ENTITY_EDGE
-    extracted_conn   = PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX
-    extracted_geom   = PDM._PDM_GEOMETRY_KIND_RIDGE
-  else:
-    dim_extract = 2
-    extracted_entity = PDM._PDM_MESH_ENTITY_FACE
-    extracted_conn   = PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX
-    extracted_geom   = PDM._PDM_GEOMETRY_KIND_SURFACIC
-  dmesh_extractor = PDM.DMeshExtract(dim_extract, comm)
+  extracted_entity = PDM._PDM_MESH_ENTITY_FACE           if dim == 3 else PDM._PDM_MESH_ENTITY_EDGE
+  extracted_conn   = PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX if dim == 3 else PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX
+  extracted_geom   = PDM._PDM_GEOMETRY_KIND_SURFACIC     if dim == 3 else PDM._PDM_GEOMETRY_KIND_RIDGE
+  
+  dmesh_extractor = PDM.DMeshExtract(dim-1, comm)
   if isinstance(dmesh, PDM.DistributedMesh):
     dmesh_extractor.register_dmesh(dmesh)
   elif isinstance(dmesh, PDM.DistributedMeshNodal):
@@ -262,9 +256,15 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   # 6.  Create output for matched faces
   # 7.  Check resulting faces vs input faces
 
+  base_dims = {PT.get_np_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree)}
+  assert len(base_dims) == 1, "All bases must have same CellDimension"
+  dim = base_dims.pop()
+
   assert len(subset_paths) == 2
   tol = options.get("tol", 1e-2)
-  output_loc = options.get("location", "FaceCenter")
+  
+  if (output_loc := options.get("location", '')) != 'Vertex':
+    output_loc = 'FaceCenter' if dim == 3 else 'EdgeCenter'
 
 
   clouds_path = subset_paths[0] + subset_paths[1]
@@ -395,7 +395,8 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
     if comm.allreduce(unfound.size, MPI.SUM) > 0:
       input_node = PT.find_node_from_path(dist_tree, cloud_path)
       PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
-      PT.update_child(input_node, 'GridLocation', value='FaceCenter') # switch to EdgeCenter in 2D
+      loc = 'FaceCenter' if dim == 3 else 'EdgeCenter'
+      PT.update_child(input_node, 'GridLocation', value=loc)
       PT.update_child(input_node, 'PointList', value=unfound.reshape((1,-1), order='F'))
       MT.new_Distribution({'Index':  par_utils.dn_to_distribution(unfound.size, comm)}, input_node)
     else:
