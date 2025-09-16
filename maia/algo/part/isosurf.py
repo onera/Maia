@@ -2,7 +2,6 @@ import numpy as np
 import time
 
 from maia.typing        import *
-from maia.pytree.typing import Predicate
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -19,6 +18,17 @@ from .point_cloud_utils import create_sub_numbering
 import Pypdm.Pypdm as PDM
 
 IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
+
+def all_containers(tree:CGNSPartTree, comm:MPIComm) -> List[str]:
+  IS_CNT = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
+  loc_cnt = set()
+  for zone in PT.get_all_Zone_t(tree):
+    predicate = IS_CNT & PT.pred.NodePredicate(lambda c : PT.Container.GridLocation(c, zone) != 'EdgeCenter')
+    loc_cnt |= {PT.get_name(node) for node in PT.iter_children_from_predicate(zone, predicate)}
+  
+  glob_cnt = comm.allreduce(loc_cnt, lambda s1,s2 : s1|s2)
+
+  return sorted(glob_cnt)
 
 def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> None:
   """ Copy from source_base to target_base the Family_t nodes referenced
@@ -502,7 +512,7 @@ def iso_surface(part_tree: CGNSPartTree,
                 iso_field: CGNSPath, 
                 comm: MPIComm, 
                 iso_val: float = 0., 
-                containers_name: List[str] = [], 
+                containers_name: Union[List[str], Literal['ALL']] = [], 
                 **options) -> CGNSPartTree:
   """ Create an isosurface from the provided field and value on the input partitioned tree.
 
@@ -558,6 +568,8 @@ def iso_surface(part_tree: CGNSPartTree,
   iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, graph_part_tool, comm)
   
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
   
@@ -601,7 +613,7 @@ def _surface_from_equation(part_tree: CGNSPartTree,
 def plane_slice(part_tree: CGNSPartTree, 
                 plane_eq: Sequence[float], 
                 comm: MPIComm, 
-                containers_name: List[str] = [], 
+                containers_name: Union[List[str], Literal['ALL']] = [], 
                 **options) -> CGNSPartTree:
   """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
@@ -637,6 +649,8 @@ def plane_slice(part_tree: CGNSPartTree,
   iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
@@ -649,7 +663,7 @@ def plane_slice(part_tree: CGNSPartTree,
 def spherical_slice(part_tree: CGNSPartTree, 
                     sphere_eq: Sequence[float], 
                     comm: MPIComm, 
-                    containers_name: List[str] = [], 
+                    containers_name: Union[List[str], Literal['ALL']] = [], 
                     **options) -> CGNSPartTree:
   """ Create a spherical slice from the provided equation
   :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
@@ -686,6 +700,8 @@ def spherical_slice(part_tree: CGNSPartTree,
   iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
@@ -698,7 +714,7 @@ def spherical_slice(part_tree: CGNSPartTree,
 def elliptical_slice(part_tree: CGNSPartTree, 
                      ellipse_eq: Sequence[float], 
                      comm: MPIComm, 
-                     containers_name: List[str] = [], 
+                     containers_name: Union[List[str], Literal['ALL']] = [], 
                      **options: Any) -> CGNSPartTree:
   """ Create a elliptical slice from the provided equation
   :math:`(x-x_0)^2/a^2 + (y-y_0)^2/b^2 + (z-z_0)^2/c^2 = R^2`
@@ -735,6 +751,8 @@ def elliptical_slice(part_tree: CGNSPartTree,
   iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 

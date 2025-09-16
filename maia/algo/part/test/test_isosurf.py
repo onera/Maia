@@ -257,6 +257,11 @@ def test_multidom(comm):
   assert len(PT.get_all_Zone_t(stree)) == 3
   assert PT.get_node_from_name_and_label(stree, 'Geometry_3d', 'DiscreteData_t') is not None
 
+  # Should also work
+  stree = maia.algo.part.plane_slice(ptree, [0,0,1,0.5], comm, 'ALL')
+  assert len(PT.get_all_Zone_t(stree)) == 3
+  assert PT.get_node_from_name_and_label(stree, 'Geometry_3d', 'DiscreteData_t') is not None
+
   # Should not work (no domain have FlowSol container)
   with pytest.raises(ValueError):
     stree = maia.algo.part.plane_slice(ptree, [0,0,1,0.5], comm, ['Geometry_3d', 'FlowSol'])
