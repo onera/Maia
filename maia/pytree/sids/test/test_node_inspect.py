@@ -104,6 +104,11 @@ def test_coordinates_2D():
     assert np.allclose(c2, [6,7,8])
     assert c3 == None
 
+def test_basedims():
+  b = N.new_node('Base', 'CGNSBase_t', value=[1,3])
+  assert SIDS.Base.CellDimension(b) == 1
+  assert SIDS.Base.PhysicalDimension(b) == 3
+
 @pytest.mark.parametrize('axis', [['X', 'Y', 'Z'], ['Xi', 'Eta', 'Zeta'], ['R', 'Theta', 'Z'], ['R', 'Theta', 'Phi']])
 def test_coordinates_3D(axis):
     

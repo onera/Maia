@@ -15,6 +15,7 @@ __all__ = [
   'AuxiliaryCoordinates',
   'Coordinates',
   'Tree',
+  'Base',
   'Zone',
   'Element',
   'GridConnectivity',

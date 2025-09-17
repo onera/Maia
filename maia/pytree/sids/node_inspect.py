@@ -138,6 +138,43 @@ class Tree:
 
     return perio_values, perio_jns
 
+# --------------------------------------------------------------------------
+@for_all_methods(check_is_label("CGNSBase_t"))
+class Base:
+
+  @staticmethod
+  def CellDimension(base_node:CGNSTree) -> int:
+    """ Return the CellDimension of a CGNSBase_t node
+
+    CellDimension is the dimensionality of the cell in the mesh
+
+    Args:
+      base_node (CGNSTree): Input CGNSBase_t node
+    Returns:
+      int : CellDimension (1,2 or 3)
+    Example:
+      >>> base = PT.new_CGNSBase(cell_dim=2, phy_dim=3)
+      >>> PT.Base.CellDimension(base)
+      2
+    """
+    return int(N.get_np_value(base_node)[0])
+
+  @staticmethod
+  def PhysicalDimension(base_node:CGNSTree) -> int:
+    """ Return the PhysicalDimension of a CGNSBase_t node
+
+    PhysicalDimension is the number of coordinates required to define a node position.
+
+    Args:
+      base_node (CGNSTree): Input CGNSBase_t node
+    Returns:
+      int : PhysicalDimension (1,2 or 3)
+    Example:
+      >>> base = PT.new_CGNSBase(cell_dim=2, phy_dim=3)
+      >>> PT.Base.PhysicalDimension(base)
+      3
+    """
+    return int(N.get_np_value(base_node)[1])
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_is_label("Zone_t"))
