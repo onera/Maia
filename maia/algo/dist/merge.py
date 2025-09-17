@@ -161,15 +161,27 @@ def merge_zones(dist_tree: CGNSDistTree,
   masked_tree = PT.new_CGNSTree()
   for zone_path in zone_paths:
     base_n, zone_n = zone_path.split('/')
-    masked_base = PT.update_child(masked_tree, base_n, 'CGNSBase_t')
-    PT.add_child(masked_base, PT.get_node_from_path(dist_tree, zone_path))
+    base = PT.find_child_from_name(dist_tree, base_n)
+    zone = PT.find_child_from_name(base, zone_n)
+    masked_base = PT.update_child(masked_tree, base_n, 'CGNSBase_t', PT.get_value(base))
+    PT.add_child(masked_base, zone)
 
     #Remove from input tree at the same time
     PT.rm_node_from_path(dist_tree, zone_path)
 
+  # Detect CellDim/PhyDim
+  cell_dims = {PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(masked_tree)}
+  phy_dims  = {PT.Base.PhysicalDimension(b) for b in PT.iter_all_CGNSBase_t(masked_tree)}
+  assert len(cell_dims) == 1, "Merging zone of different CellDimension is not allowed"
+  assert len(phy_dims)  == 1, "Merging zone of different PhysicalDimension is not allowed"
+  cell_dim = cell_dims.pop()
+  phy_dim = phy_dims.pop()
+
   # Create NGON/ParentElements if not existing
-  maia.algo.nface_to_pe(masked_tree, comm, True)
-  maia.algo.ngon_to_edge_pe(masked_tree, comm, True)
+  if cell_dim == 3:
+    maia.algo.nface_to_pe(masked_tree, comm, True)
+  else:
+    maia.algo.ngon_to_edge_pe(masked_tree, comm, True)
 
   #Merge zones
   merged_zone = _merge_zones(masked_tree, comm, subset_merge)
@@ -180,7 +192,7 @@ def merge_zones(dist_tree: CGNSDistTree,
   else:
     output_base = PT.get_node_from_path(dist_tree, output_path.split('/')[0])
     if output_base is None:
-      output_base = PT.new_CGNSBase(output_path.split('/')[0], cell_dim=3, phy_dim=3, parent=dist_tree) # don't know what to do here for 2D
+      output_base = PT.new_CGNSBase(output_path.split('/')[0], cell_dim=cell_dim, phy_dim=phy_dim, parent=dist_tree)
     PT.set_name(merged_zone, output_path.split('/')[1])
   assert output_base is not None
   PT.add_child(output_base, merged_zone)
@@ -257,8 +269,13 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   n_zone = len(zone_paths)
   zones = PT.get_all_Zone_t(tree)
   assert min([PT.Zone.Type(zone) == 'Unstructured' for zone in zones]) == True
+  cell_dim = PT.Zone.CellDimension(zones[0])
 
-  expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones]) # here a MT.Zone.n_edge method would be useful for 2D
+  if cell_dim == 3:
+    expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones])
+  else:
+    n_edge = lambda z: MT.Element.n_elt(MT.Zone.EdgeNode(z))
+    expected_elt_tot = sum([PT.Zone.n_cell(z) + n_edge(z) for z in zones])
   output_dtype = PT.get_np_value(zones[0]).dtype
   if expected_elt_tot > np.iinfo(np.int32).max:
     if pdm_dtype == np.int32:
@@ -273,11 +290,8 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
 
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
 
-  dim = PT.Zone.CellDimension(zones[0])
-  if dim == 3:
-    face_gc_query:Predicates = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('FaceCenter')]
-  else:
-    face_gc_query:Predicates = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('EdgeCenter')]
+  loc = 'FaceCenter' if PT.Zone.CellDimension(zones[0]) == 3 else 'EdgeCenter'
+  face_gc_query:Predicates = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location(loc)]
   vtx_gc_query:Predicates  = ['ZoneGridConnectivity_t', PT.pred.IS_GC & PTp.has_location('Vertex')]
 
   # Move non 1to1 GC_t to ZoneBC since they have no PointListDonor
@@ -373,20 +387,20 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   for zone in zones:
     for entity in entities:
       if entity == 'Face':
-        if PT.Zone.CellDimension(zone) == 3:
-          distri = as_pdm_gnum(MT.distribution_value(PT.Zone.NGonNode(zone), 'Element'))
-        else:
-          distri = as_pdm_gnum(MT.distribution_value(MT.Zone.EdgeNode(zone), 'Element'))
+        elt_node = PT.Zone.NGonNode(zone) if cell_dim == 3 else MT.Zone.EdgeNode(zone)
+        distri = as_pdm_gnum(MT.distribution_value(elt_node, 'Element'))
       else:
         distri = as_pdm_gnum(MT.distribution_value(zone, entity))
       blocks_distri_l[entity].append(par_utils.partial_to_full_distribution(distri, comm))
       selected_l[entity].append(np.arange(distri[0], distri[1], dtype=pdm_dtype)+1)
 
   # Create merge protocols
+  # In 2D, we adopt the convention Cell = surfacic elts, Face = lineic elts, Vertex = vertices
+  # for paradigm MbM objects
   mbm_vtx  = PDM.MultiBlockMerge(n_zone, blocks_distri_l['Vertex'], selected_l['Vertex'], graph_dict_v, comm)
   mbm_face = PDM.MultiBlockMerge(n_zone, blocks_distri_l['Face'  ], selected_l['Face'  ], graph_dict_f, comm)
   mbm_cell = PDM.MultiBlockMerge(n_zone, blocks_distri_l['Cell'  ], selected_l['Cell'  ], graph_dict_c, comm)
-  all_mbm = {'Vertex' : mbm_vtx, 'Edge': mbm_face, 'Face' : mbm_face, 'Cell' : mbm_cell}
+  all_mbm = {'Vertex' : mbm_vtx, 'Face' : mbm_face, 'Cell' : mbm_cell}
 
   merged_distri_vtx  = mbm_vtx .get_merged_distri()
   merged_distri_face = mbm_face.get_merged_distri()
@@ -544,11 +558,8 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
   Merging by name is not performed for GridConnectivity_t
   """
   #In each case, we need to collect all the nodes, since some can be absent of a given zone
-  dim = PT.Zone.CellDimension(zones[0])
-  if dim == 3:
-    jn_to_keep = PTp.label_is('GridConnectivity_t') & PTp.has_location('FaceCenter') & ~PTp.has_child_of_name('__maia_merge__')
-  else:
-    jn_to_keep = PTp.label_is('GridConnectivity_t') & PTp.has_location('EdgeCenter') & ~PTp.has_child_of_name('__maia_merge__')
+  loc = 'FaceCenter' if PT.Zone.CellDimension(zones[0]) == 3 else 'EdgeCenter'
+  jn_to_keep = PTp.label_is('GridConnectivity_t') & PTp.has_location(loc) & ~PTp.has_child_of_name('__maia_merge__')
 
   #Order : FlowSolution/DiscreteData/ZoneSubRegion, BC, BCDataSet, GridConnectivity_t,
   all_subset_queries = [
@@ -594,7 +605,11 @@ def _merge_pls_data(all_mbm, zones, merged_zone, comm, merge_strategy='name'):
       master_zone = zones[master_idx]
 
       location = PT.Subset.GridLocation(subset_nodes[master_idx])
-      mbm = all_mbm[location.split('Center')[0]]
+      key = location.split('Center')[0]
+      if key == 'Edge':
+        assert PT.Zone.CellDimension(merged_zone) == 2
+        key = 'Face'
+      mbm = all_mbm[key]
       merged_pl = _merge_pl_data(mbm, zones, subset_nodes, location, rules, comm)
       # Enforce zone dtype for output PL
       for pl in PT.get_children_from_name(merged_pl, 'PointList*'):
@@ -777,16 +792,13 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
 
   zone_paths = PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t')
   zone_to_id = {path : i for i, path in enumerate(zone_paths)}
-  dim = 3
+  dim = PT.Zone.CellDimension(PT.find_node_from_path(tree, zone_paths[0]))
+  get_face_node = PT.Zone.NGonNode if dim == 3 else MT.Zone.EdgeNode
 
   # Create working data
   for zone_path, dom_id in zone_to_id.items():
     zone = PT.get_node_from_path(tree, zone_path)
-    if PT.Zone.CellDimension(zone) == 3:
-      face_node = PT.Zone.NGonNode(zone)
-    else:
-      dim = 2
-      face_node = MT.Zone.EdgeNode(zone)
+    face_node = get_face_node(zone)
     pe_bck = PT.get_child_from_name(face_node, 'ParentElements')[1]
     pe = pe_bck.copy()
     # If NGon are first, then PE indexes cell, we must shift : PDM expect cell starting at 1
@@ -802,10 +814,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     base_n = zone_path_send.split('/')[0]
     dom_id_send = zone_to_id[zone_path_send]
     zone_send = PT.get_node_from_path(tree, zone_path_send)
-    if PT.Zone.CellDimension(zone_send) == 3:
-      face_send = PT.Zone.NGonNode(zone_send)
-    else:
-      face_send = MT.Zone.EdgeNode(zone_send)
+    face_send = get_face_node(zone_send)
     face_distri_send = MT.distribution_value(face_send, 'Element')
     pe_send          = PT.get_child_from_name(face_send, 'UpdatedPE')[1]
 
@@ -822,10 +831,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
       # Get send data on the opposite zone and update PE
       zone_path = PT.GridConnectivity.ZoneDonorPath(gc, base_n)
       zone = PT.find_node_from_path(tree, zone_path)
-      if PT.Zone.CellDimension(zone) == 3:
-        face_node = PT.Zone.NGonNode(zone)
-      else:
-        face_node = MT.Zone.EdgeNode(zone)
+      face_node = get_face_node(zone)
       pe      = PT.get_np_value(PT.find_child_from_name(face_node, 'UpdatedPE'))
       pe_dom  = PT.get_np_value(PT.find_child_from_name(face_node, 'PEDomain'))
       face_distri = MT.distribution_value(face_node, 'Element')
@@ -844,18 +850,13 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
   pe_dom_l = []
   for zone_path in zone_paths:
     zone = PT.get_node_from_path(tree, zone_path)
-    if PT.Zone.CellDimension(zone) == 3:
-      face_node = PT.Zone.NGonNode(zone)
-      eso = PT.get_child_from_name(face_node, 'ElementStartOffset')[1]
-    else:
-      face_node = MT.Zone.EdgeNode(zone)
-      ec = PT.get_child_from_name(face_node, 'ElementConnectivity')[1]
-      eso = 2*np.arange(ec.shape[0]//2+1) # fake eso
+    face_node = get_face_node(zone)
+    face_node_cnt = MT.Element.connectivity(face_node) # face_vtx or edge_vtx
     pe     = as_pdm_gnum(PT.get_child_from_name(face_node, 'UpdatedPE')[1])
     pe_dom = PT.get_child_from_name(face_node, 'PEDomain')[1]
 
-    ec_l.append(as_pdm_gnum(PT.get_child_from_name(face_node, 'ElementConnectivity')[1]))
-    ec_stride_l.append(np_utils.safe_int_cast(np.diff(eso), np.int32))
+    ec_l.append(as_pdm_gnum(face_node_cnt.values))
+    ec_stride_l.append(np_utils.safe_int_cast(face_node_cnt.counts, np.int32))
 
     #We have to detect and remove bnd faces from PE to use PDM stride
     bnd_faces = np.where(pe == 0)[0]

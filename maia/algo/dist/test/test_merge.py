@@ -485,3 +485,65 @@ def test_input_overflow(comm):
     with pytest.raises(Exception): # Test will fail but we should get the warning
       merge.merge_zones(tree, ['Base/Zone1', 'Base/Zone2'], comm)
     assert "I4 integers, but result of _merge_zones would overflow it" in log_collector.logs
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("phydim", [3,2])
+def test_merge_2d(phydim, comm):
+  
+  n_vtx=3
+  origins = [(0,0,0), (1,0,0)] if phydim == 3 else [(0,0), (1,0)]
+  dcarres = [maia.factory.generate_dist_block([n_vtx, n_vtx], 'S', comm, origins[0]),
+             maia.factory.generate_dist_block([n_vtx, n_vtx], 'S', comm, origins[1])]
+ 
+  zones = [PT.get_all_Zone_t(dcarre)[0] for dcarre in dcarres]
+  ztype = PT.get_np_value(zones[0]).dtype
+  tree = PT.new_CGNSTree()
+  base = PT.new_CGNSBase(cell_dim=2, parent=tree)
+ 
+  for i_zone,zone in enumerate(zones):
+    zone[0] = f"zone{i_zone+1}"
+    PT.add_child(base, zone)
+
+  maia.algo.dist.convert_s_to_ngon(tree, comm) 
+ 
+  pl = [np.array([[3]], ztype), np.array([[6]], ztype)][comm.rank]
+  pld = [np.array([[1]], ztype), np.array([[4]], ztype)][comm.rank]
+  distri = [np.array([0,1,2], pdm_dtype), np.array([1,2,2], pdm_dtype)][comm.rank]
+  PT.rm_nodes_from_name(zones[0], 'Xmax')
+  PT.rm_nodes_from_name(zones[1], 'Xmin')
+  gc = PT.new_GridConnectivity(donor_name='zone2', loc='EdgeCenter', type='Abutting1to1',
+                               point_list=pl, point_list_donor=pld,
+                               parent=PT.new_ZoneGridConnectivity(parent=zones[0]))
+  MT.new_Distribution({'Index' : distri}, gc)
+  gc = PT.new_GridConnectivity(donor_name='zone1', loc='EdgeCenter', type='Abutting1to1',
+                               point_list=pld, point_list_donor=pl,
+                               parent=PT.new_ZoneGridConnectivity(parent=zones[1]))
+  MT.new_Distribution({'Index' : distri}, gc)
+ 
+  maia.algo.dist.merge_connected_zones(tree, comm)
+  
+  full_tree = maia.factory.dist_to_full_tree(tree, comm)
+  if comm.rank == 0:
+  
+    # Prepare expected tree
+    expt_t = PT.new_CGNSTree()
+    expt_b = PT.new_CGNSBase(cell_dim=2, phy_dim=3, parent=expt_t)
+    expt_z = PT.new_Zone('mergedZone0', type='Unstructured', size=np.array([[15,8,0]], ztype), parent=expt_b)
+    fields = {'CoordinateX' : np.array([0.0, 0.5, 1.0, 0.0, 0.5, 1.0, 0.0, 0.5, 1.0, 1.5, 2.0, 1.5, 2.0, 1.5, 2.0]),
+              'CoordinateY' : np.array([0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0])}
+    if phydim == 3:
+      fields['CoordinateZ'] = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    PT.new_GridCoordinates(fields=fields, parent=expt_z)
+    er = np.array([1,22], ztype)
+    ec = np.array([4,1, 2,5, 3,6, 7,4, 5,8, 6,9, 1,2, 2,3, 4,5, 5,6, 8,7, 9,8, 10,12, 11,13,
+                   12,14, 13,15, 3,10, 10,11, 6,12, 12,13, 14,9, 15,14], dtype=ztype)
+    pe = np.array([[23, 0], [23,24], [24,27], [25, 0], [25,26], [26,29], [23, 0], [24, 0], [25,23], [26,24], [25, 0],
+                   [26, 0], [27,28], [28, 0], [29,30], [30, 0], [27, 0], [28, 0], [29,27], [30,28], [29, 0], [30, 0]], ztype)
+    PT.new_Elements('EdgeElements', 'BAR_2', erange=er, econn=ec, pe=pe, parent=expt_z)
+    pls = [[1,4], [14,16], [7,8,17,18], [11,12,21,22]]
+    zbc = PT.new_ZoneBC(parent=expt_z)
+    for name, pl in zip(['Xmin', 'Xmax', 'Ymin', 'Ymax'], pls):
+      _pl = np.array([pl], order='F', dtype=ztype)
+      PT.new_BC(name, 'Null', loc='EdgeCenter', point_list=_pl, parent=zbc)
+
+    assert PT.is_same_tree(full_tree, expt_t)
