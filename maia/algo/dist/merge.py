@@ -113,7 +113,7 @@ def merge_zones(dist_tree: CGNSDistTree,
 
   Input tree is modified inplace : original zones will be removed from the tree and replaced
   by the merged zone. Merged zone is added with name *MergedZone* under the first involved Base
-  except if output_path is not None : in this case, the provided path defines the base and zone name
+  except if ``output_path`` is not None : in this case, the provided path defines the base and zone name
   of the merged block.
 
   Subsets of the merged block can be reduced thanks to subset_merge parameter:
@@ -125,8 +125,8 @@ def merge_zones(dist_tree: CGNSDistTree,
   - ``'family'`` : Subsets having the same FamilyName on the original zones (within a same label) produces
     a unique subset on the output merged zone. Subsets without FamilyName fallback to ``'name'`` strategy.
 
-  Only unstructured-NGon trees are supported, and interfaces between the zones
-  to merge must have a FaceCenter location.
+  Only unstructured polyedric trees are supported, and interfaces between the zones
+  to merge must have a FaceCenter (EdgeCenter in 2D) location.
 
   Args:
     dist_tree (CGNSDistTree): Input distributed tree

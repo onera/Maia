@@ -441,7 +441,7 @@ def test_connect_2d_perio(comm):
   assert (PT.get_np_value(PT.find_child_from_name(matchA, 'PointList')) == [[11,12]]).all()
   assert (PT.get_np_value(PT.find_child_from_name(matchB, 'PointList')) == [[9,10]]).all()
   assert all(np.allclose(x,y) for x, y in zip(PT.GridConnectivity.periodic_values(matchA),
-                                           PT.PeriodicValues([0,0], 0, [-1,0])))
+                                           PT.PeriodicValues([0,0], [0,0], [-1,0])))
   assert all(np.allclose(x,y) for x, y in zip(PT.GridConnectivity.periodic_values(matchB),
-                                           PT.PeriodicValues([0,0], 0, [1,0])))
+                                           PT.PeriodicValues([0,0], [0,0], [1,0])))
 

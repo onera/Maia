@@ -17,6 +17,8 @@ Development version
 - extract_part: add local mode for unstructured meshes
 - maia_print_tree: trees are loaded much faster, which allows to print large files
 - generate_dist_block: manage non uniform Nx,Ny,Nz for Poly case
+- connect_1to1_families: extend to 2D input meshes
+- generate_jns_vertex_list, merge_zones: extend to polyedric 2D input meshes 
 
 🐞 Fixes
 ^^^^^^^^

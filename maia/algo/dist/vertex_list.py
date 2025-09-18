@@ -464,19 +464,19 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
                              comm: MPIComm,
                              have_isolated_faces: bool = False) -> None:
   """
-  For each 1to1 FaceCenter matching join found in the distributed tree,
+  For each 1to1 FaceCenter (EdgeCenter in 2D) matching join found in the distributed tree,
   create a corresponding 1to1 Vertex matching join.
 
   Input tree is modified inplace: Vertex ``GridConnectivity_t`` nodes
   are created using ``#Vtx`` suffix (long names are hashed).
 
-  Only unstructured-NGon based meshes are supported.
+  Only unstructured polyedric meshes are supported.
 
   Args:
     dist_tree  (CGNSDistTree): Distributed tree
     comm       (`MPIComm`)   : MPI communicator
     have_isolated_faces (bool, optional) : Indicate if original joins includes
-      faces who does not share any edge with other external (join) faces.
+      faces who does not share any vertex with other external (join) faces.
       If False, disable the special treatement needed by such faces (better performances,
       but will fail if isolated faces were actually present).
       Defaults to False.

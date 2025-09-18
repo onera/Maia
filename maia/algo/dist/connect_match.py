@@ -331,7 +331,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
       # Replace defaults for phydim == 2 (size of arrays differs)
       periodic = {'translation'     : periodic.get('translation', np.zeros(2, np.float32)),
                   'rotation_center' : periodic.get('rotation_center', np.zeros(2, np.float32)),
-                  'rotation_angle'  : periodic.get('rotation_angle', np.zeros(1, np.float32))}
+                  'rotation_angle'  : periodic.get('rotation_angle', np.zeros(2, np.float32))}
     perio_opp = {'translation'     : - periodic.get('translation', np.zeros(3, np.float32)),
                  'rotation_center' :   periodic.get('rotation_center', np.zeros(3, np.float32)),
                  'rotation_angle'  : - periodic.get('rotation_angle', np.zeros(3, np.float32))}
@@ -420,26 +420,27 @@ def connect_1to1_families(dist_tree: CGNSDistTree,
                           comm: MPIComm,
                           periodic: Optional[Dict[str, NDArray]] = None,
                           **options) -> None:
-  """Find the matching faces between cgns nodes belonging to the two provided families.
+  """Find the matching interface between cgns nodes belonging to the two provided families.
 
   For each one of the two families, all the BC_t or GridConnectivity_t nodes related to the family
   through a FamilyName/AdditionalFamilyName node will be included in the pairing process.
-  These subset must have a Vertex or FaceCenter GridLocation.
+  These subset must have a Vertex or FaceCenter (EdgeCenter in 2D) GridLocation.
 
   If the interface is periodic, the transformation from the first to the second family
   entities must be specified using the ``periodic`` argument; a dictionnary with keys
-  ``'translation'``, ``'rotation_center'`` and/or ``'rotation_angle'`` (in radians) is expected.
-  Each key maps to a 3-sized numpy array, with missing keys defaulting zero vector.
+  ``'translation'``, ``'rotation_center'`` and/or ``'rotation_angle'`` (in radians) is expected
+  (see :func:`maia.algo.transform_affine` for full description). Missing keys defaults to zero vector.
 
   Input tree is modified inplace : relevant GridConnectivity_t with PointList and PointListDonor
   data are created.
   If all the original elements are successfully paired, the original nodes are removed. Otherwise,
-  unmatched faces remains in their original node which is suffixed by '_unmatched'.
+  unmatched faces (resp. edges) remains in their original node which is suffixed by '_unmatched'.
 
   This function allows the additional optional parameters:
 
-  - ``location`` (default = 'FaceCenter') -- Controls the output GridLocation of
-    the created interfaces. 'FaceCenter' or 'Vertex' are admitted.
+  - ``location`` -- Controls the output GridLocation of
+    the created interfaces. 'FaceCenter' ('EdgeCenter' in 2D) or 'Vertex' are admitted.
+    Defaults to 'FaceCenter' or 'EdgeCenter', depending of mesh dimension.
   - ``tol`` (default = 1e-2) -- Geometric tolerance used to pair two points. Note that for each vertex, this
     tolerance is relative to the minimal distance to its neighbouring vertices.
 
