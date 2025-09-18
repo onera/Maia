@@ -25,7 +25,7 @@ class PeriodicValues(NamedTuple):
     else:
       return self._asdict()
   def __neg__(self):
-    return PeriodicValues._make(-x for x in self)
+    return PeriodicValues(self.RotationCenter, -self.RotationAngle, -self.Translation)
     
 class CartesianCoordinates(NamedTuple):
   CoordinateX:Optional[NDArray]
