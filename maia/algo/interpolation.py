@@ -14,21 +14,21 @@ from .interpolation_utils import Interpolator
 def interpolate(src_tree:CGNSDistTree,
                 tgt_tree:CGNSDistTree,
                 comm:MPIComm,
-                containers_name:List[str],
+                containers_name:Union[List[str], Literal['ALL']],
                 location:Literal['CellCenter', 'Vertex'],
                 **options) -> None: ...
 @overload
 def interpolate(src_tree:CGNSPartTree,
                 tgt_tree:CGNSPartTree,
                 comm:MPIComm,
-                containers_name:List[str],
+                containers_name:Union[List[str], Literal['ALL']],
                 location:Literal['CellCenter', 'Vertex'],
                 **options) -> None: ...
 
 def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
                 tgt_tree:Union[CGNSDistTree, CGNSPartTree],
                 comm:MPIComm,
-                containers_name:List[str],
+                containers_name:Union[List[str], Literal['ALL']],
                 location:Literal['CellCenter', 'Vertex'],
                 **options) -> None:
   """Interpolate fields between two trees.

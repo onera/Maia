@@ -10,14 +10,16 @@ import maia.pytree.maia as MT
 from maia.algo.dist import interpolation as ITP
 
 @pytest_parallel.mark.parallel(3)
-def test_simple_2d(comm):
+@pytest.mark.parametrize("all_cnt", [False, True])
+def test_simple_2d(all_cnt, comm):
   src_tree = maia.factory.generate_dist_block(5, 'QUAD_4', comm)
   tgt_tree = maia.factory.generate_dist_block([17,21], 'S', comm)
   
   # Create sol for src tree
   maia.algo.compute_elements_center(src_tree, 'CellCenter', comm)
 
-  ITP.interpolate(src_tree, tgt_tree, comm, ['Geometry_2d'], 'CellCenter', strategy='LocationAndClosest')
+  cnt_name = 'ALL' if all_cnt else ['Geometry_2d']
+  ITP.interpolate(src_tree, tgt_tree, comm, cnt_name, 'CellCenter', strategy='LocationAndClosest')
 
   tgt_zone = PT.get_all_Zone_t(tgt_tree)[0]
   tgt_center = maia.algo.dist.geometry._compute_elements_center(tgt_zone, 'CellCenter', comm)

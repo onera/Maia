@@ -1,4 +1,5 @@
 from mpi4py import MPI
+from collections import defaultdict
 
 import maia.pytree        as PT
 
@@ -16,7 +17,22 @@ from .import localize       as LOC
 from .import closest_points as CLO
 
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
+from maia.algo.interpolation_utils import VTX_SOL_PRED, CELL_SOL_PRED
 
+def set_intersection(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
+  # Intersection of two set, allowing None as input (skip)
+  if   s1 is None: return s2
+  elif s2 is None: return s1
+  else: return s1 & s2
+
+def collect_names(part_tree:CGNSPartTree, pred, comm:MPIComm) -> List[str]:
+
+  cnt_per_zones = [{PT.get_name(node) for node in PT.iter_children_from_predicate(zone, pred)}
+                   for zone in PT.iter_all_Zone_t(part_tree)]
+  loc_cnt = set.intersection(*cnt_per_zones) if len(cnt_per_zones) > 0 else None
+  glob_cnt = comm.allreduce(loc_cnt, set_intersection)
+
+  return sorted(glob_cnt) if glob_cnt is not None else []
 
 def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
                       tgt_parts_per_dom:List[List[CGNSPartTree]],
@@ -105,7 +121,7 @@ def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
 def interpolate(src_tree:CGNSPartTree,
                 tgt_tree:CGNSPartTree,
                 comm:MPIComm,
-                containers_name:List[str],
+                containers_name:Union[List[str], Literal['ALL']],
                 location:Literal['CellCenter', 'Vertex'],
                 **options) -> None:
   """
@@ -113,27 +129,33 @@ def interpolate(src_tree:CGNSPartTree,
   """
   check_cgns_part_tree(src_tree)
   check_cgns_part_tree(tgt_tree)
-  # Early return if containers_name is empty
-  assert isinstance(containers_name, list)
-  if len(containers_name) == 0:
-    return
 
+  loc_to_container_names = defaultdict(list)
   # Guess location of input fields using first input zone
-  try:
-    first_part = next(PT.iter_all_Zone_t(src_tree))
-    input_loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, containers_name[0]))
-  except StopIteration:
-    input_loc = ''
-  input_loc = comm.allreduce(input_loc, op=MPI.MAX)
-  assert input_loc in ['CellCenter', 'Vertex']
-  _input_loc:Literal['CellCenter', 'Vertex'] = input_loc #type:ignore[assignment]
+  if containers_name == 'ALL':
+    for loc, pred in zip(['Vertex', 'CellCenter'], [VTX_SOL_PRED, CELL_SOL_PRED]):
+      loc_to_container_names[loc] = collect_names(src_tree, pred, comm)
+  else:
+    try:
+      first_part = next(PT.iter_all_Zone_t(src_tree))
+      input_locs = [PT.Container.GridLocation(PT.find_child_from_name(first_part, name)) for name in containers_name]
+    except StopIteration:
+      input_locs = ['' for name in containers_name]
+    input_locs = comm.allreduce(input_locs, op=MPI.MAX)
+    for loc, name in zip(input_locs, containers_name):
+      loc_to_container_names[loc].append(name)
 
-  # Create interpolator
-  interpolator = create_interpolator(src_tree, tgt_tree, comm, _input_loc, location, **options)
+  if (lc:=len(loc_to_container_names)) > 1:
+    mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
 
-  # Exchange fields
-  for container_name in containers_name:
-    interpolator.exchange_fields(container_name)
+  for input_loc, loc_containers_name in loc_to_container_names.items():
+
+    _input_loc:Literal['Vertex', 'CellCenter'] = input_loc #type:ignore[assignment]
+    # Create interpolator
+    interpolator = create_interpolator(src_tree, tgt_tree, comm, _input_loc, location, **options)
+    # Exchange fields
+    for container_name in loc_containers_name:
+      interpolator.exchange_fields(container_name)
 
 
 
@@ -146,6 +168,7 @@ def create_interpolator(src_tree:CGNSPartTree,
   """
   Partitioned implementation of maia.algo.interpolate
   """
+  assert src_location in ['CellCenter', 'Vertex']
   check_cgns_part_tree(src_tree)
   check_cgns_part_tree(tgt_tree)
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())

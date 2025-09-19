@@ -9,6 +9,13 @@ from   maia.utils import vstride as vs
 
 import Pypdm.Pypdm as PDM
 
+SOL_PRED = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
+         & PT.pred.NodePredicate(lambda c: not PT.Container._is_partial(c)) \
+         & PT.pred.has_child_of_label('DataArray_t')
+
+VTX_SOL_PRED  = SOL_PRED & PT.pred.has_location('Vertex') 
+CELL_SOL_PRED = SOL_PRED & PT.pred.has_location('CellCenter') 
+
 def _cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_weight, n_vtx):
   """
   Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
