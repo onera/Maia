@@ -6,9 +6,6 @@ from maia.typing import *
 import cmaia.utils as cutils
 from cmaia.utils import layouts
 
-_VS_MSG = "This function is deprecated in favor of the VStrideArray class " \
-          "(https://numerics.gitlab-pages.onera.net/mesh/maia/dev/developer_manual/tools/vstride.html)"
-
 def interweave_arrays(array_list: Sequence[NDArray]) -> NDArray:
   #https://stackoverflow.com/questions/5347065/interweaving-two-numpy-arrays
   first  = array_list[0]
@@ -168,18 +165,6 @@ def repeated_arange(counts: Union[int, NDArray],
     assert isinstance(counts, int) or stop-start == step*counts.size
   return np.repeat(np.arange(start, stop, step, dtype), counts)
 
-def jagged_merge(idx1: NDArray, array1: NDArray, idx2: NDArray, array2: NDArray) -> Tuple[NDArray, NDArray]:
-  """
-  Interwave two jagged arrays of same n_elt
-  """
-  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
-  assert array1.dtype == array2.dtype
-  from maia.utils import vstride as vs
-  a1 = vs.from_displs(idx1, array1)
-  a2 = vs.from_displs(idx2, array2)
-  merged = vs.concatenate([a1, a2], axis=vs.INNER_AXIS)
-  return merged.displs, merged.values
-
 def roll_from(array: NDArray,
               start_idx: Optional[int] = None,
               start_value: Optional[Any] = None, 
@@ -224,7 +209,6 @@ def unique_sorted(sorted_array: NDArray,
 
   return unique_array, counts
 
-
 def is_unique_strided(array: NDArray, 
                       stride: int, 
                       method: str = 'hash') -> NDArray:
@@ -240,86 +224,6 @@ def is_unique_strided(array: NDArray,
     return cutils.is_unique_cst_stride_sort(n_elt, stride, array)
   else:
     raise ValueError(f"Method must be one of ['hash', 'sort']")
-
-def reverse_by_stride(array_idx: ArrayLike,
-                      array: ArrayLike, 
-                      inplace: bool = False) -> NDArray:
-  """
-  Reverse each interval of an array.
-  NB : the values are only sorted within each interval, there is no reverse between intervals.
-  """
-  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
-  from maia.utils import vstride as vs
-  arr_in = vs.from_displs(array_idx, array)
-
-  if inplace:
-    arr_in._inner_flip()
-    return arr_in.values
-  else:
-    arr_out = vs.flip(arr_in, vs.INNER_AXIS)
-    return arr_out.values
-
-def sort_by_stride(array_idx: ArrayLike,
-                   array: ArrayLike,
-                   inplace: bool = False) -> NDArray:
-  """
-  Sort each stride of an array.
-  NB : the values are only sorted within each interval, there is no sorting between intervals.
-  """
-  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
-  from maia.utils import vstride as vs
-  arr_in = vs.from_displs(array_idx, array)
-
-  if inplace:
-    arr_in._inner_sort()
-    return arr_in.values
-  else:
-    arr_out = vs.sort(arr_in, vs.INNER_AXIS)
-    return arr_out.values
-
-def make_unique_by_stride(array_idx: ArrayLike, array: ArrayLike) -> Tuple[NDArray, NDArray]:
-  """
-  Take a strided input array, and create a new one without repetitions
-  within each interval.
-  NB : the subintervals are not sorted ; input order is preserved
-  """
-  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
-  from maia.utils import vstride as vs
-  arr_in  = vs.from_displs(array_idx, array)
-  arr_out = vs.unique(arr_in, vs.INNER_AXIS)
-  return arr_out.displs, arr_out.values
-
-def roll_once_by_stride(array_idx, array):
-  """
-  numpy.roll (with shift := -1) within each interval
-  [34, 65, 33, 1,     39, 54, 2, 53, 3] --> [65, 33, 1, 34,     54, 2, 53, 3, 39]
-  """
-  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
-  from maia.utils import vstride as vs
-  arr_in = vs.from_displs(array_idx, array)
-  arr_out = vs.roll(arr_in, -1, vs.INNER_AXIS)
-  return arr_out.values
-
-def take_strided(array_idx, array, indices):
-  """
-  An equivalent to numpy.take (a[ind]), but with strided values in array
-  Indices is the list of idx to extract; for each indices, the whole "grap" of strided
-  values will be extracted
-  Example:
-  Given inputs:
-    a_idx    = [0, 3, 4, 6]  (gather 3 values, then 1 value, then 2 values)
-    a_val    = [10,11,12, 100, 1000, 1001] (input array)
-    indices  = [2,0] (indices of groups that we want to take)
-  We gather a_val according to a_idx: [[10,11,12], [100], [1000, 1001]]
-  Then we return the groups at indices [2,0]
-  So in the end, we have:
-    take_strided(a_idx, a_val, indices) = [0, 2, 5], [1000, 1001,  10,11,12]
-  """
-  warnings.warn(_VS_MSG, DeprecationWarning, stacklevel=2)
-  from maia.utils import vstride as vs
-  arr_in = vs.from_displs(array_idx, array)
-  arr_out = vs.take(arr_in, indices)
-  return arr_out.displs, arr_out.values
 
 def any_in_range(array: ArrayLike, 
                  start: Number,
