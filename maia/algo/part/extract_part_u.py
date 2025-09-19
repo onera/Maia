@@ -123,7 +123,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
       continue # Volumic zone has no fields
 
 
-    grid_location = PT.Container.GridLocation(container)
+    grid_location = PT.Container.GridLocation(container, part_zone)
     assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
 
     # > FlowSolution node def by zone
@@ -166,8 +166,8 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
       # extracted field will be full -> transform into FS
       if is_own_data:
         assert mask.all()
-        assert PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']
         PT.set_label(FS_ep, 'FlowSolution_t')
+        assert PT.Container.GridLocation(FS_ep) in ['CellCenter', 'Vertex']
       else:
         _extr_pl = np.where(mask)[0]
         extr_pl = _extr_pl + local_pl_offset(extr_zone, LOC_TO_DIM[grid_location]) + 1

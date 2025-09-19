@@ -521,3 +521,44 @@ def test_void_extraction(comm):
   assert is_empty_tree(extractor.get_extract_part_tree())
   assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs
 
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("equilibrate", [True, False])
+def test_extract_fam_dataset(comm, equilibrate):
+  tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  dn_elt = MT.Subset.dn_elem(PT.find_node_from_name(zone, 'Xmin'))
+  PT.new_ZoneSubRegion('ZSR', bc_name='Xmin', family='FAM',
+                       fields={'One' : np.ones(dn_elt), 'Two' : 2*np.ones(dn_elt)},
+                       parent=zone)
+
+  dn_elt = MT.Subset.dn_elem(PT.find_node_from_name(zone, 'Ymin'))
+  bc = PT.find_node_from_name(zone, 'Ymin')
+  ds = PT.new_BCDataSet(parent=bc)
+  PT.new_BCData('NeumannData', fields={'One' : np.ones(dn_elt), 'Three' : 3*np.ones(dn_elt)}, parent=ds)
+  PT.new_FamilyName('FAM', parent=bc)
+  
+  ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer='ALL')
+  pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, equilibrate=equilibrate)
+
+  # In this config, with transfert_dataset=True, we should
+  # have a full container containing Ones (common to all extracted subsets)
+  # and 2 partials containers for Two and Three (not common)
+  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  full = PT.find_child_from_name(ext_zone, 'FAM')
+  assert PT.get_label(full) == 'FlowSolution_t' and not PT.Container._is_partial(full)
+  assert [PT.get_name(n) for n in PT.get_children_from_label(full, 'DataArray_t')] == ['One']
+  for cnt_name, array_name in zip(['ZSR', 'Ymin'], ['Two', 'Three']):
+    partial = PT.get_child_from_name(ext_zone, cnt_name)
+    assert comm.allreduce(partial is not None, MPI.LOR) == True
+    if partial is not None:
+      assert PT.get_label(partial) == 'ZoneSubRegion_t'
+      assert [PT.get_name(n) for n in PT.get_children_from_label(partial, 'DataArray_t')] == [array_name]
+
+  # Cnts are empty -> cleaning is expected
+  PT.rm_nodes_from_predicate(ptree, PT.pred.name_in(['One', 'Two', 'Three']))
+  pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm)
+  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  assert PT.get_child_from_name(ext_zone, 'FAM') is None
+  assert PT.get_child_from_name(ext_zone, 'ZSR') is None
+  assert PT.get_child_from_name(ext_zone, 'Ymin') is None
