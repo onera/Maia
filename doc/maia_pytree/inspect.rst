@@ -25,6 +25,14 @@ Here is a summary of the available functions, depending of the input node:
   ~maia.pytree.Tree.find_connected_zones
   ~maia.pytree.Tree.find_periodic_jns
 
+**Base** *These functions apply to CGNSBase_t node*
+
+.. autosummary::
+  :nosignatures:
+
+  ~maia.pytree.Base.CellDimension
+  ~maia.pytree.Base.PhysicalDimension
+
 **Zone** *These functions apply to Zone_t node*
 
 .. autosummary::
@@ -109,6 +117,8 @@ Methods detail
 --------------
 
 .. autoclass:: maia.pytree.Tree
+  :members: 
+.. autoclass:: maia.pytree.Base
   :members: 
 .. autoclass:: maia.pytree.Zone
   :members: 

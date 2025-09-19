@@ -18,16 +18,19 @@ PointCloud = Dict[str, Any]
 
 def _shift_face_num(cgns_ids:NDArray, zone:CGNSTree, reverse:bool=False) -> NDArray:
   """ Shift CGNS face numbering to start at 1 """
-  if PT.Zone.has_ngon_elements(zone):
+  if PT.pred.IS_POLY2D_ZONE(zone):
+    offset = int(PT.Element.Range(MT.Zone.EdgeNode(zone))[0]) - 1
+  elif PT.pred.IS_POLY3D_ZONE(zone):
     offset = int(PT.Element.Range(PT.Zone.NGonNode(zone))[0]) - 1
   else:
     ordering = PT.Zone.elt_ordering_by_dim(zone)
-    if ordering == 1: #Increasing elements : substract starting point of 2D
-      offset = PT.Zone.get_elt_range_per_dim(zone)[2][0] - 1
-    elif ordering == -1: #Decreasing elements : substract number of 3D
-      offset = PT.Zone.get_elt_range_per_dim(zone)[3][1]
+    dim = PT.Zone.CellDimension(zone)
+    if ordering == 1: #Increasing elements : substract starting point of 2D (or 1D)
+      offset = PT.Zone.get_elt_range_per_dim(zone)[dim-1][0] - 1
+    elif ordering == -1: #Decreasing elements : substract ending point of 3D (or 2D)
+      offset = PT.Zone.get_elt_range_per_dim(zone)[dim][1]
     else:
-      raise RuntimeError("Unable to extract unordered faces")
+      raise RuntimeError("Unable to extract unordered faces or edges")
   if reverse:
     return cgns_ids + offset
   else:
@@ -39,7 +42,7 @@ def _nodal_sections_to_face_vtx(sections: List[Dict[str, Any]],
   elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=MT.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
 
   face_n_vtx_list = [elem_n_vtx(section['pdm_type']) for section in sections]
-  
+
   elem_dn_list = [section['np_distrib'][rank+1] - section['np_distrib'][rank] for section in sections]
 
   face_vtx_idx = np_utils.sizes_to_indices(np.repeat(face_n_vtx_list, elem_dn_list), dtype=np.int32)
@@ -64,46 +67,61 @@ def _point_merge(clouds:List[PointCloud], comm:MPIComm, rel_tol:float) -> Dict[s
 
   return pdm_point_merge.make_interface()
 
-def _get_cloud(dmesh, gnum:NDArray, comm:MPIComm) -> PointCloud:
-  """ 
+def _get_cloud(dmesh, dim:int, gnum:NDArray, comm:MPIComm) -> PointCloud:
+  """
   Extract surfacic mesh from a list of (face) gnum. Return connectivities
   of extracted mesh + link with parent volumic mesh
   """
-  dmesh_extractor = PDM.DMeshExtract(2, comm)
+  extracted_entity = PDM._PDM_MESH_ENTITY_FACE           if dim == 3 else PDM._PDM_MESH_ENTITY_EDGE
+  extracted_conn   = PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX if dim == 3 else PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX
+  extracted_geom   = PDM._PDM_GEOMETRY_KIND_SURFACIC     if dim == 3 else PDM._PDM_GEOMETRY_KIND_RIDGE
+  
+  dmesh_extractor = PDM.DMeshExtract(dim-1, comm)
   if isinstance(dmesh, PDM.DistributedMesh):
     dmesh_extractor.register_dmesh(dmesh)
   elif isinstance(dmesh, PDM.DistributedMeshNodal):
     dmesh_extractor.register_dmesh_nodal(dmesh)
 
   _gnum = as_pdm_gnum(gnum)
-  dmesh_extractor.set_gnum_to_extract(PDM._PDM_MESH_ENTITY_FACE, _gnum)
+  dmesh_extractor.set_gnum_to_extract(extracted_entity, _gnum)
 
   dmesh_extractor.compute()
 
   if isinstance(dmesh, PDM.DistributedMesh):
     dmesh_extracted = dmesh_extractor.get_dmesh()
     coords  = dmesh_extracted.dmesh_vtx_coord_get()
-    face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
+    face_vtx_idx, face_vtx = dmesh_extracted.dmesh_connectivity_get(extracted_conn)
   elif isinstance(dmesh, PDM.DistributedMeshNodal):
     dmesh_extracted = dmesh_extractor.get_dmesh_nodal()
     coords = dmesh_extracted.dmesh_nodal_get_vtx(comm)['np_vtx']
     # Rebuild face_vtx from sections
-    sections = dmesh_extracted.dmesh_nodal_get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, comm)['sections']
+    sections = dmesh_extracted.dmesh_nodal_get_sections(extracted_geom, comm)['sections']
     face_vtx_idx, face_vtx = _nodal_sections_to_face_vtx(sections, comm.Get_rank())
   else:
     raise ValueError("Unexpected dmesh kind")
 
   parent_vtx  = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_VTX)
-  parent_face = dmesh_extractor.get_extract_parent_gnum(PDM._PDM_MESH_ENTITY_FACE)
+  parent_face = dmesh_extractor.get_extract_parent_gnum(extracted_entity)
 
-  carac_length = PDM.compute_vtx_characteristic_length(comm,
-                                                       face_vtx_idx.size-1, #dn_face
-                                                       0,                   #dn_edge
-                                                       coords.size//3,      #dn_vtx
-                                                       face_vtx_idx,
-                                                       face_vtx,
-                                                       None,                #edge_vtx
-                                                       coords)
+  if dim == 2:
+    face_vtx_idx = 2*np.arange(face_vtx.size//2+1, dtype=np.int32)
+    carac_length = PDM.compute_vtx_characteristic_length(comm,
+                                                         0,                   #dn_face
+                                                         face_vtx_idx.size-1, #dn_edge
+                                                         coords.size//3,      #dn_vtx
+                                                         None,
+                                                         None,
+                                                         face_vtx,            #edge_vtx
+                                                         coords)
+  else:
+    carac_length = PDM.compute_vtx_characteristic_length(comm,
+                                                         face_vtx_idx.size-1, #dn_face
+                                                         0,                   #dn_edge
+                                                         coords.size//3,      #dn_vtx
+                                                         face_vtx_idx,
+                                                         face_vtx,
+                                                         None,                #edge_vtx
+                                                         coords)
 
   return {'coords'       : coords,
           'carac_length' : carac_length,
@@ -111,7 +129,7 @@ def _get_cloud(dmesh, gnum:NDArray, comm:MPIComm) -> PointCloud:
           'face_vtx'     : face_vtx,
           'parent_vtx'   : parent_vtx,
           'parent_face'  : parent_face}
-           
+
 
 def _convert_match_result_to_faces(out_vtx, clouds, comm):
   """
@@ -187,14 +205,18 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
   """
   Wrapper extracting the surfacic meshes and parent data from the input tree
   and a list of node paths.
-  Node path must refer to nodes having a FaceCenter PointList 
+  Node path must refer to nodes having a FaceCenter PointList
   """
   zone_path = PTu.path_head(subset_path, 2)
   zone = PT.find_node_from_path(dist_tree, zone_path)
+  dim = PT.Zone.CellDimension(zone)
   try:
     dmesh = dmesh_cache[zone_path]
   except KeyError:
-    if PT.Zone.has_ngon_elements(zone):
+
+    if PT.pred.IS_POLY2D_ZONE(zone):
+      dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_2d(zone, comm)
+    elif PT.pred.IS_POLY3D_ZONE(zone):
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh(zone, comm)
     else:
       dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_nodal(zone, comm, needs_bc=False)
@@ -202,19 +224,23 @@ def get_vtx_cloud_from_subset(dist_tree:CGNSTree, subset_path:CGNSPath, comm:MPI
     dmesh_cache[zone_path] = dmesh
 
   node = PT.find_node_from_path(dist_tree, subset_path)
-  assert PT.Subset.GridLocation(node) == 'FaceCenter', "Only face center nodes are managed"
+  assert PT.Subset.GridLocation(node) in ['EdgeCenter', 'FaceCenter'], "Only face center nodes are managed"
   pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
   _pl = _shift_face_num(pl, zone)
 
-  cloud = _get_cloud(dmesh, _pl, comm)
+  cloud = _get_cloud(dmesh, dim, _pl, comm)
   return cloud
 
-def apply_periodicity(cloud:PointCloud, periodic):
+def apply_periodicity(cloud:PointCloud, phydim, periodic):
   coords = cloud['coords']
   cx = coords[0::3]
   cy = coords[1::3]
   cz = coords[2::3]
-  cx_p, cy_p, cz_p = np_utils.transform_cart_vectors(cx,cy,cz, **periodic)
+  if phydim == 2:
+    cx_p, cy_p = np_utils.transform_cart_vectors_2d(cx,cy, **periodic)
+    cz_p = cz # Should be array of 0 for PDM
+  else:
+    cx_p, cy_p, cz_p = np_utils.transform_cart_vectors(cx,cy,cz, **periodic)
   coords_p = np_utils.interweave_arrays([cx_p, cy_p, cz_p])
   cloud['coords'] = coords_p
 
@@ -234,9 +260,18 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   # 6.  Create output for matched faces
   # 7.  Check resulting faces vs input faces
 
+  cell_dims = {PT.get_np_value(base)[0] for base in PT.iter_all_CGNSBase_t(dist_tree)}
+  phy_dims  = {PT.get_np_value(base)[1] for base in PT.iter_all_CGNSBase_t(dist_tree)}
+  assert len(cell_dims) == 1, "All bases must have same CellDimension"
+  assert len(phy_dims) == 1, "All bases must have same PhysicalDimension"
+  dim = cell_dims.pop()
+  phy_dim = phy_dims.pop()
+
   assert len(subset_paths) == 2
   tol = options.get("tol", 1e-2)
-  output_loc = options.get("location", "FaceCenter")
+  
+  if (output_loc := options.get("location", '')) != 'Vertex':
+    output_loc = 'FaceCenter' if dim == 3 else 'EdgeCenter'
 
 
   clouds_path = subset_paths[0] + subset_paths[1]
@@ -249,7 +284,7 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
   for cloud_path in subset_paths[0]:
     cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
     if periodic is not None:
-      apply_periodicity(cloud, periodic)
+      apply_periodicity(cloud, phy_dim, periodic)
     clouds.append(cloud)
   for cloud_path in subset_paths[1]:
     cloud = get_vtx_cloud_from_subset(dist_tree, cloud_path, comm, cached_dmesh)
@@ -286,12 +321,17 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
     cloud_pair = matching_vtx['np_cloud_pair']
     gnum_cur   = matching_vtx['lgnum_cur']
     gnum_opp   = matching_vtx['lgnum_opp']
-  elif output_loc == 'FaceCenter':
+  elif output_loc in ['EdgeCenter', 'FaceCenter']:
     cloud_pair = matching_face['np_cloud_pair']
     gnum_cur   = matching_face['lgnum_cur']
     gnum_opp   = matching_face['lgnum_opp']
 
   if periodic is not None:
+    if phy_dim == 2:
+      # Replace defaults for phydim == 2 (size of arrays differs)
+      periodic = {'translation'     : periodic.get('translation', np.zeros(2, np.float32)),
+                  'rotation_center' : periodic.get('rotation_center', np.zeros(2, np.float32)),
+                  'rotation_angle'  : periodic.get('rotation_angle', np.zeros(2, np.float32))}
     perio_opp = {'translation'     : - periodic.get('translation', np.zeros(3, np.float32)),
                  'rotation_center' :   periodic.get('rotation_center', np.zeros(3, np.float32)),
                  'rotation_angle'  : - periodic.get('rotation_angle', np.zeros(3, np.float32))}
@@ -367,7 +407,8 @@ def connect_1to1_from_paths(dist_tree: CGNSDistTree,
     if comm.allreduce(unfound.size, MPI.SUM) > 0:
       input_node = PT.find_node_from_path(dist_tree, cloud_path)
       PT.set_name(input_node, f"{PT.get_name(input_node)}_unmatched")
-      PT.update_child(input_node, 'GridLocation', value='FaceCenter')
+      loc = 'FaceCenter' if dim == 3 else 'EdgeCenter'
+      PT.update_child(input_node, 'GridLocation', value=loc)
       PT.update_child(input_node, 'PointList', value=unfound.reshape((1,-1), order='F'))
       MT.new_Distribution({'Index':  par_utils.dn_to_distribution(unfound.size, comm)}, input_node)
     else:
@@ -379,26 +420,27 @@ def connect_1to1_families(dist_tree: CGNSDistTree,
                           comm: MPIComm,
                           periodic: Optional[Dict[str, NDArray]] = None,
                           **options) -> None:
-  """Find the matching faces between cgns nodes belonging to the two provided families.
+  """Find the matching interface between cgns nodes belonging to the two provided families.
 
   For each one of the two families, all the BC_t or GridConnectivity_t nodes related to the family
   through a FamilyName/AdditionalFamilyName node will be included in the pairing process.
-  These subset must have a Vertex or FaceCenter GridLocation.
+  These subset must have a Vertex or FaceCenter (EdgeCenter in 2D) GridLocation.
 
   If the interface is periodic, the transformation from the first to the second family
   entities must be specified using the ``periodic`` argument; a dictionnary with keys
-  ``'translation'``, ``'rotation_center'`` and/or ``'rotation_angle'`` (in radians) is expected.
-  Each key maps to a 3-sized numpy array, with missing keys defaulting zero vector.
+  ``'translation'``, ``'rotation_center'`` and/or ``'rotation_angle'`` (in radians) is expected
+  (see :func:`maia.algo.transform_affine` for full description). Missing keys defaults to zero vector.
 
   Input tree is modified inplace : relevant GridConnectivity_t with PointList and PointListDonor
   data are created.
   If all the original elements are successfully paired, the original nodes are removed. Otherwise,
-  unmatched faces remains in their original node which is suffixed by '_unmatched'.
+  unmatched faces (resp. edges) remains in their original node which is suffixed by '_unmatched'.
 
   This function allows the additional optional parameters:
 
-  - ``location`` (default = 'FaceCenter') -- Controls the output GridLocation of
-    the created interfaces. 'FaceCenter' or 'Vertex' are admitted.
+  - ``location`` -- Controls the output GridLocation of
+    the created interfaces. 'FaceCenter' ('EdgeCenter' in 2D) or 'Vertex' are admitted.
+    Defaults to 'FaceCenter' or 'EdgeCenter', depending of mesh dimension.
   - ``tol`` (default = 1e-2) -- Geometric tolerance used to pair two points. Note that for each vertex, this
     tolerance is relative to the minimal distance to its neighbouring vertices.
 

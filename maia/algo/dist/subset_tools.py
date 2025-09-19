@@ -9,6 +9,8 @@ from maia.utils    import np_utils, par_utils
 
 from maia.utils.parallel import algo as par_algo
 
+from maia.typing import *
+
 def sort_dist_pointlist(subset, comm):
     pl_n = PT.get_child_from_name(subset, 'PointList')
     pld_n = PT.get_child_from_name(subset, 'PointListDonor')
@@ -52,26 +54,34 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
 
   return np_utils.safe_int_cast(face_ids, vtx_ids.dtype)
 
-def convert_subset_as_facelist(dist_tree, subset_path, comm, only_bnd=False):
+def convert_subset_as_facelist(dist_tree:CGNSDistTree, subset_path:CGNSPath, comm:MPIComm, only_bnd:bool=False):
+  """
+  Transform Vertex located subsets (as BCs) to Face or Edge located
+  subsets, depending on input dim
+  """
   node = PT.find_node_from_path(dist_tree, subset_path)
   zone_path = PT.utils.path_head(subset_path, 2)
+  zone = PT.find_node_from_path(dist_tree, zone_path)
+  assert (zonedim:= PT.Zone.CellDimension(zone)) >= 2
+  loc = 'FaceCenter' if zonedim == 3 else 'EdgeCenter'
+
   if PT.Subset.GridLocation(node) == 'Vertex':
-    zone = PT.find_node_from_path(dist_tree, zone_path)
+    
+    low_dim_elt = PT.Zone.NGonNode(zone) if zonedim == 3 else MT.Zone.EdgeNode(zone)
     pl_vtx = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
-    face_list = vtx_ids_to_face_ids(pl_vtx, PT.Zone.NGonNode(zone), comm, True)
+    face_list = vtx_ids_to_face_ids(pl_vtx, low_dim_elt, comm, True)
 
     if only_bnd:
       # Exclude internal faces (see #73, #208)
-      maia.algo.nface_to_pe(zone, comm)
-      ng = PT.Zone.NGonNode(zone)
-      pe = PT.get_np_value(PT.find_child_from_name(ng, 'ParentElements'))
-      offset = MT.distribution_value(ng, 'Element')[0] + 1
+      maia.algo.nface_to_pe(zone, comm) if zonedim == 3 else maia.algo.ngon_to_edge_pe(zone, comm)
+      offset = MT.distribution_value(low_dim_elt, 'Element')[0] + 1
+      pe = PT.get_np_value(PT.find_child_from_name(low_dim_elt, 'ParentElements'))
       is_boundary = pe[face_list-offset, 1] == 0
       face_list = face_list[is_boundary]
 
-    PT.update_child(node, 'GridLocation', 'GridLocation_t', value='FaceCenter')
+    PT.update_child(node, 'GridLocation', 'GridLocation_t', value=loc)
     PT.update_child(node, 'PointList', value=face_list.reshape((1,-1), order='F'))
     MT.new_Distribution({'Index' : par_utils.dn_to_distribution(face_list.size, comm)}, node)
-  elif PT.Subset.GridLocation(node) != 'FaceCenter':
+  elif PT.Subset.GridLocation(node) != loc:
       raise ValueError(f"Unsupported location for subset {subset_path}")
 

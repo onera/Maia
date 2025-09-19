@@ -99,7 +99,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm, needs_bc=False):
     layouts.pe_cgns_to_pdm_face_cell(ngon_pe, dface_cell)
     if ngon_first:
       np_utils.shift_nonzeros(dface_cell, -distrib_face[2])
-    
+
 
   # > Prepare bnd (needed for HPC renumbering)
   if needs_bc:
@@ -161,6 +161,8 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
 
 
   cx, cy, cz = PT.Zone.coordinates(dist_zone)
+  if cz is None:
+    cz = np.zeros_like(cx)
   dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
 
 
@@ -169,11 +171,14 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   if edge_first:
     np_utils.shift_nonzeros(dedge_face, -distrib_edge[2])
 
+  # Fix in PDM for dmesh_extract not yet integrated
+  dedge_vtx_idx = 2*np.arange(dedge_vtx.shape[0]//2+1, dtype=np.int32)
+
   #Create DMesh
   dmesh = DistributedMesh(comm, 0, dn_face, dn_edge, dn_vtx)
 
   dmesh.dmesh_vtx_coord_set(dvtx_coord)
-  dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_EDGE_VTX,  None, dedge_vtx)
+  dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_EDGE_VTX,  dedge_vtx_idx, dedge_vtx)
   dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_EDGE_FACE, None, dedge_face)
 
   # keep dvtx_coord object alive for ParaDiGM
@@ -181,6 +186,7 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
   PT.new_DataArray('dedge_vtx', dedge_vtx, parent=multi_part_node)
   PT.new_DataArray('dedge_face', dedge_face, parent=multi_part_node)
+  PT.new_DataArray('dedge_vtx_idx', dedge_vtx_idx, parent=multi_part_node)
 
   return dmesh
 
@@ -258,6 +264,8 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   if needs_vertex:
     if dn_vtx > 0:
       cx, cy, cz = PT.Zone.coordinates(dist_zone)
+      if cz is None:
+        cz = np.zeros_like(cx)
       dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
     else:
       dvtx_coord = np.empty(0, dtype='float64', order='F')

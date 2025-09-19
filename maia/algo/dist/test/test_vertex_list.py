@@ -43,6 +43,17 @@ def test_filter_vtx_coordinates(comm):
   received_coords = VL.filter_vtx_coordinates(vtx_coords, vtx_distri, requested_vtx_ids,  comm)
   assert (received_coords == expected_vtx_coords).all()
 
+  tree = maia.factory.generate_dist_block([5,4], 'Poly', comm, origin=[0,0])
+  vtx_coords = PT.get_node_from_label(tree, 'GridCoordinates_t')
+  vtx_distri   = MT.distribution_value(PT.get_all_Zone_t(tree)[0], 'Vertex')
+  if comm.Get_rank() == 0:
+    requested_vtx_ids = np.array([8,2,14])
+    expected_vtx_coords = np.array([0.5, 1./3,  .25,0,  .75,2./3])
+  else:
+    requested_vtx_ids = np.array([20,8])
+    expected_vtx_coords = np.array([1,1,  0.5, 1./3])
+  received_coords = VL.filter_vtx_coordinates(vtx_coords, vtx_distri, requested_vtx_ids,  comm)
+
 @pytest_parallel.mark.parallel(2)
 def test_get_extended_pl(comm):
   tree = dcube_generator.dcube_generate(3,1.,[0,0,0], comm)
@@ -407,3 +418,86 @@ Base CGNSBase_t I4 [3, 3]:
   node = PT.get_node_from_name(zoneA, 'PerioB#Vtx')
   assert np.array_equal(PT.get_node_from_name(node, 'PointList')[1], [[10,11,12,13,14,15,16,17,18]])
   
+
+@pytest_parallel.mark.parallel(2)
+def test_vertex_list_2d(comm):
+  tree = maia.factory.generate_dist_block([5,4], 'S', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  zt = PT.get_np_value(zone).dtype
+  PT.rm_nodes_from_name_and_label(zone, 'X*', 'BC_t')
+  zgc = PT.new_ZoneGridConnectivity(parent=zone)
+  left  = np.array([[1,1], [1,4]], dtype=zt)
+  right = np.array([[5,5], [1,4]], dtype=zt)
+  gc = PT.new_GridConnectivity1to1('Left', 'zone',
+                                   transform=[1,2],
+                                   point_range=left, point_range_donor=right,
+                                   parent=zgc)
+  pleft = PT.new_GridConnectivityProperty({'translation'     : np.array([1,0], 'f4'),
+                                           'rotation_center' : np.array([0,0], 'f4'),
+                                           'rotation_angle'  : np.array([0,0], 'f4')}, parent=gc)
+  gc = PT.new_GridConnectivity1to1('Right', 'zone',
+                                   transform=[1,2],
+                                   point_range=right.copy(), point_range_donor=left.copy(),
+                                   parent=zgc)
+  pright = PT.new_GridConnectivityProperty({'translation'     : np.array([1,0], 'f4'),
+                                            'rotation_center' : np.array([0,0], 'f4'),
+                                            'rotation_angle'  : np.array([0,0], 'f4')}, parent=gc)
+
+  maia.algo.dist.convert_s_to_ngon(tree, comm)
+
+  maia.algo.dist.generate_jns_vertex_list(tree, comm, True)
+
+  expt_l = [[[1,6]], [[11,16]]][comm.rank]
+  expt_r = [[[5,10]], [[15,20]]][comm.rank]
+  jn_left  = PT.find_node_from_name_and_label(tree, 'Left#Vtx', 'GridConnectivity_t')
+  jn_right = PT.find_node_from_name_and_label(tree, 'Right#Vtx', 'GridConnectivity_t')
+
+  assert PT.get_value(jn_left) == PT.get_value(jn_right) == 'zone'
+  assert (PT.find_child_from_name(jn_left, 'PointList')[1] == expt_l).all()
+  assert (PT.find_child_from_name(jn_left, 'PointListDonor')[1] == expt_r).all()
+  assert PT.is_same_tree(pleft, PT.find_child_from_name(jn_left, 'GridConnectivityProperty'))
+
+  assert (PT.find_child_from_name(jn_right, 'PointList')[1] == expt_r).all()
+  assert (PT.find_child_from_name(jn_right, 'PointListDonor')[1] == expt_l).all()
+  assert PT.is_same_tree(pright, PT.find_child_from_name(jn_right, 'GridConnectivityProperty'))
+
+
+def test_vertex_list_2d_geo(comm):
+  tree = maia.factory.generate_dist_block([5,2], 'S', comm, origin=[0,0]) # phydim = 2
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  zt = PT.get_np_value(zone).dtype
+  PT.rm_nodes_from_name_and_label(zone, 'X*', 'BC_t')
+  zgc = PT.new_ZoneGridConnectivity(parent=zone)
+  left  = np.array([[1,1], [1,2]], dtype=zt)
+  right = np.array([[5,5], [1,2]], dtype=zt)
+  gc = PT.new_GridConnectivity1to1('Left', 'zone',
+                                   transform=[1,2],
+                                   point_range=left, point_range_donor=right,
+                                   parent=zgc)
+  pleft = PT.new_GridConnectivityProperty({'translation'     : np.array([1,0], 'f4'),
+                                           'rotation_center' : np.array([0,0], 'f4'),
+                                           'rotation_angle'  : np.array([0,0], 'f4')}, parent=gc)
+  gc = PT.new_GridConnectivity1to1('Right', 'zone',
+                                   transform=[1,2],
+                                   point_range=right, point_range_donor=left,
+                                   parent=zgc)
+  pright = PT.new_GridConnectivityProperty({'translation'     : np.array([1,0], 'f4'),
+                                            'rotation_center' : np.array([0,0], 'f4'),
+                                            'rotation_angle'  : np.array([0,0], 'f4')}, parent=gc)
+
+  maia.algo.dist.convert_s_to_ngon(tree, comm)
+  maia.algo.dist.generate_jns_vertex_list(tree, comm, True)
+
+  jn_left  = PT.find_node_from_name_and_label(tree, 'Left#Vtx', 'GridConnectivity_t')
+  jn_right = PT.find_node_from_name_and_label(tree, 'Right#Vtx', 'GridConnectivity_t')
+
+  assert PT.get_value(jn_left) == PT.get_value(jn_right) == 'zone'
+  assert (PT.find_child_from_name(jn_left, 'PointList')[1] == [[1,6]]).all()
+  assert (PT.find_child_from_name(jn_left, 'PointListDonor')[1] == [[5,10]]).all()
+  assert PT.is_same_tree(pleft, PT.find_child_from_name(jn_left, 'GridConnectivityProperty'))
+
+  assert (PT.find_child_from_name(jn_right, 'PointList')[1] == [[5,10]]).all()
+  assert (PT.find_child_from_name(jn_right, 'PointListDonor')[1] == [[1,6]]).all()
+  assert PT.is_same_tree(pright, PT.find_child_from_name(jn_right, 'GridConnectivityProperty'))
