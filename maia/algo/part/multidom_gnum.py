@@ -69,6 +69,11 @@ def get_mdom_gnum_vtx(parts_per_dom: Dict[str, List[CGNSPartTree]],
 
   if tree_has_face_gc:
     MJT.copy_donor_subset(dist_tree_jn) #Needed for Vertexlist
+    # jns_vertex_list require CellDim in base
+    for base in PT.iter_all_CGNSBase_t(dist_tree_jn):
+      zone = PT.find_child_from_label(base, 'Zone_t')
+      PT.set_value(base, [PT.Zone.CellDimension(zone), -1])
+
     MAD.generate_jns_vertex_list(dist_tree_jn, comm, True)
 
     # We need to put vtx joins on partitioned trees, but recovering donor
