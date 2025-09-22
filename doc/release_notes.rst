@@ -14,6 +14,7 @@ Development version
 
 💡 New Features
 ^^^^^^^^^^^^^^^
+- Introduce command line utility ``maia_cgns_check`` to detect issues in cgns files
 - Pytree: add ``visit`` and ``scan`` fucntions to apply a callable to every node of the tree
 
 🚀 Feature improvements

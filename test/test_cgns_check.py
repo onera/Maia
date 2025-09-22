@@ -29,6 +29,7 @@ def subprocess_run(*args, **kwargs):
   for var in list(env.keys()):
     if any(var.startswith(s) for s in MPI_ENV_VARS):
       del env[var]
+  env['MAIA_DISABLE_BETA_MSG'] = "1"
   return subprocess.run(*args, **kwargs, env=env)
 
 def strip_ansi_sequences(text):
