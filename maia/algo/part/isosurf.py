@@ -14,21 +14,19 @@ from maia.factory.partitioning import part_bound_orient as PBO
 from maia.utils    import np_utils, layouts, par_utils
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
+from .utils             import _gather_containers_name
 
 import Pypdm.Pypdm as PDM
 
 IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
+IS_CNT      = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
 
 def all_containers(tree:CGNSPartTree, comm:MPIComm) -> List[str]:
-  IS_CNT = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
-  loc_cnt = set()
+  all_nodes = list()
   for zone in PT.get_all_Zone_t(tree):
     predicate = IS_CNT & PT.pred.NodePredicate(lambda c : PT.Container.GridLocation(c, zone) != 'EdgeCenter')
-    loc_cnt |= {PT.get_name(node) for node in PT.iter_children_from_predicate(zone, predicate)}
-  
-  glob_cnt = comm.allreduce(loc_cnt, lambda s1,s2 : s1|s2)
-
-  return sorted(glob_cnt)
+    all_nodes.append(PT.get_children_from_predicate(zone, predicate))
+  return _gather_containers_name(all_nodes, 'any', comm)
 
 def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> None:
   """ Copy from source_base to target_base the Family_t nodes referenced

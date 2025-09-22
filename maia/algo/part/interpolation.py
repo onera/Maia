@@ -5,7 +5,7 @@ import maia.pytree        as PT
 
 from maia.typing import *
 
-from maia.utils                  import py_utils
+from maia.utils                  import py_utils, par_utils
 from maia.utils                  import logging as mlog
 from maia.utils.ndarray.vstride  import VStrideArray
 from maia.factory.dist_from_part import get_parts_per_blocks
@@ -16,23 +16,10 @@ from .import multidom_gnum     as MDG
 from .import localize       as LOC
 from .import closest_points as CLO
 
+from .utils import gather_containers_name
+
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 from maia.algo.interpolation_utils import VTX_SOL_PRED, CELL_SOL_PRED
-
-def set_intersection(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
-  # Intersection of two set, allowing None as input (skip)
-  if   s1 is None: return s2
-  elif s2 is None: return s1
-  else: return s1 & s2
-
-def collect_names(part_tree:CGNSPartTree, pred, comm:MPIComm) -> List[str]:
-
-  cnt_per_zones = [{PT.get_name(node) for node in PT.iter_children_from_predicate(zone, pred)}
-                   for zone in PT.iter_all_Zone_t(part_tree)]
-  loc_cnt = set.intersection(*cnt_per_zones) if len(cnt_per_zones) > 0 else None
-  glob_cnt = comm.allreduce(loc_cnt, set_intersection)
-
-  return sorted(glob_cnt) if glob_cnt is not None else []
 
 def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
                       tgt_parts_per_dom:List[List[CGNSPartTree]],
@@ -134,7 +121,7 @@ def interpolate(src_tree:CGNSPartTree,
   # Guess location of input fields using first input zone
   if containers_name == 'ALL':
     for loc, pred in zip(['Vertex', 'CellCenter'], [VTX_SOL_PRED, CELL_SOL_PRED]):
-      loc_to_container_names[loc] = collect_names(src_tree, pred, comm)
+      loc_to_container_names[loc] = gather_containers_name(PT.get_all_Zone_t(src_tree), pred, 'all', comm)
   else:
     try:
       first_part = next(PT.iter_all_Zone_t(src_tree))

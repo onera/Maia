@@ -3,7 +3,6 @@ from mpi4py import MPI
 
 import maia
 from maia.typing import *
-from maia.pytree.typing import Predicate
 import maia.pytree as PT
 import maia.pytree.maia as MT
 from maia.utils import np_utils
@@ -12,22 +11,10 @@ from maia.factory.dist_from_part import get_parts_per_blocks
 from . import multidom_gnum
 from . import connectivity_utils
 from . import geometry
+
+from .utils import gather_containers_name
+
 import Pypdm.Pypdm as PDM
-
-def set_intersection(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
-  # Intersection of two set, allowing None as input (skip)
-  if   s1 is None: return s2
-  elif s2 is None: return s1
-  else: return s1 & s2
-
-def collect_names(zones:List[CGNSPartTree], pred:Predicate, comm:MPIComm) -> List[str]:
-
-  cnt_per_zones = [{PT.get_name(node) for node in PT.iter_children_from_predicate(zone, pred)}
-                   for zone in zones]
-  loc_cnt = set.intersection(*cnt_per_zones) if len(zones) > 0 else None
-  glob_cnt = comm.allreduce(loc_cnt, set_intersection)
-
-  return sorted(glob_cnt)
 
 class CenterToNode:
 
@@ -88,7 +75,7 @@ class CenterToNode:
     self.gmean = PDM.GlobalMean(gnum_list, comm)
 
   def all_containers(self) -> List[str]:
-    return collect_names(self.parts, CenterToNode.CONTAINER_PRED, self.comm)
+    return gather_containers_name(self.parts, CenterToNode.CONTAINER_PRED, 'all', self.comm)
 
   def move_fields(self, container_name: str) -> None:
 
@@ -169,7 +156,7 @@ class NodeToCenter:
           
 
   def all_containers(self) -> List[str]:
-    return collect_names(self.parts, NodeToCenter.CONTAINER_PRED, self.comm)
+    return gather_containers_name(self.parts, NodeToCenter.CONTAINER_PRED, 'all', self.comm)
 
   def move_fields(self, container_name: str) -> None:
 

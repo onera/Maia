@@ -6,21 +6,16 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 from   maia.factory       import dist_from_part
-from   maia.utils         import np_utils
+from   maia.utils         import np_utils, par_utils
 from   .extract_part_s    import exchange_field_s, extract_part_one_domain_s
 from   .extract_part_u    import exchange_field_u, extract_part_one_domain_u
 from   .extraction_utils  import LOC_TO_DIM
+from   .utils             import _gather_containers_name
 from   maia.typing        import *
 
 import numpy as np
 
 import Pypdm.Pypdm as PDM
-
-def set_intersection(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
-  # Intersection of two set, allowing None as input (skip)
-  if   s1 is None: return s2
-  elif s2 is None: return s1
-  else: return s1 & s2
 
 def get_stats(extract_tree: CGNSTree, dim: int,
               comm: MPIComm) -> Tuple[str, int, int]:
@@ -161,15 +156,13 @@ class Extractor:
     LOCS = ['Vertex', 'FaceCenter', 'CellCenter']
     IS_CNT = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
 
-    loc_cnt = set()
+    cnts_per_zone = list()
     for zone in PT.get_all_Zone_t(self.part_tree):
       predicate = IS_CNT \
                 & PT.pred.has_child_of_label('DataArray_t') \
                 & PT.pred.NodePredicate(lambda c : LOCS.index(PT.Container.GridLocation(c, zone)) <= LOCS.index(self.location))
-      loc_cnt |= {PT.get_name(node) for node in PT.iter_children_from_predicate(zone, predicate)}
-    
-    glob_cnt = self.comm.allreduce(loc_cnt, lambda s1,s2 : s1|s2)
-    return sorted(glob_cnt)
+      cnts_per_zone.append(PT.get_children_from_predicate(zone, predicate))
+    return _gather_containers_name(cnts_per_zone, 'any', self.comm)
 
   def exchange_fields(self, fs_container: List[str]) -> None:
     """Exchange fields between partitions"""
@@ -555,8 +548,7 @@ def extract_part_from_family(part_tree: CGNSPartTree,
 
     # Filter names to keep only mergeable arrays, ie appearing on all subsets
     field_names = [set(fields.keys()) for fields in fields_per_part]
-    loc_cnt = set.intersection(*field_names) if len(fields_per_part) > 0 else None
-    glo_cnt = comm.allreduce(loc_cnt, set_intersection)
+    glo_cnt = par_utils.sets_intersection(field_names, comm)
     full_fields = sorted(glo_cnt) if glo_cnt is not None else []
 
     is_empty_l = np.ones(len(fam_node_paths), bool)
