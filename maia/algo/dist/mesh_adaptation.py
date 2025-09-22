@@ -324,7 +324,8 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
       single zone trees are managed.
     metric         (str or list) : Path(s) to metric fields (see above)
     comm           (MPIComm)     : MPI communicator
-    containers_name(list of str) : Name of some Vertex located FlowSolution to project on the adapted mesh
+    containers_name(list of str or ``'ALL'``) : Name of each Vertex located full container
+      to project on the adapted mesh
     periodic       (boolean)     : perform periodic mesh adaptation
     feflo_opts     (str)         : Additional arguments passed to Feflo
     **options                    : Additional options (see below)

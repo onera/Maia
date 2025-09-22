@@ -217,9 +217,8 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
 
   - if ``transfer_dataset`` is set to ``True``, fields found under the ZoneSubRegion are transfered on the
     extracted mesh, where they are stored in a FlowSolution_t container since they cover all cells (or vertices). 
-  - Other containers of label FlowSolution_t, DiscreteData_t or ZoneSubRegion_t are transfered if their name
-    is requested in the ``containers_name`` list. They are stored in a container of corresponding label in
-    extracted tree.
+  - Other full or partial containers are transfered if their name is requested in the ``containers_name`` list. 
+    Their dimensionality must be at most equal to the one of the extracted mesh.
 
   Args:
     part_tree       (CGNSPartTree): Partitioned tree from which extraction is computed. U-Elts
@@ -227,8 +226,8 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
     transfer_dataset(bool)        : Transfer (or not) fields stored in ZSR to the extracted mesh (default to ``True``)
-    containers_name (list of str) : List of the names of the fields containers to transfer
-                                    on the output extracted tree.
+    containers_name (list of str or ``'ALL'``) : Name of each container node to transfer
+      on the output extracted tree.
     **options: Options related to the extraction.
   Returns:
     CGNSTree: Extracted submesh (partitioned)

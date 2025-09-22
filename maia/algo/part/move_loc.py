@@ -195,7 +195,9 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   """ Create Vertex located fields from CellCenter located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
-  which can be FlowSolution_t or DiscreteData_t nodes.
+  which must be CellCenter located full containers.
+  Input tree is modified inplace: Vertex containers are created using 
+  ``#Vtx`` suffix.
 
   Interpolation is based on Inverse Distance Weighting 
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
@@ -212,7 +214,7 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   Args:
     part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the containers nodes to transfer.
+    containers_name (list of str or ``'ALL'``) : Name of each container node to transfer.
     **options: Options related to interpolation, see above.
 
   See also:
@@ -241,7 +243,9 @@ def nodes_to_centers(part_tree: CGNSPartTree,
   """ Create CellCenter located fields from Vertex located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
-  which can be FlowSolution_t or DiscreteData_t nodes.
+  which must be vertex located full containers.
+  Input tree is modified inplace: CellCenter containers are created using 
+  ``#Cell`` suffix.
 
   Interpolation is based on Inverse Distance Weighting 
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
@@ -254,7 +258,7 @@ def nodes_to_centers(part_tree: CGNSPartTree,
   Args:
     part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the containers nodes to transfer.
+    containers_name (list of str or ``'ALL'``) : Name of each container node to transfer.
     **options: Options related to interpolation, see above.
 
   See also:

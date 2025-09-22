@@ -523,10 +523,11 @@ def iso_surface(part_tree: CGNSPartTree,
     - This function requires ParaDiGMa access.
 
   Note:
-    - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
-      ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
     - If ``elt_type`` is set to 'TRI_3', boundaries from volumic mesh are extracted as edges on
       the isosurface (GridConnectivity_t nodes become BC_t nodes) and FaceCenter fields are allowed to be exchanged.
+    - Partial or full containers can be transfered on the output isosurface tree.
+    - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
+      ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
 
   Args:
     part_tree     (CGNSPartTree): Partitioned tree on which isosurf is computed. Only U-NGon
@@ -534,7 +535,7 @@ def iso_surface(part_tree: CGNSPartTree,
     iso_field     (str)         : Path (starting at Zone_t level) of the field to use to compute isosurface.
     comm          (MPIComm)     : MPI communicator
     iso_val       (float, optional) : Value to use to compute isosurface. Defaults to 0.
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output isosurface tree.
     **options: Options related to plane extraction.
   Returns:
@@ -623,7 +624,7 @@ def plane_slice(part_tree: CGNSPartTree,
     part_tree    (CGNSPartTree) : Partitioned tree to slice. Only U-NGon connectivities are managed.
     plane_eq     (list of float): List of 4 floats :math:`[a,b,c,d]` defining the plane equation.
     comm          (MPIComm)     : MPI communicator
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
@@ -674,7 +675,7 @@ def spherical_slice(part_tree: CGNSPartTree,
     part_tree     (CGNSPartTree) : Partitioned tree to slice. Only U-NGon connectivities are managed.
     sphere_eq     (list of float): List of 4 floats :math:`[x_0, y_0, z_0, R]` defining the sphere equation.
     comm          (MPIComm)      : MPI communicator
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
@@ -726,7 +727,7 @@ def elliptical_slice(part_tree: CGNSPartTree,
     ellispe_eq   (list of float): List of 7 floats :math:`[x_0, y_0, z_0, a, b, c, R^2]`
       defining the ellipse equation.
     comm          (MPIComm)     : MPI communicator
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:

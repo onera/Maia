@@ -33,8 +33,7 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
                 **options) -> None:
   """Interpolate fields between two trees.
 
-  This function can transfer CellCenter or Vertex located fields, but not both
-  at the same time.
+  This function can transfer CellCenter or Vertex located full container.
   Target tree is modified inplace: the requested FlowSolution_t containers are transfered
   from the source tree.
 
@@ -65,7 +64,7 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
     src_tree (CGNSTree): Source tree
     tgt_tree (CGNSTree): Target tree
     comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the source FlowSolution_t nodes to transfer.
+    containers_name (list of str or ``'ALL'``) : Name of each container node to transfer.
     location ({'CellCenter', 'Vertex'}) : Expected target location of the fields.
     **options: Options related to interpolation strategy
 
