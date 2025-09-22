@@ -133,23 +133,23 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   if PT.get_children_from_predicates(src_tree, 'CGNSBase_t/Zone_t') is None:
     return # Early return if no src zones
 
-  loc_to_container_names = defaultdict(list)
+  loc_to_containers_name = defaultdict(list)
 
   if containers_name == 'ALL':
     for loc, pred in zip(['Vertex', 'CellCenter'], [VTX_SOL_PRED, CELL_SOL_PRED]):
       names = set.intersection(*[{PT.get_name(c) for c in PT.get_children_from_predicate(zone, pred)} 
                                  for zone in PT.iter_all_Zone_t(src_tree)])
-      loc_to_container_names[loc] = sorted(names)
+      loc_to_containers_name[loc] = sorted(names)
   else:
     first_part = next(PT.iter_all_Zone_t(src_tree))
     for cnt in containers_name:
       loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, cnt))
-      loc_to_container_names[loc].append(cnt)
+      loc_to_containers_name[loc].append(cnt)
 
-  if (lc:=len(loc_to_container_names)) > 1:
+  if (lc:=len(loc_to_containers_name)) > 1:
     mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
 
-  for input_loc, loc_containers_name in loc_to_container_names.items():
+  for input_loc, loc_containers_name in loc_to_containers_name.items():
 
     # Create interpolator
     interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)

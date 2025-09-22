@@ -308,14 +308,14 @@ def exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box
     exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm)
 
 
-def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, container_names, comm) :
+def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, containers_name, comm) :
   # Get zones by domains (only one domain for now)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
   # Get zone(s) from extractpart
   extract_zones = PT.get_all_Zone_t(extract_part_tree)
 
-  for container_name in container_names:
+  for container_name in containers_name:
     for dom_path, part_zones in part_tree_per_dom.items():
       exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box[dom_path], \
           container_name, comm)

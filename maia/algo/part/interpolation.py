@@ -117,11 +117,11 @@ def interpolate(src_tree:CGNSPartTree,
   check_cgns_part_tree(src_tree)
   check_cgns_part_tree(tgt_tree)
 
-  loc_to_container_names = defaultdict(list)
+  loc_to_containers_name = defaultdict(list)
   # Guess location of input fields using first input zone
   if containers_name == 'ALL':
     for loc, pred in zip(['Vertex', 'CellCenter'], [VTX_SOL_PRED, CELL_SOL_PRED]):
-      loc_to_container_names[loc] = gather_containers_name(PT.get_all_Zone_t(src_tree), pred, 'all', comm)
+      loc_to_containers_name[loc] = gather_containers_name(PT.get_all_Zone_t(src_tree), pred, 'all', comm)
   else:
     try:
       first_part = next(PT.iter_all_Zone_t(src_tree))
@@ -130,12 +130,12 @@ def interpolate(src_tree:CGNSPartTree,
       input_locs = ['' for name in containers_name]
     input_locs = comm.allreduce(input_locs, op=MPI.MAX)
     for loc, name in zip(input_locs, containers_name):
-      loc_to_container_names[loc].append(name)
+      loc_to_containers_name[loc].append(name)
 
-  if (lc:=len(loc_to_container_names)) > 1:
+  if (lc:=len(loc_to_containers_name)) > 1:
     mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
 
-  for input_loc, loc_containers_name in loc_to_container_names.items():
+  for input_loc, loc_containers_name in loc_to_containers_name.items():
 
     _input_loc:Literal['Vertex', 'CellCenter'] = input_loc #type:ignore[assignment]
     # Create interpolator
