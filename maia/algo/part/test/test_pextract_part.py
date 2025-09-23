@@ -43,7 +43,7 @@ def test_extract_part_simple_u(location, comm):
     pl += PT.Zone.n_face(PT.get_all_Zone_t(part_tree)[0])
 
   ex_zone, ptp_data = EP.extract_part_one_domain_u(PT.get_all_Zone_t(part_tree), \
-      [pl], location, comm)
+      [pl], (3,EP.LOC_TO_DIM[3][location]), comm)
   assert len(ex_zone)==1
   ex_zone = ex_zone[0]
   if location=='Vertex':
@@ -569,7 +569,7 @@ def test_extract_from_zsr_U_2d(graph_part_tool, equilibrate, comm):
   ngon = PT.Zone.NGonNode(zone)
   distrib_faces = MT.distribution_value(zone, 'Cell')
   pl_faces += PT.Element.Range(ngon)[0] + distrib_faces[0]
-  zsr_faces = PT.new_ZoneSubRegion("ZSR_Faces", point_list=pl_faces.reshape((1,-1), order='F'), loc='FaceCenter', fields={'cx': fcx}, parent=zone)
+  zsr_faces = PT.new_ZoneSubRegion("ZSR_Faces", point_list=pl_faces.reshape((1,-1), order='F'), loc='CellCenter', fields={'cx': fcx}, parent=zone)
   MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_faces.size, comm)}, zsr_faces)
   # GridLocation should be CellCenter -> Trick for LOC_TO_DIM
   # requires to change API -> also necessary to extract container ZSR_Faces

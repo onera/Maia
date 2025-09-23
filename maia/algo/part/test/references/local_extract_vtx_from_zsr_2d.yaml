@@ -1,6 +1,6 @@
 CGNSTree CGNSTree_t:
   CGNSLibraryVersion CGNSLibraryVersion_t 4.2:
-  Base CGNSBase_t I4 [3, 3]:
+  Base CGNSBase_t I4 [2, 3]:
     Zone Zone_t I8 [[18, 0, 0]]:
       ZoneType ZoneType_t 'Unstructured':
       GridCoordinates GridCoordinates_t:

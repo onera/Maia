@@ -78,21 +78,22 @@ class Extractor:
     # if not self.is_struct and not equilibrate:
     #   raise NotImplementedError('Unstructured Extractor with equilibrate=False option is not yet implemented.')
 
+    # Get dim of input tree (monobase + all ranks should know the base)
+    celldim, phydim = PT.get_np_value(PT.find_child_from_label(part_tree, 'CGNSBase_t'))
+
     # ExtractPart dimension
     self.location = location
     if self.location == '': # Early return if the extraction is totally empty
       self.extract_tree = PT.new_CGNSTree()
-      self.dim = None
+      self.tgt_dim = None
       return
 
-    # LOC_TO_DIM could be indexed by cell_dim from CGNS_Base_t to match advised GridLocation ?
-    # LOC_TO_DIM = { 0: {'Vertex':0},
-    #                1: {'Vertex':0, 'EdgeCenter':1},
-    #                2: {'Vertex':0, 'EdgeCenter':1, 'CellCenter':2},
-    #                3: {'Vertex':0, 'EdgeCenter':1, 'FaceCenter':2, 'CellCenter':3}}
-    # + error if cell_dim < 2
-    self.dim = LOC_TO_DIM[location]
-    assert self.dim in [0,1,2,3]
+    assert 2 <= celldim, f"Extraction from {celldim}d mesh is not implemented"
+    self.src_dim = celldim
+    self.tgt_dim = LOC_TO_DIM[celldim][location]
+    self.dims = (self.src_dim, self.tgt_dim)
+    if celldim == 3:
+      assert self.tgt_dim != 1, f"Extraction from 3d mesh to 1d mesh is not implemented"
     #CGNS does not support 0D, so keep input dim in this case (which is 3 since 2d is not managed)
     if location == 'Vertex':
       if self.is_struct:
@@ -105,18 +106,18 @@ class Extractor:
               cell_dim = idx.size
         cell_dim = comm.allreduce(cell_dim, op=MPI.MAX)
       else:
-        cell_dim = 3
+        cell_dim = celldim
     else:
-      cell_dim = self.dim
+      cell_dim = self.tgt_dim
 
     assert graph_part_tool in ["hilbert","parmetis","ptscotch"]
-    assert not( (self.dim==0) and graph_part_tool in ['parmetis', 'ptscotch']),\
+    assert not( (self.tgt_dim==0) and graph_part_tool in ['parmetis', 'ptscotch']),\
            '[MAIA] Vertex extraction not available with parmetis or ptscotch partitioning. Please check your script.'
 
     # ExtractPart CGNSTree
     base_name = next(iter(part_tree_per_dom.keys())).split('/')[0] #Only one base
     extract_tree = PT.new_CGNSTree()
-    extract_base = PT.new_CGNSBase(base_name, cell_dim=cell_dim, phy_dim=3, parent=extract_tree) #phy_dim should be the same as in the input tree ? (see test on cz in extract_part_u)
+    extract_base = PT.new_CGNSBase(base_name, cell_dim=cell_dim, phy_dim=phydim, parent=extract_tree)
     # Compute extract part of each domain
     for i_domain, dom_part_zones in enumerate(part_tree_per_dom.items()):
       dom_path   = dom_part_zones[0]
@@ -124,13 +125,15 @@ class Extractor:
       if self.is_struct:
         extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.location, comm)
       else:
-        extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.location, comm,
+        extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.dims, comm,
                                                        equilibrate=equilibrate,
                                                        graph_part_tool=graph_part_tool)
       etb['ExtractingCnt'] = None
       self.exch_tool_box[dom_path] = etb
       for extract_zone in extract_zones:
         if PT.Zone.n_vtx(extract_zone)!=0:
+          if phydim == 2:
+            PT.rm_node_from_path(extract_zone, 'GridCoordinates/CoordinateZ')
           PT.add_child(extract_base, extract_zone)
 
       # > Clean orphan GC
@@ -162,7 +165,7 @@ class Extractor:
     if self.location == '': # Nothing to do if extract_tree is None
       return
     exchange_fld_func = exchange_field_s if self.is_struct else exchange_field_u
-    exchange_fld_func(self.part_tree,  self.extract_tree , self.dim, self.exch_tool_box,\
+    exchange_fld_func(self.part_tree, self.extract_tree, self.dims, self.exch_tool_box,\
           fs_container, self.comm)
 
   def get_extract_part_tree(self) -> CGNSPartTree:
@@ -191,7 +194,7 @@ def _extract_part_from_zsr(part_tree: CGNSPartTree,
 
   extract_tree = extractor.get_extract_part_tree()
 
-  return extract_tree, extractor.dim
+  return extract_tree, extractor.tgt_dim
 
 
 def extract_part_from_zsr(part_tree: CGNSPartTree,

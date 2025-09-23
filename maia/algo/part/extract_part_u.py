@@ -9,7 +9,7 @@ import maia.pytree.maia   as MT
 from   maia.factory                      import dist_from_part
 from   maia.factory.partitioning.split_U import pdm_part_to_cgns_zone
 from   maia.transfer                     import utils as TEU
-from   maia.utils                        import np_utils, layouts
+from   maia.utils                        import np_utils, layouts, vstride
 from   maia.utils                        import logging as mlog
 from   maia.algo.indexing                import get_pe_local
 
@@ -28,6 +28,35 @@ EP_OLD_API = hasattr(PDM.ExtractPart, 'extract_part_group_get')
 PDM_EP_group_set   = PDM.ExtractPart.part_group_set         if EP_OLD_API else PDM.ExtractPart.group_set
 PDM_EP_group_get   = PDM.ExtractPart.extract_part_group_get if EP_OLD_API else PDM.ExtractPart.group_get
 PDM_EP_n_group_set = PDM.ExtractPart.part_n_group_set       if EP_OLD_API else PDM.ExtractPart.n_group_set
+
+def pdm_ep_part_set(pdm_ep, i_part, cell_face, face_vtx, face_edge, edge_vtx,
+                    cell_gnum, face_gnum, edge_gnum, vtx_gnum, vtx_coords):
+  # Dispatch for OLD/NEW api, and also manage correctly 2D/3D
+  unwrap = lambda v: (None, None) if v is None else (v.displs, v.values)
+
+  cell_face_idx, cell_face_v = unwrap(cell_face)
+  face_vtx_idx, face_vtx_v   = unwrap(face_vtx)
+  face_edge_idx, face_edge_v = unwrap(face_edge)
+
+  if EP_OLD_API:
+    n_cell, n_face, n_edge, n_vtx = (t.shape[0] if t is not None else 0 for t 
+          in [cell_gnum, face_gnum, edge_gnum, vtx_gnum])
+    pdm_ep.part_set(i_part,
+                    n_cell, n_face, n_edge, n_vtx,
+                    cell_face_idx, cell_face_v,
+                    face_edge_idx, face_edge_v, edge_vtx,
+                    face_vtx_idx, face_vtx_v,
+                    cell_gnum, face_gnum, edge_gnum, vtx_gnum,
+                    vtx_coords)
+
+  else:
+    pdm_ep.part_set(i_part,
+                    cell_face_idx, cell_face_v,
+                    face_edge_idx, face_edge_v,
+                    edge_vtx,
+                    face_vtx_idx , face_vtx_v,
+                    cell_gnum, face_gnum, edge_gnum, vtx_gnum,
+                    vtx_coords)
 
 def _generate_entity_graph_comm(entity_gnum_l, comm, key):
   # Simplified version for manifold interfaces, waiting for
@@ -102,7 +131,8 @@ def _generate_entity_graph_comm(entity_gnum_l, comm, key):
                        f'np_{key}_part_bound' : np_part_bound})
   return all_result
 
-def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
+def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box, container_name, comm):
+  src_dim, tgt_dim = dims
   _grid_location    = {"Vertex" : "Vertex", "EdgeCenter" : "Element", "FaceCenter" : "Element", "CellCenter" : "Cell"}
   assert len(extract_zones) <= len(part_zones)
 
@@ -127,15 +157,19 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
 
 
     grid_location = PT.Container.GridLocation(container)
-    assert grid_location in ['Vertex', 'EdgeCenter', 'FaceCenter', 'CellCenter']
+    if src_dim == 3:
+      assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
+    else:
+      assert grid_location in ['Vertex', 'EdgeCenter', 'CellCenter']
+    _LOC_TO_DIM = LOC_TO_DIM[src_dim] # Grid loc is defined on input mesh -> use input dim for conversion
 
     # > FlowSolution node def by zone
     if (mask_label := PT.get_label(container)) in ['FlowSolution_t', 'DiscreteData_t']:
-      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extr_zone)
+      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[tgt_dim][grid_location], parent=extr_zone)
       PT.set_label(FS_ep, mask_label)
       pl_container = container
     elif PT.get_label(container) == 'ZoneSubRegion_t':
-      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extr_zone)
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[tgt_dim][grid_location], parent=extr_zone)
       pl_container = PT.Container.SubsetNode(container, part_zone)
     else:
       raise TypeError
@@ -157,7 +191,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
       # in the volumic pointlist (lnum)
       # We can do this with searchsorted if we convert the point_list (vol) in gnum before
       point_list_n = PT.find_node_from_name(pl_container, 'PointList')
-      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, LOC_TO_DIM[grid_location]) # Gnum start at 1
+      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, _LOC_TO_DIM[grid_location]) # Gnum start at 1
 
       point_list_gnum = base_gnum[point_list-1]
 
@@ -178,7 +212,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
         PT.set_label(FS_ep, 'FlowSolution_t')
       else:
         _extr_pl = np.where(mask)[0]
-        extr_pl = _extr_pl + local_pl_offset(extr_zone, LOC_TO_DIM[grid_location]) + 1
+        extr_pl = _extr_pl + local_pl_offset(extr_zone, _LOC_TO_DIM[grid_location]) + 1
         PT.new_IndexArray('PointList', value=extr_pl.reshape((1,-1), order='F'), parent=FS_ep)
 
         # To create gnum associated with PointList
@@ -218,12 +252,18 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool
           if PT.Subset.n_elem(FS_ep) == 0:
             PT.rm_child(extr_zone, FS_ep)
 
-def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
+def exchange_field_one_domain_req(part_zones, extract_zones, dims, exch_tool_box, container_name, comm):
   # > Retrieve fields name + GridLocation + PointList if container is not know by every partition
+  src_dim, tgt_dim = dims
   mask_container, grid_location, partial_field = discover_containers(part_zones, container_name, 'PointList', 'IndexArray_t', comm)
   if mask_container is None:
     return
-  assert grid_location in ['Vertex', 'EdgeCenter', 'FaceCenter', 'CellCenter']
+
+  if src_dim == 3:
+    assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
+  else:
+    assert grid_location in ['Vertex', 'EdgeCenter', 'CellCenter']
+  _LOC_TO_DIM = LOC_TO_DIM[src_dim] # Grid loc is defined on input mesh -> use input dim for conversion
 
   # When reequilibrate, each rank have at most one extracted zone
   extract_zone = extract_zones[0] if len(extract_zones) > 0 else None
@@ -231,10 +271,10 @@ def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool
   # > FlowSolution node def by zone
   if extract_zone is not None :
     if (mask_label := PT.get_label(mask_container)) in ['FlowSolution_t', 'DiscreteData_t']:
-      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      FS_ep = PT.new_FlowSolution(container_name, loc=DIMM_TO_DIMF[tgt_dim][grid_location], parent=extract_zone)
       PT.set_label(FS_ep, mask_label)
     elif PT.get_label(mask_container) == 'ZoneSubRegion_t':
-      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[mesh_dim][grid_location], parent=extract_zone)
+      FS_ep = PT.new_ZoneSubRegion(container_name, loc=DIMM_TO_DIMF[tgt_dim][grid_location], parent=extract_zone)
     else:
       raise TypeError
 
@@ -298,7 +338,7 @@ def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool
   if partial_field:
     if len(part1_data)!=0 and part1_data[0].size!=0:
       new_point_list = np.where(part1_stride[0]==1)[0] if part1_data[0].size!=0 else np.empty(0, dtype=np.int32)
-      point_list = new_point_list + local_pl_offset(extract_zone, LOC_TO_DIM[grid_location])+1
+      point_list = new_point_list + local_pl_offset(extract_zone, _LOC_TO_DIM[grid_location])+1
       PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=FS_ep)
       partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]]
     else:
@@ -318,15 +358,15 @@ def exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool
   if part1_data[0].size==0 and extract_zone is not None:
     PT.rm_child(extract_zone, FS_ep)
 
-def exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm):
+def exchange_field_one_domain(part_zones, extract_zones, dims, exch_tool_box, container_name, comm):
   equilibrate = len(exch_tool_box['part_to_part']) > 0
   if equilibrate:
-    exchange_field_one_domain_req(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm)
+    exchange_field_one_domain_req(part_zones, extract_zones, dims, exch_tool_box, container_name, comm)
   else:
-    exchange_field_one_domain_loc(part_zones, extract_zones, mesh_dim, exch_tool_box, container_name, comm)
+    exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box, container_name, comm)
 
 
-def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, container_names, comm) :
+def exchange_field_u(part_tree, extract_part_tree, dims, exch_tool_box, container_names, comm) :
   # Get zones by domains (only one domain for now)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
@@ -335,34 +375,27 @@ def exchange_field_u(part_tree, extract_part_tree, mesh_dim, exch_tool_box, cont
 
   for container_name in container_names:
     for dom_path, part_zones in part_tree_per_dom.items():
-      exchange_field_one_domain(part_zones, extract_zones, mesh_dim, exch_tool_box[dom_path], \
+      exchange_field_one_domain(part_zones, extract_zones, dims, exch_tool_box[dom_path], \
           container_name, comm)
 
 
-def extract_part_one_domain_u(part_zones, point_list, location, comm,
+def extract_part_one_domain_u(part_zones, point_list, dims, comm,
                               equilibrate=True,
                               graph_part_tool="hilbert"):
   """
   Prepare PDM extract_part object and perform the extraction of one domain.
   """
-  dim = LOC_TO_DIM[location]
+  parent_dim, dim = dims
 
-  parent_dim = -1
-  for i_part, part_zone in enumerate(part_zones):
-    if PT.Zone.CellDimension(part_zone) == 3:
-      parent_dim = 3
-    if PT.Zone.CellDimension(part_zone) == 2:
-      parent_dim = 2
-  parent_dim = comm.allreduce(parent_dim, MPI.MAX)
+  _LOC_TO_DIM = LOC_TO_DIM[parent_dim]
 
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
 
   # In local mode, 'native' groups (eg face groups if we extract faces) are not yet supported by PDM
   # so we exclude them from set / get by using < instead of <= in bc parsing
-  bc_op = operator.lt if ((parent_dim == 3 and dim == 3 and location == 'CellCenter') or
-                          (parent_dim == 2 and dim == 2 and location == 'FaceCenter') or not equilibrate) else operator.le
-
+  bc_op = operator.lt if (dim == parent_dim or not equilibrate) else operator.le
+  
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
                            n_part_in,
@@ -374,109 +407,79 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
   # > Discover BCs
   dist_zone = PT.new_Zone('Zone')
-  gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
+  if parent_dim == 3:
+    gdom_bcs_path_per_dim = {"CellCenter":None, "FaceCenter":None, "EdgeCenter":None, "Vertex":None}
+    loc_to_pdm_bnd_type = {"CellCenter" : 1, "FaceCenter" : 2, "EdgeCenter": 3, "Vertex" : 4}
+  else:
+    gdom_bcs_path_per_dim = {"CellCenter":None, "EdgeCenter":None, "Vertex":None}
+    loc_to_pdm_bnd_type = {"CellCenter" : 2, "EdgeCenter": 3, "Vertex" : 4}
   child_list = ['GridLocation', 'FamilyName_t', 'AdditionalFamilyName_t', 'Descriptor_t']
-  for bc_type, dim_name in enumerate(gdom_bcs_path_per_dim):
-    if bc_op(LOC_TO_DIM[dim_name], dim):
+  for dim_name in gdom_bcs_path_per_dim:
+    if bc_op(_LOC_TO_DIM[dim_name], dim):
       is_dim_bc = PT.pred.is_bc_of_location(dim_name)
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
-      PDM_EP_n_group_set(pdm_ep, bc_type+1, n_gdom_bcs)
+      PDM_EP_n_group_set(pdm_ep, loc_to_pdm_bnd_type[dim_name], n_gdom_bcs)
 
-  has_czn = False
   # Loop over domain zone : preparing extract part
   for i_part, part_zone in enumerate(part_zones):
     # Get NGon + NFac
     cx, cy, cz = PT.Zone.coordinates(part_zone)
-    czn = PT.get_node_from_name(part_zone, 'CoordinateZ')
-    if czn is None:
-      cz = np.zeros(cx.shape[0], dtype=cx.dtype) # avoid nan in PDM
-    else:
-      has_czn = True
+    if cz is None:
+      cz = np.zeros_like(cx)
     vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
 
+    vtx_ln_to_gn, edge_ln_to_gn, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
     if PT.Zone.CellDimension(part_zone) == 3:
       assert dim != 1, "[MAIA] Error : dimension 1 not implemented for 3D zone"
       nface = PT.Zone.NFaceNode(part_zone)
-      cell_face_idx = PT.get_child_from_name(nface, "ElementStartOffset" )[1]
-      cell_face     = PT.get_child_from_name(nface, "ElementConnectivity")[1]
       ngon = PT.Zone.NGonNode(part_zone)
-      face_vtx_idx = PT.get_child_from_name(ngon,  "ElementStartOffset" )[1]
-      face_vtx     = PT.get_child_from_name(ngon,  "ElementConnectivity")[1]
-      vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
-      n_cell = cell_ln_to_gn.shape[0]
-      n_face = face_ln_to_gn.shape[0]
-      n_edge = 0
-      n_vtx  = vtx_ln_to_gn.shape[0]
-      face_edge_idx = None
-      face_edge     = None
-      edge_vtx      = None
-      edge_ln_to_gn = None
+      cell_face = MT.Element.connectivity(nface)
+      face_vtx  = MT.Element.connectivity(ngon)
+      face_edge = None
+      edge_vtx = None
     else:
       assert dim < 3, "[MAIA] Error : dimension 3 not available for 2D zone"
-      cell_face_idx = None
-      cell_face     = None
-      cell_ln_to_gn = None
-      face_vtx_idx  = None
-      face_vtx      = None
       bar = MT.Zone.EdgeNode(part_zone)
-      edge_vtx = PT.get_child_from_name(bar, "ElementConnectivity")[1]
-      vtx_ln_to_gn, edge_ln_to_gn, face_ln_to_gn, _ = TEU.get_entities_numbering(part_zone)
-      n_cell = 0
-      n_face = face_ln_to_gn.shape[0]
-      n_edge = edge_ln_to_gn.shape[0]
-      n_vtx  = vtx_ln_to_gn.shape[0]
-      local_pe = get_pe_local(bar)
-      face_edge_idx, face_edge = cpart_algo.local_pe_to_local_cellface(local_pe)
+      cell_face = None
+      face_vtx = None
+      face_edge = vstride.from_displs(*cpart_algo.local_pe_to_local_cellface(get_pe_local(bar)))
+      edge_vtx = PT.find_child_from_name(bar, "ElementConnectivity")[1]
+      cell_ln_to_gn = None # Erase because contains Face
 
-    if EP_OLD_API:
-      pdm_ep.part_set(i_part,
-                      n_cell, n_face, n_edge, n_vtx,
-                      cell_face_idx, cell_face,
-                      face_edge_idx, face_edge, edge_vtx,
-                      face_vtx_idx , face_vtx,
-                      cell_ln_to_gn, face_ln_to_gn,
-                      edge_ln_to_gn,
-                      vtx_ln_to_gn , vtx_coords)
-    else:
-      pdm_ep.part_set(i_part,
-                      cell_face_idx, cell_face,
-                      face_edge_idx, face_edge, edge_vtx,
-                      face_vtx_idx , face_vtx,
-                      cell_ln_to_gn, face_ln_to_gn,
-                      edge_ln_to_gn,
-                      vtx_ln_to_gn , vtx_coords)
+    pdm_ep_part_set(pdm_ep, i_part,
+                    cell_face, face_vtx, face_edge, edge_vtx,
+                    cell_ln_to_gn, face_ln_to_gn, edge_ln_to_gn, vtx_ln_to_gn,
+                    vtx_coords)
 
     pdm_ep.selected_lnum_set(i_part, point_list[i_part][0] - local_pl_offset(part_zone, dim))
 
 
     # Add BCs info
-    bc_type = 1
     for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
-      if bc_op(LOC_TO_DIM[dim_name], dim):
+      if bc_op(_LOC_TO_DIM[dim_name], dim):
         for i_bc, bc_path in enumerate(gdom_bcs_path):
           bc_n  = PT.get_node_from_path(part_zone, bc_path)
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
           bc_gn = MT.globalnumbering_value(bc_n, 'Index') if bc_n is not None else np.empty(0, pdm_gnum_dtype)
-          PDM_EP_group_set(pdm_ep, i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, LOC_TO_DIM[dim_name]) , bc_gn)
-      bc_type +=1
+          bc_type = loc_to_pdm_bnd_type[dim_name]
+          PDM_EP_group_set(pdm_ep, i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, _LOC_TO_DIM[dim_name]) , bc_gn)
 
   pdm_ep.compute()
 
   # > Compute edge data here (this is a global operation)
   # In addition we can not do a double get so we store some extracted data
   all_ep_vtx_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_VTX)   for i_part in range(n_part_out)]
-  if dim == 1:
+  if dim == 1: # parent dim = 2, tgt_dim = 1 --> need edge_vtx
     all_ep_edge_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_EDGE)   for i_part in range(n_part_out)]
-    all_ep_edge_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX) for i_part in range(n_part_out)]
-    all_ep_edge_vtx = [all_ep_edge_vtx[i_part][1] for i_part in range(n_part_out)]
+    all_ep_edge_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX)[1] for i_part in range(n_part_out)]
   if dim >= 2:
     all_ep_face_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part, PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
     if parent_dim == 3:
       all_ep_face_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX) for i_part in range(n_part_out)]
-      if dim == 2:
+      if dim == 2: # parent dim = 3, tgt_dim = 2 --> need face_vtx + edge_vtx (recomputed)
         all_edge_data = PDM.compute_face_edge_from_face_vtx(comm,
                                                             [t.size for t in all_ep_face_ln_to_gn],
                                                             [t.size for t in all_ep_vtx_ln_to_gn],
@@ -486,7 +489,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
                                                             all_ep_vtx_ln_to_gn)
         all_ep_edge_ln_to_gn = [all_edge_data[i_part]['np_edge_ln_to_gn']  for i_part in range(n_part_out)]
         all_ep_edge_vtx = [all_edge_data[i_part]['np_edge_vtx']  for i_part in range(n_part_out)]
-    else:
+    else: # parent dim = 2, tgt_dim = 2 --> need face_vtx (recomputed) + edge_vtx
       all_ep_edge_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_EDGE)   for i_part in range(n_part_out)]
       all_ep_edge_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX) for i_part in range(n_part_out)]
       all_ep_face_edge = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE) for i_part in range(n_part_out)]
@@ -520,8 +523,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
     extract_grid_coord = PT.new_GridCoordinates(parent=extract_zone)
     PT.new_DataArray('CoordinateX', cx, parent=extract_grid_coord)
     PT.new_DataArray('CoordinateY', cy, parent=extract_grid_coord)
-    if has_czn:
-      PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord)
+    PT.new_DataArray('CoordinateZ', cz, parent=extract_grid_coord) # Removed afterward if necessary
 
     if dim == 0:
       MT.new_GlobalNumbering({'Cell' : np.empty(0, dtype=ep_vtx_ln_to_gn.dtype)}, parent=extract_zone)
@@ -583,10 +585,11 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
 
     # - Get BCs
     zonebc_n = PT.new_ZoneBC(parent=extract_zone)
-    bc_type = 1
     for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
-      if bc_op(LOC_TO_DIM[dim_name], dim):
+      if bc_op(_LOC_TO_DIM[dim_name], dim):
         for i_bc, bc_path in enumerate(gdom_bcs_path):
+          bc_type = loc_to_pdm_bnd_type[dim_name]
+
           bc_info = PDM_EP_group_get(pdm_ep, i_part, i_bc, bc_type)
           bc_pl = bc_info['group_entity']
           bc_gn = bc_info['group_entity_ln_to_gn']
@@ -594,14 +597,16 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
             dist_bc = PT.get_node_from_path(dist_zone, bc_path)
             bc_name = bc_path.split('/')[-1]
             bc_val = PT.get_value(dist_bc) if PT.get_value(dist_bc) is not None else 'Null'
-            bc_loc = 'CellCenter' if (dim_name == 'FaceCenter' and dim == 2) or (dim_name == 'EdgeCenter' and dim == 1) else dim_name
+            if (dim_name == 'FaceCenter' and dim == 2) or (dim_name == 'EdgeCenter' and dim == 1):
+              bc_loc = 'CellCenter'
+            else:
+              bc_loc = dim_name
             if bc_loc == 'CellCenter' and dim == 2: # Offset BCs, because we put Edge elts first
               bc_pl += nb_bar
             bc_n = PT.new_BC(bc_name, bc_val, point_list=bc_pl.reshape((1,-1), order='F'), loc=bc_loc, parent=zonebc_n)
             for child in PT.get_children_from_predicate(dist_bc, ~PT.pred.name_is('GridLocation')):
               PT.add_child(bc_n, child)
             MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
-      bc_type +=1
 
     extract_zones.append(extract_zone)
 
@@ -615,7 +620,7 @@ def extract_part_one_domain_u(part_zones, point_list, location, comm,
       if len(PT.get_children(zgc_n)) == 0:
         PT.rm_child(extr_zone, zgc_n)
 
-  if dim >= 2:
+  elif dim >= 2:
     if dim == 2:
       data_l = _generate_entity_graph_comm(all_ep_edge_ln_to_gn, comm, 'edge')
     elif dim ==3:

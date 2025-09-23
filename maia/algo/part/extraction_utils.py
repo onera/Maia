@@ -9,10 +9,14 @@ from maia.typing import *
 
 import numpy as np
 
-LOC_TO_DIM   = {'Vertex':0,
-                'EdgeCenter':1,
-                'FaceCenter':2, 'IFaceCenter':2, 'JFaceCenter':2, 'KFaceCenter':2,
-                'CellCenter':3}
+LOC_TO_DIM2 = {'Vertex':0,
+               'EdgeCenter':1, 'IEdgeCenter':1, 'JEdgeCenter':1,
+               'CellCenter':2}
+LOC_TO_DIM3 = {'Vertex':0,
+               'EdgeCenter':1,
+               'FaceCenter':2, 'IFaceCenter':2, 'JFaceCenter':2, 'KFaceCenter':2,
+               'CellCenter':3}
+LOC_TO_DIM = {3: LOC_TO_DIM3, 2: LOC_TO_DIM2}
 
 DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
                  1: {'Vertex':'Vertex', 'EdgeCenter':'CellCenter'},
@@ -136,7 +140,8 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
     if container is not None:
       # > Get the right node to get PL (if ZSR linked to BC or GC)
       point_list_n = get_relative_pl(container, part_zone)
-      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
+      _LOC_TO_DIM = LOC_TO_DIM[PT.Zone.CellDimension(part_zone)]
+      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, _LOC_TO_DIM[gridLocation]) # Gnum start at 1
 
     # Get p2p gnums (remind that ptp is from extracted mesh (part1) to input mesh (part2))
     part_gnum1_idx = ptp.get_gnum1_come_from() [i_part]['come_from_idx'] # Get partition order
