@@ -139,6 +139,69 @@ Base2 CGNSBase_t [3,3]:
   assert (PT.get_child_from_name(bcC,  'PointRange')[1] == [[ 1,17]              ]).all()
   assert (PT.get_child_from_name(bcD,  'PointRange')[1] == [[ 1, 3], [1,1], [1,1]]).all()
 
+def test_fix_structured_pr_gridloc():
+  yt = """
+Base CGNSBase_t [3,3]:
+  ZoneU Zone_t:
+    ZoneType ZoneType_t "Unstructured":
+    ZoneBC ZoneBC_t:
+      BCU BC_t:
+        PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
+        GridLocation GridLocation_t "FaceCenter":
+  ZoneS Zone_t:
+    ZoneType ZoneType_t "Structured":
+    ZoneBC ZoneBC_t:
+      BCS1 BC_t:
+        PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
+        GridLocation GridLocation_t "FaceCenter":
+        BCDS1 BCDataSet_t:
+          GridLocation GridLocation_t "FaceCenter":
+      BCS2 BC_t:
+        PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
+        GridLocation GridLocation_t "Vertex":
+        BCDS2 BCDataSet_t:
+          PointRange IndexRange_t [[1,2],[1,2],[1,1]]:
+          GridLocation GridLocation_t "FaceCenter":
+      BCS3 BC_t:
+        PointRange IndexRange_t [[1,3],[1,2],[1,1]]:
+        GridLocation GridLocation_t "Vertex":
+        BCDS3 BCDataSet_t:
+          PointRange IndexRange_t [[1,2],[1,1],[1,1]]:
+          GridLocation GridLocation_t "FaceCenter":
+      BCS4 BC_t:
+        PointRange IndexRange_t [[1,3],[1,3],[1,1]]:
+        GridLocation GridLocation_t "FaceCenter":
+        BCDS4 BCDataSet_t:
+    ZGC ZoneGridConnectivity_t:
+      GCS1 GridConnectivity_t:
+        PointRange IndexRange_t [[1,3],[1,1],[1,3]]:
+        GridLocation GridLocation_t "FaceCenter":
+    ZSR1 ZoneSubRegion_t:
+      PointRange IndexRange_t [[1,1],[1,3],[1,3]]:
+      GridLocation GridLocation_t "FaceCenter":
+    ZSR2 ZoneSubRegion_t:
+      GridLocation GridLocation_t "FaceCenter":
+      GridConnectivityRegionName Descriptor_t "GCS1":
+    ZSR3 ZoneSubRegion_t:
+      GridLocation GridLocation_t "FaceCenter":
+      BCRegionName Descriptor_t "BCS1":
+    FS1 FlowSolution_t:
+      PointRange IndexRange_t [[1,1],[1,3],[1,3]]:
+      GridLocation GridLocation_t "FaceCenter":
+"""
+  size_tree = PT.yaml.to_cgns_tree(yt)
+  fix_tree.fix_structured_pr_gridloc(size_tree)
+  zone_u = PT.get_node_from_path(size_tree, 'Base/ZoneU')
+  assert len(PT.get_all_subsets(zone_u, 'FaceCenter')) == 1
+  zone_s = PT.get_node_from_path(size_tree, 'Base/ZoneS')
+  assert len(PT.get_all_subsets(zone_s, 'FaceCenter')) == 0
+  zsr1_n = PT.get_node_from_path(zone_s, 'ZSR1')
+  assert PT.Container.GridLocation(zsr1_n, zone_s) == "IFaceCenter"
+  zsr2_n = PT.get_node_from_path(zone_s, 'ZSR2')
+  assert PT.Container.GridLocation(zsr2_n, zone_s) == "JFaceCenter"
+  zsr3_n = PT.get_node_from_path(zone_s, 'ZSR3')
+  assert PT.Container.GridLocation(zsr3_n, zone_s) == "KFaceCenter"
+
 def test_ensure_symmetric_gc1to1():
   yt = """
 Base0 CGNSBase_t [3,3]:

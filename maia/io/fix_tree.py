@@ -102,6 +102,34 @@ def fix_structured_pr_shape(size_tree):
     if resized:
       logging.error(f"Structured PointRange have been resized on base {PT.get_name(base)} to match cell dimension ({cell_dim})")
 
+def fix_structured_pr_gridloc(tree):
+  for zone in PT.get_all_Zone_t(tree):
+    if PT.Zone.Type(zone) == 'Structured':
+      for subset in PT.get_all_subsets(zone, ['FaceCenter']):
+        patch = PT.Subset.getPatch(subset)
+        if PT.get_name(patch) == 'PointList':
+          raise NotImplementedError("Conversion of 'FaceCenter' GridLocation to 'I/J/KFaceCenter' is not yet implemented for structured PointList !")
+        try:
+          PT.update_child(subset, 'GridLocation', value=f"{['I','J','K'][PT.Subset.normal_axis(subset)]}FaceCenter")
+        except ValueError: #undefined direction but can maybe found if we look the parent node
+          pass
+      if len(PT.get_all_subsets(zone, ['FaceCenter'])) > 0:
+        for _, bc, bcds in PT.get_nodes_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t', ancestors=True):
+          if PT.Container.GridLocation(bcds, bc) == "FaceCenter":
+            patch = PT.Subset.getPatch(bc)
+            if PT.get_name(patch) == 'PointList':
+              raise NotImplementedError("Conversion of 'FaceCenter' GridLocation to 'I/J/KFaceCenter' is not yet implemented for structured PointList !")
+            PT.update_child(bcds, 'GridLocation', value=f"{['I','J','K'][PT.Subset.normal_axis(bc)]}FaceCenter")
+        for zsr in PT.get_children_from_label(zone, 'ZoneSubRegion_t'):
+          subset = PT.Container.SubsetNode(zsr,zone)
+          if PT.get_label(subset) in ['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'] and PT.Container.GridLocation(zsr, zone) == "FaceCenter":
+            patch = PT.Subset.getPatch(subset)
+            if PT.get_name(patch) == 'PointList':
+              raise NotImplementedError("Conversion of 'FaceCenter' GridLocation to 'I/J/KFaceCenter' is not yet implemented for structured PointList !")
+            PT.update_child(zsr, 'GridLocation', value=f"{['I','J','K'][PT.Subset.normal_axis(subset)]}FaceCenter")
+      if len(PT.get_all_subsets(zone, ['FaceCenter'])) > 0:
+        raise RuntimeError("Can not convert all 'FaceCenter' GridLocation to 'I/J/KFaceCenter' !")
+
 def ensure_symmetric_gc1to1(tree):
   """
   Force structured GC1to1 to have symmetric PointRange/PointRangeDonor
