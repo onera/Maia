@@ -64,16 +64,20 @@ In addition, we provide these convenience options:
 
 .. py:attribute:: data_transfer
 
-    Shorcut to automatically transfer some data after partitioning. A list of admissible values
-    (see below) is expected.
+    Automatically transfer some data after partitioning. The selection of data to transfer is done per
+    label:
 
     :Admissible values: 
-      - Any label supported by :ref:`fields transfer<user_man_field_transfer>`, (eg. ``FlowSolution_t``, ``BCDataSet_t``, ...)
-        or ``FIELDS`` to indicate all these labels.
-      - ``UserDefinedData_t``, which will be copied using :ref:`metadata transfer<user_man_metadata_transfer>`. 
-      - ``ALL`` : to transfer both ``FIELDS`` and ``UserDefinedData_t`` nodes.
 
-    :Default value: Empty list ``[]`` (nothing is transfered)
+      - a list of supported labels, namely:
+
+        - labels supported by :ref:`fields transfer<user_man_field_transfer>` (eg. ``FlowSolution_t``, ``BCDataSet_t``, ...);
+        - ``UserDefinedData_t``, which will be copied using :ref:`metadata transfer<user_man_metadata_transfer>`,
+
+      - shortcut ``'FIELDS'`` which selects all labels supported by fields transfer,
+      - shortcut ``'ALL'`` which selects ``'FIELDS'`` and ``UserDefinedData_t``.
+
+    :Default value: Empty list ``[]`` (nothing is transfered).
 
 
 .. _user_man_part_repartition:

@@ -454,7 +454,7 @@ def _recover_base_iterative_data(dist_tree: CGNSDistTree,
 
 def recover_dist_tree(part_tree: CGNSPartTree, 
                       comm: MPIComm, 
-                      data_transfer: List[str] = []) -> CGNSDistTree:
+                      data_transfer: Union[List[str], Literal['FIELDS', 'ALL']] = []) -> CGNSDistTree:
   """ Regenerate a distributed tree from a partitioned tree.
 
   The partitioned tree should have been created using Maia, or
