@@ -15,6 +15,7 @@ from   maia.algo.indexing                import get_pe_local
 
 from   .extraction_utils   import local_pl_offset, LOC_TO_DIM, DIMM_TO_DIMF,\
                                   get_partial_container_stride_and_order, discover_containers
+from   .ngon_tools         import _ngon_tools
 from   .point_cloud_utils  import create_sub_numbering
 
 import cmaia.part_algo as cpart_algo
@@ -493,8 +494,10 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
       all_ep_edge_ln_to_gn = [pdm_ep.ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_EDGE)   for i_part in range(n_part_out)]
       all_ep_edge_vtx = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX) for i_part in range(n_part_out)]
       all_ep_face_edge = [pdm_ep.connectivity_get(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_EDGE) for i_part in range(n_part_out)]
-      all_ep_face_vtx = [PDM.combine_connectivity(all_ep_face_edge[i_part][0], all_ep_face_edge[i_part][1],
-                                                  all_ep_edge_vtx[i_part][0], all_ep_edge_vtx[i_part][1]) for i_part in range(n_part_out)]
+      all_ep_face_vtx= list()
+      for i_part in range(n_part_out):
+        face_vtx = _ngon_tools.PDM_face_vtx_from_face_and_edge(all_ep_face_edge[i_part][0], all_ep_face_edge[i_part][1], all_ep_edge_vtx[i_part][1])
+        all_ep_face_vtx.append((all_ep_face_edge[i_part][0], face_vtx))
       all_ep_edge_vtx = [all_ep_edge_vtx[i_part][1] for i_part in range(n_part_out)]
 
   # > Reconstruction du maillage de l'extract part
