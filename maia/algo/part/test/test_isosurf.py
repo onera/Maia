@@ -43,8 +43,10 @@ def test_exchange_field_one_domain(from_api, comm):
   if comm.Get_rank() == 0:
     yt_vol = f"""
     VolZone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       NGonElements Elements_t [22,0]:
         ElementRange IndexRange_t [1,8]:
+        ParentElements DataArray_t:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Element DataArray_t {dtype} [1,3,5,7]:
       ZoneBC ZoneBC_t:
@@ -100,8 +102,10 @@ def test_exchange_field_one_domain(from_api, comm):
     """
     yt_vol = f"""
     VolZone.P1.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       NGonElements Elements_t [22,0]:
         ElementRange IndexRange_t [1,8]:
+        ParentElements DataArray_t:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Element DataArray_t {dtype} [2,4,6,8]:
       FSolVtx FlowSolution_t:

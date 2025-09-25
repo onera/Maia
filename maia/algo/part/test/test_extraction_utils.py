@@ -128,15 +128,19 @@ def test_get_partial_container_stride_and_order(comm):
   if comm.Get_rank()==0:
     pt = """
     Zone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       NGonElements Elements_t I4 [22,0]:
         ElementRange IndexRange_t I4 [1,5]:
+        ParentElements DataArray_t:
       FSol_A FlowSolution_t:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[2,4,1]]:
 
     Zone.P0.N1 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       NGonElements Elements_t I4 [22,0]:
         ElementRange IndexRange_t I4 [1,3]:
+        ParentElements DataArray_t:
       FSol_A FlowSolution_t:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[3]]:
@@ -149,8 +153,10 @@ def test_get_partial_container_stride_and_order(comm):
   else:
     pt = """
     Zone.P1.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       NGonElements Elements_t I4 [22,0]:
         ElementRange IndexRange_t I4 [1,5]:
+        ParentElements DataArray_t:
       FSol_A FlowSolution_t:
         GridLocation GridLocation_t "FaceCenter":
         PointList IndexArray_t I4 [[4,2]]:
