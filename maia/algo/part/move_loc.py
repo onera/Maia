@@ -18,8 +18,7 @@ import Pypdm.Pypdm as PDM
 
 class CenterToNode:
 
-  CONTAINER_PRED = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
-                 & PT.pred.has_location('CellCenter')
+  CONTAINER_PRED = MT.pred.FULL_CTN_CELL
 
   def __init__(self, tree: CGNSPartTree, comm: MPIComm, 
                idw_power: int = 1, cross_domain: bool = True):
@@ -117,8 +116,7 @@ class CenterToNode:
 
 class NodeToCenter:
 
-  CONTAINER_PRED = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
-                 & PT.pred.has_location('Vertex')
+  CONTAINER_PRED = MT.pred.FULL_CTN_VTX
 
   def __init__(self, tree: CGNSPartTree, comm: MPIComm, idw_power: int = 1) -> None:
 

@@ -2,6 +2,7 @@ from mpi4py import MPI
 from collections import defaultdict
 
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 
 from maia.typing import *
 
@@ -19,7 +20,6 @@ from .import closest_points as CLO
 from .utils import gather_containers_name
 
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
-from maia.algo.interpolation_utils import VTX_SOL_PRED, CELL_SOL_PRED
 
 def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
                       tgt_parts_per_dom:List[List[CGNSPartTree]],
@@ -120,7 +120,7 @@ def interpolate(src_tree:CGNSPartTree,
   loc_to_containers_name = defaultdict(list)
   # Guess location of input fields using first input zone
   if containers_name == 'ALL':
-    for loc, pred in zip(['Vertex', 'CellCenter'], [VTX_SOL_PRED, CELL_SOL_PRED]):
+    for loc, pred in zip(['Vertex', 'CellCenter'], [MT.pred.FULL_CTN_VTX, MT.pred.FULL_CTN_CELL]):
       loc_to_containers_name[loc] = gather_containers_name(PT.get_all_Zone_t(src_tree), pred, 'all', comm)
   else:
     try:

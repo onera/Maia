@@ -118,11 +118,15 @@ def test_all_containers(comm):
         GridLocation GridLocation_t "Vertex":
       OtherVtxFS DiscreteData_t: # Skipped because do not exist on P1
       ZSR ZoneSubRegion_t:
+      SecondCellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
     """)
   elif comm.rank == 1:
     zones = PT.yaml.to_nodes("""
     Zone.P1.N0 Zone_t:
       CellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+      SecondCellFS FlowSolution_t:
         GridLocation GridLocation_t "CellCenter":
       VtxFS FlowSolution_t:
       ZSR ZoneSubRegion_t:
@@ -133,9 +137,17 @@ def test_all_containers(comm):
       OtherCellFS DiscreteData_t: # Skipped because do not exist on other zone
         GridLocation GridLocation_t "CellCenter":
       ZSR ZoneSubRegion_t:
+      SecondCellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
     """)
   else:
     zones = []
+  # Add fake array, otherwise containers are not selected
+  is_cnt = PT.pred.label_in(['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t'])
+  for zone in zones:
+    for cnt in PT.get_children_from_predicate(zone, is_cnt):
+      PT.new_DataArray('Pressure', None, parent=cnt)
+
   # Use fake objs for this test
   CTN = ML.CenterToNode.__new__(ML.CenterToNode)
   CTN.parts = zones
@@ -143,5 +155,5 @@ def test_all_containers(comm):
   NTC = ML.NodeToCenter.__new__(ML.NodeToCenter)
   NTC.parts = zones
   NTC.comm = comm
-  assert CTN.all_containers() == ['CellFS']
+  assert CTN.all_containers() == ['CellFS', 'SecondCellFS']
   assert NTC.all_containers() == ['VtxFS']

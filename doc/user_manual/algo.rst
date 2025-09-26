@@ -26,8 +26,8 @@ Here are some remarks applying to all the functions:
   ZoneSubRegion_t nodes) will be treated.
   Depending on the function, supported containers can be either
 
-  - **full**: data exists for all points of all input zones (typically a FlowSolution), or
-  - **partial**: data exists for a susbet of points on some input zones (typically a ZoneSubRegion).
+  - **full**: data exists for all points or elements of all input zones (typically a FlowSolution);
+  - **partial**: data exists for a susbet of points or elements on some input zones (typically a ZoneSubRegion).
 
   Expected value for ``containers_name`` is a list of ``str`` or the shortcut ``'ALL'``,
   in which case the fonction selects all the admissible containers.

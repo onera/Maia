@@ -14,7 +14,6 @@ from .import closest_points as CLO
 from .import point_cloud_utils as PCU
 
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
-from maia.algo.interpolation_utils import VTX_SOL_PRED, CELL_SOL_PRED
 
 
 def get_shifted_gnum_from_loc(zones, loc):
@@ -136,7 +135,7 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   loc_to_containers_name = defaultdict(list)
 
   if containers_name == 'ALL':
-    for loc, pred in zip(['Vertex', 'CellCenter'], [VTX_SOL_PRED, CELL_SOL_PRED]):
+    for loc, pred in zip(['Vertex', 'CellCenter'], [MT.pred.FULL_CTN_VTX, MT.pred.FULL_CTN_CELL]):
       names = set.intersection(*[{PT.get_name(c) for c in PT.get_children_from_predicate(zone, pred)} 
                                  for zone in PT.iter_all_Zone_t(src_tree)])
       loc_to_containers_name[loc] = sorted(names)

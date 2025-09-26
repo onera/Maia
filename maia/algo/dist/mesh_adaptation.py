@@ -325,7 +325,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
     metric         (str or list) : Path(s) to metric fields (see above)
     comm           (MPIComm)     : MPI communicator
     containers_name(list of str or ``'ALL'``) : Name of each Vertex located full container
-      to project on the adapted mesh
+      to interpolate on the adapted mesh
     periodic       (boolean)     : perform periodic mesh adaptation
     feflo_opts     (str)         : Additional arguments passed to Feflo
     **options                    : Additional options (see below)
@@ -355,7 +355,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
   if containers_name == 'ALL':
     # Discover container names: FS, Vtx located, existing on all zones
-    pred = PT.pred.label_is('FlowSolution_t') & PT.pred.has_location('Vertex')
+    pred = MT.pred.FULL_CTN_VTX &~ PT.pred.name_is('maia_topo')
     cnt_per_zones = [{PT.get_name(node) for node in PT.iter_children_from_predicate(zone, pred)}
                     for zone in PT.get_all_Zone_t(dist_tree)]
     containers_name = sorted(set.intersection(*cnt_per_zones)) if len(cnt_per_zones) > 0 else []

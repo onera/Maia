@@ -29,8 +29,6 @@ LOC_TO_CGNS = {'EdgeCenter':'BAR_2',
                'FaceCenter':'TRI_3',
                'CellCenter':'TETRA_4'}
 
-IS_LOC_FS = PTp.label_in(['FlowSolution_t', 'DiscreteData_t']) & PTp.has_location('Vertex')
-
 def duplicate_specified_vtx(zone, vtx_pl, comm):
   """
   Duplicate vtx specified in `vtx_pl` from a distributed zone. Vertex base FlowSolution_t
@@ -55,7 +53,7 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
     PT.set_value(coord_nodes[key], np.concatenate([old_coords[key], new_coords[key]]))
 
   # Update FlowSolution
-  for fs_n in PT.get_children_from_predicate(zone, IS_LOC_FS):
+  for fs_n in PT.get_children_from_predicate(zone, MT.pred.FULL_CTN_VTX):
     assert PT.get_child_from_name(fs_n, 'PointList') is None, "Partial FS are not supported"
 
     arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
@@ -83,7 +81,7 @@ def duplicate_specified_vtx(zone, vtx_pl, comm):
 
 
   # Update FlowSolution
-  for fs_n in PT.get_children_from_predicate(zone, IS_LOC_FS):
+  for fs_n in PT.get_children_from_predicate(zone, MT.pred.FULL_CTN_VTX):
     assert PT.get_child_from_name(fs_n, 'PointList') is None, "Partial FS are not supported"
 
     arrays_n = PT.get_children_from_label(fs_n, 'DataArray_t')
@@ -114,7 +112,7 @@ def remove_specified_vtx(zone, vtx_pl, comm):
       PT.set_value(da_n, old_val[mask])
 
   # Update FlowSolution
-  for fs_n in PT.get_children_from_predicate(zone, IS_LOC_FS):
+  for fs_n in PT.get_children_from_predicate(zone, MT.pred.FULL_CTN_VTX):
     assert PT.get_child_from_name(fs_n, 'PointList') is None, "Partial FS are not supported"
     for da_n in PT.get_children_from_label(fs_n, 'DataArray_t'):
       old_val = PT.get_value(da_n)

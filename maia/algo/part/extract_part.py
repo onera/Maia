@@ -218,7 +218,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   - if ``transfer_dataset`` is set to ``True``, fields found under the ZoneSubRegion are transfered on the
     extracted mesh, where they are stored in a FlowSolution_t container since they cover all cells (or vertices). 
   - Other full or partial containers are transfered if their name is requested in the ``containers_name`` list. 
-    Their dimensionality must be at most equal to the one of the extracted mesh.
+    Their dimension must be at most equal to the one of the extracted mesh.
 
   Args:
     part_tree       (CGNSPartTree): Partitioned tree from which extraction is computed. U-Elts
@@ -487,6 +487,72 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
 
   return local_part_tree, fam_node_paths
 
+def _prepare_extract_from_family_fields(local_part_tree, family_name, fam_node_paths, containers_name, comm):
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
+  # First pass : collect fields name + values in nodes referenced by the input Family
+  fields_per_part = list()
+  for domain, part_zones in part_tree_per_dom.items():
+    for part_zone in part_zones:
+      for i,path in enumerate(fam_node_paths):
+        fam_node = PT.get_node_from_path(part_zone, path)
+        if fam_node is not None:
+          if PT.get_label(fam_node) == "ZoneSubRegion_t":
+            fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
+                                    for n in PT.get_children_from_label(fam_node, 'DataArray_t')})
+          elif PT.get_label(fam_node) == 'BC_t':
+            bcname = PT.utils.path_tail(path)
+            zrs_from_bc = PT.new_ZoneSubRegion(bcname, bc_name=bcname, parent=part_zone)
+            set_transfer_dataset(fam_node, zrs_from_bc, PT.Zone.Type(part_zone))
+            fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
+                                    for n in PT.get_children_from_label(zrs_from_bc, 'DataArray_t')})
+
+  # Update fam_node_path to indicate created ZSRs
+  for i,path in enumerate(fam_node_paths):
+    if len(split := path.split('/')) > 1:
+      fam_node_paths[i] = split[1]
+
+
+  # Filter names to keep only mergeable arrays, ie appearing on all subsets
+  field_names = [set(fields.keys()) for fields in fields_per_part]
+  glo_cnt = par_utils.sets_intersection(field_names, comm)
+  full_fields = sorted(glo_cnt) if glo_cnt is not None else []
+
+  is_empty_l = np.ones(len(fam_node_paths), bool)
+  is_empty_g = np.empty(len(fam_node_paths), bool)
+  # Concatenate full arrays and store them in tmp ZSR for extraction
+  _fields_per_part = iter(fields_per_part)
+  for domain, part_zones in part_tree_per_dom.items():
+    for part_zone in part_zones:
+      fake_zsr = PT.get_child_from_name(part_zone, f'__{family_name}')
+      if fake_zsr is not None: # Cat fields
+        gathered_fields = {key: [] for key in full_fields}
+        for i,path in enumerate(fam_node_paths):
+          if (cnt:=PT.get_node_from_path(part_zone, path)) is not None:
+            tt = next(_fields_per_part) # Consume stored value
+            for field in full_fields:
+              gathered_fields[field].append(tt[field])
+              PT.rm_children_from_name(cnt, field) # Remove to avoid double exchange
+            is_empty_l[i] &= (len(PT.get_children_from_label(cnt, 'DataArray_t')) == 0)
+        for fname, fields in gathered_fields.items():
+          PT.new_DataArray(fname, np_utils.concatenate_np_arrays(fields)[1], parent=fake_zsr)
+
+  transfer_dataset = len(full_fields) > 0
+  # Add fam_node_paths in containers_name to have partial exchange on other fields
+  # (filtering empty container)
+  if containers_name == 'ALL':
+    # Case 1 - ALL : we can just propagate ALL to get initial containers + created ones (BCDS)
+    # Filtering will be performed by all_containers()
+    _containers_name = 'ALL'
+  else:
+    # Case 2 - list : complete with non empty created containers
+    comm.Allreduce(is_empty_l, is_empty_g, MPI.LAND)
+    _containers_name = [c for c in containers_name]
+    for i,name in enumerate(fam_node_paths):
+      if not is_empty_g[i] and name not in _containers_name:
+        _containers_name.append(name)
+
+  return transfer_dataset, _containers_name
+
 
 def extract_part_from_family(part_tree: CGNSPartTree, 
                              family_name: str, 
@@ -518,72 +584,16 @@ def extract_part_from_family(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
+  # Search and concat requested PLs to create extracting family on local_part_tree
   local_part_tree, fam_node_paths = _prepare_extract_from_family(part_tree, family_name, comm)
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
-     
   if transfer_dataset:
-    # First pass : collect fields name + values in nodes referenced by the input Family
-    fields_per_part = list()
-    for domain, part_zones in part_tree_per_dom.items():
-      for part_zone in part_zones:
-        for i,path in enumerate(fam_node_paths):
-          fam_node = PT.get_node_from_path(part_zone, path)
-          if fam_node is not None:
-            if PT.get_label(fam_node) == "ZoneSubRegion_t":
-              fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
-                                      for n in PT.get_children_from_label(fam_node, 'DataArray_t')})
-            elif PT.get_label(fam_node) == 'BC_t':
-              bcname = PT.utils.path_tail(path)
-              zrs_from_bc = PT.new_ZoneSubRegion(bcname, bc_name=bcname, parent=part_zone)
-              set_transfer_dataset(fam_node, zrs_from_bc, PT.Zone.Type(part_zone))
-              fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
-                                      for n in PT.get_children_from_label(zrs_from_bc, 'DataArray_t')})
-
-    # Update fam_node_path to indicate created ZSRs
-    for i,path in enumerate(fam_node_paths):
-      if len(split := path.split('/')) > 1:
-        fam_node_paths[i] = split[1]
-
-
-    # Filter names to keep only mergeable arrays, ie appearing on all subsets
-    field_names = [set(fields.keys()) for fields in fields_per_part]
-    glo_cnt = par_utils.sets_intersection(field_names, comm)
-    full_fields = sorted(glo_cnt) if glo_cnt is not None else []
-
-    is_empty_l = np.ones(len(fam_node_paths), bool)
-    is_empty_g = np.empty(len(fam_node_paths), bool)
-    # Concatenate full arrays and store them in tmp ZSR for extraction
-    _fields_per_part = iter(fields_per_part)
-    for domain, part_zones in part_tree_per_dom.items():
-      for part_zone in part_zones:
-        fake_zsr = PT.get_child_from_name(part_zone, f'__{family_name}')
-        if fake_zsr is not None: # Cat fields
-          gathered_fields = {key: [] for key in full_fields}
-          for i,path in enumerate(fam_node_paths):
-            if (cnt:=PT.get_node_from_path(part_zone, path)) is not None:
-              tt = next(_fields_per_part) # Consume stored value
-              for field in full_fields:
-                gathered_fields[field].append(tt[field])
-                PT.rm_children_from_name(cnt, field) # Remove to avoid double exchange
-              is_empty_l[i] &= (len(PT.get_children_from_label(cnt, 'DataArray_t')) == 0)
-          for fname, fields in gathered_fields.items():
-            PT.new_DataArray(fname, np_utils.concatenate_np_arrays(fields)[1], parent=fake_zsr)
-
-    transfer_dataset = len(full_fields) > 0
-    # Add fam_node_paths in containers_name to have partial exchange on other fields
-    # (filtering empty container)
-    if containers_name == 'ALL':
-      # Case 1 - ALL : we can just propagate ALL to get initial containers + created ones (BCDS)
-      # Filtering will be performed by all_containers()
-      _containers_name = 'ALL'
-    else:
-      # Case 2 - list : complete with non empty created containers
-      comm.Allreduce(is_empty_l, is_empty_g, MPI.LAND)
-      _containers_name = [c for c in containers_name]
-      for i,name in enumerate(fam_node_paths):
-        if not is_empty_g[i] and name not in _containers_name:
-          _containers_name.append(name)
-
+    # If transfer_dataaset, also search associated fields; concat them in 
+    # local extracting family *or* update containers_name if partial fields
+    transfer_dataset, _containers_name = _prepare_extract_from_family_fields(local_part_tree, 
+                                                                             family_name, 
+                                                                             fam_node_paths, 
+                                                                             containers_name,
+                                                                             comm)
   else:
     _containers_name = containers_name # Nothing to do : if 'ALL', search is delegated to _extract_part_from_zsr
 
