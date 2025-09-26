@@ -25,6 +25,7 @@ Development version
 - connect_1to1_families: extend to 2D input meshes
 - generate_jns_vertex_list, merge_zones: extend to polyedric 2D input meshes 
 - extract_part: extend to 2D input meshes (U only)
+- Introduce ``'ALL'`` shortcut as admissible value for ``containers_name`` in relevant functions
 
 🐞 Fixes
 ^^^^^^^^
@@ -41,6 +42,7 @@ Development version
 ^^^^^^^^^^^^^
 - pytree: Element.Type now return the ElementType value (*eg* TRI_3) instead of enumeration number (*eg* 5)
 - pytree: Subset.ZSRExtent and the whole Subset.BCDataSet namespace are deprecated
+- adapt_mesh_with_feflo: change ``container_names`` argument into ``containers_name``
 
 v1.7 (May 2024)
 ---------------

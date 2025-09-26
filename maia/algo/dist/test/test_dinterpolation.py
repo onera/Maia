@@ -10,31 +10,39 @@ import maia.pytree.maia as MT
 from maia.algo.dist import interpolation as ITP
 
 @pytest_parallel.mark.parallel(3)
-def test_simple_2d(comm):
+@pytest.mark.parametrize("all_cnt", [False, True])
+def test_simple_2d(all_cnt, comm):
   src_tree = maia.factory.generate_dist_block(5, 'QUAD_4', comm)
   tgt_tree = maia.factory.generate_dist_block([17,21], 'S', comm)
   
   # Create sol for src tree
   maia.algo.compute_elements_center(src_tree, 'CellCenter', comm)
+  for zone in PT.iter_all_Zone_t(src_tree):
+    geo2d = PT.deep_copy(PT.find_child_from_name(zone, 'Geometry_2d'))
+    PT.set_name(geo2d, 'Geometry_2d_dupl')
+    PT.add_child(zone, geo2d)
 
-  ITP.interpolate(src_tree, tgt_tree, comm, ['Geometry_2d'], 'CellCenter', strategy='LocationAndClosest')
+  cnt_name = 'ALL' if all_cnt else ['Geometry_2d']
+  ITP.interpolate(src_tree, tgt_tree, comm, cnt_name, 'CellCenter', strategy='LocationAndClosest')
 
   tgt_zone = PT.get_all_Zone_t(tgt_tree)[0]
   tgt_center = maia.algo.dist.geometry._compute_elements_center(tgt_zone, 'CellCenter', comm)
   cell_distri = MT.distribution_value(tgt_zone, 'Cell')
   dn_cell = cell_distri[1] - cell_distri[0]
-  sol = PT.get_node_from_name(tgt_zone, 'Geometry_2d')
-  assert PT.get_label(sol) == 'DiscreteData_t'
-  assert PT.Container.GridLocation(sol) == 'CellCenter'
-  for array in PT.get_children_from_label(sol, 'DataArray_t'):
-    assert array[1].shape == (dn_cell,)
-  cx = PT.get_child_from_name(sol, 'CenterX')[1]
-  cy = PT.get_child_from_name(sol, 'CenterY')[1]
-  # We have 4*5 tgt cells in each src cell, the interp. value is simply the center of the containing cell
-  layer_x = np.floor(tgt_center[0::3] / 0.25)
-  layer_y = np.floor(tgt_center[1::3] / 0.25)
-  assert (cx == 0.125 + 0.25*layer_x).all()
-  assert (cy == 0.125 + 0.25*layer_y).all()
+  sols_name = ['Geometry_2d', 'Geometry_2d_dupl'] if all_cnt else ['Geometry_2d']
+  for sol_name in sols_name:
+    sol = PT.get_node_from_name(tgt_zone, sol_name)
+    assert PT.get_label(sol) == 'DiscreteData_t'
+    assert PT.Container.GridLocation(sol) == 'CellCenter'
+    for array in PT.get_children_from_label(sol, 'DataArray_t'):
+      assert array[1].shape == (dn_cell,)
+    cx = PT.get_child_from_name(sol, 'CenterX')[1]
+    cy = PT.get_child_from_name(sol, 'CenterY')[1]
+    # We have 4*5 tgt cells in each src cell, the interp. value is simply the center of the containing cell
+    layer_x = np.floor(tgt_center[0::3] / 0.25)
+    layer_y = np.floor(tgt_center[1::3] / 0.25)
+    assert (cx == 0.125 + 0.25*layer_x).all()
+    assert (cy == 0.125 + 0.25*layer_y).all()
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("elt_type", ['Poly', 'HEXA_8'])

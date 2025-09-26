@@ -521,6 +521,47 @@ def test_void_extraction(comm):
   assert is_empty_tree(extractor.get_extract_part_tree())
   assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs
 
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("equilibrate", [True, False])
+def test_extract_fam_dataset(comm, equilibrate):
+  tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  dn_elt = MT.Subset.dn_elem(PT.find_node_from_name(zone, 'Xmin'))
+  PT.new_ZoneSubRegion('ZSR', bc_name='Xmin', family='FAM',
+                       fields={'One' : np.ones(dn_elt), 'Two' : 2*np.ones(dn_elt)},
+                       parent=zone)
+
+  dn_elt = MT.Subset.dn_elem(PT.find_node_from_name(zone, 'Ymin'))
+  bc = PT.find_node_from_name(zone, 'Ymin')
+  ds = PT.new_BCDataSet(parent=bc)
+  PT.new_BCData('NeumannData', fields={'One' : np.ones(dn_elt), 'Three' : 3*np.ones(dn_elt)}, parent=ds)
+  PT.new_FamilyName('FAM', parent=bc)
+  
+  ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer='ALL')
+  pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, equilibrate=equilibrate)
+
+  # In this config, with transfert_dataset=True, we should
+  # have a full container containing Ones (common to all extracted subsets)
+  # and 2 partials containers for Two and Three (not common)
+  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  full = PT.find_child_from_name(ext_zone, 'FAM')
+  assert PT.get_label(full) == 'FlowSolution_t' and not PT.Container._is_partial(full)
+  assert [PT.get_name(n) for n in PT.get_children_from_label(full, 'DataArray_t')] == ['One']
+  for cnt_name, array_name in zip(['ZSR', 'Ymin'], ['Two', 'Three']):
+    partial = PT.get_child_from_name(ext_zone, cnt_name)
+    assert comm.allreduce(partial is not None, MPI.LOR) == True
+    if partial is not None:
+      assert PT.get_label(partial) == 'ZoneSubRegion_t'
+      assert [PT.get_name(n) for n in PT.get_children_from_label(partial, 'DataArray_t')] == [array_name]
+
+  # Cnts are empty -> cleaning is expected
+  PT.rm_nodes_from_predicate(ptree, PT.pred.name_in(['One', 'Two', 'Three']))
+  pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm)
+  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  assert PT.get_child_from_name(ext_zone, 'FAM') is None
+  assert PT.get_child_from_name(ext_zone, 'ZSR') is None
+  assert PT.get_child_from_name(ext_zone, 'Ymin') is None
 
 @pytest.mark.parametrize("equilibrate", [True, False])
 @pytest_parallel.mark.parallel(2)
@@ -565,9 +606,8 @@ Base CGNSBase_t I4 [2, 3]:
       Xmin BC_t 'Null':
         GridLocation GridLocation_t 'EdgeCenter':
         PointList IndexArray_t I4 [[4, 15, 26]]:
-    ZSR_Faces ZoneSubRegion_t:
+    ZSR_Faces FlowSolution_t:
       GridLocation GridLocation_t 'CellCenter':
-      PointList IndexArray_t I4 [[39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53]]:
       cx DataArray_t:
         R8 : [-2.0, -1.0, 0.0, 1.0, 2.0, -2.0, -1.0, 0.0, 1.0, 2.0, -2.0, -1.0, 0.0, 1.0, 2.0]
     FlowSolution_NC FlowSolution_t:
@@ -616,11 +656,8 @@ Base CGNSBase_t I4 [1, 3]:
       Xmin BC_t 'Null':
         GridLocation GridLocation_t 'CellCenter':
         PointList IndexArray_t I4 [[1, 10, 21]]:
-    ZSR_Edges ZoneSubRegion_t:
+    ZSR_Edges FlowSolution_t:
       GridLocation GridLocation_t 'CellCenter':
-      PointList IndexArray_t:
-        I4 : [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-              30, 31, 32, 33]]
       cx DataArray_t:
         R8 : [-2.5, -1.5, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, -2.5, 1.0,
               -1.5, 2.0, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, -2.5, 1.0,
@@ -655,9 +692,8 @@ Base CGNSBase_t I4 [2, 3]:
       CoordinateY DataArray_t R8 {cy}:
       CoordinateZ DataArray_t:
         R8 : [-2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5]
-    ZSR_Vtx ZoneSubRegion_t:
+    ZSR_Vtx FlowSolution_t:
       GridLocation GridLocation_t 'Vertex':
-      PointList IndexArray_t I4 [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]]:
       cx DataArray_t R8 {sol}:
     FlowSolution_NC FlowSolution_t:
       GridLocation GridLocation_t 'Vertex':
@@ -735,8 +771,10 @@ Base CGNSBase_t I4 [2, 3]:
   # > Part to dist
   dist_tree_ep = maia.factory.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
   ftree_ep = maia.factory.dist_to_full_tree(dist_tree_ep, comm)
+  comp = None
   if comm.rank == 0:
-    assert maia.pytree.is_same_tree(ref_face, ftree_ep, abs_tol=1e-14, type_tol=True)
+    comp = maia.pytree.is_same_tree(ref_face, ftree_ep, abs_tol=1e-14, type_tol=True)
+  assert comm.bcast(comp, root=0)
 
 
   # Extract part Edges
@@ -749,8 +787,10 @@ Base CGNSBase_t I4 [2, 3]:
   # > Part to dist
   dist_tree_ep = maia.factory.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
   ftree_ep = maia.factory.dist_to_full_tree(dist_tree_ep, comm)
+  comp = None
   if comm.rank == 0:
-    assert maia.pytree.is_same_tree(ref_edge, ftree_ep, abs_tol=1e-14, type_tol=True)
+    comp = maia.pytree.is_same_tree(ref_edge, ftree_ep, abs_tol=1e-14, type_tol=True)
+  assert comm.bcast(comp, root=0)
     
 
   # Extract part Vertices
@@ -762,5 +802,67 @@ Base CGNSBase_t I4 [2, 3]:
   # > Part to dist
   dist_tree_ep = maia.factory.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
   ftree_ep = maia.factory.dist_to_full_tree(dist_tree_ep, comm)
+  comp = None
   if comm.rank == 0:
-    assert maia.pytree.is_same_tree(ref_vtx, ftree_ep, abs_tol=1e-14, type_tol=True)
+    comp = maia.pytree.is_same_tree(ref_vtx, ftree_ep, abs_tol=1e-14, type_tol=True)
+  assert comm.bcast(comp, root=0)
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("transfer_dataset", [True, False])
+@pytest.mark.parametrize("eq", [True, False]) # Equilibrate mode
+def test_all_transfer(transfer_dataset, eq, comm):
+  tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  # These subsets are going to be util for extraction
+  dn_elt = MT.Subset.dn_elem(PT.find_node_from_name(zone, 'Xmin'))
+  PT.new_ZoneSubRegion('ZSR', bc_name='Xmin', family='FAM',
+                       fields={'One' : np.ones(dn_elt), 'Two' : 2*np.ones(dn_elt)},
+                       parent=zone)
+
+  dn_elt = MT.Subset.dn_elem(PT.find_node_from_name(zone, 'Ymin'))
+  bc = PT.find_node_from_name(zone, 'Ymin')
+  ds = PT.new_BCDataSet(parent=bc)
+  PT.new_BCData('NeumannData', fields={'One' : np.ones(dn_elt), 'Three' : 3*np.ones(dn_elt)}, parent=ds)
+  PT.new_FamilyName('FAM', parent=bc)
+
+  # Create additional data containers to test 'ALL' mode
+  coords = PT.shallow_copy(PT.find_child_from_label(zone, 'GridCoordinates_t'))
+  PT.update_node(coords, 'FSVtx', label='FlowSolution_t')
+  PT.add_child(zone, coords)
+  maia.algo.compute_elements_measure(tree, 2, comm)
+  maia.algo.compute_elements_measure(tree, 3, comm)
+  dn_elt = MT.Subset.dn_elem(PT.find_node_from_name(zone, 'Xmin'))
+  PT.new_ZoneSubRegion('OtherZSR', bc_name='Xmin',
+                       fields={'Array' : np.ones(dn_elt)},
+                       parent=zone)
+
+  PT.new_ZoneSubRegion('FakeZSR', bc_name='Xmin', parent=zone) # Should be ignored (no arrays)
+
+  ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer='ALL')
+
+  pext = maia.algo.part.extract_part_from_zsr(ptree, 'ZSR', comm, transfer_dataset, 'ALL', equilibrate=eq)
+  # Tr DS = True or False + local mode + ALL ===> KO
+  ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
+  for name in ['FSVtx', 'Geometry_2d', 'OtherZSR']:
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == True
+  for name in ['Geometry_3d', 'FakeZSR']:
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == False
+  assert par_utils.exists_anywhere(ext_zones, 'ZSR', comm) == transfer_dataset
+  
+  pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymin', comm, transfer_dataset, 'ALL', equilibrate=eq)
+  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  for name in ['FSVtx', 'Geometry_2d']:
+    assert par_utils.exists_anywhere([ext_zone], name, comm) == True
+  for name in ['Geometry_3d', 'OtherZSR', 'FakeZSR']:
+    assert par_utils.exists_anywhere([ext_zone], name, comm) == False
+  assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset
+
+  pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, transfer_dataset, 'ALL', equilibrate=eq)
+  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  for name in ['FSVtx', 'Geometry_2d', 'ZSR', 'OtherZSR']:
+    assert par_utils.exists_anywhere([ext_zone], name, comm) == True
+  for name in ['Geometry_3d', 'FakeZSR']:
+    assert par_utils.exists_anywhere([ext_zone], name, comm) == False
+  assert par_utils.exists_anywhere([ext_zone], 'FAM', comm) == transfer_dataset
+  assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset

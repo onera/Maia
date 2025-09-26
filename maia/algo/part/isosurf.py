@@ -2,7 +2,6 @@ import numpy as np
 import time
 
 from maia.typing        import *
-from maia.pytree.typing import Predicate
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -12,13 +11,22 @@ from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
 from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.factory.partitioning import part_bound_orient as PBO
-from maia.utils    import np_utils, layouts
+from maia.utils    import np_utils, layouts, par_utils
 from .extraction_utils  import local_pl_offset, LOC_TO_DIM3, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
+from .utils             import _gather_containers_name
 
 import Pypdm.Pypdm as PDM
 
 IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
+IS_CNT      = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
+
+def all_containers(tree:CGNSPartTree, comm:MPIComm) -> List[str]:
+  all_nodes = list()
+  for zone in PT.get_all_Zone_t(tree):
+    predicate = IS_CNT & PT.pred.NodePredicate(lambda c : PT.Container.GridLocation(c, zone) != 'EdgeCenter')
+    all_nodes.append(PT.get_children_from_predicate(zone, predicate))
+  return _gather_containers_name(all_nodes, 'any', comm)
 
 def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> None:
   """ Copy from source_base to target_base the Family_t nodes referenced
@@ -62,7 +70,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
   
     mask_container = PT.get_child_from_name(mask_zone, container_name)
     if mask_container is None:
-      raise ValueError("[maia-isosurfaces] asked container for exchange is not in tree")
+      raise ValueError(f"[maia-isosurfaces] asked container for exchange '{container_name}' is not in tree")
 
     partial_field = PT.Container._is_partial(mask_container)
     gridLocation = PT.Container.GridLocation(mask_container, mask_zone)
@@ -206,12 +214,20 @@ def _exchange_field(part_tree: CGNSPartTree,
   # Get zones by domains
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
+  # Multidomain: allow containers_name that appear in at least one initial domain
+  containers_name_per_dom = {key : [name for name in containers_name if par_utils.exists_anywhere(parts, name, comm)]
+                              for key,parts in part_tree_per_dom.items()}
+  for name in containers_name:
+    if not any([name in vals for vals in containers_name_per_dom.values()]):
+      raise ValueError(f"[maia-isosurfaces] asked container for exchange '{name}' is not in tree")
+
+
   # Loop over domains
   for domain_path, part_zones in part_tree_per_dom.items():
     # Get zone from isosurf (one zone by domain)
     iso_part_zones = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}")
     iso_part_zone  = iso_part_zones[0] if len(iso_part_zones)!=0 else None
-    exchange_field_one_domain(part_zones, iso_part_zone, containers_name, comm)
+    exchange_field_one_domain(part_zones, iso_part_zone, containers_name_per_dom[domain_path], comm)
 
 
 
@@ -494,7 +510,7 @@ def iso_surface(part_tree: CGNSPartTree,
                 iso_field: CGNSPath, 
                 comm: MPIComm, 
                 iso_val: float = 0., 
-                containers_name: List[str] = [], 
+                containers_name: Union[List[str], Literal['ALL']] = [], 
                 **options) -> CGNSPartTree:
   """ Create an isosurface from the provided field and value on the input partitioned tree.
 
@@ -507,10 +523,11 @@ def iso_surface(part_tree: CGNSPartTree,
     - This function requires ParaDiGMa access.
 
   Note:
-    - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
-      ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
     - If ``elt_type`` is set to 'TRI_3', boundaries from volumic mesh are extracted as edges on
       the isosurface (GridConnectivity_t nodes become BC_t nodes) and FaceCenter fields are allowed to be exchanged.
+    - Partial or full containers can be transfered on the output isosurface tree.
+    - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
+      ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
 
   Args:
     part_tree     (CGNSPartTree): Partitioned tree on which isosurf is computed. Only U-NGon
@@ -518,7 +535,7 @@ def iso_surface(part_tree: CGNSPartTree,
     iso_field     (str)         : Path (starting at Zone_t level) of the field to use to compute isosurface.
     comm          (MPIComm)     : MPI communicator
     iso_val       (float, optional) : Value to use to compute isosurface. Defaults to 0.
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output isosurface tree.
     **options: Options related to plane extraction.
   Returns:
@@ -550,6 +567,8 @@ def iso_surface(part_tree: CGNSPartTree,
   iso_part_tree = _iso_surface(part_tree, iso_field, iso_val, elt_type, graph_part_tool, comm)
   
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
   
@@ -593,7 +612,7 @@ def _surface_from_equation(part_tree: CGNSPartTree,
 def plane_slice(part_tree: CGNSPartTree, 
                 plane_eq: Sequence[float], 
                 comm: MPIComm, 
-                containers_name: List[str] = [], 
+                containers_name: Union[List[str], Literal['ALL']] = [], 
                 **options) -> CGNSPartTree:
   """ Create a slice from the provided plane equation :math:`ax + by + cz - d = 0`
   on the input partitioned tree.
@@ -605,7 +624,7 @@ def plane_slice(part_tree: CGNSPartTree,
     part_tree    (CGNSPartTree) : Partitioned tree to slice. Only U-NGon connectivities are managed.
     plane_eq     (list of float): List of 4 floats :math:`[a,b,c,d]` defining the plane equation.
     comm          (MPIComm)     : MPI communicator
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
@@ -629,6 +648,8 @@ def plane_slice(part_tree: CGNSPartTree,
   iso_part_tree = _surface_from_equation(part_tree, 'PLANE', plane_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
@@ -641,7 +662,7 @@ def plane_slice(part_tree: CGNSPartTree,
 def spherical_slice(part_tree: CGNSPartTree, 
                     sphere_eq: Sequence[float], 
                     comm: MPIComm, 
-                    containers_name: List[str] = [], 
+                    containers_name: Union[List[str], Literal['ALL']] = [], 
                     **options) -> CGNSPartTree:
   """ Create a spherical slice from the provided equation
   :math:`(x-x_0)^2 + (y-y_0)^2 + (z-z_0)^2 = R^2`
@@ -654,7 +675,7 @@ def spherical_slice(part_tree: CGNSPartTree,
     part_tree     (CGNSPartTree) : Partitioned tree to slice. Only U-NGon connectivities are managed.
     sphere_eq     (list of float): List of 4 floats :math:`[x_0, y_0, z_0, R]` defining the sphere equation.
     comm          (MPIComm)      : MPI communicator
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
@@ -678,6 +699,8 @@ def spherical_slice(part_tree: CGNSPartTree,
   iso_part_tree = _surface_from_equation(part_tree, 'SPHERE', sphere_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 
@@ -690,7 +713,7 @@ def spherical_slice(part_tree: CGNSPartTree,
 def elliptical_slice(part_tree: CGNSPartTree, 
                      ellipse_eq: Sequence[float], 
                      comm: MPIComm, 
-                     containers_name: List[str] = [], 
+                     containers_name: Union[List[str], Literal['ALL']] = [], 
                      **options: Any) -> CGNSPartTree:
   """ Create a elliptical slice from the provided equation
   :math:`(x-x_0)^2/a^2 + (y-y_0)^2/b^2 + (z-z_0)^2/c^2 = R^2`
@@ -704,7 +727,7 @@ def elliptical_slice(part_tree: CGNSPartTree,
     ellispe_eq   (list of float): List of 7 floats :math:`[x_0, y_0, z_0, a, b, c, R^2]`
       defining the ellipse equation.
     comm          (MPIComm)     : MPI communicator
-    containers_name   (list of str) : List of the names of the FlowSolution_t nodes to transfer
+    containers_name   (list of str or ``'ALL'``) : Name of each container node to transfer
       on the output slice tree.
     **options: Options related to plane extraction (see :func:`iso_surface`).
   Returns:
@@ -727,6 +750,8 @@ def elliptical_slice(part_tree: CGNSPartTree,
   iso_part_tree = _surface_from_equation(part_tree, 'ELLIPSE', ellipse_eq, elt_type, graph_part_tool, comm)
 
   # Interpolation
+  if containers_name == 'ALL':
+    containers_name = all_containers(part_tree, comm)
   if containers_name:
     _exchange_field(part_tree, iso_part_tree, containers_name, comm)
 

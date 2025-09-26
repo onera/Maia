@@ -157,7 +157,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box
       continue # Volumic zone has no fields
 
 
-    grid_location = PT.Container.GridLocation(container)
+    grid_location = PT.Container.GridLocation(container, part_zone)
     if src_dim == 3:
       assert grid_location in ['Vertex', 'FaceCenter', 'CellCenter']
     else:
@@ -209,8 +209,8 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box
       # extracted field will be full -> transform into FS
       if is_own_data:
         assert mask.all()
-        assert PT.Subset.GridLocation(FS_ep) in ['CellCenter', 'Vertex']
         PT.set_label(FS_ep, 'FlowSolution_t')
+        assert PT.Container.GridLocation(FS_ep) in ['CellCenter', 'Vertex']
       else:
         _extr_pl = np.where(mask)[0]
         extr_pl = _extr_pl + local_pl_offset(extr_zone, _LOC_TO_DIM[grid_location]) + 1
@@ -367,14 +367,14 @@ def exchange_field_one_domain(part_zones, extract_zones, dims, exch_tool_box, co
     exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box, container_name, comm)
 
 
-def exchange_field_u(part_tree, extract_part_tree, dims, exch_tool_box, container_names, comm) :
+def exchange_field_u(part_tree, extract_part_tree, dims, exch_tool_box, containers_name, comm) :
   # Get zones by domains (only one domain for now)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
 
   # Get zone(s) from extractpart
   extract_zones = PT.get_all_Zone_t(extract_part_tree)
 
-  for container_name in container_names:
+  for container_name in containers_name:
     for dom_path, part_zones in part_tree_per_dom.items():
       exchange_field_one_domain(part_zones, extract_zones, dims, exch_tool_box[dom_path], \
           container_name, comm)

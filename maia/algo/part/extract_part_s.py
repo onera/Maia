@@ -86,11 +86,11 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
       PT.new_DataArray(fld_name, extract_fld_data, parent=FS_ep)
 
 
-def exchange_field_s(part_tree, extract_tree, dims, etb, container_names, comm) :
+def exchange_field_s(part_tree, extract_tree, dims, etb, containers_name, comm) :
   # Get zones by domains (only one domain for now)
   mesh_dim = dims[1]
   extract_part_tree_per_dom = dist_from_part.get_parts_per_blocks(extract_tree, comm)
-  for container_name in container_names:
+  for container_name in containers_name:
     for i_domain, dom_ep_part_zones in enumerate(extract_part_tree_per_dom.items()):
       dom_path        = dom_ep_part_zones[0]
       extracted_zones = dom_ep_part_zones[1]

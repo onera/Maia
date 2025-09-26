@@ -6,10 +6,11 @@ import maia.pytree        as PT
 import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 from   maia.factory       import dist_from_part
-from   maia.utils         import np_utils
+from   maia.utils         import np_utils, par_utils
 from   .extract_part_s    import exchange_field_s, extract_part_one_domain_s
 from   .extract_part_u    import exchange_field_u, extract_part_one_domain_u
 from   .extraction_utils  import LOC_TO_DIM
+from   .utils             import _gather_containers_name
 from   maia.typing        import *
 
 import numpy as np
@@ -160,6 +161,18 @@ class Extractor:
         PT.add_child(extract_base, PT.deep_copy(fam_node))
     self.extract_tree = extract_tree
 
+  def all_containers(self) -> List[str]:
+    LOCS = ['Vertex', 'FaceCenter', 'CellCenter']
+    IS_CNT = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
+
+    cnts_per_zone = list()
+    for zone in PT.get_all_Zone_t(self.part_tree):
+      predicate = IS_CNT \
+                & PT.pred.has_child_of_label('DataArray_t') \
+                & PT.pred.NodePredicate(lambda c : LOCS.index(PT.Container.GridLocation(c, zone)) <= LOCS.index(self.location))
+      cnts_per_zone.append(PT.get_children_from_predicate(zone, predicate))
+    return _gather_containers_name(cnts_per_zone, 'any', self.comm)
+
   def exchange_fields(self, fs_container: List[str]) -> None:
     """Exchange fields between partitions"""
     if self.location == '': # Nothing to do if extract_tree is None
@@ -177,16 +190,16 @@ def _extract_part_from_zsr(part_tree: CGNSPartTree,
                            zsr_name: str,
                            comm: MPIComm,
                            transfer_dataset: bool = True,
-                           containers_name: List[str] = [],
+                           containers_name: Union[List[str], Literal['ALL']] = [],
                            **options: Any) -> Tuple[CGNSPartTree, Optional[int]]:
   """Internal function to extract part from ZoneSubRegion"""
   extractor = _create_extractor_from_zsr(part_tree, zsr_name, comm, **options)
 
-  l_containers_name = [name for name in containers_name]
+  if containers_name == 'ALL':
+    l_containers_name = [name for name in extractor.all_containers() if name != zsr_name]
+  else:
+    l_containers_name = [name for name in containers_name]
   if transfer_dataset:
-    # This will be usefull to detect self data exchange later
-    for subdict in extractor.exch_tool_box.values():
-      subdict['ExtractingCnt'] = zsr_name
     if zsr_name not in l_containers_name:
       l_containers_name += [zsr_name]
   if l_containers_name:
@@ -201,7 +214,7 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
                           zsr_name: str,
                           comm: MPIComm,
                           transfer_dataset: bool = True,
-                          containers_name: List[str] = [],
+                          containers_name: Union[List[str], Literal['ALL']] = [],
                           **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided ZoneSubRegion from the input volumic
   partitioned tree.
@@ -212,10 +225,9 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
   Data fields existing in the volumic mesh can be transfered to the extracted mesh by two ways:
 
   - if ``transfer_dataset`` is set to ``True``, fields found under the ZoneSubRegion are transfered on the
-    extracted mesh, where they are stored in a FlowSolution_t container since they cover all cells (or vertices).
-  - Other containers of label FlowSolution_t, DiscreteData_t or ZoneSubRegion_t are transfered if their name
-    is requested in the ``containers_name`` list. They are stored in a container of corresponding label in
-    extracted tree.
+    extracted mesh, where they are stored in a FlowSolution_t container since they cover all cells (or vertices). 
+  - Other full or partial containers are transfered if their name is requested in the ``containers_name`` list. 
+    Their dimension must be at most equal to the one of the extracted mesh.
 
   Args:
     part_tree       (CGNSPartTree): Partitioned tree from which extraction is computed. U-Elts
@@ -223,8 +235,8 @@ def extract_part_from_zsr(part_tree: CGNSPartTree,
     zsr_name        (str)         : Name of the ZoneSubRegion_t node
     comm            (MPIComm)     : MPI communicator
     transfer_dataset(bool)        : Transfer (or not) fields stored in ZSR to the extracted mesh (default to ``True``)
-    containers_name (list of str) : List of the names of the fields containers to transfer
-                                    on the output extracted tree.
+    containers_name (list of str or ``'ALL'``) : Name of each container node to transfer
+      on the output extracted tree.
     **options: Options related to the extraction.
   Returns:
     CGNSTree: Extracted submesh (partitioned)
@@ -303,7 +315,11 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   # Get location if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
 
-  return Extractor(part_tree, patch, location, comm, **options)
+  extractor = Extractor(part_tree, patch, location, comm, **options)
+  # This will be usefull to detect self data exchange later
+  for subdict in extractor.exch_tool_box.values():
+    subdict['ExtractingCnt'] = zsr_path
+  return extractor
 
 def create_extractor_from_zsr(part_tree: CGNSPartTree,
                               zsr_path : str,
@@ -321,8 +337,8 @@ def create_extractor_from_zsr(part_tree: CGNSPartTree,
 def extract_part_from_bc_name(part_tree: CGNSPartTree,
                               bc_name: str,
                               comm: MPIComm,
-                              transfer_dataset: Optional[bool] = True,
-                              containers_name: List[str] = [],
+                              transfer_dataset: bool = True,
+                              containers_name: Union[List[str], Literal['ALL']] = [],
                               **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided BC name from the input volumic
   partitioned tree.
@@ -346,7 +362,6 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
   start = time.time()
 
   # Local copy of the part_tree to add ZSR
-  l_containers_name = [name for name in containers_name]
   local_part_tree   = PT.shallow_copy(part_tree)
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
 
@@ -356,20 +371,26 @@ def extract_part_from_bc_name(part_tree: CGNSPartTree,
     for part_zone in part_zones:
       bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t')
       if bc_n is not None:
-        zsr_bc_n  = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
+        zsr_bc_n  = PT.new_ZoneSubRegion(name=f'__{bc_name}', bc_name=bc_name, parent=part_zone)
         if transfer_dataset:
           there_is_bcdataset = set_transfer_dataset(bc_n, zsr_bc_n, PT.Zone.Type(part_zone))
 
   _transfer_dataset = False
   if transfer_dataset and comm.allreduce(there_is_bcdataset, MPI.LOR):
     _transfer_dataset = True
-    l_containers_name.append(bc_name) # not to change the initial containers_name list
 
 
-  extract_tree, dim = _extract_part_from_zsr(local_part_tree, bc_name, comm,
+  extract_tree, dim = _extract_part_from_zsr(local_part_tree, f'__{bc_name}', comm,
                                              transfer_dataset=_transfer_dataset,
-                                             containers_name=l_containers_name,
+                                             containers_name=containers_name,
                                            **options)
+  # Rename native container
+  if transfer_dataset:
+    for ext_zone in PT.get_all_Zone_t(extract_tree):
+      cnt = PT.get_child_from_name(ext_zone, f'__{bc_name}')
+      if cnt is not None:
+        PT.update_node(cnt, name=bc_name)
+
   end = time.time()
 
   # > Print some light stats
@@ -397,9 +418,9 @@ def create_extractor_from_bc_name(part_tree: CGNSPartTree, bc_name: str,
     for part_zone in part_zones:
       bc_n = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t')
       if bc_n is not None:
-        PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name, parent=part_zone)
+        PT.new_ZoneSubRegion(name=f'__{bc_name}', bc_name=bc_name, parent=part_zone)
 
-  extractor = _create_extractor_from_zsr(local_part_tree, bc_name, comm, **options)
+  extractor = _create_extractor_from_zsr(local_part_tree, f'__{bc_name}', comm, **options)
   if extractor.location == '':
     mlog.warning(f"BC \"{bc_name}\" does not exist in input tree, "
                  f"an empty extractor is returned from create_extractor_from_bc_name")
@@ -475,12 +496,78 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
 
   return local_part_tree, fam_node_paths
 
+def _prepare_extract_from_family_fields(local_part_tree, family_name, fam_node_paths, containers_name, comm):
+  part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
+  # First pass : collect fields name + values in nodes referenced by the input Family
+  fields_per_part = list()
+  for domain, part_zones in part_tree_per_dom.items():
+    for part_zone in part_zones:
+      for i,path in enumerate(fam_node_paths):
+        fam_node = PT.get_node_from_path(part_zone, path)
+        if fam_node is not None:
+          if PT.get_label(fam_node) == "ZoneSubRegion_t":
+            fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
+                                    for n in PT.get_children_from_label(fam_node, 'DataArray_t')})
+          elif PT.get_label(fam_node) == 'BC_t':
+            bcname = PT.utils.path_tail(path)
+            zrs_from_bc = PT.new_ZoneSubRegion(bcname, bc_name=bcname, parent=part_zone)
+            set_transfer_dataset(fam_node, zrs_from_bc, PT.Zone.Type(part_zone))
+            fields_per_part.append({PT.get_name(n) : PT.get_np_value(n) \
+                                    for n in PT.get_children_from_label(zrs_from_bc, 'DataArray_t')})
+
+  # Update fam_node_path to indicate created ZSRs
+  for i,path in enumerate(fam_node_paths):
+    if len(split := path.split('/')) > 1:
+      fam_node_paths[i] = split[1]
+
+
+  # Filter names to keep only mergeable arrays, ie appearing on all subsets
+  field_names = [set(fields.keys()) for fields in fields_per_part]
+  glo_cnt = par_utils.sets_intersection(field_names, comm)
+  full_fields = sorted(glo_cnt) if glo_cnt is not None else []
+
+  is_empty_l = np.ones(len(fam_node_paths), bool)
+  is_empty_g = np.empty(len(fam_node_paths), bool)
+  # Concatenate full arrays and store them in tmp ZSR for extraction
+  _fields_per_part = iter(fields_per_part)
+  for domain, part_zones in part_tree_per_dom.items():
+    for part_zone in part_zones:
+      fake_zsr = PT.get_child_from_name(part_zone, f'__{family_name}')
+      if fake_zsr is not None: # Cat fields
+        gathered_fields = {key: [] for key in full_fields}
+        for i,path in enumerate(fam_node_paths):
+          if (cnt:=PT.get_node_from_path(part_zone, path)) is not None:
+            tt = next(_fields_per_part) # Consume stored value
+            for field in full_fields:
+              gathered_fields[field].append(tt[field])
+              PT.rm_children_from_name(cnt, field) # Remove to avoid double exchange
+            is_empty_l[i] &= (len(PT.get_children_from_label(cnt, 'DataArray_t')) == 0)
+        for fname, fields in gathered_fields.items():
+          PT.new_DataArray(fname, np_utils.concatenate_np_arrays(fields)[1], parent=fake_zsr)
+
+  transfer_dataset = len(full_fields) > 0
+  # Add fam_node_paths in containers_name to have partial exchange on other fields
+  # (filtering empty container)
+  if containers_name == 'ALL':
+    # Case 1 - ALL : we can just propagate ALL to get initial containers + created ones (BCDS)
+    # Filtering will be performed by all_containers()
+    _containers_name = 'ALL'
+  else:
+    # Case 2 - list : complete with non empty created containers
+    comm.Allreduce(is_empty_l, is_empty_g, MPI.LAND)
+    _containers_name = [c for c in containers_name]
+    for i,name in enumerate(fam_node_paths):
+      if not is_empty_g[i] and name not in _containers_name:
+        _containers_name.append(name)
+
+  return transfer_dataset, _containers_name
+
 
 def extract_part_from_family(part_tree: CGNSPartTree,
                              family_name: str,
                              comm: MPIComm,
                              transfer_dataset: bool = True,
-                             containers_name: List[str] = [],
+                             containers_name: Union[List[str], Literal['ALL']] = [],
                              **options) -> CGNSPartTree:
   """Extract the submesh defined by the provided family name from the input volumic
   partitioned tree.
@@ -506,43 +593,28 @@ def extract_part_from_family(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
+  # Search and concat requested PLs to create extracting family on local_part_tree
   local_part_tree, fam_node_paths = _prepare_extract_from_family(part_tree, family_name, comm)
-  part_tree_per_dom = dist_from_part.get_parts_per_blocks(local_part_tree, comm)
-
-  # Adding ZSR to tree
-  there_is_bcdataset = dict((path, False) for path in fam_node_paths)
   if transfer_dataset:
-    for domain, part_zones in part_tree_per_dom.items():
-      for part_zone in part_zones:
+    # If transfer_dataaset, also search associated fields; concat them in 
+    # local extracting family *or* update containers_name if partial fields
+    transfer_dataset, _containers_name = _prepare_extract_from_family_fields(local_part_tree, 
+                                                                             family_name, 
+                                                                             fam_node_paths, 
+                                                                             containers_name,
+                                                                             comm)
+  else:
+    _containers_name = containers_name # Nothing to do : if 'ALL', search is delegated to _extract_part_from_zsr
 
-        for path in fam_node_paths:
-          fam_node = PT.get_node_from_path(part_zone, path)
-          if fam_node is not None:
+  extract_tree, dim = _extract_part_from_zsr(local_part_tree, f"__{family_name}", comm, 
+                                             transfer_dataset, _containers_name, **options)
+  # Rename native container
+  if transfer_dataset:
+    for ext_zone in PT.get_all_Zone_t(extract_tree):
+      cnt = PT.get_child_from_name(ext_zone, f'__{family_name}')
+      if cnt is not None:
+        PT.update_node(cnt, name=family_name)
 
-            if PT.get_label(fam_node)=='BC_t':
-              bc_name = PT.get_name(fam_node)
-              zsr_bc_n = PT.new_ZoneSubRegion(name=bc_name, bc_name=bc_name)
-              there_is_bcdataset[path] = set_transfer_dataset(fam_node, zsr_bc_n, PT.Zone.Type(part_zone))
-              if PT.get_child_from_label(zsr_bc_n, 'DataArray_t') is not None:
-                PT.add_child(part_zone, zsr_bc_n)
-
-            if PT.get_label(fam_node)=="ZoneSubRegion_t":
-              if PT.get_child_from_label(fam_node, 'DataArray_t') is not None:
-                there_is_bcdataset[path] = True
-
-
-  l_containers_name = [name for name in containers_name]
-  # Synchronize container names
-  for node_path, there_is in there_is_bcdataset.items():
-    if transfer_dataset and comm.allreduce(there_is, MPI.LOR):
-      node_name = node_path.split('/')[-1]
-      if node_name not in l_containers_name:
-        l_containers_name.append(node_name) # not to change the initial containers_name list
-
-  extract_tree, dim = _extract_part_from_zsr(local_part_tree, f"__{family_name}", comm,
-                                             transfer_dataset=False,
-                                             containers_name=l_containers_name,
-                                           **options)
   end = time.time()
 
 

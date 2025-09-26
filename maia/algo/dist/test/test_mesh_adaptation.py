@@ -129,7 +129,7 @@ def test_adapt_with_feflo(comm, multi_elt, custom_dir):
   adpt_dist_tree = MA.adapt_mesh_with_feflo(dist_tree,
                                             "FlowSolution/metric",
                                             comm,
-                                            container_names=["FlowSolution"],
+                                            containers_name='ALL',
                                             feflo_opts="-c 100 -cmax 100 -p 4",
                                             **options)
 
@@ -181,7 +181,7 @@ def test_periodic_adapt_with_feflo(comm):
   adpt_dist_tree = maia.algo.dist.adapt_mesh_with_feflo(dist_tree,
                                                         'Metric/metric',
                                                         comm,
-                                                        container_names=['Metric'],
+                                                        containers_name=['Metric'],
                                                         periodic=True,
                                                         feflo_opts=f"-c 10 -cmax 10 -p 4")
   
@@ -214,7 +214,7 @@ def test_periodic_adapt_with_feflo_axisym(comm):
   adpt_dist_tree = maia.algo.dist.adapt_mesh_with_feflo(dist_tree,
                                                         'Metric/metric',
                                                         comm,
-                                                        container_names=['Metric'],
+                                                        containers_name=['Metric'],
                                                         periodic=True,
                                                         feflo_opts=f"-c 10 -cmax 10 -p 4")
   

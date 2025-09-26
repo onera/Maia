@@ -140,7 +140,7 @@ Base CGNSBase_t I4 [3, 3]:
       bce28 BC_t 'Null':
         GridLocation GridLocation_t 'EdgeCenter':
         PointList IndexArray_t I4 [[327, 328]]:
-    maia_topo FlowSolution_t:
+    maia_topo DiscreteData_t:
       GridLocation GridLocation_t 'Vertex':
       vtx_tag DataArray_t:
         I4 : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

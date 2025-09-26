@@ -1,5 +1,6 @@
 from mpi4py import MPI
 import numpy as np
+from collections import defaultdict
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
@@ -13,7 +14,6 @@ from .import closest_points as CLO
 from .import point_cloud_utils as PCU
 
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
-
 
 
 def get_shifted_gnum_from_loc(zones, loc):
@@ -129,21 +129,32 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
   """
   Distributed implementation of maia.algo.interpolate
   """
-  # Early return if containers_name is empty
-  assert isinstance(containers_name, list)
-  if len(containers_name) == 0:
-    return
+  if PT.get_children_from_predicates(src_tree, 'CGNSBase_t/Zone_t') is None:
+    return # Early return if no src zones
 
-  # Guess location of input fields using first input zone
-  first_part = next(PT.iter_all_Zone_t(src_tree))
-  input_loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, containers_name[0]))
+  loc_to_containers_name = defaultdict(list)
 
-  # Create interpolator
-  interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)
+  if containers_name == 'ALL':
+    for loc, pred in zip(['Vertex', 'CellCenter'], [MT.pred.FULL_CTN_VTX, MT.pred.FULL_CTN_CELL]):
+      names = set.intersection(*[{PT.get_name(c) for c in PT.get_children_from_predicate(zone, pred)} 
+                                 for zone in PT.iter_all_Zone_t(src_tree)])
+      loc_to_containers_name[loc] = sorted(names)
+  else:
+    first_part = next(PT.iter_all_Zone_t(src_tree))
+    for cnt in containers_name:
+      loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, cnt))
+      loc_to_containers_name[loc].append(cnt)
 
-  # Exchange fields
-  for container_name in containers_name:
-    interpolator.exchange_fields(container_name)
+  if (lc:=len(loc_to_containers_name)) > 1:
+    mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
+
+  for input_loc, loc_containers_name in loc_to_containers_name.items():
+
+    # Create interpolator
+    interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)
+    # Exchange fields
+    for container_name in loc_containers_name:
+      interpolator.exchange_fields(container_name)
 
 
 
@@ -151,6 +162,7 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **
   """
   Distributed implementation of maia.algo.create_interpolator
   """
+  assert src_location in ['CellCenter', 'Vertex']
   src_dom = PT.get_children_from_predicates(src_tree, 'CGNSBase_t/Zone_t')
   tgt_dom = PT.get_children_from_predicates(tgt_tree, 'CGNSBase_t/Zone_t')
 

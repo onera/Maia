@@ -12,6 +12,27 @@ These algorithms are accessible through the ``maia.algo`` module.
 
 The ``maia.algo.seq`` module contains a few sequential utility algorithms.
 
+
+.. rubric:: Generalities
+
+Here are some remarks applying to all the functions:
+
+- Unless something else specified, functions operate inplace (input tree is modified) and returns ``None``.
+- The ``comm`` argument always refers to the MPI communicator used to
+  create the input tree.
+- Argument ``containers_name`` is used by some functions transfering data fields
+  (eg :func:`~maia.algo.interpolate`). Such function operates on a 'per-container' basis,
+  meaning that only the requested containers (FlowSolution_t, DiscreteData_t or
+  ZoneSubRegion_t nodes) will be treated.
+  Depending on the function, supported containers can be either
+
+  - **full**: data exists for all points or elements of all input zones (typically a FlowSolution);
+  - **partial**: data exists for a susbet of points or elements on some input zones (typically a ZoneSubRegion).
+
+  Expected value for ``containers_name`` is a list of ``str`` or the shortcut ``'ALL'``,
+  in which case the fonction selects all the admissible containers.
+
+
 .. _user_man_dist_algo:
 
 Distributed algorithms

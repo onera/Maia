@@ -15,7 +15,7 @@ import numpy as np
 import Pypdm.Pypdm as PDM
 
 
-def get_tree_info(dist_tree, container_names):
+def get_tree_info(dist_tree, containers_name):
   """
   Get tree informations such as bc_names and interpolated containers.
   """
@@ -33,7 +33,7 @@ def get_tree_info(dist_tree, container_names):
 
   # > Container field names
   field_names = dict()
-  for container_name in container_names:
+  for container_name in containers_name:
     container = PT.find_node_from_name(zone_n, container_name)
     assert PT.Container.GridLocation(container) == 'Vertex'
     field_names[container_name] = [PT.get_name(n) for n in PT.iter_children_from_label(container, 'DataArray_t')]
@@ -109,7 +109,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
     groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
 
   # > Add FlowSolution for vtx tag
-  fs_vtx_tag = PT.new_FlowSolution('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
+  fs_vtx_tag = PT.new_DiscreteData('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
 
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
@@ -206,14 +206,14 @@ def _bc_pl_to_bc_tag_vtx(list_of_bc, vtx_tag):
     vtx_tag[pl-1] = pl
 
 
-def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
+def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
   '''
   Dist_tree conversion to meshb format and writing.
   Arguments :
     - dist_tree       (CGNSDistTree) : dist_tree to convert
     - files           (dict)         : file names for meshb files
     - metric_nodes    (str)          : CGNS metric nodes
-    - container_names (str)          : container_names to be interpolated
+    - containers_name (str)          : containers_name to be interpolated
   '''
 
   dt_size = sum(MT.metrics.dtree_nbytes(dist_tree))
@@ -346,7 +346,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, container_names, constraints):
 
     # > Fields to interpolate
     fields_list = list()
-    for container_name in container_names:
+    for container_name in containers_name:
       container    = PT.get_node_from_name(zone, container_name)
       fields_list += [PT.get_value(n) for n in PT.get_children_from_label(container, 'DataArray_t')]
     if len(fields_list)>0:

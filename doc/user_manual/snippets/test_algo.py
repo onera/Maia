@@ -641,7 +641,7 @@ def test_adapt_with_feflo():
   adpt_dist_tree = adapt_mesh_with_feflo(dist_tree,
                                          "FlowSolution/metric",
                                          MPI.COMM_WORLD,
-                                         container_names=["FlowSolution"],
+                                         containers_name=["FlowSolution"],
                                          feflo_opts="-c 100 -cmax 100 -p 4")
   #adapt_with_feflo@end
 

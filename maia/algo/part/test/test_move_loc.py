@@ -92,7 +92,7 @@ def test_centers_to_node_S(comm) :
     
     maia.algo.compute_elements_center(part_tree, 3, comm)
 
-    ML.centers_to_nodes(part_tree, comm, ["Geometry_3d"])
+    ML.centers_to_nodes(part_tree, comm, 'ALL')
 
     expected_vtx = [[0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5,
                       0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75, 0.25, 0.5, 0.75],
@@ -106,3 +106,54 @@ def test_centers_to_node_S(comm) :
       field = PT.get_np_value(PT.find_node_from_name(sol_cell, f'Center{dir}'))
       assert field.shape == (3,3,3) and field.dtype == float
       assert np.allclose(field.flatten(order='F'), expected_vtx[i])
+
+@pytest_parallel.mark.parallel(3)
+def test_all_containers(comm):
+  if comm.rank == 0:
+    zones = PT.yaml.to_nodes("""
+    Zone.P0.N0 Zone_t:
+      CellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+      VtxFS FlowSolution_t:
+        GridLocation GridLocation_t "Vertex":
+      OtherVtxFS DiscreteData_t: # Skipped because do not exist on P1
+      ZSR ZoneSubRegion_t:
+      SecondCellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+    """)
+  elif comm.rank == 1:
+    zones = PT.yaml.to_nodes("""
+    Zone.P1.N0 Zone_t:
+      CellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+      SecondCellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+      VtxFS FlowSolution_t:
+      ZSR ZoneSubRegion_t:
+    Zone.P1.N1 Zone_t:
+      CellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+      VtxFS FlowSolution_t:
+      OtherCellFS DiscreteData_t: # Skipped because do not exist on other zone
+        GridLocation GridLocation_t "CellCenter":
+      ZSR ZoneSubRegion_t:
+      SecondCellFS FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+    """)
+  else:
+    zones = []
+  # Add fake array, otherwise containers are not selected
+  is_cnt = PT.pred.label_in(['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t'])
+  for zone in zones:
+    for cnt in PT.get_children_from_predicate(zone, is_cnt):
+      PT.new_DataArray('Pressure', None, parent=cnt)
+
+  # Use fake objs for this test
+  CTN = ML.CenterToNode.__new__(ML.CenterToNode)
+  CTN.parts = zones
+  CTN.comm = comm
+  NTC = ML.NodeToCenter.__new__(ML.NodeToCenter)
+  NTC.parts = zones
+  NTC.comm = comm
+  assert CTN.all_containers() == ['CellFS', 'SecondCellFS']
+  assert NTC.all_containers() == ['VtxFS']

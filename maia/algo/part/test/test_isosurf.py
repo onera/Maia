@@ -9,6 +9,8 @@ import maia.pytree.maia   as MT
 
 from maia.algo.part import isosurf as ISO
 
+from maia.utils import test_utils as TU
+
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 dtype = 'I4' if pdm_gnum_dtype == np.int32 else 'I8'
 
@@ -244,3 +246,26 @@ def test_compute_iso_surface(comm):
 
   # Iso value field should be constant
   assert np.allclose(PT.get_node_from_name(part_tree_iso, 'TurbulentDistance')[1], 0.25)
+
+
+@pytest_parallel.mark.parallel(2) 
+def test_multidom(comm):
+  fname = TU.mesh_dir / 'U_Naca0012_multizone.yaml'
+  tree = maia.io.file_to_dist_tree(fname, comm)
+  # Create a field on a single domain
+  maia.algo.compute_elements_center(PT.get_all_Zone_t(tree)[2], 3, comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=True, data_transfer='ALL')
+
+  # Should work
+  stree = maia.algo.part.plane_slice(ptree, [0,0,1,0.5], comm, ['Geometry_3d'])
+  assert len(PT.get_all_Zone_t(stree)) == 3
+  assert PT.get_node_from_name_and_label(stree, 'Geometry_3d', 'DiscreteData_t') is not None
+
+  # Should also work
+  stree = maia.algo.part.plane_slice(ptree, [0,0,1,0.5], comm, 'ALL')
+  assert len(PT.get_all_Zone_t(stree)) == 3
+  assert PT.get_node_from_name_and_label(stree, 'Geometry_3d', 'DiscreteData_t') is not None
+
+  # Should not work (no domain have FlowSol container)
+  with pytest.raises(ValueError):
+    stree = maia.algo.part.plane_slice(ptree, [0,0,1,0.5], comm, ['Geometry_3d', 'FlowSol'])

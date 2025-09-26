@@ -225,7 +225,8 @@ def test_interpolate_fields(comm):
 
 
 @pytest_parallel.mark.parallel(2)
-def test_interpolation_api(comm):
+@pytest.mark.parametrize("all_cnt", [False, True])
+def test_interpolation_api(all_cnt, comm):
   src_zone_0 = PT.yaml.to_node(src_part_0)
   src_zone_1 = PT.yaml.to_node(src_part_1)
   tgt_zone_0 = PT.yaml.to_node(tgt_part_0)
@@ -261,6 +262,7 @@ def test_interpolation_api(comm):
     PT.add_child(src_base, src_zone_1)
     expected_vtx_sol = [expected_vtx_sol[k] for k in []]
 
+  cnt_names = 'ALL' if all_cnt else ['MySolution']
   maia.algo.interpolate(src_tree, tgt_tree, comm, \
       ['MySolution'], 'Vertex', strategy='Closest')
 

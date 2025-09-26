@@ -56,7 +56,7 @@ def unpack_metric(dist_tree, metric_paths):
 def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree, 
                            metric: Union[None, str, List[str]],
                            comm: MPIComm, 
-                           container_names: List[str],
+                           containers_name: List[str],
                            constraints: Optional[str],
                            feflo_opts: str,
                            tmp_dir: str) -> CGNSDistTree:
@@ -89,7 +89,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   metric_type = {0: 'isotrop', 1: 'from_fld', 6: 'from_hess'}[len(metric_nodes)]
 
   # > Get tree structure and names
-  tree_info = get_tree_info(dist_tree, container_names)
+  tree_info = get_tree_info(dist_tree, containers_name)
   tree_info = comm.bcast(tree_info, root=0)
   input_base = PT.find_child_from_label(dist_tree, 'CGNSBase_t')
   input_zone = PT.find_child_from_label(input_base, 'Zone_t')
@@ -97,10 +97,10 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
   # > CGNS to meshb conversion
   if comm.Get_rank()==0:
-    constraint_tags = cgns_to_meshb(dist_tree, in_files, metric_nodes, container_names, constraints)
+    constraint_tags = cgns_to_meshb(dist_tree, in_files, metric_nodes, containers_name, constraints)
 
     # Adapt with feflo
-    feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(container_names)!=0 else []
+    feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(containers_name)!=0 else []
     feflo_command  = ['feflo.a', '-in', in_file_mshb] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()        
     if len(constraint_tags['FaceCenter'])!=0:
       feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(constraint_tags['FaceCenter'])]#[str(tag) for tag in constraint_tags['FaceCenter']]
@@ -155,7 +155,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
   return adapted_dist_tree
 
-def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts, tmp_dir):
+def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo_opts, tmp_dir):
   '''
   Assume that : 
     - Only one Element node for each dimension
@@ -218,7 +218,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 
   mlog.info(f"[Periodic adaptation] Step #2: First adaptation constraining periodic patches boundaries...")
   maia.algo.dist.redistribute_tree(tree, 'gather.0', comm)
-  tree = _adapt_mesh_with_feflo(tree, metric, comm, container_names, bcs_to_constrain, feflo_opts, tmp_dir)
+  tree = _adapt_mesh_with_feflo(tree, metric, comm, containers_name, bcs_to_constrain, feflo_opts, tmp_dir)
 
 
   mlog.info(f"[Periodic adaptation] #3: Removing initial domain...")
@@ -234,14 +234,14 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
   mlog.info(f"[Periodic adaptation] #4: Perform last adaptation constraining periodicities...")
   gc_constraints = [PT.utils.path_tail(gc_path) for pair in perio_jns_pairs for gc_path in pair]
   maia.algo.dist.redistribute_tree(tree, 'gather.0', comm)
-  tree = _adapt_mesh_with_feflo(tree, metric, comm, container_names, gc_constraints, feflo_opts, tmp_dir)
+  tree = _adapt_mesh_with_feflo(tree, metric, comm, containers_name, gc_constraints, feflo_opts, tmp_dir)
 
 
   # > Retrieve periodicities + cleaning file
   PT.rm_nodes_from_name_and_label(tree, 'PERIODIC', 'Family_t', depth=2)
   PT.rm_nodes_from_name_and_label(tree, 'GCS',      'Family_t', depth=2)
   for zone in PT.get_all_Zone_t(tree):
-    PT.rm_children_from_name_and_label(zone, 'maia_topo','FlowSolution_t')
+    PT.rm_children_from_name_and_label(zone, 'maia_topo','DiscreteData_t')
     PT.rm_nodes_from_name_and_label(zone, 'tetra_4_periodic*','BC_t', depth=2)
 
   # > Set family name in BCs for connect_match
@@ -273,7 +273,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo
 def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
                           metric: Union[None, str, List[str]],
                           comm: MPIComm,
-                          container_names: List[str],
+                          containers_name: Union[List[str], Literal['ALL']] = [],
                           periodic: bool = False,
                           feflo_opts: str = "",
                           **options) -> CGNSDistTree:
@@ -324,7 +324,8 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
       single zone trees are managed.
     metric         (str or list) : Path(s) to metric fields (see above)
     comm           (MPIComm)     : MPI communicator
-    container_names(list of str) : Name of some Vertex located FlowSolution to project on the adapted mesh
+    containers_name(list of str or ``'ALL'``) : Name of each Vertex located full container
+      to interpolate on the adapted mesh
     periodic       (boolean)     : perform periodic mesh adaptation
     feflo_opts     (str)         : Additional arguments passed to Feflo
     **options                    : Additional options (see below)
@@ -352,14 +353,21 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   tmp_dir = options.get('tmp_dir', './TMP_adapt_dir')
   constraints = options.get('constraints', None)
 
+  if containers_name == 'ALL':
+    # Discover container names: FS, Vtx located, existing on all zones
+    pred = MT.pred.FULL_CTN_VTX &~ PT.pred.name_is('maia_topo')
+    cnt_per_zones = [{PT.get_name(node) for node in PT.iter_children_from_predicate(zone, pred)}
+                    for zone in PT.get_all_Zone_t(dist_tree)]
+    containers_name = sorted(set.intersection(*cnt_per_zones)) if len(cnt_per_zones) > 0 else []
+
   if periodic:
-    adapted_dist_tree = _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, container_names, feflo_opts, tmp_dir)
+    adapted_dist_tree = _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo_opts, tmp_dir)
   else:
     # > Gathering dist_tree on proc 0
     maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
 
-    adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, container_names, constraints, feflo_opts, tmp_dir)
-    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','FlowSolution_t')
+    adapted_dist_tree = _adapt_mesh_with_feflo(dist_tree, metric, comm, containers_name, constraints, feflo_opts, tmp_dir)
+    PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','DiscreteData_t')
 
     # > Recover original dist_tree
     maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)

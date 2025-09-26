@@ -131,3 +131,34 @@ def exists_everywhere(trees: Sequence[CGNSTree], node_path: CGNSPath, comm: MPIC
     exists_loc = exists_loc and (PT.get_node_from_path(tree, node_path) is not None)
   return comm.allreduce(exists_loc, op=MPI.LAND)
 
+def sets_intersection(sets:Sequence[Set], comm:MPIComm) -> Optional[Set]:
+  """
+  MPI intersection of sets.
+  If the input list is empty on all ranks, None is returned
+  """
+
+  def option_set_intersection(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
+    # Intersection of two set, allowing None as input (skip)
+    if   s1 is None: return s2
+    elif s2 is None: return s1
+    else: return s1 & s2
+
+  loc_intersect = set.intersection(*sets) if len(sets) > 0 else None
+  glo_intersect = comm.allreduce(loc_intersect, option_set_intersection)
+  return glo_intersect
+
+def sets_union(sets:Sequence[Set], comm:MPIComm) -> Optional[Set]:
+  """
+  MPI union of sets.
+  If the input list is empty on all ranks, None is returned
+  """
+
+  def option_set_union(s1:Optional[Set], s2:Optional[Set]) -> Optional[Set]:
+    # Union of two set, allowing None as input (skip)
+    if   s1 is None: return s2
+    elif s2 is None: return s1
+    else: return s1 | s2
+
+  loc_union = set.union(*sets) if len(sets) > 0 else None
+  glo_union = comm.allreduce(loc_union, option_set_union)
+  return glo_union

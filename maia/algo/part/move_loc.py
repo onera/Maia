@@ -11,9 +11,14 @@ from maia.factory.dist_from_part import get_parts_per_blocks
 from . import multidom_gnum
 from . import connectivity_utils
 from . import geometry
+
+from .utils import gather_containers_name
+
 import Pypdm.Pypdm as PDM
 
 class CenterToNode:
+
+  CONTAINER_PRED = MT.pred.FULL_CTN_CELL
 
   def __init__(self, tree: CGNSPartTree, comm: MPIComm, 
                idw_power: int = 1, cross_domain: bool = True):
@@ -21,6 +26,7 @@ class CenterToNode:
     self.parts    = []
     self.weights  = []
     self.vtx_cell = []
+    self.comm     = comm
 
     parts_per_dom = get_parts_per_blocks(tree, comm)
     vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
@@ -67,6 +73,8 @@ class CenterToNode:
 
     self.gmean = PDM.GlobalMean(gnum_list, comm)
 
+  def all_containers(self) -> List[str]:
+    return gather_containers_name(self.parts, CenterToNode.CONTAINER_PRED, 'all', self.comm)
 
   def move_fields(self, container_name: str) -> None:
 
@@ -107,12 +115,16 @@ class CenterToNode:
         PT.new_DataArray(field_name, data_out, parent=fs)
 
 class NodeToCenter:
+
+  CONTAINER_PRED = MT.pred.FULL_CTN_VTX
+
   def __init__(self, tree: CGNSPartTree, comm: MPIComm, idw_power: int = 1) -> None:
 
     self.parts        = []
     self.weights      = []
     self.weightssum   = []
     self.cell_vtx     = []
+    self.comm         = comm
 
     for base in PT.get_all_CGNSBase_t(tree):
       dim = PT.get_np_value(base)[0]
@@ -140,6 +152,9 @@ class NodeToCenter:
         self.weightssum.append(np.add.reduceat(weights, cell_vtx.displs[:-1]))
         self.cell_vtx.append(cell_vtx)
           
+
+  def all_containers(self) -> List[str]:
+    return gather_containers_name(self.parts, NodeToCenter.CONTAINER_PRED, 'all', self.comm)
 
   def move_fields(self, container_name: str) -> None:
 
@@ -173,12 +188,14 @@ class NodeToCenter:
 
 def centers_to_nodes(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
-                     containers_name: List[str] = [], 
+                     containers_name: Union[List[str], Literal['ALL']] = [], 
                      **options) -> None:
   """ Create Vertex located fields from CellCenter located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
-  which can be FlowSolution_t or DiscreteData_t nodes.
+  which must be CellCenter located full containers.
+  Input tree is modified inplace: Vertex containers are created using 
+  ``#Vtx`` suffix.
 
   Interpolation is based on Inverse Distance Weighting 
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
@@ -195,7 +212,7 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   Args:
     part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the containers nodes to transfer.
+    containers_name (list of str or ``'ALL'``) : Name of each container node to transfer.
     **options: Options related to interpolation, see above.
 
   See also:
@@ -212,17 +229,21 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   C2N = CenterToNode(part_tree, comm, **options)
 
+  if containers_name == 'ALL':
+    containers_name = C2N.all_containers()
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
 def nodes_to_centers(part_tree: CGNSPartTree, 
                      comm: MPIComm, 
-                     containers_name: List[str] = [], 
+                     containers_name: Union[List[str], Literal['ALL']] = [], 
                      **options) -> None:
   """ Create CellCenter located fields from Vertex located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
-  which can be FlowSolution_t or DiscreteData_t nodes.
+  which must be vertex located full containers.
+  Input tree is modified inplace: CellCenter containers are created using 
+  ``#Cell`` suffix.
 
   Interpolation is based on Inverse Distance Weighting 
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
@@ -235,7 +256,7 @@ def nodes_to_centers(part_tree: CGNSPartTree,
   Args:
     part_tree  (CGNSPartTree): Partionned tree
     comm       (MPIComm): MPI communicator
-    containers_name (list of str) : List of the names of the containers nodes to transfer.
+    containers_name (list of str or ``'ALL'``) : Name of each container node to transfer.
     **options: Options related to interpolation, see above.
 
   See also:
@@ -252,5 +273,7 @@ def nodes_to_centers(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   N2C = NodeToCenter(part_tree, comm, **options)
 
+  if containers_name == 'ALL':
+    containers_name = N2C.all_containers()
   for container_name in containers_name:
     N2C.move_fields(container_name)

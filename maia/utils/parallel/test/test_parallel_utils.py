@@ -159,3 +159,36 @@ def test_exists_everywhere(comm):
     trees.append(zone)
   assert utils.exists_everywhere(trees, 'ZoneBC/BCA', comm) == True
   assert utils.exists_everywhere(trees, 'ZoneBC/BCB', comm) == False
+
+@pytest_parallel.mark.parallel(3)
+def test_sets_intersection(comm):
+  if comm.rank == 0:
+    sets1 = [{'apple', 'banana'}]
+    sets2 = [{'apple', 'banana'}]
+  elif comm.rank == 1:
+    sets1 = [] # No sets
+    sets2 = [{'banana', 'watermelon'}, set()] # Empty set
+  else:
+    sets1 = [{'banana', 'pear', 'apple'}, {'peach', 'banana'}]
+    sets2 = [{'banana', 'pear', 'apple'}, {'peach', 'banana'}]
+  
+  assert utils.sets_intersection(sets1, comm) == {'banana'}
+  assert utils.sets_intersection(sets2, comm) == set()
+  assert utils.sets_intersection([], comm) == None
+
+@pytest_parallel.mark.parallel(3)
+def test_sets_union(comm):
+  if comm.rank == 0:
+    sets1 = [{'apple', 'banana'}]
+    sets2 = [{'apple', 'banana'}]
+  elif comm.rank == 1:
+    sets1 = [] # No sets
+    sets2 = [{'banana', 'watermelon'}, set()] # Empty set
+  else:
+    sets1 = [{'banana', 'pear', 'apple'}, {'peach', 'banana'}]
+    sets2 = [{'banana', 'pear', 'apple'}, {'peach', 'banana'}]
+  
+  assert utils.sets_union(sets1, comm) == {'apple', 'pear', 'banana', 'peach'}
+  assert utils.sets_union(sets2, comm) == {'apple', 'pear', 'banana', 'peach', 'watermelon'}
+  assert utils.sets_union([], comm) == None
+  
