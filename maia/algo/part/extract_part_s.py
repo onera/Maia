@@ -4,7 +4,7 @@ import maia.pytree.maia as MT
 from   maia.factory  import dist_from_part
 from   maia.factory.partitioning.split_S.part_zone import compute_face_gnum
 from   maia.utils import s_numbering
-from   .extraction_utils   import LOC_TO_DIM, DIMM_TO_DIMF, build_intersection_numbering, discover_containers
+from   .extraction_utils   import LOC_TO_DIM3, DIMM_TO_DIMF, build_intersection_numbering, discover_containers
 from   maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import numpy as np
@@ -86,8 +86,9 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
       PT.new_DataArray(fld_name, extract_fld_data, parent=FS_ep)
 
 
-def exchange_field_s(part_tree, extract_tree, mesh_dim, etb, container_names, comm) :
+def exchange_field_s(part_tree, extract_tree, dims, etb, container_names, comm) :
   # Get zones by domains (only one domain for now)
+  mesh_dim = dims[1]
   extract_part_tree_per_dom = dist_from_part.get_parts_per_blocks(extract_tree, comm)
   for container_name in container_names:
     for i_domain, dom_ep_part_zones in enumerate(extract_part_tree_per_dom.items()):
@@ -113,7 +114,7 @@ def extract_part_one_domain_s(part_zones, point_range, location, comm):
 
   etb = dict()
 
-  dim = LOC_TO_DIM[location]
+  dim = LOC_TO_DIM3[location]
 
   for i_part, part_zone in enumerate(part_zones):
     zone_name = PT.get_name(part_zone)

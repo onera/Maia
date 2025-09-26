@@ -33,11 +33,11 @@ def test_extract_part_simple_u(location, comm):
   part_tree = sample_part_tree('Poly', comm)
 
   pl = np.array([[1,2]], np.int32)
-  if location=='CellCenter': 
+  if location=='CellCenter':
     pl += PT.Zone.n_face(PT.get_all_Zone_t(part_tree)[0])
 
   ex_zone, ptp_data = EP.extract_part_one_domain_u(PT.get_all_Zone_t(part_tree), \
-      [pl], location, comm)
+      [pl], (3,EP.LOC_TO_DIM[3][location]), comm)
   assert len(ex_zone)==1
   ex_zone = ex_zone[0]
   if location=='Vertex':
@@ -123,7 +123,7 @@ def test_extract_part_obj(cgns_name, comm):
   else:
     assert len(PT.get_all_Zone_t(extracted_tree)) == 1
     assert (PT.get_all_CGNSBase_t(extracted_tree)[0][1] == [2,3]).all()
-  
+
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
 @pytest.mark.parametrize('partial', [False, True])
@@ -219,7 +219,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
   assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][0][pl-PT.Element.Range(ngon)[0]], data)
 
 def portable_partitioning(dist_tree, comm):
-  """ Create a custom partioning (chosing cells for each part) to ensure portability 
+  """ Create a custom partioning (chosing cells for each part) to ensure portability
   The switch will be remove when PDM 2.6 is no longer supported
   """
   from Pypdm.Pypdm import MultiPart
@@ -230,7 +230,7 @@ def portable_partitioning(dist_tree, comm):
     target_part = [[np.array([0,0,1,2,2,1,2,2,2], np.int32)],
                    [np.array([0,0,1,2,2,1,2,2,2], np.int32)],
                    [np.array([0,0,1,2,2,1,2,2,2], np.int32)]][comm.rank]
-    
+
     return maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts,
                                             target_part=target_part, data_transfer='ALL')
   from maia.transfer import protocols as MEP
@@ -276,7 +276,7 @@ def portable_partitioning(dist_tree, comm):
 
 @pytest_parallel.mark.parallel(3)
 def test_extr_U_local(comm):
-  
+
   dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
   # Prepare dist tree (add some fields)
   zone = PT.find_node_from_label(dist_tree, 'Zone_t')
@@ -325,7 +325,7 @@ def test_extr_U_local(comm):
       bc = PT.get_node_from_name_and_label(part_zone, bc_name, 'BC_t')
       if bc is not None:
         PT.new_FamilyName('EXTRACT', parent=bc)
-   
+
   extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm,
                                                containers_name=['Geometry_2d', 'VtxSol', 'VtxSubRegion'],
                                                equilibrate=False)
@@ -343,7 +343,7 @@ def test_extr_U_local(comm):
     assert (PT.get_np_value(PT.find_child_from_name(match1, 'PointListDonor')) == [3,6,9]).all()
     assert (PT.get_np_value(PT.find_child_from_name(match2, 'PointList')) == [6,14,22]).all()
     assert (PT.get_np_value(PT.find_child_from_name(match2, 'PointListDonor')) == [5,10,15]).all()
-    
+
   for zone in extracted_zones:
     vtxsol = PT.find_child_from_name(zone, 'VtxSol')
     assert PT.get_child_from_name(vtxsol, 'PointList') is None
@@ -356,7 +356,7 @@ def test_extr_U_local(comm):
       assert (PT.get_np_value(PT.find_child_from_name(facesol, 'CenterX')) == 0).all()
     if PT.get_name(zone) == 'Zone.P0.N1':
       assert (PT.get_np_value(PT.find_child_from_name(facesol, 'CenterX')) == 1).all()
-    
+
     vtxzsr = PT.get_child_from_name(zone, 'VtxSubRegion')
     if PT.get_name(zone) == 'Zone.P0.N0':
       assert (MT.globalnumbering_value(vtxzsr, 'Index') == [5, 6, 2, 1, 9, 10, 13, 14]).all()
@@ -413,7 +413,7 @@ def test_bc_name_api(cgns_name, bc_loc, comm):
     distri[:] = [5*irank, 16 if irank==2 else 5*(irank+1), 16]
     _pl = (np.arange(1, 4**3, 4, dtype=pl[1].dtype)[distri[0]:distri[1]]).reshape((1,-1), order='F')
     PT.set_value(pl, _pl)
-  
+
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
 
   # Add a (full) field to the BC
@@ -421,7 +421,7 @@ def test_bc_name_api(cgns_name, bc_loc, comm):
   if bc is not None:
     bcds = PT.new_BCDataSet(parent=bc)
     PT.new_BCData('DirichletData', fields={'range': np.arange(PT.Subset.n_elem(bc))}, parent=bcds)
-  
+
   extracted_tree = EP.extract_part_from_bc_name(part_tree, 'Xmin', comm)
 
   zone_n = PT.get_all_Zone_t(extracted_tree)
@@ -448,14 +448,14 @@ def test_from_fam_api(dim_zsr, comm):
   part_zone = PT.get_node_from_label(part_tree, 'Zone_t')
   bc_n = PT.get_node_from_name(part_zone, 'Xmin')
   PT.new_node('FamilyName', label='FamilyName_t', value='EXTRACT', parent=bc_n)
-  
+
   if dim_zsr=="FaceCenter":
     if PT.get_node_from_name(part_zone, 'Xmax') is not None:
       zsr_n = PT.new_ZoneSubRegion("ZSR", bc_name='Xmax', family='EXTRACT', parent=part_zone)
     extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
     n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
     assert comm.allreduce(n_cell_extr, op=MPI.SUM) == 18
-  
+
   elif dim_zsr=="CellCenter":
     zsr_n = PT.new_ZoneSubRegion("ZSR", loc=dim_zsr,
       point_list=np.array([[1]], dtype=np.int32), family='EXTRACT', parent=part_zone)
@@ -486,7 +486,7 @@ def test_from_fam_zsr_api(valid, comm):
     zsr_n = PT.new_ZoneSubRegion("ZSR_Xmax", bc_name='Xmax', family='EXTRACT', parent=part_zone)
     if not valid:
       PT.set_value(PT.get_child_from_name(bc_n ,'GridLocation'), 'Vertex')
-  
+
   if valid:
     extracted_tree = EP.extract_part_from_family(part_tree, 'EXTRACT', comm)
     n_cell_extr = PT.Zone.n_cell(PT.get_all_Zone_t(extracted_tree)[0])
@@ -521,3 +521,246 @@ def test_void_extraction(comm):
   assert is_empty_tree(extractor.get_extract_part_tree())
   assert 'Family "EXTRACT" does not exist in input tree' in log_collector.logs
 
+
+@pytest.mark.parametrize("equilibrate", [True, False])
+@pytest_parallel.mark.parallel(2)
+def test_extract_from_zsr_U_2d(equilibrate, comm):
+  
+
+  # Prepare refs
+  ref_face = PT.yaml.to_cgns_tree("""
+Base CGNSBase_t I4 [2, 3]:
+  Zone Zone_t I4 [[24, 15, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t:
+        R8 : [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5,
+              -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
+      CoordinateY DataArray_t:
+        R8 : [-0.5, -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5,
+              0.5, 0.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5]
+      CoordinateZ DataArray_t:
+        R8 : [-2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5,
+              -2.5, -2.5, -2.5, -2.5, -2.5, -2.5]
+    EdgeElements Elements_t I4 [3, 0]:
+      ElementRange IndexRange_t I4 [1, 38]:
+      ElementConnectivity DataArray_t:
+        I4 : [2, 1, 3, 2, 4, 3, 7, 1, 5, 4, 2, 8, 6, 5, 3, 9, 4, 10, 8, 7, 5, 11, 9, 8, 6, 12, 10, 9, 13, 7, 11, 10, 8, 14,
+              12, 11, 9, 15, 10, 16, 14, 13, 11, 17, 15, 14, 12, 18, 16, 15, 19, 13, 17, 16, 14, 20, 18, 17, 15, 21, 16,
+              22, 20, 19, 17, 23, 21, 20, 18, 24, 22, 21, 23, 22, 24, 23]
+    NGonElements Elements_t I4 [22, 0]:
+      ElementRange IndexRange_t I4 [39, 53]:
+      ElementStartOffset DataArray_t I4 [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60]:
+      ElementConnectivity DataArray_t:
+        I4 : [7, 1, 2, 8, 3, 9, 8, 2, 4, 10, 9, 3, 5, 11, 10, 4, 6, 12, 11, 5, 13, 7, 8, 14, 9, 15, 14, 8, 10, 16, 15, 9,
+              11, 17, 16, 10, 12, 18, 17, 11, 19, 13, 14, 20, 15, 21, 20, 14, 16, 22, 21, 15, 17, 23, 22, 16, 18, 24, 23,
+              17]
+    ZoneBC ZoneBC_t:
+      Xmax BC_t 'Null':
+        GridLocation GridLocation_t 'EdgeCenter':
+        PointList IndexArray_t I4 [[13, 24, 35]]:
+      Ymax BC_t 'Null':
+        GridLocation GridLocation_t 'EdgeCenter':
+        PointList IndexArray_t I4 [[32, 34, 36, 37, 38]]:
+      Xmin BC_t 'Null':
+        GridLocation GridLocation_t 'EdgeCenter':
+        PointList IndexArray_t I4 [[4, 15, 26]]:
+    ZSR_Faces ZoneSubRegion_t:
+      GridLocation GridLocation_t 'CellCenter':
+      PointList IndexArray_t I4 [[39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53]]:
+      cx DataArray_t:
+        R8 : [-2.0, -1.0, 0.0, 1.0, 2.0, -2.0, -1.0, 0.0, 1.0, 2.0, -2.0, -1.0, 0.0, 1.0, 2.0]
+    FlowSolution_NC FlowSolution_t:
+      GridLocation GridLocation_t 'Vertex':
+      cx DataArray_t:
+        R8 : [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5,
+              -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
+    FlowSolution_CC FlowSolution_t:
+      GridLocation GridLocation_t 'CellCenter':
+      cx DataArray_t:
+        R8 : [-2.0, -1.0, 0.0, 1.0, 2.0, -2.0, -1.0, 0.0, 1.0, 2.0, -2.0, -1.0, 0.0, 1.0, 2.0]
+  """)
+  if not equilibrate: # Somehow in local mode, one PL is different
+    node = PT.find_node_from_name(ref_face, 'Ymax')
+    pl = PT.find_child_from_name(node, 'PointList')
+    PT.set_value(pl, np.array([[32, 34, 37, 36, 38]]))
+
+
+  ref_edge = PT.yaml.to_cgns_tree("""
+Base CGNSBase_t I4 [1, 3]:
+  Zone Zone_t I4 [[24, 33, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t:
+        R8 : [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5,
+              -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
+      CoordinateY DataArray_t:
+        R8 : [-0.5, -0.5, -0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5,
+               2.5, 2.5, 2.5, 2.5, 2.5]
+      CoordinateZ DataArray_t:
+        R8 : [-2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5,
+              -2.5, -2.5, -2.5, -2.5, -2.5, -2.5]
+    EdgeElements Elements_t I4 [3, 0]:
+      ElementRange IndexRange_t I4 [1, 33]:
+      ElementConnectivity DataArray_t:
+        I4 : [7, 1, 2, 8, 3, 9, 4, 10, 8, 7, 5, 11, 9, 8, 6, 12, 10, 9, 13, 7, 11, 10, 8, 14, 12, 11, 9, 15, 10, 16, 14,
+              13, 11, 17, 15, 14, 12, 18, 16, 15, 19, 13, 17, 16, 14, 20, 18, 17, 15, 21, 16, 22, 20, 19, 17, 23, 21, 20,
+              18, 24, 22, 21, 23, 22, 24, 23]
+    ZoneBC ZoneBC_t:
+      Xmax BC_t 'Null':
+        GridLocation GridLocation_t 'CellCenter':
+        PointList IndexArray_t I4 [[8, 19, 30]]:
+      Ymax BC_t 'Null':
+        GridLocation GridLocation_t 'CellCenter':
+        PointList IndexArray_t I4 [[27, 29, 31, 32, 33]]:
+      Xmin BC_t 'Null':
+        GridLocation GridLocation_t 'CellCenter':
+        PointList IndexArray_t I4 [[1, 10, 21]]:
+    ZSR_Edges ZoneSubRegion_t:
+      GridLocation GridLocation_t 'CellCenter':
+      PointList IndexArray_t:
+        I4 : [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+              30, 31, 32, 33]]
+      cx DataArray_t:
+        R8 : [-2.5, -1.5, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, -2.5, 1.0,
+              -1.5, 2.0, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, -2.5, 1.0,
+              -1.5, 2.0, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, 1.0, 2.0]
+    FlowSolution_NC FlowSolution_t:
+      GridLocation GridLocation_t 'Vertex':
+      cx DataArray_t:
+        R8 : [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5,
+              -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
+  """)
+  if not equilibrate: # Somehow in local mode, one PL is different
+    PT.rm_nodes_from_label(ref_edge, 'ZoneBC_t')
+
+
+  # This switch is because Hilbert splitter differs in local / reeq mode.
+  # To remove if this is fixed
+  if equilibrate:
+    cx = "[-0.5, -1.5, -2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 2.5, 1.5, 0.5, 0.5, 1.5, 2.5, -0.5, -1.5, -2.5]"
+    cy = "[2.5, 2.5, 2.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5, 2.5, 2.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]"
+    sol = "[-0.5, -1.5, -2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 2.5, 1.5, 0.5, 0.5, 1.5, 2.5, -0.5, -1.5, -2.5]"
+  else:
+    cx = "[-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]"
+    cy = "[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5]"
+    sol = "[-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]"
+  ref_vtx = PT.yaml.to_cgns_tree(f"""
+
+Base CGNSBase_t I4 [2, 3]:
+  Zone Zone_t I4 [[18, 0, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t R8 {cx}:
+      CoordinateY DataArray_t R8 {cy}:
+      CoordinateZ DataArray_t:
+        R8 : [-2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5, -2.5]
+    ZSR_Vtx ZoneSubRegion_t:
+      GridLocation GridLocation_t 'Vertex':
+      PointList IndexArray_t I4 [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]]:
+      cx DataArray_t R8 {sol}:
+    FlowSolution_NC FlowSolution_t:
+      GridLocation GridLocation_t 'Vertex':
+      cx DataArray_t R8 {sol}:
+  """)
+
+
+  # > Generate tree
+  n_vtx  = 6
+  n_part = 2
+  dist_tree = maia.factory.generate_dist_block(n_vtx, 'QUAD_4', comm, [-2.5, -2.5, -2.5], 5.)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+  zone = PT.find_node_from_label(dist_tree, 'Zone_t')
+  ztype = PT.get_np_value(zone).dtype
+
+  # Create CC FlowSolution
+  face_center = maia.algo.geometry._compute_elements_center(zone, 2, comm)
+  fcx = face_center[0::3]
+  fcy = face_center[1::3]
+  PT.new_FlowSolution('FlowSolution_CC', loc="CellCenter", fields={'cx': fcx}, parent=zone)
+
+  # Create EC FlowSolution (not supported)
+  edge_center = maia.algo.geometry._compute_elements_center(zone, 1, comm)
+  ecx = edge_center[0::3]
+  ecy = edge_center[1::3]
+  # PT.new_FlowSolution('FlowSolution_EC', loc="EdgeCenter", fields={'cx': ecx}, parent=zone)
+
+  # Create NC FlowSolution
+  gc = PT.find_child_from_name(zone, 'GridCoordinates')
+  cx = PT.get_np_value(PT.find_child_from_name(gc, 'CoordinateX'))
+  cy = PT.get_np_value(PT.find_child_from_name(gc, 'CoordinateY'))
+  PT.new_FlowSolution('FlowSolution_NC', loc="Vertex", fields={'cx': cx}, parent=zone)
+
+  # Create ZSR on Faces with FlowSolution
+  pl_faces = (np.where(fcy > 0.)[0]).astype(ztype)
+  bck = pl_faces.copy()
+  fcx = fcx[pl_faces]
+  ngon = PT.Zone.NGonNode(zone)
+  distrib_faces = MT.distribution_value(zone, 'Cell')
+  pl_faces += PT.Element.Range(ngon)[0] + distrib_faces[0]
+  zsr_faces = PT.new_ZoneSubRegion("ZSR_Faces", point_list=pl_faces.reshape((1,-1), order='F'), loc='CellCenter', fields={'cx': fcx}, parent=zone)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_faces.size, comm)}, zsr_faces)
+
+  # Create ZSR on Edges with FlowSolution
+  pl_edges = (np.where(ecy > 0.)[0]).astype(ztype)
+  ecx = ecx[pl_edges]
+  bar_2 = MT.Zone.EdgeNode(zone)
+  distrib_edges = MT.distribution_value(bar_2, 'Element')
+  pl_edges += PT.Element.Range(bar_2)[0] + distrib_edges[0]
+  zsr_edges = PT.new_ZoneSubRegion("ZSR_Edges", point_list=pl_edges.reshape((1,-1), order='F'), loc='EdgeCenter', fields={'cx': ecx}, parent=zone)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_edges.size, comm)}, zsr_edges)
+
+  # Create ZSR on Vertices with FlowSolution
+  pl_vtx = (np.where(cy > 0.)[0]).astype(ztype)
+  cx = cx[pl_vtx]
+  distrib_vtx = MT.distribution_value(zone, 'Vertex')
+  pl_vtx += 1 + distrib_vtx[0]
+  zsr_vtx = PT.new_ZoneSubRegion("ZSR_Vtx", point_list=pl_vtx.reshape((1,-1), order='F'), loc='Vertex', fields={'cx': cx}, parent=zone)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_vtx.size, comm)}, zsr_vtx)
+
+  # Partionning option
+  zone_to_parts = maia.factory.partitioning.compute_regular_weights(dist_tree, comm, n_part)
+  part_tree     = maia.factory.partition_dist_tree(dist_tree, comm,
+                                                   zone_to_parts=zone_to_parts,
+                                                   data_transfer='ALL',
+                                                   preserve_orientation=True)
+
+  # Extract part Faces
+  part_tree_ep = EP.extract_part_from_zsr(part_tree, "ZSR_Faces", comm,
+                                          equilibrate=equilibrate,
+                                          transfer_dataset=False,
+                                          graph_part_tool="ptscotch",
+                                          containers_name=['FlowSolution_NC','FlowSolution_CC','ZSR_Faces'])
+
+  # > Part to dist
+  dist_tree_ep = maia.factory.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
+  ftree_ep = maia.factory.dist_to_full_tree(dist_tree_ep, comm)
+  if comm.rank == 0:
+    assert maia.pytree.is_same_tree(ref_face, ftree_ep, abs_tol=1e-14, type_tol=True)
+
+
+  # Extract part Edges
+  part_tree_ep = EP.extract_part_from_zsr(part_tree, "ZSR_Edges", comm,
+                                          equilibrate=equilibrate,
+                                          transfer_dataset=False,
+                                          graph_part_tool="ptscotch",
+                                          containers_name=['FlowSolution_NC','ZSR_Edges'])
+
+  # > Part to dist
+  dist_tree_ep = maia.factory.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
+  ftree_ep = maia.factory.dist_to_full_tree(dist_tree_ep, comm)
+  if comm.rank == 0:
+    assert maia.pytree.is_same_tree(ref_edge, ftree_ep, abs_tol=1e-14, type_tol=True)
+    
+
+  # Extract part Vertices
+  part_tree_ep = EP.extract_part_from_zsr(part_tree, "ZSR_Vtx", comm,
+                                          equilibrate=equilibrate,
+                                          transfer_dataset=False,
+                                          graph_part_tool='hilbert',
+                                          containers_name=['FlowSolution_NC','ZSR_Vtx'])
+  # > Part to dist
+  dist_tree_ep = maia.factory.recover_dist_tree(part_tree_ep, comm, 'FIELDS')
+  ftree_ep = maia.factory.dist_to_full_tree(dist_tree_ep, comm)
+  if comm.rank == 0:
+    assert maia.pytree.is_same_tree(ref_vtx, ftree_ep, abs_tol=1e-14, type_tol=True)

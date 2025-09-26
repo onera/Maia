@@ -13,7 +13,7 @@ from maia.transfer import utils                as TEU
 from maia.factory  import dist_from_part
 from maia.factory.partitioning import part_bound_orient as PBO
 from maia.utils    import np_utils, layouts
-from .extraction_utils  import local_pl_offset, LOC_TO_DIM, get_partial_container_stride_and_order
+from .extraction_utils  import local_pl_offset, LOC_TO_DIM3, get_partial_container_stride_and_order
 from .point_cloud_utils import create_sub_numbering
 
 import Pypdm.Pypdm as PDM
@@ -179,7 +179,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
       if len(part1_data)!=0 and part1_data[0].size!=0:
         assert iso_part_zone is not None
         new_point_list = np.where(part1_stride[0]==1)[0]
-        point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[gridLocation]-1)+1
+        point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM3[gridLocation]-1)+1
         new_pl_node = PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=container_iso)
         partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]] 
       else:

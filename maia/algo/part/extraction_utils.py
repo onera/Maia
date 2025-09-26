@@ -9,26 +9,30 @@ from maia.typing import *
 
 import numpy as np
 
-LOC_TO_DIM   = {'Vertex':0,
-                'EdgeCenter':1,
-                'FaceCenter':2, 'IFaceCenter':2, 'JFaceCenter':2, 'KFaceCenter':2,
-                'CellCenter':3}
+LOC_TO_DIM2 = {'Vertex':0,
+               'EdgeCenter':1, 'IEdgeCenter':1, 'JEdgeCenter':1,
+               'CellCenter':2}
+LOC_TO_DIM3 = {'Vertex':0,
+               'EdgeCenter':1,
+               'FaceCenter':2, 'IFaceCenter':2, 'JFaceCenter':2, 'KFaceCenter':2,
+               'CellCenter':3}
+LOC_TO_DIM = {3: LOC_TO_DIM3, 2: LOC_TO_DIM2}
 
 DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
-               # 1: {'Vertex': None,    'EdgeCenter':None, 'FaceCenter':None, 'CellCenter':None},
-                 2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter', 
-                     'IFaceCenter': 'CellCenter', 'JFaceCenter': 'CellCenter', 'KFaceCenter': 'CellCenter'},
+                 1: {'Vertex':'Vertex', 'EdgeCenter':'CellCenter'},
+                 2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter',
+                     'IFaceCenter': 'CellCenter', 'JFaceCenter': 'CellCenter', 'KFaceCenter': 'CellCenter', 'CellCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
 
 def is_elt_of_dim(dim):
   return PT.pred.NodePredicate(lambda n: PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n)==dim)
 
-def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_name:str, 
+def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_name:str,
                         patch_type:str, comm:MPIComm) -> Tuple[Optional[CGNSTree], str, bool]:
   mask_zone = PT.new_Zone('MaskedZone')
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, container_name, comm, \
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
-  
+
   fields_query = PT.pred.label_in(['DataArray_t', patch_type])
   dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
   mask_container = PT.get_child_from_name(mask_zone, container_name)
@@ -47,7 +51,7 @@ def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_nam
   elif gc_descriptor_n is not None:
     gc_name      = PT.get_str_value(gc_descriptor_n)
     dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, ['ZoneGridConnectivity_t', gc_name], comm, child_list=[patch_name, 'GridLocation_t'])
-  
+
   if PT.get_label(mask_container)=='ZoneSubRegion_t':
     ref_zsr_node = PT.Container.SubsetNode(mask_container, mask_zone)
     patch_node   = PT.get_child_from_predicates(ref_zsr_node, f'{patch_name}')
@@ -62,7 +66,7 @@ def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_nam
   # dtypes: gives the information path -> dtype
   dtypes = dict()
   # for each path in each zone:
-  #   - if node is None -> do nothing 
+  #   - if node is None -> do nothing
   #   - else, store its dtype and do not look into other zones
   #     ==> we suppose that all Zone/<path> nodes have the same dtype
   for path in paths:
@@ -85,7 +89,7 @@ def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_nam
   assert (len(dtypes) == len(paths))
   for full_path, dtype in dtypes.items():
     PT.set_value(PT.find_node_from_path(mask_zone, full_path), np.empty(0, dtype))
-        
+
   return mask_container, grid_location, partial_field
 
 def local_pl_offset(part_zone:CGNSTree, dim:int) -> int:
@@ -136,7 +140,8 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
     if container is not None:
       # > Get the right node to get PL (if ZSR linked to BC or GC)
       point_list_n = get_relative_pl(container, part_zone)
-      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, LOC_TO_DIM[gridLocation]) # Gnum start at 1
+      _LOC_TO_DIM = LOC_TO_DIM[PT.Zone.CellDimension(part_zone)]
+      point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, _LOC_TO_DIM[gridLocation]) # Gnum start at 1
 
     # Get p2p gnums (remind that ptp is from extracted mesh (part1) to input mesh (part2))
     part_gnum1_idx = ptp.get_gnum1_come_from() [i_part]['come_from_idx'] # Get partition order
@@ -159,7 +164,7 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
       pl_mask  = point_list==ref_lnum2[np.take(order, idx, mode='clip')]
       true_idx = idx[pl_mask]
 
-      # Number of part1 elements in an element of part2 
+      # Number of part1 elements in an element of part2
       n_elt_of1_in2 = np.diff(part_gnum1_idx)[true_idx]
 
       sort_true_idx = np.argsort(true_idx)
@@ -170,15 +175,15 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
       pl_gnum1.append(pl_gnum1_tmp)
 
       # PL in gnum1 order
-      pl_to_gnum1_start = part_gnum1_idx[true_idx]         
+      pl_to_gnum1_start = part_gnum1_idx[true_idx]
       pl_to_gnum1_stop  = pl_to_gnum1_start+n_elt_of1_in2
       pl_to_gnum1 = np_utils.multi_arange(pl_to_gnum1_start, pl_to_gnum1_stop)
-      
+
       # Stride variable
       stride_tmp = np.zeros(part_gnum1_idx[-1], dtype=np.int32)
       stride_tmp[pl_to_gnum1] = 1
       stride.append(stride_tmp)
-    
+
   return pl_gnum1, stride
 
 def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm):
@@ -202,7 +207,7 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
 
     zone_name = PT.get_name(extract_zone)
     part_zone = PT.get_node_from_name_and_label(part_tree, zone_name, 'Zone_t')
-    
+
     parent_part1_pl = etb[zone_name][parent_lnum_path[grid_location]]
 
     subset_n = PT.get_child_from_name(part_zone,container_name)
@@ -240,7 +245,7 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
                                 [min(part1_ijk[2]),max(part1_ijk[2])]]))
 
       part2_elt_gnum = MT.globalnumbering_value(part_zone, LOC_TO_GNUM[grid_location])
-      
+
       partial_gnum.append(as_pdm_gnum(part2_elt_gnum[part2_pl[lnum2]-1]))
     else:
       part1_in_part2.append(np.empty(0, dtype=np.int32))
