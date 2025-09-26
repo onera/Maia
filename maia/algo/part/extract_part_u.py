@@ -1,3 +1,4 @@
+from packaging.version import Version
 from mpi4py import MPI
 import numpy as np
 import operator
@@ -23,6 +24,8 @@ import cmaia.part_algo as cpart_algo
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import Pypdm.Pypdm as PDM
+
+PDM_VERSION = Version(PDM.__version__)
 
 # ExtractPart API changed between PDM2.6 and PDM2.7 (see !153), this switch allow to use good API
 EP_OLD_API = hasattr(PDM.ExtractPart, 'extract_part_group_get')
@@ -393,9 +396,13 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
 
-  # In local mode, 'native' groups (eg face groups if we extract faces) are not yet supported by PDM
-  # so we exclude them from set / get by using < instead of <= in bc parsing
-  bc_op = operator.lt if (dim == parent_dim or not equilibrate) else operator.le
+  if Version('2.7') <= PDM_VERSION:
+    bc_op = operator.le
+  else:
+    # Some group extractions are not supported in former versions of PDM:
+    #  - cell_dim = parent dim (eg cell group if extracting cells from a 3D mesh)
+    #  - dimgroup = tgt_dim (eg face group if extracting faces from a 3D mesh)
+    bc_op = operator.lt if (dim == parent_dim or not equilibrate) else operator.le
   
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells

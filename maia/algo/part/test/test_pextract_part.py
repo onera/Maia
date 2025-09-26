@@ -1,3 +1,4 @@
+from packaging.version import Version
 from mpi4py import MPI
 import pytest
 import pytest_parallel
@@ -10,6 +11,9 @@ from   maia.utils import s_numbering, par_utils
 from   maia.utils import logging as mlog
 
 from maia.algo.part import extract_part as EP
+
+from Pypdm.Pypdm import __version__ as _PDM_VERSION
+PDM_VERSION = Version(_PDM_VERSION)
 
 class LogCapture():
   def __init__(self):
@@ -669,7 +673,12 @@ Base CGNSBase_t I4 [1, 3]:
               -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
   """)
   if not equilibrate: # Somehow in local mode, one PL is different
-    PT.rm_nodes_from_label(ref_edge, 'ZoneBC_t')
+    if Version('2.7') <= PDM_VERSION:
+      node = PT.find_node_from_name(ref_edge, 'Ymax')
+      pl = PT.find_child_from_name(node, 'PointList')
+      PT.set_value(pl, np.array([[27, 32, 29, 33, 31]]))
+    else: # Was not supported in 2.6
+      PT.rm_nodes_from_label(ref_edge, 'ZoneBC_t')
 
 
   # This switch is because Hilbert splitter differs in local / reeq mode.
@@ -866,3 +875,39 @@ def test_all_transfer(transfer_dataset, eq, comm):
     assert par_utils.exists_anywhere([ext_zone], name, comm) == False
   assert par_utils.exists_anywhere([ext_zone], 'FAM', comm) == transfer_dataset
   assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset
+
+@pytest.mark.skipif(PDM_VERSION < Version('2.7'), reason="Require PDM >= 2.7")
+@pytest_parallel.mark.parallel(2)
+def test_vol_groups(comm):
+  tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  maia.algo.pe_to_nface(tree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  
+  # Create BC groups on dist tree
+  distri = MT.distribution_value(zone, 'Cell')
+  cell_gn = np.arange(distri[0]+1, distri[1]+1)
+  is_pair = (cell_gn % 2) == 0
+  offset = PT.Element.Range(PT.Zone.NFaceNode(zone))[0] + distri[0]
+  pair_pl = (np.where(is_pair) + offset).astype(np.int32)
+  impair_pl = (np.where(~is_pair) + offset).astype(np.int32)
+
+  zbc = PT.find_node_from_label(zone, 'ZoneBC_t')
+  bc = PT.new_BC("Pair", loc='CellCenter', point_list=pair_pl, parent=zbc)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pair_pl.size, comm)}, bc)
+  bc = PT.new_BC("Impair", loc='CellCenter', point_list=impair_pl, parent=zbc)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(impair_pl.size, comm)}, bc)
+
+  to_extract = (50 <= cell_gn) & (cell_gn < 150)
+  extr_pl = (np.where(to_extract)[0]+offset).astype(zone[1].dtype)
+  extr_pl = extr_pl.reshape((1,-1), order='F')
+  zsr = PT.new_ZoneSubRegion('ZSR', loc='CellCenter', point_list=extr_pl, parent=zone)
+  MT.new_Distribution({'Index' : par_utils.dn_to_distribution(extr_pl.size, comm)}, zsr)
+
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+
+  pext = maia.algo.part.extract_part_from_zsr(ptree, "ZSR", comm)
+
+  pair = PT.find_node_from_name_and_label(pext, 'Pair', 'BC_t')
+  impair = PT.find_node_from_name_and_label(pext, 'Impair', 'BC_t')
+  assert MT.Subset.n_elem([pair], comm) == 50
+  assert MT.Subset.n_elem([impair], comm) == 50
