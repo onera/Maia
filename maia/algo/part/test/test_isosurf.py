@@ -248,6 +248,7 @@ def test_compute_iso_surface(comm):
   assert np.allclose(PT.get_node_from_name(part_tree_iso, 'TurbulentDistance')[1], 0.25)
 
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(2) 
 def test_multidom(comm):
   fname = TU.mesh_dir / 'U_Naca0012_multizone.yaml'
