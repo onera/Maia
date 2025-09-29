@@ -124,7 +124,7 @@ class Extractor:
       dom_path   = dom_part_zones[0]
       part_zones = dom_part_zones[1]
       if self.is_struct:
-        extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.location, comm)
+        extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.dims, self.location, comm)
       else:
         extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.dims, comm,
                                                        equilibrate=equilibrate,

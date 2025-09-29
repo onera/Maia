@@ -3,6 +3,7 @@ from mpi4py import MPI
 import pytest
 import pytest_parallel
 import numpy as np
+import math
 
 import maia
 import maia.pytree      as PT
@@ -63,9 +64,10 @@ def test_extract_part_simple_s(bc_loc, comm):
   part_tree = sample_part_tree('Structured', comm, bc_loc)
 
   location = 'Vertex' if bc_loc=='Vertex' else 'JFaceCenter'
+  tgt_dim = 0 if bc_loc == 'Vertex' else 2
   pr = PT.get_value(PT.get_child_from_predicates(part_tree, f'CGNSBase_t/Zone_t/ZoneBC_t/Ymax/PointRange'))
   ex_zones, etb_zones = EP.extract_part_one_domain_s(PT.get_all_Zone_t(part_tree), \
-      [pr], location, comm)
+      [pr], (3,tgt_dim), location, comm)
 
   assert PT.Zone.n_vtx(ex_zones[0]) == 15
   assert PT.Zone.n_cell(ex_zones[0]) == 8
@@ -875,6 +877,89 @@ def test_all_transfer(transfer_dataset, eq, comm):
     assert par_utils.exists_anywhere([ext_zone], name, comm) == False
   assert par_utils.exists_anywhere([ext_zone], 'FAM', comm) == transfer_dataset
   assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset
+
+@pytest_parallel.mark.parallel(2)
+def test_extract_S_2d(comm):
+
+  tree = maia.factory.generate_dist_block([5,5], 'S', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  # Make BC EdgeCenter to try extraction from edges
+  ymax = PT.find_node_from_name(tree, 'Ymax')
+  pr = PT.get_np_value(PT.find_child_from_name(ymax, 'PointRange'))
+  pr[0,1] -= 1
+  PT.update_child(ymax, 'GridLocation', 'GridLocation_t', 'JEdgeCenter')
+
+  # Create CellCenter ZSR
+  PT.new_ZoneSubRegion('CellZSR', loc='CellCenter', point_range=[[2,4], [3,4]], parent=zone)
+
+  ptree = maia.factory.partition_dist_tree(tree, comm)
+
+  # Start extractions
+
+  pext = maia.algo.part.extract_part_from_zsr(ptree, 'CellZSR', comm)
+  ext_zone = PT.get_all_Zone_t(pext)[0]
+
+  if comm.rank == 0:
+    expt_vtx_shape = (2,3)
+    expt_edge_gnum = np.array([1,2,5,6,9,12,15])
+  else:
+    expt_vtx_shape = (3,3)
+    expt_edge_gnum = np.array([2,3,4,6,7,8,10,11,13,14,16,17])
+
+  assert PT.Zone.Type(ext_zone) == 'Structured'
+  assert PT.Zone.n_cell(ext_zone) == math.prod(k-1 for k in expt_vtx_shape)
+  cx = PT.find_node_from_name(ext_zone, 'CoordinateX')
+  cz = PT.find_node_from_name(ext_zone, 'CoordinateZ')
+  assert PT.get_np_value(cx).shape == expt_vtx_shape
+  assert len(PT.get_nodes_from_label(ext_zone, 'GridConnectivity1to1_t')) == 1
+  assert MT.get_GlobalNumbering(ext_zone, 'Face') is None
+  assert (MT.globalnumbering_value(ext_zone, 'Edge') == expt_edge_gnum).all()
+     
+  dext = maia.factory.recover_dist_tree(pext, comm)
+  maia.io.dist_tree_to_file(dext, 'ext_face_d.cgns', comm)
+    
+
+  # Remove CZ for this test
+  base  = PT.get_all_CGNSBase_t(ptree)[0]
+  PT.set_value(base, [2, 2])
+  PT.rm_nodes_from_name(ptree, 'CoordinateZ')
+
+  pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymax', comm)
+  ext_zone = PT.get_all_Zone_t(pext)[0]
+
+  gnum_t = 'I4' if MT.distribution_value(zone, 'Vertex').dtype == np.int32 else 'I8'
+  if comm.rank == 0:
+    expt = PT.yaml.to_node(f"""
+    zone.P0.N0 Zone_t [[3, 2, 0]]:
+      ZoneType ZoneType_t "Structured":
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [0.,   0.25, 0.5 ]:
+        CoordinateY DataArray_t R8 [1., 1., 1.]:
+      ZoneGridConnectivity ZoneGridConnectivity_t:
+        JN.P0.N0.LT.P1.N0 GridConnectivity1to1_t "zone.P1.N0":
+          PointRange IndexRange_t [[3, 3]]:
+          PointRangeDonor IndexRange_t [[1, 1]]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Vertex DataArray_t {gnum_t} [1, 2, 3]:
+        Cell DataArray_t {gnum_t} [1, 2]:
+    """)
+  else:
+    expt = PT.yaml.to_node(f"""
+    zone.P1.N0 Zone_t [[3, 2, 0]]:
+      ZoneType ZoneType_t "Structured":
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [0.5,  0.75, 1.  ]:
+        CoordinateY DataArray_t R8 [1., 1., 1.]:
+      ZoneGridConnectivity ZoneGridConnectivity_t:
+        JN.P1.N0.LT.P0.N0 GridConnectivity1to1_t "zone.P0.N0":
+          PointRange IndexRange_t [[1,1]]:
+          PointRangeDonor IndexRange_t [[3,3]]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Vertex DataArray_t {gnum_t} [3, 4, 5]:
+        Cell DataArray_t {gnum_t} [3, 4]:
+    """)
+  assert PT.is_same_tree(ext_zone, expt)
 
 @pytest.mark.skipif(PDM_VERSION < Version('2.7'), reason="Require PDM >= 2.7")
 @pytest_parallel.mark.parallel(2)
