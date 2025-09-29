@@ -376,6 +376,59 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
 
   return pl_vtx, pld_vtx, distri_jn_vtx
 
+def _generate_jns_vertex_list_2d(dist_tree: CGNSDistTree,
+                                interface_pathes: List[CGNSPath],
+                                comm: MPIComm) -> Tuple[List[NDArray], List[NDArray], List[NDArray]]:
+  """ 2d version of _generate_jns_vertex_list (edge join to vtx join)
+  Work interface by interface, without pdm since algorithm is much simpler than face->vtx
+  """
+  all_pl_vtx = []
+  all_pld_vtx = []
+  all_distri_vtx = []
+  for interface_path in interface_pathes:
+    gc = PT.find_node_from_path(dist_tree, interface_path)
+    cur_pl = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
+    opp_pl = PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor'))[0]
+
+    cur_zone_path = '/'.join(interface_path.split('/')[:2])
+    opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc, cur_zone_path.split('/')[0])
+
+    cur_zone = PT.find_node_from_path(dist_tree, cur_zone_path)
+    opp_zone = PT.find_node_from_path(dist_tree, opp_zone_path)
+
+    cur_edges_n = MT.Zone.EdgeNode(cur_zone) 
+    opp_edges_n = MT.Zone.EdgeNode(opp_zone)
+    cur_offset = PT.Element.Range(cur_edges_n)[0]
+    opp_offset = PT.Element.Range(opp_edges_n)[0]
+    cur_edges = MT.Element.connectivity(cur_edges_n)
+    opp_edges = MT.Element.connectivity(opp_edges_n)
+    cur_edge_distri = MT.distribution_value(cur_edges_n, 'Element')
+    opp_edge_distri = MT.distribution_value(opp_edges_n, 'Element')
+
+    # Extract (vtxA, vtxB) for each edge in PL / opp PL
+    # Then we swap pairs for one of the two edges because they should be in opposite direction
+    cur_vtx_pairs = EP.block_to_part(cur_edges, cur_edge_distri, cur_pl, comm, gnum_offset=cur_offset)
+    opp_vtx_pairs = EP.block_to_part(opp_edges, opp_edge_distri, opp_pl, comm, gnum_offset=opp_offset)
+    opp_vtx_pairs = vstride.flip(opp_vtx_pairs, vstride.INNER_AXIS)
+    cur_vtx = cur_vtx_pairs.values
+    opp_vtx = opp_vtx_pairs.values
+    # Now we need to eliminate duplicated vtx/vtx opp pairs
+    # This is done with a Put *without* append mode since duplicated values should be identical
+    all_vtx_distri = MT.distribution_value(cur_zone, 'Vertex')
+    GI = EP.GlobalIndexer(all_vtx_distri, cur_vtx-1, comm)
+    cur_cnt, cur_merged = GI.access_counts, np.flatnonzero(GI.access_counts > 0) + all_vtx_distri[0] + 1
+    opp_cnt, opp_merged = GI.Put_v((np.ones(opp_vtx.size, np.int32), opp_vtx))
+    assert np.array_equal(cur_cnt > 0, opp_cnt > 0)
+
+    # Compute true vtx jn distri
+    distri_vtx = par_utils.dn_to_distribution(cur_cnt.size, comm) 
+    all_pl_vtx.append(cur_merged.astype(cur_pl.dtype, copy=False))
+    all_pld_vtx.append(opp_merged)
+    all_distri_vtx.append(distri_vtx)
+
+
+  return all_pl_vtx, all_pld_vtx, all_distri_vtx
+
 def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
                               interface_pathes: List[CGNSPath],
                               comm: MPIComm) -> Tuple[List[NDArray], List[NDArray], List[NDArray]]:
@@ -504,7 +557,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
   if len(match_jns) == 0:
     return
 
-  if have_isolated_faces:
+  if cell_dim == 3 and have_isolated_faces:
     #Filter interfaces having isolated faces; they will be treated one by one, while other will be grouped
     have_isolated = []
     for interface_path_cur in interface_pathes_cur:
@@ -531,7 +584,11 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
   interface_pathes_cur = itrf_cur_without_iso + itrf_cur_with_iso
   interface_pathes_opp = itrf_opp_without_iso + itrf_opp_with_iso
 
-  all_pl_vtx, all_pld_vtx, all_distri_vtx = _generate_jns_vertex_list(dist_tree, itrf_cur_without_iso, comm)
+  if cell_dim == 3:
+    all_pl_vtx, all_pld_vtx, all_distri_vtx = _generate_jns_vertex_list(dist_tree, itrf_cur_without_iso, comm)
+  else:
+    all_pl_vtx, all_pld_vtx, all_distri_vtx = _generate_jns_vertex_list_2d(dist_tree, itrf_cur_without_iso, comm)
+
   for interface_path_cur in itrf_cur_with_iso:
     r = generate_jn_vertex_list(dist_tree, interface_path_cur, comm)
     for j, l in enumerate([all_pl_vtx, all_pld_vtx, all_distri_vtx]):
