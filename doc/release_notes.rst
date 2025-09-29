@@ -39,6 +39,10 @@ Development version
 - concatenate_subsets_from_families: prevent a crash when families do not span over all zones
 - iso_surface & slices: fix crash occuring during non-R8 partial fields exchanges in specific cases
 
+🔧 Advanced users / devs
+^^^^^^^^^^^^^^^^^^^^^^^^
+- Introduce the ``maia.pytree.pred`` module to facilitate creation of node seaching predicates
+
 🚧 API change
 ^^^^^^^^^^^^^
 - pytree: Element.Type now return the ElementType value (*eg* TRI_3) instead of enumeration number (*eg* 5)
