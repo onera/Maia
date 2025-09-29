@@ -514,6 +514,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
   _recover_base_iterative_data(dist_tree, part_tree, comm)
 
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
+    dist_base = PT.find_child_from_name(dist_tree, PT.utils.path_head(dist_zone_path))
     dist_zone = CGNSDistTree(PT.find_node_from_path(dist_tree, dist_zone_path))
 
     part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
@@ -553,8 +554,9 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     assert coords_name is not None
 
     d_grid_co = PT.new_GridCoordinates('GridCoordinates', parent=dist_zone)
-    for coord in coords_name:
-      PT.new_node(coord, 'DataArray_t', value=None, parent=d_grid_co)
+    for i,coord in enumerate(coords_name):
+      if i+1 <= PT.Base.PhysicalDimension(dist_base):
+        PT.new_node(coord, 'DataArray_t', value=None, parent=d_grid_co)
     PT.add_child(d_grid_co, transform_n)
     PTB.part_coords_to_dist_coords(dist_zone, part_zones, comm)
 

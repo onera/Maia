@@ -65,7 +65,8 @@ def part_coords_to_dist_coords(dist_zone, part_zones, comm, reduce_op=None):
   d_grid_co = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
   part_data = dict()
   for d_co_name in PT.Zone.coordinates(dist_zone)._fields:
-    part_data[d_co_name] = list()
+    if PT.get_child_from_name(d_grid_co, d_co_name) is not None:
+      part_data[d_co_name] = list()
   
   for part_zone in part_zones:
     for p_co_name, coord in PT.Zone.coordinates(part_zone)._asdict().items():
