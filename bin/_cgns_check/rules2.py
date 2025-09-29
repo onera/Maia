@@ -287,7 +287,7 @@ def missing_value(nodes:List[CGNSTree]) -> str:
     props = LABEL_PROPS[label]
     if props.get('TYPE', 'MT') != 'MT':
         if PT.get_value(last) is None and label != 'ZoneSubRegion_t':
-            return f"Missing value for {label} node, which should of kind {props['TYPE']}"
+            return f"Missing value for {label} node, which should be of kind {props['TYPE']}"
     return OK
 
 def invalid_datatype(nodes:List[CGNSTree]) -> str:
