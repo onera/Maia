@@ -19,12 +19,57 @@ def _to_rthetaz(x, y, z):
 def _to_rthetaz_vectors(vx, vy, vz, theta):
   return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
+
+def update_fields(zone, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, exception_vectors):
+  phy_dim = PT.Zone.PhysicalDimension(zone)
+  transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
+
+  container_paths = set()
+  def add_cnt_path(nodes):
+    last_node = nodes[-1]
+    if PT.get_child_from_label(last_node, 'DataArray_t') is not None \
+       and PT.get_name(last_node) not in [":CGNS#Distribution", ":CGNS#GlobalNumbering", "GridCoordinates", "Periodic"]:
+      path='/'.join(PT.get_name(node) for node in nodes[1:])
+      container_paths.add(path)
+  PT.scan(zone, add_cnt_path, ancestors=True)
+  fields_nodes = [PT.get_node_from_path(zone, path) for path in container_paths]
+
+  for fields_node in fields_nodes:
+    is_full_vtx = PT.get_label(fields_node) in ['FlowSolution_t', 'DiscreteData_t'] and \
+                  PT.Container.GridLocation(fields_node) == 'Vertex' and \
+                  not PT.pred.IS_SUBSET(fields_node)
+    data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
+    cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names, phy_dim)
+    for basename in cartesian_vectors_basenames:
+      if basename in exception_vectors: continue
+      vectors_n = [PT.find_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
+      if is_full_vtx:
+        vectors = [PT.get_np_value(n)[vtx_mask] for n in vectors_n]
+      else:
+        vectors = [PT.get_np_value(n) for n in vectors_n]
+      if basename in positional_vectors:
+        tr_vectors = transform_func(*vectors, translation=translation_np, 
+                                              rotation_center=rotation_center_np,
+                                              rotation_angle=rotation_angle_np) #type:ignore[operator] #(signature of 2 funcs differs)
+      else:
+        tr_vectors = transform_func(*vectors, rotation_center=rotation_center_np,
+                                              rotation_angle=rotation_angle_np) #type:ignore[operator]
+      for vector_n, tr_vector in zip(vectors_n, tr_vectors):
+        vector_val = PT.get_np_value(vector_n)
+        if is_full_vtx:
+          vector_val[vtx_mask] = tr_vector
+        else:
+          vector_val[:] = tr_vector
+
+
 def transform_affine_zone(zone: CGNSTree,
                           vtx_mask: NDArray,
                           rotation_center: Iterable[float],
                           rotation_angle: Union[float, Iterable[float]],
                           translation: Iterable[float],
-                          apply_to_fields: bool) -> None:
+                          apply_to_fields: bool,
+                          positional_vectors: Optional[List[str]] = ['Coordinate'],
+                          exception_vectors: Optional[List[str]] = []) -> None:
   """
   Implementation of transform affine (see associated documentation) for
   a given zone.
@@ -32,26 +77,28 @@ def transform_affine_zone(zone: CGNSTree,
   In addition, this function takes a bool array of shaped as coords array and
   apply the periodicity only to the vertices evaluating to True.
   """
+
+  #Global information
+  phy_dim = PT.Zone.PhysicalDimension(zone)
+  transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
+  assert translation is not None
+  assert rotation_angle is not None
+  assert rotation_center is not None
+  translation_np = np.asarray(translation)
+  rotation_center_np = np.asarray(rotation_center)
+  rotation_angle_np = np.asarray(rotation_angle) if phy_dim == 3 else rotation_angle
+
   # Transform coords
   for grid_co in PT.iter_children_from_label(zone, "GridCoordinates_t"):
     maybe_coords_n = [PT.get_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z']]
-    phy_dim = 2 if maybe_coords_n[2] is None else 3
     coords_n = [PT.find_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z'][:phy_dim]]
     coords = [PT.get_np_value(n)[vtx_mask] for n in coords_n]
 
-    assert translation is not None
-    assert rotation_angle is not None
-    assert rotation_center is not None
-    translation_np = np.asarray(translation)
-    rotation_center_np = np.asarray(rotation_center)
-    rotation_angle_np = np.asarray(rotation_angle) if phy_dim == 3 else rotation_angle
-
-    transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
     tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np) #type:ignore[operator] #(signature of 2 funcs differs)
     for coord_n, tr_coord in zip(coords_n, tr_coords):
       coord_value = PT.get_np_value(coord_n)
       coord_value[vtx_mask] = tr_coord
-  
+
   # Transform GC/Periodic data
   # To update Periodic values of GCs, it is simpler to use homogeneous matrices
   # For a given GC, we have v_opp = M_gc * v_cur
@@ -81,32 +128,7 @@ def transform_affine_zone(zone: CGNSTree,
 
   # Transform fields
   if apply_to_fields:
-    fields_nodes  = PT.get_children_from_label(zone, "FlowSolution_t")
-    fields_nodes += PT.get_children_from_label(zone, "DiscreteData_t")
-    fields_nodes += PT.get_children_from_label(zone, "ZoneSubRegion_t")
-    for bc in PT.iter_children_from_predicates(zone, "ZoneBC_t/BC_t"):
-      fields_nodes += PT.get_children_from_label(bc, "BCDataSet_t")
-    for fields_node in fields_nodes:
-      is_full_vtx = PT.get_label(fields_node) in ['FlowSolution_t', 'DiscreteData_t'] and \
-                    PT.Container.GridLocation(fields_node) == 'Vertex' and \
-                    not PT.pred.IS_SUBSET(fields_node)
-      data_names = [PT.get_name(data) for data in PT.iter_nodes_from_label(fields_node, "DataArray_t")]
-      cartesian_vectors_basenames = py_utils.find_cartesian_vector_names(data_names, phy_dim)
-      for basename in cartesian_vectors_basenames:
-        vectors_n = [PT.find_node_from_name_and_label(fields_node, f"{basename}{c}", 'DataArray_t')  for c in ['X', 'Y', 'Z'][:phy_dim]]
-        if is_full_vtx:
-          vectors = [PT.get_np_value(n)[vtx_mask] for n in vectors_n]
-        else:
-          vectors = [PT.get_np_value(n) for n in vectors_n]
-        # Assume that vectors are position independant
-        # Be careful, if coordinates vector needs to be transform, the translation is not applied !
-        tr_vectors = transform_func(*vectors, rotation_center=rotation_center_np, rotation_angle=rotation_angle_np) #type:ignore[operator]
-        for vector_n, tr_vector in zip(vectors_n, tr_vectors):
-          vector_val = PT.get_np_value(vector_n)
-          if is_full_vtx:
-            vector_val[vtx_mask] = tr_vector
-          else:
-            vector_val[:] = tr_vector
+    update_fields(zone, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, exception_vectors)
 
 
 
@@ -114,7 +136,9 @@ def transform_affine(t: CGNSTree,
                      rotation_center: Optional[Iterable[float]] = None,
                      rotation_angle: Union[None, float, Iterable[float]] = None,
                      translation: Optional[Iterable[float]] = None,
-                     apply_to_fields: bool = True) -> None:
+                     apply_to_fields: bool = True,
+                     positional_vectors: Optional[List[str]] = ['Coordinate'],
+                     exception_vectors: Optional[List[str]] = []) -> None:
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -169,7 +193,9 @@ def transform_affine(t: CGNSTree,
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
     any_coord = PT.find_child_from_predicate(any_gc_n, PT.pred.name_in(cart_names))
     vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
-    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields)
+    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_vectors, exception_vectors)
+
+  # TO D0 : traiter les vecteurs qui ne sont pas dans une zone : famille, userdefined, convergence history, ...
 
 def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
   """Rescale the GridCoordinates of the input mesh.

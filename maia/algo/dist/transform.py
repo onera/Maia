@@ -11,7 +11,9 @@ def transform_affine_zone(zone,
                           rotation_center=np.zeros(3),
                           rotation_angle=np.zeros(3),
                           translation=np.zeros(3),
-                          apply_to_fields=False):
+                          apply_to_fields=False,
+                          positional_vectors=['Coordinate'],
+                          exception_vectors=[]):
 
   distri_vtx = MT.distribution_value(zone, 'Vertex')
   
@@ -26,4 +28,6 @@ def transform_affine_zone(zone,
                                   rotation_center,
                                   rotation_angle,
                                   translation,
-                                  apply_to_fields)
+                                  apply_to_fields,
+                                  positional_vectors,
+                                  exception_vectors)
