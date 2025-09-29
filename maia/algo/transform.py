@@ -20,8 +20,7 @@ def _to_rthetaz_vectors(vx, vy, vz, theta):
   return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
 
-def update_fields(zone, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, exception_vectors):
-  phy_dim = PT.Zone.PhysicalDimension(zone)
+def update_fields(zone, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, exception_vectors):
   transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
 
   container_paths = set()
@@ -128,7 +127,7 @@ def transform_affine_zone(zone: CGNSTree,
 
   # Transform fields
   if apply_to_fields:
-    update_fields(zone, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, exception_vectors)
+    update_fields(zone, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, exception_vectors)
 
 
 
@@ -193,9 +192,24 @@ def transform_affine(t: CGNSTree,
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
     any_coord = PT.find_child_from_predicate(any_gc_n, PT.pred.name_in(cart_names))
     vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
-    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_vectors, exception_vectors)
+    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields,
+                                positional_vectors, exception_vectors)
 
   # TO D0 : traiter les vecteurs qui ne sont pas dans une zone : famille, userdefined, convergence history, ...
+  if apply_to_fields:
+    for base in PT.iter_all_CGNSBase_t(t):
+      phy_dim = PT.get_value(base)[1]
+      assert phy_dim in [2,3]
+      if rotation_center is None:
+        rotation_center = [0.] * phy_dim
+      if rotation_angle is None:
+        rotation_angle = [0.] * phy_dim if phy_dim == 3 else 0.
+      if translation is None:
+        translation = [0.] * phy_dim
+      for child in PT.get_children(base):
+        if PT.get_label(child) != 'Zone_t':
+          update_fields(child, phy_dim, np.asarray(rotation_center), np.asarray(rotation_angle),
+                               np.asarray(translation), positional_vectors, exception_vectors)
 
 def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
   """Rescale the GridCoordinates of the input mesh.

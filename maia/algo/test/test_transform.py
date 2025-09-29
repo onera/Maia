@@ -126,7 +126,7 @@ def test_transform_affine(comm):
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize('positional_vectors', ['','Coord'])
 @pytest.mark.parametrize('exception_vectors', ['','Coord'])
-def test_transform_affine_pos_vectors(comm, positional_vectors, exception_vectors):
+def test_transform_affine_optional_args(comm, positional_vectors, exception_vectors):
 
   dist_tree = dcube_generate(4, 1., [0., -.5, -.5], comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
@@ -162,6 +162,35 @@ def test_transform_affine_pos_vectors(comm, positional_vectors, exception_vector
 
   comp_scal_field(dist_zone_ini, "scalar", dist_zone, "scalar")
 
+@pytest_parallel.mark.parallel(1)
+def test_transform_affine_on_base(comm):
+
+  dist_tree = dcube_generate(4, 1., [0., -.5, -.5], comm)
+  dist_base = PT.get_all_CGNSBase_t(dist_tree)[0]
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  # Initialise some fields
+  fam = PT.new_Family('WALL', parent=dist_base)
+  fambc = PT.new_node('FamilyBC', 'FamilyBC_t', 'BCWall', parent=fam)
+  fambcds = PT.new_node('FamilyBCDataSet', 'FamilyBCDataSet_t', 'BCWall', parent=fambc)
+  nd = PT.new_node('NeumannData', 'BCData_t', parent=fambcds)
+  PT.new_DataArray('scalar', np.random.random(1), parent=nd)
+  PT.new_DataArray('fbcdsX', np.random.random(1), parent=nd)
+  PT.new_DataArray('fbcdsY', np.random.random(1), parent=nd)
+  PT.new_DataArray('fbcdsZ', np.random.random(1), parent=nd)
+  usd = PT.new_node('UserDefinedData', 'UserDefinedData_t', parent=dist_base)
+  PT.new_DataArray('scalar', np.random.random(1), parent=usd)
+  PT.new_DataArray('fusdX', np.random.random(1), parent=usd)
+  PT.new_DataArray('fusdY', np.random.random(1), parent=usd)
+  PT.new_DataArray('fusdZ', np.random.random(1), parent=usd)
+
+  dist_tree_ini = PT.deep_copy(dist_tree)
+  transform.transform_affine(dist_tree, rotation_angle=np.array([0.,0.,np.pi]))
+
+  check_vect_field(dist_tree_ini, dist_tree, "Coordinate")
+  check_vect_field(dist_tree_ini, dist_tree, "fbcds")
+  check_vect_field(dist_tree_ini, dist_tree, "fusd")
+  check_scal_field(dist_tree_ini, dist_tree, "scalar")
 
 @pytest_parallel.mark.parallel(1)
 class Test_transform_affine_gc:
