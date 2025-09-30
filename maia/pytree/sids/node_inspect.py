@@ -1010,7 +1010,7 @@ class Subset:
     if N.get_label(subset_node) == 'BCDataSet_t':
       if not Container._is_subset(subset_node):
         msg = 'Applying PT.Subset.GridLocation to a BCDataSet node without GridLocation child'\
-              ' may lead to wrong result. Consider using PT.BCDataSet.GridLocation instead.'
+              ' may lead to wrong result. Consider using PT.Container.GridLocation instead.'
         warnings.warn(msg, RuntimeWarning, stacklevel=3)
     return N.get_str_value(grid_loc_n) if grid_loc_n else 'Vertex'
 

@@ -9,8 +9,8 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Development version
--------------------
+v1.8 (September 2025)
+---------------------
 
 💡 New Features
 ^^^^^^^^^^^^^^^
@@ -38,6 +38,10 @@ Development version
 - PT.diff_tree: prevent deadlock when input trees have a different distribution
 - concatenate_subsets_from_families: prevent a crash when families do not span over all zones
 - iso_surface & slices: fix crash occuring during non-R8 partial fields exchanges in specific cases
+
+🔧 Advanced users / devs
+^^^^^^^^^^^^^^^^^^^^^^^^
+- Introduce the ``maia.pytree.pred`` module to facilitate creation of node seaching predicates
 
 🚧 API change
 ^^^^^^^^^^^^^
