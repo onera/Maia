@@ -647,7 +647,7 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
   ptp = dict()
   if equilibrate:
     ptp['Vertex']       = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_VTX)
-    if dim == 1:
+    if dim >= 1 and parent_dim == 2:
       ptp['EdgeCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_EDGE)
     if dim >= 2 and parent_dim == 3: # NGON
       ptp['FaceCenter'] = pdm_ep.part_to_part_get(PDM._PDM_MESH_ENTITY_FACE)
@@ -659,7 +659,7 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
   # - Get parent elt
   parent_elt = dict()
   parent_elt['Vertex']       = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_VTX) for i_part in range(n_part_out)]
-  if dim == 1: # BAR_2
+  if dim >= 1 and parent_dim == 2: # BAR_2
     parent_elt['EdgeCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_EDGE) for i_part in range(n_part_out)]
   if dim >= 2 and parent_dim == 3: # NGON
     parent_elt['FaceCenter'] = [pdm_ep.parent_ln_to_gn_get(i_part,PDM._PDM_MESH_ENTITY_FACE) for i_part in range(n_part_out)]
