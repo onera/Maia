@@ -136,11 +136,7 @@ def extract_part_one_domain_s(part_zones, point_range, dims, location, comm):
       if n_dim_pop in [2,3]:
         raise NotImplementedError(f'Asked extraction is 0D or 1D (n_dim_pop={n_dim_pop})')
       extract_dir = idx[0]
-    elif 'FaceCenter' in location:
-      extract_dir = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=location))
-      mask[extract_dir] = False
-      n_dim_pop = 1
-    elif 'EdgeCenter' in location:
+    elif 'FaceCenter' in location or 'EdgeCenter' in location:
       extract_dir = PT.Subset.normal_axis(PT.new_BC(point_range=pr, loc=location))
       mask[extract_dir] = False
       n_dim_pop = 1

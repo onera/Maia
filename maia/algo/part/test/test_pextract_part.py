@@ -397,8 +397,8 @@ def test_zsr_api(cgns_name, comm):
 
 
 @pytest_parallel.mark.parallel(3)
-@pytest.mark.parametrize("cgns_name" , ['Structured'])
-@pytest.mark.parametrize("bc_loc" , ['Face'])
+@pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
+@pytest.mark.parametrize("bc_loc" , ['Face', 'Vtx'])
 def test_bc_name_api(cgns_name, bc_loc, comm):
   dist_tree = maia.factory.generate_dist_block(4, cgns_name, comm)
 
@@ -937,9 +937,6 @@ def test_extract_S_2d(comm):
   assert (PT.find_node_from_name(partial, 'Field')[1] == expt_zsr_field).all()
   assert (MT.globalnumbering_value(partial, 'Index') == expt_zsr_gnum).all()
      
-  dext = maia.factory.recover_dist_tree(pext, comm)
-  maia.io.dist_tree_to_file(dext, 'ext_face_d.cgns', comm)
-    
 
   # Remove CZ for this test
   base  = PT.get_all_CGNSBase_t(ptree)[0]
@@ -987,6 +984,33 @@ def test_extract_S_2d(comm):
         Cell DataArray_t {gnum_t} [3, 4]:
     """)
   assert PT.is_same_tree(ext_zone, expt)
+
+  # Add full vtx sol
+  if comm.rank == 0:
+    pzone = PT.get_all_Zone_t(ptree)[0]
+    PT.new_FlowSolution('VtxSol', fields={'GId' : MT.globalnumbering_value(pzone, 'Vertex')}, parent=pzone)
+
+  pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Xmin', comm, containers_name='ALL')
+  ext_zones = PT.get_all_Zone_t(pext)
+  if comm.rank == 0:
+    ext_zone = ext_zones[0]
+    expt = PT.yaml.to_node(f"""
+    zone.P0.N0 Zone_t [[5, 4, 0]]:
+      ZoneType ZoneType_t "Structured":
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [0, 0, 0, 0, 0]:
+        CoordinateY DataArray_t R8 [0, 0.25 ,0.5 ,0.75 ,1]:
+      VtxSol FlowSolution_t:
+        GridLocation GridLocation_t "Vertex":
+        GId DataArray_t {gnum_t} [1, 6, 11, 16, 21]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Vertex DataArray_t {gnum_t} [1, 2, 3, 4, 5]:
+        Cell DataArray_t {gnum_t} [1, 2, 3, 4]:
+    """)
+    assert PT.is_same_tree(ext_zone, expt)
+  else:
+    assert len(ext_zones) == 0
+
 
 @pytest.mark.skipif(PDM_VERSION < Version('2.7'), reason="Require PDM >= 2.7")
 @pytest_parallel.mark.parallel(2)
