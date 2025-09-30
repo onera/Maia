@@ -24,7 +24,7 @@ Development version
 - generate_dist_block: manage non uniform Nx,Ny,Nz for Poly case
 - connect_1to1_families: extend to 2D input meshes
 - generate_jns_vertex_list, merge_zones: extend to polyedric 2D input meshes 
-- extract_part: extend to 2D input meshes (U only)
+- extract_part: extend to 2D input meshes
 - Introduce ``'ALL'`` shortcut as admissible value for ``containers_name`` in relevant functions
 
 🐞 Fixes
