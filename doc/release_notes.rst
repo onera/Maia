@@ -9,8 +9,8 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Development version
--------------------
+v1.8 (September 2025)
+---------------------
 
 💡 New Features
 ^^^^^^^^^^^^^^^
