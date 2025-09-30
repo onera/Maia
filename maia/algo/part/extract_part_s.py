@@ -11,9 +11,6 @@ import numpy as np
 
 
 parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
-                    'IFaceCenter':'parent_lnum_cell',
-                    'JFaceCenter':'parent_lnum_cell',
-                    'KFaceCenter':'parent_lnum_cell',
                     'CellCenter' :'parent_lnum_cell'}
 
 def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container_name, comm) :
