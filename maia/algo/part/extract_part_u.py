@@ -200,12 +200,13 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box
       point_list_gnum = base_gnum[point_list-1]
 
       sorter  = np.argsort(point_list_gnum)
-      idx_tmp = np.searchsorted(point_list_gnum, parent, sorter=sorter)
+      point_list_gnum_sorted = point_list_gnum[sorter]
+      idx_tmp = np.searchsorted(point_list_gnum_sorted, parent)
 
       # Careful ! searchsorted always return a result, even if parent is not in
       # point_list_gnum which can happens when the volumic data is partial
-      mask = np.take(point_list_gnum, idx_tmp, mode='clip') == parent
-      idx = idx_tmp[mask]
+      mask = np.take(point_list_gnum_sorted, idx_tmp, mode='clip') == parent
+      idx = sorter[idx_tmp[mask]]
 
       # Create PointList if input field is partial
       # NB : if the container *is* the one we are extracting from, then
