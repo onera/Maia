@@ -25,6 +25,7 @@ Development version
 - connect_1to1_families: extend to 2D input meshes
 - generate_jns_vertex_list, merge_zones: extend to polyedric 2D input meshes 
 - extract_part: extend to 2D input meshes (U only)
+- transform affine: detect all vectorial fields if ``apply_to_fields`` is used
 - Introduce ``'ALL'`` shortcut as admissible value for ``containers_name`` in relevant functions
 
 🐞 Fixes

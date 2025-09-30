@@ -124,9 +124,9 @@ def test_transform_affine(comm):
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
 
 @pytest_parallel.mark.parallel(1)
-@pytest.mark.parametrize('positional_vectors', ['','Coord'])
-@pytest.mark.parametrize('exception_vectors', ['','Coord'])
-def test_transform_affine_optional_args(comm, positional_vectors, exception_vectors):
+@pytest.mark.parametrize('positional_fields', [[],['Coord']])
+@pytest.mark.parametrize('constant_fields',   [[],['Coord']])
+def test_transform_affine_optional_args(comm, positional_fields, constant_fields):
 
   dist_tree = dcube_generate(4, 1., [0., -.5, -.5], comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
@@ -144,23 +144,26 @@ def test_transform_affine_optional_args(comm, positional_vectors, exception_vect
   PT.new_DataArray('CoordZ', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateZ'))[1], parent=fs)
 
   dist_zone_ini = PT.deep_copy(dist_zone)
-  transform.transform_affine(dist_zone, translation=np.array([1.,0.,0.]),
-                                        rotation_angle=np.array([0.,0.,np.pi]),
-                                        positional_vectors=positional_vectors,
-                                        exception_vectors=exception_vectors)
+  transform.transform_affine_zone(dist_zone,
+                                  None,
+                                  translation=np.array([1.,0.,0.]),
+                                  rotation_angle=np.array([0.,0.,np.pi]),
+                                  rotation_center=np.array([0.,0,0]),
+                                  apply_to_fields=True,
+                                  positional_fields=positional_fields,
+                                  constant_fields=constant_fields)
 
   check_vect_field(dist_zone_ini, dist_zone, "field")
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
 
-  if exception_vectors == 'Coord':
+  if constant_fields == ['Coord']:
     comp_vect_field(dist_zone_ini, "Coord", dist_zone, "Coord")
+  elif positional_fields == ['Coord']:
+    comp_vect_field(dist_zone, "Coordinate", dist_zone, "Coord")
   else:
-    if positional_vectors == 'Coord':
-      comp_vect_field(dist_zone, "Coordinate", dist_zone, "Coord")
-    else:
-      comp_vect_field(dist_zone, "field", dist_zone, "Coord")
-
+    comp_vect_field(dist_zone, "field", dist_zone, "Coord")
   comp_scal_field(dist_zone_ini, "scalar", dist_zone, "scalar")
+
 
 @pytest_parallel.mark.parallel(1)
 def test_transform_affine_on_base(comm):
