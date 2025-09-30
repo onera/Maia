@@ -18,6 +18,7 @@ parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
 
 def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container_name, comm) :
 
+  src_dim, tgt_dim = mesh_dim
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm).values()
   assert len(part_tree_per_dom) == 1
   part_zones=list(part_tree_per_dom)[0]
@@ -27,8 +28,11 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
   mask_container, grid_location, partial_field = discover_containers(part_zones, container_name, 'PointRange', 'IndexRange_t', comm)
   if mask_container is None:
     return
-  assert grid_location in ['Vertex', 'IFaceCenter', 'JFaceCenter', 'KFaceCenter', 'CellCenter']
-  out_grid_location = DIMM_TO_DIMF[mesh_dim][grid_location]
+  if src_dim == 2:
+    assert grid_location in ['Vertex', 'IEdgeCenter', 'JEdgeCenter', 'CellCenter']
+  else:
+    assert grid_location in ['Vertex', 'IFaceCenter', 'JFaceCenter', 'KFaceCenter', 'CellCenter']
+  out_grid_location = DIMM_TO_DIMF[tgt_dim][grid_location]
 
   if partial_field:
     part1_pr, part1_gnum1, part1_in_part2 = build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm)
@@ -52,7 +56,7 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
 
     # Add partial numbering to node
     if partial_field:
-      if mesh_dim < 3:
+      if tgt_dim < src_dim:
         # If output zone is 2D, we need to remove the useless direction in output PR
         extract_dir = etb['@@maia_extract_direction@@']
         part1_pr[i_zone] = np.delete(part1_pr[i_zone], extract_dir, axis=0)
@@ -88,13 +92,12 @@ def exchange_field_one_domain(part_tree, extract_zones, mesh_dim, etb, container
 
 def exchange_field_s(part_tree, extract_tree, dims, etb, containers_name, comm) :
   # Get zones by domains (only one domain for now)
-  mesh_dim = dims[1]
   extract_part_tree_per_dom = dist_from_part.get_parts_per_blocks(extract_tree, comm)
   for container_name in containers_name:
     for i_domain, dom_ep_part_zones in enumerate(extract_part_tree_per_dom.items()):
       dom_path        = dom_ep_part_zones[0]
       extracted_zones = dom_ep_part_zones[1]
-      exchange_field_one_domain(part_tree, extracted_zones, mesh_dim, etb[dom_path], container_name, comm)
+      exchange_field_one_domain(part_tree, extracted_zones, dims, etb[dom_path], container_name, comm)
 
 
 def extract_part_one_domain_s(part_zones, point_range, dims, location, comm):

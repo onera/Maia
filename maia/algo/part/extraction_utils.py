@@ -19,7 +19,7 @@ LOC_TO_DIM3 = {'Vertex':0,
 LOC_TO_DIM = {3: LOC_TO_DIM3, 2: LOC_TO_DIM2}
 
 DIMM_TO_DIMF = { 0: {'Vertex':'Vertex'},
-                 1: {'Vertex':'Vertex', 'EdgeCenter':'CellCenter'},
+                 1: {'Vertex':'Vertex', 'EdgeCenter':'CellCenter', 'IEdgeCenter' : 'CellCenter', 'JEdgeCenter' : 'CellCenter'},
                  2: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'CellCenter',
                      'IFaceCenter': 'CellCenter', 'JFaceCenter': 'CellCenter', 'KFaceCenter': 'CellCenter', 'CellCenter':'CellCenter'},
                  3: {'Vertex':'Vertex', 'EdgeCenter':'EdgeCenter', 'FaceCenter':'FaceCenter', 'CellCenter':'CellCenter'}}
@@ -189,17 +189,22 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
 def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_name, grid_location, etb, comm):
 
   parent_lnum_path = {'Vertex'     :'parent_lnum_vtx',
+                      'IEdgeCenter':'parent_lnum_cell',
+                      'JEdgeCenter':'parent_lnum_cell',
                       'IFaceCenter':'parent_lnum_cell',
                       'JFaceCenter':'parent_lnum_cell',
                       'KFaceCenter':'parent_lnum_cell',
                       'CellCenter' :'parent_lnum_cell'}
   LOC_TO_GNUM = {'Vertex'     :'Vertex',
+                 'IEdgeCenter':'Edge',
+                 'JEdgeCenter':'Edge',
                  'IFaceCenter':'Face',
                  'JFaceCenter':'Face',
                  'KFaceCenter':'Face',
                  'CellCenter' :'Cell',
                 }
 
+  src_dim, tgt_dim = mesh_dim
   part1_pr       = list()
   part1_in_part2 = list()
   partial_gnum   = list()
@@ -215,9 +220,17 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
       pr = PT.get_value(PT.Subset.getPatch(subset_n))
       i_ar = np.arange(min(pr[0]), max(pr[0])+1)
       j_ar = np.arange(min(pr[1]), max(pr[1])+1).reshape(-1,1)
-      k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
-      part2_pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, grid_location, PT.Zone.VertexSize(part_zone)).flatten()
+      if src_dim > 2:
+        k_ar = np.arange(min(pr[2]), max(pr[2])+1).reshape(-1,1,1)
+      if src_dim == 2:
+        part2_pl = s_numbering.ij_to_index_from_loc(i_ar, j_ar, grid_location, PT.Zone.VertexSize(part_zone)).flatten()
+      else:
+        part2_pl = s_numbering.ijk_to_index_from_loc(i_ar, j_ar, k_ar, grid_location, PT.Zone.VertexSize(part_zone)).flatten()
 
+      # part_2pl is index of entities in input zone for the requested subset
+      # parent_part1_pl is index of *extracted* entity in input zone
+      # Here we rebuild lnum2 = positions in input subset appearing in output zone (selected)
+      #               and pl1 = local entities of output zone belonging to subset
       lnum2 = np.searchsorted(part2_pl, parent_part1_pl) # Assume sorted
       mask  = parent_part1_pl==np.take(part2_pl,lnum2,mode='clip')
       lnum2 = lnum2[mask]
@@ -230,19 +243,25 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
         partial_gnum.append(np.empty(0, dtype=pdm_dtype))
         continue # Pass if no recovering
 
+      # Now we rebuild part1_pr = pr of subset in extracted zone (select entities only)
       vtx_size = PT.Zone.VertexSize(extract_zone)
-      if len(vtx_size) ==2:
+      if len(vtx_size) != src_dim:
         # To retreive numbering, use new vertex size with old location
         # It is important to insert 1 at good position, given by extract_dir
-        mask = np.ones(3, bool)
+        mask = np.ones(src_dim, bool)
         mask[etb['@@maia_extract_direction@@']] = False
-        _vtx_size = np.ones(3, int)
+        _vtx_size = np.ones(src_dim, int)
         _vtx_size[mask] = vtx_size
         vtx_size = _vtx_size
-      part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, grid_location, vtx_size)
-      part1_pr.append(np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
-                                [min(part1_ijk[1]),max(part1_ijk[1])],
-                                [min(part1_ijk[2]),max(part1_ijk[2])]]))
+      if len(vtx_size) == 2:
+        part1_ijk = s_numbering.index_to_ij_from_loc(pl1, grid_location, vtx_size)
+        part1_pr.append(np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
+                                  [min(part1_ijk[1]),max(part1_ijk[1])]]))
+      else:
+        part1_ijk = s_numbering.index_to_ijk_from_loc(pl1, grid_location, vtx_size)
+        part1_pr.append(np.array([[min(part1_ijk[0]),max(part1_ijk[0])],
+                                  [min(part1_ijk[1]),max(part1_ijk[1])],
+                                  [min(part1_ijk[2]),max(part1_ijk[2])]]))
 
       part2_elt_gnum = MT.globalnumbering_value(part_zone, LOC_TO_GNUM[grid_location])
 
@@ -252,6 +271,7 @@ def build_intersection_numbering(part_tree, extract_zones, mesh_dim, container_n
       part1_pr.append(np.empty(0, dtype=np.int32))
       partial_gnum.append(np.empty(0, dtype=pdm_dtype))
 
+  #part1_gnum = generated gnum for all selected entities from subset
   part1_gnum1 = create_sub_numbering(partial_gnum, comm)
 
   return part1_pr, part1_gnum1, part1_in_part2
