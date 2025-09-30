@@ -77,19 +77,32 @@ def test_transformation_zone_void():
   transform.transform_affine(zone)
   assert PT.is_same_tree(zone_bck, zone) 
 
+def check_vect_field(old_node, new_node, field_name):
+  old_data = [PT.get_node_from_name(old_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
+  new_data = [PT.get_node_from_name(new_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
+  assert np.allclose(old_data[0], -new_data[0])
+  assert np.allclose(old_data[1], -new_data[1])
+  assert np.allclose(old_data[2],  new_data[2])
+
+def check_scal_field(old_node, new_node, field_name):
+  old_data = PT.get_node_from_name(old_node, field_name)[1]
+  new_data = PT.get_node_from_name(new_node, field_name)[1]
+  assert (old_data == new_data).all()
+
+def comp_vect_field(node1, field_name1, node2, field_name2):
+  data1 = [PT.get_node_from_name(node1, f"{field_name1}{c}")[1] for c in ['X', 'Y', 'Z']]
+  data2 = [PT.get_node_from_name(node2, f"{field_name2}{c}")[1] for c in ['X', 'Y', 'Z']]
+  assert np.allclose(data1[0], data2[0])
+  assert np.allclose(data1[1], data2[1])
+  assert np.allclose(data1[2], data2[2])
+
+def comp_scal_field(node1, field_name1, node2, field_name2):
+  data1 = PT.get_node_from_name(node1, field_name1)[1]
+  data2 = PT.get_node_from_name(node2, field_name2)[1]
+  assert (data1 == data2).all()
+
 @pytest_parallel.mark.parallel(1)
 def test_transform_affine(comm):
-
-  def check_vect_field(old_node, new_node, field_name):
-    old_data = [PT.get_node_from_name(old_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
-    new_data = [PT.get_node_from_name(new_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
-    assert np.allclose(old_data[0], -new_data[0])
-    assert np.allclose(old_data[1], -new_data[1])
-    assert np.allclose(old_data[2],  new_data[2])
-  def check_scal_field(old_node, new_node, field_name):
-    old_data = PT.get_node_from_name(old_node, field_name)[1]
-    new_data = PT.get_node_from_name(new_node, field_name)[1]
-    assert (old_data == new_data).all()
 
   dist_tree = dcube_generate(4, 1., [0., -.5, -.5], comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
@@ -109,6 +122,78 @@ def test_transform_affine(comm):
   check_vect_field(dist_zone_ini, dist_zone, "Coordinate")
   check_vect_field(dist_zone_ini, dist_zone, "field")
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
+
+@pytest_parallel.mark.parallel(1)
+@pytest.mark.parametrize('positional_fields', [[],['Coord']])
+@pytest.mark.parametrize('constant_fields',   [[],['Coord']])
+def test_transform_affine_optional_args(comm, positional_fields, constant_fields):
+
+  dist_tree = dcube_generate(4, 1., [0., -.5, -.5], comm)
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  # Initialise some fields
+  cell_distri = MT.distribution_value(dist_zone, 'Cell')
+  n_cell_loc =  cell_distri[1] - cell_distri[0]
+  fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
+  PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
+  PT.new_DataArray('fieldX', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateX'))[1], parent=fs)
+  PT.new_DataArray('fieldY', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateY'))[1], parent=fs)
+  PT.new_DataArray('fieldZ', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateZ'))[1], parent=fs)
+  PT.new_DataArray('CoordX', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateX'))[1], parent=fs)
+  PT.new_DataArray('CoordY', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateY'))[1], parent=fs)
+  PT.new_DataArray('CoordZ', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateZ'))[1], parent=fs)
+
+  dist_zone_ini = PT.deep_copy(dist_zone)
+  transform.transform_affine_zone(dist_zone,
+                                  None,
+                                  translation=np.array([1.,0.,0.]),
+                                  rotation_angle=np.array([0.,0.,np.pi]),
+                                  rotation_center=np.array([0.,0,0]),
+                                  apply_to_fields=True,
+                                  positional_fields=positional_fields,
+                                  constant_fields=constant_fields)
+
+  check_vect_field(dist_zone_ini, dist_zone, "field")
+  check_scal_field(dist_zone_ini, dist_zone, "scalar")
+
+  if constant_fields == ['Coord']:
+    comp_vect_field(dist_zone_ini, "Coord", dist_zone, "Coord")
+  elif positional_fields == ['Coord']:
+    comp_vect_field(dist_zone, "Coordinate", dist_zone, "Coord")
+  else:
+    comp_vect_field(dist_zone, "field", dist_zone, "Coord")
+  comp_scal_field(dist_zone_ini, "scalar", dist_zone, "scalar")
+
+
+@pytest_parallel.mark.parallel(1)
+def test_transform_affine_on_base(comm):
+
+  dist_tree = dcube_generate(4, 1., [0., -.5, -.5], comm)
+  dist_base = PT.get_all_CGNSBase_t(dist_tree)[0]
+  dist_zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  # Initialise some fields
+  fam = PT.new_Family('WALL', parent=dist_base)
+  fambc = PT.new_node('FamilyBC', 'FamilyBC_t', 'BCWall', parent=fam)
+  fambcds = PT.new_node('FamilyBCDataSet', 'FamilyBCDataSet_t', 'BCWall', parent=fambc)
+  nd = PT.new_node('NeumannData', 'BCData_t', parent=fambcds)
+  PT.new_DataArray('scalar', np.random.random(1), parent=nd)
+  PT.new_DataArray('fbcdsX', np.random.random(1), parent=nd)
+  PT.new_DataArray('fbcdsY', np.random.random(1), parent=nd)
+  PT.new_DataArray('fbcdsZ', np.random.random(1), parent=nd)
+  usd = PT.new_node('UserDefinedData', 'UserDefinedData_t', parent=dist_base)
+  PT.new_DataArray('scalar', np.random.random(1), parent=usd)
+  PT.new_DataArray('fusdX', np.random.random(1), parent=usd)
+  PT.new_DataArray('fusdY', np.random.random(1), parent=usd)
+  PT.new_DataArray('fusdZ', np.random.random(1), parent=usd)
+
+  dist_tree_ini = PT.deep_copy(dist_tree)
+  transform.transform_affine(dist_tree, rotation_angle=np.array([0.,0.,np.pi]))
+
+  check_vect_field(dist_tree_ini, dist_tree, "Coordinate")
+  check_vect_field(dist_tree_ini, dist_tree, "fbcds")
+  check_vect_field(dist_tree_ini, dist_tree, "fusd")
+  check_scal_field(dist_tree_ini, dist_tree, "scalar")
 
 @pytest_parallel.mark.parallel(1)
 class Test_transform_affine_gc:
