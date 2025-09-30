@@ -20,7 +20,7 @@ def _to_rthetaz_vectors(vx, vy, vz, theta):
   return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
 
-def update_fields(zone, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, constant_vectors):
+def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, constant_vectors):
   transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
 
   container_paths = set()
@@ -30,8 +30,8 @@ def update_fields(zone, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np
        and PT.get_name(last_node) not in [":CGNS#Distribution", ":CGNS#GlobalNumbering", "GridCoordinates", "Periodic"]:
       path='/'.join(PT.get_name(node) for node in nodes[1:])
       container_paths.add(path)
-  PT.scan(zone, add_cnt_path, ancestors=True)
-  fields_nodes = [PT.find_node_from_path(zone, path) for path in container_paths]
+  PT.scan(node, add_cnt_path, ancestors=True)
+  fields_nodes = [PT.find_node_from_path(node, path) for path in container_paths]
 
   for fields_node in fields_nodes:
     is_full_vtx = PT.get_label(fields_node) in ['FlowSolution_t', 'DiscreteData_t'] and \
@@ -168,10 +168,10 @@ def transform_affine(t: CGNSTree,
     rotation_angler (array): Angles of the rotation
     translation (array):  Translation vector components
     apply_to_fields (bool, optional) : 
-        If ``True``, also apply the transformation to all the vectorial fields (DataArray_t) found in the input
-        tree. Defaults to ``True``.
+        If ``True``, apply the rotation part of the transformation to all the vectorial fields (DataArray_t)
+        found in the input tree. Defaults to ``True``.
     positional_fields (list of str, optional): 
-        If ``apply_to_fields`` is ``True``, do not apply translation part for these specific vectorial fields.
+        If ``apply_to_fields`` is ``True``, add the translation part for these specific vectorial fields.
         Defaults to ``['Coordinate']``.
 
   Example:
