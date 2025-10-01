@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tree operations &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Yaml parsing" href="yaml.html" />
+    <link rel="prev" title="Node searching" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.8
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="pytree_module.html">The pytree module</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="basic.html">Basic node editing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="inspect.html">Node inspection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="presets.html">Node creation presets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="search.html">Node searching</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Tree operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tree-construction">Tree construction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tree-editing">Tree editing</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#visitor-patterns">Visitor patterns</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#removing-nodes">Removing nodes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#adjusting-nodes">Adjusting nodes</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#tree-comparisons">Tree comparisons</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#checking-trees-equality">Checking trees equality</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#reporting-trees-differences">Reporting trees differences</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="yaml.html">Yaml parsing</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="pytree_module.html">The pytree module</a></li>
+      <li class="breadcrumb-item active">Tree operations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/maia_pytree/operations.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="tree-operations">
+<span id="pt-operations"></span><h1>Tree operations<a class="headerlink" href="#tree-operations" title="Permalink to this heading"></a></h1>
+<p>This page describes some <code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> features that operate on whole CGNSTrees, such as
+copying, displaying of comparing trees.
+These features are less CGNS SIDS-aware than the one listed
+in <a class="reference internal" href="inspect.html#pt-inspect"><span class="std std-ref">Node inspection</span></a> or <a class="reference internal" href="presets.html#pt-presets"><span class="std std-ref">Node creation presets</span></a> pages.</p>
+<section id="tree-construction">
+<h2>Tree construction<a class="headerlink" href="#tree-construction" title="Permalink to this heading"></a></h2>
+<p class="rubric">Copy</p>
+<p>The following functions return a copy of the input tree:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.shallow_copy">
+<span class="sig-name descname"><span class="pre">shallow_copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.shallow_copy" title="Permalink to this definition"></a></dt>
+<dd><p>Create a shallow copy of the input tree.</p>
+<p>Values of the nodes are not copied, but only known
+as a shared referenced by the output tree.
+Other data, such as names, labels and tree structure
+are truly copied.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>t</strong> (<em>CGNSTree</em>) – Input tree</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Copied tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone_dupl</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">shallow_copy</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone_dupl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">array([[18,  8,  0]], dtype=int32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.deep_copy">
+<span class="sig-name descname"><span class="pre">deep_copy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.deep_copy" title="Permalink to this definition"></a></dt>
+<dd><p>Create a deep copy of the input tree.</p>
+<p>Values of the nodes are copied, and both trees
+consequently do not share any reference.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>t</strong> (<em>CGNSTree</em>) – Input tree</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Copied tree</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone_dupl</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">deep_copy</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone_dupl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*=</span> <span class="mi">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">array([[9, 4, 0]], dtype=int32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<p class="rubric">Logical operations</p>
+<p>The following functions construct a new tree from logical operations:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.union">
+<span class="sig-name descname"><span class="pre">union</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">trees</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.union" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new tree from the union of the input trees.</p>
+<p>Nodes existing on more than one input trees keep the value and label of their first appearance.
+Note also that output values are shared references to input trees.
+Uses <a class="reference internal" href="#maia.pytree.deep_copy" title="maia.pytree.deep_copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">deep_copy()</span></code></a> afterwards if you want an independant copy.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Input root nodes must have the same name. An exception will be raised otherwise.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>trees</strong> (<em>CGNSTree</em>) – Input trees</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Tree created from union</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone1 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone3&quot;:</span>
+<span class="gp">... </span><span class="s1">  Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tree2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">  Zone3 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone1&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">tree1</span><span class="p">,</span> <span class="n">tree2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">Base CGNSBase_t</span>
+<span class="go">├───Zone1 Zone_t</span>
+<span class="go">│   └───ZoneGridConnectivity ZoneGridConnectivity_t</span>
+<span class="go">│       └───match GridConnectivity1to1_t &quot;Zone3&quot;</span>
+<span class="go">├───Zone2 Zone_t</span>
+<span class="go">└───Zone3 Zone_t</span>
+<span class="go">    └───ZoneGridConnectivity ZoneGridConnectivity_t</span>
+<span class="go">        └───match GridConnectivity1to1_t &quot;Zone1&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.intersection">
+<span class="sig-name descname"><span class="pre">intersection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*trees</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comp_func=&lt;function</span> <span class="pre">is_same_node&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.intersection" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new tree from the intersection of the input trees.</p>
+<p>At each tree level, input nodes are considered equal if the
+binary predicate <code class="docutils literal notranslate"><span class="pre">comp_func(n1,</span> <span class="pre">n2)</span></code> returns <code class="docutils literal notranslate"><span class="pre">True</span></code>.
+If not provided, the function <a class="reference internal" href="#maia.pytree.is_same_node" title="maia.pytree.is_same_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_same_node()</span></code></a> is used.</p>
+<p>If the intersection is empty, result contains only the root node.
+Note also that output values are shared references to first input tree.
+Uses <a class="reference internal" href="#maia.pytree.deep_copy" title="maia.pytree.deep_copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">deep_copy()</span></code></a> afterwards if you want an independant copy.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Input root nodes must have the same name. An exception will be raised otherwise.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trees</strong> (<em>CGNSTree</em>) – Input trees</p></li>
+<li><p><strong>comp_func</strong> (<em>Callable</em>) – Binary predicate used for comparison (see above)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Tree created from intersection</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_cgns_tree</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone1 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone3&quot;:</span>
+<span class="gp">... </span><span class="s1">  Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tree2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_cgns_tree</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">  Zone3 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone1&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">tree1</span><span class="p">,</span> <span class="n">tree2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">CGNSTree CGNSTree_t</span>
+<span class="go">├───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]</span>
+<span class="go">└───Base CGNSBase_t</span>
+<span class="go">    └───Zone2 Zone_t</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.difference">
+<span class="sig-name descname"><span class="pre">difference</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comp_func=&lt;function</span> <span class="pre">is_same_node&gt;</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.difference" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new tree from the difference of the input trees.</p>
+<p>At each tree level, input nodes are considered equal if the
+binary predicate <code class="docutils literal notranslate"><span class="pre">comp_func(n1,</span> <span class="pre">n2)</span></code> returns <code class="docutils literal notranslate"><span class="pre">True</span></code>.
+If not provided, the function <a class="reference internal" href="#maia.pytree.is_same_node" title="maia.pytree.is_same_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_same_node()</span></code></a> is used.</p>
+<p>This operation is not symmetric. Ouput contains nodes belonging <em>only</em>
+to first input.
+Note also that output values are shared references to input tree <code class="docutils literal notranslate"><span class="pre">t1</span></code>.
+Uses <a class="reference internal" href="#maia.pytree.deep_copy" title="maia.pytree.deep_copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">deep_copy()</span></code></a> afterwards if you want an independant copy.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Input root nodes must have the same name. An exception will be raised otherwise.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t1</strong> (<em>CGNSTree</em>) – First CGNS node</p></li>
+<li><p><strong>t2</strong> (<em>CGNSTree</em>) – Second CGNS node</p></li>
+<li><p><strong>comp_func</strong> (<em>Callable</em>) – Binary predicate used for comparison (see above)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>CGNSTree</em> – Tree created from difference</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_cgns_tree</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone1 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone3&quot;:</span>
+<span class="gp">... </span><span class="s1">  Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tree2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_cgns_tree</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]:</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">  Zone3 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone1&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">tree1</span><span class="p">,</span> <span class="n">tree2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">CGNSTree CGNSTree_t</span>
+<span class="go">└───Base CGNSBase_t</span>
+<span class="go">    └───Zone1 Zone_t</span>
+<span class="go">        └───ZoneGridConnectivity ZoneGridConnectivity_t</span>
+<span class="go">            └───match GridConnectivity1to1_t &quot;Zone3&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="tree-editing">
+<h2>Tree editing<a class="headerlink" href="#tree-editing" title="Permalink to this heading"></a></h2>
+<section id="visitor-patterns">
+<h3>Visitor patterns<a class="headerlink" href="#visitor-patterns" title="Permalink to this heading"></a></h3>
+<p>These functions allow users to apply a function to every node in a tree, which is
+traversed in a <a class="reference external" href="https://en.wikipedia.org/wiki/Depth-first_search">depth-first search</a>
+manner.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.scan">
+<span class="sig-name descname"><span class="pre">scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ancestors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.scan" title="Permalink to this definition"></a></dt>
+<dd><p>Recursively apply the callable function to every node of the input tree.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">ancestors==False</span></code>, the callable must have the signature <code class="docutils literal notranslate"><span class="pre">f(node:CGNSTree)</span> <span class="pre">-&gt;</span> <span class="pre">None</span></code>.
+Otherwise, the expected signature is <code class="docutils literal notranslate"><span class="pre">f(nodes:List[CGNSTree])</span> <span class="pre">-&gt;</span> <span class="pre">None</span></code>, and the function
+will be called on the current node and its ancestors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input tree</p></li>
+<li><p><strong>callable</strong> (<em>function</em>) – User function to apply on each node</p></li>
+<li><p><strong>ancestors</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, also pass ancestors to callable function</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone1 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone3&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">n</span><span class="p">:</span> <span class="n">PT</span><span class="o">.</span><span class="n">update_node</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">BASE CGNSBase_t</span>
+<span class="go">└───ZONE1 Zone_t</span>
+<span class="go">    └───ZONEGRIDCONNECTIVITY ZoneGridConnectivity_t</span>
+<span class="go">        └───MATCH GridConnectivity1to1_t &quot;Zone3&quot;</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">  Zone1 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    ZoneGridConnectivity ZoneGridConnectivity_t:</span>
+<span class="gp">... </span><span class="s1">      match GridConnectivity1to1_t &quot;Zone3&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">gc_paths</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">def</span> <span class="nf">gc_collector</span><span class="p">(</span><span class="n">nodes</span><span class="p">):</span>
+<span class="gp">... </span>  <span class="k">if</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_label</span><span class="p">(</span><span class="n">nodes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">==</span> <span class="s1">&#39;GridConnectivity1to1_t&#39;</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">gc_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">PT</span><span class="o">.</span><span class="n">get_name</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">gc_collector</span><span class="p">,</span> <span class="n">ancestors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">gc_paths</span><span class="p">)</span>
+<span class="go">[&#39;Base/Zone1/ZoneGridConnectivity/match&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.visit">
+<span class="sig-name descname"><span class="pre">visit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">visitor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ancestors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.visit" title="Permalink to this definition"></a></dt>
+<dd><p>Recursively evaluate the visitor functions for every node of the tree.</p>
+<p>This is the complex (but more flexible) version of <a class="reference internal" href="#maia.pytree.scan" title="maia.pytree.scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">scan()</span></code></a>;
+<code class="docutils literal notranslate"><span class="pre">visitor</span></code> must be an object exposing the following functions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Visitor</span><span class="p">:</span>
+  <span class="c1"># The visitor interface can expose the following functions.</span>
+  <span class="c1"># You may omit some functions; in this case, an empty implementation is insered.</span>
+
+  <span class="k">def</span> <span class="nf">pre</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span><span class="n">CGNSTree</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Step</span><span class="p">]:</span>
+    <span class="c1"># Called when `node` is visited for the first time</span>
+  <span class="k">def</span> <span class="nf">down</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span><span class="n">CGNSTree</span><span class="p">,</span> <span class="n">child</span><span class="p">:</span><span class="n">CGNSTree</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Called when moving down from `parent` to `child`</span>
+  <span class="k">def</span> <span class="nf">up</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">child</span><span class="p">:</span><span class="n">CGNSTree</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span><span class="n">CGNSTree</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Called when moving back from `child` to `parent`</span>
+  <span class="k">def</span> <span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span><span class="n">CGNSTree</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Called when all the children of `node` are completed</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">ancestors=True</span></code>, the argument of <code class="docutils literal notranslate"><span class="pre">pre</span></code> and <code class="docutils literal notranslate"><span class="pre">post</span></code> becomes <code class="docutils literal notranslate"><span class="pre">nodes:List[CGNSTree]</span></code>;
+these functions are called on the current node and its ancestors.</p>
+<p>At each level, the return value of <code class="docutils literal notranslate"><span class="pre">pre</span></code> function can be used to decide how to continue the recursion:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Step</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+  <span class="n">INTO</span> <span class="o">=</span> <span class="mi">0</span> <span class="c1"># continue normally: go down in children of current node</span>
+  <span class="n">OVER</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1"># stop current level: do not visit children, go up and continue</span>
+  <span class="n">OUT</span>  <span class="o">=</span> <span class="mi">2</span> <span class="c1"># stop visit process: rewind to top level and exit</span>
+</pre></div>
+</div>
+<p>If <code class="docutils literal notranslate"><span class="pre">pre</span></code> returns nothing, the recusion continues normally, which is equivalent to <code class="docutils literal notranslate"><span class="pre">Step.INTO</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input tree</p></li>
+<li><p><strong>visitor</strong> (<em>visitor object</em>) – Functions to apply on each node</p></li>
+<li><p><strong>ancestors</strong> (<em>bool</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, also pass ancestors to visitor functions</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">tree</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">CGNSTree CGNSTree_t:</span>
+<span class="gp">... </span><span class="s1">  CGNSLibraryVersion CGNSLibraryVersion_t:</span>
+<span class="gp">... </span><span class="s1">  Base CGNSBase_t:</span>
+<span class="gp">... </span><span class="s1">    Zone2 Zone_t:</span>
+<span class="gp">... </span><span class="s1">    Zone1 Zone_t:</span>
+<span class="gp">... </span><span class="s1">      Tri  Elements_t [5, 0]:</span>
+<span class="gp">... </span><span class="s1">      Quad Elements_t [7, 0]:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">class</span> <span class="nc">TreeSorter</span><span class="p">:</span>
+<span class="gp">... </span>  <span class="c1"># A visitor that sort children of nodes, until max level is reached</span>
+<span class="gp">... </span>  <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">level</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="bp">self</span><span class="o">.</span><span class="n">level</span> <span class="o">=</span> <span class="n">level</span>
+<span class="gp">... </span>  <span class="k">def</span> <span class="nf">pre</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodes</span><span class="p">):</span>
+<span class="gp">... </span>    <span class="n">last</span> <span class="o">=</span> <span class="n">nodes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="gp">... </span>    <span class="n">PT</span><span class="o">.</span><span class="n">set_children</span><span class="p">(</span><span class="n">last</span><span class="p">,</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_children</span><span class="p">(</span><span class="n">last</span><span class="p">)))</span>
+<span class="gp">... </span>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nodes</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">level</span><span class="p">:</span>
+<span class="gp">... </span>      <span class="k">return</span> <span class="n">PT</span><span class="o">.</span><span class="n">Step</span><span class="o">.</span><span class="n">OVER</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">visit</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">TreeSorter</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="n">ancestors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+<span class="go">CGNSTree CGNSTree_t</span>
+<span class="go">├───Base CGNSBase_t</span>
+<span class="go">│   ├───Zone1 Zone_t</span>
+<span class="go">│   │   ├───Tri Elements_t I4 [5 0]</span>
+<span class="go">│   │   └───Quad Elements_t I4 [7 0]</span>
+<span class="go">│   └───Zone2 Zone_t</span>
+<span class="go">└───CGNSLibraryVersion CGNSLibraryVersion_t</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="removing-nodes">
+<h3>Removing nodes<a class="headerlink" href="#removing-nodes" title="Permalink to this heading"></a></h3>
+<p>Functions removing nodes reuses the concept of predicate described in the
+<a class="reference internal" href="search.html#pt-node-search"><span class="std std-ref">Node searching</span></a> page, which we advise users to read in first place.</p>
+<p>However, there is much less variability and options when using remove functions:
+there is no equivalent of chaining searches (no <code class="docutils literal notranslate"><span class="pre">predicates</span></code> version), and
+the only additional parameter is the depth until which nodes are inspected for suppression.
+In addition, only the variant removing all the matches is provided,
+leading to the following generic function:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.rm_nodes_from_predicate">
+<span class="sig-name descname"><span class="pre">rm_nodes_from_predicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.rm_nodes_from_predicate" title="Permalink to this definition"></a></dt>
+<dd><p>Remove all the nodes in the input tree matching the given predicate.</p>
+<p>The search can be fine-tuned with the following kwargs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">depth</span></code> (int): Stop exploring nodes once <code class="docutils literal notranslate"><span class="pre">depth</span></code> is reached (0 beeing the node itself, and
+<code class="docutils literal notranslate"><span class="pre">None</span></code> meaning unlimited). Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> (<em>CGNSTree</em>) – Tree in which nodes are removed</p></li>
+<li><p><strong>predicate</strong> (<em>callable</em>) – condition to remove nodes, which must
+have the following signature: <code class="docutils literal notranslate"><span class="pre">f(n:CGNSTree)</span> <span class="pre">-&gt;</span> <span class="pre">bool</span></code></p></li>
+<li><p><strong>**kwargs</strong> – Additional options (see above)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Zone Zone_t:</span>
+<span class="gp">... </span><span class="s1">  FamilyName FamilyName_t &#39;ROW1&#39;:</span>
+<span class="gp">... </span><span class="s1">  ZoneBC ZoneBC_t:</span>
+<span class="gp">... </span><span class="s1">    bc1 BC_t:</span>
+<span class="gp">... </span><span class="s1">      FamilyName FamilyName_t &#39;BC1&#39;:</span>
+<span class="gp">... </span><span class="s1">      Index_i IndexArray_t:</span>
+<span class="gp">... </span><span class="s1">    bc2 BC_t:</span>
+<span class="gp">... </span><span class="s1">      FamilyName FamilyName_t &#39;BC2&#39;:</span>
+<span class="gp">... </span><span class="s1">      Index_ii IndexArray_t:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">rm_children_from_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FamilyName_t&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_nodes_from_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FamilyName_t&#39;</span><span class="p">))</span>
+<span class="go">2</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">rm_nodes_from_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FamilyName_t&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">len</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_nodes_from_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FamilyName_t&#39;</span><span class="p">))</span>
+<span class="go">0</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This function admits the following shorcuts:</p>
+<ul class="simple">
+<li><p><code class="xref py py-func docutils literal notranslate"><span class="pre">rm_nodes_from_name()</span></code>, <code class="xref py py-func docutils literal notranslate"><span class="pre">rm_nodes_from_label()</span></code>,
+<code class="xref py py-func docutils literal notranslate"><span class="pre">rm_nodes_from_value()</span></code>, <code class="xref py py-func docutils literal notranslate"><span class="pre">rm_nodes_from_name_and_label()</span></code> (embedded predicate)</p></li>
+<li><p><code class="xref py py-func docutils literal notranslate"><span class="pre">rm_children_from_name()</span></code>, <code class="xref py py-func docutils literal notranslate"><span class="pre">rm_children_from_label()</span></code>,
+<code class="xref py py-func docutils literal notranslate"><span class="pre">rm_children_from_value()</span></code>, <code class="xref py py-func docutils literal notranslate"><span class="pre">rm_children_from_name_and_label()</span></code> (embedded predicate + depth=1)</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<p>For convenience, we also provide the <a class="reference internal" href="#maia.pytree.keep_children_from_predicate" title="maia.pytree.keep_children_from_predicate"><code class="xref py py-func docutils literal notranslate"><span class="pre">keep_children_from_predicate()</span></code></a>
+from which remove the children nodes that <em>do not</em> match the predicate.
+Note that unlike <a class="reference internal" href="#maia.pytree.rm_nodes_from_predicate" title="maia.pytree.rm_nodes_from_predicate"><code class="xref py py-func docutils literal notranslate"><span class="pre">rm_nodes_from_predicate()</span></code></a>, this function is limited
+to the first level of children.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.keep_children_from_predicate">
+<span class="sig-name descname"><span class="pre">keep_children_from_predicate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.keep_children_from_predicate" title="Permalink to this definition"></a></dt>
+<dd><p>Remove all the children of root node expect the ones matching the given predicate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> (<em>CGNSTree</em>) – Tree in which nodes are removed</p></li>
+<li><p><strong>predicate</strong> (<em>callable</em>) – condition to keep nodes, which must
+have the following signature: <code class="docutils literal notranslate"><span class="pre">f(n:CGNSTree)</span> <span class="pre">-&gt;</span> <span class="pre">bool</span></code></p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Zone Zone_t:</span>
+<span class="gp">... </span><span class="s1">  FamilyName FamilyName_t &#39;ROW1&#39;:</span>
+<span class="gp">... </span><span class="s1">  ZoneBC ZoneBC_t:</span>
+<span class="gp">... </span><span class="s1">    bc1 BC_t:</span>
+<span class="gp">... </span><span class="s1">      FamilyName FamilyName_t &#39;BC1&#39;:</span>
+<span class="gp">... </span><span class="s1">      Index_i IndexArray_t:</span>
+<span class="gp">... </span><span class="s1">    bc2 BC_t:</span>
+<span class="gp">... </span><span class="s1">      FamilyName FamilyName_t &#39;BC2&#39;:</span>
+<span class="gp">... </span><span class="s1">      Index_ii IndexArray_t:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">keep_children_from_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FamilyName_t&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">Zone Zone_t</span>
+<span class="go">└───FamilyName FamilyName_t &quot;ROW1&quot;</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This function admits the following shorcuts:</p>
+<ul class="simple">
+<li><p><code class="xref py py-func docutils literal notranslate"><span class="pre">keep_children_from_name()</span></code>, <code class="xref py py-func docutils literal notranslate"><span class="pre">keep_children_from_label()</span></code>,
+<code class="xref py py-func docutils literal notranslate"><span class="pre">keep_children_from_value()</span></code>, <code class="xref py py-func docutils literal notranslate"><span class="pre">keep_children_from_name_and_label()</span></code> (embedded predicate)</p></li>
+</ul>
+</div>
+</dd></dl>
+
+<p>When the node to remove is known, it is also possible to directly remove
+it from its path:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.rm_node_from_path">
+<span class="sig-name descname"><span class="pre">rm_node_from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.rm_node_from_path" title="Permalink to this definition"></a></dt>
+<dd><p>Remove the node in input tree matching the given path.</p>
+<p>A path is a str containing a full list of names, separated by <code class="docutils literal notranslate"><span class="pre">'/'</span></code>, leading
+to the node to remove. Root name should not be included in path.
+Wildcards are not accepted in path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>root</strong> (<em>CGNSTree</em>) – Tree in which the search is performed</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – path of the node to remove</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="s1">&#39;Zone&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="s1">&#39;FS&#39;</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">],</span> <span class="s1">&#39;Temperature&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">273.</span><span class="p">]},</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">rm_node_from_path</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;FS/Density&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">Zone Zone_t</span>
+<span class="go">├───ZoneType ZoneType_t &quot;Null&quot;</span>
+<span class="go">└───FS FlowSolution_t</span>
+<span class="go">    └───Temperature DataArray_t R4 [273.]</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>Also exists as <code class="xref py py-func docutils literal notranslate"><span class="pre">pop_node_from_path()</span></code>, which removes the node and returns it.</p>
+</div>
+</dd></dl>
+
+</section>
+<section id="adjusting-nodes">
+<h3>Adjusting nodes<a class="headerlink" href="#adjusting-nodes" title="Permalink to this heading"></a></h3>
+<p>These functions are high level shortcuts for current modifications
+of the tree structure. Only light operations such as moving nodes
+or editing metadata are performed here.</p>
+<p>All these fonctions operate inplace on the input tree.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.subregion_fields_to_bcdataset">
+<span class="sig-name descname"><span class="pre">subregion_fields_to_bcdataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'move'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.subregion_fields_to_bcdataset" title="Permalink to this definition"></a></dt>
+<dd><p>Move the data fields from ZoneSubRegion nodes to their related BC node, if existing.</p>
+<p>ZoneSubRegion nodes must be explicitly related to a BC node through the BCRegionName descriptor.
+Data fields will be added in a BCDataSet named as the ZoneSubRegion (under a DirichletData node).
+This function is particularly useful for viewing BC data using Paraview.</p>
+<p>The operation performed depends of the value of <code class="docutils literal notranslate"><span class="pre">mode</span></code> argument:</p>
+<ul class="simple">
+<li><p>if <code class="docutils literal notranslate"><span class="pre">mode</span> <span class="pre">==</span> <span class="pre">'move'</span></code>, fields are removed from the ZSR node (which is itself preserved);</p></li>
+<li><p>if <code class="docutils literal notranslate"><span class="pre">mode</span> <span class="pre">==</span> <span class="pre">'copy'</span></code>, fields remains in the ZSR node and a copy is placed in the BCDataSet;</p></li>
+<li><p>if <code class="docutils literal notranslate"><span class="pre">mode</span> <span class="pre">==</span> <span class="pre">'view'</span></code>, fields in the ZSR and those added in BCDataSet share the same memory.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input tree, starting at Zone_t level or higher</p></li>
+<li><p><strong>mode</strong> (<em>str</em><em>, </em><em>optional</em>) – Controls how the fields are created (see above). Defaults to <code class="docutils literal notranslate"><span class="pre">'move'</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Zone Zone_t:</span>
+<span class="gp">... </span><span class="s1">  ZoneBC ZoneBC_t:</span>
+<span class="gp">... </span><span class="s1">    Wing BC_t &#39;BCWall&#39;:</span>
+<span class="gp">... </span><span class="s1">  WingExtraction ZoneSubRegion_t:</span>
+<span class="gp">... </span><span class="s1">    field DataArray_t [10,20,30,40]:</span>
+<span class="gp">... </span><span class="s1">    BCRegionName Descriptor_t &quot;Wing&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">subregion_fields_to_bcdataset</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">Zone Zone_t</span>
+<span class="go">├───ZoneBC ZoneBC_t</span>
+<span class="go">│   └───Wing BC_t &quot;BCWall&quot;</span>
+<span class="go">│       └───WingExtraction BCDataSet_t &quot;UserDefined&quot;</span>
+<span class="go">│           └───DirichletData BCData_t</span>
+<span class="go">│               └───field DataArray_t I4 [10 20 30 40]</span>
+<span class="go">└───WingExtraction ZoneSubRegion_t</span>
+<span class="go">    └───BCRegionName Descriptor_t &quot;Wing&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.subregion_fields_from_bcdataset">
+<span class="sig-name descname"><span class="pre">subregion_fields_from_bcdataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tree</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'move'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.subregion_fields_from_bcdataset" title="Permalink to this definition"></a></dt>
+<dd><p>Move the data fields to ZoneSubRegion nodes from their related BC node, if existing.</p>
+<p>ZoneSubRegion nodes must be explicitly related to a BC node through the BCRegionName descriptor.
+Data fields are taken from a <em>full</em> (without Subset) BCDataSet node, preferentially
+named as the ZoneSubRegion node (see <a class="reference internal" href="#maia.pytree.subregion_fields_to_bcdataset" title="maia.pytree.subregion_fields_to_bcdataset"><code class="xref py py-func docutils literal notranslate"><span class="pre">subregion_fields_to_bcdataset()</span></code></a>);
+if such a node does not exists, the last <em>full</em> BCDataSet is taken.</p>
+<p>The operation performed depends of the value of <code class="docutils literal notranslate"><span class="pre">mode</span></code> argument:</p>
+<ul class="simple">
+<li><p>if <code class="docutils literal notranslate"><span class="pre">mode</span> <span class="pre">==</span> <span class="pre">'move'</span></code>, fields are removed from the BCDataSet node (which is itself preserved);</p></li>
+<li><p>if <code class="docutils literal notranslate"><span class="pre">mode</span> <span class="pre">==</span> <span class="pre">'copy'</span></code>, fields remains in the BCDataSet node and a copy is placed in the ZSR;</p></li>
+<li><p>if <code class="docutils literal notranslate"><span class="pre">mode</span> <span class="pre">==</span> <span class="pre">'view'</span></code>, fields in the BCDataSet and those added in ZSR share the same memory.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tree</strong> (<em>CGNSTree</em>) – Input tree, starting at Zone_t level or higher</p></li>
+<li><p><strong>mode</strong> (<em>str</em><em>, </em><em>optional</em>) – Controls how the fields are created (see above). Defaults to <code class="docutils literal notranslate"><span class="pre">'move'</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">Zone Zone_t:</span>
+<span class="gp">... </span><span class="s1">  ZoneBC ZoneBC_t:</span>
+<span class="gp">... </span><span class="s1">    Wing BC_t &#39;BCWall&#39;:</span>
+<span class="gp">... </span><span class="s1">      WingExtraction BCDataSet_t &quot;UserDefined&quot;:</span>
+<span class="gp">... </span><span class="s1">        DirichletData BCData_t:</span>
+<span class="gp">... </span><span class="s1">          field DataArray_t I4 [10, 20, 30, 40]:</span>
+<span class="gp">... </span><span class="s1">  WingExtraction ZoneSubRegion_t:</span>
+<span class="gp">... </span><span class="s1">    BCRegionName Descriptor_t &quot;Wing&quot;:</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">subregion_fields_from_bcdataset</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+<span class="go">Zone Zone_t</span>
+<span class="go">├───ZoneBC ZoneBC_t</span>
+<span class="go">│   └───Wing BC_t &quot;BCWall&quot;</span>
+<span class="go">│       └───WingExtraction BCDataSet_t &quot;UserDefined&quot;</span>
+<span class="go">└───WingExtraction ZoneSubRegion_t</span>
+<span class="go">    ├───BCRegionName Descriptor_t &quot;Wing&quot;</span>
+<span class="go">    └───field DataArray_t I4 [10 20 30 40]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</section>
+<section id="tree-comparisons">
+<h2>Tree comparisons<a class="headerlink" href="#tree-comparisons" title="Permalink to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> offers two ways to compare trees. We can either simply check
+if two trees are identical or not with the functions
+<a class="reference internal" href="#maia.pytree.is_same_node" title="maia.pytree.is_same_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_same_node()</span></code></a> and <a class="reference internal" href="#maia.pytree.is_same_tree" title="maia.pytree.is_same_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_same_tree()</span></code></a>,
+or get a full report of differences using <a class="reference internal" href="#maia.pytree.diff_tree" title="maia.pytree.diff_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">diff_tree()</span></code></a>.
+The later also allow users to define their own comparison function
+for data arrays.</p>
+<section id="checking-trees-equality">
+<h3>Checking trees equality<a class="headerlink" href="#checking-trees-equality" title="Permalink to this heading"></a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.is_same_node">
+<span class="sig-name descname"><span class="pre">is_same_node</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">node1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">abs_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.is_same_node" title="Permalink to this definition"></a></dt>
+<dd><p>Compare two nodes.</p>
+<p>Nodes are considered equal if they have the same name, label and value.
+Note that no check is performed on their children.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>node1</strong> (<em>CGNSTree</em>) – first tree</p></li>
+<li><p><strong>node2</strong> (<em>CGNSTree</em>) – second tree</p></li>
+<li><p><strong>abs_tol</strong> (<em>float</em>) – absolute tolerance used for value comparison, performed by <code class="docutils literal notranslate"><span class="pre">np.allclose</span></code> function</p></li>
+<li><p><strong>type_tol</strong> (<em>bool</em>) – if True, allow comparaison of compatible but different types (I4/I8 or R4/R8).
+Otherwise, nodes are considered to differ.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><em>bool</em> – True if nodes are identical</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;ROTOR&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;STATOR&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">is_same_node</span><span class="p">(</span><span class="n">zone1</span><span class="p">,</span> <span class="n">zone2</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.is_same_tree">
+<span class="sig-name descname"><span class="pre">is_same_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">abs_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.is_same_tree" title="Permalink to this definition"></a></dt>
+<dd><p>Compare recursively two trees.</p>
+<p>Trees are considered equal if they recursively have the same children (order does not matters),
+in the sense of <a class="reference internal" href="#maia.pytree.is_same_node" title="maia.pytree.is_same_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_same_node()</span></code></a>.</p>
+<p>See <a class="reference internal" href="#maia.pytree.is_same_node" title="maia.pytree.is_same_node"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_same_node()</span></code></a> for arguments description.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><em>bool</em> – True if trees are identical</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;ROTOR&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;STATOR&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">is_same_tree</span><span class="p">(</span><span class="n">zone1</span><span class="p">,</span> <span class="n">zone2</span><span class="p">)</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+<section id="reporting-trees-differences">
+<h3>Reporting trees differences<a class="headerlink" href="#reporting-trees-differences" title="Permalink to this heading"></a></h3>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.diff_tree">
+<span class="sig-name descname"><span class="pre">diff_tree</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strict_value_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.diff_tree" title="Permalink to this definition"></a></dt>
+<dd><p>Report the differences between two trees.</p>
+<p>This function is similar to <a class="reference internal" href="#maia.pytree.is_same_tree" title="maia.pytree.is_same_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_same_tree()</span></code></a>, but returns a full report of differences between
+the two input trees. In addition, it is possible to provide a custom comparison function
+for numerical arrays or to choose one in the following list:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#maia.pytree.compare.EqualArray" title="maia.pytree.compare.EqualArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">maia.pytree.compare.EqualArray</span></code></a>: two arrays are equal if all their
+elements are one-to-one exactly equal. This is the default comparison method.</p></li>
+<li><p><a class="reference internal" href="#maia.pytree.compare.CloseArray" title="maia.pytree.compare.CloseArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">maia.pytree.compare.CloseArray</span></code></a>: two arrays are equal if all their
+elements are one-to-one close up to a given tolerance.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t1</strong> (<em>CGNSTree</em>) – first tree</p></li>
+<li><p><strong>t2</strong> (<em>CGNSTree</em>) – second tree</p></li>
+<li><p><strong>strict_value_type</strong> (<em>bool</em>) – if True, allow comparaison of compatible but different types (I4/I8 or R4/R8).
+Otherwise, nodes are considered to differ.</p></li>
+<li><p><strong>comp</strong> – comparison function to check the value of nodes (see above)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>(<a class="reference internal" href="#maia.pytree.compare.DiffReport" title="maia.pytree.compare.DiffReport"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DiffReport</span></code></a>) – Difference report. First value indicates if trees are identical, second and
+third store the differences between trees, encoded as strings (respectivly errors and warnings).</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;ROW1&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_Zone</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="s1">&#39;Unstructured&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="p">[[</span><span class="mi">9</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">family</span><span class="o">=</span><span class="s1">&#39;ROW2&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">diff_tree</span><span class="p">(</span><span class="n">zone1</span><span class="p">,</span> <span class="n">zone2</span><span class="p">)</span>
+<span class="go">DiffReport(status=False, errors=&#39;/Zone/FamilyName -- Values differ: ROW1 &lt;&gt; ROW2\n&#39;, warnings=&#39;&#39;)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<p class="rubric">Comparison methods</p>
+<p>The following comparison methods are exposed in the <code class="docutils literal notranslate"><span class="pre">maia.pytree.compare</span></code> module:</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.compare.EqualArray">
+<span class="sig-name descname"><span class="pre">EqualArray</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.compare.EqualArray" title="Permalink to this definition"></a></dt>
+<dd><p>A callable object generating a report for <a class="reference internal" href="#maia.pytree.diff_tree" title="maia.pytree.diff_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">diff_tree()</span></code></a>, using an exact point-to-point
+comparison.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sol1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.002</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.001</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">comp</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">compare</span><span class="o">.</span><span class="n">EqualArray</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">diff_tree</span><span class="p">(</span><span class="n">sol1</span><span class="p">,</span> <span class="n">sol2</span><span class="p">,</span> <span class="n">comp</span><span class="o">=</span><span class="n">comp</span><span class="p">)</span>
+<span class="go">DiffReport(</span>
+<span class="go">  status=False,</span>
+<span class="go">  errors=&#39;/FlowSolution/Density -- Values differ: [1.    1.002 1.   ] &lt;&gt; [1.    1.001 1.   ]\n&#39;,</span>
+<span class="go">  warnings=&#39;&#39;</span>
+<span class="go">  )</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.pytree.compare.CloseArray">
+<span class="sig-name descname"><span class="pre">CloseArray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.pytree.compare.CloseArray" title="Permalink to this definition"></a></dt>
+<dd><p>A callable object generating a report for <a class="reference internal" href="#maia.pytree.diff_tree" title="maia.pytree.diff_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">diff_tree()</span></code></a>, using a point-to-point with
+tolerance comparison
+(see <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.isclose.html#numpy.isclose">np.isclose</a>
+documentation).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rtol</strong> (<em>float</em>) – relative tolerance</p></li>
+<li><p><strong>atol</strong> (<em>float</em>) – absolute tolerance</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sol1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.002</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sol2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Density&#39;</span> <span class="p">:</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">1.001</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]})</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">comp</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">compare</span><span class="o">.</span><span class="n">CloseArray</span><span class="p">(</span><span class="n">rtol</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1E-2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">PT</span><span class="o">.</span><span class="n">diff_tree</span><span class="p">(</span><span class="n">sol1</span><span class="p">,</span> <span class="n">sol2</span><span class="p">,</span> <span class="n">comp</span><span class="o">=</span><span class="n">comp</span><span class="p">)</span>
+<span class="go">DiffReport(status=True, errors=&#39;&#39;, warnings=&#39;&#39;)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<p>To define a custom comparison method, users must provide a <em>callable</em> object comparing two
+nodes. Note that this method will only be called on nodes having numerics (excluding str)
+values of same shape, since <code class="xref py py-func docutils literal notranslate"><span class="pre">diff_tree()</span></code> will report a difference otherwise.
+This callback must have the following signature:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="n">nodes_1</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CGNSTree</span><span class="p">],</span>
+             <span class="n">nodes_2</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CGNSTree</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span><span class="nb">str</span><span class="p">,</span><span class="nb">str</span><span class="p">]:</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">nodes_1</span></code> and <code class="docutils literal notranslate"><span class="pre">nodes_2</span></code> are the two nodes on which comparison is performed,
+stacked with their ancestors.</p>
+<p>As an example, here is a dummy comparison method definition:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">CustomComparator</span><span class="p">:</span>
+  <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodes_1</span><span class="p">,</span> <span class="n">nodes_2</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;BC_t&#39;</span> <span class="ow">in</span> <span class="p">[</span><span class="n">PT</span><span class="o">.</span><span class="n">get_label</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nodes_1</span><span class="p">]:</span>
+      <span class="k">return</span> <span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="c1"># If node is below a BC, considerer it&#39;s ok</span>
+    <span class="k">else</span><span class="p">:</span>
+      <span class="k">return</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;Uncomparable value</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p class="rubric">Comparison reports</p>
+<p>Comparison reports are named tuple made of 3 values:</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="maia.pytree.compare.DiffReport">
+<span class="sig-name descname"><span class="pre">DiffReport</span></span><em class="property"><span class="w"> </span><span class="pre">(NamedTuple)</span></em><a class="headerlink" href="#maia.pytree.compare.DiffReport" title="Permalink to this definition"></a></dt>
+<dd><p>A NamedTuple storing the output of <a class="reference internal" href="#maia.pytree.diff_tree" title="maia.pytree.diff_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">diff_tree()</span></code></a></p>
+<p><strong>Fields</strong></p>
+<blockquote>
+<div><ol class="arabic simple" start="0">
+<li><p><strong>status</strong> (<em>bool</em>): <code class="docutils literal notranslate"><span class="pre">True</span></code> if trees are identical</p></li>
+<li><p><strong>errors</strong> (<em>str</em>): differences between the two trees</p></li>
+<li><p><strong>warnings</strong> (<em>str</em>) : minor differences between the two trees</p></li>
+</ol>
+</div></blockquote>
+</dd></dl>
+
+<p>The choice to write in errors or warning report is let to the comparison object.
+To illustrate the content of a <code class="docutils literal notranslate"><span class="pre">DiffReport</span></code>, consider the following example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">zone1</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="go">  Zone Zone_t I4 [[9,4,0]]:</span>
+<span class="go">    ZoneType ZoneType_t &quot;Unstructured&quot;:</span>
+<span class="go">    FlowSolution FlowSolution_t:</span>
+<span class="go">      GridLocation GridLocation_t &quot;CellCenter&quot;:</span>
+<span class="go">      Density DataArray_t [1., 1, 1, 1]:</span>
+<span class="go">      Pressure DataArray_t [1E5, 1E5, 1E5, 1E5]:</span>
+<span class="go">    SomeData ZoneSubRegion_t:</span>
+<span class="go">      PointList IndexArray_t [2,4,6,8]:</span>
+<span class="go">      Descriptor Descriptor_t &quot;Even vtx&quot;:</span>
+<span class="go">  &#39;&#39;&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">zone2</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">yaml</span><span class="o">.</span><span class="n">to_node</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="go">  Zone Zone_t I8 [[9,4,0]]:</span>
+<span class="go">    ZoneType ZoneType_t &quot;Unstructured&quot;:</span>
+<span class="go">    FamilyName FamilyName_t &quot;ROTOR&quot;:</span>
+<span class="go">    FlowSolution FlowSolution_t:</span>
+<span class="go">      GridLocation GridLocation_t &quot;CellCenter&quot;:</span>
+<span class="go">      Density DataArray_t [1., 1.1, 1, 1]:</span>
+<span class="go">    SomeData DiscreteData_t:</span>
+<span class="go">      PointList IndexArray_t [1,3,5,7,9]:</span>
+<span class="go">      Descriptor Descriptor_t &quot;Odd vtx&quot;:</span>
+<span class="go">  &#39;&#39;&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">report</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">diff_tree</span><span class="p">(</span><span class="n">zone1</span><span class="p">,</span> <span class="n">zone2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Printing the errors report with <code class="docutils literal notranslate"><span class="pre">&gt;&gt;&gt;</span> <span class="pre">print(report.errors)</span></code> gives</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">Zone</span> <span class="o">--</span> <span class="n">Value</span> <span class="n">types</span> <span class="n">differ</span><span class="p">:</span> <span class="n">I4</span> <span class="o">&lt;&gt;</span> <span class="n">I8</span>
+<span class="o">/</span><span class="n">Zone</span><span class="o">/</span><span class="n">FlowSolution</span><span class="o">/</span><span class="n">Density</span> <span class="o">--</span> <span class="n">Values</span> <span class="n">differ</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.</span> <span class="mf">1.</span> <span class="mf">1.</span> <span class="mf">1.</span><span class="p">]</span> <span class="o">&lt;&gt;</span> <span class="p">[</span><span class="mf">1.</span>  <span class="mf">1.1</span> <span class="mf">1.</span>  <span class="mf">1.</span> <span class="p">]</span>
+<span class="o">&lt;</span> <span class="o">/</span><span class="n">Zone</span><span class="o">/</span><span class="n">FlowSolution</span><span class="o">/</span><span class="n">Pressure</span>
+<span class="o">/</span><span class="n">Zone</span><span class="o">/</span><span class="n">SomeData</span> <span class="o">--</span> <span class="n">Labels</span> <span class="n">differ</span><span class="p">:</span> <span class="n">ZoneSubRegion_t</span> <span class="o">&lt;&gt;</span> <span class="n">DiscreteData_t</span>
+<span class="o">/</span><span class="n">Zone</span><span class="o">/</span><span class="n">SomeData</span><span class="o">/</span><span class="n">Descriptor</span> <span class="o">--</span> <span class="n">Values</span> <span class="n">differ</span><span class="p">:</span> <span class="n">Even</span> <span class="n">vtx</span> <span class="o">&lt;&gt;</span> <span class="n">Odd</span> <span class="n">vtx</span>
+<span class="o">/</span><span class="n">Zone</span><span class="o">/</span><span class="n">SomeData</span><span class="o">/</span><span class="n">PointList</span> <span class="o">--</span> <span class="n">Value</span> <span class="n">shape</span> <span class="n">differ</span><span class="p">:</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span> <span class="o">&lt;&gt;</span> <span class="p">(</span><span class="mi">5</span><span class="p">,)</span>
+<span class="o">&gt;</span> <span class="o">/</span><span class="n">Zone</span><span class="o">/</span><span class="n">FamilyName</span>
+</pre></div>
+</div>
+<p>Following <code class="docutils literal notranslate"><span class="pre">diff</span></code> convention, symbols <code class="docutils literal notranslate"><span class="pre">&lt;</span></code> (resp. <code class="docutils literal notranslate"><span class="pre">&gt;</span></code>) are used to mark nodes
+existing only in first (resp. second) tree.
+Nodes existing in both trees, but with different labels or values are shown using
+the following pattern : <code class="docutils literal notranslate"><span class="pre">{path}</span> <span class="pre">--</span> <span class="pre">{diff_kind}:</span> <span class="pre">{details}</span></code>.
+If the <code class="docutils literal notranslate"><span class="pre">&lt;&gt;</span></code> symbol is used to display details,
+the value to its left (resp. right) corresponds to the first (resp. second) input node.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Users implementing their own <code class="docutils literal notranslate"><span class="pre">comp</span></code> object must only write the equivalent
+of <code class="docutils literal notranslate"><span class="pre">{details}</span></code> in the report. Other data will be insered automatically.</p>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="search.html" class="btn btn-neutral float-left" title="Node searching" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="yaml.html" class="btn btn-neutral float-right" title="Yaml parsing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.8
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
