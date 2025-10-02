@@ -15,7 +15,7 @@ v1.8 (September 2025)
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Introduce command line utility ``maia_cgns_check`` to detect issues in cgns files
-- Pytree: add ``visit`` and ``scan`` fucntions to apply a callable to every node of the tree
+- Pytree: add ``visit`` and ``scan`` functions to apply a callable to every node of the tree
 
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
