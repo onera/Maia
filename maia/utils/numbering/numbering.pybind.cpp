@@ -1,5 +1,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include "std_e/future/contract.hpp"
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -36,9 +37,9 @@ void ngon_dconnectivity_from_gnum(g_num begin, g_num endI, g_num endJ, g_num end
   //Some checks
   int n_face_loc = endK - begin;
   g_num n_face_tot = n_face_glob(zone_size);
-  assert (begin <= endI && endI <= endJ && endJ <= endK);
-  assert (face_vtx.ndim() == 1 && face_vtx.shape()[0] == 4*n_face_loc);
-  assert (pe.ndim() == 2 && pe.shape()[0] == n_face_loc && pe.shape()[1] == 2);
+  STD_E_ASSERT (begin <= endI && endI <= endJ && endJ <= endK);
+  STD_E_ASSERT (face_vtx.ndim() == 1 && face_vtx.shape()[0] == 4*n_face_loc);
+  STD_E_ASSERT (pe.ndim() == 2 && pe.shape()[0] == n_face_loc && pe.shape()[1] == 2);
 
   const g_num *n_vtx = zone_size.data();
   const g_num n_cell[] = {n_vtx[0]-1, n_vtx[1]-1, n_vtx[2]-1};
@@ -147,9 +148,9 @@ void edge_dconnectivity_from_gnum(g_num begin, g_num endI, g_num endJ,
   //Some checks
   int n_edge_loc = endJ - begin;
   g_num n_edge_tot = n_edge_glob(zone_size);
-  assert (begin <= endI && endI <= endJ);
-  assert (edge_vtx.ndim() == 1 && edge_vtx.shape()[0] == 2*n_edge_loc);
-  assert (pe.ndim() == 2 && pe.shape()[0] == n_edge_loc && pe.shape()[1] == 2);
+  STD_E_ASSERT (begin <= endI && endI <= endJ);
+  STD_E_ASSERT (edge_vtx.ndim() == 1 && edge_vtx.shape()[0] == 2*n_edge_loc);
+  STD_E_ASSERT (pe.ndim() == 2 && pe.shape()[0] == n_edge_loc && pe.shape()[1] == 2);
 
   const g_num *n_vtx = zone_size.data();
   const g_num n_cell[] = {n_vtx[0]-1, n_vtx[1]-1};

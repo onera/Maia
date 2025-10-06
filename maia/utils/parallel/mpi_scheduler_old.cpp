@@ -5,6 +5,7 @@
 #include "maia/utils/parallel/mpi_scheduler.hpp"
 #include "std_e/logging/log.hpp"
 #include "std_e/interval/interval_sequence.hpp"
+#include "std_e/future/contract.hpp"
 
 // --------------------------------------------------------------------------------------
 void run_scheduler_old(MPI_Comm&                                    comm,
@@ -22,7 +23,7 @@ void run_scheduler_old(MPI_Comm&                                    comm,
 
   // Hypothesis : all rank have the same list test and organize in a same way
   int n_tot_test = n_rank_for_test.size();
-  assert(n_tot_test == static_cast<int>(tests_suite.size()));
+  STD_E_ASSERT(n_tot_test == static_cast<int>(tests_suite.size()));
 
   // II/ Setup the distributed rank value for each test
   // auto dtest_proc = setup_test_distribution(comm, n_rank_for_test);
@@ -104,7 +105,7 @@ void run_scheduler_old(MPI_Comm&                                    comm,
                                    comm,
                                    &count_rank_for_test,
                                    &win_count_rank_for_test);
-  assert(err_alloc == MPI_SUCCESS);
+  STD_E_ASSERT(err_alloc == MPI_SUCCESS);
 
   // // int dn_test_list = end_cur_proc_test - beg_cur_proc_test;
   // int dn_test_list = n_rank_for_test.size()+1;
@@ -252,12 +253,12 @@ void run_scheduler_old(MPI_Comm&                                    comm,
         MPI_Group_rank(test_group, &i_rank_group);
         MPI_Group_size(test_group, &n_rank_group);
         MPI_Comm test_comm; // = list_comm[i_test_g];
-        assert( i_rank_group != MPI_UNDEFINED);
+        STD_E_ASSERT( i_rank_group != MPI_UNDEFINED);
         if(i_rank_group != MPI_UNDEFINED){
           printf("    [%i] Execute test %i \n", i_rank, i_test_g);
           MPI_Comm_create_group(comm, test_group, i_test_g, &test_comm);
         }
-        assert(n_rank_group == n_rank_for_test[i_test_g]);
+        STD_E_ASSERT(n_rank_group == n_rank_for_test[i_test_g]);
 
         // MPI_Win_lock(MPI_LOCK_SHARED, i_rank, 0, win_count_rank_for_test);
         // MPI_Win_lock(MPI_LOCK_SHARED, i_rank, 0, win_list_rank_for_test);

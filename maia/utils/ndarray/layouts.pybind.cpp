@@ -221,8 +221,8 @@ interleaved_to_indexed_connectivity(int n_elem, py::array_t<T>& np_interleaved)
   auto values = np_values.mutable_data();
 
   offset[0] = 0;
-  size_t i_elem = 0;
-  size_t i = 0;
+  py::ssize_t i_elem = 0;
+  py::ssize_t i = 0;
   while (i < np_interleaved.size()) {
     offset[i_elem+1] = offset[i_elem] + interleaved[i];
     for (int j = 0; j < offset[i_elem+1] - offset[i_elem]; ++j) {

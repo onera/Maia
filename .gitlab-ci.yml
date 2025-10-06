@@ -52,6 +52,7 @@ job:build:
     - mkdir -p build/socle6_int32 && cd build/socle6_int32
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+    - export CXXFLAGS="-Wall -Werror" # odr (one definition rule) violations are serious and should not be ignored (often linked to PyBind11 wrapping)
     - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
 
