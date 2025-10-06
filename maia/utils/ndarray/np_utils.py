@@ -1,5 +1,4 @@
 import numpy as np
-import warnings
 from numbers import Number
 
 from maia.typing import *

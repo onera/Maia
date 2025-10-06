@@ -22,10 +22,12 @@ def as_partitioned(tree):
   #On partitions, element are supposed to be I4
   for zone in PT.get_all_Zone_t(tree):
     for elt_node in PT.iter_children_from_label(zone, 'Elements_t'):
-      for name in ['ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
+      for name in ['ElementRange', 'ElementConnectivity', 'ParentElements', 'ElementStartOffset']:
         node = PT.get_child_from_name(elt_node, name)
         if node is not None:
           node[1] = node[1].astype(np.int32)
+    for pl_node in PT.iter_nodes_from_name(zone, 'PointList'):
+      pl_node[1] = pl_node[1].astype(np.int32)
   PT.rm_nodes_from_name(tree, ':CGNS#Distribution')
 
 #region Cell center ------------------------------------------------------------

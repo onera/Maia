@@ -94,9 +94,10 @@ def dcube_generate(n_vtx: int,
   eso = distrib_facevtx[0] + np_utils.safe_int_cast(dcube_val['dface_vtx_idx'], distrib_face.dtype)
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
+  erange = np.array([1, distrib_face[-1]], dtype=distrib_face.dtype)
   np_utils.shift_nonzeros(pe, distrib_face[-1])
   ngon_n = PT.new_NGonElements('NGonElements', 
-                               erange = [1, distrib_face[-1]], parent=dist_zone,
+                               erange = erange, parent=dist_zone,
                                eso = eso, ec = dcube_val['dface_vtx'], pe = pe)
   # > BCs
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
