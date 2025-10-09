@@ -7,6 +7,8 @@ from maia.transfer import protocols as EP
 from maia.utils import vstride as vs
 from maia.utils import par_utils, np_utils
 
+from .sections_tools import _concatenate_elt_sections
+
 from maia.typing import *
 
 def _collect_shifted_pl_one(subset:CGNSTree, shift:int=0, donor:bool=False) -> NDArray:
@@ -91,34 +93,52 @@ def renumber_vertices(tree, zone_path, new_vtx_id, comm):
 def renumber_edges(tree, zone_path, new_edge_id, comm):
   """
   Renumber edges of the input zone.
-  new_edge_id is an array distributed as ALL_EDGES, which associate
-  to each old edge it's new id (0-based)
-  Only NG zones are supported
+  new_edge_id is a distributed array, which associate to each old edge it's new id (0-based)
   PointListDonor from other zones are also updated
+  Note : if several edges sections are present in tree, we can not garantee that
+  ordering do not interlace sections. Thus we concatenate edge section to a single one.
   """
+  pred = PT.pred.is_element_of_type('BAR_2')
   zone = PT.find_node_from_path(tree, zone_path)
-  if PT.pred.IS_POLY2D_ZONE(zone):
-    edge = MT.Zone.EdgeNode(zone)
-    edge_distri = MT.distribution_value(edge, 'Element')
-    edge_offset = PT.Element.Range(edge)[0]
-    GI = EP.GlobalIndexer(edge_distri, new_edge_id, comm)
 
-    edge_vtx_n = PT.find_child_from_name(edge, 'ElementConnectivity')
-    edge_vtx = PT.get_np_value(edge_vtx_n)
-    GI.Put(edge_vtx, edge_vtx, count=2)
+  edge_elts = PT.get_children_from_predicate(zone, pred)
+  if len(edge_elts) == 0:
+    return
+  elif len(edge_elts) == 1:
+    edge_elt = edge_elts[0]
+  else:
+    edge_elt = _concatenate_elt_sections(edge_elts, comm)
+    PT.set_name(edge_elt, 'BAR_2')
+    PT.rm_children_from_predicate(zone, pred)
+    PT.add_child(zone, edge_elt)
 
-    # Update PE if existing (inplace ok because face distri did not change)
-    if (pe_n := PT.get_child_from_name(edge, 'ParentElements')) is not None:
-      pe = PT.get_np_value(pe_n)
-      GI.Put(pe[:,0], pe[:,0])
-      GI.Put(pe[:,1], pe[:,1])
+  # Check if distribution of input new_edge_id and EdgeNode are identical
+  # If not, get new_edge_id on element distribution
+  input_distri = par_utils.dn_to_distribution(new_edge_id.size, comm)
+  edge_distri  = MT.distribution_value(edge_elt, 'Element')
+  _input_distri = par_utils.partial_to_full_distribution(input_distri, comm)
+  _edge_distri  = par_utils.partial_to_full_distribution(edge_distri, comm)
+  if not np.array_equal(_input_distri, _edge_distri):
+    new_edge_id = EP.block_to_block(new_edge_id, _input_distri, _edge_distri, comm)
 
-    # Distributions remains the same
+  # Now we can reorder edges
+  edge_offset = PT.Element.Range(edge_elt)[0]
+  GI = EP.GlobalIndexer(_edge_distri, new_edge_id, comm)
 
-    # Update EdgeCenter PointList (no data to move, because full EdgeCenter data not allowed)
-    old_pls = _collected_shifted_pl(zone, 'EdgeCenter', -edge_offset)
-    new_pls = EP.block_to_part(new_edge_id, edge_distri, old_pls, comm)
-    _update_pl(zone, 'EdgeCenter', new_pls, edge_offset)
+  edge_vtx_n = PT.find_child_from_name(edge_elt, 'ElementConnectivity')
+  edge_vtx = PT.get_np_value(edge_vtx_n)
+  GI.Put(edge_vtx, edge_vtx, count=2)
+
+  # Update PE if existing (inplace ok because face distri did not change)
+  if (pe_n := PT.get_child_from_name(edge_elt, 'ParentElements')) is not None:
+    pe = PT.get_np_value(pe_n)
+    GI.Put(pe[:,0], pe[:,0])
+    GI.Put(pe[:,1], pe[:,1])
+
+  # Update EdgeCenter PointList (no data to move, because full EdgeCenter data not allowed)
+  old_pls = _collected_shifted_pl(zone, 'EdgeCenter', -edge_offset)
+  new_pls = EP.block_to_part(new_edge_id, edge_distri, old_pls, comm)
+  _update_pl(zone, 'EdgeCenter', new_pls, edge_offset)
 
   # Loop on others zones to update PLDonor
   _renumber_pl_donor(tree, zone_path, '*EdgeCenter', edge_distri, new_edge_id, edge_offset, comm)

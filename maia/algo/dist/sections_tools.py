@@ -7,6 +7,39 @@ import maia.pytree.maia as MT
 from maia.transfer import protocols as EP
 from maia.utils import np_utils, par_utils
 
+def _concatenate_elt_sections(elts:List[CGNSTree], comm:MPIComm) -> CGNSTree:
+  assert len(elts) > 0
+  elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0]) # Dont forget to sort!
+  tot_size = sum([PT.Element.Size(e) for e in elts])
+  merged_distri = par_utils.uniform_distribution(tot_size, comm)
+
+  # Initially, each section is distributed, we need to "uninterlace" 
+  # to map global distribution without changing order
+  start = 0
+  ec_to_merge = []
+  for elt in elts:
+    end = start + PT.Element.Size(elt)
+    distri = MT.distribution_value(elt, 'Element')
+    ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
+    distri_out = distri.copy()
+    distri_out[0] = max(min(merged_distri[0], end), start) - start
+    distri_out[1] = max(min(merged_distri[1], end), start) - start
+
+    # NB : if we had block_to_block with preallocated buffer,
+    # we could directly fill global array
+    btb = EP.BlockToBlock(distri, distri_out, comm)
+    ec_to_merge.append(btb.exchange(ec, PT.Element.NVtx(elt)))
+    start = end
+
+  merged_ec = np_utils.concatenate_np_arrays(ec_to_merge)[1]
+  merged_range = np.empty(2, merged_ec.dtype)
+  merged_range[0] = PT.Element.Range(elts[0] )[0]
+  merged_range[1] = PT.Element.Range(elts[-1])[1]
+  merged_elt = PT.new_Elements(type=PT.Element.Type(elts[0]), erange=merged_range, econn=merged_ec)
+  MT.new_Distribution({'Element' : merged_distri}, merged_elt)
+
+  return merged_elt
+
 def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """ Gather the Element_t sections of same ElementType into a single one.
 
@@ -54,34 +87,8 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
 
     for kind, elts in to_gather.items():
       if len(elts) > 1:
-        elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0]) # Dont forget to sort!
-        tot_size = sum([PT.Element.Size(e) for e in elts])
-        merged_distri = par_utils.uniform_distribution(tot_size, comm)
-
-        # Initially, each section is distributed, we need to "uninterlace" 
-        # to map global distribution without changing order
-        start = 0
-        ec_to_merge = []
-        for elt in elts:
-          end = start + PT.Element.Size(elt)
-          distri = MT.distribution_value(elt, 'Element')
-          ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
-          distri_out = distri.copy()
-          distri_out[0] = max(min(merged_distri[0], end), start) - start
-          distri_out[1] = max(min(merged_distri[1], end), start) - start
-
-          # NB : if we had block_to_block with preallocated buffer,
-          # we could directly fill global array
-          btb = EP.BlockToBlock(distri, distri_out, comm)
-          ec_to_merge.append(btb.exchange(ec, PT.Element.NVtx(elt)))
-          start = end
-
-        merged_ec = np_utils.concatenate_np_arrays(ec_to_merge)[1]
-        merged_range = np.empty(2, merged_ec.dtype)
-        merged_range[0] = PT.Element.Range(elts[0] )[0]
-        merged_range[1] = PT.Element.Range(elts[-1])[1]
-        merged_elt = PT.new_Elements(f'{kind}', kind, erange=merged_range, econn=merged_ec)
-        MT.new_Distribution({'Element' : merged_distri}, merged_elt)
+        merged_elt = _concatenate_elt_sections(elts, comm)
+        PT.set_name(merged_elt, kind)
 
         for elt in elts:
           PT.rm_child(zone, elt)

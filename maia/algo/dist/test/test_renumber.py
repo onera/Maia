@@ -11,6 +11,25 @@ from maia.utils import par_utils
 
 from maia.algo.dist import renumber as RENUM
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+
+def test_collect_shifted_pl_one():
+  subset = PT.new_GridConnectivity(point_list=[[1,3,5,7]], point_range_donor=[[101,120]])
+  MT.new_Distribution({'Index' : np.array([10,14,20])}, subset)
+  assert (RENUM._collect_shifted_pl_one(subset, shift=-1) == [0,2,4,6]).all()
+  assert (RENUM._collect_shifted_pl_one(subset, shift=-1, donor=True) == [110,111,112,113]).all()
+
+  subset = PT.new_BC()
+  with pytest.raises(RuntimeError):
+    RENUM._collect_shifted_pl_one(subset)
+
+def test_update_pl_one():
+  subset = PT.new_GridConnectivity(point_list=[[1,3,5,7]], point_range_donor=[[101,120]])
+  RENUM._update_pl_one(subset, np.array([[0,1,2,3]]), shift=1)
+  assert (PT.get_child_from_name(subset, 'PointList')[1] == [[1,2,3,4]]).all()
+  RENUM._update_pl_one(subset, np.array([[10,11,12,13]]), donor=True, shift=1)
+  assert (PT.get_child_from_name(subset, 'PointListDonor')[1] == [[11,12,13,14]]).all()
+
 @pytest_parallel.mark.parallel(2)
 def test_renumber_vertices(comm):
   tree1 = maia.factory.generate_dist_block([3,2], 'S', comm, origin=[0,0])
@@ -38,8 +57,13 @@ def test_renumber_vertices(comm):
 
   maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
   
+  # Add sol
   vtx_distri = MT.distribution_value(PT.find_node_from_name(tree, 'Left'), 'Vertex')
-  new_vtx_id = np.array([5,4,3,2,1,0])[vtx_distri[0]:vtx_distri[1]]
+  PT.new_DiscreteData(loc='Vertex',
+                      fields={'Id' : np.array([1,2,3,4,5,6])[vtx_distri[0]:vtx_distri[1]]},
+                      parent=PT.find_node_from_name(tree, 'Left'))
+
+  new_vtx_id = np.array([5,4,3,2,1,0], ztype)[vtx_distri[0]:vtx_distri[1]]
 
   # For Right zone, only GC should be modified
   expt_zone2 = PT.deep_copy(PT.find_node_from_name(tree, 'Right'))
@@ -79,6 +103,9 @@ def test_renumber_vertices(comm):
     BAR_2 Elements_t I4 [3, 0]:
       ElementRange IndexRange_t {zt} [1, 6]:
       ElementConnectivity DataArray_t {zt} [3, 6, 4, 1, 6, 5, 5, 4, 2, 3, 1, 2]:
+    DiscreteData DiscreteData_t:
+      GridLocation GridLocation_t "Vertex":
+      Id DataArray_t I8 [6,5,4,3,2,1]:
   """)
   expt_zone1 = maia.factory.full_to_dist_tree(expt_zone1_f, comm)
   # RM Distri/ElementConnectivity for comparaison
@@ -90,3 +117,47 @@ def test_renumber_vertices(comm):
 
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Left'), expt_zone1)
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Right'), expt_zone2)
+
+
+@pytest_parallel.mark.parallel(2)
+def test_renumber_edges(comm):
+  tree = maia.factory.generate_dist_block(4, 'QUAD_4', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  ztype = PT.get_np_value(zone).dtype
+  # Use several edges sections in this test
+  PT.rm_nodes_from_predicate(zone, PT.pred.is_element_of_type('BAR_2'))
+  er_start = 10
+  # Ini order: Ymin, Ymax, Xmin, Xmax
+  bar_ecs = [[1,2, 2,3, 3,4], [14,13, 15,14, 16,15], [5,1, 9,5, 13,9, 4,8, 8,12, 12,16]] 
+  distris = [[0,3,3], [0,0,3], [0,2,6]]
+  for i, (ec,distri) in enumerate(zip(bar_ecs, distris)):
+    n_bar_tot = len(ec) // 2
+    _distri = par_utils.full_to_partial_distribution(np.array(distri, pdm_dtype), comm)
+    elt = PT.new_Elements(f'BAR_{i}', 'BAR_2',
+                          erange=np.array([er_start, er_start+n_bar_tot-1], ztype),
+                          econn=np.array(ec, ztype)[2*_distri[0]:2*_distri[1]],
+                          parent=zone)
+    MT.new_Distribution({'Element' : _distri}, elt)
+    er_start += n_bar_tot
+
+  # Reoder : Xmin, Xmax, Ymin, Ymax
+  new_edge_id = np.array([7,8,9, 10,11,12, 1,2,3,4,5,6], ztype) - 1
+  # Distrib it:
+  if comm.rank == 0:
+    new_edge_id = new_edge_id[0:8]
+  else:
+    new_edge_id = new_edge_id[8:12]
+
+  RENUM.renumber_edges(tree, 'Base/zone', new_edge_id, comm)
+  
+  if comm.rank == 0:
+    expt_ec = np.array([5,1, 9,5, 13,9, 4,8, 8,12, 12,16])
+    expt_distri = np.array([0, 6, 12])
+  else:
+    expt_ec = np.array([1,2, 2,3, 3,4, 14,13, 15,14, 16,15])
+    expt_distri = np.array([6, 12, 12])
+
+  bar = PT.find_node_from_name(tree, 'BAR_2')
+  assert (PT.Element.Range(bar) == [10,21]).all()
+  assert (PT.find_child_from_name(bar, 'ElementConnectivity')[1] == expt_ec).all()
+  assert (MT.distribution_value(bar, 'Element') == expt_distri).all()
