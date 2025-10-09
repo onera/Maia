@@ -30,6 +30,9 @@ def test_unpack_metric():
         WrongA   DataArray_t R8 [1., 1., 1.]:
         WrongB   DataArray_t R8 [1., 1., 1.]:
         WrongC   DataArray_t R8 [1., 1., 1.]:
+        Two2DTensorXY DataArray_t R8 [1., 1., 1.]:
+        Two2DTensorYY DataArray_t R8 [1., 1., 1.]:
+        Two2DTensorXX DataArray_t R8 [1., 1., 1.]:
   """
   tree = PT.yaml.to_cgns_tree(yz)
 
@@ -44,27 +47,34 @@ def test_unpack_metric():
   # > Path to unique field
   metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, "FlowSol/Mach")]
   assert metrics_names==["Mach"]
-  
+
   # > Isotrop metric
   assert MA.unpack_metric(tree, None) == []
 
   # > Path to multiple fields
   metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, "FlowSol/Tensor")]
-  assert metrics_names==[ "TensorXX","TensorXY","TensorXZ",
-                          "TensorYY","TensorYZ","TensorZZ" ]
-  
+  assert metrics_names==["TensorXX","TensorXY","TensorXZ",
+                        "TensorYY","TensorYZ","TensorZZ"]
+
+  # > Path to multiple fields (2D, so only XX,XY,YY)
+  metrics_names = [PT.get_name(n) for n in MA.unpack_metric(tree, "FlowSol/Two2DTensor")]
+  assert metrics_names==["Two2DTensorXX", "Two2DTensorXY","Two2DTensorYY"]
+
   # > Wrong because metric path is integer (not str and not list)
   with pytest.raises(ValueError):
     MA.unpack_metric(tree, 10)
 
-  # > Wrong because leads to scalar and tensor fields (7 nodes)
+  # > Wrong because leads to scalar and tensor fields (4 or 7 nodes)
   tree_extra = PT.deep_copy(tree)
   fs = PT.get_node_from_name(tree_extra, 'FlowSol')
-  PT.new_DataArray('Tensor', [1., 1., 1.], parent=fs)
+  PT.new_DataArray('Tensor'     , [1., 1., 1.], parent=fs)
+  PT.new_DataArray('Two2DTensor', [1., 1., 1.], parent=fs)
 
   with pytest.raises(ValueError):
     MA.unpack_metric(tree_extra, "FlowSol/Tensor")
-       
+  with pytest.raises(ValueError):
+    MA.unpack_metric(tree_extra, "FlowSol/Two2DTensor")
+
   # > Paths to multiple fields (order matters)
   metric = ["FlowSol/TensorXX", "FlowSol/TensorZZ",
             "FlowSol/TensorXZ", "FlowSol/TensorXY",
@@ -101,7 +111,7 @@ def test_adapt_with_feflo(comm, multi_elt, custom_dir):
     dist_tree = maia.io.file_to_dist_tree(yaml_path, comm)
   else:
     dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', comm)
-  
+
   base = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
   zone = PT.get_node_from_label(dist_tree, 'Zone_t')
   PT.set_name(zone, 'MyZone')
@@ -133,7 +143,7 @@ def test_adapt_with_feflo(comm, multi_elt, custom_dir):
                                             feflo_opts="-c 100 -cmax 100 -p 4",
                                             **options)
 
-  # Parsing of meshb is already tested elsewhere, here we check that feflo did not failed 
+  # Parsing of meshb is already tested elsewhere, here we check that feflo did not failed
   # and that metadata (eg. names, families) are well recovered
   adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
   assert PT.get_name(adpt_zone) == 'MyZone'
@@ -184,7 +194,7 @@ def test_periodic_adapt_with_feflo(comm):
                                                         containers_name=['Metric'],
                                                         periodic=True,
                                                         feflo_opts=f"-c 10 -cmax 10 -p 4")
-  
+
   adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
   for bc_name in ['Ymin','Ymax','Zmin','Zmax']:
     assert PT.get_node_from_name(adpt_zone, bc_name) is not None
@@ -217,7 +227,7 @@ def test_periodic_adapt_with_feflo_axisym(comm):
                                                         containers_name=['Metric'],
                                                         periodic=True,
                                                         feflo_opts=f"-c 10 -cmax 10 -p 4")
-  
+
   adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
   for bc_name in ['in','out','top']+[f'ridge.{i}' for i in range(9)]:
     assert PT.get_node_from_name(adpt_zone, bc_name) is not None

@@ -35,7 +35,7 @@ def unpack_metric(dist_tree, metric_paths):
             for suffix in ['', 'XX', 'XY', 'XZ', 'YY', 'YZ', 'ZZ']]
     metric_nodes = [node for node in metric_nodes if node is not None] # Above list contains found node or None
   elif isinstance(metric_paths, list):
-    assert len(metric_paths)==6, f"metric argument must be a str path or a list of 6 paths"
+    assert len(metric_paths) in [3, 6], f"metric argument must be a str path or a list of 3, 6 paths"
     metric_nodes = list()
     for path in metric_paths:
       metric_nodes.append(PT.get_node_from_path(zone, path))
@@ -45,15 +45,15 @@ def unpack_metric(dist_tree, metric_paths):
   # > Assert that metric is one or six fields
   if len(metric_nodes)==0:
     raise ValueError(f"Metric path \"{metric_paths}\" is invalid.")
-  if len(metric_nodes)==7:
+  if len(metric_nodes) in [4,7]:
     raise ValueError(f"Metric path \"{metric_paths}\" simultaneously leads to scalar *and* tensor fields")
-  if len(metric_nodes)!=1 and len(metric_nodes)!=6:
-    raise ValueError(f"Metric path \"{metric_paths}\" leads to {len(metric_nodes)} nodes (1 or 6 expected).")
+  if len(metric_nodes) not in [1,3,6]:
+    raise ValueError(f"Metric path \"{metric_paths}\" leads to {len(metric_nodes)} nodes (1, 3 or 6 expected).")
 
   return metric_nodes
 
 
-def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree, 
+def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
                            metric: Union[None, str, List[str]],
                            comm: MPIComm, 
                            containers_name: List[str],
@@ -115,7 +115,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
     mlog.info(f"Start mesh adaptation using Feflo...")
     start = time.time()
-    
+
     subprocess.run(str_feflo_command, shell=True, cwd=Path(tmp_dir))
 
     end = time.time()
@@ -157,7 +157,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
 def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo_opts, tmp_dir):
   '''
-  Assume that : 
+  Assume that :
     - Only one Element node for each dimension
     - Mesh is full TRI_3 and TETRA_4
     - GridConnectivities have no common vertices
@@ -194,7 +194,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo
     - manage n_range of cells
     - tout adapter pour le 2d ?
   '''
-  tree = PT.deep_copy(dist_tree) # Do not modify input tree 
+  tree = PT.deep_copy(dist_tree) # Do not modify input tree
 
   start = time.time()
   # > Get periodic infos
@@ -252,7 +252,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo
       PT.update_child(bc_n, 'FamilyName', 'FamilyName_t', f'BC_TO_CONVERT_{i_jn}_{i_gc}')
 
   for i_jn, jn_values in enumerate(jn_pairs_and_values.values()):
-    maia.algo.dist.connect_1to1_families(tree, (f'BC_TO_CONVERT_{i_jn}_0', f'BC_TO_CONVERT_{i_jn}_1'), comm, 
+    maia.algo.dist.connect_1to1_families(tree, (f'BC_TO_CONVERT_{i_jn}_0', f'BC_TO_CONVERT_{i_jn}_1'), comm,
                                         periodic=jn_values[0].asdict(True), location='Vertex')
 
   # > Remove '_0' in the created GCs names
@@ -316,7 +316,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
   **Periodic mesh adaptation**
 
-  Periodic mesh adaptation is available by activating the ``periodic`` argument. Information from 
+  Periodic mesh adaptation is available by activating the ``periodic`` argument. Information from
   periodic 1to1 GridConnectivity_t nodes in dist_tree will be used to perform mesh adaptation.
 
   Args:
