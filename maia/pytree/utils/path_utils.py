@@ -5,6 +5,14 @@ from maia.pytree.walk.walkers_api import predicates_to_paths
 
 #begin_api_export()
 
+def path_len(path:str) -> int:
+  """
+  Return the number of component of a path.
+  """
+  if len(path)==0:
+    return 0
+  splited = path.split('/')
+  return len(splited)
 
 def path_head(path:str, i:int=-1) -> str:
   """

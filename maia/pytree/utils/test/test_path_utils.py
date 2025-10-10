@@ -5,6 +5,11 @@ from maia.pytree.utils import path_utils as PU
 
 dir_path = PT.__path__[0]
 
+def test_path_len():
+  assert PU.path_len('some/path') == 2
+  assert PU.path_len('some/path/to/node') == 4
+  assert PU.path_len('') == 0
+
 def test_path_head():
   assert PU.path_head('some/path/to/node', 2) == 'some/path'
   assert PU.path_head('some/path/to/node', 4) == 'some/path/to/node'
