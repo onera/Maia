@@ -19,7 +19,7 @@ from maia.algo.dist.adaptation_utils import convert_vtx_gcs_as_face_bcs,\
 def unpack_metric(dist_tree, metric_paths):
   """
   Unpacks the `metric` argument from `mesh_adapt` function.
-  Assert no invalid path or argument is given and that paths leads to one or six fields.
+  Assert no invalid path or argument is given and that paths leads to one, three or six fields.
   """
   if metric_paths is None:
     return list()
