@@ -1,4 +1,5 @@
 from .path_utils import (
+  path_len,
   path_head, 
   path_tail, 
   update_path_elt, 
