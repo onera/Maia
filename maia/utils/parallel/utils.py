@@ -92,6 +92,24 @@ def partial_to_full_distribution(partial_distrib: NDArray, comm: MPIComm) -> NDA
 def full_to_partial_distribution(full_distrib: NDArray, comm: MPIComm) -> NDArray:
   return full_distrib[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]]
 
+def auto_expand_distri(distri: NDArray, comm: MPIComm) -> NDArray:
+  """ Return a full distribution from a full or partial distribution """
+  if distri.size == 3 and comm.Get_size() != 2:
+    # Distri is partial
+    return partial_to_full_distribution(distri, comm)
+  if distri.size == 3 and comm.Get_size() == 2:
+    # This is the corner case, but rank 0 always have [0, s1, s1+s2]
+    return comm.bcast(distri, root=0)
+  else:
+    #Distri is already full
+    return distri
+
+def is_same_distri(distri1:NDArray, distri2:NDArray, comm:MPIComm) -> bool:
+  return np.array_equal(auto_expand_distri(distri1, comm),
+                        auto_expand_distri(distri2, comm))
+
+
+
 def gather_and_shift(value: Union[int, np.integer],
                      comm: MPIComm, 
                      dtype: Optional[DTypeLike] = None) -> NDArray:

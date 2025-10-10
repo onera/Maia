@@ -99,6 +99,51 @@ def test_full_to_partial_distribution(comm):
   else:
     assert (partial == [0,100,100]).all()
 
+class Test_auto_expand_distri:
+  
+  @pytest_parallel.mark.parallel(3)
+  def test_straightforward(self, comm):
+    if comm.Get_rank() == 0:
+      distri_partial = np.array([0, 10, 40])
+    if comm.Get_rank() == 1:
+      distri_partial = np.array([10, 20, 40])
+    if comm.Get_rank() == 2:
+      distri_partial = np.array([20,40,40])
+    assert np.array_equal(utils.auto_expand_distri(distri_partial, comm), \
+        np.array([0,10,20,40]))
+
+    distri_full = np.array([0,10,20,40])
+    assert utils.auto_expand_distri(distri_full, comm) is distri_full
+
+  @pytest_parallel.mark.parallel(2)
+  def test_corner_cases(self, comm):
+    distri_partial = np.array([0, 10, 40]) if comm.Get_rank() == 0 else np.array([10, 40, 40])
+    assert np.array_equal(utils.auto_expand_distri(distri_partial, comm), \
+        np.array([0,10,40]))
+    distri_partial = np.array([0, 40, 40]) if comm.Get_rank() == 0 else np.array([40, 40, 40])
+    assert np.array_equal(utils.auto_expand_distri(distri_partial, comm), \
+        np.array([0,40,40]))
+    distri_partial = np.array([0, 0, 40]) if comm.Get_rank() == 0 else np.array([0, 40, 40])
+    assert np.array_equal(utils.auto_expand_distri(distri_partial, comm), \
+        np.array([0,0,40]))
+    distri_partial = np.array([0, 0, 0]) if comm.Get_rank() == 0 else np.array([0, 0, 0])
+    assert np.array_equal(utils.auto_expand_distri(distri_partial, comm), \
+        np.array([0,0,0]))
+    # Already full
+    for distri_full in [[0,10,40], [0,0,40], [0,40,40], [0,0,0]]:
+      _distri_full = np.array(distri_full)
+      assert np.array_equal(utils.auto_expand_distri(_distri_full, comm), _distri_full)
+
+@pytest_parallel.mark.parallel(3)
+def test_is_same_distri(comm):
+  distri1 = utils.uniform_distribution(100, comm)
+  distri2 = utils.partial_to_full_distribution(utils.uniform_distribution(100, comm), comm)
+  distri3 = utils.gathering_distribution(1, 100, comm)
+  distri4 = utils.uniform_distribution(101, comm)
+  assert utils.is_same_distri(distri1, distri2, comm)
+  assert not utils.is_same_distri(distri1, distri3, comm)
+  assert not utils.is_same_distri(distri1, distri4, comm)
+
 @pytest_parallel.mark.parallel(3)
 def test_gather_and_shift(comm):
   if comm.Get_rank() == 0:

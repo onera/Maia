@@ -6,8 +6,8 @@ import Pypdm.Pypdm as PDM
 
 import maia
 from maia.typing import *
-from maia.utils import par_utils, np_utils
 from maia.utils import vstride as vs
+from maia.utils.parallel.utils import auto_expand_distri
 
 from . import _protocols
 
@@ -34,18 +34,6 @@ def _check_dict_keys(data_dict: Dict[str, Any], comm: MPIComm) -> None:
   is_same = list(data_dict.keys()) == master_keys
   if not comm.allreduce(is_same, MPI.LAND):
     raise KeyError("Exchanged data keys must be identical on all ranks")
-
-def auto_expand_distri(distri: NDArray, comm: MPIComm) -> NDArray:
-  """ Return a full distribution from a full or partial distribution """
-  if distri.size == 3 and comm.Get_size() != 2:
-    # Distri is partial
-    return par_utils.partial_to_full_distribution(distri, comm)
-  if distri.size == 3 and comm.Get_size() == 2:
-    # This is the corner case, but rank 0 always have [0, s1, s1+s2]
-    return comm.bcast(distri, root=0)
-  else:
-    #Distri is already full
-    return distri
 
 def BlockToBlock(distri_in: NDArray,
                  distri_out: NDArray,
