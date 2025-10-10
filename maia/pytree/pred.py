@@ -179,6 +179,8 @@ def is_gc_of_kind(is_1to1:Optional[bool]=None, is_perio:Optional[bool]=None):
   return pred
 
 
+#: A predicate returning True, useful for example as a default value
+ALWAYS_TRUE = NodePredicate(lambda X: True)
 #: Node has a PointList or PointRange child
 IS_SUBSET = has_child_of_name('PointList') | has_child_of_name('PointRange')
 #: Label of node is either GridConnectivity_t or GridConnectivity1to1_t

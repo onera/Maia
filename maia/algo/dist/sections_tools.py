@@ -1,4 +1,5 @@
 import numpy as np
+from collections import defaultdict
 
 from maia.typing import *
 import maia.pytree      as PT
@@ -40,36 +41,16 @@ def _concatenate_elt_sections(elts:List[CGNSTree], comm:MPIComm) -> CGNSTree:
 
   return merged_elt
 
-def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
-  """ Gather the Element_t sections of same ElementType into a single one.
+def concatenate_elt_sections_if(dist_tree: CGNSDistTree, pred: PT.pred.NodePredicate, comm: MPIComm) -> None:
+  # Implementation of concatenate_elt_sections_if; in addition, only nodes selected by
+  # the predicate function are concatenated
 
-  Resulting sections are named after their ElementType. Note that :
-
-  - Sections of same kind must be contiguous to be gathered. This can be achieved
-    using :func:`reorder_elt_sections_from_dim` function.
-  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kind are not supported.
-
-  Input tree is modified inplace.
-
-  Args:
-    dist_tree (CGNSDistTree) : Distributed tree
-    comm (MPIComm)           : MPI communicator
-
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #concatenate_elt_sections@start
-        :end-before: #concatenate_elt_sections@end
-        :dedent: 2
-  """
   MT.check_cgns_dist_tree(dist_tree)
   for zone in PT.iter_all_Zone_t(dist_tree):
 
-    to_gather:Dict[str, List[CGNSTree]] = {}
-    for elt in PT.get_children_from_label(zone, 'Elements_t'):
-      if (kind := PT.Element.Type(elt)) in to_gather:
-        to_gather[kind].append(elt)
-      else:
-        to_gather[kind] = [elt]
+    to_gather:Dict[str, List[CGNSTree]] = defaultdict(list)
+    for elt in PT.get_children_from_predicate(zone, PT.pred.label_is('Elements_t') & pred):
+      to_gather[PT.Element.Type(elt)].append(elt)
     
     # Dont forget to sort ! Because order of apparition in tree is not
     # necessarily increasing
@@ -97,6 +78,29 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
       else:
         # To be consistent, we just rename using elt kind
         PT.set_name(elts[0], kind)
+
+def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
+  """ Gather the Element_t sections of same ElementType into a single one.
+
+  Resulting sections are named after their ElementType. Note that :
+
+  - Sections of same kind must be contiguous to be gathered. This can be achieved
+    using :func:`reorder_elt_sections_from_dim` function.
+  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kind are not supported.
+
+  Input tree is modified inplace.
+
+  Args:
+    dist_tree (CGNSDistTree) : Distributed tree
+    comm (MPIComm)           : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #concatenate_elt_sections@start
+        :end-before: #concatenate_elt_sections@end
+        :dedent: 2
+  """
+  concatenate_elt_sections_if(dist_tree, PT.pred.ALWAYS_TRUE, comm)
     
 
 
