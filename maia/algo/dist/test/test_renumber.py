@@ -198,24 +198,6 @@ def test_renumber_edges_2d_elt(comm):
   assert (MT.distribution_value(bar, 'Element') == expt_distri).all()
 
 
-@pytest_parallel.mark.parallel(3)
-def test_is_section_compatible(comm):
-  tri = PT.new_Elements('TRI', type='TRI_3', erange=[101,120])
-  MT.new_Distribution({'Element' : par_utils.uniform_distribution(20, comm)}, tri)
-  quad = PT.new_Elements('QUAD', type='QUAD_4', erange=[121,130])
-  MT.new_Distribution({'Element' : par_utils.uniform_distribution(10, comm)}, quad)
-
-  # Sections are [1,20] & [21,30]
-  id_distri = np.array([0, 5, 20, 30])
-  new_id = [np.array([6,7,8,4,5]),
-            np.array([1,2,3,9,10,11,12,13,14,15,20,19,18,17,16]),
-            np.array([21,22,23,24,25,26,27,28,29,30])][comm.rank]
-  assert RENUM.is_section_compatible(id_distri, new_id-1, [tri, quad], comm)
-
-  new_id = [np.array([30,2,3,4,5]),
-            np.array([6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]),
-            np.array([21,22,23,24,25,26,27,28,29,1])][comm.rank]
-  assert not RENUM.is_section_compatible(id_distri, new_id-1, [tri, quad], comm)
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("remove", ['', 'ParentElements', 'NGonElements'])

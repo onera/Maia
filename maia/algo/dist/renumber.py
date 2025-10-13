@@ -105,34 +105,6 @@ def _update_full_cellcenter_containers(zone, new_id, new_id_distri, comm):
     GI.Put(array, array)
 
 
-def is_section_compatible(ids_distri: NDArray, new_id:NDArray,
-                          elts:List[CGNSTree], comm:MPIComm) -> bool:
-  """ Return True if the requested renumbering does not mix sections """
-  if len(elts) < 1:
-    return True
-
-  elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0])
-  glo_offset = PT.Element.Range(elts[0])[0]
-  new_id_loc_l = list()
-  for elt in elts:
-    distri = MT.distribution_value(elt, 'Element')
-    loc_offset = PT.Element.Range(elt)[0] - glo_offset
-    ed = loc_offset + PT.Element.Size(elt)
-    restrict = subdistri(ids_distri, loc_offset, ed)
-    _ids_distri = par_utils.full_to_partial_distribution(ids_distri, comm)
-    view_st, view_end = local_bounds(_ids_distri, loc_offset, ed)
-    new_id_loc_l.append(EP.block_to_block(new_id[view_st:view_end], restrict, distri, comm))
-
-  is_compatible = True
-  for elt, new_id_loc in zip(elts, new_id_loc_l):
-    low  = PT.Element.Range(elt)[0] - glo_offset
-    high = PT.Element.Range(elt)[1] - glo_offset
-    is_compatible = bool(np.all(low <= new_id_loc) and np.all(new_id_loc <= high))
-    if not is_compatible:
-      break
-  
-  return comm.allreduce(is_compatible, MPI.LAND)
-
 def renumber_vertices(tree, zone_path, new_vtx_id, comm):
   """
   Renumber vertices of the input zone.
