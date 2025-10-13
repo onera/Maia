@@ -324,8 +324,10 @@ def part_to_block(part_data: Union[SPartData, MPartData],
           return vs.from_counts(*GI.Put_v([(pf.counts, pf.values) for pf in part_fields], extend=True))
     elif isinstance(GI, _GlobalIndexer): # We can guess from input arg
       def _exchange_one(part_fields):
-        return GI.Put_v((part_fields.counts, part_fields.values)) if isinstance(part_fields, vs.VStrideArray) \
-          else GI.Put(part_fields)
+        if isinstance(part_fields, vs.VStrideArray):
+          return vs.from_counts(*GI.Put_v((part_fields.counts, part_fields.values)))
+        else:
+          return GI.Put(part_fields)
     else: # We can not be sure => default to fixed buff
       _exchange_one = lambda part_fields : GI.Put(part_fields)
 
