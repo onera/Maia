@@ -10,29 +10,16 @@ from maia.pytree.sids import elements_utils as EU
 from maia.utils     import np_utils, par_utils, vstride
 from maia.transfer  import protocols as EP
 from maia.algo.dist import matching_jns_tools as MJT
+
+from .renumber import _collected_shifted_pl, _update_pl
+
 from cmaia.algo import combine_to_tetra, combine_to_pyra, \
                        combine_to_penta, combine_to_hexa
 
 is_cell_full_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t']) \
                        & ~PT.pred.IS_SUBSET & PT.pred.has_location('CellCenter')
 
-def _collected_shifted_pl(zone:CGNSTree, loc:str, shift:int) -> List[NDArray]:
-  all_pl = []
-  for subset in PT.iter_all_subsets(zone, loc):
-    if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
-      _pl = PT.get_np_value(pl)[0]
-    elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
-      distri = MT.distribution_value(subset, 'Index')
-      _pl = np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), distri)[0]
-    all_pl.append(_pl + shift)
-  return all_pl
 
-def _update_pl(zone:CGNSTree, loc:str, new_pl:List[NDArray]):
-  for subset, _pl in zip(PT.iter_all_subsets(zone, loc), new_pl):
-    PT.rm_children_from_name(subset, 'PointList')
-    PT.rm_children_from_name(subset, 'PointRange')
-    PT.new_IndexArray(value=_pl.reshape((1,-1), order='F'), parent=subset)
-    # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
   
 def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   """ Implementation of conversion for 2d zones. We assume that input zones
