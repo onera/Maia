@@ -8,6 +8,8 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils import par_utils
+from maia.utils import test_utils as TU
+from maia.utils import vstride as vs
 
 from maia.algo.dist import renumber as RENUM
 
@@ -29,6 +31,26 @@ def test_update_pl_one():
   assert (PT.get_child_from_name(subset, 'PointList')[1] == [[1,2,3,4]]).all()
   RENUM._update_pl_one(subset, np.array([[10,11,12,13]]), donor=True, shift=1)
   assert (PT.get_child_from_name(subset, 'PointListDonor')[1] == [[11,12,13,14]]).all()
+
+def test_subdistri():
+  out = RENUM.subdistri(np.array([0,10,25,40], np.int32), 0, 10)
+  assert np.array_equal(out, [0,10,10,10]) and out.dtype == np.int32
+  out = RENUM.subdistri(np.array([0,10,25,40], np.int64), 15, 30)
+  assert np.array_equal(out, [0,0,10,15]) and out.dtype == np.int64
+  assert (RENUM.subdistri(np.array([0,10]), 5, 8) == [0,3]).all()  # Seq
+  assert (RENUM.subdistri(np.array([0,10,25,40]), 50, 100) == [0,0,0,0]).all()
+
+def test_local_bounds():
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 0,0) == (0,0)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 4,23) == (0,0)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 50,54) == (25,25)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 400,500) == (25,25)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 0,100) == (0,25)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 0,500) == (0,25)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 0,500) == (0,25)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 20,40) == (0,15)
+  assert RENUM.local_bounds(np.array([25, 50, 100]), 40,60) == (15,25)
+  assert RENUM.local_bounds(np.array([25, 25, 100]), 10,40) == (0,0)
 
 @pytest_parallel.mark.parallel(2)
 def test_renumber_vertices(comm):
@@ -118,9 +140,22 @@ def test_renumber_vertices(comm):
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Left'), expt_zone1)
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Right'), expt_zone2)
 
+@pytest_parallel.mark.parallel(1)
+def test_renumber_edges_1d(comm):
+  tree = maia.factory.generate_dist_block(5, 'BAR_2', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  ztype = PT.get_np_value(zone).dtype
+  PT.new_FlowSolution(loc='CellCenter', fields={'ID': [1,2,3,4]}, parent=zone)
+
+  new_edge_id = np.array([4,3,2,1], ztype) - 1
+  RENUM.renumber_edges(tree, 'Base/Line', new_edge_id, comm)
+
+  assert (PT.find_node_from_name(zone, 'ElementConnectivity')[1] == [4,5, 3,4, 2,3, 1,2]).all()
+  assert (PT.find_node_from_name(zone, 'ID')[1] == [4,3,2,1]).all()
+
 
 @pytest_parallel.mark.parallel(2)
-def test_renumber_edges(comm):
+def test_renumber_edges_2d_elt(comm):
   tree = maia.factory.generate_dist_block(4, 'QUAD_4', comm)
   zone = PT.get_all_Zone_t(tree)[0]
   ztype = PT.get_np_value(zone).dtype
@@ -161,3 +196,75 @@ def test_renumber_edges(comm):
   assert (PT.Element.Range(bar) == [10,21]).all()
   assert (PT.find_child_from_name(bar, 'ElementConnectivity')[1] == expt_ec).all()
   assert (MT.distribution_value(bar, 'Element') == expt_distri).all()
+
+
+@pytest_parallel.mark.parallel(3)
+def test_is_section_compatible(comm):
+  tri = PT.new_Elements('TRI', type='TRI_3', erange=[101,120])
+  MT.new_Distribution({'Element' : par_utils.uniform_distribution(20, comm)}, tri)
+  quad = PT.new_Elements('QUAD', type='QUAD_4', erange=[121,130])
+  MT.new_Distribution({'Element' : par_utils.uniform_distribution(10, comm)}, quad)
+
+  # Sections are [1,20] & [21,30]
+  id_distri = np.array([0, 5, 20, 30])
+  new_id = [np.array([6,7,8,4,5]),
+            np.array([1,2,3,9,10,11,12,13,14,15,20,19,18,17,16]),
+            np.array([21,22,23,24,25,26,27,28,29,30])][comm.rank]
+  assert RENUM.is_section_compatible(id_distri, new_id-1, [tri, quad], comm)
+
+  new_id = [np.array([30,2,3,4,5]),
+            np.array([6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]),
+            np.array([21,22,23,24,25,26,27,28,29,1])][comm.rank]
+  assert not RENUM.is_section_compatible(id_distri, new_id-1, [tri, quad], comm)
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("remove", ['', 'ParentElements', 'NGonElements'])
+def test_renumber_faces_ng_2d(remove, comm):
+  tree = maia.factory.generate_dist_block(4, 'QUAD_4', comm)
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  ztype = PT.get_np_value(zone).dtype
+  
+  PT.rm_nodes_from_name(tree, remove)
+
+  # Array poorly distributed
+  new_id = np.array([1,2,3,7,8,9,4,5,6], ztype) - 1 if comm.rank == 0 else np.empty(0, ztype)
+  RENUM.renumber_faces(tree, 'Base/zone', new_id, comm)
+
+  if comm.rank == 0:
+    expt_face_vtx = vs.array([[1,2,6,5], [6,2,3,7], [7,3,4,8], [9,10,14,13], [14,10,11,15]])
+    expt_edge_face = [[25, 0], [26, 0], [25, 0], [27, 0], [25,26], [26,27], [25,31],
+                      [27, 0], [26,32], [31, 0], [27,33], [31,32]]
+  else:
+    expt_face_vtx = vs.array([[15,11,12,16], [5,6,10,9], [10,6,7,11], [11,7,8,12]])
+    expt_edge_face = [[32,33], [31,28], [33, 0], [32,29], [28, 0], [33,30], [28,29],
+                      [29,30], [28, 0], [30, 0], [29, 0], [30, 0]]
+
+  if remove != 'NGonElements':
+    ng = PT.Zone.NGonNode(zone)
+    face_vtx = MT.Element.connectivity(ng)
+    assert vs.array_equal(face_vtx, expt_face_vtx)
+  if remove != 'ParentElements':
+    pe = PT.find_node_from_name(zone, 'ParentElements')
+    assert (PT.get_np_value(pe) == expt_edge_face).all()
+  
+
+@pytest_parallel.mark.parallel(1)
+def test_renumber_faces_elt_3d(comm):
+  tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_prism_pyra_tet.yaml', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  new_id = np.array([1,2,3,6,5,4, 7,8,9,12,11,10]) - 1
+  RENUM.renumber_faces(tree, 'Base/Zone', new_id, comm)
+
+  tri = PT.get_node_from_name(zone, 'TRI_3')
+  quad = PT.get_node_from_name(zone, 'QUAD_4')
+  assert (PT.find_child_from_name(tri, 'ElementConnectivity')[1] == 
+          [6,11,9, 8,10,11, 6,7,11, 9,11,10, 2,5,3, 7,8,11]).all()
+  assert (PT.find_child_from_name(quad, 'ElementConnectivity')[1] == 
+           [1,6,9,4, 3,5,10,8, 1,2,7,6, 1,4,5,2, 4,9,10,5, 2,3,8,7]).all()
+
+  assert (PT.get_node_from_path(zone, 'ZoneBC/Ymin/PointList')[1] ==
+          [[3,6,9,12]]).all()
+  assert (PT.get_node_from_path(zone, 'ZoneBC/Zmax/PointList')[1] ==
+          [[10]]).all()

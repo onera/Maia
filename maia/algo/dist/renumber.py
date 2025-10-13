@@ -1,3 +1,4 @@
+from mpi4py import MPI
 import numpy as np
 
 import maia.pytree      as PT
@@ -7,9 +8,33 @@ from maia.transfer import protocols as EP
 from maia.utils import vstride as vs
 from maia.utils import par_utils, np_utils
 
-from .sections_tools import _concatenate_elt_sections
+from .sections_tools import _concatenate_elt_sections, concatenate_elt_sections_if
 
 from maia.typing import *
+
+def is_elt_of_dim(dim:int) -> PT.pred.NodePredicate:
+  return PT.pred.label_is('Elements_t') & PT.pred.NodePredicate(lambda e: PT.Element.Dimension(e)==dim)
+
+def subdistri(distri:NDArray, start:int, end:int):
+    intersect_starts = np.maximum(distri[:-1], start)
+    intersect_ends = np.minimum(distri[1:], end)
+    
+    counts = np.maximum(intersect_ends - intersect_starts, 0)
+    return np_utils.sizes_to_indices(counts)
+
+def _local_bounds(ini_start_loc:int, ini_end_loc:int, g_start:int, g_end:int) -> Tuple[int, int]:
+  ini_size = ini_end_loc - ini_start_loc
+  r_start = max(ini_start_loc, g_start) - ini_start_loc
+  r_end   = min(ini_end_loc, g_end) - ini_start_loc
+  
+  return min(r_start, ini_size), max(r_end, 0)
+
+def local_bounds(distri:NDArray, g_start:int, g_end:int) -> Tuple[int, int]:
+  """ Compute the local start/end indices that should be used to extract a slice of 
+  a distributed array, restricted to global [start:end[ interval """
+  return _local_bounds(distri[0], distri[1], g_start, g_end)
+  
+
 
 def _collect_shifted_pl_one(subset:CGNSTree, shift:int=0, donor:bool=False) -> NDArray:
   suffix = 'Donor' if donor else ''
@@ -38,36 +63,89 @@ def _update_pl(zone:CGNSTree, loc:str, new_pl:List[NDArray], shift:int=0):
     _update_pl_one(subset, _pl, shift)
     # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
 
-def _renumber_pl_donor(tree, zone_path, loc, distri, new_id, pl_offset, comm):
-  GC_PRED = PT.pred.is_gc_of_kind(is_1to1=True) & PT.pred.has_location(loc)
+def _adapt_data_to_distri(data_in, distri_in, distri_out, comm):
+  # Perform a BtB if necessary to have data distributed as 
+  # distri_out. Distributions must be full
+  _distri_in  = par_utils.auto_expand_distri(distri_in, comm)
+  _distri_out = par_utils.auto_expand_distri(distri_out, comm)
+  if not par_utils.is_same_distri(_distri_in, _distri_out, comm):
+    return EP.block_to_block(data_in, _distri_in, _distri_out, comm)
+  else:
+    return data_in
+
+def _update_point_lists(tree, zone_path, new_id, id_distri, loc, offset, comm):
+  """
+  Apply the entity renumbering to the PointLists of specified location
+  PointList donor on opposite zones are updated as well
+  """
+  zone = PT.find_node_from_path(tree, zone_path)
+  # Renumber PointLists
+
+  old_pls = _collected_shifted_pl(zone, loc, -offset)
+  new_pls = EP.block_to_part(new_id, id_distri, old_pls, comm)
+  _update_pl(zone, loc, new_pls, offset)
+
+  # Loop on others zones to update PLDonor
+  GC_PRED = PT.pred.is_gc_of_kind(is_1to1=True) & PT.pred.has_location(f'*{loc}') # * is to catch hybrid GC
   for opp_base, opp_zone in PT.iter_children_from_predicates(tree, 'CGNSBase_t/Zone_t', ancestors=True):
     for gc in PT.iter_children_from_predicates(opp_zone, ['ZoneGridConnectivity_t', GC_PRED]):
       if PT.GridConnectivity.ZoneDonorPath(gc, PT.get_name(opp_base)) == zone_path:
-        pld = _collect_shifted_pl_one(gc, -pl_offset, True)
-        new_pld = EP.block_to_part(new_id, distri, pld, comm)
-        _update_pl_one(gc, new_pld, pl_offset, True)
+        pld = _collect_shifted_pl_one(gc, -offset, True)
+        new_pld = EP.block_to_part(new_id, id_distri, pld, comm)
+        _update_pl_one(gc, new_pld, offset, True)
 
+def _update_full_cellcenter_containers(zone, new_id, new_id_distri, comm):
+  """ Apply the entity renumbering to the full CellCenter containers"""
+  cell_distri = MT.distribution_value(zone, 'Cell')
+  _cell_distri = par_utils.partial_to_full_distribution(cell_distri, comm)
+  new_id_cell = _adapt_data_to_distri(new_id, new_id_distri, _cell_distri, comm)
+  GI = EP.GlobalIndexer(_cell_distri, new_id_cell, comm)
+  for array_n in PT.iter_children_from_predicates(zone, [MT.pred.FULL_CTN_CELL, 'DataArray_t']):
+    array = PT.get_np_value(array_n)
+    GI.Put(array, array)
+
+
+def is_section_compatible(ids_distri: NDArray, new_id:NDArray,
+                          elts:List[CGNSTree], comm:MPIComm) -> bool:
+  """ Return True if the requested renumbering does not mix sections """
+  if len(elts) < 1:
+    return True
+
+  elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0])
+  glo_offset = PT.Element.Range(elts[0])[0]
+  new_id_loc_l = list()
+  for elt in elts:
+    distri = MT.distribution_value(elt, 'Element')
+    loc_offset = PT.Element.Range(elt)[0] - glo_offset
+    ed = loc_offset + PT.Element.Size(elt)
+    restrict = subdistri(ids_distri, loc_offset, ed)
+    _ids_distri = par_utils.full_to_partial_distribution(ids_distri, comm)
+    view_st, view_end = local_bounds(_ids_distri, loc_offset, ed)
+    new_id_loc_l.append(EP.block_to_block(new_id[view_st:view_end], restrict, distri, comm))
+
+  is_compatible = True
+  for elt, new_id_loc in zip(elts, new_id_loc_l):
+    low  = PT.Element.Range(elt)[0] - glo_offset
+    high = PT.Element.Range(elt)[1] - glo_offset
+    is_compatible = bool(np.all(low <= new_id_loc) and np.all(new_id_loc <= high))
+    if not is_compatible:
+      break
+  
+  return comm.allreduce(is_compatible, MPI.LAND)
 
 def renumber_vertices(tree, zone_path, new_vtx_id, comm):
   """
   Renumber vertices of the input zone.
-  new_vtx_id is an array distributed as ALL_VTX, which associate
+  new_vtx_id is an distributed array, which associate
   to each old vtx it's new id (0-based)
   PointListDonor from other zones are also updated
   """
   zone = PT.find_node_from_path(tree, zone_path)
+
+  # Ensure that new_vtx_id is distributed as 'ALL_VTX' distribution
+  input_distri = par_utils.dn_to_distribution(new_vtx_id.size, comm)
   vtx_distri = MT.distribution_value(zone, 'Vertex')
-
-  GI = EP.GlobalIndexer(vtx_distri, new_vtx_id, comm)
-
-  # Update Coordinates
-  for co in PT.Zone.coordinates(zone):
-    if co is not None:
-      GI.Put(co, co)
-  # Update full solutions
-  for array_n in PT.iter_children_from_predicates(zone, [MT.pred.FULL_CTN_VTX, 'DataArray_t']):
-    array = PT.get_np_value(array_n)
-    GI.Put(array, array)
+  new_vtx_id = _adapt_data_to_distri(new_vtx_id, input_distri, vtx_distri, comm)
 
   # Update Elements
   ec_nodes = list()
@@ -81,13 +159,19 @@ def renumber_vertices(tree, zone_path, new_vtx_id, comm):
     PT.set_value(ec_node, value+1)
 
   # Update PL data
-  old_pls = _collected_shifted_pl(zone, 'Vertex', -1)
-  new_pls = EP.block_to_part(new_vtx_id, vtx_distri, old_pls, comm)
-  _update_pl(zone, 'Vertex', new_pls, 1)
+  _update_point_lists(tree, zone_path, new_vtx_id, vtx_distri, 'Vertex', 1, comm)
 
-  # Loop on others zones to update PLDonor
-  _renumber_pl_donor(tree, zone_path, 'Vertex', vtx_distri, new_vtx_id, 1, comm)
+  # Update full solutions (including coordinates)
+  GI = EP.GlobalIndexer(vtx_distri, new_vtx_id, comm)
 
+  # Coordinates
+  for co in PT.Zone.coordinates(zone):
+    if co is not None:
+      GI.Put(co, co)
+  # Full solutions
+  for array_n in PT.iter_children_from_predicates(zone, [MT.pred.FULL_CTN_VTX, 'DataArray_t']):
+    array = PT.get_np_value(array_n)
+    GI.Put(array, array)
 
 
 def renumber_edges(tree, zone_path, new_edge_id, comm):
@@ -98,8 +182,10 @@ def renumber_edges(tree, zone_path, new_edge_id, comm):
   Note : if several edges sections are present in tree, we can not garantee that
   ordering do not interlace sections. Thus we concatenate edge section to a single one.
   """
-  pred = PT.pred.is_element_of_type('BAR_2')
+  pred = is_elt_of_dim(1)
   zone = PT.find_node_from_path(tree, zone_path)
+
+  is_native_dim = PT.Zone.CellDimension(zone) == 1
 
   edge_elts = PT.get_children_from_predicate(zone, pred)
   if len(edge_elts) == 0:
@@ -118,83 +204,138 @@ def renumber_edges(tree, zone_path, new_edge_id, comm):
   edge_distri  = MT.distribution_value(edge_elt, 'Element')
   _input_distri = par_utils.partial_to_full_distribution(input_distri, comm)
   _edge_distri  = par_utils.partial_to_full_distribution(edge_distri, comm)
-  if not np.array_equal(_input_distri, _edge_distri):
-    new_edge_id = EP.block_to_block(new_edge_id, _input_distri, _edge_distri, comm)
+
+  new_edge_id_elt = _adapt_data_to_distri(new_edge_id, _input_distri, _edge_distri, comm)
 
   # Now we can reorder edges
   edge_offset = PT.Element.Range(edge_elt)[0]
-  GI = EP.GlobalIndexer(_edge_distri, new_edge_id, comm)
+  GI = EP.GlobalIndexer(_edge_distri, new_edge_id_elt, comm)
 
   edge_vtx_n = PT.find_child_from_name(edge_elt, 'ElementConnectivity')
   edge_vtx = PT.get_np_value(edge_vtx_n)
   GI.Put(edge_vtx, edge_vtx, count=2)
 
-  # Update PE if existing (inplace ok because face distri did not change)
+  # Update PE if existing (inplace ok because distri did not change)
   if (pe_n := PT.get_child_from_name(edge_elt, 'ParentElements')) is not None:
     pe = PT.get_np_value(pe_n)
     GI.Put(pe[:,0], pe[:,0])
     GI.Put(pe[:,1], pe[:,1])
 
   # Update EdgeCenter PointList (no data to move, because full EdgeCenter data not allowed)
-  old_pls = _collected_shifted_pl(zone, 'EdgeCenter', -edge_offset)
-  new_pls = EP.block_to_part(new_edge_id, edge_distri, old_pls, comm)
-  _update_pl(zone, 'EdgeCenter', new_pls, edge_offset)
+  loc = 'CellCenter' if is_native_dim else 'EdgeCenter'
+  _update_point_lists(tree, zone_path, new_edge_id, _input_distri, loc, edge_offset, comm)
 
-  # Loop on others zones to update PLDonor
-  _renumber_pl_donor(tree, zone_path, '*EdgeCenter', edge_distri, new_edge_id, edge_offset, comm)
+  # Update full solutions, if edges are native dim
+  if is_native_dim:
+    _update_full_cellcenter_containers(zone, new_edge_id, _input_distri, comm)
 
 
-def renumber_faces(tree, zone_path, new_face_id, comm):
+
+
+def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, comm:MPIComm):
   """
   Renumber faces of the input zone.
-  new_face_id is an array distributed as ALL_FACES, which associate
-  to each old face it's new id (0-based)
-  Only NG zones are supported
+  new_face_id is a distributed array, which associate to each old face it's new id (0-based)
   PointListDonor from other zones are also updated
+  Note for std meshes: if several faces sections are present in tree, we can not garantee that
+  ordering do not interlace sections. Thus we concatenate faces section to a single one.
+  In the permutation leads to interlacement of faces of different kind (tri, quad), an
+  error is raised
   """
   zone = PT.find_node_from_path(tree, zone_path)
-  if PT.pred.IS_POLY3D_ZONE(zone):
-    # 1. NGon node : update face_vtx + pe (if existing)
-    ng = PT.Zone.NGonNode(zone)
-    ng_offset = PT.Element.Range(ng)[0]
-    face_distri = MT.distribution_value(ng, 'Element')
-    GI = EP.GlobalIndexer(face_distri, new_face_id, comm)
-    
-    face_vtx_ini = MT.Element.connectivity(ng)
-    face_vtx = vs.from_counts(*GI.Put_v((face_vtx_ini.counts, face_vtx_ini.values)))
-    # Distribution of ElementConnectivity can change (the one of Element is fixed)
-    elt_distri = par_utils.dn_to_distribution(face_vtx.dsize, comm)
-    PT.update_child(ng, 'ElementStartOffset', value=face_vtx.displs + elt_distri[0].astype(face_vtx.displs.dtype))
-    PT.update_child(ng, 'ElementConnectivity', value=face_vtx.values)
 
-    # Update PE if existing (inplace ok because face distri did not change)
-    if (pe_n := PT.get_child_from_name(ng, 'ParentElements')) is not None:
-      pe = PT.get_np_value(pe_n)
-      GI.Put(pe[:,0], pe[:,0])
-      GI.Put(pe[:,1], pe[:,1])
+  is_native_dim = PT.Zone.CellDimension(zone) == 2
 
-    MT.new_Distribution({'ElementConnectivity' : elt_distri}, parent=ng)
+  input_distri = par_utils.dn_to_distribution(new_face_id.size, comm)
+  _input_distri = par_utils.partial_to_full_distribution(input_distri, comm)
 
-    # 2. NFACE node (if existing) : update cell->face connectivity
-    if PT.Zone.has_nface_elements(zone):
-      nf = PT.Zone.NFaceNode(zone)
-      cell_face_n = PT.find_child_from_name(nf, 'ElementConnectivity')
-      cell_face = PT.get_np_value(cell_face_n)
-      sign = np.sign(cell_face)
-      val  = np.abs(cell_face)
-      GI = EP.GlobalIndexer(face_distri, val-ng_offset, comm)
-      GI.Take(new_face_id, cell_face)
-      cell_face += ng_offset
-      cell_face *= sign
+  if PT.pred.IS_POLY2D_ZONE(zone) or PT.pred.IS_POLY3D_ZONE(zone):
 
-    # 3. Update FaceCenter PointList (no data to move, because full FaceCenter data not allowed)
-    old_pls = _collected_shifted_pl(zone, 'FaceCenter', -ng_offset)
-    new_pls = EP.block_to_part(new_face_id, face_distri, old_pls, comm)
-    _update_pl(zone, 'FaceCenter', new_pls, ng_offset)
+    # If EdgeElements are present (poly2d zone), update ParentElement of edges
+    # if existing since it indexes faces
+    if PT.get_node_from_predicate(zone, PT.pred.is_element_of_type('BAR_2')) is not None:
+      assert PT.Zone.CellDimension(zone) == 2
+      ne = MT.Zone.EdgeNode(zone)
+      face_offset = PT.Element.Range(ne)[1] + 1
+      pe_n = PT.get_child_from_name(ne, 'ParentElements')
+      if pe_n is not None:
+        pe = PT.get_np_value(pe_n)
+        mask = (pe != 0)
+        pe[mask] = EP.block_to_part(new_face_id, _input_distri, pe[mask]-face_offset, comm) + face_offset
 
-  else:
-    pass
+    # If NG are present (poly2d or poly3d zone), move connectivity / parent elements
+    if PT.Zone.has_ngon_elements(zone):
+      ng = PT.Zone.NGonNode(zone)
+      face_offset = PT.Element.Range(ng)[0]
+      face_distri = MT.distribution_value(ng, 'Element')
+      # Ensure that new_face_id is distributed as NG/Distribution
+      new_face_id_elt = _adapt_data_to_distri(new_face_id, _input_distri, face_distri, comm)
+      GI = EP.GlobalIndexer(face_distri, new_face_id_elt, comm)
+      
+      face_vtx_ini = MT.Element.connectivity(ng)
+      face_vtx = vs.from_counts(*GI.Put_v((face_vtx_ini.counts, face_vtx_ini.values)))
+      # Distribution of ElementConnectivity can change (the one of Element is fixed)
+      elt_distri = par_utils.dn_to_distribution(face_vtx.dsize, comm)
+      PT.update_child(ng, 'ElementStartOffset', value=face_vtx.displs + elt_distri[0].astype(face_vtx.displs.dtype))
+      PT.update_child(ng, 'ElementConnectivity', value=face_vtx.values)
 
-  # Loop on others zones to update PLDonor
-  _renumber_pl_donor(tree, zone_path, '*FaceCenter', face_distri, new_face_id, ng_offset, comm)
+      # Update PE if existing (inplace ok because face distri did not change)
+      if (pe_n := PT.get_child_from_name(ng, 'ParentElements')) is not None:
+        pe = PT.get_np_value(pe_n)
+        GI.Put(pe[:,0], pe[:,0])
+        GI.Put(pe[:,1], pe[:,1])
+
+      MT.new_Distribution({'ElementConnectivity' : elt_distri}, parent=ng)
+
+      # Poly3d zone; update cell-->face connectivity if existing
+      if PT.Zone.has_nface_elements(zone):
+        nf = PT.Zone.NFaceNode(zone)
+        cell_face_n = PT.find_child_from_name(nf, 'ElementConnectivity')
+        cell_face = PT.get_np_value(cell_face_n)
+        sign = np.sign(cell_face)
+        val  = np.abs(cell_face)
+        GI = EP.GlobalIndexer(face_distri, val-face_offset, comm)
+        GI.Take(new_face_id_elt, cell_face)
+        cell_face += face_offset
+        cell_face *= sign
+
+  else: # Standard elements
+    pred = is_elt_of_dim(2) # Concatenate elts of dim 2 only
+    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] zone is distributed
+
+    # Work (cat) section by (cat) section
+    elts = sorted(PT.get_children_from_predicate(zone, pred), key=lambda e: PT.Element.Range(e)[0])
+    face_offset = PT.Element.Range(elts[0])[0]
+
+    for elt in elts:
+      distri = MT.distribution_value(elt, 'Element')
+      global_start = PT.Element.Range(elt)[0] - face_offset
+      global_end = global_start + PT.Element.Size(elt)
+      _restrict = subdistri(_input_distri, global_start, global_end)
+      view_st, view_end = local_bounds(input_distri, global_start, global_end)
+      new_id_loc = EP.block_to_block(new_face_id[view_st:view_end], _restrict, distri, comm)
+
+      # Check that renumbering does not goes out of the current section
+      low  = PT.Element.Range(elt)[0] - face_offset
+      high = PT.Element.Range(elt)[1] - face_offset
+      is_compatible = bool(np.all(low <= new_id_loc) and np.all(new_id_loc <= high))
+      if not comm.allreduce(is_compatible, MPI.LAND):
+        raise ValueError("Invalid permutation: elements of different type would be interlaced")
+
+      # Do effective renumbering of elements
+      GI = EP.GlobalIndexer(distri, new_id_loc-global_start, comm)
+      elt_vtx_n = PT.find_child_from_name(elt, 'ElementConnectivity')
+      elt_vtx = PT.get_np_value(elt_vtx_n)
+      GI.Put(elt_vtx, elt_vtx, count=PT.Element.NVtx(elt))
+
+  
+
+  # Update FaceCenter PointList (no data to move, because full FaceCenter data not allowed)
+  loc = 'CellCenter' if is_native_dim else 'FaceCenter'
+  _update_point_lists(tree, zone_path, new_face_id, _input_distri, loc, face_offset, comm)
+
+  # Update full solutions, if edges are native dim
+  if is_native_dim:
+    _update_full_cellcenter_containers(zone, new_face_id, _input_distri, comm)
+
 
