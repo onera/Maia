@@ -14,7 +14,7 @@ from maia.algo.dist import put_boundary_first
 def test_put_boundary_first(comm):
   tree = maia.factory.generate_dist_block(3, 'S', comm)
   maia.algo.dist.convert_s_to_ngon(tree, comm)
-  put_boundary_first.put_boundary_first_new(tree, comm)
+  put_boundary_first.put_boundary_first(tree, comm)
 
   expt_cx_f = [0,.5,1, 0,.5,1, 0,.5,1., 0,.5,1., 0.,1., 0,.5,1, 0,.5,1, 0,.5,1, 0,.5,1, .5]
   expt_cy_f = [0,0,0, .5,.5,.5, 1,1,1,  0,0,0,  .5,.5,  1,1,1,  0,0,0, .5,.5,.5, 1,1,1, .5]
@@ -49,7 +49,7 @@ def test_put_boundary_first(comm):
 @pytest_parallel.mark.parallel(1)
 def test_put_boundary_first_2d_elt(comm):
   tree = maia.factory.generate_dist_block(4, 'QUAD_4', comm)
-  put_boundary_first.put_boundary_first_new(tree, comm)
+  put_boundary_first.put_boundary_first(tree, comm)
 
   zone = PT.find_node_from_label(tree, 'Zone_t')
   vtx_distri = MT.distribution_value(zone, 'Vertex')
@@ -71,7 +71,7 @@ def test_put_boundary_first_2d(comm):
   maia.algo.dist.convert_s_to_ngon(tree, comm)
   ztype = PT.get_np_value(PT.get_all_Zone_t(tree)[0]).dtype
 
-  put_boundary_first.put_boundary_first_new(tree, comm)
+  put_boundary_first.put_boundary_first(tree, comm)
 
   ftree = maia.factory.dist_to_full_tree(tree, comm)
   

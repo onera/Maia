@@ -1,15 +1,3 @@
-from cmaia import dist_algo as cdist_algo
-
-import maia.pytree as PT
-from maia.utils import require_cpp20
-
-
-@require_cpp20
-def put_boundary_first(t, comm):
-  for base in PT.iter_all_CGNSBase_t(t):
-    cdist_algo.put_boundary_first(base)
-
-
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
@@ -20,7 +8,7 @@ from maia.typing import *
 from maia.utils import vstride as vs
 from maia.utils import par_utils
 
-from ..renumber import renumber_vertices, renumber_edges, renumber_faces
+from .renumber import renumber_vertices, renumber_edges, renumber_faces
 
 
 def flag_to_old2new(flag, comm, dtype):
@@ -36,7 +24,7 @@ def flag_to_old2new(flag, comm, dtype):
 
   return old_to_new
 
-def put_boundary_first_new(t:CGNSDistTree, comm:MPIComm):
+def put_boundary_first(t:CGNSDistTree, comm:MPIComm):
   for zone_path in PT.predicates_to_paths(t, 'CGNSBase_t/Zone_t'):
     zone  = PT.find_node_from_path(t, zone_path)
     ztype = PT.get_np_value(zone).dtype

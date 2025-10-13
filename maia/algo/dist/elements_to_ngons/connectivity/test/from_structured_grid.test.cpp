@@ -1,7 +1,7 @@
 #include "std_e/unit_test/doctest.hpp"
 
 #include "maia/algo/dist/elements_to_ngons/connectivity/from_structured_grid.hpp"
-#include "maia/__old/utils/cgns_tree_examples/simple_meshes.hpp"
+#include "maia/algo/dist/elements_to_ngons/connectivity/simple_meshes.hpp"
 
 using std::array;
 using namespace maia;
