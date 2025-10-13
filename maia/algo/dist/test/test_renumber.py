@@ -201,7 +201,7 @@ def test_renumber_edges_2d_elt(comm):
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("remove", ['', 'ParentElements', 'NGonElements'])
-def test_renumber_faces_ng_2d(remove, comm):
+def test_renumber_faces_2d_poly(remove, comm):
   tree = maia.factory.generate_dist_block(4, 'QUAD_4', comm)
   maia.algo.dist.convert_elements_to_ngon(tree, comm)
   zone = PT.get_all_Zone_t(tree)[0]
@@ -229,10 +229,45 @@ def test_renumber_faces_ng_2d(remove, comm):
   if remove != 'ParentElements':
     pe = PT.find_node_from_name(zone, 'ParentElements')
     assert (PT.get_np_value(pe) == expt_edge_face).all()
-  
+
+@pytest_parallel.mark.parallel(2)
+def test_renumber_faces_3d_poly(comm):
+  tree = maia.factory.generate_dist_block([3,2,2], 'Poly', comm)
+  maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  maia.algo.pe_to_nface(tree, comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  ztype = PT.get_np_value(zone).dtype
+
+  # Juste permute Xmin (1) and Xmax (3) faces
+  new_id = np.array([3,2,1,4,5,6,7,8,9,10,11], ztype) - 1
+  new_id = new_id[:6] if comm.rank == 0 else new_id[6:]
+
+  expt_zone = PT.deep_copy(zone)
+  ng = PT.Zone.NGonNode(zone)
+  nf = PT.Zone.NFaceNode(zone)
+  ng_ec = PT.get_np_value(PT.find_child_from_name(ng, 'ElementConnectivity'))
+  ng_pe = PT.get_np_value(PT.find_child_from_name(ng, 'ParentElements'))
+  nf_ec = PT.get_np_value(PT.find_child_from_name(nf, 'ElementConnectivity'))
+  xm_pl = PT.get_np_value(PT.get_node_from_names(zone, ['Xmin', 'PointList']))
+  xM_pl = PT.get_np_value(PT.get_node_from_names(zone, ['Xmax', 'PointList']))
+  if comm.rank == 0:
+    ng_ec[0:4]  = [3,6,12,9]
+    ng_ec[8:12] = [1,7,10,4] # Swap faces 1 & 3
+    ng_pe[0] = [13, 0]
+    ng_pe[2] = [12, 0] # Swap faces 1 & 3
+    nf_ec[0] = 3 # was face 1 before
+    xm_pl[0][0] = 3
+    xM_pl[0][0] = 1
+  if comm.rank == 1:
+    nf_ec[1] = 1 # was face 3 before
+ 
+  RENUM.renumber_faces(tree, 'Base/zone', new_id, comm)
+
+  assert PT.is_same_tree(zone, expt_zone)
+
 
 @pytest_parallel.mark.parallel(1)
-def test_renumber_faces_elt_3d(comm):
+def test_renumber_faces_3d_elt(comm):
   tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_prism_pyra_tet.yaml', comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
@@ -288,7 +323,7 @@ def test_renumber_cells_poly(pe_only, comm):
 
 
 @pytest_parallel.mark.parallel(2)
-def test_renumber_cells_elt_3d(comm):
+def test_renumber_cells_elt(comm):
   tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
   zone = PT.get_all_Zone_t(tree)[0]
 
@@ -317,7 +352,7 @@ def test_renumber_cells_elt_3d(comm):
   assert (PT.find_node_from_name(zone, 'Id')[1] == expt_sol).all()
 
 @pytest_parallel.mark.parallel(2)
-def test_renumber_cells_elt_fail(comm):
+def test_renumber_cells_fail(comm):
   tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
 
   with pytest.raises(ValueError):

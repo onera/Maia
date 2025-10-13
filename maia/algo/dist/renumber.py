@@ -63,7 +63,7 @@ def _update_pl(zone:CGNSTree, loc:str, new_pl:List[NDArray], shift:int=0):
     _update_pl_one(subset, _pl, shift)
     # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
 
-def _adapt_data_to_distri(data_in, distri_in, distri_out, comm):
+def _adapt_data_to_distri(data_in:NDArray, distri_in:NDArray, distri_out:NDArray, comm:MPIComm) -> NDArray:
   # Perform a BtB if necessary to have data distributed as 
   # distri_out. Distributions must be full
   _distri_in  = par_utils.auto_expand_distri(distri_in, comm)
@@ -73,7 +73,9 @@ def _adapt_data_to_distri(data_in, distri_in, distri_out, comm):
   else:
     return data_in
 
-def _update_point_lists(tree, zone_path, new_id, id_distri, loc, offset, comm):
+def _update_point_lists(tree:CGNSDistTree, zone_path:CGNSPath,
+                        new_id:NDArray, id_distri:NDArray,
+                        loc:str, offset:int, comm:MPIComm):
   """
   Apply the entity renumbering to the PointLists of specified location
   PointList donor on opposite zones are updated as well
@@ -94,7 +96,7 @@ def _update_point_lists(tree, zone_path, new_id, id_distri, loc, offset, comm):
         new_pld = EP.block_to_part(new_id, id_distri, pld, comm)
         _update_pl_one(gc, new_pld, offset, True)
 
-def _update_full_cellcenter_containers(zone, new_id, new_id_distri, comm):
+def _update_full_cellcenter_containers(zone:CGNSTree, new_id:NDArray, new_id_distri:NDArray, comm:MPIComm):
   """ Apply the entity renumbering to the full CellCenter containers"""
   cell_distri = MT.distribution_value(zone, 'Cell')
   _cell_distri = par_utils.partial_to_full_distribution(cell_distri, comm)
@@ -105,7 +107,7 @@ def _update_full_cellcenter_containers(zone, new_id, new_id_distri, comm):
     GI.Put(array, array)
 
 
-def renumber_vertices(tree, zone_path, new_vtx_id, comm):
+def renumber_vertices(tree:CGNSDistTree, zone_path:CGNSPath, new_vtx_id:NDArray, comm:MPIComm):
   """
   Renumber vertices of the input zone.
   new_vtx_id is an distributed array, which associate
@@ -120,11 +122,9 @@ def renumber_vertices(tree, zone_path, new_vtx_id, comm):
   new_vtx_id = _adapt_data_to_distri(new_vtx_id, input_distri, vtx_distri, comm)
 
   # Update Elements
-  ec_nodes = list()
-  for elt in PT.iter_children_from_predicate(zone, 'Elements_t'):
-    if PT.Element.Type(elt) == 'NFACE_n':
-      continue
-    ec_nodes.append(PT.find_child_from_name(elt, 'ElementConnectivity'))
+  elts =  PT.get_children_from_predicate(zone, PT.pred.label_is('Elements_t')
+                                            & ~PT.pred.is_element_of_type('NFACE_n'))
+  ec_nodes = [PT.find_child_from_name(elt, 'ElementConnectivity') for elt in elts]
   ec_values = [PT.get_np_value(ec_node) - 1 for ec_node in ec_nodes]
   new_cnt_l = EP.block_to_part(new_vtx_id, vtx_distri, ec_values, comm)
   for ec_node, value in zip(ec_nodes, new_cnt_l):
@@ -146,7 +146,7 @@ def renumber_vertices(tree, zone_path, new_vtx_id, comm):
     GI.Put(array, array)
 
 
-def renumber_edges(tree, zone_path, new_edge_id, comm):
+def renumber_edges(tree:CGNSDistTree, zone_path:CGNSPath, new_edge_id:NDArray, comm:MPIComm):
   """
   Renumber edges of the input zone.
   new_edge_id is a distributed array, which associate to each old edge it's new id (0-based)
@@ -223,12 +223,16 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
 
   if PT.pred.IS_POLY2D_ZONE(zone) or PT.pred.IS_POLY3D_ZONE(zone):
 
+    if PT.Zone.has_ngon_elements(zone):
+      face_offset = PT.Element.Range(PT.Zone.NGonNode(zone))[0]
+    else: # Zone is poly2d with edges only
+      face_offset = PT.Element.Range(MT.Zone.EdgeNode(zone))[1] + 1
+
     # If EdgeElements are present (poly2d zone), update ParentElement of edges
     # if existing since it indexes faces
     if PT.get_node_from_predicate(zone, PT.pred.is_element_of_type('BAR_2')) is not None:
       assert PT.Zone.CellDimension(zone) == 2
       ne = MT.Zone.EdgeNode(zone)
-      face_offset = PT.Element.Range(ne)[1] + 1
       pe_n = PT.get_child_from_name(ne, 'ParentElements')
       if pe_n is not None:
         pe = PT.get_np_value(pe_n)
@@ -238,7 +242,6 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
     # If NG are present (poly2d or poly3d zone), move connectivity / parent elements
     if PT.Zone.has_ngon_elements(zone):
       ng = PT.Zone.NGonNode(zone)
-      face_offset = PT.Element.Range(ng)[0]
       face_distri = MT.distribution_value(ng, 'Element')
       # Ensure that new_face_id is distributed as NG/Distribution
       new_face_id_elt = _adapt_data_to_distri(new_face_id, _input_distri, face_distri, comm)
@@ -273,7 +276,7 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
 
   else: # Standard elements
     pred = is_elt_of_dim(2) # Concatenate elts of dim 2 only
-    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] zone is distributed
+    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] # zone is distributed
 
     # Work (cat) section by (cat) section
     elts = sorted(PT.get_children_from_predicate(zone, pred), key=lambda e: PT.Element.Range(e)[0])
@@ -330,7 +333,7 @@ def renumber_cells(tree:CGNSDistTree, zone_path:CGNSPath, new_cell_id:NDArray, c
 
     if PT.Zone.has_nface_elements(zone):
       cell_offset = PT.Element.Range(PT.Zone.NFaceNode(zone))[0]
-    else:
+    else: # Zone is poly3d with faces only
       cell_offset = PT.Element.Range(PT.Zone.NGonNode(zone))[1] + 1
 
     # If ParentElements is present in NGON node, update it since it indexes cells
@@ -361,8 +364,8 @@ def renumber_cells(tree:CGNSDistTree, zone_path:CGNSPath, new_cell_id:NDArray, c
 
 
   else: # Standard elements
-    pred = is_elt_of_dim(3) # Concatenate elts of dim 2 only
-    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] zone is distributed
+    pred = is_elt_of_dim(3) # Concatenate elts of dim 3 only
+    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] # zone is distributed
 
     # Work (cat) section by (cat) section
     elts = sorted(PT.get_children_from_predicate(zone, pred), key=lambda e: PT.Element.Range(e)[0])
