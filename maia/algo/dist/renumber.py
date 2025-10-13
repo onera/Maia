@@ -311,3 +311,88 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
     _update_full_cellcenter_containers(zone, new_face_id, _input_distri, comm)
 
 
+def renumber_cells(tree:CGNSDistTree, zone_path:CGNSPath, new_cell_id:NDArray, comm:MPIComm):
+  """
+  Renumber cells of the input zone.
+  new_cell_id is a distributed array, which associate to each old cell it's new id (0-based)
+  PointListDonor from other zones are also updated
+  Note for std meshes: if several cells sections are present in tree, we can not garantee that
+  ordering do not interlace sections. Thus we concatenate cells section to a single one.
+  In the permutation leads to interlacement of cells of different kind (tetra, hexa), an
+  error is raised
+  """
+  zone = PT.find_node_from_path(tree, zone_path)
+
+  input_distri = par_utils.dn_to_distribution(new_cell_id.size, comm)
+  _input_distri = par_utils.partial_to_full_distribution(input_distri, comm)
+
+  if PT.pred.IS_POLY3D_ZONE(zone):
+
+    if PT.Zone.has_nface_elements(zone):
+      cell_offset = PT.Element.Range(PT.Zone.NFaceNode(zone))[0]
+    else:
+      cell_offset = PT.Element.Range(PT.Zone.NGonNode(zone))[1] + 1
+
+    # If ParentElements is present in NGON node, update it since it indexes cells
+    ng = PT.Zone.NGonNode(zone)
+    pe_n = PT.get_child_from_name(ng, 'ParentElements')
+    if pe_n is not None:
+      pe = PT.get_np_value(pe_n)
+      mask = (pe != 0)
+      pe[mask] = EP.block_to_part(new_cell_id, _input_distri, pe[mask]-cell_offset, comm) + cell_offset
+
+    # Move cell_face connectivity
+    if PT.Zone.has_nface_elements(zone):
+      nf = PT.Zone.NFaceNode(zone)
+
+      # Ensure that new_face_id is distributed as NG/Distribution
+      cell_distri = MT.distribution_value(nf, 'Element')
+      new_cell_id_elt = _adapt_data_to_distri(new_cell_id, _input_distri, cell_distri, comm)
+
+      cell_face_ini = MT.Element.connectivity(nf)
+      cell_face = EP.part_to_block(cell_face_ini, cell_distri, new_cell_id_elt, comm)
+
+      # Distribution of ElementConnectivity can change (the one of Element is fixed)
+      elt_distri = par_utils.dn_to_distribution(cell_face.dsize, comm)
+      PT.update_child(nf, 'ElementStartOffset', value=cell_face.displs + elt_distri[0].astype(cell_face.displs.dtype))
+      PT.update_child(nf, 'ElementConnectivity', value=cell_face.values)
+
+      MT.new_Distribution({'ElementConnectivity' : elt_distri}, parent=ng)
+
+
+  else: # Standard elements
+    pred = is_elt_of_dim(3) # Concatenate elts of dim 2 only
+    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] zone is distributed
+
+    # Work (cat) section by (cat) section
+    elts = sorted(PT.get_children_from_predicate(zone, pred), key=lambda e: PT.Element.Range(e)[0])
+    cell_offset = PT.Element.Range(elts[0])[0]
+
+    for elt in elts:
+      distri = MT.distribution_value(elt, 'Element')
+      global_start = PT.Element.Range(elt)[0] - cell_offset
+      global_end = global_start + PT.Element.Size(elt)
+      _restrict = subdistri(_input_distri, global_start, global_end)
+      view_st, view_end = local_bounds(input_distri, global_start, global_end)
+      new_id_loc = EP.block_to_block(new_cell_id[view_st:view_end], _restrict, distri, comm)
+
+      # Check that renumbering does not goes out of the current section
+      low  = PT.Element.Range(elt)[0] - cell_offset
+      high = PT.Element.Range(elt)[1] - cell_offset
+      is_compatible = bool(np.all(low <= new_id_loc) and np.all(new_id_loc <= high))
+      if not comm.allreduce(is_compatible, MPI.LAND):
+        raise ValueError("Invalid permutation: elements of different type would be interlaced")
+
+      # Do effective renumbering of elements
+      GI = EP.GlobalIndexer(distri, new_id_loc-global_start, comm)
+      elt_vtx_n = PT.find_child_from_name(elt, 'ElementConnectivity')
+      elt_vtx = PT.get_np_value(elt_vtx_n)
+      GI.Put(elt_vtx, elt_vtx, count=PT.Element.NVtx(elt))
+
+  
+  # Update CellCenter PointList
+  _update_point_lists(tree, zone_path, new_cell_id, _input_distri, 'CellCenter', cell_offset, comm)
+
+  # Update full solutions (cell always native dim)
+  _update_full_cellcenter_containers(zone, new_cell_id, _input_distri, comm)
+

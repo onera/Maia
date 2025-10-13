@@ -250,3 +250,88 @@ def test_renumber_faces_elt_3d(comm):
           [[3,6,9,12]]).all()
   assert (PT.get_node_from_path(zone, 'ZoneBC/Zmax/PointList')[1] ==
           [[10]]).all()
+
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize('pe_only', [False, True])
+def test_renumber_cells_poly(pe_only, comm):
+  tree = maia.factory.generate_dist_block([4,2,2], 'Poly', comm)
+  zone = PT.find_node_from_label(tree, 'Zone_t')
+  ztype = PT.get_np_value(zone).dtype
+
+  if comm.rank == 0:
+    PT.new_FlowSolution('Sol', loc='CellCenter', fields={'Id': [1,2]}, parent=zone)
+  else:
+    PT.new_FlowSolution('Sol', loc='CellCenter', fields={'Id': [3]}, parent=zone)
+
+  if not pe_only:
+    maia.algo.pe_to_nface(tree, comm)
+
+  new_id = np.array([3,2,1], ztype) - 1 if comm.rank == 1 else np.empty(0, ztype)
+  RENUM.renumber_cells(tree, 'Base/zone', new_id, comm)
+
+  if comm.rank == 0:
+    expt_cell_face = vs.array([[-3,4,7,10,13,16], [-2,3,6,9,12,15]])
+    expt_face_cell = [[19, 0], [19,18], [18,17], [17, 0], [19, 0], [18, 0], [17, 0], [19, 0]]
+    expt_sol = [3,2]
+  else:
+    expt_cell_face = vs.array([[1,2,5,8,11,14]])
+    expt_face_cell = [[18, 0], [17, 0], [19, 0], [18, 0], [17, 0], [19, 0], [18, 0], [17, 0]]
+    expt_sol = [1]
+
+  ng = PT.Zone.NGonNode(zone)
+  assert (PT.find_child_from_name(ng, 'ParentElements')[1] == expt_face_cell).all()
+  if not pe_only:
+    nf = PT.Zone.NFaceNode(zone)
+    assert vs.array_equal(MT.Element.connectivity(nf), expt_cell_face)
+  assert (PT.find_node_from_name(zone, 'Id')[1] == expt_sol).all()
+
+
+@pytest_parallel.mark.parallel(2)
+def test_renumber_cells_elt_3d(comm):
+  tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+
+  if comm.rank == 0:
+    PT.new_FlowSolution('Sol', loc='CellCenter', fields={'Id': [1,2]}, parent=zone)
+    new_id = np.array([2,1]) - 1
+  else:
+    PT.new_FlowSolution('Sol', loc='CellCenter', fields={'Id': [3,4]}, parent=zone)
+    new_id = np.array([4,3]) - 1
+
+  RENUM.renumber_cells(tree, 'Base/Zone', new_id, comm)
+
+  if comm.rank == 0:
+    expt_hexa = [6,7,10,9,11,12,15,14]
+    expt_prism = [7,8,10,12,13,15]
+    expt_sol = [2,1]
+  else:
+    expt_hexa = [1,2,5,4,6,7,10,9]
+    expt_prism = [2,3,5,7,8,10]
+    expt_sol = [4,3]
+
+  hexa  = PT.find_node_from_name(zone, 'HEXA_8')
+  prism = PT.find_node_from_name(zone, 'PENTA_6')
+  assert (PT.find_child_from_name(hexa, 'ElementConnectivity')[1] == expt_hexa).all()
+  assert (PT.find_child_from_name(prism, 'ElementConnectivity')[1] == expt_prism).all()
+  assert (PT.find_node_from_name(zone, 'Id')[1] == expt_sol).all()
+
+@pytest_parallel.mark.parallel(2)
+def test_renumber_cells_elt_fail(comm):
+  tree = maia.io.file_to_dist_tree(TU.mesh_dir / 'hex_2_prism_2.yaml', comm)
+
+  with pytest.raises(ValueError):
+    # Wrong because this numbering mixes HEXA and PRISM sections
+    new_id = np.array([1,4,3,2]) - 1
+    new_id = new_id[:3] if comm.rank == 0 else new_id[3:]
+
+    RENUM.renumber_cells(tree, 'Base/Zone', new_id, comm)
+
+  with pytest.raises(ValueError):
+    # Technically this should be OK because elements are not mixed
+    # (order of sections is permuted), but with currrent implem this
+    # is an error. This test is here to remember we may allow this one day
+    new_id = np.array([3,4,1,2]) - 1
+    new_id = new_id[:3] if comm.rank == 0 else new_id[3:]
+
+    RENUM.renumber_cells(tree, 'Base/Zone', new_id, comm)
