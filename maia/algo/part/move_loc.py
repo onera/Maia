@@ -1,7 +1,6 @@
 import numpy as np
 from mpi4py import MPI
 
-import maia
 from maia.typing import *
 import maia.pytree as PT
 import maia.pytree.maia as MT
@@ -15,8 +14,6 @@ from . import geometry
 
 from .utils import gather_containers_name
 
-import Pypdm.Pypdm as PDM
-
 class CenterToNode:
 
   CONTAINER_PRED = MT.pred.FULL_CTN_CELL
@@ -24,15 +21,15 @@ class CenterToNode:
   def __init__(self, tree: CGNSPartTree, comm: MPIComm,
                idw_power: int = 1, cross_domain: bool = True):
 
-    self.parts     = []
-    self.weights   = []
-    self.vtx_cell  = []
-    self.gnum_list = []
-    self.comm      = comm
+    self.parts    = []
+    self.weights  = []
+    self.vtx_cell = []
+    self.comm     = comm
 
     parts_per_dom = get_parts_per_blocks(tree, comm)
     vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
 
+    gnum_list = []
     for i_dom, zone_path in enumerate(parts_per_dom):
       dist_base = PT.find_child_from_name(tree, PT.utils.path_head(zone_path))
       dim = PT.get_np_value(dist_base)[0]
@@ -65,7 +62,7 @@ class CenterToNode:
 
           gnum_rep = vtx_gnum_shifted[i_dom][i_part][vtx_idx_rep]
 
-          self.gnum_list.append(gnum_rep)
+          gnum_list.append(gnum_rep)
 
           # Store objects needed for exchange
           self.parts.append(zone)
@@ -73,8 +70,8 @@ class CenterToNode:
           self.vtx_cell.append(vtx_cell)
 
     # > Create GIndexer for global mean
-    distri = par_utils.distribution_from_gnum(self.gnum_list, self.comm, full=True)
-    self.GI = EP.GlobalIndexer(distri, self.gnum_list, self.comm, gnum_offset=1)
+    distri = par_utils.distribution_from_gnum(gnum_list, self.comm, full=True)
+    self.GI = EP.GlobalIndexer(distri, gnum_list, self.comm, gnum_offset=1)
     self.dweights = self.GI.Put(self.weights, reduce=EP.ReduceOp.SUM)
 
     # > Create main rank to manage empty ranks
