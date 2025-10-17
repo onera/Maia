@@ -9,6 +9,13 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Development version
+-------------------
+
+🐞 Fixes
+^^^^^^^^
+- centers_to_nodes: add checks and fix empty partition bugs
+
 v1.8 (September 2025)
 ---------------------
 
@@ -23,7 +30,7 @@ v1.8 (September 2025)
 - maia_print_tree: trees are loaded much faster, which allows to print large files
 - generate_dist_block: manage non uniform Nx,Ny,Nz for Poly case
 - connect_1to1_families: extend to 2D input meshes
-- generate_jns_vertex_list, merge_zones: extend to polyedric 2D input meshes 
+- generate_jns_vertex_list, merge_zones: extend to polyedric 2D input meshes
 - extract_part: extend to 2D input meshes
 - transform affine: detect all vectorial fields if ``apply_to_fields`` is used
 - Introduce ``'ALL'`` shortcut as admissible value for ``containers_name`` in relevant functions
@@ -250,13 +257,13 @@ v1.2 (July 2023)
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - file_to_dist_tree: correct unsigned NFace connectivity if possible
-- wall_distance: add an option to take into account periodic connectivities 
+- wall_distance: add an option to take into account periodic connectivities
 - poly_old_to_new / poly_new_to_old : support 2D meshes
 
 🐞 Fixes
 ^^^^^^^^
 - merge_zones: fix unwanted merge of BCDataSet_t when merge_strategy is None
-- partitioning: fix global numbering of S BCDataSet + fix GC-related ZGC 
+- partitioning: fix global numbering of S BCDataSet + fix GC-related ZGC
 - isosurface: fix poor performances + better management of corner cases
 - distributed io: fix read/write of S meshes for data smaller than comm size
 - elements to ngon conversion: manage vertex located BCs
