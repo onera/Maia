@@ -11,12 +11,12 @@ def test_variable_log_string():
    == _debug.colors.bold+_debug.colors.blue + \
         "rank "+str(MPI.COMM_WORLD.Get_rank())+": " + \
       _debug.colors.reset + \
-      "my_variable = 123" # notice that the name "my_variable" has been stringified 
+      "my_variable = 123" # notice that the name "my_variable" has been stringified
 
 @pytest_parallel.mark.parallel(2)
 def test_slog(capsys, comm):
   rank = comm.Get_rank()
-  message= f"Hello from rank {rank}" 
+  message= f"Hello from rank {rank}"
   _debug.slog(comm, message)
 
   # process 0 receive messages from others process and print it
@@ -31,10 +31,8 @@ def test_slog(capsys, comm):
 
 @pytest_parallel.mark.parallel(2)
 def test_log(capsys, comm):
-    rank = comm.Get_rank()
-    test_var = 42
+  test_var = 42
+  _debug.log(test_var)
 
-    _debug.log(test_var)
-    captured = capsys.readouterr().out
-    
-    assert captured == f'\x1b[1m\x1b[34mrank {rank}: \x1b[0mtest_var = 42\n'
+  captured = capsys.readouterr().out
+  assert captured == f'\x1b[1m\x1b[34mrank {MPI.COMM_WORLD.rank}: \x1b[0mtest_var = 42\n'
