@@ -43,7 +43,7 @@ def pdm_ep_part_set(pdm_ep, i_part, cell_face, face_vtx, face_edge, edge_vtx,
   face_edge_idx, face_edge_v = unwrap(face_edge)
 
   if EP_OLD_API:
-    n_cell, n_face, n_edge, n_vtx = (t.shape[0] if t is not None else 0 for t 
+    n_cell, n_face, n_edge, n_vtx = (t.shape[0] if t is not None else 0 for t
           in [cell_gnum, face_gnum, edge_gnum, vtx_gnum])
     pdm_ep.part_set(i_part,
                     n_cell, n_face, n_edge, n_vtx,
@@ -404,7 +404,7 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
     #  - cell_dim = parent dim (eg cell group if extracting cells from a 3D mesh)
     #  - dimgroup = tgt_dim (eg face group if extracting faces from a 3D mesh)
     bc_op = operator.lt if (dim == parent_dim or not equilibrate) else operator.le
-  
+
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
                            n_part_in,

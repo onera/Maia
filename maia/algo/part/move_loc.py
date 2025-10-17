@@ -20,7 +20,7 @@ class CenterToNode:
 
   CONTAINER_PRED = MT.pred.FULL_CTN_CELL
 
-  def __init__(self, tree: CGNSPartTree, comm: MPIComm, 
+  def __init__(self, tree: CGNSPartTree, comm: MPIComm,
                idw_power: int = 1, cross_domain: bool = True):
 
     self.parts    = []
@@ -40,11 +40,11 @@ class CenterToNode:
           n_vtx = PT.Zone.n_vtx(zone)
           cell_vtx = connectivity_utils.cell_vtx_connectivity(zone, dim)
           vtx_cell = connectivity_utils.PDM_connectivity_transpose(int(n_vtx), cell_vtx)
-          
+
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
           assert (cx is not None) and (cy is not None) and (cz is not None)
-          if PT.Zone.Type(zone)=='Structured' : 
+          if PT.Zone.Type(zone)=='Structured' :
             cx = cx.flatten()
             cy = cy.flatten()
             cz = cz.flatten()
@@ -61,7 +61,7 @@ class CenterToNode:
           diff_y = cy[vtx_idx_rep] - cell_center[1::3][vtx_cell.values-1]
           diff_z = cz[vtx_idx_rep] - cell_center[2::3][vtx_cell.values-1]
           norm_rep = (diff_x**2 + diff_y**2 + diff_z**2)**(0.5*idw_power)
-          
+
           gnum_rep = vtx_gnum_shifted[i_dom][i_part][vtx_idx_rep]
 
           gnum_list.append(gnum_rep)
@@ -131,10 +131,10 @@ class NodeToCenter:
       for p_zone in PT.get_all_Zone_t(base):
         cx,cy,cz = PT.Zone.coordinates(p_zone)
         assert (cx is not None) and (cy is not None) and (cz is not None)
-        if PT.Zone.Type(p_zone)=='Structured' : 
+        if PT.Zone.Type(p_zone)=='Structured' :
            cx = cx.flatten()
            cy = cy.flatten()
-           cz = cz.flatten() 
+           cz = cz.flatten()
         cell_vtx = connectivity_utils.cell_vtx_connectivity(p_zone, dim)
         cell_vtx_n = cell_vtx.counts
 
@@ -151,7 +151,7 @@ class NodeToCenter:
         self.weights.append(weights)
         self.weightssum.append(np.add.reduceat(weights, cell_vtx.displs[:-1]))
         self.cell_vtx.append(cell_vtx)
-          
+
 
   def all_containers(self) -> List[str]:
     return gather_containers_name(self.parts, NodeToCenter.CONTAINER_PRED, 'all', self.comm)
@@ -173,7 +173,7 @@ class NodeToCenter:
       PT.set_label(fs_out, container_lbl)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
-        data_in = PT.get_np_value(array) 
+        data_in = PT.get_np_value(array)
         shape = data_in.shape
         if len(shape) != 1 :
            data_in=data_in.flatten(order='F')
@@ -186,18 +186,18 @@ class NodeToCenter:
 
 
 
-def centers_to_nodes(part_tree: CGNSPartTree, 
-                     comm: MPIComm, 
-                     containers_name: Union[List[str], Literal['ALL']] = [], 
+def centers_to_nodes(part_tree: CGNSPartTree,
+                     comm: MPIComm,
+                     containers_name: Union[List[str], Literal['ALL']] = [],
                      **options) -> None:
   """ Create Vertex located fields from CellCenter located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
   which must be CellCenter located full containers.
-  Input tree is modified inplace: Vertex containers are created using 
+  Input tree is modified inplace: Vertex containers are created using
   ``#Vtx`` suffix.
 
-  Interpolation is based on Inverse Distance Weighting 
+  Interpolation is based on Inverse Distance Weighting
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
   each cell contributes to each of its vertices with a weight computed from the distance
   between the cell isobarycenter and the vertice. The method can be tuned with
@@ -234,18 +234,18 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
-def nodes_to_centers(part_tree: CGNSPartTree, 
-                     comm: MPIComm, 
-                     containers_name: Union[List[str], Literal['ALL']] = [], 
+def nodes_to_centers(part_tree: CGNSPartTree,
+                     comm: MPIComm,
+                     containers_name: Union[List[str], Literal['ALL']] = [],
                      **options) -> None:
   """ Create CellCenter located fields from Vertex located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
   which must be vertex located full containers.
-  Input tree is modified inplace: CellCenter containers are created using 
+  Input tree is modified inplace: CellCenter containers are created using
   ``#Cell`` suffix.
 
-  Interpolation is based on Inverse Distance Weighting 
+  Interpolation is based on Inverse Distance Weighting
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
   each vertex contributes to the cell value with a weight computed from the distance
   between the cell isobarycenter and the vertice. The method can be tuned with
