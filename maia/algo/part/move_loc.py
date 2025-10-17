@@ -74,10 +74,8 @@ class CenterToNode:
     self.GI = EP.GlobalIndexer(distri, gnum_list, self.comm, gnum_offset=1)
     self.dweights = self.GI.Put(self.weights, reduce=EP.ReduceOp.SUM)
 
-    # > Create main rank to manage empty ranks
-    self.root = None
-    if comm.allreduce(len(self.parts) == 0, MPI.LOR):
-      self.root = self.comm.allreduce(-1 if len(self.parts) == 0 else comm.rank, MPI.MAX)
+    # > Create main rank for checks
+    self.root = self.comm.allreduce(-1 if len(self.parts) == 0 else comm.rank, MPI.MAX)
 
   def all_containers(self) -> List[str]:
     return gather_containers_name(self.parts, CenterToNode.CONTAINER_PRED, 'all', self.comm)
@@ -92,32 +90,21 @@ class CenterToNode:
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
       fields_per_part.append(fields_name)
 
-    n_fld = len(fields_per_part[0]) if len(fields_per_part) > 0 else 0
-    gn_fld = self.comm.allreduce(n_fld, MPI.MAX)
-    same_nfld = self.comm.allreduce(n_fld==gn_fld if n_fld>0 else True, MPI.LAND)
-    if not same_nfld:
-      raise ValueError(f"Fields number is not the same over all ranks (rank {self.comm.rank} has {n_fld} fields, other rank has ({gn_fld})) ")
+    # In addition, procs having no partitions receive fields name from root rank
+    send = fields_per_part[0] if self.comm.rank == self.root else None
+    ref_fields_names = self.comm.bcast(send, root=self.root)
 
-    if len(fields_per_part) > 0:
-      assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+    ok_loc = True
+    for fields_name in fields_per_part:
+      ok_loc &= (fields_name == ref_fields_names)
+    if not self.comm.allreduce(ok_loc, MPI.LAND):
+      raise ValueError(f"Fields names are not the same over all ranks")
 
-    #  > If rank has no zone, rank with zone impose fields_names
-    #    else, verify that all field names are equal over ranks
-    lfields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
-    if self.root is not None:
-      fields_names = self.comm.bcast(lfields_names, root=self.root)
-    else:
-      root = self.comm.allreduce(self.comm.rank if lfields_names is not None else -1, MPI.MAX)
-      fields_names = self.comm.bcast(lfields_names, root=root)
-      lsame_fld_names = all([name==lname for name, lname in zip(fields_names, lfields_names)]) if lfields_names is not None else True
-      same_fld_names = self.comm.allreduce(lsame_fld_names if n_fld>0 else True, MPI.LAND)
-      if not same_fld_names:
-        raise ValueError(f"Fields names are not the same over all ranks (rank {self.comm.rank} has {lfields_names} fields, other rank has ({fields_names})) ")
 
     #Collect src sol
     cell_fields = {}
     asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
-    for field_name in fields_names:
+    for field_name in ref_fields_names:
       field_path = container_name + '/' + field_name
       cell_fields[field_name] = [asflat(PT.find_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
