@@ -126,16 +126,18 @@ def create_zone_subregion_filter(zone, zone_path, hdf_filter):
      is not related to a BC/GC.
   """
   for zone_subregion in PT.iter_children_from_label(zone, 'ZoneSubRegion_t'):
-    zone_subregion_path = zone_path+"/"+zone_subregion[0]
+    distrib_ud_n = MT.get_Distribution(zone_subregion)
 
-    # Search matching region
-    matching_region = PT.Container.SubsetNode(zone_subregion, zone)
+    if distrib_ud_n is None: # Search matching region
+      matching_region = PT.Container.SubsetNode(zone_subregion, zone)
 
-    distrib_ud_n = MT.get_Distribution(matching_region)
-    if not distrib_ud_n:
-      raise RuntimeError("ZoneSubRegion {0} is not well defined".format(zone_subregion[0]))
+      distrib_ud_n = MT.get_Distribution(matching_region)
+      if not distrib_ud_n:
+        raise RuntimeError("ZoneSubRegion {0} is not well defined".format(zone_subregion[0]))
+
     distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
 
+    zone_subregion_path = zone_path+"/"+zone_subregion[0]
     _create_pl_filter(zone_subregion, zone_subregion_path, 'PointList', distrib_data, hdf_filter)
 
     data_space_ar = create_data_array_filter(distrib_data)

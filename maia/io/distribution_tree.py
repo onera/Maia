@@ -27,26 +27,58 @@ def interpret_policy(policy, comm):
 def compute_subset_distribution(node, comm, distri_func):
   """
   Compute the distribution for a given node using its PointList or PointRange child
-  If a PointRange node is found, the total lenght is getted from the product
+  If a PointRange node is found, the total length is getted from the product
   of the differences for each direction (cgns convention (cgns convention :
   first and last are included).
-  If a PointList node is found, the total lenght is getted from the product of
+  hIf a PointList node is found, the total length is getted from the product of
   PointList#Size arrays, which store the size of the PL in each direction.
   """
 
   pr_n = PT.get_child_from_name(node, 'PointRange')
   pl_n = PT.get_child_from_name(node, 'PointList')
 
-  if(pr_n):
+  if pr_n:
     assert pl_n is None
-    pr_lenght = PT.Subset.n_elem(node)
-    MT.new_Distribution({'Index' : distri_func(pr_lenght, comm)}, parent=node)
+    pr_length = PT.Subset.n_elem(node)
+    MT.new_Distribution({'Index' : distri_func(pr_length, comm)}, parent=node)
 
-  if(pl_n):
+  elif pl_n:
     assert pr_n is None
     pls_n   = PT.find_child_from_name(node, 'PointList#Size')
     pl_size = PT.get_np_value(pls_n)[1]
     MT.new_Distribution({'Index' : distri_func(pl_size, comm)}, parent=node)
+
+  elif PT.get_label(node) == 'ZoneSubRegion_t': # In case we are loading a partial CGNS tree where the ZSR has no PR or PL
+    # Get all DataArrays that are not #Size arrays
+    data_arrays = PT.get_children_from_predicate(node, PT.pred.label_is('DataArray_t') & PT.pred.value_is(None))
+    data_array_sizes = [PT.find_child_from_name(node, PT.get_name(da)+'#Size') for da in data_arrays]
+
+    if len(data_array_sizes) > 0:
+      size = PT.get_np_value(data_array_sizes[0])
+      for das in data_array_sizes[1:]:
+        sz = PT.get_np_value(das)
+        assert sz == size
+      MT.new_Distribution({'Index' : distri_func(size, comm)}, parent=node)
+
+
+def compute_connectivity_distribution(node):
+  """
+  Once ESO is loaded, update element distribution with ElementConnectivity array
+  """
+  eso_n  = PT.get_child_from_name(node, 'ElementStartOffset')
+  if eso_n is None:
+    raise RuntimeError
+  size_n = PT.find_child_from_name(node, 'ElementConnectivity#Size')
+  size = PT.get_np_value(size_n)[0]
+  par_utils.watch_overflow(size)
+
+  beg  = PT.get_np_value(eso_n)[0]
+  end  = PT.get_np_value(eso_n)[-1]
+
+  distri_n = MT.find_Distribution(node)
+  dtype = PT.get_np_value(PT.find_child_from_name(distri_n, 'Element')).dtype
+  PT.new_DataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
+
 
 def compute_elements_distribution(zone, comm, distri_func):
   """
