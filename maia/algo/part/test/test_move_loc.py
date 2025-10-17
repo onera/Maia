@@ -120,6 +120,50 @@ def test_centers_to_nodes_with_different_n_fld(comm):
     ML.centers_to_nodes(part_tree, comm, ["FSol"])
 
 @pytest_parallel.mark.parallel(2)
+def test_centers_to_nodes_with_different_fld_names(comm):
+  part_tree = PT.new_CGNSTree()
+  part_base = PT.new_CGNSBase(parent=part_tree)
+  if comm.rank == 0:
+    zones = PT.yaml.to_nodes(f"""
+    Zone.P0.N0 Zone_t [[8, 1, 0]]:
+      ZoneType ZoneType_t "Unstructured":
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [0., 1., 0., 1., 0., 1., 0., 1.]:
+        CoordinateY DataArray_t R8 [0., 0., 1., 1., 0., 0., 1., 1.]:
+        CoordinateZ DataArray_t R8 [0., 0., 0., 0., 1., 1., 1., 1.]:
+      NGonElements Elements_t [17,0]:
+        ElementRange IndexRange_t [1,1]:
+        ElementConnectivity DataArray_t [1,2,3,4,5,6,7,8]:
+      FSol FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+        fieldD DataArray_t [2.]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Cell DataArray_t {dtype} [2]:
+        Vertex DataArray_t {dtype} [9,10,11,12,13,14,15,16]:
+    """)
+  elif comm.rank == 1:
+    zones = PT.yaml.to_nodes(f"""
+    Zone.P1.N0 Zone_t [[8, 1, 0]]:
+      ZoneType ZoneType_t "Unstructured":
+      GridCoordinates GridCoordinates_t:
+        CoordinateX DataArray_t R8 [0., 1., 0., 1., 0., 1., 0., 1.]:
+        CoordinateY DataArray_t R8 [0., 0., 1., 1., 0., 0., 1., 1.]:
+        CoordinateZ DataArray_t R8 [0., 0., 0., 0., 1., 1., 1., 1.]:
+      NGonElements Elements_t [17,0]:
+        ElementRange IndexRange_t [1,1]:
+        ElementConnectivity DataArray_t [1,2,3,4,5,6,7,8]:
+      FSol FlowSolution_t:
+        GridLocation GridLocation_t "CellCenter":
+        fieldC DataArray_t [1.]:
+      :CGNS#GlobalNumbering UserDefinedData_t:
+        Cell DataArray_t {dtype} [1]:
+        Vertex DataArray_t {dtype} [1,2,3,4,5,6,7,8]:
+    """)
+  PT.add_child(part_base, zones[0])
+  with pytest.raises(ValueError):
+    ML.centers_to_nodes(part_tree, comm, ["FSol"])
+
+@pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("from_api", [False, True])
 def test_nodes_to_centers(from_api, comm):
   dist_tree = maia.factory.generate_dist_block([6,4,2], 'HEXA_8', comm)

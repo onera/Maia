@@ -101,9 +101,18 @@ class CenterToNode:
     if len(fields_per_part) > 0:
       assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
 
-    fields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
+    #  > If rank has no zone, rank with zone impose fields_names
+    #    else, verify that all field names are equal over ranks
+    lfields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
     if self.root is not None:
-      fields_names = self.comm.bcast(fields_names, root=self.root)
+      fields_names = self.comm.bcast(lfields_names, root=self.root)
+    else:
+      root = self.comm.allreduce(self.comm.rank if lfields_names is not None else -1, MPI.MAX)
+      fields_names = self.comm.bcast(lfields_names, root=root)
+      lsame_fld_names = all([name==lname for name, lname in zip(fields_names, lfields_names)]) if lfields_names is not None else True
+      same_fld_names = self.comm.allreduce(lsame_fld_names if n_fld>0 else True, MPI.LAND)
+      if not same_fld_names:
+        raise ValueError(f"Fields names are not the same over all ranks (rank {self.comm.rank} has {lfields_names} fields, other rank has ({fields_names})) ")
 
     #Collect src sol
     cell_fields = {}
