@@ -5,8 +5,9 @@ import maia
 from maia.typing import *
 import maia.pytree as PT
 import maia.pytree.maia as MT
-from maia.utils import np_utils
+from maia.utils import np_utils, par_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
+import maia.transfer.protocols as EP
 
 from . import multidom_gnum
 from . import connectivity_utils
@@ -23,15 +24,15 @@ class CenterToNode:
   def __init__(self, tree: CGNSPartTree, comm: MPIComm,
                idw_power: int = 1, cross_domain: bool = True):
 
-    self.parts    = []
-    self.weights  = []
-    self.vtx_cell = []
-    self.comm     = comm
+    self.parts     = []
+    self.weights   = []
+    self.vtx_cell  = []
+    self.gnum_list = []
+    self.comm      = comm
 
     parts_per_dom = get_parts_per_blocks(tree, comm)
     vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
 
-    gnum_list   = []
     for i_dom, zone_path in enumerate(parts_per_dom):
       dist_base = PT.find_child_from_name(tree, PT.utils.path_head(zone_path))
       dim = PT.get_np_value(dist_base)[0]
@@ -64,14 +65,22 @@ class CenterToNode:
 
           gnum_rep = vtx_gnum_shifted[i_dom][i_part][vtx_idx_rep]
 
-          gnum_list.append(gnum_rep)
+          self.gnum_list.append(gnum_rep)
 
           # Store objects needed for exchange
           self.parts.append(zone)
           self.weights.append(1./norm_rep)
           self.vtx_cell.append(vtx_cell)
 
-    self.gmean = PDM.GlobalMean(gnum_list, comm)
+    # > Create GIndexer for global mean
+    distri = par_utils.distribution_from_gnum(self.gnum_list, self.comm, full=True)
+    self.GI = EP.GlobalIndexer(distri, self.gnum_list, self.comm, gnum_offset=1)
+    self.dweights = self.GI.Put(self.weights, reduce=EP.ReduceOp.SUM)
+
+    # > Create main rank to manage empty ranks
+    self.root = None
+    if comm.allreduce(len(self.parts) == 0, MPI.LOR):
+      self.root = self.comm.allreduce(-1 if len(self.parts) == 0 else comm.rank, MPI.MAX)
 
   def all_containers(self) -> List[str]:
     return gather_containers_name(self.parts, CenterToNode.CONTAINER_PRED, 'all', self.comm)
@@ -84,13 +93,25 @@ class CenterToNode:
       container = PT.find_node_from_path(part, container_name)
       assert PT.Container.GridLocation(container) == 'CellCenter'
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-    fields_per_part.append(fields_name)
-    assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+      fields_per_part.append(fields_name)
+
+    n_fld = len(fields_per_part[0]) if len(fields_per_part) > 0 else 0
+    gn_fld = self.comm.allreduce(n_fld, MPI.MAX)
+    same_nfld = self.comm.allreduce(n_fld==gn_fld if n_fld>0 else True, MPI.LAND)
+    if not same_nfld:
+      raise ValueError(f"Fields number is not the same over all ranks (rank {self.comm.rank} has {n_fld} fields, other rank has ({gn_fld})) ")
+
+    if len(fields_per_part) > 0:
+      assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+
+    fields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
+    if self.root is not None:
+      fields_names = self.comm.bcast(fields_names, root=self.root)
 
     #Collect src sol
     cell_fields = {}
     asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
-    for field_name in fields_per_part[0]:
+    for field_name in fields_names:
       field_path = container_name + '/' + field_name
       cell_fields[field_name] = [asflat(PT.find_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
@@ -98,7 +119,10 @@ class CenterToNode:
     # Do all reductions
     node_fields = {}
     for field_name, field_values in cell_fields.items():
-      node_fields[field_name] = self.gmean.compute_field(field_values, self.weights)
+      p_prod = [fld*wght for fld, wght in zip(field_values, self.weights)]
+      d_prod = self.GI.Put(p_prod, reduce=EP.ReduceOp.SUM)
+      d_res  = d_prod/self.dweights
+      node_fields[field_name] = self.GI.Take(d_res)
 
     # Add node fields in tree
     for i_part, part in enumerate(self.parts):
