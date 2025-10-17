@@ -1,12 +1,12 @@
 import numpy as np
 from mpi4py import MPI
 
-import maia
 from maia.typing import *
 import maia.pytree as PT
 import maia.pytree.maia as MT
-from maia.utils import np_utils
+from maia.utils import np_utils, par_utils
 from maia.factory.dist_from_part import get_parts_per_blocks
+import maia.transfer.protocols as EP
 
 from . import multidom_gnum
 from . import connectivity_utils
@@ -14,13 +14,11 @@ from . import geometry
 
 from .utils import gather_containers_name
 
-import Pypdm.Pypdm as PDM
-
 class CenterToNode:
 
   CONTAINER_PRED = MT.pred.FULL_CTN_CELL
 
-  def __init__(self, tree: CGNSPartTree, comm: MPIComm, 
+  def __init__(self, tree: CGNSPartTree, comm: MPIComm,
                idw_power: int = 1, cross_domain: bool = True):
 
     self.parts    = []
@@ -31,7 +29,7 @@ class CenterToNode:
     parts_per_dom = get_parts_per_blocks(tree, comm)
     vtx_gnum_shifted = multidom_gnum.get_mdom_gnum_vtx(parts_per_dom, comm, cross_domain)
 
-    gnum_list   = []
+    gnum_list = []
     for i_dom, zone_path in enumerate(parts_per_dom):
       dist_base = PT.find_child_from_name(tree, PT.utils.path_head(zone_path))
       dim = PT.get_np_value(dist_base)[0]
@@ -40,11 +38,11 @@ class CenterToNode:
           n_vtx = PT.Zone.n_vtx(zone)
           cell_vtx = connectivity_utils.cell_vtx_connectivity(zone, dim)
           vtx_cell = connectivity_utils.PDM_connectivity_transpose(int(n_vtx), cell_vtx)
-          
+
           # Compute the distance between vertices and cellcenters
           cx,cy,cz  = PT.Zone.coordinates(zone)
           assert (cx is not None) and (cy is not None) and (cz is not None)
-          if PT.Zone.Type(zone)=='Structured' : 
+          if PT.Zone.Type(zone)=='Structured' :
             cx = cx.flatten()
             cy = cy.flatten()
             cz = cz.flatten()
@@ -61,7 +59,7 @@ class CenterToNode:
           diff_y = cy[vtx_idx_rep] - cell_center[1::3][vtx_cell.values-1]
           diff_z = cz[vtx_idx_rep] - cell_center[2::3][vtx_cell.values-1]
           norm_rep = (diff_x**2 + diff_y**2 + diff_z**2)**(0.5*idw_power)
-          
+
           gnum_rep = vtx_gnum_shifted[i_dom][i_part][vtx_idx_rep]
 
           gnum_list.append(gnum_rep)
@@ -71,7 +69,13 @@ class CenterToNode:
           self.weights.append(1./norm_rep)
           self.vtx_cell.append(vtx_cell)
 
-    self.gmean = PDM.GlobalMean(gnum_list, comm)
+    # > Create GIndexer for global mean
+    distri = par_utils.distribution_from_gnum(gnum_list, self.comm, full=True)
+    self.GI = EP.GlobalIndexer(distri, gnum_list, self.comm, gnum_offset=1)
+    self.dweights = self.GI.Put(self.weights, reduce=EP.ReduceOp.SUM)
+
+    # > Create main rank for checks
+    self.root = self.comm.allreduce(-1 if len(self.parts) == 0 else comm.rank, MPI.MAX)
 
   def all_containers(self) -> List[str]:
     return gather_containers_name(self.parts, CenterToNode.CONTAINER_PRED, 'all', self.comm)
@@ -84,13 +88,23 @@ class CenterToNode:
       container = PT.find_node_from_path(part, container_name)
       assert PT.Container.GridLocation(container) == 'CellCenter'
       fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-    fields_per_part.append(fields_name)
-    assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+      fields_per_part.append(fields_name)
+
+    # In addition, procs having no partitions receive fields name from root rank
+    send = fields_per_part[0] if self.comm.rank == self.root else None
+    ref_fields_names = self.comm.bcast(send, root=self.root)
+
+    ok_loc = True
+    for fields_name in fields_per_part:
+      ok_loc &= (fields_name == ref_fields_names)
+    if not self.comm.allreduce(ok_loc, MPI.LAND):
+      raise ValueError(f"Fields names are not the same over all ranks")
+
 
     #Collect src sol
     cell_fields = {}
     asflat = lambda val, zone : val.flatten(order='F') if PT.Zone.Type(zone) == 'Structured' else val
-    for field_name in fields_per_part[0]:
+    for field_name in ref_fields_names:
       field_path = container_name + '/' + field_name
       cell_fields[field_name] = [asflat(PT.find_node_from_path(part, field_path)[1], part)[vtx_cell.values-1].astype(float, copy=False) \
           for part, vtx_cell in zip(self.parts, self.vtx_cell)]
@@ -98,7 +112,10 @@ class CenterToNode:
     # Do all reductions
     node_fields = {}
     for field_name, field_values in cell_fields.items():
-      node_fields[field_name] = self.gmean.compute_field(field_values, self.weights)
+      p_prod = [fld*wght for fld, wght in zip(field_values, self.weights)]
+      d_prod = self.GI.Put(p_prod, reduce=EP.ReduceOp.SUM)
+      d_res  = d_prod/self.dweights
+      node_fields[field_name] = self.GI.Take(d_res)
 
     # Add node fields in tree
     for i_part, part in enumerate(self.parts):
@@ -131,10 +148,10 @@ class NodeToCenter:
       for p_zone in PT.get_all_Zone_t(base):
         cx,cy,cz = PT.Zone.coordinates(p_zone)
         assert (cx is not None) and (cy is not None) and (cz is not None)
-        if PT.Zone.Type(p_zone)=='Structured' : 
+        if PT.Zone.Type(p_zone)=='Structured' :
            cx = cx.flatten()
            cy = cy.flatten()
-           cz = cz.flatten() 
+           cz = cz.flatten()
         cell_vtx = connectivity_utils.cell_vtx_connectivity(p_zone, dim)
         cell_vtx_n = cell_vtx.counts
 
@@ -151,7 +168,7 @@ class NodeToCenter:
         self.weights.append(weights)
         self.weightssum.append(np.add.reduceat(weights, cell_vtx.displs[:-1]))
         self.cell_vtx.append(cell_vtx)
-          
+
 
   def all_containers(self) -> List[str]:
     return gather_containers_name(self.parts, NodeToCenter.CONTAINER_PRED, 'all', self.comm)
@@ -173,7 +190,7 @@ class NodeToCenter:
       PT.set_label(fs_out, container_lbl)
 
       for array in PT.iter_children_from_label(container, 'DataArray_t'):
-        data_in = PT.get_np_value(array) 
+        data_in = PT.get_np_value(array)
         shape = data_in.shape
         if len(shape) != 1 :
            data_in=data_in.flatten(order='F')
@@ -186,18 +203,18 @@ class NodeToCenter:
 
 
 
-def centers_to_nodes(part_tree: CGNSPartTree, 
-                     comm: MPIComm, 
-                     containers_name: Union[List[str], Literal['ALL']] = [], 
+def centers_to_nodes(part_tree: CGNSPartTree,
+                     comm: MPIComm,
+                     containers_name: Union[List[str], Literal['ALL']] = [],
                      **options) -> None:
   """ Create Vertex located fields from CellCenter located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
   which must be CellCenter located full containers.
-  Input tree is modified inplace: Vertex containers are created using 
+  Input tree is modified inplace: Vertex containers are created using
   ``#Vtx`` suffix.
 
-  Interpolation is based on Inverse Distance Weighting 
+  Interpolation is based on Inverse Distance Weighting
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
   each cell contributes to each of its vertices with a weight computed from the distance
   between the cell isobarycenter and the vertice. The method can be tuned with
@@ -234,18 +251,18 @@ def centers_to_nodes(part_tree: CGNSPartTree,
   for container_name in containers_name:
     C2N.move_fields(container_name)
 
-def nodes_to_centers(part_tree: CGNSPartTree, 
-                     comm: MPIComm, 
-                     containers_name: Union[List[str], Literal['ALL']] = [], 
+def nodes_to_centers(part_tree: CGNSPartTree,
+                     comm: MPIComm,
+                     containers_name: Union[List[str], Literal['ALL']] = [],
                      **options) -> None:
   """ Create CellCenter located fields from Vertex located fields.
 
   This transformation is performed for all the fields found under the requested container(s),
   which must be vertex located full containers.
-  Input tree is modified inplace: CellCenter containers are created using 
+  Input tree is modified inplace: CellCenter containers are created using
   ``#Cell`` suffix.
 
-  Interpolation is based on Inverse Distance Weighting 
+  Interpolation is based on Inverse Distance Weighting
   `(IDW) <https://en.wikipedia.org/wiki/Inverse_distance_weighting>`_ method:
   each vertex contributes to the cell value with a weight computed from the distance
   between the cell isobarycenter and the vertice. The method can be tuned with
