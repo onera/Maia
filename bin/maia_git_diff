@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+import sys
+import numpy as np
+
+import maia
+from maia.pytree import compare as CP
+from maia.pytree.maia.compare import TensorFieldComparison
+import maia.utils.logging as mlog
+
+from mpi4py import MPI
+
+mlog.turn_off('maia')
+
+tol = 1.e-12
+
+assert len(sys.argv) in [8,10]
+
+file_name = sys.argv[1]
+file_0 = sys.argv[2]
+rights_0 = sys.argv[4]
+file_1 = sys.argv[5]
+rights_1 = sys.argv[7]
+
+
+assert not (file_0 == '/dev/null' and file_1 == '/dev/null')
+
+if len(sys.argv) == 10:
+  new_file_name = sys.argv[8]
+  rename_info = sys.argv[9]
+  print('Renamed: ', file_name, 'to', new_file_name)
+elif file_0 == '/dev/null':
+  print('Created: ', file_name)
+
+elif file_1 == '/dev/null':
+  print('Deleted: ', file_name)
+
+else:
+  file_name = 'CGNS file differences for ' + file_name
+  if rights_0 != rights_1:
+    file_name += '(Permissions differ: ' + rights_0 + ' <> ' + rights_1 + ')'
+
+  tree_0 = maia.io.read_tree(file_0)
+  tree_1 = maia.io.read_tree(file_1)
+  is_ok, error_report, _ = CP.diff_tree(tree_0, tree_1, comp = TensorFieldComparison(tol, MPI.COMM_SELF))
+ 
+  if not is_ok:
+    print()
+    print(file_name)
+    print(error_report)
+  elif rights_0 != rights_1:
+    print(file_name)
