@@ -377,7 +377,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
           bcd_n = PT.find_node_from_path(bc_n, bcd_path)
           if PT.get_child_from_name(bcd_n, 'OriginalBCId') is None:
             array = PT.get_np_value(PT.find_child_from_label(bcd_n, 'DataArray_t'))
-            PT.new_DataArray('OriginalBCId', np.full(array.size, i_bc), parent=bcd_n)
+            PT.new_DataArray('OriginalBCId', np.full(array.size, i_bc, dtype=np.int32), parent=bcd_n)
 
         PT.rm_child(zone_bc_n, bc_n)
 
