@@ -114,11 +114,12 @@ def concatenate_bc_nodes(bc_nodes: List[CGNSTree],
   for bc in bc_nodes :
     for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
       subset = PT.Container.SubsetNode(bcds, bc)
-      subset_size = PT.Subset.n_elem(subset)
+      subset_size_l = MT.Subset.dn_elem(subset)
+      subset_size_g = MT.Subset.n_elem(subset)
       for data_array in PT.iter_children_from_predicates(bcds, 'BCData_t/DataArray_t'):
         da_value = PT.get_np_value(data_array)
-        if (1 < subset_size) and (da_value.size == 1):
-          PT.set_value(data_array, np.full(subset_size, da_value[0], da_value.dtype))
+        if (1 < subset_size_g) and (da_value.size == 1):
+          PT.set_value(data_array, np.full(subset_size_l, da_value[0], da_value.dtype))
   bc_n = concatenate_subset_nodes(bc_nodes, comm, output_name=output_name,
                                   additional_data_queries=additional_data_queries+[bcds_point_list, bcd_data_array],
                                   additional_child_queries=additional_child_queries+[bcds_grid_loc],
