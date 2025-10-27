@@ -79,6 +79,11 @@ def test_get_node_from_predicates():
   predicates = [{'predicate':'BC_t', 'depth':2}, {'predicate':'IndexArray_t', 'depth':1}]
   assert PT.get_node_from_predicates(basic_tree, predicates) is not None
 
+  # Note : this one failed before #224, because NodeWalkers is badly implemented 
+  assert PT.get_child_from_predicates(basic_tree, ['ZoneBC_t', 'BC_t', 'Index_ii']) is not None
+  assert PT.get_child_from_predicates(basic_tree, []) is None
+  assert PT.get_child_from_predicates(basic_tree, [], ancestors=True) == ()
+
 def test_get_nodes_from_predicates():
 
   # Single predicate fallback to from_predicate

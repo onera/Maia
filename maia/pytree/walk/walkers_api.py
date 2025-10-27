@@ -301,10 +301,14 @@ def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:boo
     - :func:`get_node_from_names|labels|values|name_and_labels` (embedded predicate)
     - :func:`get_child_from_names|labels|values|name_and_labels` (embedded predicate + depth=[1,1])
   """
-  _predicates = auto_predicates(predicates)
-  kwargs['ancestors'] = ancestors
-  walker = NodeWalkers(root, _predicates, **kwargs)
-  return walker()
+  if not predicates: # Empty predicate list
+    return () if ancestors else None
+
+  search = iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
+  try:
+    return next(search)
+  except StopIteration:
+    return None
 
 # > Specialized versions
 @overload
