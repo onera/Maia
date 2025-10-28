@@ -83,11 +83,15 @@ def create_zone_std_elements_filter(elmt, zone_path, hdf_filter):
   DSGLOBElmt = [[distrib_elmt[2]*elmt_npe]]
   DSFORMElmt = [[0]]
 
-  path = zone_path+"/"+elmt[0]+"/ElementConnectivity"
-  hdf_filter[path] = DSMMRYElmt + DSFILEElmt + DSGLOBElmt + DSFORMElmt
-
+  ec = PT.get_child_from_name(elmt, 'ElementConnectivity')
   pe = PT.get_child_from_name(elmt, 'ParentElements')
-  if(pe):
+
+  if ec:
+    # This one should always exists, but relax the contraint
+    # for maia_cgns_check
+    path = zone_path+"/"+PT.get_name(elmt)+"/ElementConnectivity"
+    hdf_filter[path] = DSMMRYElmt + DSFILEElmt + DSGLOBElmt + DSFORMElmt
+  if pe :
     data_space = create_pe_dataspace(distrib_elmt)
     hdf_filter[f"{zone_path}/{PT.get_name(elmt)}/ParentElements"] = data_space
     if PT.get_child_from_name(elmt, 'ParentElementsPosition'):

@@ -2,6 +2,7 @@ import h5py
 import math
 import os
 from pathlib import Path
+from mpi4py  import MPI
 
 from maia.typing import *
 
@@ -88,6 +89,177 @@ def lazy_load_cgns(filename:Path, exclude:List[str]) -> CGNSTree:
         t[3] = 'CGNSTree_t'
 
     return t
+
+def _keep_subset_node(node, additional_child_to_keep=[], donor=False):
+    """ Cleanup node (remove unecessary child), add #Size info and return
+    True if node must be keep """
+    suffix = 'Donor' if donor else ''
+    names_to_keep = ['GridLocation', 'PointList', 'PointRange'] + additional_child_to_keep
+    PT.keep_children_from_predicate(node, PT.pred.name_in(names_to_keep))
+    pl_node = PT.get_child_from_name(node, f'PointList{suffix}')
+    pr_node = PT.get_child_from_name(node, f'PointRange{suffix}')
+    one_patch = (pl_node is not None) ^ (pr_node is not None)
+    if not one_patch:
+        return False # Skip nodes having both PointRange and PointList or None
+    if pl_node is not None:
+        if not isinstance(val:=pl_node[1], FakeArray):
+            return False # Skip nodes having MT PointList value
+        PT.new_node(f'PointList{suffix}#Size', 'DataArray_t', val.shape, parent=node) # Required for read
+    return True
+
+def fill_cgns(tree: CGNSTree, filename:Path, exclude:List[str], comm:MPIComm):
+    from maia.io import cgns_io_tree as IOT
+    
+    # Again we rewritted fill_cgns method to have something more error-tolerant
+    # and to read only necessary data (ie. not fields)
+    # The idea is to select only the nodes to be keep and then call fill_size_tree
+    # with these nodes
+    
+    # Cleaning tree 
+    for base, zone in PT.get_children_from_predicates(tree, 'CGNSBase_t/Zone_t', ancestors=True):
+        zone_path = f'{PT.get_name(base)}/{PT.get_name(zone)}'
+        names_to_keep = ['ZoneType']
+
+        # GridCoordinates_t: keep node if shape is consistant with zone size
+        for grid_co in PT.iter_children_from_label(zone, 'GridCoordinates_t'):
+            PT.rm_children_from_name(grid_co, 'CoordinateTransform')
+            for coord in PT.get_children_from_label(grid_co, 'DataArray_t'):
+                if not (isinstance(val:=coord[1], FakeArray) and val.shape == PT.Zone.VertexSize(zone)):
+                    break
+            else: # Loop did not break => all DataArray OK => load
+                names_to_keep.append(PT.get_name(grid_co))
+
+        # Elements_t : keep at least ElementRange if well defined, and keep 
+        # connectivity arrays if possible
+        for elt in PT.iter_children_from_label(zone, 'Elements_t'):
+
+            # Completly skip element if ElementRange is not valid
+            to_keep = ['ElementRange']
+            try:
+                if (elt_size := PT.Element.Size(elt)) < 0:
+                    continue
+            except Exception:
+                continue
+
+            if PT.Element.Type(elt) in ['NGON_n', 'NFACE_n', 'MIXED']:
+                # Nodes with ESO are complicated -> load by hand 
+                ec_size = None
+                if (eso:=PT.get_child_from_name(elt, 'ElementStartOffset')) is not None:
+                    if isinstance(val := eso[1], FakeArray) and val.shape == (elt_size+1,):
+                        ec_size = val.last_value # type:ignore
+                        to_keep.append('ElementStartOffset')
+
+                    # ESO will be loaded -> erase FakeArray value, otherwise ElementConnectivity
+                    # distribution computing is trigered to early
+                    PT.set_value(eso, None)
+
+                if (ec:=PT.get_child_from_name(elt, 'ElementConnectivity')) is not None:
+                    if isinstance(val := ec[1], FakeArray) and val.shape == (ec_size,):
+                        # We need to analyse ESO to tell if EC is loadable, so load ESO
+                        # ESO exists otherwise we would have (val.shape) != (None,)
+                        from maia.utils import par_utils
+                        distri = par_utils.uniform_distribution(elt_size, comm)
+                        dn = distri[1] - distri[0]
+                        DS = [[0],[1],[dn+1],[1], [distri[0]],[1],[dn+1],[1], [elt_size+1], [0]]
+                        #     ^MMRY               ^FILE                       ^GLOB         ^FLAG
+
+                        eso_path = f'{zone_path}/{PT.get_name(elt)}/ElementStartOffset'
+                        eso_node = PT.find_node_from_path(tree, eso_path)
+                        IOT.load_partial(str(filename), tree, {eso_path:DS}, comm)
+                        eso_val = PT.get_np_value(eso_node)
+
+                        is_valid_eso = comm.bcast(eso_val[0]  == 0,       root=0)           and \
+                                       comm.bcast(eso_val[-1] == ec_size, root=comm.size-1) and \
+                                       comm.allreduce((eso_val[:-1] <= eso_val[1:]).all(), MPI.LAND)
+
+                        if is_valid_eso:
+                            PT.new_node('ElementConnectivity#Size', 'DataArray_t', [ec_size], parent=elt)
+                            to_keep.extend(['ElementConnectivity', 'ElementConnectivity#Size'])
+
+                        PT.set_value(eso_node, None) # Reput None in ESO (see above)
+
+            else:
+                expt_ec_shape = (PT.Element.NVtx(elt)*elt_size,)
+                if (ec:=PT.get_child_from_name(elt, 'ElementConnectivity')) is not None:
+                    if isinstance(val := ec[1], FakeArray) and val.shape == expt_ec_shape:
+                        to_keep.append('ElementConnectivity')
+
+            if (pe:=PT.get_child_from_name(elt, 'ParentElements')) is not None:
+                if isinstance(val := pe[1], FakeArray) and val.shape == (elt_size, 2):
+                    to_keep.append('ParentElements')
+                
+            PT.keep_children_from_predicate(elt, PT.pred.name_in(to_keep))
+            names_to_keep.append(PT.get_name(elt))
+
+        
+        # Containers: don't load related ZSR or full containers (nothing more to check),
+        # disable containers having PR *and* PL, and don't load fields
+        is_container = PT.pred.label_in(['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t'])
+        for ctn in PT.iter_children_from_predicate(zone, is_container):
+            if _keep_subset_node(ctn):
+                names_to_keep.append(PT.get_name(ctn))
+
+        # BCs and BCDataSets : same as containers
+        for zbc in PT.iter_children_from_label(zone, 'ZoneBC_t'):
+            bc_names_to_keep = list()
+            for bc in PT.iter_children_from_label(zbc, 'BC_t'):
+                bcds_names_to_keep = list()
+                for bcds in PT.iter_children_from_label(bc, 'BCDataSet_t'):
+                    if _keep_subset_node(bcds):
+                        bcds_names_to_keep.append(PT.get_name(bcds))
+                if _keep_subset_node(bc, bcds_names_to_keep):
+                    bc_names_to_keep.append(PT.get_name(bc))
+
+            PT.keep_children_from_predicate(zbc, PT.pred.name_in(bc_names_to_keep))
+            names_to_keep.append(PT.get_name(zbc))
+
+        # GridConnectivity(1to1)_t: same, with additional treatment for Donor nodes
+        for zgc in PT.iter_children_from_label(zone, 'ZoneGridConnectivity_t'):
+            gc_names_to_keep = list()
+            for gc in PT.iter_children_from_predicate(zgc, PT.pred.IS_GC):
+                is1to1 = PT.GridConnectivity.is1to1(gc)
+                to_keep = ['GridConnectivityProperty', 'GridConnectivityType']
+                # Carefull ! here we want a DA that is not distributed (TODO)
+                if is1to1:
+                    to_keep += ['PointListDonor', 'PointRangeDonor']
+                if not _keep_subset_node(gc, to_keep):
+                    continue
+                if is1to1:
+                    to_keep.append('PointList#Size') # Just created
+                    if not _keep_subset_node(gc, to_keep, True):
+                        # If donor nodes are misformed, juste remove them
+                        PT.rm_children_from_name(gc, 'PointListDonor')
+                        PT.rm_children_from_name(gc, 'PointRangeDonor')
+
+                gc_names_to_keep.append(PT.get_name(gc))
+
+            PT.keep_children_from_predicate(zgc, PT.pred.name_in(gc_names_to_keep))
+            names_to_keep.append(PT.get_name(zgc))
+
+
+
+        
+        PT.keep_children_from_predicate(zone, PT.pred.name_in(names_to_keep))
+
+    for base in PT.get_children_from_predicates(tree, 'CGNSBase_t'):
+        PT.keep_children_from_label(base, 'Zone_t')
+
+    # Effective loading for remaning arrays
+    IOT.fill_size_tree(tree, filename, comm)
+
+    """
+    IOT.add_distribution_info(tree, comm)
+    hdf_filter = IOT.create_tree_hdf_filter(tree)
+    # Coords#Size appears in dict -> remove it
+    #to_remove = [path for path in hdf_filter if 
+                 #path.endswith('#Size') or PT.get_node_from_path(tree, path) is None]
+    to_remove = [path for path in hdf_filter if 
+                 path.endswith('#Size')]# or PT.get_node_from_path(tree, path) is None]
+    hdf_filter = {key:val for key,val in hdf_filter.items() if not key in to_remove}
+    IOT.load_tree_from_filter(str(filename), tree, comm, hdf_filter)
+    PT.rm_nodes_from_name(tree, '*#Size')
+    """
+
 
 class CGNSChecker:
     """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
@@ -184,10 +356,8 @@ def run_stage_1(filename:Path, ignore_list:List[str], exclude_list:List[str]) ->
     return True
 
 
-def run_stage_2(filename:Path, ignore_list:List[str], exclude:List[str]) -> bool: 
+def run_stage_2(tree:CGNSTree, ignore_list:List[str]) -> bool: 
     from .rules2 import NODE_RULES
-    # Partial load of cgnsfile : heavy data are not loaded
-    tree = lazy_load_cgns(filename, exclude)
     # Prepare tree visitor
     rules = {key:val for key, val in NODE_RULES.items() if key not in ignore_list}
     PT.visit(tree, CGNSChecker(rules), ancestors=True)
@@ -207,7 +377,6 @@ def check(args):
         elif path[0] != '/': # Add first '/' if missing
             args.exclude[i] = '/' + path
 
-    from mpi4py import MPI
     comm = MPI.COMM_WORLD
 
     if comm.rank == 0:
@@ -221,4 +390,11 @@ def check(args):
     # For now stage 2 is serial also // We should distribute
     # checks zones over ranks
     if comm.rank == 0:
-        st = run_stage_2(args.filename, args.ignore, args.exclude)
+        # Partial load of cgnsfile : heavy data are not loaded
+        tree = lazy_load_cgns(args.filename, args.exclude)
+        st = run_stage_2(tree, args.ignore)
+    else:
+        tree = None
+
+    tree = comm.bcast(tree, root=0)
+    fill_cgns(tree, args.filename, args.exclude, comm)
