@@ -247,41 +247,35 @@ def fill_cgns(tree: CGNSTree, filename:Path, exclude:List[str], comm:MPIComm):
     # Effective loading for remaning arrays
     IOT.fill_size_tree(tree, filename, comm)
 
-    """
-    IOT.add_distribution_info(tree, comm)
-    hdf_filter = IOT.create_tree_hdf_filter(tree)
-    # Coords#Size appears in dict -> remove it
-    #to_remove = [path for path in hdf_filter if 
-                 #path.endswith('#Size') or PT.get_node_from_path(tree, path) is None]
-    to_remove = [path for path in hdf_filter if 
-                 path.endswith('#Size')]# or PT.get_node_from_path(tree, path) is None]
-    hdf_filter = {key:val for key,val in hdf_filter.items() if not key in to_remove}
-    IOT.load_tree_from_filter(str(filename), tree, comm, hdf_filter)
-    PT.rm_nodes_from_name(tree, '*#Size')
-    """
 
 
 class CGNSChecker:
-    """ A visitor for depth_first_search that collect the paths of UserDefinedData nodes """
-    def __init__(self, rules) -> None:
+    """ A visitor that apply check rules to input tree.
+    If comm is None, rules must have the signature rule(nodes).
+    Otherwise, they must have the signature rule(nodes, comm). """
+    def __init__(self, rules, comm=None) -> None:
         self.rules = rules
+        self.comm = comm
     
     def pre(self, nodes: List[CGNSTree]):
         raised = []
+        args = [nodes, self.comm] if self.comm is not None else [nodes]
 
         for rule_id, rule_fn in self.rules.items():
             try:
-                out = rule_fn(nodes)
+                out = rule_fn(*args)
             except Exception:
                 raised.append(rule_id)
                 out = OK
             if out != OK:
                 path = '/' if len(nodes) == 1 else '/'.join(n[0] for n in nodes)[8:]
                 color = Colors.FAIL if rule_id.startswith('E') else Colors.WARNING
-                print(f"{path}: {color}{rule_id}{Colors.ENDC} {out}")
+                if self.comm is None or self.comm.rank == 0:
+                    print(f"{path}: {color}{rule_id}{Colors.ENDC} {out}")
         if len(raised) > 0:
             path = '/' if len(nodes) == 1 else '/'.join(n[0] for n in nodes)[8:]
-            print(f"{path}: {Colors.HEADER}Unable to check {','.join(raised)} due to other errors{Colors.ENDC}")
+            if self.comm is None or self.comm.rank == 0:
+                print(f"{path}: {Colors.HEADER}Unable to check {','.join(raised)} due to other errors{Colors.ENDC}")
 
 
 class HDF5GraphAdaptor:
@@ -364,6 +358,12 @@ def run_stage_2(tree:CGNSTree, ignore_list:List[str]) -> bool:
 
     return True
 
+def run_stage_3(tree:CGNSTree, ignore_list:List[str], comm:MPIComm) -> bool: 
+    from .rules3 import DNODE_RULES
+    rules = {key:val for key, val in DNODE_RULES.items() if key not in ignore_list}
+    PT.visit(tree, CGNSChecker(rules, comm), ancestors=True)
+    return True
+
 def check(args):
 
     # Format exclude list to start as hdf path
@@ -398,3 +398,4 @@ def check(args):
 
     tree = comm.bcast(tree, root=0)
     fill_cgns(tree, args.filename, args.exclude, comm)
+    st = run_stage_3(tree, args.ignore, comm)

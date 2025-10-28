@@ -42,7 +42,9 @@ if __name__ == "__main__":
     args = parse_args()
 
     if not os.getenv('MAIA_DISABLE_BETA_MSG'):
-        print(BETA_MSG)
+        from mpi4py import MPI
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            print(BETA_MSG)
 
     if args.explain is not None:
         # Explain mode
