@@ -314,7 +314,7 @@ LABEL_PROPS = {
         "TYPE" : 'R',
         "SHAPE" : (5,),
         "ALLOWED_CHILDREN": [
-            ('AdditionalExponents_t', '?', 'AdditionalExponents_t'),
+            ('AdditionalExponents_t', '?', 'AdditionalExponents'),
         ], 
         "DOC": 'https://cgns.org/standard/SIDS/block.html#definition-dimensionalexponents-t',
     },
