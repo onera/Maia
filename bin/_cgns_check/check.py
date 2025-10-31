@@ -396,6 +396,9 @@ def check(args):
     else:
         tree = None
 
+    if args.lazy:
+        exit()
+
     tree = comm.bcast(tree, root=0)
     fill_cgns(tree, args.filename, args.exclude, comm)
     st = run_stage_3(tree, args.ignore, comm)
