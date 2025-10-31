@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- VStrideArray: implement OUTER_AXIS mode for ``sort`` and ``unique`` functions
+
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``agglomerate_cells`` to create structured coarsened meshes

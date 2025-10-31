@@ -316,6 +316,80 @@ accumulate_by_stride(py::array_t<I>&   np_displs,
   }
 }
 
+template<typename I, typename T>
+py::array_t<I>
+indirect_outer_sort(py::array_t<I>&   np_displs,
+                    py::array_t<T>&   np_values)
+{
+  auto n_elt  = np_displs.size() - 1;
+  auto displs = np_displs.data();
+  auto values = np_values.data();
+
+  // Array of indices (returned by function)
+  py::array_t<I> np_perm(n_elt);
+  auto perm = np_perm.mutable_data();
+
+  // Initialise with 0..N-1 (arange)
+  std::iota(perm, perm + n_elt, I{0});
+
+  // Sort using custom comparison for lexicographic order
+  std::stable_sort(perm, perm + n_elt,
+    [displs, values](I a, I b) -> bool {
+      I start_a = displs[a], end_a = displs[a+1];
+      I start_b = displs[b], end_b = displs[b+1];
+
+      auto len_a = end_a - start_a;
+      auto len_b = end_b - start_b;
+      auto minlen = std::min(len_a, len_b);
+
+      const T* block_a = values + start_a;
+      const T* block_b = values + start_b;
+
+      for (I i = 0; i < minlen; ++i) {
+        if (block_a[i] < block_b[i]) return true;
+        if (block_b[i] < block_a[i]) return false;
+      }
+      return len_a < len_b;  // Common values are all equal => return shorter
+    }
+  );
+
+  return np_perm;
+}
+
+template<typename I, typename T>
+py::array_t<I>
+indirect_outer_unique(py::array_t<I>&   np_displs,
+                      py::array_t<T>&   np_values)
+{
+  auto n_elt  = np_displs.size() - 1;
+  auto displs = np_displs.data();
+  auto values = np_values.data();
+
+  // Indirect sort
+  py::array_t<I> np_perm = indirect_outer_sort(np_displs, np_values);
+  I* perm = np_perm.mutable_data();
+
+  auto last = std::unique(perm, perm + n_elt,
+    // This function return true if two blocks are equal (same size, same values)
+    [displs, values](I a, I b) -> bool {
+      I start_a = displs[a], end_a = displs[a+1];
+      I start_b = displs[b], end_b = displs[b+1];
+      auto len_a = end_a - start_a;
+      auto len_b = end_b - start_b;
+      if (len_a != len_b) return false;
+      const T* block_a = values + start_a;
+      const T* block_b = values + start_b;
+      for (I i = 0; i < len_a; ++i) {
+        if (block_a[i] != block_b[i]) return false;
+      }
+      return true;
+    }
+  );
+   
+  np_perm.resize({last-perm});
+  return np_perm;
+}
+
 template<typename I1, typename I2>
 void take(py::array_t<I1>      displs, 
           py::buffer           read_buff,
@@ -533,6 +607,48 @@ void register_vstride_module(py::module_& parent) {
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("mask").noconvert()=py::none());
   m.def("flip_by_stride", &flip_by_stride<int64_t>,
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("mask").noconvert()=py::none());
+
+  m.def("indirect_outer_sort", &indirect_outer_sort<int32_t, bool>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int32_t, int32_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int32_t, int64_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int32_t, float>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int32_t, double>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int64_t, bool>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int64_t, int32_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int64_t, int64_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int64_t, float>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_sort", &indirect_outer_sort<int64_t, double>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+
+  m.def("indirect_outer_unique", &indirect_outer_unique<int32_t, bool>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int32_t, int32_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int32_t, int64_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int32_t, float>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int32_t, double>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int64_t, bool>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int64_t, int32_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int64_t, int64_t>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int64_t, float>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
+  m.def("indirect_outer_unique", &indirect_outer_unique<int64_t, double>,
+        py::arg("displs").noconvert(), py::arg("values").noconvert());
 
   m.def("take", &take<int32_t, int32_t>,
         py::arg("displs").noconvert(), py::arg("values").noconvert(),

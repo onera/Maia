@@ -443,10 +443,14 @@ def test_flip():
 
 def test_unique():
   a = vs.from_counts([0, 3, 5], [.3, .1, .1,  .2, .7, .2, .2, .9])
-  a = vs.unique(a, vs.INNER_AXIS)
-  assert len(a) == 3 and a.dtype == float
-  assert np.array_equal(a.counts, [0, 2, 3])
-  assert np.array_equal(a.values, [.3,.1,  .2, .7, .9,])
+  b = vs.unique(a, vs.INNER_AXIS)
+  assert len(b) == 3 and b.dtype == float
+  assert np.array_equal(b.counts, [0, 2, 3])
+  assert np.array_equal(b.values, [.3,.1,  .2, .7, .9,])
+
+  b = vs.unique(a, vs.OUTER_AXIS)
+  assert len(b) == 3 and b.dtype == float
+  assert vs.array_equal(b, vs.array([[], [.2,.7,.2,.2,.9], [.3,.1,.1]]))
 
   a = vs.from_counts([0, 0, 0], np.empty(0, np.int32))
   a = vs.unique(a, vs.INNER_AXIS)
@@ -456,6 +460,14 @@ def test_unique():
   a = vs.from_counts([], np.empty(0, np.int64))
   a = vs.unique(a, vs.INNER_AXIS)
   assert len(a) == 0 and a.dtype == np.int64
+
+  a = vs.array([[3,5], [5,1], [1,5], [5,1], [3,5,4], [3,5], [5,1]])
+  b = vs.unique(a, vs.OUTER_AXIS)
+  assert len(b) == 4 and b.dtype == int
+  assert vs.array_equal(b, vs.array([[1,5], [3,5], [3,5,4], [5,1]]))
+
+  a = vs.array([], dtype=float)
+  assert vs.array_equal(vs.unique(a, vs.OUTER_AXIS), a)
 
   with pytest.raises(ValueError):
     vs.unique(a, 'WrongAxis')

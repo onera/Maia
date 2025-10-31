@@ -976,8 +976,8 @@ def sort(array: VStrideArray, axis:Axis):
     return VStrideArray(array._displs, array._counts, values)
 
   elif axis == OUTER_AXIS:
-    # TODO : unoptimized version. uses lexicographic order
-    return globals()['array'](sorted([blk.tolist() for blk in array]), dtype=array.dtype)
+    indices = _vstride.indirect_outer_sort(array.displs, array.values)
+    return take(array, indices)
 
   else:
     raise ValueError(_UNVALID_AXIS_MSG)
@@ -988,7 +988,7 @@ def unique(array: VStrideArray, axis:Axis):
 
   Depending on the ``axis`` argument, the operation applies to:
 
-  - the elements if ``axis==OUTER_AXIS`` (**not yet implemented**), which is roughly equivalent to ::
+  - the elements if ``axis==OUTER_AXIS``, which is roughly equivalent to ::
 
       vs.array(unique([blk for blk in array]))
     
@@ -1005,12 +1005,19 @@ def unique(array: VStrideArray, axis:Axis):
   Returns:
     :class:`VStrideArray` : unique *VS array*
   Example:
-    >>> a = vs.from_counts([2, 4, 3], [2,2, 3,1,3,2, 9,5,5])
+    >>> a = vs.from_counts([2, 3, 4, 3], [2,2, 9,5,5, 3,1,3,2, 9,5,5])
     >>> vs.unique(a, vs.INNER_AXIS)
     vsarray([
       [2],
+      [9, 5],
       [3, 1, 2],
       [9, 5],
+    ], dtype=int64)
+    >>> vs.unique(a, vs.OUTER_AXIS)
+    vsarray([
+      [2, 2],
+      [3, 1, 3, 2],
+      [9, 5, 5],
     ], dtype=int64)
   """
 
@@ -1018,7 +1025,8 @@ def unique(array: VStrideArray, axis:Axis):
     displs, values = _vstride.make_unique_by_stride(array.displs, array.values)
     return VStrideArray(displs, None, values)
   elif axis == OUTER_AXIS:
-    raise NotImplementedError
+    indices = _vstride.indirect_outer_unique(array.displs, array.values)
+    return take(array, indices)
 
   else:
     raise ValueError(_UNVALID_AXIS_MSG)
