@@ -19,9 +19,11 @@ Zone Zone_t [[27],[8],[0]]:
 def test_create_zone_std_elements_filter():
   yt = """
 Hexa Elements_t [17, 0]:
+  ElementConnectivity DataArray_t:
   :CGNS#Distribution UserDefinedData_t:
     Element DataArray_t [2,7,10]:
 Tri Elements_t [5, 0]:
+  ElementConnectivity DataArray_t:
   ParentElements DataArray_t:
   ParentElementsPosition DataArray_t:
   :CGNS#Distribution UserDefinedData_t:

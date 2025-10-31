@@ -30,6 +30,7 @@ def parse_args():
         parser.add_argument('filename', metavar='cgns_file', type=Path, help="file to analyse")
         parser.add_argument('--ignore', type=str, default='', help="disable the provided codes (comma separated list)")
         parser.add_argument('--exclude', type=str, default='', help="skip analysis of the provided node")
+        parser.add_argument('--lazy', action='store_true', help="Skip third (costly) analysis stage")
     else:
         # Explain mode --> nothing needed
         pass
@@ -42,7 +43,9 @@ if __name__ == "__main__":
     args = parse_args()
 
     if not os.getenv('MAIA_DISABLE_BETA_MSG'):
-        print(BETA_MSG)
+        from mpi4py import MPI
+        if MPI.COMM_WORLD.Get_rank() == 0:
+            print(BETA_MSG)
 
     if args.explain is not None:
         # Explain mode

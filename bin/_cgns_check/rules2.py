@@ -177,7 +177,7 @@ def missing_zsr_subset(nodes:List[CGNSTree]) -> str:
         try:
             PT.Container.SubsetNodePath(last, nodes[-2])
         except ValueError:
-            linked_names = ['BCRegioName', 'GridConnectivityRegionName']
+            linked_names = ['BCRegionName', 'GridConnectivityRegionName']
             refnode = PT.find_child_from_predicate(last, PTp.name_in(linked_names))
             return f"ZoneSubRegion_t related subset {PT.get_str_value(refnode)} does not exists"
 
