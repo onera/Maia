@@ -16,6 +16,7 @@ Development version
 ^^^^^^^^
 - centers_to_nodes: add checks and fix empty partition bugs
 - PT.get_node_from_predicates: fixup behaviour (admissible node was sometime not found)
+- pe_to_nface: fix a crash occuring when a rank locally owns only one face
 
 v1.8 (September 2025)
 ---------------------
