@@ -31,7 +31,7 @@ def get_pe_local(node: CGNSTree) -> NDArray:
   if pe_val.size == 0:
     return pe_val
   else:
-    first_parent = pe_val[1].max() #Get any parent and use it to check if offset is necessary
+    first_parent = pe_val[0].max() #Get any parent and use it to check if offset is necessary
     if first_parent > PT.Element.Range(node)[1]:
       return pe_val - PT.Element.Range(node)[1] * (pe_val > 0)
     else:
