@@ -27,6 +27,8 @@ from .mesh_adaptation            import adapt_mesh_with_feflo
 
 from .mixed_to_std_elements      import convert_mixed_to_elements
 
+from .multigrid                  import multigrid_s
+
 from .ngon_from_std_elements     import convert_elements_to_ngon
 
 from .ngons_to_elements          import convert_ngon_to_elements
