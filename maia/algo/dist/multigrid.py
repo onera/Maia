@@ -196,9 +196,10 @@ def multigrid_s(dt, nb_lvl, comm):
         new_mg_cy.extend(np.array(new_mg_cy_j[shift_k::2]).reshape(-1))
         new_mg_cz.extend(np.array(new_mg_cz_j[shift_k::2]).reshape(-1))
       
-      PT.set_value(PT.get_node_from_path(mg_z, 'GridCoordinates/CoordinateX'), new_mg_cx)
-      PT.set_value(PT.get_node_from_path(mg_z, 'GridCoordinates/CoordinateY'), new_mg_cy)
-      PT.set_value(PT.get_node_from_path(mg_z, 'GridCoordinates/CoordinateZ'), new_mg_cz)
+      # Remark: need to impose R8 because empty list is I4 by default
+      PT.set_value(PT.get_node_from_path(mg_z, 'GridCoordinates/CoordinateX'), np.array(new_mg_cx, dtype=np.float64))
+      PT.set_value(PT.get_node_from_path(mg_z, 'GridCoordinates/CoordinateY'), np.array(new_mg_cy, dtype=np.float64))
+      PT.set_value(PT.get_node_from_path(mg_z, 'GridCoordinates/CoordinateZ'), np.array(new_mg_cz, dtype=np.float64))
       
       PT.set_value(mg_z, [[mg_ni, mg_ni-1, 0],
                           [mg_nj, mg_nj-1, 0],
