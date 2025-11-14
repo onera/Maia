@@ -323,29 +323,44 @@ def _recover_elements(dist_zone: CGNSDistTree,
     for elt_name in elt_names:
       IPTB.part_elt_to_dist_elt(dist_zone, part_zones, elt_name, comm)
 
+    # > Manage shift on create element nodes
     elt_nodes = PT.get_children_from_label(dist_zone, 'Elements_t') #True elements
-    # > Get shift per dim
-    n_elt_per_dim  = [0,0,0,0]
-    for elt in elt_nodes:
-      n_elt_per_dim[PT.Element.Dimension(elt)] += PT.Element.Size(elt)
 
     elt_order = [PT.Zone.elt_ordering_by_dim(part_zone) for part_zone in part_zones
                  if sum([d != [0,0] for d in PT.Zone.get_elt_range_per_dim(part_zone)]) > 1]
     n_increase = comm.allreduce(elt_order.count(1),  MPI.SUM)
     n_decrease = comm.allreduce(elt_order.count(-1), MPI.SUM)
     assert n_increase * n_decrease == 0
+    dims = [0,1,2,3] if n_increase > 0 else [3,2,1,0]
 
-    if n_increase > 0:
-      for elt in elt_nodes:
-        dim_shift = sum(n_elt_per_dim[:PT.Element.Dimension(elt)])
-        ER = PT.Element.Range(elt)
-        ER += dim_shift
+    # To order elements within each dimension, we also need any value of 'Sections' gnum
+    # (which is common to all elments of same dimension)
+    any_id_l = np.zeros(len(elt_nodes), int)
+    any_id_g = np.zeros(len(elt_nodes), int)
+    for i, elt_node in enumerate(elt_nodes):
+      for part_zone in part_zones:
+        elt_n = PT.get_child_from_name(part_zone, PT.get_name(elt_node))
+        if elt_n is not None and PT.Element.Size(elt_n) > 0:
+          # Retrieve the ElementRange within the given dimension
+          any_id_l[i] = MT.globalnumbering_value(elt_n, 'Sections')[0]
+          break
+    #Get values for proc having no elt
+    comm.Allreduce(any_id_l, any_id_g, MPI.MAX)
 
-    else:
-      for elt in elt_nodes:
-        dim_shift = sum(n_elt_per_dim[PT.Element.Dimension(elt)+1:])
+    offset = 0
+    for dim in dims:
+      # Select indices of element nodes of this dim
+      dim_elt_idx = [i for i,elt in enumerate(elt_nodes) if PT.Element.Dimension(elt) == dim]
+      # Sort these indices (within dimension) according to any_id_g values
+      dim_elt_idx_sorted = [x for _, x in sorted(zip(any_id_g[dim_elt_idx], dim_elt_idx))]
+      # Apply offset
+      dim_elt_sorted = [elt_nodes[j] for j in dim_elt_idx_sorted]
+      for elt in dim_elt_sorted:
         ER = PT.Element.Range(elt)
-        ER += dim_shift
+        ER += offset
+        offset += PT.Element.Size(elt)
+
+
 
 def _recover_BC(dist_zone: CGNSDistTree, 
                 part_zones: List[CGNSPartTree], 

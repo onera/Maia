@@ -303,54 +303,53 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   """
   Create a distributed Elements_t node on the dist_zone from partitions.
   Partitions must have the global numbering informations.
-  On the dist_zone, ElementRange of the created node are numbered per physical dimension
+  On the dist_zone, ElementRange of the created node will start at 1
   and must be shifted afterward.
   """
 
   vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
   elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
 
-  data_in_l = list()
-  cst_stride = 0
-  elt_id   = ''
-  min_section_gn = np.iinfo(pdm_gnum_dtype).max
-  max_section_gn = 0
+  distri_elt  = par_utils.distribution_from_gnum(elt_gnum_l, comm)
+
+  elt_id = ''
   for ipart, part_zone in enumerate(part_zones):
     elt_n = PT.get_child_from_name(part_zone, elem_name)
     if elt_n is not None:
       elt_id = PT.Element.Type(elt_n)
-      cst_stride = PT.Element.NVtx(elt_n)
-
-      # Retrieve the ElementRange within the given dimension
-      section_gnum = MT.globalnumbering_value(elt_n, 'Sections')
-      min_section_gn = min(min_section_gn, np.min(section_gnum))
-      max_section_gn = max(max_section_gn, np.max(section_gnum))
-
-      # Move to global and add in part_data
-      EC    = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
-      part_ec = vtx_gnum_l[ipart][EC-1]
-      stride_in = cst_stride*np.ones(part_ec.size // cst_stride, int)
-    else:
-      part_ec = np.empty(0, pdm_gnum_dtype)
-      stride_in = np.empty(0, int)
-
-    data_in_l.append((stride_in, part_ec))
-
+      break
   #Get values for proc having no elt
-  elt_id     = comm.allreduce(elt_id, MPI.MAX)
-  min_section_gn = comm.allreduce(min_section_gn, MPI.MIN)
-  max_section_gn = comm.allreduce(max_section_gn, MPI.MAX)
+  elt_id = comm.allreduce(elt_id, MPI.MAX)
 
-  # Exchange : for multiple elements (eg. BAR) we take the first received
-  distri_elt   = par_utils.distribution_from_gnum(elt_gnum_l, comm)
+  # NB : this function allow the ElementConnectivity to be inexistant
+  # in order to use _recover_elements in a light way (just to have ElementRange values)
+  if par_utils.exists_anywhere(part_zones, f'{elem_name}/ElementConnectivity', comm):
+    data_in_l = list()
+    for ipart, part_zone in enumerate(part_zones):
+      elt_n = PT.get_child_from_name(part_zone, elem_name)
+      if elt_n is not None:
+        cst_stride = PT.Element.NVtx(elt_n)
 
-  GI = EP.GlobalIndexer(distri_elt, elt_gnum_l, comm, gnum_offset=1)
+        # Move to global and add in part_data
+        EC    = PT.get_np_value(PT.find_child_from_name(elt_n, 'ElementConnectivity'))
+        part_ec = vtx_gnum_l[ipart][EC-1]
+        stride_in = cst_stride*np.ones(part_ec.size // cst_stride, int)
+      else:
+        part_ec = np.empty(0, pdm_gnum_dtype)
+        stride_in = np.empty(0, int)
 
-  # Faster than filtering, even if stride is constant
-  _, dist_ec = GI.Put_v(data_in_l)
+      data_in_l.append((stride_in, part_ec))
+
+    # Exchange : for multiple elements (eg. BAR) we take the first received
+    GI = EP.GlobalIndexer(distri_elt, elt_gnum_l, comm, gnum_offset=1)
+
+    # Faster than filtering, even if stride is constant
+    _, dist_ec = GI.Put_v(data_in_l)
+  else:
+    dist_ec = None
 
   # > Add in disttree
-  elt_node = PT.new_Elements(elem_name, type=elt_id, erange=[min_section_gn, max_section_gn], econn=dist_ec, parent=dist_zone)
+  elt_node = PT.new_Elements(elem_name, type=elt_id, erange=[1, distri_elt[2]], econn=dist_ec, parent=dist_zone)
 
   MT.new_Distribution({'Element' : distri_elt}, parent=elt_node)
 

@@ -336,7 +336,7 @@ Zone.P2.N0 Zone_t:
   IPTB.part_elt_to_dist_elt(dist_zone, PT.get_all_Zone_t(pT), 'Quad', comm)
 
   elt = PT.get_node_from_name(dist_zone, 'Quad')
-  assert (PT.Element.Range(elt) == [11,18]).all()
+  assert (PT.Element.Range(elt) == [1,8]).all()
   assert (elt[1] == [7,0]).all()
   assert (PT.get_child_from_name(elt, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = MT.distribution_value(elt, 'Element')
