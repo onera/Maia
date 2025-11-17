@@ -3,10 +3,64 @@ import pytest_parallel
 import numpy as np
 
 import maia
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 from maia.algo.dist import multigrid_s
 
+@pytest_parallel.mark.parallel(2)
+def test_multigrid_s_2D(comm):
+  n_lvl = 3
+  coeff = 2**n_lvl
+  n1 = 8
+  n2 = 4
+  tree = maia.factory.generate_dist_block([coeff*n1+1,coeff*n2+1], "S", comm)
+
+  # Split a bc in two for test
+  zbc = PT.find_node_from_name(tree, 'ZoneBC')
+  bc1 = PT.find_child_from_name(zbc, 'Xmax')
+  bc2 = PT.deep_copy(bc1)
+  pr1 = PT.get_np_value(PT.find_child_from_name(bc1, 'PointRange'))
+  pr2 = PT.get_np_value(PT.find_child_from_name(bc2, 'PointRange'))
+  PT.set_name(bc1, 'Xmax_1')
+  PT.set_name(bc2, 'Xmax_2')
+  pr1[1,1] = coeff + 1
+  pr2[1,0] = coeff + 1
+  others = PT.get_children_from_predicate(zbc, ~PT.pred.name_matches('Xmax*'))
+  PT.set_children(zbc, others + [bc1, bc2])
+
+
+  trees = maia.algo.dist.multigrid_s(tree, n_lvl, comm)
+
+  # Check computed coarse index (on thin grid): we compute actual cell idx
+  # on coarse mesh, and move it on thin mesh by interpolation to compare.
+  for i, tree in enumerate(trees[:-1]):
+    coarse = PT.shallow_copy(trees[i+1])
+    from maia.utils import s_numbering
+    coarse_zone = PT.get_all_Zone_t(coarse)[0]
+    coarse_shape = PT.Zone.CellSize(coarse_zone)
+    coarse_distri = MT.distribution_value(coarse_zone, 'Cell')
+    fid = s_numbering.ij_to_index(np.arange(1, coarse_shape[0]+1),
+                                  np.arange(1, coarse_shape[1]+1).reshape(-1,1),
+                                  coarse_shape).reshape(-1)
+    PT.new_FlowSolution('CoarseId',
+                        loc='CellCenter',
+                        fields={'Id': fid[coarse_distri[0]:coarse_distri[1]]},
+                        parent=coarse_zone)
+
+    maia.algo.interpolate(coarse, tree, comm, ['CoarseId'], 'CellCenter')
+
+    expected_id = PT.get_np_value(PT.find_node_from_path(tree, 'Base/zone/CoarseId/Id'))
+    computed_id = PT.get_np_value(PT.find_node_from_path(tree, 'Base/zone/MultiGridCellInfo/CoarseUnstIdx'))
+    assert np.array_equal(computed_id, expected_id)
+
+  # Check splited BC sizes (small subset is 25% total size)
+  for i, tree in enumerate(trees):
+    bc1 = PT.find_node_from_name(tree, 'Xmax_1')
+    bc2 = PT.find_node_from_name(tree, 'Xmax_2')
+    assert 3*(PT.Subset.n_elem(bc1)-1) == (PT.Subset.n_elem(bc2) - 1)
+    assert (PT.Subset.n_elem(bc1) + PT.Subset.n_elem(bc2) - 1) == 2**(n_lvl-i) * n2 + 1
+  
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("nb_lvl", [1,2])

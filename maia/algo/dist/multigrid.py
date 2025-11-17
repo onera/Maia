@@ -49,6 +49,7 @@ def multigrid_s(dt, nb_lvl, comm):
     mg_dt = PT.deep_copy(dt)
     
     for z in PT.iter_all_Zone_t(dt):
+      idx_dim = PT.Zone.IndexDimension(z)
       vtx_shape = PT.Zone.VertexSize(z)
       
       cell_distrib = MT.distribution_value(z, 'Cell')
@@ -78,12 +79,12 @@ def multigrid_s(dt, nb_lvl, comm):
       for bc in PT.get_nodes_from_predicates(z, "ZoneBC_t/BC_t"):
         # Compute FaceIdx for BC subsets: we work as if BC were FaceCenter thanks to transform_bnd_pr_size
         bc_loc       = PT.Subset.GridLocation(bc)
-        bc_pr        = PT.get_value(PT.get_node_from_name(bc, 'PointRange'))
+        bc_pr        = PT.get_np_value(PT.find_node_from_name(bc, 'PointRange'))
         bc_size      = pr_utils.transform_bnd_pr_size(bc_pr, bc_loc, 'FaceCenter')
         bc_range     = py_utils.uniform_distribution_at(bc_size.prod(), comm.rank, comm.size)
         bc_slabs     = HFR2S.compute_slabs(bc_size, bc_range)
         bnd_axis     = PT.Subset.normal_axis(bc)
-        bc_face_loc  = f'{["I","J","K"][bnd_axis]}FaceCenter'
+        bc_face_loc  = f'{["I","J","K"][bnd_axis]}{'Edge' if idx_dim == 2 else 'Face'}Center'
         _unst_bc_face_idx = list()
         _unst_bc_face_coarseidx = list()
 
@@ -92,13 +93,20 @@ def multigrid_s(dt, nb_lvl, comm):
           # TODO maybe shift missing ?
           irange = np.arange(imin_slab+bc_pr[0][0],imax_slab+bc_pr[0][0])
           jrange = np.arange(jmin_slab+bc_pr[1][0],jmax_slab+bc_pr[1][0]).reshape(-1,1)
-          krange = np.arange(kmin_slab+bc_pr[2][0],kmax_slab+bc_pr[2][0]).reshape(-1,1,1)
-          _unst_bc_face_idx.append(s_numbering.ijk_to_index_from_loc(irange, jrange, krange, bc_face_loc, vtx_shape).reshape(-1))
+          if idx_dim == 2:
+            _unst_bc_face_idx.append(s_numbering.ij_to_index_from_loc(irange, jrange, bc_face_loc, vtx_shape).reshape(-1))
+          else:
+            krange = np.arange(kmin_slab+bc_pr[2][0],kmax_slab+bc_pr[2][0]).reshape(-1,1,1)
+            _unst_bc_face_idx.append(s_numbering.ijk_to_index_from_loc(irange, jrange, krange, bc_face_loc, vtx_shape).reshape(-1))
           icoarserange = (np.arange(imin_slab+bc_pr[0][0]-1,imax_slab+bc_pr[0][0]-1)//2+1)
           jcoarserange = (np.arange(jmin_slab+bc_pr[1][0]-1,jmax_slab+bc_pr[1][0]-1)//2+1).reshape(-1,1)
-          kcoarserange = (np.arange(kmin_slab+bc_pr[2][0]-1,kmax_slab+bc_pr[2][0]-1)//2+1).reshape(-1,1,1)
-          _unst_bc_face_coarseidx.append(s_numbering.ijk_to_index_from_loc(icoarserange, jcoarserange, kcoarserange, bc_face_loc, np.array(vtx_shape)//2+1).reshape(-1))
-        face_loc_pr = np.zeros((3,2), dtype=bc_pr.dtype)
+          if idx_dim == 2:
+            _unst_bc_face_coarseidx.append(s_numbering.ij_to_index_from_loc(icoarserange, jcoarserange, bc_face_loc, np.array(vtx_shape)//2+1).reshape(-1))
+          else:
+            kcoarserange = (np.arange(kmin_slab+bc_pr[2][0]-1,kmax_slab+bc_pr[2][0]-1)//2+1).reshape(-1,1,1)
+            _unst_bc_face_coarseidx.append(s_numbering.ijk_to_index_from_loc(icoarserange, jcoarserange, kcoarserange, bc_face_loc, np.array(vtx_shape)//2+1).reshape(-1))
+        
+        face_loc_pr = np.zeros_like(bc_pr)
         face_loc_pr[:,0] = bc_pr[:, 0]
         face_loc_pr[:,1] = bc_pr[:, 0] + bc_size - 1
 
@@ -170,12 +178,12 @@ def multigrid_s(dt, nb_lvl, comm):
       vtx_size[:]  =  vtx_size // 2 + 1
       
 
-      distri_vtx  = par_utils.dn_to_distribution(nb_mg_vtx_loc,  comm)
-      distri_cell = par_utils.dn_to_distribution(nb_mg_cell_loc, comm)
+      zone_distri = {"Vertex" : par_utils.dn_to_distribution(nb_mg_vtx_loc,  comm),
+                     "Cell"   : par_utils.dn_to_distribution(nb_mg_cell_loc, comm)}
       #Remark: 'face' distribution is not used in structured mesh so imposed uniform
-      mg_n_face = PT.Zone.n_face(mg_z)
-      distri_face = par_utils.uniform_distribution(mg_n_face, comm)
-      MT.new_Distribution({"Vertex": distri_vtx, "Cell": distri_cell, "Face": distri_face}, parent=mg_z)
+      if PT.Zone.IndexDimension(mg_z) == 3:
+        zone_distri["Face"] = par_utils.uniform_distribution(PT.Zone.n_face(mg_z), comm)
+      MT.new_Distribution(zone_distri, parent=mg_z)
       
       for mg_bc in PT.get_nodes_from_predicates(mg_z, "ZoneBC_t/BC_t"):
         assert PT.Subset.GridLocation(mg_bc) == "Vertex", "Only Vertex located subsets are managed"
