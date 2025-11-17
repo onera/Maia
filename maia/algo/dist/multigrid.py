@@ -6,6 +6,9 @@ import maia.pytree.maia as MT
 from maia.utils           import par_utils, pr_utils, py_utils, s_numbering, np_utils
 from maia.utils.numbering import range_to_slab                              as HFR2S
 
+from maia.typing        import *
+from maia.pytree.typing import Predicate
+
 
 def _slab_half_size(slab):
   # Compute the number of entities if the slab had only one point over two
@@ -16,129 +19,122 @@ def _slab_half_size(slab):
 
   return half_sizes.prod()
 
-def nb_mg_entities_from_slabs(ent_slabs):
+def _nb_mg_entities_from_slabs(ent_slabs):
   return sum(_slab_half_size(slab) for slab in ent_slabs)
 
+def _deepcopy_children_if(src:CGNSTree, tgt:CGNSTree, predicate:Predicate):
+  """ Deepcopy children from src to tgt if they satisfy predicate """
+  for child in PT.get_children_from_predicate(src, predicate):
+    PT.add_child(tgt, PT.deep_copy(child))
 
-def multigrid_s(dt, nb_lvl, comm):
-
-  for z in PT.iter_all_Zone_t(dt):
+def compute_agglomerated_parent(tree:CGNSDistTree, comm:MPIComm):
+  for z in PT.iter_all_Zone_t(tree):
+    idx_dim = PT.Zone.IndexDimension(z)
     
-    for dir,nci in zip('IJK', PT.Zone.CellSize(z)):
-      if nci % (2**nb_lvl) != 0:
-        raise ValueError(f"Invalid number of cells in {dir} direction: {nci} is not a multiple of 2^{nb_lvl}")
+    vtx_shape  = PT.Zone.VertexSize(z)
+    cell_shape = PT.Zone.CellSize(z)
+    cell_slabs = HFR2S.compute_slabs(cell_shape, MT.distribution_value(z, 'Cell')[:2])
+
+    cell_shape_coarse = tuple(s//2     for s in cell_shape)
+    vtx_shape_coarse  = tuple(s//2 + 1 for s in vtx_shape)
     
-    predicates = [PT.pred.label_in(['ZoneBC_t', 'ZoneGridConnectivity_t']),
-                  PT.pred.label_is('BC_t') | PT.pred.IS_GC] 
-    for subset in PT.iter_children_from_predicates(z, predicates):
-      if PT.get_child_from_name(subset, 'PointList') is not None:
-        raise ValueError("Only PointRange subsets are supported")
-      if PT.Subset.GridLocation(subset) not in ['Vertex', 'CellCenter']:
-        raise NotImplementedError("'I/J/KFaceCenter' subsets are not yet managed for multigrid !")
-      rest_div = 1 if PT.Subset.GridLocation(subset) == 'Vertex' else 0
-      pr_size = PT.Subset.SizePerIndex(subset)
-      # Skip null direction when checking
-      _pr_size = tuple(k for d,k in enumerate(pr_size) if d != PT.Subset.normal_axis(subset))
-      if any(s % (2**nb_lvl) != rest_div for s in _pr_size):
-        raise ValueError(f"Subset {PT.get_name(subset)} has a PointRange size incompatible with requested agglomeration")
+    _unst_cell_idx = list()
+    _unst_cell_coarseidx = list()
+    for cell_slab in cell_slabs:
+      # Works also for 2D meshes since krange will be 'empty' in this case
+      (imin_slab,imax_slab), (jmin_slab,jmax_slab), (kmin_slab,kmax_slab) = cell_slab
+      irange = np.arange(imin_slab+1,imax_slab+1)
+      jrange = np.arange(jmin_slab+1,jmax_slab+1).reshape(-1,1)
+      krange = np.arange(kmin_slab+1,kmax_slab+1).reshape(-1,1,1)
+      _unst_cell_idx.append(s_numbering.ijk_to_index(irange, jrange, krange, cell_shape).reshape(-1))
+      icoarserange = (np.arange(imin_slab,imax_slab)//2+1)
+      jcoarserange = (np.arange(jmin_slab,jmax_slab)//2+1).reshape(-1,1)
+      kcoarserange = (np.arange(kmin_slab,kmax_slab)//2+1).reshape(-1,1,1)
+      _unst_cell_coarseidx.append(s_numbering.ijk_to_index(icoarserange, jcoarserange, kcoarserange, cell_shape_coarse).reshape(-1))
 
-  
-  trees = [dt]
-  for lvl in range(nb_lvl):
-    dt = trees[lvl]
-    mg_dt = PT.deep_copy(dt)
+    unst_cell_idx = np_utils.concatenate_np_arrays(_unst_cell_idx)[1]
+    unst_cell_coarseidx = np_utils.concatenate_np_arrays(_unst_cell_coarseidx)[1]
+
+    PT.new_DiscreteData('MultiGridCellInfo', loc='CellCenter', fields={'CurUnstIdx': unst_cell_idx, 'CoarseUnstIdx': unst_cell_coarseidx}, parent=z)
+    # PT.new_FlowSolution('MultiGridCellInfo', loc='CellCenter', fields={'CurUnstIdx': unst_cell_idx, 'CoarseUnstIdx': unst_cell_coarseidx}, parent=z)
     
-    for z in PT.iter_all_Zone_t(dt):
-      idx_dim = PT.Zone.IndexDimension(z)
-      vtx_shape = PT.Zone.VertexSize(z)
-      
-      cell_distrib = MT.distribution_value(z, 'Cell')
-      cell_shape   = PT.Zone.CellSize(z)
-      cell_slabs   = HFR2S.compute_slabs(cell_shape, cell_distrib[:2])
-      
-      _unst_cell_idx = list()
-      _unst_cell_coarseidx = list()
-      for cell_slab in cell_slabs:
-        # Works also for 2D meshes since krange will be 'empty' in this case
-        (imin_slab,imax_slab), (jmin_slab,jmax_slab), (kmin_slab,kmax_slab) = cell_slab
-        irange = np.arange(imin_slab+1,imax_slab+1)
-        jrange = np.arange(jmin_slab+1,jmax_slab+1).reshape(-1,1)
-        krange = np.arange(kmin_slab+1,kmax_slab+1).reshape(-1,1,1)
-        _unst_cell_idx.append(s_numbering.ijk_to_index(irange, jrange, krange, cell_shape).reshape(-1))
-        icoarserange = (np.arange(imin_slab,imax_slab)//2+1)
-        jcoarserange = (np.arange(jmin_slab,jmax_slab)//2+1).reshape(-1,1)
-        kcoarserange = (np.arange(kmin_slab,kmax_slab)//2+1).reshape(-1,1,1)
-        _unst_cell_coarseidx.append(s_numbering.ijk_to_index(icoarserange, jcoarserange, kcoarserange, np.array(cell_shape)//2).reshape(-1))
+    for bc in PT.get_nodes_from_predicates(z, "ZoneBC_t/BC_t"):
+      # Compute FaceIdx for BC subsets: we work as if BC were FaceCenter thanks to transform_bnd_pr_size
+      bc_loc       = PT.Subset.GridLocation(bc)
+      bc_pr        = PT.get_np_value(PT.find_node_from_name(bc, 'PointRange'))
+      bc_size      = pr_utils.transform_bnd_pr_size(bc_pr, bc_loc, 'FaceCenter')
+      bc_range     = py_utils.uniform_distribution_at(bc_size.prod(), comm.rank, comm.size)
+      bc_slabs     = HFR2S.compute_slabs(bc_size, bc_range)
+      bnd_axis     = PT.Subset.normal_axis(bc)
+      bc_face_loc  = f"{'IJK'[bnd_axis]}{'Edge' if idx_dim == 2 else 'Face'}Center"
+      _unst_bc_face_idx = list()
+      _unst_bc_face_coarseidx = list()
 
-      unst_cell_idx = np_utils.concatenate_np_arrays(_unst_cell_idx)[1]
-      unst_cell_coarseidx = np_utils.concatenate_np_arrays(_unst_cell_coarseidx)[1]
-
-      PT.new_DiscreteData('MultiGridCellInfo', loc='CellCenter', fields={'CurUnstIdx': unst_cell_idx, 'CoarseUnstIdx': unst_cell_coarseidx}, parent=z)
-      # PT.new_FlowSolution('MultiGridCellInfo', loc='CellCenter', fields={'CurUnstIdx': unst_cell_idx, 'CoarseUnstIdx': unst_cell_coarseidx}, parent=z)
+      for bc_slab in bc_slabs:
+        (imin_slab,imax_slab), (jmin_slab,jmax_slab), (kmin_slab,kmax_slab) = bc_slab
+        # TODO maybe shift missing ?
+        irange = np.arange(imin_slab+bc_pr[0][0],imax_slab+bc_pr[0][0])
+        jrange = np.arange(jmin_slab+bc_pr[1][0],jmax_slab+bc_pr[1][0]).reshape(-1,1)
+        if idx_dim == 2:
+          _unst_bc_face_idx.append(s_numbering.ij_to_index_from_loc(irange, jrange, bc_face_loc, vtx_shape).reshape(-1))
+        else:
+          krange = np.arange(kmin_slab+bc_pr[2][0],kmax_slab+bc_pr[2][0]).reshape(-1,1,1)
+          _unst_bc_face_idx.append(s_numbering.ijk_to_index_from_loc(irange, jrange, krange, bc_face_loc, vtx_shape).reshape(-1))
+        icoarserange = (np.arange(imin_slab+bc_pr[0][0]-1,imax_slab+bc_pr[0][0]-1)//2+1)
+        jcoarserange = (np.arange(jmin_slab+bc_pr[1][0]-1,jmax_slab+bc_pr[1][0]-1)//2+1).reshape(-1,1)
+        if idx_dim == 2:
+          _unst_bc_face_coarseidx.append(s_numbering.ij_to_index_from_loc(icoarserange, jcoarserange, bc_face_loc, vtx_shape_coarse).reshape(-1))
+        else:
+          kcoarserange = (np.arange(kmin_slab+bc_pr[2][0]-1,kmax_slab+bc_pr[2][0]-1)//2+1).reshape(-1,1,1)
+          _unst_bc_face_coarseidx.append(s_numbering.ijk_to_index_from_loc(icoarserange, jcoarserange, kcoarserange, bc_face_loc, vtx_shape_coarse).reshape(-1))
       
-      for bc in PT.get_nodes_from_predicates(z, "ZoneBC_t/BC_t"):
-        # Compute FaceIdx for BC subsets: we work as if BC were FaceCenter thanks to transform_bnd_pr_size
-        bc_loc       = PT.Subset.GridLocation(bc)
-        bc_pr        = PT.get_np_value(PT.find_node_from_name(bc, 'PointRange'))
-        bc_size      = pr_utils.transform_bnd_pr_size(bc_pr, bc_loc, 'FaceCenter')
-        bc_range     = py_utils.uniform_distribution_at(bc_size.prod(), comm.rank, comm.size)
-        bc_slabs     = HFR2S.compute_slabs(bc_size, bc_range)
-        bnd_axis     = PT.Subset.normal_axis(bc)
-        bc_face_loc  = f'{["I","J","K"][bnd_axis]}{'Edge' if idx_dim == 2 else 'Face'}Center'
-        _unst_bc_face_idx = list()
-        _unst_bc_face_coarseidx = list()
+      face_loc_pr = np.zeros_like(bc_pr)
+      face_loc_pr[:,0] = bc_pr[:, 0]
+      face_loc_pr[:,1] = bc_pr[:, 0] + bc_size - 1
 
-        for bc_slab in bc_slabs:
-          (imin_slab,imax_slab), (jmin_slab,jmax_slab), (kmin_slab,kmax_slab) = bc_slab
-          # TODO maybe shift missing ?
-          irange = np.arange(imin_slab+bc_pr[0][0],imax_slab+bc_pr[0][0])
-          jrange = np.arange(jmin_slab+bc_pr[1][0],jmax_slab+bc_pr[1][0]).reshape(-1,1)
-          if idx_dim == 2:
-            _unst_bc_face_idx.append(s_numbering.ij_to_index_from_loc(irange, jrange, bc_face_loc, vtx_shape).reshape(-1))
-          else:
-            krange = np.arange(kmin_slab+bc_pr[2][0],kmax_slab+bc_pr[2][0]).reshape(-1,1,1)
-            _unst_bc_face_idx.append(s_numbering.ijk_to_index_from_loc(irange, jrange, krange, bc_face_loc, vtx_shape).reshape(-1))
-          icoarserange = (np.arange(imin_slab+bc_pr[0][0]-1,imax_slab+bc_pr[0][0]-1)//2+1)
-          jcoarserange = (np.arange(jmin_slab+bc_pr[1][0]-1,jmax_slab+bc_pr[1][0]-1)//2+1).reshape(-1,1)
-          if idx_dim == 2:
-            _unst_bc_face_coarseidx.append(s_numbering.ij_to_index_from_loc(icoarserange, jcoarserange, bc_face_loc, np.array(vtx_shape)//2+1).reshape(-1))
-          else:
-            kcoarserange = (np.arange(kmin_slab+bc_pr[2][0]-1,kmax_slab+bc_pr[2][0]-1)//2+1).reshape(-1,1,1)
-            _unst_bc_face_coarseidx.append(s_numbering.ijk_to_index_from_loc(icoarserange, jcoarserange, kcoarserange, bc_face_loc, np.array(vtx_shape)//2+1).reshape(-1))
-        
-        face_loc_pr = np.zeros_like(bc_pr)
-        face_loc_pr[:,0] = bc_pr[:, 0]
-        face_loc_pr[:,1] = bc_pr[:, 0] + bc_size - 1
+      unst_bc_face_idx       = np_utils.concatenate_np_arrays(_unst_bc_face_idx)[1]
+      unst_bc_face_coarseidx = np_utils.concatenate_np_arrays(_unst_bc_face_coarseidx)[1]
 
-        unst_bc_face_idx       = np_utils.concatenate_np_arrays(_unst_bc_face_idx)[1]
-        unst_bc_face_coarseidx = np_utils.concatenate_np_arrays(_unst_bc_face_coarseidx)[1]
+      bcds = PT.new_BCDataSet('MultiGridBCFaceInfo', loc=bc_face_loc, point_range=face_loc_pr, parent=bc)
+      PT.new_BCData('DirichletData', fields={'CurUnstIdx': unst_bc_face_idx, 'CoarseUnstIdx': unst_bc_face_coarseidx},parent=bcds)
+      distri_face_bc = par_utils.dn_to_distribution(bc_range[1]-bc_range[0],  comm)
+      MT.new_Distribution({"Index": distri_face_bc}, parent=bcds)
 
-        bcds = PT.new_BCDataSet('MultiGridBCFaceInfo', loc=bc_face_loc, point_range=face_loc_pr, parent=bc)
-        PT.new_BCData('DirichletData', fields={'CurUnstIdx': unst_bc_face_idx, 'CoarseUnstIdx': unst_bc_face_coarseidx},parent=bcds)
-        distri_face_bc = par_utils.dn_to_distribution(bc_range[1]-bc_range[0],  comm)
-        MT.new_Distribution({"Index": distri_face_bc}, parent=bcds)
+def create_agglomerated_tree(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
+  COPY_ON_BASE = ~PT.pred.label_is('Zone_t')
+  COPY_ON_ZONE = ~PT.pred.label_in(['GridCoordinates_t', 'ArbitraryGridMotion_t',
+                                    'FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t',
+                                    'ZoneBC_t', 'ZoneGridConnectivity_t', 'ZoneType_t', 'ZoneBC_t']) \
+                &~PT.pred.name_is(':CGNS#Distribution')
+  COPY_ON_BC   = PT.pred.label_in(['Descriptor_t', 'FamilyName_t', 'AdditionalFamilyName_t', 'Ordinal_t'])
+  COPY_ON_GC   = COPY_ON_BC | PT.pred.name_in(['GridConnectivityProperty', 'GridConnectivityType', 'Transform'])
+  mg_tree = PT.new_CGNSTree()
+  for base in PT.iter_all_CGNSBase_t(tree):
 
-  
-    for mg_z in PT.iter_all_Zone_t(mg_dt):
-      
-      PT.rm_nodes_from_label(mg_z, 'BCDataSet_t')
-      PT.rm_nodes_from_label(mg_z, 'DiscreteData_t')
-      PT.rm_nodes_from_label(mg_z, 'FlowSolution_t')
-      PT.rm_nodes_from_label(mg_z, 'ZoneSubRegion_t')
-      
-      vtx_distrib   = MT.distribution_value(mg_z, 'Vertex')
-      vtx_shape     = PT.Zone.VertexSize(mg_z)
-      vtx_slabs     = HFR2S.compute_slabs(vtx_shape, vtx_distrib[:2])
-      nb_mg_vtx_loc = nb_mg_entities_from_slabs(vtx_slabs)
-      
-      cell_distrib   = MT.distribution_value(mg_z, 'Cell')
-      cell_shape     = PT.Zone.CellSize(mg_z)
-      cell_slabs     = HFR2S.compute_slabs(cell_shape, cell_distrib[:2])
-      nb_mg_cell_loc = nb_mg_entities_from_slabs(cell_slabs)
-      
-      ini_coords = {key : val for key,val in PT.Zone.coordinates(mg_z)._asdict().items()
+    mg_base = PT.new_child(mg_tree,
+                           PT.get_name(base),
+                           PT.get_label(base),
+                           PT.get_np_value(base).copy())
+    _deepcopy_children_if(base, mg_base, COPY_ON_BASE)
+
+    for zone in PT.iter_all_Zone_t(base):
+
+      vtx_slabs  = HFR2S.compute_slabs(PT.Zone.VertexSize(zone),
+                                       MT.distribution_value(zone, 'Vertex')[:2])
+      cell_slabs = HFR2S.compute_slabs(PT.Zone.CellSize(zone),
+                                       MT.distribution_value(zone, 'Cell')[:2])
+      nb_mg_vtx_loc  = _nb_mg_entities_from_slabs(vtx_slabs)
+      nb_mg_cell_loc = _nb_mg_entities_from_slabs(cell_slabs)
+
+      # Create MG Zone
+      mg_zone_size = np.copy(PT.get_np_value(zone))
+      mg_zone_size[:,0] = mg_zone_size[:,0] // 2 + 1 # Vtx
+      mg_zone_size[:,1] = mg_zone_size[:,1] // 2     # Cell
+      mg_zone = PT.new_Zone(PT.get_name(zone), type='Structured', size=mg_zone_size, parent=mg_base)
+
+      ini_coords = {key : val for key,val in PT.Zone.coordinates(zone)._asdict().items()
                     if val is not None}
-      mg_coords  = {key: list() for key in ini_coords}
+      mg_coords:Dict[str, List[NDArray]] = {key: list() for key in ini_coords}
       start_vtx = 0
       
       # Filter coordinates: reuse slab because we can not simply remove one vtx
@@ -162,51 +158,87 @@ def multigrid_s(dt, nb_lvl, comm):
           mg_coords[key].append(ini_coord_shaped[shift_i::2, shift_j::2, shift_k::2].reshape(-1, order='F'))
         
         start_vtx = end_vtx
-
         
-      # Concatenate lists
-      mg_coords = {key: np_utils.concatenate_np_arrays(val)[1] for key,val in mg_coords.items()}
-      
-      grid_co = PT.find_child_from_label(mg_z, 'GridCoordinates_t')
-      for key, val in mg_coords.items():
-        PT.set_value(PT.find_child_from_name(grid_co, key), val)
+      # Concatenate lists when creating coordinates
+      PT.new_GridCoordinates(PT.get_name(PT.find_child_from_label(zone, 'GridCoordinates_t')),
+                             fields={key:np_utils.concatenate_np_arrays(val)[1] for key,val in mg_coords.items()},
+                             parent=mg_zone)
 
-      # Update zone sizes
-      cell_size = PT.get_np_value(mg_z)[:,1]
-      vtx_size  = PT.get_np_value(mg_z)[:,0]
-      cell_size[:] = cell_size // 2
-      vtx_size[:]  =  vtx_size // 2 + 1
-      
+      for zbc, bc in PT.get_nodes_from_predicates(zone, "ZoneBC_t/BC_t", ancestors=True):
+        mg_zbc = PT.update_child(mg_zone, PT.get_name(zbc), 'ZoneBC_t')
+        assert PT.Subset.GridLocation(bc) == "Vertex", "Only Vertex located subsets are managed"
 
-      zone_distri = {"Vertex" : par_utils.dn_to_distribution(nb_mg_vtx_loc,  comm),
-                     "Cell"   : par_utils.dn_to_distribution(nb_mg_cell_loc, comm)}
-      #Remark: 'face' distribution is not used in structured mesh so imposed uniform
-      if PT.Zone.IndexDimension(mg_z) == 3:
-        zone_distri["Face"] = par_utils.uniform_distribution(PT.Zone.n_face(mg_z), comm)
-      MT.new_Distribution(zone_distri, parent=mg_z)
-      
-      for mg_bc in PT.get_nodes_from_predicates(mg_z, "ZoneBC_t/BC_t"):
-        assert PT.Subset.GridLocation(mg_bc) == "Vertex", "Only Vertex located subsets are managed"
-        pr_n = PT.find_node_from_name(mg_bc, 'PointRange')
-        pr   = PT.get_np_value(pr_n)
-        PT.set_value(pr_n, pr//2+1)
-        distri_idx  = par_utils.dn_to_distribution(PT.Subset.n_elem(mg_bc), comm)
+        mg_bc = PT.new_BC(PT.get_name(bc), PT.get_str_value(bc), parent=mg_zbc)
+
+        if (pr := PT.get_child_from_name(bc, 'PointRange')) is not None:
+          PT.new_IndexRange('PointRange', value = PT.get_np_value(pr)//2 + 1, parent=mg_bc)
+        else:
+          raise RuntimeError("PointList are not supported for BC_t nodes")
+
+        _deepcopy_children_if(bc, mg_bc, COPY_ON_BC)
+        distri_idx = par_utils.dn_to_distribution(PT.Subset.n_elem(mg_bc), comm)
         MT.new_Distribution({"Index": distri_idx}, parent=mg_bc)
       
-      for mg_gc in PT.iter_children_from_predicates(mg_z, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
-        assert PT.Subset.GridLocation(mg_gc) == "Vertex", "Only Vertex located subsets are managed"
-        pr_n = PT.find_node_from_name(mg_gc, 'PointRange')
-        pr   = PT.get_np_value(pr_n)
-        assert (pr[:,1] - pr[:,0] % 2 == 0).all()
-        PT.set_value(pr_n, pr//2+1)
-        prd_n = PT.get_node_from_name(mg_gc, 'PointRangeDonor')
-        if prd_n is not None:
-          prd = PT.get_np_value(prd_n)
-          PT.set_value(prd_n, prd//2+1) # TODO : what if PR/PRd decreasing ?
+      for zgc, gc in PT.iter_children_from_predicates(mg_zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC], ancestors=True):
+        mg_zgc = PT.update_child(mg_zone, PT.get_name(zgc), 'ZoneGridConnectivity_t')
+        assert PT.Subset.GridLocation(gc) == "Vertex", "Only Vertex located subsets are managed"
+
+        mg_gc = PT.new_node(PT.get_name(gc), PT.get_label(gc), PT.get_value(gc), parent=mg_zgc)
+
+        if (pr := PT.get_child_from_name(gc, 'PointRange')) is not None:
+          PT.new_IndexRange('PointRange', value = PT.get_np_value(pr)//2 + 1, parent=mg_gc)
+        else:
+          raise RuntimeError("PointList are not supported for GridConnectivity(1to1)_t nodes")
+        if (prd := PT.get_child_from_name(gc, 'PointRangeDonor')) is not None:
+          PT.new_IndexRange('PointRangeDonor', value = PT.get_np_value(prd)//2 + 1, parent=mg_gc)
+        elif PT.get_child_from_name(gc, 'PointListDonor') is not None:
+          raise RuntimeError("PointListDonor are not supported for GridConnectivity(1to1)_t nodes")
+
+        _deepcopy_children_if(gc, mg_gc, COPY_ON_GC)
         distri_idx  = par_utils.dn_to_distribution(PT.Subset.n_elem(mg_gc),  comm)
         MT.new_Distribution({"Index": distri_idx}, parent=mg_gc)
 
-    # PT.print_tree(mg_dt)
-    trees.append(mg_dt)
+      _deepcopy_children_if(zone, mg_zone, COPY_ON_ZONE)
+
+      zone_distri = {"Vertex" : par_utils.dn_to_distribution(nb_mg_vtx_loc,  comm),
+                      "Cell"  : par_utils.dn_to_distribution(nb_mg_cell_loc, comm)}
+      #Remark: 'face' distribution is not used in structured mesh so imposed uniform
+      if PT.Zone.IndexDimension(mg_zone) == 3:
+        zone_distri["Face"] = par_utils.uniform_distribution(PT.Zone.n_face(mg_zone), comm)
+      MT.new_Distribution(zone_distri, parent=mg_zone)
+
+  return mg_tree
+
+def agglomerate_s(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
+
+  mg_tree = create_agglomerated_tree(tree, comm)
+  compute_agglomerated_parent(tree, comm)
+  return mg_tree
+
+def multigrid_s(dt, nb_lvl, comm):
+
+  for z in PT.iter_all_Zone_t(dt):
+    
+    for dir,nci in zip('IJK', PT.Zone.CellSize(z)):
+      if nci % (2**nb_lvl) != 0:
+        raise ValueError(f"Invalid number of cells in {dir} direction: {nci} is not a multiple of 2^{nb_lvl}")
+    
+    predicates = [PT.pred.label_in(['ZoneBC_t', 'ZoneGridConnectivity_t']),
+                  PT.pred.label_is('BC_t') | PT.pred.IS_GC] 
+    for subset in PT.iter_children_from_predicates(z, predicates):
+      if PT.get_child_from_name(subset, 'PointList') is not None:
+        raise ValueError("Only PointRange subsets are supported")
+      if PT.Subset.GridLocation(subset) not in ['Vertex', 'CellCenter']:
+        raise NotImplementedError("'I/J/KFaceCenter' subsets are not yet managed for multigrid !")
+      rest_div = 1 if PT.Subset.GridLocation(subset) == 'Vertex' else 0
+      pr_size = PT.Subset.SizePerIndex(subset)
+      # Skip null direction when checking
+      _pr_size = tuple(k for d,k in enumerate(pr_size) if d != PT.Subset.normal_axis(subset))
+      if any(s % (2**nb_lvl) != rest_div for s in _pr_size):
+        raise ValueError(f"Subset {PT.get_name(subset)} has a PointRange size incompatible with requested agglomeration")
+
+  trees = [dt]
+  for lvl in range(nb_lvl):
+    trees.append(agglomerate_s(trees[-1], comm))
   
   return trees
