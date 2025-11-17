@@ -50,8 +50,10 @@ def multigrid_s(dt, nb_lvl, comm):
       axis_l.pop(bnd_axis)
       if PT.Subset.GridLocation(subset) == "Vertex":
         rest_div = 0
-      elif PT.Subset.GridLocation(subset).endswith("Center"):
+      elif PT.Subset.GridLocation(subset) == ("CellCenter"):
         rest_div = 1
+      else:
+        raise NotImplementedError("'I/J/KFaceCenter' subsets are not yet managed for multigrid !")
       for axis in axis_l:
         assert((pr[axis][1]-pr[axis][0])%2 == rest_div)
   
@@ -150,12 +152,6 @@ def multigrid_s(dt, nb_lvl, comm):
       cell_slabs     = HFR2S.compute_slabs(cell_shape, cell_distrib[:2])
       nb_mg_cell_loc = nb_mg_entities_from_slabs(cell_slabs)
       
-      face_distrib_n = MT.get_Distribution(mg_z, 'Face')
-      face_distrib   = PT.get_value(face_distrib_n)
-      face_shape     = PT.Zone.FaceSize(mg_z)
-      face_slabs     = HFR2S.compute_slabs(face_shape, face_distrib[:2])
-      nb_mg_face_loc = nb_mg_entities_from_slabs(face_slabs)
-      
       mg_cx, mg_cy, mg_cz = PT.Zone.coordinates(mg_z)
       new_mg_cx = []
       new_mg_cy = []
@@ -207,7 +203,9 @@ def multigrid_s(dt, nb_lvl, comm):
       
       distri_vtx  = par_utils.dn_to_distribution(nb_mg_vtx_loc,  comm)
       distri_cell = par_utils.dn_to_distribution(nb_mg_cell_loc, comm)
-      distri_face = par_utils.dn_to_distribution(nb_mg_face_loc, comm)
+      #Remark: 'face' distribution is not used in structured mesh so imposed uniform
+      mg_n_face = PT.Zone.n_face(mg_z)
+      distri_face = par_utils.uniform_distribution(mg_n_face, comm)
       PT.rm_node_from_path(mg_z, ':CGNS#Distribution')
       MT.new_Distribution({"Vertex": distri_vtx, "Cell": distri_cell, "Face": distri_face}, parent=mg_z)
       
@@ -219,6 +217,8 @@ def multigrid_s(dt, nb_lvl, comm):
           PT.rm_nodes_from_name(mg_bc, ':CGNS#Distribution')
           distri_idx  = par_utils.dn_to_distribution(np.prod(PT.Subset.SizePerIndex(mg_bc)),  comm)
           MT.new_Distribution({"Index": distri_idx}, parent=mg_bc)
+        else:
+          raise NotImplementedError("BC without 'Vertex' gridlocation is not managed !")
       
       for mg_gc in PT.get_nodes_from_predicates(mg_z, "ZoneGridConnectivity_t/GridConnectivity_t") \
                  + PT.get_nodes_from_predicates(mg_z, "ZoneGridConnectivity_t/GridConnectivity1to1_t"):
@@ -236,6 +236,8 @@ def multigrid_s(dt, nb_lvl, comm):
           PT.rm_nodes_from_name(mg_gc, ':CGNS#Distribution')
           distri_idx  = par_utils.dn_to_distribution(np.prod(PT.Subset.SizePerIndex(mg_gc)),  comm)
           MT.new_Distribution({"Index": distri_idx}, parent=mg_gc)
+        else:
+          raise NotImplementedError("GC without 'Vertex' gridlocation is not managed !")
     # PT.print_tree(mg_dt)
     trees.append(mg_dt)
   
