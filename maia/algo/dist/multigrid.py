@@ -3,6 +3,7 @@ import numpy as np
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
+from maia                 import npy_pdm_gnum_dtype                         as pdm_gnum_dtype
 from maia.utils           import par_utils, pr_utils, py_utils, s_numbering, np_utils
 from maia.utils.numbering import range_to_slab                              as HFR2S
 
@@ -38,25 +39,27 @@ def compute_agglomerated_parent(tree:CGNSDistTree, comm:MPIComm):
     cell_shape_coarse = tuple(s//2     for s in cell_shape)
     vtx_shape_coarse  = tuple(s//2 + 1 for s in vtx_shape)
     
-    _unst_cell_idx = list()
-    _unst_cell_coarseidx = list()
+    _cell_icoarseidx = list()
+    _cell_jcoarseidx = list()
+    _cell_kcoarseidx = list()
     for cell_slab in cell_slabs:
       # Works also for 2D meshes since krange will be 'empty' in this case
       (imin_slab,imax_slab), (jmin_slab,jmax_slab), (kmin_slab,kmax_slab) = cell_slab
-      irange = np.arange(imin_slab+1,imax_slab+1)
-      jrange = np.arange(jmin_slab+1,jmax_slab+1).reshape(-1,1)
-      krange = np.arange(kmin_slab+1,kmax_slab+1).reshape(-1,1,1)
-      _unst_cell_idx.append(s_numbering.ijk_to_index(irange, jrange, krange, cell_shape).reshape(-1))
       icoarserange = (np.arange(imin_slab,imax_slab)//2+1)
       jcoarserange = (np.arange(jmin_slab,jmax_slab)//2+1).reshape(-1,1)
-      kcoarserange = (np.arange(kmin_slab,kmax_slab)//2+1).reshape(-1,1,1)
-      _unst_cell_coarseidx.append(s_numbering.ijk_to_index(icoarserange, jcoarserange, kcoarserange, cell_shape_coarse).reshape(-1))
+      if idx_dim == 2:
+        kcoarserange = (np.ones((1,),dtype=pdm_gnum_dtype)).reshape(-1,1,1)
+      else:
+        kcoarserange = (np.arange(kmin_slab,kmax_slab)//2+1).reshape(-1,1,1)
+      _cell_icoarseidx.append(np.tile(icoarserange, len(jcoarserange)*len(kcoarserange)))
+      _cell_jcoarseidx.append(np.tile(np.tile(jcoarserange, len(icoarserange)).flatten(), len(kcoarserange)).flatten())
+      _cell_kcoarseidx.append(np.tile(kcoarserange, len(icoarserange)*len(jcoarserange)).flatten())
 
-    unst_cell_idx = np_utils.concatenate_np_arrays(_unst_cell_idx)[1]
-    unst_cell_coarseidx = np_utils.concatenate_np_arrays(_unst_cell_coarseidx)[1]
+    fields = {'I': np_utils.concatenate_np_arrays(_cell_icoarseidx)[1],
+              'J': np_utils.concatenate_np_arrays(_cell_jcoarseidx)[1],
+              'K': np_utils.concatenate_np_arrays(_cell_kcoarseidx)[1]}
 
-    PT.new_DiscreteData('MultiGridCellInfo', loc='CellCenter', fields={'CurUnstIdx': unst_cell_idx, 'CoarseUnstIdx': unst_cell_coarseidx}, parent=z)
-    # PT.new_FlowSolution('MultiGridCellInfo', loc='CellCenter', fields={'CurUnstIdx': unst_cell_idx, 'CoarseUnstIdx': unst_cell_coarseidx}, parent=z)
+    PT.new_DiscreteData('MultiGridCellInfo', loc='CellCenter', fields={f'{d}CoarseIdx': fields[d] for d in 'IJK'[0:idx_dim]}, parent=z)
     
     for bc in PT.get_nodes_from_predicates(z, "ZoneBC_t/BC_t"):
       # Compute FaceIdx for BC subsets: we work as if BC were FaceCenter thanks to transform_bnd_pr_size
@@ -67,36 +70,34 @@ def compute_agglomerated_parent(tree:CGNSDistTree, comm:MPIComm):
       bc_slabs     = HFR2S.compute_slabs(bc_size, bc_range)
       bnd_axis     = PT.Subset.normal_axis(bc)
       bc_face_loc  = f"{'IJK'[bnd_axis]}{'Edge' if idx_dim == 2 else 'Face'}Center"
-      _unst_bc_face_idx = list()
-      _unst_bc_face_coarseidx = list()
+      _bc_face_icoarseidx = list()
+      _bc_face_jcoarseidx = list()
+      _bc_face_kcoarseidx = list()
 
       for bc_slab in bc_slabs:
         (imin_slab,imax_slab), (jmin_slab,jmax_slab), (kmin_slab,kmax_slab) = bc_slab
         # TODO maybe shift missing ?
-        irange = np.arange(imin_slab+bc_pr[0][0],imax_slab+bc_pr[0][0])
-        jrange = np.arange(jmin_slab+bc_pr[1][0],jmax_slab+bc_pr[1][0]).reshape(-1,1)
-        if idx_dim == 2:
-          _unst_bc_face_idx.append(s_numbering.ij_to_index_from_loc(irange, jrange, bc_face_loc, vtx_shape).reshape(-1))
-        else:
-          krange = np.arange(kmin_slab+bc_pr[2][0],kmax_slab+bc_pr[2][0]).reshape(-1,1,1)
-          _unst_bc_face_idx.append(s_numbering.ijk_to_index_from_loc(irange, jrange, krange, bc_face_loc, vtx_shape).reshape(-1))
         icoarserange = (np.arange(imin_slab+bc_pr[0][0]-1,imax_slab+bc_pr[0][0]-1)//2+1)
         jcoarserange = (np.arange(jmin_slab+bc_pr[1][0]-1,jmax_slab+bc_pr[1][0]-1)//2+1).reshape(-1,1)
         if idx_dim == 2:
-          _unst_bc_face_coarseidx.append(s_numbering.ij_to_index_from_loc(icoarserange, jcoarserange, bc_face_loc, vtx_shape_coarse).reshape(-1))
+          kcoarserange = (np.ones((1,),dtype=pdm_gnum_dtype)).reshape(-1,1,1)
         else:
           kcoarserange = (np.arange(kmin_slab+bc_pr[2][0]-1,kmax_slab+bc_pr[2][0]-1)//2+1).reshape(-1,1,1)
-          _unst_bc_face_coarseidx.append(s_numbering.ijk_to_index_from_loc(icoarserange, jcoarserange, kcoarserange, bc_face_loc, vtx_shape_coarse).reshape(-1))
+        _bc_face_icoarseidx.append(np.tile(icoarserange, len(jcoarserange)*len(kcoarserange)))
+        _bc_face_jcoarseidx.append(np.tile(np.tile(jcoarserange, len(icoarserange)).flatten(), len(kcoarserange)).flatten())
+        _bc_face_kcoarseidx.append(np.tile(kcoarserange, len(icoarserange)*len(jcoarserange)).flatten())
       
       face_loc_pr = np.zeros_like(bc_pr)
       face_loc_pr[:,0] = bc_pr[:, 0]
       face_loc_pr[:,1] = bc_pr[:, 0] + bc_size - 1
 
-      unst_bc_face_idx       = np_utils.concatenate_np_arrays(_unst_bc_face_idx)[1]
-      unst_bc_face_coarseidx = np_utils.concatenate_np_arrays(_unst_bc_face_coarseidx)[1]
+      fields = {'I': np_utils.concatenate_np_arrays(_bc_face_icoarseidx)[1],
+                'J': np_utils.concatenate_np_arrays(_bc_face_jcoarseidx)[1],
+                'K': np_utils.concatenate_np_arrays(_bc_face_kcoarseidx)[1]}
 
       bcds = PT.new_BCDataSet('MultiGridBCFaceInfo', loc=bc_face_loc, point_range=face_loc_pr, parent=bc)
-      PT.new_BCData('DirichletData', fields={'CurUnstIdx': unst_bc_face_idx, 'CoarseUnstIdx': unst_bc_face_coarseidx},parent=bcds)
+      PT.new_BCData('DirichletData', fields={f'{d}CoarseIdx': fields[d] for d in 'IJK'[0:idx_dim]},parent=bcds)
+      PT.new_Descriptor('BCStructuredLocation', bc_face_loc, parent=bcds)
       distri_face_bc = par_utils.dn_to_distribution(bc_range[1]-bc_range[0],  comm)
       MT.new_Distribution({"Index": distri_face_bc}, parent=bcds)
 
