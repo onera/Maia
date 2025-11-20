@@ -38,16 +38,12 @@ def test_multigrid_s_2D(comm):
     coarse = PT.shallow_copy(trees[i+1])
     from maia.utils import s_numbering
     coarse_zone = PT.get_all_Zone_t(coarse)[0]
-    coarse_shape = PT.Zone.CellSize(coarse_zone)
     coarse_distri = MT.distribution_value(coarse_zone, 'Cell')
-    icoarserange = np.arange(1, coarse_shape[0]+1)
-    jcoarserange = np.arange(1, coarse_shape[1]+1).reshape(-1,1)
-    fi = np.tile(icoarserange, len(jcoarserange))
-    fj = np.tile(jcoarserange, len(icoarserange)).flatten()
+    fi, fj = s_numbering.index_to_ij(np.arange(coarse_distri[0]+1, coarse_distri[1]+1),
+                                     PT.Zone.CellSize(coarse_zone))
     PT.new_FlowSolution('CoarseId',
                         loc='CellCenter',
-                        fields={'I': fi[coarse_distri[0]:coarse_distri[1]],
-                                'J': fj[coarse_distri[0]:coarse_distri[1]]},
+                        fields={'I': fi, 'J': fj},
                         parent=coarse_zone)
 
     maia.algo.interpolate(coarse, tree, comm, ['CoarseId'], 'CellCenter')
