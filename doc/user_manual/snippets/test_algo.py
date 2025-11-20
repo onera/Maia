@@ -101,6 +101,20 @@ def test_extrude_2d():
   assert PT.Zone.CellDimension(PT.get_node_from_label(dist_tree, 'Zone_t')) == 3
   #extrude@end
 
+def test_agglomerate():
+  #agglomerate@start
+  from mpi4py import MPI
+  import maia
+  import maia.pytree as PT
+
+  dist_tree = maia.factory.generate_dist_block([37, 21, 29], 'S', MPI.COMM_WORLD)
+  maia.algo.dist.agglomerate_cells(dist_tree, 2, MPI.COMM_WORLD)
+
+  assert PT.Zone.CellSize(PT.get_node_from_path(dist_tree, 'Base.LV0/zone')) == (36,20,28)
+  assert PT.Zone.CellSize(PT.get_node_from_path(dist_tree, 'Base.LV1/zone')) == (18,10,14)
+  assert PT.Zone.CellSize(PT.get_node_from_path(dist_tree, 'Base.LV2/zone')) == (9,5,7)
+  #agglomerate@end
+
 def test_merge_zones():
   #merge_zones@start
   from mpi4py import MPI

@@ -4,7 +4,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils           import par_utils, pr_utils, py_utils, np_utils
-from maia.utils.numbering import range_to_slab                              as HFR2S
+from maia.utils.numbering import range_to_slab as HFR2S
 
 from maia.typing        import *
 from maia.pytree.typing import Predicate
@@ -211,13 +211,37 @@ def create_agglomerated_tree(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
 
   return mg_tree
 
-def agglomerate_s(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
+def agglomerate_one_level_s(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
 
   mg_tree = create_agglomerated_tree(tree, comm)
   compute_agglomerated_parent(tree, comm)
   return mg_tree
 
-def multigrid_s(dist_tree:CGNSDistTree, nb_lvl:int, comm:MPIComm):
+def agglomerate_cells(dist_tree:CGNSDistTree, nb_lvl:int, comm:MPIComm):
+  """ Recursively agglomerate a structured mesh.
+
+  The size of the input mesh must be compatible with the requested number of 
+  levels: in each direction, the number of cells must be a multiple of
+  :math:`2^\\text{nb_lvl}`.
+
+  The same condition is requested for ``BC_t`` and ``GC_t`` subsets of the mesh, which
+  in addition must be Vertex located.
+  Other subset labels are not supported. 
+
+  Input tree is modified inplace: initial ``CGNSBase_t`` nodes are suffixed with ``.LV0``,
+  and ``nb_lvl`` new bases are created with ``.LV{i}`` suffixes (higher means coarser).
+
+  Args:
+    dist_tree (CGNSDistTree): Input structured distributed tree
+    nb_lvl (int): Number of levels
+    comm      (MPIComm)     : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #agglomerate@start
+        :end-before: #agglomerate@end
+        :dedent: 2
+  """
 
   for z in PT.iter_all_Zone_t(dist_tree):
     
@@ -242,11 +266,11 @@ def multigrid_s(dist_tree:CGNSDistTree, nb_lvl:int, comm:MPIComm):
   # Create all levels
   trees = [dist_tree]
   for lvl in range(nb_lvl):
-    trees.append(agglomerate_s(trees[-1], comm))
+    trees.append(agglomerate_one_level_s(trees[-1], comm))
 
   # Gather results in input tree
   for i,tree in enumerate(trees):
-    _suffix_bases(tree, f'.MG{i}')
+    _suffix_bases(tree, f'.LV{i}')
     if i > 0:
       for base in PT.iter_all_CGNSBase_t(tree):
         PT.add_child(dist_tree, base)

@@ -19,11 +19,11 @@ def test_suffix_bases():
       ZoneGridConnectivity ZoneGridConnectivity_t:
         jn GridConnectivity_t "SomeBase/Zone":
   """)
-  MG._suffix_bases(tree, '.MG8')
+  MG._suffix_bases(tree, '.LV8')
 
   assert [PT.get_name(b) for b in PT.get_all_CGNSBase_t(tree)] == \
-    ['SomeBase.MG8', 'SomeOtherBase.MG8']
-  assert PT.get_value(PT.find_node_from_name(tree, 'jn')) == "SomeBase.MG8/Zone"
+    ['SomeBase.LV8', 'SomeOtherBase.LV8']
+  assert PT.get_value(PT.find_node_from_name(tree, 'jn')) == "SomeBase.LV8/Zone"
   assert PT.get_value(PT.find_node_from_name(tree, 'jnintra')) == "Zone"
 
 def test_slab_half_size():
@@ -54,15 +54,15 @@ def test_multigrid_s_2D(comm):
   PT.set_children(zbc, others + [bc1, bc2])
 
 
-  MG.multigrid_s(tree, n_lvl, comm)
+  MG.agglomerate_cells(tree, n_lvl, comm)
 
   # Check computed coarse index (on thin grid): we compute actual cell idx
   # on coarse mesh, and move it on thin mesh by interpolation to compare.
   for i in range(n_lvl):
     thin = PT.shallow_copy(tree)
-    PT.keep_children_from_name(thin, f'Base.MG{i}')
+    PT.keep_children_from_name(thin, f'Base.LV{i}')
     coarse = PT.shallow_copy(tree)
-    PT.keep_children_from_name(coarse, f'Base.MG{i+1}')
+    PT.keep_children_from_name(coarse, f'Base.LV{i+1}')
               
     from maia.utils import s_numbering
     coarse_zone = PT.get_all_Zone_t(coarse)[0]
@@ -76,12 +76,12 @@ def test_multigrid_s_2D(comm):
 
     maia.algo.interpolate(coarse, thin, comm, ['CoarseId'], 'CellCenter')
 
-    expected_i = PT.get_np_value(PT.find_node_from_path(thin, f'Base.MG{i}/zone/CoarseId/I'))
-    computed_i = PT.get_np_value(PT.find_node_from_path(thin, f'Base.MG{i}/zone/MultiGridCellInfo/ICoarseIdx'))
+    expected_i = PT.get_np_value(PT.find_node_from_path(thin, f'Base.LV{i}/zone/CoarseId/I'))
+    computed_i = PT.get_np_value(PT.find_node_from_path(thin, f'Base.LV{i}/zone/MultiGridCellInfo/ICoarseIdx'))
     assert np.array_equal(computed_i, expected_i)
 
-    expected_j = PT.get_np_value(PT.find_node_from_path(thin, f'Base.MG{i}/zone/CoarseId/J'))
-    computed_j = PT.get_np_value(PT.find_node_from_path(thin, f'Base.MG{i}/zone/MultiGridCellInfo/JCoarseIdx'))
+    expected_j = PT.get_np_value(PT.find_node_from_path(thin, f'Base.LV{i}/zone/CoarseId/J'))
+    computed_j = PT.get_np_value(PT.find_node_from_path(thin, f'Base.LV{i}/zone/MultiGridCellInfo/JCoarseIdx'))
     assert np.array_equal(computed_j, expected_j)
 
   # Check splited BC sizes (small subset is 25% total size)
@@ -99,12 +99,12 @@ def test_multigrid_s(comm):
   nb_lvl = 2
   
   dt = maia.factory.generate_dist_block(nb_vtx_per_dir, "S", comm)
-  MG.multigrid_s(dt, nb_lvl, comm)
+  MG.agglomerate_cells(dt, nb_lvl, comm)
   
   assert(len(PT.get_all_CGNSBase_t(dt)) == nb_lvl+1)
   
   for t in range(nb_lvl+1):
-    zone = PT.find_node_from_path(dt, f'Base.MG{t}/zone')
+    zone = PT.find_node_from_path(dt, f'Base.LV{t}/zone')
     assert PT.Zone.VertexSize(zone) == (2**(2-t)+1, 2**(2-t)+1, 2**(2-t)+1)
     cx,cy,cz = PT.Zone.coordinates(zone)
     if t == 0:
@@ -120,23 +120,23 @@ def test_multigrid_s(comm):
       assert np.all(np.isin(np.unique(cy), [0, 1.]))
       assert np.all(np.isin(np.unique(cz), [0, 1.]))
   
-  icoarse_ids_lvl0 = PT.get_value(PT.get_node_from_path(dt, 'Base.MG0/zone/MultiGridCellInfo/ICoarseIdx'))
+  icoarse_ids_lvl0 = PT.get_value(PT.get_node_from_path(dt, 'Base.LV0/zone/MultiGridCellInfo/ICoarseIdx'))
   icoarse_ids_lvl0_ref = np.array([1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2])
   assert np.all(icoarse_ids_lvl0 == icoarse_ids_lvl0_ref)
   
-  jcoarse_ids_lvl0 = PT.get_value(PT.get_node_from_path(dt, 'Base.MG0/zone/MultiGridCellInfo/JCoarseIdx'))
+  jcoarse_ids_lvl0 = PT.get_value(PT.get_node_from_path(dt, 'Base.LV0/zone/MultiGridCellInfo/JCoarseIdx'))
   jcoarse_ids_lvl0_ref = np.array([1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2])
   assert np.all(jcoarse_ids_lvl0 == jcoarse_ids_lvl0_ref)
   
-  kcoarse_ids_lvl0 = PT.get_value(PT.get_node_from_path(dt, 'Base.MG0/zone/MultiGridCellInfo/KCoarseIdx'))
+  kcoarse_ids_lvl0 = PT.get_value(PT.get_node_from_path(dt, 'Base.LV0/zone/MultiGridCellInfo/KCoarseIdx'))
   kcoarse_ids_lvl0_ref = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
   assert np.all(kcoarse_ids_lvl0 == kcoarse_ids_lvl0_ref+comm.rank)
   
-  icoarse_ids_lvl1 = PT.get_value(PT.get_node_from_path(dt, 'Base.MG1/zone/MultiGridCellInfo/ICoarseIdx'))
+  icoarse_ids_lvl1 = PT.get_value(PT.get_node_from_path(dt, 'Base.LV1/zone/MultiGridCellInfo/ICoarseIdx'))
   assert np.all(icoarse_ids_lvl1==1)
-  jcoarse_ids_lvl1 = PT.get_value(PT.get_node_from_path(dt, 'Base.MG1/zone/MultiGridCellInfo/JCoarseIdx'))
+  jcoarse_ids_lvl1 = PT.get_value(PT.get_node_from_path(dt, 'Base.LV1/zone/MultiGridCellInfo/JCoarseIdx'))
   assert np.all(jcoarse_ids_lvl1==1)
-  kcoarse_ids_lvl1 = PT.get_value(PT.get_node_from_path(dt, 'Base.MG1/zone/MultiGridCellInfo/KCoarseIdx'))
+  kcoarse_ids_lvl1 = PT.get_value(PT.get_node_from_path(dt, 'Base.LV1/zone/MultiGridCellInfo/KCoarseIdx'))
   assert np.all(kcoarse_ids_lvl1==1)
   
-  assert PT.get_node_from_path(dt, 'Base.MG2/zone/MultiGridCellInfo') == None
+  assert PT.get_node_from_path(dt, 'Base.LV2/zone/MultiGridCellInfo') == None
