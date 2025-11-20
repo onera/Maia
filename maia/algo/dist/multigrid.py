@@ -9,6 +9,14 @@ from maia.utils.numbering import range_to_slab                              as H
 from maia.typing        import *
 from maia.pytree.typing import Predicate
 
+def _suffix_bases(tree:CGNSTree, suffix:str):
+  # Add the provided suffix to all CGNSBase_t nodes. Update GC_t nodes if any
+  for base in PT.iter_all_CGNSBase_t(tree):
+    PT.set_name(base, PT.get_name(base) + suffix)
+    for gc in PT.iter_children_from_predicates(base, ['Zone_t', 'ZoneGridConnectivity_t', PT.pred.IS_GC]):
+      if '/' in (gc_val := PT.get_str_value(gc)):
+        basename, zonename = gc_val.split('/')
+        PT.set_value(gc, f"{basename+suffix}/{zonename}")
 
 def _slab_half_size(slab):
   # Compute the number of entities if the slab had only one point over two
@@ -209,9 +217,9 @@ def agglomerate_s(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
   compute_agglomerated_parent(tree, comm)
   return mg_tree
 
-def multigrid_s(dt, nb_lvl, comm):
+def multigrid_s(dist_tree:CGNSDistTree, nb_lvl:int, comm:MPIComm):
 
-  for z in PT.iter_all_Zone_t(dt):
+  for z in PT.iter_all_Zone_t(dist_tree):
     
     for dir,nci in zip('IJK', PT.Zone.CellSize(z)):
       if nci % (2**nb_lvl) != 0:
@@ -231,8 +239,14 @@ def multigrid_s(dt, nb_lvl, comm):
       if any(s % (2**nb_lvl) != rest_div for s in _pr_size):
         raise ValueError(f"Subset {PT.get_name(subset)} has a PointRange size incompatible with requested agglomeration")
 
-  trees = [dt]
+  # Create all levels
+  trees = [dist_tree]
   for lvl in range(nb_lvl):
     trees.append(agglomerate_s(trees[-1], comm))
-  
-  return trees
+
+  # Gather results in input tree
+  for i,tree in enumerate(trees):
+    _suffix_bases(tree, f'.MG{i}')
+    if i > 0:
+      for base in PT.iter_all_CGNSBase_t(tree):
+        PT.add_child(dist_tree, base)
