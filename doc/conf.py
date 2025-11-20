@@ -32,7 +32,15 @@ extensions = ["sphinx.ext.graphviz",
               "sphinx.ext.autosummary",
               "sphinx_tabs.tabs",
               "sphinx.ext.napoleon",
-              'sphinx_copybutton',]
+              "sphinx_copybutton",
+              "sphinx_togglebutton",
+              "myst_nb"]
+
+# -- MystNB settings
+nb_execution_mode = "off" # Do not execute notebooks, we do it ourself
+myst_enable_extensions = [
+    "dollarmath", # Allow to write equations with $ : $y=x^2$
+]
 
 add_module_names = False #Shorten function names
 autodoc_typehints = 'none' #Hide typehints in doc

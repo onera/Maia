@@ -1,4 +1,4 @@
-.. _user_man_transfer:
+.. _user_transfer:
 
 Transfer module
 ===============
