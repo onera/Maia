@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
+💡 New Features
+^^^^^^^^^^^^^^^
+- Algo module: add ``agglomerate_cells`` to create structured coarsened meshes
+
 🐞 Fixes
 ^^^^^^^^
 - centers_to_nodes: add checks and fix empty partition bugs

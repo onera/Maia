@@ -61,6 +61,7 @@ Geometry transformations
 .. autofunction:: maia.algo.dist.duplicate_from_periodic_jns
 .. autofunction:: maia.algo.dist.duplicate_family_from_periodic_jns
 .. autofunction:: maia.algo.dist.extrude
+.. autofunction:: maia.algo.dist.agglomerate_cells
 .. autofunction:: maia.algo.dist.merge_zones
 .. autofunction:: maia.algo.dist.merge_zones_from_family
 .. autofunction:: maia.algo.dist.merge_connected_zones
