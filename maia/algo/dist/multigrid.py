@@ -181,7 +181,7 @@ def create_agglomerated_tree(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
         distri_idx = par_utils.dn_to_distribution(PT.Subset.n_elem(mg_bc), comm)
         MT.new_Distribution({"Index": distri_idx}, parent=mg_bc)
       
-      for zgc, gc in PT.iter_children_from_predicates(mg_zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC], ancestors=True):
+      for zgc, gc in PT.iter_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC], ancestors=True):
         mg_zgc = PT.update_child(mg_zone, PT.get_name(zgc), 'ZoneGridConnectivity_t')
         assert PT.Subset.GridLocation(gc) == "Vertex", "Only Vertex located subsets are managed"
 
