@@ -195,7 +195,7 @@ def to_string(tree:CGNSTree,
   return out_lines
 
 def print_tree(tree:CGNSTree, 
-               out:TextIO =sys.stdout,
+               out:Optional[TextIO]=None,
                *, 
                verbose:bool=False,
                max_depth:int=1000,
@@ -270,6 +270,8 @@ def print_tree(tree:CGNSTree,
             └───CoordinateX DataArray_t I4 (16,)
                 [0 1 2 3 0 1 2 3 0 1 2 3 0 1 2 3]
   """
+  if out is None:
+    out = sys.stdout
 
   if out not in [sys.stdout, sys.stderr]:
     colors = False

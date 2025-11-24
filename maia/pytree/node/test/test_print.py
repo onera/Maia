@@ -32,7 +32,7 @@ CGNSTree CGNSTree_t
 └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
 """
     # We have to reput sys.stdout otherwise pytest does not capture output
-    print_tree(self.tree, sys.stdout, colors=False)
+    print_tree(self.tree, colors=False)
     out, err = capsys.readouterr()
     assert out == expected_print_str
 
@@ -72,7 +72,7 @@ CGNSTree CGNSTree_t
 │                   ["Kilogram" "Meter" "Second" "Kelvin" "Radian"]
 └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
 """
-    print_tree(self.tree, sys.stdout, colors=False, verbose=True)
+    print_tree(self.tree, colors=False, verbose=True)
     out, err = capsys.readouterr()
     assert out == expected_print_str
 
@@ -87,7 +87,7 @@ CGNSTree CGNSTree_t
 └───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
 """
     # We have to reput sys.stdout otherwise pytest does not capture output
-    print_tree(self.tree, sys.stdout, colors=False, max_depth=2)
+    print_tree(self.tree, colors=False, max_depth=2)
     out, err = capsys.readouterr()
     assert out == expected_print_str
 
@@ -100,7 +100,7 @@ CGNSTree CGNSTree_t
             └───Descriptor Descriptor_t "A very lo[...]data"
 """
     # We have to reput sys.stdout otherwise pytest does not capture output
-    print_tree(self.tree, sys.stdout, colors=False, print_if = lambda n: n[3] == 'Descriptor_t')
+    print_tree(self.tree, colors=False, print_if = lambda n: n[3] == 'Descriptor_t')
     out, err = capsys.readouterr()
     assert out == expected_print_str
 
@@ -116,7 +116,7 @@ Descriptor Descriptor_t "My descri[...]node"
 """
 
   # We have to reput sys.stdout otherwise pytest does not capture output
-  print_tree(desc, sys.stdout, colors=False)
+  print_tree(desc, colors=False)
   out, err = capsys.readouterr()
   assert out == expected_print_str
 
@@ -145,6 +145,6 @@ BaseIterativeData BaseIterativeData_t I4 [2]
 └───NumberOfZones DataArray_t I4 [2 3]
 """
 
-  print_tree(node, sys.stdout, verbose=verbose, colors=False)
+  print_tree(node, verbose=verbose, colors=False)
   out, err = capsys.readouterr()
   assert out == expected_print_str
