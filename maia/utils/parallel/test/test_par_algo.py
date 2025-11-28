@@ -33,19 +33,23 @@ def test_DistSorter(comm):
   if comm.Get_rank() == 0:
     key = np.array([34,19])
     data = np.array([1.,2.])
+    expected_key = np.array([3, 19])
     expected = np.array([3., 2.])
   if comm.Get_rank() == 1:
     key = np.array([3,40,42,27])
     data = np.array([3., 4., 5., 6.])
+    expected_key = np.array([27,34])
     expected = np.array([6.,1.])
   if comm.Get_rank() == 2:
     key = np.empty(0, int)
     data = np.empty(0, float)
+    expected_key = np.array([40,42])
     expected = np.array([4.,5.])
   #Key order is 3,19,27,34,40,42
 
   sorter = par_algo.DistSorter(key, comm)
   assert (sorter.sort(data) == expected).all()
+  assert (sorter.sorted_key() == expected_key).all()
 
 
 @pytest_parallel.mark.parallel([1,4])

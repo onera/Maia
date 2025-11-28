@@ -8,6 +8,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from .subset_tools import sort_dist_pointlist
+from maia.utils.parallel import algo as par_algo
 
 IS_GC_MATCH = PT.pred.is_gc_of_kind(is_1to1=True)
 
@@ -60,20 +61,61 @@ def _compare_pointrange(gc1, gc2):
 
  return (np.sort(gc1_pr) == np.sort(gc2_prd)).all() and (np.sort(gc2_pr) == np.sort(gc1_prd)).all()
 
-def _compare_pointlist(gc1, gc2):
+def _compare_pointlist(gc1, gc2, comm):
   """  
   Compare a couple of grid_connectivity nodes and return True
-  if the PointList and PointListDonor are symmetrically equals
+  if the PointList and PointListDonor are equals, even
+  if the symmetry is not respected
   """
-  gc1_pl  = np.asarray(PT.get_child_from_name(gc1, 'PointList')[1])
-  gc1_pld = np.asarray(PT.get_child_from_name(gc1, 'PointListDonor')[1])
-  gc2_pl  = np.asarray(PT.get_child_from_name(gc2, 'PointList')[1])
-  gc2_pld = np.asarray(PT.get_child_from_name(gc2, 'PointListDonor')[1])
-  if gc1_pl.shape != gc2_pld.shape or gc2_pl.shape != gc1_pld.shape:
-    return False
-  return (np.all(gc1_pl == gc2_pld) and np.all(gc2_pl == gc1_pld))
+  gc1_pl  = PT.get_np_value(PT.find_child_from_name(gc1, 'PointList'))[0]
+  gc1_pld = PT.get_np_value(PT.find_child_from_name(gc1, 'PointListDonor'))[0]
+  gc2_pl  = PT.get_np_value(PT.find_child_from_name(gc2, 'PointList'))[0]
+  gc2_pld = PT.get_np_value(PT.find_child_from_name(gc2, 'PointListDonor'))[0]
 
-def _create_local_match_table(gc_list, gc_paths):
+  # Sort first JN according to PL
+  S1 = par_algo.DistSorter(gc1_pl, comm)
+  gc1_pl_s  = S1.sorted_key()
+  gc1_pld_s = S1.sort(gc1_pld)
+  # Sort second JN according to PLd, using same distribution
+  # Index error means that some PLd_2 idx are to big regarding to PL_1 => wrong candidate
+  try:
+    S2 = par_algo.DistSorter(gc2_pld, comm, distri=S1.distri)
+  except IndexError:
+    return False
+  gc2_pl_s  = S2.sort(gc2_pl)
+  gc2_pld_s = S2.sorted_key()
+  
+  if (gc1_pl_s.size != gc2_pld_s.size) or (gc1_pld_s.size != gc2_pl_s.size):
+    return False
+  return (gc1_pl_s == gc2_pld_s).all() and (gc1_pld_s == gc2_pl_s).all()
+
+def _as_unst_gc(dist_tree, gc, gc_path, opp_path):
+  """ Destructure structured PointList (IJK) for easier PL comparison
+  Returns a shallow copy (input node is preserved) """
+  from maia.utils import s_numbering
+  pl  = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))
+  pld = PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor'))
+  if pl.shape[0] != 1 or pld.shape[0] != 1:
+    gc = PT.shallow_copy(gc)
+    # Always convert using vertex numbering, since what matters is just to do
+    # the same on both sides
+    if (s:=pl.shape[0]) != 1:
+      cur_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(gc_path, 2))
+      assert PT.Zone.Type(cur_zone) == 'Structured'
+      fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
+      pl_u = fn(*[pl[i,:] for i in range(s)], PT.Zone.VertexSize(cur_zone))
+      PT.update_child(gc, 'PointList', value=pl_u.reshape((1,-1), order='F'))
+
+    if (s:=pld.shape[0]) != 1:
+      opp_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(opp_path, 2))
+      assert PT.Zone.Type(opp_zone) == 'Structured'
+      fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
+      pld_u = fn(*[pld[i,:] for i in range(s)], PT.Zone.VertexSize(opp_zone))
+      PT.update_child(gc, 'PointListDonor', value=pld_u.reshape((1,-1), order='F'))
+      
+  return gc
+
+def _create_local_match_table(dist_tree, gc_list, gc_paths, comm):
   """
   Iterate over a list of joins to compare the PointList / PointListDonor
   and retrieve the pairs of matching joins
@@ -81,17 +123,24 @@ def _create_local_match_table(gc_list, gc_paths):
   nb_joins = len(gc_list)
   local_match_table = np.zeros((nb_joins, nb_joins), dtype=bool)
 
+  gc_n_elem = lambda n: PT.Subset.n_elem(n) if PT.get_child_from_name(n, 'PointRange') is not None \
+                                            else MT.Subset.n_elem(n)
+
   for igc, gc in enumerate(gc_list):
     current_path = gc_paths[igc]
     current_base = current_path.split('/')[0]
     opp_path = PT.GridConnectivity.ZoneDonorPath(gc, current_base)
     candidates = [i for i,path in enumerate(gc_paths) if
-        (path==opp_path and PT.GridConnectivity.ZoneDonorPath(gc_list[i], path.split('/')[0]) == current_path)]
+        (path==opp_path and 
+         PT.GridConnectivity.ZoneDonorPath(gc_list[i], path.split('/')[0]) == current_path and
+         gc_n_elem(gc) == gc_n_elem(gc_list[i]))]
     gc_has_pl = PT.get_child_from_name(gc, 'PointList') is not None
     for j in candidates:
       candidate_has_pl = PT.get_child_from_name(gc_list[j], 'PointList') is not None
       if gc_has_pl and candidate_has_pl:
-        local_match_table[igc][j] = _compare_pointlist(gc, gc_list[j])
+        _gc     = _as_unst_gc(dist_tree, gc, current_path, opp_path)
+        _gc_opp = _as_unst_gc(dist_tree, gc_list[j], opp_path, current_path)
+        local_match_table[igc][j] = _compare_pointlist(_gc, _gc_opp, comm)
       elif not gc_has_pl and not candidate_has_pl:
         local_match_table[igc][j] = _compare_pointrange(gc, gc_list[j])
   return local_match_table
@@ -125,7 +174,7 @@ def add_joins_donor_name(dist_tree, comm, force=False):
   if len(gc_list) == 0:
     return
 
-  local_match_table = _create_local_match_table(gc_list, gc_paths)
+  local_match_table = _create_local_match_table(dist_tree, gc_list, gc_paths, comm)
 
   global_match_table = np.empty(local_match_table.shape, dtype=bool)
   comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)

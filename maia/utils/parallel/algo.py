@@ -131,13 +131,23 @@ class DistSorter:
   Class should be instanciated with an array 'key' (of int. values); then any
   arrays send to sort will be reorder to match key sorting order
   """
-  def __init__(self, key, comm):
-    distri = par_utils.distribution_from_gnum([key], comm, True, True)
-    self.GI = EP.GlobalIndexer(distri, key-1, comm)
-    self.mask = self.GI.access_counts > 0
+  def __init__(self, key, comm, distri=None):
+    # If distri is provided, it must be full
+    if distri is None:
+      self.distri = par_utils.distribution_from_gnum([key], comm, True, True)
+    else:
+      self.distri = distri
+
+    self.GI = EP.GlobalIndexer(self.distri, key-1, comm)
+    self.stride_one = np.ones(key.size, np.int32)
+    self.rank = comm.rank
+
+  def sorted_key(self):
+    return np_utils.repeated_arange(self.GI.access_counts,
+                                    self.distri[self.rank]+1, self.distri[self.rank+1]+1)
 
   def sort(self, array):
-    sorted = self.GI.Put(array)[self.mask]
+    _, sorted = self.GI.Put_v((self.stride_one, array), extend=True)
     return sorted
 
 
