@@ -769,3 +769,19 @@ def test_deconcatenate_from_families():
   is_ridge_bc = PT.pred.label_is('BC_t') & PT.pred.belongs_to_family('RIDGE')
   assert len(PT.get_nodes_from_predicate(dist_tree, is_ridge_bc)) == 9
   #deconcatenate_from_fam@end
+
+def test_enforce_symmetric_jns():
+  #enforce_symmetric_jns@start
+  import mpi4py.MPI as MPI
+  import maia
+  import maia.pytree as PT
+  from   maia.utils.test_utils import mesh_dir
+
+  dist_tree = maia.io.file_to_dist_tree(mesh_dir/'H_elt_and_s.yaml', MPI.COMM_WORLD)
+  maia.algo.dist.enforce_symmetric_jns(dist_tree, MPI.COMM_WORLD)
+
+  gc1 = PT.find_node_from_name(dist_tree, '1to1Connection:dom-1')
+  gc2 = PT.find_node_from_name(dist_tree, '1to1Connection:dom-2')
+  assert (PT.get_child_from_name(gc1, 'PointList')[1] \
+       == PT.get_child_from_name(gc2, 'PointListDonor')[1]).all()
+  #enforce_symmetric_jns@end

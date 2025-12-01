@@ -7,7 +7,6 @@ from maia.pytree.typing import Predicates
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from .subset_tools import sort_dist_pointlist
 from maia.utils.parallel import algo as par_algo
 
 IS_GC_MATCH = PT.pred.is_gc_of_kind(is_1to1=True)
@@ -95,25 +94,23 @@ def _as_unst_gc(dist_tree, gc, gc_path, opp_path):
   from maia.utils import s_numbering
   pl  = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))
   pld = PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor'))
-  if pl.shape[0] != 1 or pld.shape[0] != 1:
-    gc = PT.shallow_copy(gc)
-    # Always convert using vertex numbering, since what matters is just to do
-    # the same on both sides
-    if (s:=pl.shape[0]) != 1:
-      cur_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(gc_path, 2))
-      assert PT.Zone.Type(cur_zone) == 'Structured'
-      fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
-      pl_u = fn(*[pl[i,:] for i in range(s)], PT.Zone.VertexSize(cur_zone))
-      PT.update_child(gc, 'PointList', value=pl_u.reshape((1,-1), order='F'))
 
-    if (s:=pld.shape[0]) != 1:
-      opp_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(opp_path, 2))
-      assert PT.Zone.Type(opp_zone) == 'Structured'
-      fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
-      pld_u = fn(*[pld[i,:] for i in range(s)], PT.Zone.VertexSize(opp_zone))
-      PT.update_child(gc, 'PointListDonor', value=pld_u.reshape((1,-1), order='F'))
+  # Always convert using vertex numbering, since what matters is just to do
+  # the same on both sides
+  if (s:=pl.shape[0]) != 1:
+    cur_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(gc_path, 2))
+    assert PT.Zone.Type(cur_zone) == 'Structured'
+    fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
+    pl_u = fn(*[pl[i,:] for i in range(s)], PT.Zone.VertexSize(cur_zone))
+    PT.update_child(gc, 'PointList', value=pl_u.reshape((1,-1), order='F'))
+
+  if (s:=pld.shape[0]) != 1:
+    opp_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(opp_path, 2))
+    assert PT.Zone.Type(opp_zone) == 'Structured'
+    fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
+    pld_u = fn(*[pld[i,:] for i in range(s)], PT.Zone.VertexSize(opp_zone))
+    PT.update_child(gc, 'PointListDonor', value=pld_u.reshape((1,-1), order='F'))
       
-  return gc
 
 def _create_local_match_table(dist_tree, gc_list, gc_paths, comm):
   """
@@ -138,8 +135,10 @@ def _create_local_match_table(dist_tree, gc_list, gc_paths, comm):
     for j in candidates:
       candidate_has_pl = PT.get_child_from_name(gc_list[j], 'PointList') is not None
       if gc_has_pl and candidate_has_pl:
-        _gc     = _as_unst_gc(dist_tree, gc, current_path, opp_path)
-        _gc_opp = _as_unst_gc(dist_tree, gc_list[j], opp_path, current_path)
+        _gc     = PT.shallow_copy(gc)
+        _gc_opp = PT.shallow_copy(gc_list[j])
+        _as_unst_gc(dist_tree, _gc,     current_path, opp_path)
+        _as_unst_gc(dist_tree, _gc_opp, opp_path, current_path)
         local_match_table[igc][j] = _compare_pointlist(_gc, _gc_opp, comm)
       elif not gc_has_pl and not candidate_has_pl:
         local_match_table[igc][j] = _compare_pointrange(gc, gc_list[j])
@@ -272,17 +271,53 @@ def clear_interface_ids(dist_tree):
     PT.rm_children_from_name(gc, 'DistInterfaceId')
     PT.rm_children_from_name(gc, 'DistInterfaceOrd')
 
-def sort_jn_pointlist(dist_tree, comm):
+  
+def _has_related_subset(zone, jn_name):
+  for zsr in PT.get_children_from_label(zone, 'ZoneSubRegion_t'):
+    if (rname := PT.get_child_from_name(zsr, 'GridConnectivityRegionName')) is not None:
+      if PT.get_str_value(rname) == jn_name:
+        return True
+  return False
+
+def enforce_symmetric_jns(dist_tree:CGNSDistTree, comm:MPIComm):
+  """ Permute subsets of matching joins to enforce symmetry.
+
+  Two matching joins ``gc1`` and ``gc2`` are said to be symmetric if
+  the PointList (resp. PointRange) of ``gc1`` is element wise equal to the
+  PointListDonor (resp. PointRangeDonor) of ``gc2`` and vice versa.
+  The CGNS standard does not impose this symmetry, but some
+  algorithms or solvers rely on it.
+
+  Args:
+    dist_tree  (CGNSDistTree) : Input distributed tree
+    comm           (MPIComm)  : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #enforce_symmetric_jns@start
+        :end-before: #enforce_symmetric_jns@end
+        :dedent: 2
+  """
+  MT.check_cgns_dist_tree(dist_tree)
+  add_joins_donor_name(dist_tree, comm)
   for jn_pair in get_matching_jns(dist_tree):
-    gc     = PT.get_node_from_path(dist_tree, jn_pair[0])
-    gc_opp = PT.get_node_from_path(dist_tree, jn_pair[1])
+    gc     = PT.find_node_from_path(dist_tree, jn_pair[0])
+    gc_opp = PT.find_node_from_path(dist_tree, jn_pair[1])
 
-    # Update current
-    sort_dist_pointlist(gc, comm)
+    # Mathing GCs are either PointList/PointList or PointRange/PointRange
+    # -> Skip if the match is PR/PR
+    if PT.get_child_from_name(gc, 'PointList') is None:
+      continue
 
-    # Update donor 
+    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(jn_pair[0], 2))
+    if _has_related_subset(zone, PT.get_name(gc)):
+      gc, gc_opp = gc_opp, gc # Try permutation, maybe gc_opp has no ZSR
+
+    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(jn_pair[0], 2))
+    if _has_related_subset(zone, PT.get_name(gc)):
+      raise RuntimeError(f"Can not reoder GC_t node {gc[0]} which defines one or more ZoneSubRegion_t nodes")
+
+    # Impose gc order to gc_opp
     PT.update_child(gc_opp, 'PointList', value=PT.get_value(PT.get_node_from_name(gc,'PointListDonor')))
     PT.update_child(gc_opp, 'PointListDonor', value=PT.get_value(PT.get_node_from_name(gc,'PointList')))
-    MT.new_Distribution({'Index': MT.distribution_value(gc,'Index')}, gc_opp)
   
-

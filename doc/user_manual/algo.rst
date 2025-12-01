@@ -73,6 +73,7 @@ Interface tools
 ^^^^^^^^^^^^^^^
 
 .. autofunction:: maia.algo.dist.connect_1to1_families
+.. autofunction:: maia.algo.dist.enforce_symmetric_jns
 
 Data management
 ^^^^^^^^^^^^^^^
