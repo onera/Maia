@@ -206,11 +206,13 @@ def test_ensure_symmetric_gc1to1():
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t:
+    :CGNS#Distribution UserDefinedData_t:
     ZGC ZoneGridConnectivity_t:
       matchAB GridConnectivity1to1_t "ZoneB":
         PointRange IndexRange_t [[17,17],[3,9],[1,5]]:
         PointRangeDonor IndexRange_t [[7,1],[9,9],[1,5]]:
   ZoneB Zone_t:
+    :CGNS#Distribution UserDefinedData_t:
     ZGC ZoneGridConnectivity_t:
       matchBA GridConnectivity1to1_t "Base0/ZoneA":
         PointRange IndexRange_t [[1,7],[9,9],[1,5]]:
