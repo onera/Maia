@@ -88,6 +88,17 @@ def _compare_pointlist(gc1, gc2, comm):
     return False
   return (gc1_pl_s == gc2_pld_s).all() and (gc1_pld_s == gc2_pl_s).all()
 
+def _jn_is_symmetric_loc(gc1, gc2):
+  """ Return True if two matching jns are symmetrically equal """
+  gc1_patch = PT.Subset.getPatch(gc1)
+  gc2_patch = PT.Subset.getPatch(gc2)
+  
+  gc1_dpatch = PT.find_child_from_name(gc1, PT.get_name(gc2_patch) + 'Donor')
+  gc2_dpatch = PT.find_child_from_name(gc2, PT.get_name(gc1_patch) + 'Donor')
+
+  # Sizes are not checked because jns are supposed to be matching
+  return np.array_equal(gc1_patch[1], gc2_dpatch[1]) and np.array_equal(gc1_dpatch[1], gc2_patch[1])
+
 def _as_unst_gc(dist_tree, gc, gc_path, opp_path):
   """ Destructure structured PointList (IJK) for easier PL comparison
   Returns a shallow copy (input node is preserved) """
@@ -300,24 +311,41 @@ def enforce_symmetric_jns(dist_tree:CGNSDistTree, comm:MPIComm):
   """
   MT.check_cgns_dist_tree(dist_tree)
   add_joins_donor_name(dist_tree, comm)
-  for jn_pair in get_matching_jns(dist_tree):
-    gc     = PT.find_node_from_path(dist_tree, jn_pair[0])
-    gc_opp = PT.find_node_from_path(dist_tree, jn_pair[1])
+  jn_pairs = get_matching_jns(dist_tree)
 
-    # Mathing GCs are either PointList/PointList or PointRange/PointRange
-    # -> Skip if the match is PR/PR
-    if PT.get_child_from_name(gc, 'PointList') is None:
+  gc_cur_list = list()
+  gc_opp_list = list()
+  is_symm_l = np.empty(len(jn_pairs), bool)
+  is_symm_g = np.empty(len(jn_pairs), bool)
+  for i,jn_pair in enumerate(jn_pairs):
+    gc_cur_list.append(PT.find_node_from_path(dist_tree, jn_pair[0]))
+    gc_opp_list.append(PT.find_node_from_path(dist_tree, jn_pair[1]))
+    is_symm_l[i] = _jn_is_symmetric_loc(gc_cur_list[-1], gc_opp_list[-1])
+
+  comm.Allreduce(is_symm_l, is_symm_g, MPI.LAND)
+
+  for i, jn_pair in enumerate(jn_pairs):
+    # Skip if already symetric (avoid raise due to ZSR)
+    if is_symm_g[i]:
       continue
 
-    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(jn_pair[0], 2))
-    if _has_related_subset(zone, PT.get_name(gc)):
-      gc, gc_opp = gc_opp, gc # Try permutation, maybe gc_opp has no ZSR
+    gc_cur = gc_cur_list[i]
+    gc_opp = gc_opp_list[i]
+    zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(jn_pair[0], 2))
+    if _has_related_subset(zone, PT.get_name(gc_cur)):
+      gc_cur, gc_opp = gc_opp, gc_cur # Try permutation, maybe gc_opp has no ZSR
 
-    zone = PT.get_node_from_path(dist_tree, PT.utils.path_head(jn_pair[0], 2))
-    if _has_related_subset(zone, PT.get_name(gc)):
-      raise RuntimeError(f"Can not reoder GC_t node {gc[0]} which defines one or more ZoneSubRegion_t nodes")
+    zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(jn_pair[0], 2))
+    if _has_related_subset(zone, PT.get_name(gc_cur)):
+      raise RuntimeError(f"Can not reoder GC_t node {gc_cur[0]} which defines one or more ZoneSubRegion_t nodes")
 
     # Impose gc order to gc_opp
-    PT.update_child(gc_opp, 'PointList', value=PT.get_value(PT.get_node_from_name(gc,'PointListDonor')))
-    PT.update_child(gc_opp, 'PointListDonor', value=PT.get_value(PT.get_node_from_name(gc,'PointList')))
+    # Mathing GCs are either PointList/PointList or PointRange/PointRange
+    key = 'PointList' if PT.get_child_from_name(gc_cur, 'PointList') is not None else 'PointRange'
+    PT.update_child(gc_opp,
+                    f'{key}',
+                    value=np.copy(PT.get_np_value(PT.find_node_from_name(gc_cur,f'{key}Donor'))))
+    PT.update_child(gc_opp,
+                    f'{key}Donor',
+                    value=np.copy(PT.get_np_value(PT.find_node_from_name(gc_cur,f'{key}'))))
   
