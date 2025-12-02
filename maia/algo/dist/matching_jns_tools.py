@@ -155,24 +155,35 @@ def _create_local_match_table(dist_tree, gc_list, gc_paths, comm):
         local_match_table[igc][j] = _compare_pointrange(gc, gc_list[j])
   return local_match_table
 
-def add_joins_donor_name(dist_tree, comm, force=False):
-  """
-  For each GridConnectivity_t node found in the dist_tree, find the
-  opposite GC node and create the GridConnectivityDonorName node
-  GC Node must have either PointList/PointListDonor arrays or
-  PointRange/PointRangeDonor arrays, not both.
-  If force=True, donor are recomputed, else the computation is
-  made only if there are not in tree
+def add_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
+  """ Retrieve the related matching GridConnectivity(1to1)_t nodes.
+  
+  The purpose of this function is to complement the standard description
+  of these nodes, which store the path of their related (*Donor*)
+  Zone, by also storing the name of the associated join 
+  for all GridConnectivity_t nodes of :func:`~maia.pytree.GridConnectivity.Type` Abutting1to1.
+  
+  For each input join, this name is stored in a ``Descriptor_t``
+  node named ``GridConnectivityDonorName``.
+
+  This function requires the matching joins to be defined on the two connected zones,
+  which, by the way, is a widely used assumption in Maia.
+
+  Args:
+    dist_tree  (CGNSDistTree) : Input distributed tree
+    comm           (MPIComm)  : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #add_jns_donor_name@start
+        :end-before: #add_jns_donor_name@end
+        :dedent: 2
   """
   
   gc_list  = []
   gc_paths = []
   # > First pass to collect joins
   query = ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", IS_GC_MATCH]
-
-  if force:
-    for gc in PT.iter_children_from_predicates(dist_tree, query):
-      PT.rm_children_from_name(gc, 'GridConnectivityDonorName')
 
   for nodes in PT.iter_children_from_predicates(dist_tree, query, ancestors=True): #get_node_from_path is slower, dont use it
     gc_node = nodes[-1]

@@ -161,37 +161,6 @@ Base1 CGNSBase_t [3,3]:
     assert PT.get_value(PT.get_child_from_name(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
 
 @pytest_parallel.mark.parallel(1)
-def test_force(comm):
-  yt = """
-Base0 CGNSBase_t:
-  ZoneA Zone_t:
-    ZGC ZoneGridConnectivity_t:
-      matchAB GridConnectivity_t "ZoneB":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [[1,4,7,10]]:
-        PointListDonor IndexArray_t [[13,16,7,10]]:
-        GridConnectivityDonorName Descriptor_t "WrongOldValue":
-        :CGNS#Distribution UserDefinedData_t:
-          Index DataArray_t [0,4,4]:
-  ZoneB Zone_t:
-    ZGC ZoneGridConnectivity_t:
-      matchBA GridConnectivity_t "ZoneA":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [[13,16,7,10]]:
-        PointListDonor IndexArray_t [[1,4,7,10]]:
-        GridConnectivityDonorName Descriptor_t "WrongOldValue":
-        :CGNS#Distribution UserDefinedData_t:
-          Index DataArray_t [0,4,4]:
-"""
-  dist_tree = PT.yaml.to_cgns_tree(yt)
-  jn_donor_path = 'Base0/ZoneA/ZGC/matchAB/GridConnectivityDonorName'
-  assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, comm)
-  assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, comm, force=True)
-  assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'matchBA'
-
-@pytest_parallel.mark.parallel(1)
 def test_some_computed(comm):
   yt = """
 Base0 CGNSBase_t:
