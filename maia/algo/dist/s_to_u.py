@@ -10,7 +10,7 @@ from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
 from maia.utils.numbering import range_to_slab          as HFR2S
 from maia.transfer        import protocols as EP
 
-from .matching_jns_tools import gc_is_reference, add_joins_donor_name, enforce_symmetric_jns, copy_donor_subset, get_jn_donor_path
+from .matching_jns_tools import gc_is_reference, find_joins_donor_name, enforce_symmetric_joins, copy_donor_subset, get_jn_donor_path
 from .connectivity_utils import cell_vtx_connectivity_S
 from .ngons_to_elements  import _collected_shifted_pl, _update_pl
 
@@ -414,8 +414,8 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
-  add_joins_donor_name(dist_tree, comm)
-  enforce_symmetric_jns(dist_tree, comm)
+  find_joins_donor_name(dist_tree, comm)
+  enforce_symmetric_joins(dist_tree, comm)
   zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.find_node_from_path(dist_tree, path))
                               for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
 

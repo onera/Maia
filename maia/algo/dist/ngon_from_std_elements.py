@@ -176,7 +176,7 @@ def generate_ngon_from_std_elements(dist_tree: CGNSDistTree,
     dist_tree  (CGNSDistTree): Tree with connectivity described by standard elements
     comm       (`MPIComm`)   : MPI communicator
   """
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   is_container = PT.pred.label_in(['FlowSolution_t', 'ZoneSubRegion_t', 'DiscreteData_t'])
   is_fcenter   = PT.pred.NodePredicate(lambda n : PT.Subset.GridLocation(n) not in ['CellCenter', 'Vertex'])

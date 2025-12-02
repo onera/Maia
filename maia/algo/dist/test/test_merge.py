@@ -180,7 +180,7 @@ def test_merge_zones_L(comm, merge_bc_from_name):               #      |  |
     PT.add_child(zone, F2D.distribute_pl_node(pl_sol_full, comm))
 
   # If we use private func, we need to add ordinals
-  MJT.add_joins_donor_name(tree, comm)
+  MJT.find_joins_donor_name(tree, comm)
   subset_merge = "name" if merge_bc_from_name else "none"
   merged_zone = merge._merge_zones(tree, comm, subset_merge_strategy=subset_merge)
 

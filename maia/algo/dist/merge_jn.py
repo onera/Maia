@@ -302,7 +302,7 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   nface_l = [elem for elem in PT.iter_children_from_label(zone, 'Elements_t') if elem[1][0] == 23]
   nface = nface_l[0] if len(nface_l) == 1 else None
 
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   ref_faces      = PT.get_node_from_path(dist_tree, jn_pathes[0]+'/PointList')[1][0]
   face_to_remove = PT.get_node_from_path(dist_tree, jn_pathes[0]+'/PointListDonor')[1][0]

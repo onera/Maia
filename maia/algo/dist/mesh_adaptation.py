@@ -10,7 +10,7 @@ import maia.utils.logging as mlog
 from   maia.typing import *
 
 from maia.io.meshb_converter import cgns_to_meshb, meshb_to_cgns, get_tree_info
-from maia.algo.dist.matching_jns_tools import add_joins_donor_name, get_matching_jns
+from maia.algo.dist.matching_jns_tools import find_joins_donor_name, get_matching_jns
 from maia.algo.dist.adaptation_utils import convert_vtx_gcs_as_face_bcs,\
                                             deplace_periodic_patch,\
                                             retrieve_initial_domain,\
@@ -198,7 +198,7 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo
 
   start = time.time()
   # > Get periodic infos
-  add_joins_donor_name(tree, comm) # Add missing joins donor names
+  find_joins_donor_name(tree, comm) # Add missing joins donor names
   perio_jns_pairs = get_matching_jns(tree, PT.pred.is_gc_of_kind(is_perio=True))
   jn_pairs_and_values = dict()
   for pair in perio_jns_pairs:

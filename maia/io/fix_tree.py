@@ -141,7 +141,7 @@ def ensure_symmetric_gc1to1(tree):
   _tree = PT.shallow_copy(tree)
   PT.rm_nodes_from_label(_tree, 'GridConnectivity_t')
 
-  MJT.add_joins_donor_name(_tree, MPI.COMM_SELF)
+  MJT.find_joins_donor_name(_tree, MPI.COMM_SELF)
   jn_pairs = MJT.get_matching_jns(_tree)
   all_symmetric = True
   for jn_pair in jn_pairs:
@@ -151,7 +151,7 @@ def ensure_symmetric_gc1to1(tree):
       break
       
   if not all_symmetric:
-    MJT.enforce_symmetric_jns(_tree, MPI.COMM_SELF)
+    MJT.enforce_symmetric_joins(_tree, MPI.COMM_SELF)
     for jn_pair in jn_pairs:
       PT.find_node_from_path(tree, jn_pair[0])[2] = PT.find_node_from_path(_tree, jn_pair[0])[2]
       PT.find_node_from_path(tree, jn_pair[1])[2] = PT.find_node_from_path(_tree, jn_pair[1])[2]

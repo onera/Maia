@@ -292,7 +292,7 @@ def convert_ngon_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """
   MT.check_cgns_dist_tree(dist_tree)
   # Needed to update the joins afterward
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   for zone in PT.get_all_Zone_t(dist_tree):
     if PT.pred.IS_POLY3D_ZONE(zone):

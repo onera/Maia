@@ -94,7 +94,7 @@ def merge_connected_zones(dist_tree: CGNSDistTree,
         :dedent: 2
   """
   MT.check_cgns_dist_tree(dist_tree)
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
   grouped_zone_paths = PT.Tree.find_connected_zones(dist_tree)
 
   for i, zone_paths in enumerate(grouped_zone_paths):
@@ -152,7 +152,7 @@ def merge_zones(dist_tree: CGNSDistTree,
 
   assert all([PT.Zone.Type(PT.find_node_from_path(dist_tree, path)) == 'Unstructured' for path in zone_paths])
   #Those one will be needed for jn recovering
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   #Force full donor name, otherwise it is hard to reset jns
   PT.enforceDonorAsPath(dist_tree)

@@ -31,6 +31,9 @@ Here are some remarks applying to all the functions:
 
   Expected value for ``containers_name`` is a list of ``str`` or the shortcut ``'ALL'``,
   in which case the fonction selects all the admissible containers.
+- In this documentation, the term *join* (shortcut: *jn*) is used to designate matching interfaces, *ie*
+  ``GridConnectivity1to1_t`` nodes and ``GridConnectivity_t`` nodes of
+  :func:`~maia.pytree.GridConnectivity.Type` ``Abutting1to1``.
 
 
 .. _user_man_dist_algo:
@@ -66,15 +69,15 @@ Geometry transformations
 .. autofunction:: maia.algo.dist.merge_zones_from_family
 .. autofunction:: maia.algo.dist.merge_connected_zones
 .. autofunction:: maia.algo.dist.remove_degen_faces_from_family
-.. autofunction:: maia.algo.dist.conformize_jn_pair
 .. autofunction:: maia.algo.dist.adapt_mesh_with_feflo
 
 Interface tools
 ^^^^^^^^^^^^^^^
 
 .. autofunction:: maia.algo.dist.connect_1to1_families
-.. autofunction:: maia.algo.dist.add_joins_donor_name
-.. autofunction:: maia.algo.dist.enforce_symmetric_jns
+.. autofunction:: maia.algo.dist.find_joins_donor_name
+.. autofunction:: maia.algo.dist.enforce_symmetric_joins
+.. autofunction:: maia.algo.dist.conformize_jn_pair
 
 Data management
 ^^^^^^^^^^^^^^^

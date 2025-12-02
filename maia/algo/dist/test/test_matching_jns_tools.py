@@ -110,7 +110,7 @@ def test_compare_pl_non_sym_ko(comm):
 
 
 @pytest_parallel.mark.parallel([1,3])
-def test_add_joins_donor_name(comm):
+def test_find_joins_donor_name(comm):
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27,8,0]]:
@@ -154,7 +154,7 @@ Base1 CGNSBase_t [3,3]:
   full_tree = PT.yaml.to_cgns_tree(yt)
   dist_tree = maia.factory.full_to_dist_tree(full_tree, comm)
 
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   expected_donor_names = ['matchBA', 'matchAB', 'matchCB1', 'matchCB2', 'matchBC2', 'matchBC1']
   for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, PT.pred.IS_GC)):
@@ -196,7 +196,7 @@ Base0 CGNSBase_t:
           Index DataArray_t [0,2,2]:
 """
   dist_tree = PT.yaml.to_cgns_tree(yt)
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
 class Test_gcdonorname_utils:
   dt = """
@@ -281,7 +281,7 @@ Base0 CGNSBase_t:
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize('has_zsr', [0, 1, 2])
-def test_enforce_symmetric_jns(has_zsr, comm):
+def test_enforce_symmetric_joins(has_zsr, comm):
   yt = """
 Base CGNSBase_t:
   ZoneU Zone_t [[3, 2, 0]]:
@@ -318,10 +318,10 @@ Base CGNSBase_t:
 
   if has_zsr == 2:
     with pytest.raises(RuntimeError):
-      MJT.enforce_symmetric_jns(dist_tree, comm)
+      MJT.enforce_symmetric_joins(dist_tree, comm)
 
   else:
-    MJT.enforce_symmetric_jns(dist_tree, comm)
+    MJT.enforce_symmetric_joins(dist_tree, comm)
 
     ftree = maia.factory.dist_to_full_tree(dist_tree, comm, 0)
     if comm.rank == 0:

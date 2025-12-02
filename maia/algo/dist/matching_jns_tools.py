@@ -155,7 +155,7 @@ def _create_local_match_table(dist_tree, gc_list, gc_paths, comm):
         local_match_table[igc][j] = _compare_pointrange(gc, gc_list[j])
   return local_match_table
 
-def add_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
+def find_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
   """ Retrieve the related matching GridConnectivity(1to1)_t nodes.
   
   The purpose of this function is to complement the standard description
@@ -175,8 +175,8 @@ def add_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #add_jns_donor_name@start
-        :end-before: #add_jns_donor_name@end
+        :start-after: #find_joins_donor_name@start
+        :end-before: #find_joins_donor_name@end
         :dedent: 2
   """
   
@@ -204,6 +204,11 @@ def add_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
   opp_join_id = np.where(global_match_table)[1]
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
     PT.new_node("GridConnectivityDonorName", "Descriptor_t", PT.get_name(gc_list[opp_id]), parent=gc)
+
+def add_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
+  import warnings
+  warnings.warn('This function is deprecated in favor of find_joins_donor_name', DeprecationWarning, stacklevel=2)
+  find_joins_donor_name(dist_tree, comm)
 
 def get_jn_donor_path(dist_tree, jn_path):
   """
@@ -301,7 +306,7 @@ def _has_related_subset(zone, jn_name):
         return True
   return False
 
-def enforce_symmetric_jns(dist_tree:CGNSDistTree, comm:MPIComm):
+def enforce_symmetric_joins(dist_tree:CGNSDistTree, comm:MPIComm):
   """ Permute subsets of matching joins to enforce symmetry.
 
   Two matching joins ``gc1`` and ``gc2`` are said to be symmetric if
@@ -316,12 +321,12 @@ def enforce_symmetric_jns(dist_tree:CGNSDistTree, comm:MPIComm):
 
   Example:
       .. literalinclude:: snippets/test_algo.py
-        :start-after: #enforce_symmetric_jns@start
-        :end-before: #enforce_symmetric_jns@end
+        :start-after: #enforce_symmetric_joins@start
+        :end-before: #enforce_symmetric_joins@end
         :dedent: 2
   """
   MT.check_cgns_dist_tree(dist_tree)
-  add_joins_donor_name(dist_tree, comm)
+  find_joins_donor_name(dist_tree, comm)
   jn_pairs = get_matching_jns(dist_tree)
 
   gc_cur_list = list()

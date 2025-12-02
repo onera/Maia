@@ -138,7 +138,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   loc_suffix = {'Vertex' : '@Vtx', 'FaceCenter' : '@Face', 'CellCenter' : '@Cell'}
   key_index = lambda d,k: list(d.keys()).index(k)
 
-  MJT.add_joins_donor_name(tree, comm)
+  MJT.find_joins_donor_name(tree, comm)
   
   
   match_perio_refs:List[PT.PeriodicValues]   = []
