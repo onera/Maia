@@ -28,6 +28,7 @@ def test_gc_is_reference():
     MJT.gc_is_reference(gc, 'Base/ZoneA')
 
 class Test_compare_pointrange():
+
   def test_ok(self):
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[7,1],[9,9],[5,1]])
@@ -35,6 +36,7 @@ class Test_compare_pointrange():
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[1,7],[9,9],[1,5]])
     assert(MJT._compare_pointrange(jn1, jn2) == True)
+
   def test_ko(self):
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,7],[1,5]], point_range      =[[1,5],[9,9],[1,5]])
@@ -45,18 +47,21 @@ class Test_compare_pointrange():
 
 @pytest_parallel.mark.parallel(1)
 class Test_compare_pointlist():
+
   def test_ok(self, comm):
     jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[12,14,16,18]], point_list_donor=[[9,7,5,3]])
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[12,14,16,18]], point_list      =[[9,7,5,3]])
     MT.new_Distribution({'Index' : np.array([0,4,4])}, jn1)
     MT.new_Distribution({'Index' : np.array([0,4,4])}, jn2)
     assert(MJT._compare_pointlist(jn1, jn2, comm) == True)
+
   def test_ko(self, comm):
     jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[12,14,16,18]], point_list_donor=[[9,7,5,3]])
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[12,14,16,18]], point_list      =[[3,9,5,7]])
     MT.new_Distribution({'Index' : np.array([0,4,4])}, jn1)
     MT.new_Distribution({'Index' : np.array([0,4,4])}, jn2)
     assert(MJT._compare_pointlist(jn1, jn2, comm) == False)
+
   def test_empty(self, comm):
     jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =np.empty((1,0), np.int32), point_list_donor=np.empty((1,0), np.int32))
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=np.empty((1,0), np.int32), point_list      =np.empty((1,0), np.int32))

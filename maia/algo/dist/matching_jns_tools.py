@@ -8,6 +8,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils.parallel import algo as par_algo
+from maia.utils import s_numbering
 
 IS_GC_MATCH = PT.pred.is_gc_of_kind(is_1to1=True)
 
@@ -102,26 +103,15 @@ def _jn_is_symmetric_loc(gc1, gc2):
 def _as_unst_gc(dist_tree, gc, gc_path, opp_path):
   """ Destructure structured PointList (IJK) for easier PL comparison
   Returns a shallow copy (input node is preserved) """
-  from maia.utils import s_numbering
-  pl  = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))
-  pld = PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor'))
-
-  # Always convert using vertex numbering, since what matters is just to do
-  # the same on both sides
-  if (s:=pl.shape[0]) != 1:
-    cur_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(gc_path, 2))
-    assert PT.Zone.Type(cur_zone) == 'Structured'
-    fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
-    pl_u = fn(*[pl[i,:] for i in range(s)], PT.Zone.VertexSize(cur_zone))
-    PT.update_child(gc, 'PointList', value=pl_u.reshape((1,-1), order='F'))
-
-  if (s:=pld.shape[0]) != 1:
-    opp_zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(opp_path, 2))
-    assert PT.Zone.Type(opp_zone) == 'Structured'
-    fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
-    pld_u = fn(*[pld[i,:] for i in range(s)], PT.Zone.VertexSize(opp_zone))
-    PT.update_child(gc, 'PointListDonor', value=pld_u.reshape((1,-1), order='F'))
-      
+  for is_donor, path in enumerate([gc_path, opp_path]):
+    name = 'PointListDonor' if is_donor else 'PointList'
+    pl  = PT.get_np_value(PT.find_child_from_name(gc, name))
+    if (s:=pl.shape[0]) != 1:
+      zone = PT.find_node_from_path(dist_tree, PT.utils.path_head(path, 2))
+      assert PT.Zone.Type(zone) == 'Structured'
+      fn = s_numbering.ij_to_index if s == 2 else s_numbering.ijk_to_index
+      pl_u = fn(*[pl[i,:] for i in range(s)], PT.Zone.VertexSize(zone))
+      PT.update_child(gc, name, value=pl_u.reshape((1,-1), order='F'))      
 
 def _create_local_match_table(dist_tree, gc_list, gc_paths, comm):
   """
@@ -317,7 +307,7 @@ def enforce_symmetric_joins(dist_tree:CGNSDistTree, comm:MPIComm):
 
   Args:
     dist_tree  (CGNSDistTree) : Input distributed tree
-    comm           (MPIComm)  : MPI communicator
+    comm       (MPIComm)      : MPI communicator
 
   Example:
       .. literalinclude:: snippets/test_algo.py
