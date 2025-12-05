@@ -191,7 +191,7 @@ def _partitioning(dist_tree: CGNSDistTree,
   IS_S_ZONE = PT.pred.is_zone_of_kind('S')
   IS_U_ZONE = PT.pred.is_zone_of_kind('U')
 
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   part_tree = CGNSPartTree(PT.new_CGNSTree())
   dist_zones_S = []

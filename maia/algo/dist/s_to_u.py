@@ -10,7 +10,7 @@ from maia.utils           import py_utils, s_numbering, pr_utils, par_utils
 from maia.utils.numbering import range_to_slab          as HFR2S
 from maia.transfer        import protocols as EP
 
-from .matching_jns_tools import gc_is_reference, add_joins_donor_name, copy_donor_subset
+from .matching_jns_tools import gc_is_reference, find_joins_donor_name, enforce_symmetric_joins, copy_donor_subset, get_jn_donor_path
 from .connectivity_utils import cell_vtx_connectivity_S
 from .ngons_to_elements  import _collected_shifted_pl, _update_pl
 
@@ -414,7 +414,8 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
 
-  add_joins_donor_name(dist_tree, comm)
+  find_joins_donor_name(dist_tree, comm)
+  enforce_symmetric_joins(dist_tree, comm)
   zone_path_to_vertex_size = {path: PT.Zone.VertexSize(PT.find_node_from_path(dist_tree, path))
                               for path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')}
 
@@ -491,6 +492,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
 
           # Hybrid joins should be here : we just have to translate the PL ijk into face index
           is_abutt1to1 = PT.pred.label_is('GridConnectivity_t') & PT.pred.is_gc_of_kind(is_1to1=True)
+          zonegc_s_path = zone_path + '/' + PT.get_name(zonegc_s)
           for gc_s in PT.iter_children_from_predicate(zonegc_s, is_abutt1to1):
             opp_zone_path = PT.GridConnectivity.ZoneDonorPath(gc_s, PT.get_name(base))
             opp_zone = PT.find_node_from_path(dist_tree, opp_zone_path)
@@ -499,22 +501,17 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
             loc = PT.Subset.GridLocation(gc_s)
             pl = PT.get_np_value(PT.find_child_from_name(gc_s, 'PointList'))
             pl_idx = s_numbering.ijk_to_index_from_loc(*pl, loc, zone_path_to_vertex_size[zone_path]) #type:ignore[call-arg]
-            pl_idx = pl_idx.reshape((1,-1), order='F')
+            PT.update_child(gc_s, 'PointList', value=pl_idx.reshape((1,-1), order='F'))
             if 'EdgeCenter' in loc: #IEdge or JEdge -> EdgeCenter
               PT.update_child(gc_s, 'GridLocation', value='EdgeCenter')
             if 'FaceCenter' in loc: #IFace, JFace or KFaceCenter -> FaceCenter
               PT.update_child(gc_s, 'GridLocation', value='FaceCenter')
-            PT.update_child(gc_s, 'PointList', value=pl_idx)
             # Now update PointListDonor of the opposite (already U) join
-            for opp_jn in PT.get_nodes_from_predicates(opp_zone, 'GridConnectivity_t'):
-              opp_base_name = PT.utils.path_head(opp_zone_path,1)
-              if PT.GridConnectivity.ZoneDonorPath(opp_jn, opp_base_name) == zone_path:
-                pld_n = PT.get_child_from_name(opp_jn, 'PointListDonor')
-                if pld_n is not None and np.array_equal(PT.get_np_value(pld_n), pl):
-                   PT.update_child(opp_jn, 'PointListDonor', value=pl_idx)
-                   break
-            else:
-              raise RuntimeError(f"Opposite join of {PT.get_name(gc_s)} (zone {zone_path}) has not been found")
+            opp_path = get_jn_donor_path(dist_tree, zonegc_s_path + '/' + PT.get_name(gc_s))
+            opp_gc = PT.find_node_from_path(dist_tree, opp_path)
+            pld = PT.get_np_value(PT.find_child_from_name(opp_gc, 'PointListDonor'))
+            pld_idx = s_numbering.ijk_to_index_from_loc(*pld, loc, zone_path_to_vertex_size[zone_path]) #type:ignore[call-arg]
+            PT.update_child(opp_gc, 'PointListDonor', value=pld_idx.reshape((-1,1), order='F'))
           
           # Replace jns S -> jns U
           PT.rm_children_from_predicate(zonegc_s, is_abutt)
@@ -540,6 +537,8 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
         PT.rm_children_from_name(distri, 'Face')
         PT.rm_children_from_name(distri, 'Edge')
 
+  # Needed because add_lowerdim_std_elements update PointList, but not PointListDonor
+  # on opposite zone
   copy_donor_subset(dist_tree)
 
 ###############################################################################

@@ -86,14 +86,14 @@ Base CGNSBase_t I4 [3, 3]:
         FamilyName FamilyName_t 'wall':
         GridLocation GridLocation_t 'Vertex':
     ZoneGridConnectivity ZoneGridConnectivity_t:
-      1to1Connection:dom-3 GridConnectivity_t 'blk-2':
+      1to1Connection:dom-2 GridConnectivity_t 'blk-2':
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
         GridLocation GridLocation_t 'JFaceCenter':
         PointList IndexArray_t:
-          I4 : [[1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [4, 4,
-                4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1]]
+          I4 : [[1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1,
+                1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]]
         PointListDonor IndexArray_t:
-          I4 : [[908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918, 919, 920, 921, 922, 923]]
+          I4 : [[920, 921, 922, 923, 916, 917, 918, 919, 912, 913, 914, 915, 908, 909, 910, 911]]
   blk-2 Zone_t I4 [[217, 827, 0]]:
     ZoneType ZoneType_t 'Unstructured':
     GridCoordinates GridCoordinates_t:
@@ -386,7 +386,7 @@ Base CGNSBase_t I4 [3, 3]:
               6, 7, 22, 15, 20, 23, 14, 20, 21, 24, 23, 21, 22, 25, 24, 22, 7, 8, 25, 14, 23, 12, 13, 23, 24, 11, 12, 24,
               25, 10, 11, 25, 8, 9, 10]
     ZoneGridConnectivity ZoneGridConnectivity_t:
-      1to1Connection:dom-3 GridConnectivity_t 'blk-1':
+      1to1Connection:dom-1 GridConnectivity_t 'blk-1':
         GridConnectivityType GridConnectivityType_t 'Abutting1to1':
         GridLocation GridLocation_t 'FaceCenter':
         PointList IndexArray_t I4 [[908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918, 919, 920, 921, 922, 923]]:

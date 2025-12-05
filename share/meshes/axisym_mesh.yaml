@@ -112,7 +112,6 @@ cube CGNSBase_t I4 [3, 3]:
         GridLocation GridLocation_t 'Vertex':
         PointList IndexArray_t I4 [[2, 4, 5, 6, 9, 28, 29, 30, 31, 32, 35, 37, 40]]:
         PointListDonor IndexArray_t I4 [[2, 3, 7, 6, 39, 10, 17, 20, 25, 26, 38, 34, 40]]:
-        GridConnectivityDonorName Descriptor_t 'per1_0':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationAngle DataArray_t R4 [0.7853981852531433, 0.0, 0.0]:
@@ -124,7 +123,6 @@ cube CGNSBase_t I4 [3, 3]:
         GridLocation GridLocation_t 'Vertex':
         PointList IndexArray_t I4 [[2, 3, 7, 6, 39, 10, 17, 20, 25, 26, 38, 34, 40]]:
         PointListDonor IndexArray_t I4 [[2, 4, 5, 6, 9, 28, 29, 30, 31, 32, 35, 37, 40]]:
-        GridConnectivityDonorName Descriptor_t 'per0_0':
         GridConnectivityProperty GridConnectivityProperty_t:
           Periodic Periodic_t:
             RotationAngle DataArray_t R4 [-0.7853981852531433, -0.0, -0.0]:

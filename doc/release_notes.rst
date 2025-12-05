@@ -15,6 +15,7 @@ Development version
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``agglomerate_cells`` to create structured coarsened meshes
+- Algo module: add ``enforce_symmetric_joins`` to have a simplier description of matching interfaces
 
 🐞 Fixes
 ^^^^^^^^

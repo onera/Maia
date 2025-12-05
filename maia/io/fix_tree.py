@@ -137,32 +137,27 @@ def ensure_symmetric_gc1to1(tree):
   but we should correct theses to not rely anymore on this assumption (TODO).
 
   """
-  some_switched = False
-  
   # To be less expansive (in jn matching process) we work on a shallow copy having only 1to1 GC_t
   _tree = PT.shallow_copy(tree)
   PT.rm_nodes_from_label(_tree, 'GridConnectivity_t')
 
-  MJT.add_joins_donor_name(_tree, MPI.COMM_SELF)
-  matching_jns = MJT.get_matching_jns(_tree)
-  for jn_path, jn_path_opp in matching_jns:
-    jn = PT.get_node_from_path(tree, jn_path)
-    jn_opp = PT.get_node_from_path(tree, jn_path_opp)
+  MJT.find_joins_donor_name(_tree, MPI.COMM_SELF)
+  jn_pairs = MJT.get_matching_jns(_tree)
+  all_symmetric = True
+  for jn_pair in jn_pairs:
+    if not MJT._jn_is_symmetric_loc(PT.find_node_from_path(_tree, jn_pair[0]), 
+                                    PT.find_node_from_path(_tree, jn_pair[1])):
+      all_symmetric = False
+      break
+      
+  if not all_symmetric:
+    MJT.enforce_symmetric_joins(_tree, MPI.COMM_SELF)
+    for jn_pair in jn_pairs:
+      PT.find_node_from_path(tree, jn_pair[0])[2] = PT.find_node_from_path(_tree, jn_pair[0])[2]
+      PT.find_node_from_path(tree, jn_pair[1])[2] = PT.find_node_from_path(_tree, jn_pair[1])[2]
 
-    if PT.get_label(jn) == PT.get_label(jn_opp) == 'GridConnectivity1to1_t':
-      gc1_pr  = PT.get_child_from_name(jn, 'PointRange')
-      gc1_prd = PT.get_child_from_name(jn, 'PointRangeDonor')
-      gc2_pr  = PT.get_child_from_name(jn_opp, 'PointRange')
-      gc2_prd = PT.get_child_from_name(jn_opp, 'PointRangeDonor')
-
-      if not (np.array_equal(PT.get_value(gc1_pr), PT.get_value(gc2_prd)) and
-              np.array_equal(PT.get_value(gc2_pr), PT.get_value(gc1_prd))):
-        PT.set_value(gc2_pr, PT.get_value(gc1_prd))
-        PT.set_value(gc2_prd, PT.get_value(gc1_pr))
-        some_switched = True
-
-  if some_switched:
     logging.warning(f"Some GridConnectivity1to1_t PointRange have been swapped to enforce symmetry with donor")
+
 
 def add_missing_pr_in_bcdataset(tree):
   """

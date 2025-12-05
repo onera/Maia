@@ -1,11 +1,16 @@
+from mpi4py import MPI
 import pytest
 import pytest_parallel
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
+import maia
 from maia.algo.dist import matching_jns_tools as MJT
-from maia.factory import full_to_dist
+
+pl_val  = lambda n : PT.get_np_value(PT.find_child_from_name(n, 'PointList'))
+pld_val = lambda n : PT.get_np_value(PT.find_child_from_name(n, 'PointListDonor'))
 
 def test_gc_is_reference():
   pr  = np.array([[1,1], [1,10], [1,10]], order='F')
@@ -23,6 +28,7 @@ def test_gc_is_reference():
     MJT.gc_is_reference(gc, 'Base/ZoneA')
 
 class Test_compare_pointrange():
+
   def test_ok(self):
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[7,1],[9,9],[5,1]])
@@ -30,6 +36,7 @@ class Test_compare_pointrange():
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[1,7],[9,9],[1,5]])
     assert(MJT._compare_pointrange(jn1, jn2) == True)
+
   def test_ko(self):
     jn1 = PT.new_GridConnectivity1to1(point_range      =[[17,17],[3,9],[1,5]], point_range_donor=[[7,1],[9,9],[5,1]])
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,7],[1,5]], point_range      =[[1,5],[9,9],[1,5]])
@@ -38,22 +45,77 @@ class Test_compare_pointrange():
     jn2 = PT.new_GridConnectivity1to1(point_range_donor=[[17,17],[3,9],[1,5]], point_range      =[[7,1],[9,9],[5,1]])
     assert(MJT._compare_pointrange(jn1, jn2) == False)
 
+@pytest_parallel.mark.parallel(1)
 class Test_compare_pointlist():
-  def test_ok(self):
+
+  def test_ok(self, comm):
     jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[12,14,16,18]], point_list_donor=[[9,7,5,3]])
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[12,14,16,18]], point_list      =[[9,7,5,3]])
-    assert(MJT._compare_pointlist(jn1, jn2) == True)
-  def test_ko(self):
+    MT.new_Distribution({'Index' : np.array([0,4,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([0,4,4])}, jn2)
+    assert(MJT._compare_pointlist(jn1, jn2, comm) == True)
+
+  def test_ko(self, comm):
     jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[12,14,16,18]], point_list_donor=[[9,7,5,3]])
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[12,14,16,18]], point_list      =[[3,9,5,7]])
-    assert(MJT._compare_pointlist(jn1, jn2) == False)
-  def test_empty(self):
+    MT.new_Distribution({'Index' : np.array([0,4,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([0,4,4])}, jn2)
+    assert(MJT._compare_pointlist(jn1, jn2, comm) == False)
+
+  def test_empty(self, comm):
     jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =np.empty((1,0), np.int32), point_list_donor=np.empty((1,0), np.int32))
     jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=np.empty((1,0), np.int32), point_list      =np.empty((1,0), np.int32))
-    assert(MJT._compare_pointlist(jn1, jn2) == True)
+    MT.new_Distribution({'Index' : np.array([0,0,0])}, jn1)
+    MT.new_Distribution({'Index' : np.array([0,0,0])}, jn2)
+    assert(MJT._compare_pointlist(jn1, jn2, comm) == True)
+
+@pytest_parallel.mark.parallel(2)
+def test_compare_pl_non_sym_ok(comm):
+  if comm.rank == 0:
+    jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[12]], point_list_donor=[[9]])
+    jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[18]], point_list      =[[3]])
+    MT.new_Distribution({'Index' : np.array([0,1,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([0,1,4])}, jn2)
+  else:
+    jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[14,16,18]], point_list_donor=[[7,5,3]])
+    jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[16,14,12]], point_list      =[[5,7,9]])
+    MT.new_Distribution({'Index' : np.array([1,4,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([1,4,4])}, jn2)
+
+  assert MJT._compare_pointlist(jn1, jn2, comm) == True
+
+@pytest_parallel.mark.parallel(2)
+def test_compare_pl_non_sym_ko(comm):
+  if comm.rank == 0:
+    jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[12]], point_list_donor=[[9]])
+    jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[18]], point_list      =[[3]])
+    MT.new_Distribution({'Index' : np.array([0,1,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([0,1,4])}, jn2)
+  else:
+    jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[14,16,18]], point_list_donor=[[7,5,3]])
+    jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[16,14,120]], point_list      =[[5,7,9]])
+    MT.new_Distribution({'Index' : np.array([1,4,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([1,4,4])}, jn2)
+
+  assert comm.allreduce(MJT._compare_pointlist(jn1, jn2, comm), MPI.LAND) == False
+
+  if comm.rank == 0:
+    jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[12]], point_list_donor=[[9]])
+    jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[18]], point_list      =[[3]])
+    MT.new_Distribution({'Index' : np.array([0,1,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([0,1,4])}, jn2)
+  else:
+    #                                                                   # Permutation => False           x x 
+    jn1 = PT.new_GridConnectivity(type='Abutting1to1', point_list      =[[14,16,18]], point_list_donor=[[5,7,3]])
+    jn2 = PT.new_GridConnectivity(type='Abutting1to1', point_list_donor=[[16,14,12]], point_list      =[[5,7,9]])
+    MT.new_Distribution({'Index' : np.array([1,4,4])}, jn1)
+    MT.new_Distribution({'Index' : np.array([1,4,4])}, jn2)
+
+  assert comm.allreduce(MJT._compare_pointlist(jn1, jn2, comm), MPI.LAND) == False
+
 
 @pytest_parallel.mark.parallel([1,3])
-def test_add_joins_donor_name(comm):
+def test_find_joins_donor_name(comm):
   yt = """
 Base0 CGNSBase_t [3,3]:
   ZoneA Zone_t [[27,8,0]]:
@@ -95,40 +157,13 @@ Base1 CGNSBase_t [3,3]:
         PointListDonor IndexArray_t [[32,34]]:
 """
   full_tree = PT.yaml.to_cgns_tree(yt)
-  dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
+  dist_tree = maia.factory.full_to_dist_tree(full_tree, comm)
 
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   expected_donor_names = ['matchBA', 'matchAB', 'matchCB1', 'matchCB2', 'matchBC2', 'matchBC1']
   for i, jn in enumerate(PT.iter_nodes_from_predicate(dist_tree, PT.pred.IS_GC)):
     assert PT.get_value(PT.get_child_from_name(jn, 'GridConnectivityDonorName')) == expected_donor_names[i]
-
-@pytest_parallel.mark.parallel(1)
-def test_force(comm):
-  yt = """
-Base0 CGNSBase_t:
-  ZoneA Zone_t:
-    ZGC ZoneGridConnectivity_t:
-      matchAB GridConnectivity_t "ZoneB":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [1,4,7,10]:
-        PointListDonor IndexArray_t [13,16,7,10]:
-        GridConnectivityDonorName Descriptor_t "WrongOldValue":
-  ZoneB Zone_t:
-    ZGC ZoneGridConnectivity_t:
-      matchBA GridConnectivity_t "ZoneA":
-        GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [13,16,7,10]:
-        PointListDonor IndexArray_t [1,4,7,10]:
-        GridConnectivityDonorName Descriptor_t "WrongOldValue":
-"""
-  dist_tree = PT.yaml.to_cgns_tree(yt)
-  jn_donor_path = 'Base0/ZoneA/ZGC/matchAB/GridConnectivityDonorName'
-  assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, comm)
-  assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'WrongOldValue'
-  MJT.add_joins_donor_name(dist_tree, comm, force=True)
-  assert PT.get_value(PT.get_node_from_path(dist_tree, jn_donor_path)) == 'matchBA'
 
 @pytest_parallel.mark.parallel(1)
 def test_some_computed(comm):
@@ -138,27 +173,35 @@ Base0 CGNSBase_t:
     ZGC ZoneGridConnectivity_t:
       matchAB.0 GridConnectivity_t "ZoneB":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [1,4,7,10]:
-        PointListDonor IndexArray_t [13,16,7,10]:
+        PointList IndexArray_t [[1,4,7,10]]:
+        PointListDonor IndexArray_t [[13,16,7,10]]:
         GridConnectivityDonorName Descriptor_t "matchBA.0":
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t [0,4,4]:
       matchAB.1 GridConnectivity_t "ZoneB":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [7,10]:
-        PointListDonor IndexArray_t [7,10]:
+        PointList IndexArray_t [[7,10]]:
+        PointListDonor IndexArray_t [[7,10]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t [0,2,2]:
   ZoneB Zone_t:
     ZGC ZoneGridConnectivity_t:
       matchBA.0 GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [13,16,7,10]:
-        PointListDonor IndexArray_t [1,4,7,10]:
+        PointList IndexArray_t [[13,16,7,10]]:
+        PointListDonor IndexArray_t [[1,4,7,10]]:
         GridConnectivityDonorName Descriptor_t "matchAB.0":
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t [0,4,4]:
       matchBA.1 GridConnectivity_t "ZoneA":
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        PointList IndexArray_t [7,10]:
-        PointListDonor IndexArray_t [7,10]:
+        PointList IndexArray_t [[7,10]]:
+        PointListDonor IndexArray_t [[7,10]]:
+        :CGNS#Distribution UserDefinedData_t:
+          Index DataArray_t [0,2,2]:
 """
   dist_tree = PT.yaml.to_cgns_tree(yt)
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
 class Test_gcdonorname_utils:
   dt = """
@@ -241,30 +284,60 @@ Base0 CGNSBase_t:
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceId')  is None
   assert PT.get_node_from_name(dist_tree, 'DistInterfaceOrd') is None
 
-@pytest_parallel.mark.parallel(1)
-def test_sort_jn_pointlist(comm):
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize('has_zsr', [0, 1, 2])
+def test_enforce_symmetric_joins(has_zsr, comm):
   yt = """
 Base CGNSBase_t:
-  ZoneA Zone_t [[3, 2, 0]]:
+  ZoneU Zone_t [[3, 2, 0]]:
     ZoneType ZoneType_t "Unstructured":
     ZGC ZoneGridConnectivity_t:
-      perio1 GridConnectivity_t 'ZoneA':
+      perio1 GridConnectivity_t 'ZoneU':
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridConnectivityDonorName Descriptor_t 'perio2':
         PointList IndexArray_t [[7,5,3]]:
         PointListDonor IndexArray_t [[11,12,13]]:
-      perio2 GridConnectivity_t 'Base/ZoneA':
+      perio2 GridConnectivity_t 'Base/ZoneU':
         GridConnectivityType GridConnectivityType_t "Abutting1to1":
-        GridConnectivityDonorName Descriptor_t 'perio1':
-        PointList IndexArray_t [[11,12,13]]:
-        PointListDonor IndexArray_t [[7,5,3]]:
+        PointList IndexArray_t [[11,13,12]]:
+        PointListDonor IndexArray_t [[7,3,5]]:
+      matchA GridConnectivity_t 'ZoneS':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [[5,9,7,8,12,4]]:
+        PointListDonor IndexArray_t [[1,1,1,1,1,1], [5,1,2,4,6,3]]:
+  ZoneS Zone_t [[3,2,0], [6,5,0]]:
+    ZoneType ZoneType_t "Structured":
+    ZGC ZoneGridConnectivity_t:
+      matchB GridConnectivity_t 'ZoneU':
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        PointList IndexArray_t [[1,1,1,1,1,1], [3,5,6,1,2,4]]:
+        PointListDonor IndexArray_t [[4,5,12,9,7,8]]:
 """
   full_tree = PT.yaml.to_cgns_tree(yt)
-  dist_tree = full_to_dist.full_to_dist_tree(full_tree, comm)
+  if has_zsr > 0:
+    # ZSR to perio1
+    PT.new_ZoneSubRegion('GCZSR1', gc_name='perio1', parent=PT.get_all_Zone_t(full_tree)[0])
+  if has_zsr > 1:
+    # ZSR to both perio1 and perio2 (should raise)
+    PT.new_ZoneSubRegion('GCZSR2', gc_name='perio2', parent=PT.get_all_Zone_t(full_tree)[0])
+  dist_tree = maia.factory.full_to_dist_tree(full_tree, comm)
 
-  MJT.sort_jn_pointlist(dist_tree, comm)
+  if has_zsr == 2:
+    with pytest.raises(RuntimeError):
+      MJT.enforce_symmetric_joins(dist_tree, comm)
 
-  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio1/PointList')[1] == [[3,5,7]]).all()
-  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio2/PointListDonor')[1] == [[3,5,7]]).all()
-  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio2/PointList')[1] == [[13,12,11]]).all()
-  assert (PT.get_node_from_path(dist_tree, 'Base/ZoneA/ZGC/perio1/PointListDonor')[1] == [[13,12,11]]).all()
+  else:
+    MJT.enforce_symmetric_joins(dist_tree, comm)
+
+    ftree = maia.factory.dist_to_full_tree(dist_tree, comm, 0)
+    if comm.rank == 0:
+      perio1 = PT.find_node_from_name(ftree, 'perio1')
+      perio2 = PT.find_node_from_name(ftree, 'perio2')
+      expt_pl = [[7,5,3]] if has_zsr == 0 else [[7,3,5]]
+      expt_pld = [[11,12,13]] if has_zsr == 0 else [[11,13,12]]
+      assert np.array_equal(v:=pl_val(perio1), pld_val(perio2)) and (v == expt_pl).all()
+      assert np.array_equal(v:=pld_val(perio1), pl_val(perio2)) and (v == expt_pld).all()
+
+      matchA = PT.find_node_from_name(ftree, 'matchA')
+      matchB = PT.find_node_from_name(ftree, 'matchB')
+      assert np.array_equal(v:=pl_val(matchA), pld_val(matchB)) and (v == [[4,5,12,9,7,8]]).all()
+      assert np.array_equal(v:=pld_val(matchA), pl_val(matchB)) and (v == [[1,1,1,1,1,1], [3,5,6,1,2,4]]).all()

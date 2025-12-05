@@ -16,6 +16,9 @@ from .duplicate                  import duplicate_from_periodic_jns,\
 
 from .extrusion                  import extrude
 
+from .matching_jns_tools         import enforce_symmetric_joins,\
+                                        find_joins_donor_name
+
 from .merge                      import merge_all_zones_from_families,\
                                         merge_connected_zones,\
                                         merge_zones,\

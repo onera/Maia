@@ -542,7 +542,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
   """
   MT.check_cgns_dist_tree(dist_tree)
   #Build join ids to identify opposite joins
-  MJT.add_joins_donor_name(dist_tree, comm)
+  MJT.find_joins_donor_name(dist_tree, comm)
 
   cell_dims = {PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(dist_tree)}
   assert len(cell_dims) == 1, "Merging zone of different CellDimension is not allowed"
