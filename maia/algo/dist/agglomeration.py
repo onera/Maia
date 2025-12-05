@@ -38,6 +38,7 @@ def _deepcopy_children_if(src:CGNSTree, tgt:CGNSTree, predicate:Predicate):
 def compute_agglomerated_parent(tree:CGNSDistTree, comm:MPIComm):
   for z in PT.iter_all_Zone_t(tree):
     idx_dim = PT.Zone.IndexDimension(z)
+    ztype = PT.get_np_value(z).dtype
     
     cell_shape = PT.Zone.CellSize(z)
     cell_slabs = HFR2S.compute_slabs(cell_shape, MT.distribution_value(z, 'Cell')[:2])
@@ -59,7 +60,7 @@ def compute_agglomerated_parent(tree:CGNSDistTree, comm:MPIComm):
         cell_coarseidx['KCoarseIdx'].append(np.repeat(kcoarserange, len_i*len_j))
 
     PT.new_DiscreteData('MultiGridCellInfo', loc='CellCenter',
-                        fields={key:np_utils.concatenate_np_arrays(val)[1] for key,val in cell_coarseidx.items()},
+                        fields={key:np_utils.concatenate_np_arrays(val, dtype=ztype)[1] for key,val in cell_coarseidx.items()},
                         parent=z)
     
     for bc in PT.get_nodes_from_predicates(z, "ZoneBC_t/BC_t"):
@@ -95,7 +96,7 @@ def compute_agglomerated_parent(tree:CGNSDistTree, comm:MPIComm):
 
       bcds = PT.new_BCDataSet('MultiGridBCFaceInfo', loc=bc_face_loc, point_range=face_loc_pr, parent=bc)
       PT.new_BCData('DirichletData', 
-                    fields={key:np_utils.concatenate_np_arrays(val)[1] for key,val in bc_face_coarseidx.items()},
+                    fields={key:np_utils.concatenate_np_arrays(val, dtype=ztype)[1] for key,val in bc_face_coarseidx.items()},
                     parent=bcds)
 
       PT.new_Descriptor('BCStructuredLocation', bc_face_loc, parent=bcds)
@@ -163,7 +164,7 @@ def create_agglomerated_tree(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
         
       # Concatenate lists when creating coordinates
       PT.new_GridCoordinates(PT.get_name(PT.find_child_from_label(zone, 'GridCoordinates_t')),
-                             fields={key:np_utils.concatenate_np_arrays(val)[1] for key,val in mg_coords.items()},
+                             fields={key:np_utils.concatenate_np_arrays(val, dtype=float)[1] for key,val in mg_coords.items()},
                              parent=mg_zone)
 
       for zbc, bc in PT.get_nodes_from_predicates(zone, "ZoneBC_t/BC_t", ancestors=True):
