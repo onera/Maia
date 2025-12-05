@@ -131,6 +131,16 @@ def test_others_mask():
   assert (np_utils.others_mask(array, np.array([2,1]))       == [1,0,0,1,1,1]).all()
   assert (np_utils.others_mask(array, np.array([0,1,3,4,5])) == [0,0,1,0,0,0]).all()
 
+def test_search():
+  assert (np_utils.search(np.array([3,7,9,12,5,39,66,5]), np.array([5,7,5,66])) == [4,1,4,6]).all()
+  assert (np_utils.search(np.array([3,7,9,12,5,39,66,5]), np.array([])) == []).all()
+  assert (np_utils.search(np.array([3,7,9,12,5,39,66,5]), np.array([12,10,1001,9,-121])) == [3,-1,-1,2,-1]).all()
+
+  # all_exists used but in fact no --> wrong result or raise 
+  assert (np_utils.search(np.array([3,7,9,12,5,39,66,5], ), np.array([12,10,9,-6]), all_exists=True) == [3,3,2,0]).all()
+  with pytest.raises(IndexError):
+    np_utils.search(np.array([3,7,9,12,5,39,66,5], ), np.array([12,10,9,100]), all_exists=True)
+
 def test_concatenate_np_arrays():
   a1 = np.array([2, 4, 6, 8])
   a2 = np.array([10, 20, 30, 40, 50, 60])
