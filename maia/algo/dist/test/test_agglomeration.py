@@ -6,7 +6,7 @@ import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.algo.dist import multigrid as MG
+from maia.algo.dist import agglomeration as MG
 
 def test_suffix_bases():
   tree = PT.yaml.to_cgns_tree("""

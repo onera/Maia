@@ -2,6 +2,8 @@
 Distributed algorithms for distributed trees
 """
 
+from .agglomeration              import agglomerate_cells
+
 from .concat_nodes               import concatenate_subsets_from_families,\
                                         deconcatenate_subsets_from_families
 
@@ -26,8 +28,6 @@ from .merge_degen_bc             import remove_degen_faces_from_family
 from .mesh_adaptation            import adapt_mesh_with_feflo
 
 from .mixed_to_std_elements      import convert_mixed_to_elements
-
-from .multigrid                  import agglomerate_cells
 
 from .ngon_from_std_elements     import convert_elements_to_ngon
 
