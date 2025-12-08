@@ -491,8 +491,10 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
 
       fam_pl_cat = np_utils.concatenate_np_arrays(fam_pl)[1] if len(fam_pl)!=0 else np.zeros(0, dtype=np.int32).reshape((1,-1), order='F')
       if fam_pl_cat.size!=0:
-        fam_pl_cat = np.unique(fam_pl_cat, axis=1) # If pl.size == 0, this line fails with numpy 1.17
-        PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl_cat, loc=location[0], parent=part_zone)
+        fam_pl_cat, pl_idx = np.unique(fam_pl_cat, return_index=True, axis=1) # If pl.size == 0, this line fails with numpy 1.17
+        fake_zsr = PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl_cat, loc=location[0], parent=part_zone)
+        # Store the index array to reorder associated data the same way
+        PT.new_UserDefinedData("_UniqueIdx", pl_idx, parent=fake_zsr)
 
   return local_part_tree, fam_node_paths
 
@@ -534,6 +536,7 @@ def _prepare_extract_from_family_fields(local_part_tree, family_name, fam_node_p
     for part_zone in part_zones:
       fake_zsr = PT.get_child_from_name(part_zone, f'__{family_name}')
       if fake_zsr is not None: # Cat fields
+        order = PT.get_np_value(PT.find_child_from_name(fake_zsr, '_UniqueIdx'))
         gathered_fields = {key: [] for key in full_fields}
         for i,path in enumerate(fam_node_paths):
           if (cnt:=PT.get_node_from_path(part_zone, path)) is not None:
@@ -543,7 +546,7 @@ def _prepare_extract_from_family_fields(local_part_tree, family_name, fam_node_p
               PT.rm_children_from_name(cnt, field) # Remove to avoid double exchange
             is_empty_l[i] &= (len(PT.get_children_from_label(cnt, 'DataArray_t')) == 0)
         for fname, fields in gathered_fields.items():
-          PT.new_DataArray(fname, np_utils.concatenate_np_arrays(fields)[1], parent=fake_zsr)
+          PT.new_DataArray(fname, np_utils.concatenate_np_arrays(fields)[1][order], parent=fake_zsr)
 
   transfer_dataset = len(full_fields) > 0
   # Add fam_node_paths in containers_name to have partial exchange on other fields
