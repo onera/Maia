@@ -68,6 +68,10 @@ job:doc:
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh
     - export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
+    # For now we have a semi automatic process, we copy notebooks already executed
+    - export PYTHONPATH=/stck/jcoulet/Public/site-packages-mystnb-py3.8:$PYTHONPATH
+    - cp /stck/jcoulet/Public/maia_training/notebooks/*.ipynb $CUSTOM_CI_DIR/doc/tutorials
+    - cp /stck/jcoulet/Public/maia_training/notebooks/_static/* $CUSTOM_CI_DIR/doc/_static
     - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
     - make maia_sphinx
 
