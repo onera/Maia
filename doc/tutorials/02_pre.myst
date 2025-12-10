@@ -10,7 +10,7 @@ myst_html_secnum_depth: 0
 ---
 
 (tuto2)=
-# A preprocessing workflow
+# Your first workflow
 
 This tutorial will teach you how to chain functionalities to create a simple workflow.
 Based on a real CFD case, the objectives are to demonstrate how Maia simplifies distributed
@@ -35,7 +35,7 @@ The illustrations on this page were created using the medium-sized mesh.
 ```{code-cell} python
 :tags: [remove-cell, no-parallel]
 # This create a symlink of the input file in current directory, for automatic execution
-SRC = '/home/jcoulet/Public/maia_training/MESHES/rotor37_medium_elt.cgns'
+SRC = '/stck/jcoulet/Public/maia_training/MESHES/rotor37_medium_elt.cgns'
 import os
 if not os.path.exists('rotor37_medium.cgns'):
     os.symlink(SRC, 'rotor37_medium.cgns')
@@ -632,10 +632,10 @@ This mini workflow provides an opportunity to take a quick look at performance.
 
 We slightly modify the input script to apply the following methodology: imports and file
 reading are performed once, after which the workflow is run five times, measuring elapsed time.
-The mean of these five trials is then computed, and we repeat the operation for different
+The mean value of these five runs is then computed, and we repeat the operation for different
 number of processes.
 
-The medium sized mesh is well suited for this study if only have access to a laptop or a workstation.
+The medium sized mesh is well suited for this study if we only have access to a laptop or a workstation.
 This is what we get on a Intel Xeon (4 cores) CPU:
 
 ```{raw} html
@@ -654,7 +654,7 @@ In addition, it is worth noting that:
 - The output file is exactly the same, whatever the number of processes.
 ```
 
-In order to conduct the study on the large mesh, we will need to run the cases on the HPC facility.
+In order to conduct the study on the large mesh, we will need to run the cases on a supercomputer.
 The material configuration is a cluster of Cascade Lake CPUs, each node of the cluster
 having 2 CPUs of 24 cores (and thus 48 processes).
 

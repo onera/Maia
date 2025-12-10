@@ -34,7 +34,7 @@ mpirun -np 4 python3 01_basic.py
 ```{code-cell} python
 :tags: [remove-cell, no-parallel]
 # This create a symlink of the input file in current directory, for automatic execution
-SRC = '/home/jcoulet/Public/maia_training/MESHES/naca_2d.cgns'
+SRC = '/stck/jcoulet/Public/maia_training/MESHES/naca_2d.cgns'
 import os
 if not os.path.exists('naca_2d.cgns'):
     os.symlink(SRC, 'naca_2d.cgns')
@@ -288,3 +288,7 @@ when doing computations with a solver:
 2. Partition the mesh in order to call the solver
 3. Move back the fields computed by the solver on the input tree
 4. Save the results on the disk and/or do some postprocessing steps
+
+## More about maia trees
+
+🏗️ Under construction
