@@ -481,7 +481,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     (such as boundary conditions, zone subregion, etc.) on the created dist_tree;
     data fields are **not** transfered
     automatically. Use :attr:`data_transfer` keyword argument
-    or see :ref:`Transfer module<user_man_transfer>`. 
+    or see :ref:`Transfer module<user_transfer>`. 
   
   Args:
     part_tree (CGNSPartTree)   : Partitioned CGNS Tree

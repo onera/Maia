@@ -26,6 +26,8 @@ The following functions construct a new tree from logical operations:
 .. autofunction:: maia.pytree.intersection
 .. autofunction:: maia.pytree.difference
 
+.. _pt_operations_edit:
+
 Tree editing
 ------------
 

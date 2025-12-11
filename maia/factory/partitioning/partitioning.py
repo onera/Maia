@@ -72,7 +72,7 @@ def partition_dist_tree(dist_tree: CGNSDistTree,
   Important:
     Geometric information (such as boundary conditions, zone subregion, etc.) are reported
     on the partitioned tree; however, data fields (BCDataSet, FlowSolution, etc.) are **not**
-    transfered automatically. Use :attr:`data_transfer` keyword argument or see :ref:`Transfer module<user_man_transfer>`.
+    transfered automatically. Use :attr:`data_transfer` keyword argument or see :ref:`Transfer module<user_transfer>`.
 
   See reference documentation for the description of the keyword arguments.
 

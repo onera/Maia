@@ -1,0 +1,735 @@
+---
+jupytext:
+  text_representation:
+    format_name: myst
+kernelspec:
+  display_name: Python 3
+  language: python
+  name: python3
+myst_html_secnum_depth: 0
+---
+
+(tuto2)=
+# Your first workflow
+
+This tutorial will teach you how to chain functionalities to create a simple workflow.
+Based on a real CFD case, the objectives are to demonstrate how Maia simplifies distributed
+mesh operations and to provide a solid foundation for creating your own parallel CGNS workflows.
+
+Our use case involves a Rotor37 geometry mesh.
+The input mesh is available in different sizes; please download one from the table below.
+The illustrations on this page were created using the medium-sized mesh.
+
+
+[rotor_37_small.cgns]: https://github.com/onera/Maia/releases/download/v1.8/rotor37_small.cgns
+[rotor_37_medium.cgns]: https://github.com/onera/Maia/releases/download/v1.8/rotor37_medium.cgns
+[rotor_37_large.cgns]: https://github.com/onera/Maia/releases/download/v1.8/rotor37_large.cgns
+
+|                   | Light                 | Medium                 | Large                 |
+|-------------------|-----------------------|------------------------|-----------------------|
+| Initial cell size | ~60K                  | ~200K                  | ~21M                  |
+| File size         | 6 MiB                 | 16 MiB                 | 1 GiB                 |
+| (Final cell size) | ~2M                   | ~7M                    | ~762M                 |
+| Download link     | [rotor_37_small.cgns] | [rotor_37_medium.cgns] | [rotor_37_large.cgns] |
+
+```{code-cell} python
+:tags: [remove-cell, no-parallel]
+# This create a symlink of the input file in current directory, for automatic execution
+SRC = '/stck/jcoulet/Public/maia_training/MESHES/rotor37_medium_elt.cgns'
+import os
+if not os.path.exists('rotor37_medium.cgns'):
+    os.symlink(SRC, 'rotor37_medium.cgns')
+```
+
+Then, ensure you have access to a valid installation of maia and create
+an empty file {file}`02_workflow.py`. 
+You will complete this file as you work through the tutorial; look out for
+instructions preceded by the symbol ✏️.
+
+```{tip}
+During the experimentation phase, we advise you to use a light mesh and a low number of processes, especially if you are displaying data.
+Once the script is ready, you can use more processes and move to larger meshes.
+```
+
+## Objective and plan
+
+The aim of the workflow is to recombine a complete 360° mesh from the input angular section,
+with a data field initialized on it:
+
+```{glue:figure} target_fig
+:align: center
+:width: 85%
+
+Initial (left) and expected final (right) mesh, colored from `VelocityY` field. Black lines
+show the initial angular section position.
+```
+
+We precise that we except to have a single `Zone_t` node on the 360° mesh.
+
+👉 Before starting to code, let's see what will be needed. Open the {ref}`user_manual`
+and answer the following questions:
+
+❓ Which function(s) you will need to use ?
+
+*Hint : try to search 360 or duplicate in the search bar* 
+
+```{toggle}
+The main functions you are going to use are :
+- {func}`~maia.algo.dist.duplicate_from_rotation_jns_to_360` to duplicate the input mesh,
+- {func}`~maia.algo.dist.merge_zones` (or equivalent) to merge the resulting zones in a single one.
+
+In addition, you will need some `PT` functions to create and store the initial field, as well as
+the standard `maia.io` functions.
+```
+
+❓ Will you need to work on a partioned view of the input mesh ?
+
+```{toggle}
+All the functions mentionned above operate on a distributed tree. Thus, partioning the
+tree will not be necessary.
+```
+
+❓ When should you create the initial field ?
+
+```{toggle}
+You can create the initial field anytime in your workflow, but it is probably more
+efficient to do it before the duplication (since there will be more cells
+to compute after).
+```
+
+👉 Last step: it is a good practice to quickly check the input mesh, *eg* with `maia_print_tree`:
+
+
+```{code-cell} python
+:tags: [remove-input, no-parallel]
+import subprocess
+_ = subprocess.run(
+    ["maia_print_tree", "rotor37_medium.cgns", "--depth=3"],
+)
+```
+
+❓ Is the input mesh suitable for the functions you plan to call ?
+
+```{toggle}
+❌️ No! The input mesh is described by standard elements, but the function
+{func}`~maia.algo.dist.merge_zones` only applies to polyedric elements.
+Thus, a mesh conversion into polyedric (`NGON_n`) elements will be needed.
+```
+
+👉 All these informations allow us to propose the following plan:
+
+```{toggle}
+1. Load mesh
+2. Convert into polyedric tree
+3. Initialize fields
+4. Duplicate 
+5. Merge zones
+```
+
+## Development
+
+### Prelude
+
+✏️ As in {ref}`first tutorial <tuto1>`, get the communicator
+from `mpi4py` package and import the modules that we will use: `maia` and `maia.pytree`.
+
+```{code-cell} python
+:tags: [hide-cell]
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+
+import maia
+import maia.pytree as PT
+```
+
+
+### File reading
+
+
+
+✏️ Read the CGNS file of your choice from the disk using the main file reading function : 
+{func}`maia.io.file_to_dist_tree`.
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+tree = maia.io.file_to_dist_tree('rotor37_medium.cgns', comm)
+```
+
+### Connectivity conversion
+
+👉 Search in the {ref}`user_manual` the relevant function to convert the
+elements description from standard elements to polyedric (`NGON_n`) elements.
+
+✏️ Call the function and check it worked by printing the
+{func}`~maia.pytree.Element.Type` of `Elements_t` nodes.
+
+```{code-cell} python
+:tags: [hide-cell]
+elt_kinds = set(PT.Element.Type(e) for e in PT.iter_nodes_from_label(tree, 'Elements_t'))
+if comm.Get_rank() == 0:
+  print(f"Elements type was {elt_kinds}")
+
+maia.algo.dist.convert_elements_to_ngon(tree, comm)
+
+elt_kinds = set(PT.Element.Type(e) for e in PT.iter_nodes_from_label(tree, 'Elements_t'))
+if comm.Get_rank() == 0:
+  print(f"Elements type are now {elt_kinds}")
+```
+
+```{tip}
+The {ref}`pt_inspect` page lists various functions to easily get
+data related to the most frequent node labels.
+```
+
+```{code-cell} python
+:tags: [remove-cell]
+# Save for visualization
+maia.io.dist_tree_to_file(tree, 'rotor37_medium_ng.cgns', comm)
+```
+
+### Field initialization
+
+In order to illustrate the ability of the duplication to move the vectorial fields
+together with the mesh, we are going to create a vectorial initial field in the input zone.
+
+This will made you use some functions of {ref}`pytree_module`.
+
+✏️ Get the (cartesian) coordinates $x$,$y$, and $z$ of the input zone and use it to compute
+the following vertex located velocity :
+
+```python
+vx = α 
+vy = -α*sin(Θ)     where α = sqrt(2)/2
+vz =  α*cos(Θ)           Θ = atan(z/y)
+```
+
+which corresponds to the uniform field $(0, \alpha, \alpha)$ in the cylindric coordinates
+$(\vec{e_{r}}, \vec{e_{\theta}}, \vec{e_{x}})$ (since $\vec{e_x}$ is the revolution axis of the mesh).
+
+```{attention}
+You need to create arrays locally sized as $x$, $y$ and $z$. Use one of the ndarray methods to get this size.
+```
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+zone = PT.find_node_from_label(tree, 'Zone_t') # OK because tree has only one zone
+cx, cy, cz = PT.Zone.coordinates(zone)
+
+import numpy as np
+α = np.sqrt(2)/2
+Θ = np.arctan(cz/cy)
+vx = np.full(len(cx), α)
+vy = -α * np.sin(Θ)
+vz =  α * np.cos(Θ)
+```
+
+✏️ Add the fields in a FlowSolution container. Be carefull to end the names
+by X,Y and Z to have it considered as a vectorial field later.
+
+```{code-cell} python
+:tags: [hide-cell, remove-output]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+PT.new_FlowSolution('FlowSolution',
+                    loc='Vertex',
+                    fields={
+                      'VelocityX' : vx,
+                      'VelocityY' : vy,
+                      'VelocityZ' : vz},
+                    parent=zone)
+```
+
+```{note}
+An alternative approach would have be to convert the mesh into cylindrical coordinates,
+then to create the FlowSolution with the uniform field $(0, \alpha, \alpha)$ (using this time
+R, Theta, and Z suffixes) before moving back the mesh to cartesian coordinates.
+Try it if you want!
+```
+
+### 360° duplication
+
+👉 It is time to apply the duplication operation with {func}`~maia.algo.dist.duplicate_from_rotation_jns_to_360`.
+
+❓ This function takes as an input the paths of the `GridConnectivity_t` nodes that define
+the periodic transformation. What is wrong with this mesh ?
+
+```{toggle}
+Our mesh has no `GridConnectivity_t` nodes ! Apparently, the meshing tool did not store it and we need to
+recover it. Congratulations if you anticipated it at the begining of this tutorial 🏅️
+```
+
+#### Recovering GridConnectivity_t nodes
+
+In fact, the concerned boundary faces are stored in two `BC_t` nodes : `perleft` and `perright`; it is 'only'
+the 1-to-1 mapping which is missing.
+
+✏️ Read the documentation of {func}`~maia.algo.dist.connect_1to1_families` and call it to rebuild the 1to1 connection
+between these two subsets.
+
+```{tip}
+The rotation angle to go from perleft subset to perright subset is `2*pi/36`
+```
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+a = 2*np.pi / 36
+maia.algo.dist.connect_1to1_families(tree,
+                                     ('perleft', 'perright'), 
+                                     comm,
+                                     periodic={'rotation_angle' : np.array([a, 0, 0])})
+```
+
+✏️ Then check the presence of `GridConnectivity_t` nodes in the tree and note their path.
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+if comm.Get_rank() == 0:
+  PT.print_tree(tree, max_depth=4)
+```
+
+#### Effective duplication
+
+Now that tree has periodic joins, we can call the duplication function.
+
+✏️ Use the paths of the `GridConnectivity_t` created nodes to call the duplication function.
+    
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+
+zone_paths = ["Base/Rotor"]
+left_jns   = ["Base/Rotor/ZoneGridConnectivity/perleft_0"]
+right_jns  = ["Base/Rotor/ZoneGridConnectivity/perright_0"]
+
+maia.algo.dist.duplicate_from_rotation_jns_to_360(tree,
+                                           zone_paths,
+                                           jn_paths_for_dupl = (left_jns, right_jns),
+                                           comm = comm)
+```
+
+❓ How many `Zone_t` nodes are registered in the tree after the duplication ?
+
+```{toggle}
+The tree has 36 zones after the duplication operation
+(since the periodicity angle was $\frac{2\pi}{36}$).
+You can check this with `len(PT.get_all_Zone_t(tree))`.
+```
+
+### Merging zones
+
+As you noticed, the tree has now several physical zones (due to the duplication).
+Sometimes it can be useful to merge these zones, which are still connected throught
+1to1 matching joins, into a single one, for example:
+- to call a tool that does not manage multiblock meshes (e.g. mesh adaptation)
+- to avoid interface management in the solver.
+
+Search in the {ref}`documentation <user_manual>` the function to call to merge the zones.
+
+✏️ Call the function and check again the number of ``Zone_t`` nodes in the output tree.
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+
+maia.algo.dist.merge_connected_zones(tree, comm)
+
+if comm.Get_rank() == 0:
+  print(f"The number zones is now {len(PT.get_all_Zone_t(tree))}")
+```
+
+### Conclusion
+
+Our preprocessing workflow is completed 🚀!
+
+This is what the final tree looks like:
+
+```{code-cell} python
+:tags: [scroll_output, hide-output]
+if comm.Get_rank() == 0:
+  PT.print_tree(tree)
+```
+
+👉 If you want to create a visualisation, you can save it using {func}`~maia.io.dist_tree_to_file`.
+Be careful with the large mesh, as it requires more than 70 GiB of disk space.
+
+You can also download the final script {download}`02_pre.py`.
+
+```{code-cell} python
+:tags: [remove-cell]
+# This snipper prepares tree for illustration (write only surfaces)
+ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer='ALL')
+
+for bc in PT.get_nodes_from_label(ptree, 'BC_t'):
+  PT.new_FamilyName('ALLBCS', as_additional='AdditionalFamilyName', parent=bc)
+
+ext = maia.algo.part.extract_part_from_family(ptree, 'ALLBCS', comm, containers_name='ALL')
+dext = maia.factory.recover_dist_tree(ext, comm, data_transfer='ALL')
+PT.rm_nodes_from_name(dext, 'ZoneBC')
+maia.algo.dist.convert_ngon_to_elements(dext, comm)
+maia.io.dist_tree_to_file(dext, 'output_rotor37_med.cgns', comm)
+```
+
+
+```{code-cell} python
+:tags: [remove-cell, no-parallel]
+# This snippet generate the illustration
+from utils import PIL_hstack
+
+
+import pyvista as pv
+pv.set_jupyter_backend('static')
+
+# Plot initial mesh
+plotter = pv.Plotter(off_screen=True)
+plotter.camera_position = [
+    (-0.367, -0.036, 0.164),   # Camera Position
+    (-0.0635, 0.15867, 0.023), # Focal Point
+    (0.268, 0.254, 0.929)      # View Up
+]
+plotter.camera.view_angle = 30.0 # View Angle
+
+mesh_in = pv.read("rotor37_medium_ng.cgns")
+plotter.add_mesh(mesh_in, show_edges=False, edge_color='#808080')
+plotter.add_axes()
+
+img_2d = plotter.screenshot(return_img=True, window_size=[600,600])
+
+# Plot final mesh (with field) + initial mesh (edges only)
+plotter = pv.Plotter(off_screen=True)
+plotter.camera_position = [
+    (-0.780, -0.478, 0.360),   # Camera Position
+    (0.0073, 0.0272, -0.00576), # Focal Point
+    (0.268, 0.254, 0.929)      # View Up
+]
+plotter.camera.view_angle = 30.0 # View Angle
+
+
+# Plot 3D img
+reader = pv.CGNSReader("output_rotor37_med.cgns")
+mesh_out = reader.read()['Base']['Zone']#['Internal']
+
+
+#sargs = dict(title='TurbulentDistance\n', n_labels=3, position_x=0.25, fmt='%.2g', title_font_size=20)
+plotter.add_mesh(mesh_out)
+plotter.add_mesh(mesh_out, scalars='Velocity', component=1, cmap='coolwarm', show_scalar_bar=False)
+                #scalars='TurbulentDistance', cmap='coolwarm', clim=[0,.5], scalar_bar_args=sargs)
+# Hack because SetVerticalTitleSeparation only works for vertical cb,
+# so we add line break and set linespacing https://github.com/pyvista/pyvista/discussions/4668
+#plotter.scalar_bar.GetTitleTextProperty().SetLineSpacing(0.5)
+
+
+actor = plotter.add_mesh(mesh_in['Base']['Rotor']['Internal'].extract_feature_edges(), 
+                 line_width=1.5, color='black')
+# Fixup edge display (better rendering)
+actor.mapper.SetResolveCoincidentTopologyToPolygonOffset()
+
+
+img_3d = plotter.screenshot(return_img=True, window_size=[600,600])
+
+
+from PIL import Image
+new_im = PIL_hstack([Image.fromarray(img) for img in [img_2d, img_3d]],
+                    margin=5)
+
+#new_im.save('test.png')
+#display(new_im)
+from myst_nb import glue
+glue("target_fig", new_im)
+```
+
+## Performance overview
+
+```{code-cell} python
+:tags: [remove-cell, no-parallel]
+import numpy as np
+import plotly.graph_objects as go
+
+import utils
+
+fig = go.Figure()
+
+x         = [1,2,3,4]#5,6,7,8]
+durations = [25.36, 12.84, 9.254, 7.712]#] 9.901, 8.768,  8.236,  8.068]
+speedup = [durations[0] / d for d in durations]
+
+fig.add_trace(
+  go.Scatter(
+    x=x, y=x,
+    mode='lines',
+    line=dict(color=utils.rtd_warning_title),
+    name='ideal',
+  )
+)
+fig.add_trace(
+  go.Scatter(
+    x=x, y=speedup,
+    mode='markers',
+    name='result',
+    marker=dict(color=utils.rtd_note_title),
+  )
+)
+
+
+# 5. finalize figure
+fig.update_layout(
+xaxis=dict(
+  title=dict(
+    text='Number of processes',
+  ),
+  showline=True,
+  linecolor='black',
+  gridcolor='lightgrey'
+),
+yaxis=dict(
+  title=dict(
+    text='Speedup',
+  ),
+  rangemode="tozero",
+  showline=True,
+  linecolor='black',
+  gridcolor='lightgrey'
+),
+font=dict(
+  family='Courier New, monospace',
+  size=14,
+),
+plot_bgcolor='white',
+showlegend=False,
+)
+
+
+fig.write_html('../_static/tuto02_perf_med.html')
+```
+
+
+```{code-cell} python
+:tags: [remove-cell, no-parallel]
+
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+import utils
+
+fig = make_subplots(rows=1, cols=2, horizontal_spacing=0.2)
+
+n_cell_tot = 762100488
+pp = 48
+x         = [4,5,6,7,8,9,10,11,12,13,14,15]
+durations = [37.26, 29.36, 24.55, 21.92, 19.79, 17.74, 17.47, 15.86, 14.77, 14.24, 13.47, 14.03]
+speedup = [4*durations[0] / d for d in durations]
+eff = [d*(p*pp)/n_cell_tot for (p,d) in zip(x,durations)]
+
+
+#x = [2,3,4,5]
+#pp = 96
+#durations = [32.29, 22.44, 18.74, 16.9]
+#eff = [d*(p*pp)/n_cell_tot for (p,d) in zip(x,durations)]
+
+fig.add_trace(
+  go.Scatter(
+    x=x, y=x,
+    mode='lines',
+    line=dict(color=utils.rtd_warning_title),
+    name='ideal',
+  ),
+  row=1,col=1
+)
+fig.add_trace(
+  go.Scatter(
+    x=x, y=speedup,
+    mode='markers',
+    name='result',
+    line=dict(color=utils.rtd_note_title),
+  ),
+  row=1,col=1
+)
+
+
+fig.add_trace(
+  go.Scatter(
+    x=x, y=[durations[0]*x[0]*pp/n_cell_tot for _ in x],
+    mode='lines',
+    line=dict(color=utils.rtd_warning_title),
+    name='ideal',
+  ),
+  row=1,col=2
+)
+fig.add_trace(
+  go.Scatter(
+    x=x, y=eff,
+    mode='markers',
+    name='result',
+    line=dict(color=utils.rtd_note_title),
+  ),
+  row=1,col=2
+)
+
+
+# 5. finalize figure
+fig.update_xaxes(
+  title=dict(
+    text='Number of nodes',
+  ),
+  showline=True,
+  linecolor='black',
+  gridcolor='lightgrey'
+)
+fig.update_yaxes(
+  title=dict(
+    text='Speedup',
+  ),
+  rangemode="tozero",
+  showline=True,
+  linecolor='black',
+  gridcolor='lightgrey',
+  title_standoff=2,
+  row=1, col=1
+)
+fig.update_yaxes(
+  title=dict(
+    text='Duration / dof (s)',
+  ),
+  rangemode="tozero",
+  showline=True,
+  linecolor='black',
+  gridcolor='lightgrey',
+  title_standoff=2,
+  row=1, col=2
+)
+
+fig.update_layout(
+font=dict(
+  family='Courier New, monospace',
+  size=14,
+),
+plot_bgcolor='white',
+showlegend=False,
+)
+
+fig.write_html('../_static/tuto02_perf_large.html')
+```
+
+
+This mini workflow provides an opportunity to take a quick look at performance.
+
+We slightly modify the input script to apply the following methodology: imports and file
+reading are performed once, after which the workflow is run five times, measuring elapsed time.
+The mean value of these five runs is then computed, and we repeat the operation for different
+number of processes.
+
+The medium sized mesh is well suited for this study if we only have access to a laptop or a workstation.
+This is what we get on a Intel Xeon (4 cores) CPU:
+
+```{raw} html
+<iframe src="../_static/tuto02_perf_med.html" style="display:block; margin:auto; width:500px; height:500px; border:none;"></iframe>
+```
+
+The quantity plotted is the parallel speedup defined as {math}`T_1/T_p` as a fonction
+of {math}`p`, where {math}`T_1` is the serial execution time and {math}`T_p` is the
+parallel execution time on {math}`p` processes.
+
+The orange line represents the ideal speedup; we can see that the scaling is quite good.
+In addition, it is worth noting that:
+
+```{important}
+- No changes to the script are required for parallel execution,
+- The output file is exactly the same, whatever the number of processes.
+```
+
+In order to conduct the study on the large mesh, we will need to run the cases on a supercomputer.
+The material configuration is a cluster of Cascade Lake CPUs, each node of the cluster
+having 2 CPUs of 24 cores (and thus 48 processes).
+
+Firstly, we observe that the run fails if the number of nodes is less than four
+because the requested memory is too high. Consequently, we use the elapsed time on four nodes
+as the basis for calculating the speed-up, represented on the left of the figure below.
+On the right, we plot the parallel execution time divided by the number of cells per process.
+Once again, the orange line represents the ideal value (this ratio should remain constant).
+
+```{raw} html
+<iframe src="../_static/tuto02_perf_large.html" style="display:block; margin:auto; width:800px; height:500px; border:none;"></iframe>
+```
+
+On both figures, we can see that the scaling is good up to 10 nodes (480p)
+but decreases slightly thereafter.
+This number of processes corresponds to approximately 1.6 million cells per rank,
+which is roughly the value we recommend for pre-processing workflows.
+
+
+The time taken for each cell remains at around 10 µs for all runs, meaning that the cost
+of this workflow is roughly equivalent to ten solver iterations.
+To conclude, we can state that, from user point of view,
+
+```{important}
+- The MPI parallelisation allows to use more nodes when the requested memory is too important,
+- On 10 nodes, the excution time of this exemple workflow is lower than **20 seconds**.
+```
+
+
+```{code-cell} python
+:tags: [remove-cell, no-parallel]
+"""
+Maillage medium
+LD8
+x         = [1,2,3,4,5,6,7,8]
+durations = [25.36, 12.84, 9.254, 7.712, 9.901, 8.768,  8.236,  8.068]
+
+Sator, noeud cascade lake (48p) 826
+x         = [1,2,3,4,5,6,7,8,9,10,11,12,14,16,18,20,24,28,32,36,40,44,48]
+Remplissage par groupe (0,1,2,3, ...)
+durations = [29.21, 15.09, 10.28, 8.132, 6.916, 6.023, 5.514, 5.168, 4.818, 4.565, 4.382, 4.183,
+        3.664, 3.351, 3.039, 2.842, 2.522, 2.254, 2.050, 1.881, 1.815, 1.741, 1.578]
+# Remplissage par package : 0, 24, 1, 25, 2, 26, ...
+durations = [29.16, 14.66, 9.945, 7.633, 6.400, 5.493, 4.956, 4.472, 4.109, 3.796, 3.578, 3.291,
+        3.006, 2.811, 2.610, 2.491, 2.307, 2.061, 1.908, 1.766, 1.749, 1.707, 1.566]
+Remplissage par Numa : 0, 12, 24, 36, 1, 13, 25, 37, ...
+Note : semble être le comportement de slurm
+durations = [29.16, 14.66, 9.717, 7.461, 6.277, 5.417, 4.784, 4.339, 3.930, 3.619, 3.349, 3.050,
+        2.756, 2.504, 2.291, 2.127, 1.883, 1.744, 1.700, 1.630, 1.674, 1.686, 1.577]
+
+Juno, noeud n016 saphire rapids (96p)
+x = [1, 2, 4, 8, 16, 32, 48, 64, 72, 80, 96]
+t = [19.36, 10.26, 5.02, 2.89, 1.53, 0.95, 0.778, 0.717, 0.723, 0.731, 0.727]
+
+
+
+Maillage large 
+
+Juno saphire 96p 
+NB : 1er calcul dépeuplé sur 2 noeuds. Pour les autres le noeud est plein
+x = [96, 192, 288, 384, 480]
+t = [41.67, 31.93, 22.46, 18.15, 15.65]
+
+Sator saphire 96p 
+NB : 1er calcul dépeuplé sur 2 noeuds. Pour les autres le noeud est plein
+x = [96, 192, 288, 384, 480]
+t = [40.96, 32.29, 22.44, 18.74, 16.90]
+Meme noeud, mais en dépeuplant tjrs (48 procs / noeud du coup)
+x = [2,3,4,5,6,7,8,9,10] #Node
+t = [40.96, 29.68, 23.57, 18.65, 15.41, 13.85, 12.43, 13.33, 11.04]
+
+
+Sator cascade lake 48p
+x         = [4,5,6,7,8,9,10,11,12,13,14,15] #nb node
+durations = [37.26, 29.36, 24.55, 21.92, 19.79, 17.74, 17.47, 15.86, 14.77, 14.24, 13.47, 14.03]
+
+"""
+```

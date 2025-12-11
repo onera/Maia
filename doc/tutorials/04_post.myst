@@ -1,0 +1,413 @@
+---
+jupytext:
+  text_representation:
+    format_name: myst
+kernelspec:
+  display_name: Python 3
+  language: python
+  name: python3
+myst_html_secnum_depth: 0
+---
+
+(tuto4)=
+# Towards custom mesh manipulation
+
+The previous tutorial had you search the documentation for functionalities
+and chain them together to create your workflow. In this tutorial, you will take a
+step on the developer side, as some questions require you to manipulate the mesh directly,
+especially in the second part of the tutorial.
+
+This time, we will explore some post processing capabilities of maia.
+We work on an CRM airplane mesh, with data fields computed by a solver.
+
+To run this tutorial, you need to download the input mesh [airplane.cgns] and
+the script {download}`04_post.py`. We prepared few functions for you in the script,
+but you will need to complete it as usual.
+
+[airplane.cgns]: https://github.com/onera/Maia/releases/download/v1.8/airplane.cgns
+
+```{code-cell} python
+:tags: [remove-cell, no-parallel]
+# This create a symlink of the input file in current directory, for automatic execution
+SRC = '/stck/jcoulet/Public/maia_training/MESHES/airplane.cgns'
+import os
+if not os.path.exists('airplane.cgns'):
+    os.symlink(SRC, 'airplane.cgns')
+```
+
+## Basic postprocessing
+
+### Warmup
+
+```{code-cell} python
+:tags: [remove-cell]
+def get_solver_tree():
+    tree  = maia.io.file_to_dist_tree('airplane.cgns', comm)
+    ptree = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=True, data_transfer='FIELDS')
+    return ptree
+
+def plot_1d_profile(x, y, comm):
+  import numpy as np
+  import plotly.graph_objects as go
+
+  import utils
+
+  x = comm.gather(x, root=0)
+  y = comm.gather(y, root=0)
+    
+  if comm.Get_rank() != 0:
+    return
+
+  # > Concatenate arrays
+  x = np.concatenate(x)
+  y = np.concatenate(y)
+
+  fig = go.Figure()
+
+  fig.add_trace(
+    go.Scatter(
+      x=x, y=y,
+      mode='markers',
+      name='Wing',
+      line=dict(color=utils.rtd_note_title),
+    )
+  )
+
+  fig.update_layout(
+  xaxis=dict(
+    title=dict(
+      text='X position',
+    ),
+    showline=True,
+    linecolor='black',
+    gridcolor='lightgrey'
+  ),
+  yaxis=dict(
+    title=dict(
+      text='Pressure',
+    ),
+    showline=True,
+    linecolor='black',
+    gridcolor='lightgrey'
+  ),
+  font=dict(
+    family='Courier New, monospace',
+    size=14,
+  ),
+  plot_bgcolor='white',
+  showlegend=False,
+  )
+
+  fig.write_html('../_static/tuto04_1dprofile.html')
+```
+
+👉️ As usual, we import the useful modules and we get the MPI communicator
+
+```{code-cell} python
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+
+import maia
+import maia.pytree as PT
+```
+
+👉️ Then, we use the following function which simulates a solver run.
+
+```{code-cell} python
+:tags: [remove-output]
+tree = get_solver_tree()
+```
+
+❓ What is the parallel kind of the returned tree ?
+
+```{toggle}
+The tree is partitioned. Since the function `get_solver_tree` is private, the only way to answer the question is
+to display the tree with {func}`~maia.pytree.print_tree`.
+```
+
+### Extraction
+
+The first task is to extract a surface mesh from the input volumetric mesh.
+As is often the case, the surfaces of the input mesh are flagged with `FamilyName`
+nodes to indicate their logical group. Here, we want to extract the airplane surface,
+which is referred to as the `Walls` family.
+
+✏️ Extract a surfacic mesh corresponding to the faces belonging to Walls family
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+surf_tree = maia.algo.part.extract_part_from_family(tree, 'Walls', comm)
+```
+
+❓ What is the dimension of the returned tree ?
+
+```{toggle}
+The output mesh has a {func}`~maia.pytree.Base.CellDimension` of two, because
+we extracted surfacic entities.
+Fortunately, several of Maia's functions allow 2D trees to be used as input.
+```
+
+Note that the output tree is still a partioned tree: as you learned in the
+{ref}`first tutorial <tuto1>`, functions belonging to `maia.algo` do not change
+the parallel nature of trees. In the first tutorial, we used the Transfer module
+to bring back data to a distributed tree and save it using {func}`maia.io.dist_tree_to_file`.
+
+❓ Here, we can no do that. Why ?
+
+```{toggle}
+The extraction function created a new partitioned tree. There is no distributed
+tree associated to it.
+```
+
+👉 We can still save the partitioned tree using {func}`maia.io.part_tree_to_file`:
+
+```{code-cell} python
+maia.io.part_tree_to_file(surf_tree, 'airplane_walls_part.cgns', comm)
+```
+
+However, if you display it with `maia_print_tree` or visualise it, you will notice that
+the mesh retains information about parallelism.
+This is not satisfactory because we want a unified result that is independent of parallelism.
+
+Indeed, we need to develop a distributed vision of the partitioned tree — the reverse
+of the partitioning process.
+
+✏️ Use {func}`maia.factory.recover_dist_tree` to rebuild a distributed view of the tree.
+Then, write it on the disk.
+
+*Hint : do not forget to transfer the data fields as well*
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+dsurf_tree = maia.factory.recover_dist_tree(surf_tree, comm, data_transfer='FIELDS')
+maia.io.dist_tree_to_file(dsurf_tree, 'airplane_walls.cgns', comm)
+```
+
+```{tip}
+Saving partitioned trees is useful mainly for experimentation or debugging purposes,
+but it should be avoided in a finalized workflow.
+```
+
+### Slice
+
+Another family of post processing functionnalities are isosurface and slices functions.
+
+✏️ Create a plane slice from the equation $y=1$.
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+slice_tree = maia.algo.part.plane_slice(tree, [0.,1.,0.,1], comm)
+```
+
+❓ Do you have any data fields on the output tree ? If not, modify your
+call to the slicing function to ensure that the volumic solution
+`FlowSolution#Centers` is transfered on the slice.
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+slice_tree = maia.algo.part.plane_slice(tree, [0.,1.,0.,1], comm,
+                                        containers_name=['FlowSolution#Centers'])
+```
+
+👉️ Then, we save the slice on the disk using the same methodology as above:
+
+```{code-cell} python
+dslice_tree = maia.factory.recover_dist_tree(slice_tree, comm, data_transfer='FIELDS')
+maia.io.dist_tree_to_file(dslice_tree, 'airplane_slice.cgns', comm)
+```
+
+```{code-cell} python
+:tags: [remove-cell]
+# Prepare files for visualization : we remove 2D elements from walls
+# mesh, because not supported by old vtk versions.
+# In addition we create second half of the plane
+vtree = PT.deep_copy(dsurf_tree)
+maia.algo.dist.reorder_elt_sections_from_dim(vtree, reverse=True)
+PT.rm_nodes_from_name(vtree, 'ZoneBC')
+PT.rm_nodes_from_name(vtree, 'EdgeElements')
+maia.io.dist_tree_to_file(vtree, 'airplane_walls_visu.cgns', comm)
+maia.algo.scale_mesh(vtree, [1,-1,1])
+maia.io.dist_tree_to_file(vtree, 'airplane_walls_visu2.cgns', comm)
+```
+
+Combining the surfacic extraction and slice, we obtain the following visualization.
+
+
+```{code-cell} python
+:tags: [remove-input, no-parallel]
+import pyvista as pv
+pv.set_jupyter_backend('static')
+
+plotter = pv.Plotter(off_screen=True)
+plotter.camera_position = [
+    (-1.7057,-4.5868, 2.7434), # Camera Position
+    ( 2.3915, 0.5035, 0.3620), # Focal Point
+    ( 0.1865, 0.2892, 0.9389)  # View Up
+]
+plotter.camera.view_angle = 30.0 # View Angle
+
+reader = pv.CGNSReader("airplane_slice.cgns")
+reader.load_boundary_patch = False
+mesh_slice = reader.read()
+
+mesh_surf1 = pv.read("airplane_walls_visu.cgns")
+mesh_surf2 = pv.read("airplane_walls_visu2.cgns")
+
+sargs = dict(title='Density', vertical=True, n_labels=5, title_font_size=20, position_x=0.01, position_y=.525)
+plotter.add_mesh(mesh_slice, scalars='Density', cmap='coolwarm', clim=[1.15,1.25], scalar_bar_args=sargs)
+sargs = dict(title='Pressure', vertical=False, n_labels=5, fmt='%.2g', title_font_size=20, position_x=0.55, position_y=.02, width=.4, height=.11)
+plotter.add_mesh(mesh_surf1, scalars='Pressure', scalar_bar_args=sargs)
+plotter.add_mesh(mesh_surf2, scalars='Pressure', show_scalar_bar=False)
+
+
+plotter.add_axes()
+plotter.show(window_size=[1200,800])
+#img = plotter.screenshot(return_img=True, window_size=[1200,800])
+```
+
+``` {admonition} Did you notice ?
+If you open the surfacic mesh by yourself, you will have only half of the plane.
+Can you guess which other function of maia we used to generate this figure ?
+```
+
+
+### 1D profile
+
+In this last step, we are going to update again our slice in order
+to plot a one dimensioanl profile $P = f(x)$ around the wing.
+
+❓ Do you see the pressure array in the slice tree ? Why ?
+
+```{toggle}
+We transfered the volumic fields `FlowSolution#Centers` to the slice, but there is no volumic pressure field
+in the input mesh.
+All we have is a FaceCenter value of the pressure in the BCDataSet related to the wing.
+```
+
+✏️ As the slice function can only transfer containers of type `FlowSolution_t` or `ZoneSubRegion_t`,
+create a container of type `ZoneSubRegion_t` on the volumic tree and move the fields inside it.
+
+*Hint : you can do it by hand, or using a function of {ref}`maia.pytree <pt_operations_edit>`*
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+for zone in PT.get_all_Zone_t(tree):
+  if PT.get_node_from_name_and_label(zone, 'Wing', 'BC_t') is not None:
+    PT.new_ZoneSubRegion('WingFields', bc_name='Wing', parent=zone)
+PT.subregion_fields_from_bcdataset(tree)
+```
+️ 
+✏️ Update (one last time) the slice function call to get the wing pressure field on the computed slice
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+slice_tree = maia.algo.part.plane_slice(tree, [0.,1.,0.,1], comm,
+                                        containers_name=['FlowSolution#Centers', 'WingFields'])
+```
+
+👉️ You should now have a EdgeCenter pressure field on the slice tree:
+
+```{code-cell} python
+if comm.rank == 0:
+  PT.print_tree(slice_tree, max_depth=3)
+```
+
+```{note}
+If you launch the script in parallel, only the processes touching the wing `BC_t` on the slice have
+the `ZoneSubRegion_t` node (as for the volumic tree).
+```
+
+✏️ We have a EdgeCenter located pressure, we need a EdgeCenter located position to plot the profile.
+Compute the centers of the edges on `slice_tree` using {func}`maia.algo.compute_elements_center`.
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+maia.algo.compute_elements_center(slice_tree, 1, comm)
+```
+
+Now starts the difficult part: we have the center of all edges, but the pressure is
+defined only for edges belonging the `BC_t` subset `Wing`.
+Thus, we need to extract the center for edges in the `Wing` subset.
+The steps to do it are:
+
+- get the component X of the computed edges center (computed for all edges)
+- get the list of edges indices belonging to the Wing subset, ie the `PointList` of the `BC_t`
+  or of the related `ZoneSubRegion_t` node (the two should be equal)
+- use these indices to extract X centers (be careful, the indices must be shifted to start at 0)
+
+
+```{attention}
+Keep in mind that some ranks may not know the Wing subset at all.
+For these ranks, empty arrays must be created.
+This is the main pitfall of working with partitioned meshes.
+```
+
+✏️ Implement the above strategy to compute the `x` and `pressure` arrays on each rank.
+
+```{code-cell} python
+:tags: [hide-cell]
+:mystnb:
+:  code_prompt_show: "Show solution"
+:  code_prompt_hide: "Hide solution"
+import numpy as np
+zsr_n = PT.get_node_from_name(slice_tree, 'WingFields')
+if zsr_n is not None:
+    # Get X component of computed edge centers
+    center_x = PT.get_value(PT.get_node_from_name(slice_tree, 'CenterX'))
+    # Get edges ids belonging to Wing subset
+    edge_ids = PT.get_np_value(PT.get_child_from_name(zsr_n, 'PointList'))[0]
+    # Get edge offset
+    edge_n = PT.get_node_from_predicate(slice_tree, PT.pred.is_element_of_type('BAR_2'))
+    offset = PT.Element.Range(edge_n)[0]
+    # Extract x values, and get pressure field
+    x = center_x[edge_ids - offset]
+    pressure = PT.get_value(PT.get_child_from_name(zsr_n, 'Pressure'))
+else:
+    # Create empty array for ranks not related to the Wing subset
+    x = np.empty(0, dtype=np.float64)
+    pressure = np.empty(0, dtype=np.float64)
+```
+
+👉️ Then, you can use the following function to plot the $P=f(x)$ profile:
+
+```{code-cell} python
+plot_1d_profile(x, pressure, comm)
+```
+
+```{raw} html
+<iframe src="../_static/tuto04_1dprofile.html" style="display:block; margin:auto; width:600px; height:500px; border:none;"></iframe>
+```
+
+This ends the first part of this tutorial 🏁 !
+
+We explored some of maia's postprocessing capabilities to produce results of interest
+in a parallel context. We even started to manipulated partitioned meshes by hand. 
+The final script should now look like this: {download}`04_post_final.py`.
+
+The next section will take us a step further: we will manipulate partitioned trees more
+directly and implement some of the missing pieces ourselves.
+
+## Advanced partitioned algorithms
+
+🏗️ Under construction

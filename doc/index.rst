@@ -12,6 +12,8 @@ Documentation summary
 
 :ref:`Introduction <intro>` details the extensions made to the CGNS standard in order to define parallel CGNS trees.
 
+:ref:`Tutorials <tutorials>` it is a guided introduction that helps new users to understand the basics of Maia.
+
 :ref:`User Manual <user_manual>` is the main part of this documentation. It describes most of the high level APIs provided by Maia.
 
 :ref:`Developer Manual <dev_manual>` (under construction) provides more details on some algorithms and can be consulted if you want to contribute to Maia.
@@ -37,10 +39,11 @@ Associated source repository and issue tracking are hosted on `Gitlab <https://g
   quick_start
   installation
   introduction/introduction
+  tutorials/tutorials
   user_manual/user_manual
   developer_manual/developer_manual
   maia_pytree/pytree_module
-
+  
 .. toctree::
   :hidden:
   :maxdepth: 1
