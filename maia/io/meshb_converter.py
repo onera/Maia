@@ -186,7 +186,7 @@ def meshb_to_cgns(out_files, tree_info, comm, fix_orientation_2d=False, fix_orie
 # > PointList BC to BC tag
 def _bc_pl_to_bc_tag(list_of_bc, elts_tag, elts_ranges, elts_idx, constraint_bcs, constraint_tags):
   for n_tag, bc_n in enumerate(list_of_bc):
-    pl = PT.get_value(PT.get_node_from_name(bc_n, 'PointList'))[0]
+    pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0]
 
     for pdm_elt_t, (elt_idx, elt_ranges) in enumerate(zip(elts_idx, elts_ranges)):
       for i_elt, elt_range in enumerate(elt_ranges): # Some element type can a multiple node, so multiple elt_range
@@ -266,10 +266,16 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
       pdm_n_elmt  [elmt_pdm_t] = pdm_elmt_idx[elmt_pdm_t][-1]
       pdm_elmt_vtx[elmt_pdm_t] = np_utils.concatenate_np_arrays(pdm_elmt_vtx[elmt_pdm_t], dtype=pdm_gnum_dtype)[1]
 
-      if elmt_pdm_t in [PDM._PDM_MESH_NODAL_BAR2, PDM._PDM_MESH_NODAL_TRIA3, PDM._PDM_MESH_NODAL_QUAD4]:
-        pdm_elmt_tag[elmt_pdm_t] = -np.ones (pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
-      else:
-        pdm_elmt_tag[elmt_pdm_t] =  np.zeros(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+      if is_3d:
+        if elmt_pdm_t in [PDM._PDM_MESH_NODAL_BAR2, PDM._PDM_MESH_NODAL_TRIA3, PDM._PDM_MESH_NODAL_QUAD4]:
+          pdm_elmt_tag[elmt_pdm_t] = -np.ones (pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+        else:
+          pdm_elmt_tag[elmt_pdm_t] =  np.zeros(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+      if is_2d:
+        if elmt_pdm_t in [PDM._PDM_MESH_NODAL_BAR2]:
+          pdm_elmt_tag[elmt_pdm_t] = -np.ones (pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
+        else:
+          pdm_elmt_tag[elmt_pdm_t] =  np.ones(pdm_n_elmt[elmt_pdm_t], dtype=np.int32)
 
 
 
