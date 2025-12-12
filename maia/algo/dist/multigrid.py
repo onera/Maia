@@ -56,21 +56,20 @@ def convert_s_to_ngon(tree:CGNSDistTree, comm:MPIComm):
       continue
 
     zone = PT.find_node_from_path(tree, zone_path)
+    celldim = PT.Zone.CellDimension(zone)
+    prefix = 'IJK'[:celldim]
+    to_index_func = s_numbering.ij_to_index_from_loc if celldim == 2 else s_numbering.ijk_to_index_from_loc
     mg_cell_info = PT.find_child_from_name(zone, "MultiGridCellInfo")
-    i_c_idx = PT.get_np_value(PT.find_child_from_name(mg_cell_info, "ICoarseIdx"))
-    j_c_idx = PT.get_np_value(PT.find_child_from_name(mg_cell_info, "JCoarseIdx"))
-    k_c_idx = PT.get_np_value(PT.find_child_from_name(mg_cell_info, "KCoarseIdx"))
-    u_c_idx = s_numbering.ijk_to_index_from_loc(i_c_idx, j_c_idx, k_c_idx, "CellCenter", n_vtx_s_coarse)
+    coarse_idx_ijk = [PT.get_np_value(PT.find_child_from_name(mg_cell_info, f"{p}CoarseIdx")) for p in prefix]
+    u_c_idx = to_index_func(*coarse_idx_ijk, "CellCenter", n_vtx_s_coarse)
     PT.rm_children_from_name(mg_cell_info, "*CoarseIdx")
     PT.new_DataArray("CoarseIdx", u_c_idx, parent=mg_cell_info)
 
     for bc in PT.get_nodes_from_label(zone, "BC_t"):
       mg_face_info = PT.find_child_from_name(bc, "MultiGridBCFaceInfo")
-      i_c_idx = PT.get_np_value(PT.find_node_from_name(mg_face_info, "ICoarseIdx"))
-      j_c_idx = PT.get_np_value(PT.find_node_from_name(mg_face_info, "JCoarseIdx"))
-      k_c_idx = PT.get_np_value(PT.find_node_from_name(mg_face_info, "KCoarseIdx"))
+      coarse_idx_ijk = [PT.get_np_value(PT.find_node_from_name(mg_face_info, f"{p}CoarseIdx")) for p in prefix]
       bc_loc = PT.get_str_value(PT.find_node_from_path(mg_face_info, "BCStructuredLocation"))
-      u_c_idx = s_numbering.ijk_to_index_from_loc(i_c_idx, j_c_idx, k_c_idx, bc_loc, n_vtx_s_coarse)
+      u_c_idx = to_index_func(*coarse_idx_ijk, bc_loc, n_vtx_s_coarse)
 
       # Now BC and BCDS should be FaceCenter with same PointList
       assert np.array_equal(PT.get_np_value(PT.find_child_from_name(bc, 'PointList')),
@@ -85,19 +84,24 @@ def merge_connected_zones(tree:CGNSDistTree, comm:MPIComm, **kwargs):
   nb_lvl = n_level(tree)
   # Use any level to get connected zones
   tree_lvl_0 = PT.new_node('CGNSTree', 'CGNSTree_t', children=[b for b in PT.get_children(tree) if PT.get_name(b).endswith('.LV0')])
+  celldim = PT.Base.CellDimension(PT.find_child_from_label(tree_lvl_0, 'CGNSBase_t'))
+  if celldim == 2:
+    n_face_or_edge = lambda z: MT.Element.n_elt(MT.Zone.EdgeNode(z))
+  else:
+    n_face_or_edge = lambda z: PT.Zone.n_face(z)
   groups = PT.Tree.find_connected_zones(tree_lvl_0)
 
   for lvl in range(nb_lvl+1):
     for i, group in enumerate(groups):
       lvl_group = [update_path_level(path, lvl) for path in group]
       n_cell_group_cur = [PT.Zone.n_cell(PT.find_node_from_path(tree, p)) for p in lvl_group]
-      n_face_group_cur = [PT.Zone.n_face(PT.find_node_from_path(tree, p)) for p in lvl_group]
+      n_face_group_cur = [n_face_or_edge(PT.find_node_from_path(tree, p)) for p in lvl_group]
 
 
       if lvl < nb_lvl:
         lvl_group_next    = [update_path_level(path, lvl+1) for path in group]
         n_cell_group_next = [PT.Zone.n_cell(PT.find_node_from_path(tree, p)) for p in lvl_group_next]
-        n_face_group_next = [PT.Zone.n_face(PT.find_node_from_path(tree, p)) for p in lvl_group_next]
+        n_face_group_next = [n_face_or_edge(PT.find_node_from_path(tree, p)) for p in lvl_group_next]
       
       # Before merging, store some data under the BCs of the the current level:
       # --> OldPointList is the current PointList, shifted, before merging
@@ -239,7 +243,7 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
         pcoarse_idx = (np_utils.search(coarse_gnum, PT.get_np_value(coarse_idx_n))).astype(np.int32, copy=False)
         PT.set_value(coarse_idx_n, pcoarse_idx)
       
-        coarse_ngon = PT.Zone.NGonNode(coarse_p_zone)
+        coarse_ngon = MT.Zone.EdgeNode(coarse_p_zone) if PT.Zone.CellDimension(coarse_p_zone) == 2 else PT.Zone.NGonNode(coarse_p_zone)
         coarse_gnum_face = MT.globalnumbering_value(coarse_ngon, 'Element')
         for cur_p_bc in PT.get_nodes_from_label(cur_p_zone, "BC_t"):
           # Same for faces, using gnum from NGonNode
