@@ -1,5 +1,6 @@
 import pytest
 import pytest_parallel
+from mpi4py import MPI
 
 import numpy as np
 
@@ -29,7 +30,82 @@ def make_bcs_vertex_located(tree, comm):
       MT.new_Distribution({'Index': par_utils.uniform_distribution(size, comm)}, bc)
 
 @pytest_parallel.mark.parallel(2)
-def test_mgjc(comm):
+def test_mg_s_to_ngon(comm):
+  tree = maia.io.file_to_dist_tree(mesh_dir / 'S_twoblocks.yaml', comm)
+  make_bcs_vertex_located(tree, comm)
+
+  maia.algo.dist.agglomerate_cells(tree, 1, comm)
+
+  MG.convert_s_to_ngon(tree, comm)
+  
+  fine   = MG.single_level_tree(tree, 0)
+  coarse = MG.single_level_tree(tree, 1)
+
+  # Check sols
+  for zone in PT.get_all_Zone_t(coarse):
+    offset = MT.distribution_value(zone, 'Cell')[0] + 1 
+    PT.new_FlowSolution('CurIdx', loc='CellCenter', fields={'Idx' : np.arange(MT.Zone.dn_cell(zone)) + offset}, parent=zone)
+  maia.algo.interpolate(coarse, fine, comm, ['CurIdx'], 'CellCenter')
+
+  for zone in PT.get_all_Zone_t(fine):
+    assert (PT.get_np_value(PT.find_node_from_path(zone, 'MultiGridCellInfo/CoarseIdx')) == \
+            PT.get_np_value(PT.find_node_from_path(zone, 'CurIdx/Idx'))).all()
+
+  large_bc = PT.find_node_from_name(PT.find_node_from_name(fine, 'Large'), 'Right1')
+  small_bc = PT.find_node_from_name(PT.find_node_from_name(fine, 'Small'), 'Front')
+  if comm.rank == 0:
+    expt_large = [9, 9, 9, 9, 45, 45]
+    expt_small = [4, 4, 8, 8, 12, 12, 16, 16, 4, 4, 8, 8, 12, 12, 16, 16]
+  else:
+    expt_large = [45, 45, 81, 81, 81, 81]
+    expt_small = [20, 20, 24, 24, 28, 28, 32, 32, 20, 20, 24, 24, 28, 28, 32, 32]
+  assert (PT.get_np_value(PT.find_node_from_name(large_bc, 'CoarseIdx')) == expt_large).all()
+  assert (PT.get_np_value(PT.find_node_from_name(small_bc, 'CoarseIdx')) == expt_small).all()
+  
+
+@pytest_parallel.mark.parallel(3)
+def test_mg_merge(comm):
+  tree = maia.io.file_to_dist_tree(mesh_dir / 'S_twoblocks.yaml', comm)
+  make_bcs_vertex_located(tree, comm)
+
+  maia.algo.dist.agglomerate_cells(tree, 1, comm)
+
+  MG.convert_s_to_ngon(tree, comm)
+  MG.merge_connected_zones(tree, comm)
+  
+  fine   = MG.single_level_tree(tree, 0)
+  coarse = MG.single_level_tree(tree, 1)
+
+  # Check sols
+  for zone in PT.get_all_Zone_t(coarse):
+    offset = MT.distribution_value(zone, 'Cell')[0] + 1 
+    PT.new_FlowSolution('CurIdx', loc='CellCenter', fields={'Idx' : np.arange(MT.Zone.dn_cell(zone)) + offset}, parent=zone)
+  maia.algo.interpolate(coarse, fine, comm, ['CurIdx'], 'CellCenter')
+
+  for zone in PT.get_all_Zone_t(fine):
+    assert (PT.get_np_value(PT.find_node_from_path(zone, 'MultiGridCellInfo/CoarseIdx')) == \
+            PT.get_np_value(PT.find_node_from_path(zone, 'CurIdx/Idx'))).all()
+
+  bc = PT.find_node_from_name(fine, 'Front')
+  if comm.rank == 0:
+    expt = [109, 109, 110, 110, 111, 111, 112, 112, 113, 113, 114, 114, 115, 115, 116,
+            116, 109, 109, 110, 110, 111, 111, 112, 112, 113, 113, 114, 114, 115, 115,
+            116, 116, 149, 149, 150, 150, 151, 151, 152, 152, 153, 153, 154]
+  elif comm.rank == 1:
+    expt = [154, 155, 155, 156, 156, 149, 149, 150, 150, 151, 151, 152, 152, 153, 153,
+            154, 154, 155, 155, 156, 156, 189, 189, 190, 190, 191, 191, 192, 192, 193,
+            193, 194, 194, 195, 195, 196, 196, 189, 189, 190, 190, 191, 191]
+  else:
+    expt = [192, 192, 193, 193, 194, 194, 195, 195, 196, 196, 360, 360, 364, 364, 368,
+            368, 372, 372, 360, 360, 364, 364, 368, 368, 372, 372, 376, 376, 380, 380,
+            384, 384, 388, 388, 376, 376, 380, 380, 384, 384, 388, 388]
+  
+  assert (PT.get_np_value(PT.find_node_from_name(bc, 'CoarseIdx')) == expt).all()
+  
+
+
+@pytest_parallel.mark.parallel(2)
+def test_mg_partitioning(comm):
   tree = maia.io.file_to_dist_tree(mesh_dir / 'S_twoblocks.yaml', comm)
   make_bcs_vertex_located(tree, comm)
 
@@ -38,30 +114,27 @@ def test_mgjc(comm):
   MG.convert_s_to_ngon(tree, comm)
   MG.merge_connected_zones(tree, comm)
   ptree = MG.partition_dist_tree(tree, comm)
+  
+  fine   = MG.single_level_tree(ptree, 0)
+  coarse = MG.single_level_tree(ptree, 1)
 
+  # Check sols
+  for zone in PT.get_all_Zone_t(coarse):
+    PT.new_FlowSolution('CurIdx', loc='CellCenter', fields={'Idx' : np.arange(MT.Zone.pn_cell(zone))}, parent=zone)
+  maia.algo.interpolate(coarse, fine, comm, ['CurIdx'], 'CellCenter')
 
-  # For checks
-  for pzone in PT.get_all_Zone_t(ptree):
-    mg = PT.get_child_from_name(pzone, 'MultiGridCellInfo')
-    if mg is not None:
-      PT.set_label(mg, 'FlowSolution_t')
-      PT.new_DataArray('Id', np.arange(PT.Zone.n_cell(pzone)), parent=mg)
-    else:
-      mg = PT.new_FlowSolution('MultiGridCellInfo', loc='CellCenter', parent=pzone)
-      PT.new_DataArray('Id', np.arange(PT.Zone.n_cell(pzone)), parent=mg)
+  for zone in PT.get_all_Zone_t(fine):
+    assert (PT.get_np_value(PT.find_node_from_path(zone, 'MultiGridCellInfo/CoarseIdx')) == \
+            PT.get_np_value(PT.find_node_from_path(zone, 'CurIdx/Idx'))).all()
 
-    for array in PT.get_nodes_from_label(mg, 'DataArray_t'):
-      array[1] = array[1].astype(float)
+  for bc in PT.get_nodes_from_label(coarse, 'BC_t'):
+    bcds = PT.new_BCDataSet(parent=bc)
+    PT.new_BCData('DirichletData', fields={'Idx' : np.arange(MT.Subset.pn_elem(bc))}, parent=bcds)
+    fine_ext   = maia.algo.part.extract_part_from_bc_name(fine, PT.get_name(bc), MPI.COMM_SELF)
+    coarse_ext = maia.algo.part.extract_part_from_bc_name(coarse, PT.get_name(bc), MPI.COMM_SELF)
 
-    for bc in PT.get_nodes_from_label(pzone, 'BC_t'):
-      PT.set_value(bc, 'FamilySpecified')
-      mg = PT.get_node_from_name(bc, 'MultiGridBCFaceInfo')
-      if mg is None:
-        mg = PT.new_BCDataSet('MultiGridBCFaceInfo', parent=bc)
-        PT.new_BCData('DirichletData', {'Id' : np.arange(PT.Subset.n_elem(bc)).astype(float)}, parent=mg)
-      else:
-        for array in PT.get_nodes_from_label(mg, 'DataArray_t'):
-          array[1] = array[1].astype(float)
-
-
-  maia.io.part_tree_to_file(ptree, 'part.cgns', comm, True)
+    PT.set_name(PT.find_node_from_label(fine_ext, 'FlowSolution_t'), 'MGFaceInfo')
+    maia.algo.interpolate(coarse_ext, fine_ext, MPI.COMM_SELF, [PT.get_name(bc)], 'CellCenter')
+      
+    assert (PT.get_np_value(PT.find_node_from_name(fine_ext, 'CoarseIdx')) == \
+            PT.get_np_value(PT.find_node_from_name(fine_ext, 'Idx'))).all()
