@@ -9,6 +9,34 @@ from maia.utils.numbering import range_to_slab as HFR2S
 from maia.typing        import *
 from maia.pytree.typing import Predicate
 
+def _local_bounds(ini_start_loc:int, ini_end_loc:int, g_start:int, g_end:int) -> Tuple[int, int]:
+  ini_size = ini_end_loc - ini_start_loc
+  r_start = max(ini_start_loc, g_start) - ini_start_loc
+  r_end   = min(ini_end_loc, g_end) - ini_start_loc
+  
+  return min(r_start, ini_size), max(r_end, 0)
+
+def local_bounds(distri:NDArray, g_start:int, g_end:int) -> Tuple[int, int]:
+  """ Compute the local start/end indices that should be used to extract a slice of 
+  a distributed array, restricted to global [start:end[ interval """
+  return _local_bounds(distri[0], distri[1], g_start, g_end)
+
+def path_to_level(path:CGNSPath) -> int:
+  # Return the MG level of a path, starting at base level
+  return int(PT.utils.path_head(path, 1).rsplit('.LV',1)[1])
+
+def n_level(tree) -> int:
+  return max(path_to_level(PT.get_name(b)) for b in PT.get_all_CGNSBase_t(tree))
+  
+def single_level_tree(tree:CGNSTree, lvl:int) -> CGNSTree:
+  # Return a containing only Bases of specified level
+  pred = ~PT.pred.label_is('CGNSBase_t') | PT.pred.name_matches(f'*.LV{lvl}')
+  return PT.new_node('CGNSTree', 'CGNSTree_t', children=PT.get_children_from_predicate(tree, pred))
+
+def update_path_level(path:CGNSPath, new_lvl:int) -> CGNSPath:
+  cur_lvl = path_to_level(path)
+  return PT.utils.update_path_elt(path, 0, lambda s:s[:-len(str(cur_lvl))]+str(new_lvl))
+
 def _suffix_bases(tree:CGNSTree, suffix:str):
   # Add the provided suffix to all CGNSBase_t nodes. Update GC_t nodes if any
   for base in PT.iter_all_CGNSBase_t(tree):

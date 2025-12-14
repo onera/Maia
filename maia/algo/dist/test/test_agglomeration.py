@@ -8,6 +8,56 @@ import maia.pytree.maia as MT
 
 from maia.algo.dist import agglomeration as MG
 
+def test_path_to_level():
+  assert MG.path_to_level('Base.LV13/Zone/ZoneBC') == 13
+  assert MG.path_to_level('Base.42.LV245.LV42') == 42
+  with pytest.raises(IndexError):
+    MG.path_to_level('Zone/FlowSolution')
+
+def test_update_path_level():
+  assert MG.update_path_level('Base.LV13/Zone/ZoneBC/Xmin', 42) == 'Base.LV42/Zone/ZoneBC/Xmin'
+  assert MG.update_path_level('Base.42.LV245.LV42', 7) == 'Base.42.LV245.LV7'
+
+def test_n_level():
+  tree = PT.yaml.to_cgns_tree("""
+  Base.LV0 CGNSBase_t [3, 3]:
+  Base.LV1 CGNSBase_t [3, 3]:
+  Base.LV2 CGNSBase_t [3, 3]:
+  """)
+  assert MG.n_level(tree) == 2
+
+  with pytest.raises(IndexError):
+    tree = PT.yaml.to_cgns_tree("""
+    Base CGNSBase_t [3, 3]:
+    """)
+    MG.n_level(tree)
+
+def test_single_level_tree():
+  tree = PT.yaml.to_cgns_tree("""
+  Base.LV0 CGNSBase_t [3, 3]:
+    LargeZone Zone_t:
+    SmallZone Zone_t:
+  Base.LV1 CGNSBase_t [3, 3]:
+    LargeZone Zone_t:
+    SmallZone Zone_t:
+  Base.LV2 CGNSBase_t [3, 3]:
+    LargeZone Zone_t:
+    SmallZone Zone_t:
+  """)
+
+  tree1 = MG.single_level_tree(tree, 1)
+
+  expected = PT.yaml.to_cgns_tree("""
+  Base.LV1 CGNSBase_t [3, 3]:
+    LargeZone Zone_t:
+    SmallZone Zone_t:
+  """)
+  assert PT.is_same_tree(tree1, expected)
+
+  tree18 = MG.single_level_tree(tree, 18)
+  assert len(PT.get_all_CGNSBase_t(tree18)) == 0
+
+
 def test_suffix_bases():
   tree = PT.yaml.to_cgns_tree("""
   SomeBase CGNSBase_t [3, 3]:
