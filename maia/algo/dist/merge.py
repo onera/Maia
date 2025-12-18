@@ -361,8 +361,8 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
           sub_pred = PT.pred.name_is('OriginalName') & PT.pred.value_is(f'{PT.get_name(gc)}#Vtx')
           pred = PT.pred.IS_GC & PT.pred.NodePredicate(lambda n : PT.get_child_from_predicate(n, sub_pred) is not None)
         gc_vtx = PT.find_child_from_predicate(zgc, pred)
-        pl_v  = PT.get_np_value(PT.find_child_from_name(gc_vtx, 'PointList'))[0]
-        pld_v = PT.get_np_value(PT.find_child_from_name(gc_vtx, 'PointListDonor'))[0]
+        pl_v  = as_pdm_gnum(PT.get_np_value(PT.find_child_from_name(gc_vtx, 'PointList'))[0])
+        pld_v = as_pdm_gnum(PT.get_np_value(PT.find_child_from_name(gc_vtx, 'PointListDonor'))[0])
         interface_dn_v.append(pl_v.size)
         interface_ids_v.append(np_utils.interweave_arrays([pl_v,pld_v]))
 

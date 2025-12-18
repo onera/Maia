@@ -24,6 +24,7 @@ Development version
 - pe_to_nface: fix a crash occuring when a rank locally owns only one face
 - extract_part_from_family: fixup concatenation order of fields when ``data_transfer=True``
 - adapt_mesh_with_feflo: fix failure on 2D meshes by adding default 2D elements tag
+- merge_zones: prevent a dtype issue on 2D meshes
 
 v1.8 (September 2025)
 ---------------------
