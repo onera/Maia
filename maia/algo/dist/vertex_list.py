@@ -465,11 +465,13 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
   interface_dn_face = []
   interface_ids_face = []
   interface_dom_face = []
+  interface_dtype = []
   for interface_path in interface_pathes:
     gc = PT.find_node_from_path(dist_tree, interface_path)
     pl  = PT.get_np_value(PT.find_child_from_name(gc, 'PointList'))[0]
     pld = PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor'))[0]
 
+    interface_dtype.append((pl.dtype, pld.dtype))
     interface_dn_face.append(pl.size)
     interface_ids_face.append(as_pdm_gnum(np_utils.interweave_arrays([pl,pld])))
     cur_zone_path = '/'.join(interface_path.split('/')[:2])
@@ -493,19 +495,19 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
   all_pl_vtx = []
   all_pld_vtx = []
   all_distri_vtx = []
-  for vtx_interface in vtx_interfaces:
+  for vtx_interface, dtypes in zip(vtx_interfaces, interface_dtype):
     dn_vtx_jn = vtx_interface['interface_dn_vtx']
     distri = par_utils.gather_and_shift(dn_vtx_jn, comm)
     all_distri_vtx.append(distri[[comm.Get_rank(), comm.Get_rank()+1, comm.Get_size()]])
 
     interface_ids_vtx = vtx_interface['np_interface_ids_vtx'] # Can be void because of realloc
     if interface_ids_vtx is not None:
-      pl_vtx  = np.copy(interface_ids_vtx[::2]) #Copy is needed to have aligned memory
-      pld_vtx = np.copy(interface_ids_vtx[1::2])
+      pl_vtx =  interface_ids_vtx[0::2].astype(dtypes[0], copy=True) #Copy is needed to have aligned memory
+      pld_vtx = interface_ids_vtx[1::2].astype(dtypes[1], copy=True)
       assert pl_vtx.size == pld_vtx.size == dn_vtx_jn
     else:
-      pl_vtx  = np.empty(0, dtype=pdm_dtype)
-      pld_vtx = np.empty(0, dtype=pdm_dtype)
+      pl_vtx  = np.empty(0, dtype=dtypes[0])
+      pld_vtx = np.empty(0, dtype=dtypes[1])
 
     all_pl_vtx.append(pl_vtx)
     all_pld_vtx.append(pld_vtx)
