@@ -43,7 +43,7 @@ def test_mg_partitioning(dim, comm):
     maia.algo.interpolate(coarse, fine, comm, ['CurIdx'], 'CellCenter')
 
     for zone in PT.get_all_Zone_t(fine):
-      assert (PT.get_np_value(PT.find_node_from_path(zone, 'MultiGridCellInfo/CoarseIdx')) == \
+      assert (PT.get_np_value(PT.find_node_from_path(zone, 'MultiGridCellInfo/CoarseLocalIdx')) == \
               PT.get_np_value(PT.find_node_from_path(zone, 'CurIdx/Idx'))).all()
 
       for bc in PT.get_nodes_from_label(coarse, 'BC_t'):
@@ -55,5 +55,39 @@ def test_mg_partitioning(dim, comm):
         PT.set_name(PT.find_node_from_label(fine_ext, 'FlowSolution_t'), 'MGFaceInfo')
         maia.algo.interpolate(coarse_ext, fine_ext, MPI.COMM_SELF, [PT.get_name(bc)], 'CellCenter')
           
-        assert (PT.get_np_value(PT.find_node_from_name(fine_ext, 'CoarseIdx')) == \
+        assert (PT.get_np_value(PT.find_node_from_name(fine_ext, 'CoarseLocalIdx')) == \
                 PT.get_np_value(PT.find_node_from_name(fine_ext, 'Idx'))).all()
+
+
+@pytest_parallel.mark.parallel(2)
+def test_mg_partitioning_opts(comm):
+
+  n_lvl = 2
+  coeff = 2**n_lvl
+  dims = [coeff*8+1,coeff*4+1]
+
+  tree = maia.factory.generate_dist_block(dims, "S", comm)
+
+  maia.algo.dist.agglomerate_cells(tree, n_lvl, comm)
+  MGA.convert_s_to_ngon(tree, comm)
+
+  # Create dummy field
+  for zone in PT.get_all_Zone_t(tree):
+    PT.new_DiscreteData(loc='CellCenter', fields={'Dummy' : np.ones(MT.Zone.dn_cell(zone))}, parent=zone)
+
+  # Compute part id on coarsest mesh
+  coarse = AGL.single_level_tree(tree, 2)
+  zone = PT.get_node_from_label(coarse, 'Zone_t')
+  partid = np.zeros(MT.Zone.dn_cell(zone), np.int32)
+  partid[-1] = 1
+
+  ptree = MGF.partition_dist_tree(tree, comm, target_part=[partid], data_transfer=['DiscreteData_t'])
+
+  for zone in PT.get_all_Zone_t(ptree):
+    assert PT.get_node_from_path(zone, 'DiscreteData/Dummy') is not None
+
+  if comm.rank == 1:
+    for i in range(n_lvl):
+      zone = PT.find_node_from_path(ptree, f'Base.LV{i}/zone.P1.N0')
+      assert MT.Zone.pn_cell(zone) == 2 * 4**(n_lvl-i)
+  

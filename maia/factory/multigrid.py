@@ -74,7 +74,7 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
         coarse_gnum = MT.globalnumbering_value(coarse_p_zone, "Cell")
         coarse_idx_n = PT.find_node_from_path(cur_p_zone, "MultiGridCellInfo/CoarseIdx")
         pcoarse_idx = (np_utils.search(coarse_gnum, PT.get_np_value(coarse_idx_n))).astype(np.int32, copy=False)
-        PT.set_value(coarse_idx_n, pcoarse_idx)
+        PT.update_node(coarse_idx_n, name='CoarseLocalIdx', value=pcoarse_idx)
       
         coarse_ngon = MT.Zone.EdgeNode(coarse_p_zone) if PT.Zone.CellDimension(coarse_p_zone) == 2 else PT.Zone.NGonNode(coarse_p_zone)
         coarse_gnum_face = MT.globalnumbering_value(coarse_ngon, 'Element')
@@ -86,7 +86,7 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
 
           coarse_idx_n = PT.find_node_from_path(cur_p_bc, "MultiGridBCFaceInfo/DirichletData/CoarseIdx")
           pcoarse_idx = (np_utils.search(coarse_bc_gnum, PT.get_np_value(coarse_idx_n))).astype(np.int32, copy=False)
-          PT.set_value(coarse_idx_n, pcoarse_idx)
+          PT.update_node(coarse_idx_n, name='CoarseLocalIdx', value=pcoarse_idx)
 
     # Complete MG part_tree with current part level
     for base in PT.get_all_CGNSBase_t(pt):

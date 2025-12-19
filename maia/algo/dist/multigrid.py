@@ -57,7 +57,7 @@ def merge_connected_zones(tree:CGNSDistTree, comm:MPIComm, **kwargs):
                           
   nb_lvl = AGL.n_level(tree)
   # Use any level to get connected zones
-  tree_lvl_0 = PT.new_node('CGNSTree', 'CGNSTree_t', children=[b for b in PT.get_children(tree) if PT.get_name(b).endswith('.LV0')])
+  tree_lvl_0 = AGL.single_level_tree(tree, 0)
   celldim = PT.Base.CellDimension(PT.find_child_from_label(tree_lvl_0, 'CGNSBase_t'))
   if celldim == 2:
     n_face_or_edge = lambda z: MT.Element.n_elt(MT.Zone.EdgeNode(z))
@@ -79,7 +79,7 @@ def merge_connected_zones(tree:CGNSDistTree, comm:MPIComm, **kwargs):
       
       # Before merging, store some data under the BCs of the the current level:
       # --> OldPointList is the current PointList, shifted, before merging
-      # --> CoarseIdx is the face if of coarse face, shifted, before merging
+      # --> CoarseIdx is the face index of coarse face, shifted, before merging
       # In both case, shift is computed from all zones belonging to the current group
       # We will need this data to update CoarseIdx after merging
 

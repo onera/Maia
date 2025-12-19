@@ -6,17 +6,17 @@ import maia
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
-from maia.algo.dist import agglomeration as MG
+from maia.algo.dist import agglomeration as AGL
 
 def test_path_to_level():
-  assert MG.path_to_level('Base.LV13/Zone/ZoneBC') == 13
-  assert MG.path_to_level('Base.42.LV245.LV42') == 42
+  assert AGL.path_to_level('Base.LV13/Zone/ZoneBC') == 13
+  assert AGL.path_to_level('Base.42.LV245.LV42') == 42
   with pytest.raises(IndexError):
-    MG.path_to_level('Zone/FlowSolution')
+    AGL.path_to_level('Zone/FlowSolution')
 
 def test_update_path_level():
-  assert MG.update_path_level('Base.LV13/Zone/ZoneBC/Xmin', 42) == 'Base.LV42/Zone/ZoneBC/Xmin'
-  assert MG.update_path_level('Base.42.LV245.LV42', 7) == 'Base.42.LV245.LV7'
+  assert AGL.update_path_level('Base.LV13/Zone/ZoneBC/Xmin', 42) == 'Base.LV42/Zone/ZoneBC/Xmin'
+  assert AGL.update_path_level('Base.42.LV245.LV42', 7) == 'Base.42.LV245.LV7'
 
 def test_n_level():
   tree = PT.yaml.to_cgns_tree("""
@@ -24,13 +24,13 @@ def test_n_level():
   Base.LV1 CGNSBase_t [3, 3]:
   Base.LV2 CGNSBase_t [3, 3]:
   """)
-  assert MG.n_level(tree) == 2
+  assert AGL.n_level(tree) == 2
 
   with pytest.raises(IndexError):
     tree = PT.yaml.to_cgns_tree("""
     Base CGNSBase_t [3, 3]:
     """)
-    MG.n_level(tree)
+    AGL.n_level(tree)
 
 def test_single_level_tree():
   tree = PT.yaml.to_cgns_tree("""
@@ -45,7 +45,7 @@ def test_single_level_tree():
     SmallZone Zone_t:
   """)
 
-  tree1 = MG.single_level_tree(tree, 1)
+  tree1 = AGL.single_level_tree(tree, 1)
 
   expected = PT.yaml.to_cgns_tree("""
   Base.LV1 CGNSBase_t [3, 3]:
@@ -54,7 +54,7 @@ def test_single_level_tree():
   """)
   assert PT.is_same_tree(tree1, expected)
 
-  tree18 = MG.single_level_tree(tree, 18)
+  tree18 = AGL.single_level_tree(tree, 18)
   assert len(PT.get_all_CGNSBase_t(tree18)) == 0
 
 
@@ -69,7 +69,7 @@ def test_suffix_bases():
       ZoneGridConnectivity ZoneGridConnectivity_t:
         jn GridConnectivity_t "SomeBase/Zone":
   """)
-  MG._suffix_bases(tree, '.LV8')
+  AGL._suffix_bases(tree, '.LV8')
 
   assert [PT.get_name(b) for b in PT.get_all_CGNSBase_t(tree)] == \
     ['SomeBase.LV8', 'SomeOtherBase.LV8']
@@ -77,10 +77,10 @@ def test_suffix_bases():
   assert PT.get_value(PT.find_node_from_name(tree, 'jnintra')) == "Zone"
 
 def test_slab_half_size():
-  assert MG._slab_half_size([[0, 64], [16, 32], [0, 1]]) == 256
-  assert MG._slab_half_size([[1, 64], [16, 32], [0, 1]]) == 256 - 8
-  assert MG._slab_half_size([[2, 64], [16, 32], [0, 1]]) == 256 - 8
-  assert MG._slab_half_size([[0, 64], [17, 32], [0, 1]]) == 256 - 32
+  assert AGL._slab_half_size([[0, 64], [16, 32], [0, 1]]) == 256
+  assert AGL._slab_half_size([[1, 64], [16, 32], [0, 1]]) == 256 - 8
+  assert AGL._slab_half_size([[2, 64], [16, 32], [0, 1]]) == 256 - 8
+  assert AGL._slab_half_size([[0, 64], [17, 32], [0, 1]]) == 256 - 32
 
 @pytest_parallel.mark.parallel(2)
 def test_multigrid_s_2D(comm):
@@ -104,7 +104,7 @@ def test_multigrid_s_2D(comm):
   PT.set_children(zbc, others + [bc1, bc2])
 
 
-  MG.agglomerate_cells(tree, n_lvl, comm)
+  AGL.agglomerate_cells(tree, n_lvl, comm)
 
   # Check computed coarse index (on thin grid): we compute actual cell idx
   # on coarse mesh, and move it on thin mesh by interpolation to compare.
@@ -115,6 +115,7 @@ def test_multigrid_s_2D(comm):
     PT.keep_children_from_name(coarse, f'Base.LV{i+1}')
               
     from maia.utils import s_numbering
+    thin_zone = PT.get_all_Zone_t(thin)[0]
     coarse_zone = PT.get_all_Zone_t(coarse)[0]
     coarse_distri = MT.distribution_value(coarse_zone, 'Cell')
     fi, fj = s_numbering.index_to_ij(np.arange(coarse_distri[0]+1, coarse_distri[1]+1),
@@ -134,6 +135,8 @@ def test_multigrid_s_2D(comm):
     computed_j = PT.get_np_value(PT.find_node_from_path(thin, f'Base.LV{i}/zone/MultiGridCellInfo/JCoarseIdx'))
     assert np.array_equal(computed_j, expected_j)
 
+    assert PT.Zone.n_cell(coarse_zone) == PT.Zone.n_cell(thin_zone) // 4
+
   # Check splited BC sizes (small subset is 25% total size)
   for base in PT.iter_all_CGNSBase_t(tree):
     cur_lvl = int(PT.get_name(base)[-1])
@@ -149,13 +152,14 @@ def test_multigrid_s(comm):
   nb_lvl = 2
   
   dt = maia.factory.generate_dist_block(nb_vtx_per_dir, "S", comm)
-  MG.agglomerate_cells(dt, nb_lvl, comm)
+  AGL.agglomerate_cells(dt, nb_lvl, comm)
   
   assert(len(PT.get_all_CGNSBase_t(dt)) == nb_lvl+1)
   
   for t in range(nb_lvl+1):
     zone = PT.find_node_from_path(dt, f'Base.LV{t}/zone')
     assert PT.Zone.VertexSize(zone) == (2**(2-t)+1, 2**(2-t)+1, 2**(2-t)+1)
+    assert PT.Zone.CellSize(zone) == (2**(2-t), 2**(2-t), 2**(2-t))
     cx,cy,cz = PT.Zone.coordinates(zone)
     if t == 0:
       assert np.all(np.isin(np.unique(cx), [0, 0.25, 0.5, 0.75, 1.]))
