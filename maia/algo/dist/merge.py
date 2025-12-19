@@ -125,8 +125,9 @@ def merge_zones(dist_tree: CGNSDistTree,
   - ``'family'`` : Subsets having the same FamilyName on the original zones (within a same label) produces
     a unique subset on the output merged zone. Subsets without FamilyName fallback to ``'name'`` strategy.
 
-  Only unstructured polyedric trees are supported, and interfaces between the zones
-  to merge must have a FaceCenter (EdgeCenter in 2D) location.
+  Important:
+    Only unstructured polyedric trees are supported, and interfaces between the zones
+    to merge must have a FaceCenter (EdgeCenter in 2D) location.
 
   Args:
     dist_tree (CGNSDistTree): Input distributed tree

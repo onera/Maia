@@ -165,7 +165,7 @@ def transform_affine(t: CGNSTree,
   Args:
     t    (CGNSTree): Tree starting at Zone_t level or higher.
     rotation_center (array): Center coordinates of the rotation
-    rotation_angler (array): Angles of the rotation
+    rotation_angle (array): Angles of the rotation
     translation (array):  Translation vector components
     apply_to_fields (bool, optional) : 
         If ``True``, apply the rotation part of the transformation to all the vectorial fields (DataArray_t)

@@ -64,7 +64,7 @@ Initial (left) and expected final (right) mesh, colored from `VelocityY` field. 
 show the initial angular section position.
 ```
 
-We precise that we except to have a single `Zone_t` node on the 360° mesh.
+We precise that we expect to have a single `Zone_t` node on the 360° mesh.
 
 👉 Before starting to code, let's see what will be needed. Open the {ref}`user_manual`
 and answer the following questions:
