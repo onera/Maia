@@ -185,6 +185,32 @@ def others_mask(array: NDArray, ids: ArrayLike) -> NDArray:
   mask[ids] = False
   return mask
 
+def search(array:NDArray, values:NDArray, all_exists:bool=False) -> NDArray:
+  """
+  For each value v of values, search its first apparition in array a
+  Return an array of size len(values) containing positions.
+
+  If you know that all values appears in array, set all_exists to True
+  for faster computing. Otherwise, a check is done and the value -1
+  is returned for
+  """
+  # Search the first apparition index of each value of v in array a 
+
+  sort_idx = np.argsort(array)
+  array_sorted = array[sort_idx]
+
+  pos = np.searchsorted(array_sorted, values)
+  
+  if all_exists:
+    return sort_idx[pos]
+  
+  else:
+    # If check are needed: return index if correct, -1 otherwise
+    # Clip is needed to not raise, value selected does not matter because mask will be false
+    mask = (pos < len(array)) & (np.take(array_sorted,pos,mode='clip') == values)
+    return np.where(mask, np.take(sort_idx,pos,mode='clip'), -1)
+
+
 def unique_sorted(sorted_array: NDArray,
                   return_counts: bool = False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
   """ A faster implementation of np.unique() if input array
