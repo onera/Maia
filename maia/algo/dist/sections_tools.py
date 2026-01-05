@@ -1,4 +1,5 @@
 import numpy as np
+from collections import defaultdict
 
 from maia.typing import *
 import maia.pytree      as PT
@@ -7,36 +8,49 @@ import maia.pytree.maia as MT
 from maia.transfer import protocols as EP
 from maia.utils import np_utils, par_utils
 
-def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
-  """ Gather the Element_t sections of same ElementType into a single one.
+def _concatenate_elt_sections(elts:List[CGNSTree], comm:MPIComm) -> CGNSTree:
+  assert len(elts) > 0
+  elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0]) # Dont forget to sort!
+  tot_size = sum([PT.Element.Size(e) for e in elts])
+  merged_distri = par_utils.uniform_distribution(tot_size, comm)
 
-  Resulting sections are named after their ElementType. Note that :
+  # Initially, each section is distributed, we need to "uninterlace" 
+  # to map global distribution without changing order
+  start = 0
+  ec_to_merge = []
+  for elt in elts:
+    end = start + PT.Element.Size(elt)
+    distri = MT.distribution_value(elt, 'Element')
+    ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
+    distri_out = distri.copy()
+    distri_out[0] = max(min(merged_distri[0], end), start) - start
+    distri_out[1] = max(min(merged_distri[1], end), start) - start
 
-  - Sections of same kind must be contiguous to be gathered. This can be achieved
-    using :func:`reorder_elt_sections_from_dim` function.
-  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kind are not supported.
+    # NB : if we had block_to_block with preallocated buffer,
+    # we could directly fill global array
+    btb = EP.BlockToBlock(distri, distri_out, comm)
+    ec_to_merge.append(btb.exchange(ec, PT.Element.NVtx(elt)))
+    start = end
 
-  Input tree is modified inplace.
+  merged_ec = np_utils.concatenate_np_arrays(ec_to_merge)[1]
+  merged_range = np.empty(2, merged_ec.dtype)
+  merged_range[0] = PT.Element.Range(elts[0] )[0]
+  merged_range[1] = PT.Element.Range(elts[-1])[1]
+  merged_elt = PT.new_Elements(type=PT.Element.Type(elts[0]), erange=merged_range, econn=merged_ec)
+  MT.new_Distribution({'Element' : merged_distri}, merged_elt)
 
-  Args:
-    dist_tree (CGNSDistTree) : Distributed tree
-    comm (MPIComm)           : MPI communicator
+  return merged_elt
 
-  Example:
-      .. literalinclude:: snippets/test_algo.py
-        :start-after: #concatenate_elt_sections@start
-        :end-before: #concatenate_elt_sections@end
-        :dedent: 2
-  """
+def concatenate_elt_sections_if(dist_tree: CGNSDistTree, pred: PT.pred.NodePredicate, comm: MPIComm) -> None:
+  # Implementation of concatenate_elt_sections_if; in addition, only nodes selected by
+  # the predicate function are concatenated
+
   MT.check_cgns_dist_tree(dist_tree)
   for zone in PT.iter_all_Zone_t(dist_tree):
 
-    to_gather:Dict[str, List[CGNSTree]] = {}
-    for elt in PT.get_children_from_label(zone, 'Elements_t'):
-      if (kind := PT.Element.Type(elt)) in to_gather:
-        to_gather[kind].append(elt)
-      else:
-        to_gather[kind] = [elt]
+    to_gather:Dict[str, List[CGNSTree]] = defaultdict(list)
+    for elt in PT.get_children_from_predicate(zone, PT.pred.label_is('Elements_t') & pred):
+      to_gather[PT.Element.Type(elt)].append(elt)
     
     # Dont forget to sort ! Because order of apparition in tree is not
     # necessarily increasing
@@ -54,34 +68,8 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
 
     for kind, elts in to_gather.items():
       if len(elts) > 1:
-        elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0]) # Dont forget to sort!
-        tot_size = sum([PT.Element.Size(e) for e in elts])
-        merged_distri = par_utils.uniform_distribution(tot_size, comm)
-
-        # Initially, each section is distributed, we need to "uninterlace" 
-        # to map global distribution without changing order
-        start = 0
-        ec_to_merge = []
-        for elt in elts:
-          end = start + PT.Element.Size(elt)
-          distri = MT.distribution_value(elt, 'Element')
-          ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
-          distri_out = distri.copy()
-          distri_out[0] = max(min(merged_distri[0], end), start) - start
-          distri_out[1] = max(min(merged_distri[1], end), start) - start
-
-          # NB : if we had block_to_block with preallocated buffer,
-          # we could directly fill global array
-          btb = EP.BlockToBlock(distri, distri_out, comm)
-          ec_to_merge.append(btb.exchange(ec, PT.Element.NVtx(elt)))
-          start = end
-
-        merged_ec = np_utils.concatenate_np_arrays(ec_to_merge)[1]
-        merged_range = np.empty(2, merged_ec.dtype)
-        merged_range[0] = PT.Element.Range(elts[0] )[0]
-        merged_range[1] = PT.Element.Range(elts[-1])[1]
-        merged_elt = PT.new_Elements(f'{kind}', kind, erange=merged_range, econn=merged_ec)
-        MT.new_Distribution({'Element' : merged_distri}, merged_elt)
+        merged_elt = _concatenate_elt_sections(elts, comm)
+        PT.set_name(merged_elt, kind)
 
         for elt in elts:
           PT.rm_child(zone, elt)
@@ -90,6 +78,29 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
       else:
         # To be consistent, we just rename using elt kind
         PT.set_name(elts[0], kind)
+
+def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
+  """ Gather the Element_t sections of same ElementType into a single one.
+
+  Resulting sections are named after their ElementType. Note that :
+
+  - Sections of same kind must be contiguous to be gathered. This can be achieved
+    using :func:`reorder_elt_sections_from_dim` function.
+  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kinds are not supported.
+
+  Input tree is modified inplace.
+
+  Args:
+    dist_tree (CGNSDistTree) : Distributed tree
+    comm (MPIComm)           : MPI communicator
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #concatenate_elt_sections@start
+        :end-before: #concatenate_elt_sections@end
+        :dedent: 2
+  """
+  concatenate_elt_sections_if(dist_tree, PT.pred.ALWAYS_TRUE, comm)
     
 
 

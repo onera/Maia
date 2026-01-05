@@ -229,6 +229,7 @@ signature ``f(n:CGNSTree) -> bool``, and can thus directly be used as predicate:
 >>> zones = PT.get_nodes_from_predicate(tree, PTp.IS_POLY3D_ZONE)
 
 .. autosummary::
+  ~maia.pytree.pred.ALWAYS_TRUE
   ~maia.pytree.pred.IS_POLY2D_ZONE
   ~maia.pytree.pred.IS_POLY3D_ZONE
   ~maia.pytree.pred.IS_GC

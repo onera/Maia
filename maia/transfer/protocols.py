@@ -6,8 +6,8 @@ import Pypdm.Pypdm as PDM
 
 import maia
 from maia.typing import *
-from maia.utils import par_utils, np_utils
 from maia.utils import vstride as vs
+from maia.utils.parallel.utils import auto_expand_distri
 
 from . import _protocols
 
@@ -34,18 +34,6 @@ def _check_dict_keys(data_dict: Dict[str, Any], comm: MPIComm) -> None:
   is_same = list(data_dict.keys()) == master_keys
   if not comm.allreduce(is_same, MPI.LAND):
     raise KeyError("Exchanged data keys must be identical on all ranks")
-
-def auto_expand_distri(distri: NDArray, comm: MPIComm) -> NDArray:
-  """ Return a full distribution from a full or partial distribution """
-  if distri.size == 3 and comm.Get_size() != 2:
-    # Distri is partial
-    return par_utils.partial_to_full_distribution(distri, comm)
-  if distri.size == 3 and comm.Get_size() == 2:
-    # This is the corner case, but rank 0 always have [0, s1, s1+s2]
-    return comm.bcast(distri, root=0)
-  else:
-    #Distri is already full
-    return distri
 
 def BlockToBlock(distri_in: NDArray,
                  distri_out: NDArray,
@@ -336,8 +324,10 @@ def part_to_block(part_data: Union[SPartData, MPartData],
           return vs.from_counts(*GI.Put_v([(pf.counts, pf.values) for pf in part_fields], extend=True))
     elif isinstance(GI, _GlobalIndexer): # We can guess from input arg
       def _exchange_one(part_fields):
-        return GI.Put_v((part_fields.counts, part_fields.values)) if isinstance(part_fields, vs.VStrideArray) \
-          else GI.Put(part_fields)
+        if isinstance(part_fields, vs.VStrideArray):
+          return vs.from_counts(*GI.Put_v((part_fields.counts, part_fields.values)))
+        else:
+          return GI.Put(part_fields)
     else: # We can not be sure => default to fixed buff
       _exchange_one = lambda part_fields : GI.Put(part_fields)
 
