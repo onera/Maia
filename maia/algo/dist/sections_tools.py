@@ -86,7 +86,7 @@ def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
 
   - Sections of same kind must be contiguous to be gathered. This can be achieved
     using :func:`reorder_elt_sections_from_dim` function.
-  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kind are not supported.
+  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kinds are not supported.
 
   Input tree is modified inplace.
 

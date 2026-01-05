@@ -31,7 +31,7 @@ def _local_bounds(ini_start_loc:int, ini_end_loc:int, g_start:int, g_end:int) ->
 
 def local_bounds(distri:NDArray, g_start:int, g_end:int) -> Tuple[int, int]:
   """ Compute the local start/end indices that should be used to extract a slice of 
-  a distributed array, restricted to global [start:end[ interval """
+  a distributed array, restricted to the [g_start:g_end[ interval """
   return _local_bounds(distri[0], distri[1], g_start, g_end)
   
 
@@ -64,8 +64,7 @@ def _update_pl(zone:CGNSTree, loc:str, new_pl:List[NDArray], shift:int=0):
     # NB : PointListDonor of GCs will be copied afterward (under usual assumption that PL are symmetric) 
 
 def _adapt_data_to_distri(data_in:NDArray, distri_in:NDArray, distri_out:NDArray, comm:MPIComm) -> NDArray:
-  # Perform a BtB if necessary to have data distributed as 
-  # distri_out. Distributions must be full
+  # Perform a BtB if necessary to have data distributed as distri_out
   _distri_in  = par_utils.auto_expand_distri(distri_in, comm)
   _distri_out = par_utils.auto_expand_distri(distri_out, comm)
   if not par_utils.is_same_distri(_distri_in, _distri_out, comm):
@@ -107,10 +106,44 @@ def _update_full_cellcenter_containers(zone:CGNSTree, new_id:NDArray, new_id_dis
     GI.Put(array, array)
 
 
+def _renumber_std_sections_of_dim(zone, dim, input_distri_f, new_id, comm):
+  # Renumber the standard elements of the specified dimension. They
+  # will be concatened according to their kind
+
+  pred = is_elt_of_dim(dim) # Concatenate elts of selected dim only
+  concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] # zone is distributed
+
+  elts = sorted(PT.get_children_from_predicate(zone, pred), key=lambda e: PT.Element.Range(e)[0])
+  offset = PT.Element.Range(elts[0])[0]
+
+  input_distri = par_utils.full_to_partial_distribution(input_distri_f, comm)
+  # Work (cat) section by (cat) section
+  for elt in elts:
+    distri = MT.distribution_value(elt, 'Element')
+    global_start = PT.Element.Range(elt)[0] - offset
+    global_end = global_start + PT.Element.Size(elt)
+    _restrict = subdistri(input_distri_f, global_start, global_end)
+    view_st, view_end = local_bounds(input_distri, global_start, global_end)
+    new_id_loc = EP.block_to_block(new_id[view_st:view_end], _restrict, distri, comm)
+
+    # Check that renumbering does not goes out of the current section
+    low  = PT.Element.Range(elt)[0] - offset
+    high = PT.Element.Range(elt)[1] - offset
+    is_compatible = bool(np.all(low <= new_id_loc) and np.all(new_id_loc <= high))
+    if not comm.allreduce(is_compatible, MPI.LAND):
+      raise ValueError("Invalid permutation: elements of different type would be interlaced")
+
+    # Do effective renumbering of elements
+    GI = EP.GlobalIndexer(distri, new_id_loc-global_start, comm)
+    elt_vtx_n = PT.find_child_from_name(elt, 'ElementConnectivity')
+    elt_vtx = PT.get_np_value(elt_vtx_n)
+    GI.Put(elt_vtx, elt_vtx, count=PT.Element.NVtx(elt))
+
+
 def renumber_vertices(tree:CGNSDistTree, zone_path:CGNSPath, new_vtx_id:NDArray, comm:MPIComm):
   """
   Renumber vertices of the input zone.
-  new_vtx_id is an distributed array, which associate
+  new_vtx_id is a distributed array, which associate
   to each old vtx it's new id (0-based)
   PointListDonor from other zones are also updated
   """
@@ -149,10 +182,10 @@ def renumber_vertices(tree:CGNSDistTree, zone_path:CGNSPath, new_vtx_id:NDArray,
 def renumber_edges(tree:CGNSDistTree, zone_path:CGNSPath, new_edge_id:NDArray, comm:MPIComm):
   """
   Renumber edges of the input zone.
-  new_edge_id is a distributed array, which associate to each old edge it's new id (0-based)
+  new_edge_id is a distributed array, which associates to each old edge it's new id (0-based)
   PointListDonor from other zones are also updated
   Note : if several edges sections are present in tree, we can not garantee that
-  ordering do not interlace sections. Thus we concatenate edge section to a single one.
+  ordering does not interlace sections. Thus we concatenate edge section to a single one.
   """
   pred = is_elt_of_dim(1)
   zone = PT.find_node_from_path(tree, zone_path)
@@ -207,10 +240,10 @@ def renumber_edges(tree:CGNSDistTree, zone_path:CGNSPath, new_edge_id:NDArray, c
 def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, comm:MPIComm):
   """
   Renumber faces of the input zone.
-  new_face_id is a distributed array, which associate to each old face it's new id (0-based)
+  new_face_id is a distributed array, which associates to each old face it's new id (0-based)
   PointListDonor from other zones are also updated
   Note for std meshes: if several faces sections are present in tree, we can not garantee that
-  ordering do not interlace sections. Thus we concatenate faces section to a single one.
+  ordering does not interlace sections. Thus we concatenate faces section to a single one.
   In the permutation leads to interlacement of faces of different kind (tri, quad), an
   error is raised
   """
@@ -275,36 +308,9 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
         cell_face *= sign
 
   else: # Standard elements
-    pred = is_elt_of_dim(2) # Concatenate elts of dim 2 only
-    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] # zone is distributed
-
-    # Work (cat) section by (cat) section
-    elts = sorted(PT.get_children_from_predicate(zone, pred), key=lambda e: PT.Element.Range(e)[0])
-    face_offset = PT.Element.Range(elts[0])[0]
-
-    for elt in elts:
-      distri = MT.distribution_value(elt, 'Element')
-      global_start = PT.Element.Range(elt)[0] - face_offset
-      global_end = global_start + PT.Element.Size(elt)
-      _restrict = subdistri(_input_distri, global_start, global_end)
-      view_st, view_end = local_bounds(input_distri, global_start, global_end)
-      new_id_loc = EP.block_to_block(new_face_id[view_st:view_end], _restrict, distri, comm)
-
-      # Check that renumbering does not goes out of the current section
-      low  = PT.Element.Range(elt)[0] - face_offset
-      high = PT.Element.Range(elt)[1] - face_offset
-      is_compatible = bool(np.all(low <= new_id_loc) and np.all(new_id_loc <= high))
-      if not comm.allreduce(is_compatible, MPI.LAND):
-        raise ValueError("Invalid permutation: elements of different type would be interlaced")
-
-      # Do effective renumbering of elements
-      GI = EP.GlobalIndexer(distri, new_id_loc-global_start, comm)
-      elt_vtx_n = PT.find_child_from_name(elt, 'ElementConnectivity')
-      elt_vtx = PT.get_np_value(elt_vtx_n)
-      GI.Put(elt_vtx, elt_vtx, count=PT.Element.NVtx(elt))
-
+    _renumber_std_sections_of_dim(zone, 2, _input_distri, new_face_id, comm)
+    face_offset = PT.Zone.get_elt_range_per_dim(zone)[2][0]
   
-
   # Update FaceCenter PointList (no data to move, because full FaceCenter data not allowed)
   loc = 'CellCenter' if is_native_dim else 'FaceCenter'
   _update_point_lists(tree, zone_path, new_face_id, _input_distri, loc, face_offset, comm)
@@ -317,10 +323,10 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
 def renumber_cells(tree:CGNSDistTree, zone_path:CGNSPath, new_cell_id:NDArray, comm:MPIComm):
   """
   Renumber cells of the input zone.
-  new_cell_id is a distributed array, which associate to each old cell it's new id (0-based)
+  new_cell_id is a distributed array, which associates to each old cell it's new id (0-based)
   PointListDonor from other zones are also updated
   Note for std meshes: if several cells sections are present in tree, we can not garantee that
-  ordering do not interlace sections. Thus we concatenate cells section to a single one.
+  ordering does not interlace sections. Thus we concatenate cells section to a single one.
   In the permutation leads to interlacement of cells of different kind (tetra, hexa), an
   error is raised
   """
@@ -364,33 +370,8 @@ def renumber_cells(tree:CGNSDistTree, zone_path:CGNSPath, new_cell_id:NDArray, c
 
 
   else: # Standard elements
-    pred = is_elt_of_dim(3) # Concatenate elts of dim 3 only
-    concatenate_elt_sections_if(zone, pred, comm) #type:ignore[arg-type] # zone is distributed
-
-    # Work (cat) section by (cat) section
-    elts = sorted(PT.get_children_from_predicate(zone, pred), key=lambda e: PT.Element.Range(e)[0])
-    cell_offset = PT.Element.Range(elts[0])[0]
-
-    for elt in elts:
-      distri = MT.distribution_value(elt, 'Element')
-      global_start = PT.Element.Range(elt)[0] - cell_offset
-      global_end = global_start + PT.Element.Size(elt)
-      _restrict = subdistri(_input_distri, global_start, global_end)
-      view_st, view_end = local_bounds(input_distri, global_start, global_end)
-      new_id_loc = EP.block_to_block(new_cell_id[view_st:view_end], _restrict, distri, comm)
-
-      # Check that renumbering does not goes out of the current section
-      low  = PT.Element.Range(elt)[0] - cell_offset
-      high = PT.Element.Range(elt)[1] - cell_offset
-      is_compatible = bool(np.all(low <= new_id_loc) and np.all(new_id_loc <= high))
-      if not comm.allreduce(is_compatible, MPI.LAND):
-        raise ValueError("Invalid permutation: elements of different type would be interlaced")
-
-      # Do effective renumbering of elements
-      GI = EP.GlobalIndexer(distri, new_id_loc-global_start, comm)
-      elt_vtx_n = PT.find_child_from_name(elt, 'ElementConnectivity')
-      elt_vtx = PT.get_np_value(elt_vtx_n)
-      GI.Put(elt_vtx, elt_vtx, count=PT.Element.NVtx(elt))
+    _renumber_std_sections_of_dim(zone, 3, _input_distri, new_cell_id, comm)
+    cell_offset = PT.Zone.get_elt_range_per_dim(zone)[3][0]
 
   
   # Update CellCenter PointList

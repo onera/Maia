@@ -130,7 +130,7 @@ class Test_auto_expand_distri:
     assert np.array_equal(utils.auto_expand_distri(distri_partial, comm), \
         np.array([0,0,0]))
     # Already full
-    for distri_full in [[0,10,40], [0,0,40], [0,40,40], [0,0,0]]:
+    for distri_full in [[0,10,40], [0,40,40], [0,0,40], [0,0,0]]:
       _distri_full = np.array(distri_full)
       assert np.array_equal(utils.auto_expand_distri(_distri_full, comm), _distri_full)
 

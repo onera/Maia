@@ -98,7 +98,7 @@ def auto_expand_distri(distri: NDArray, comm: MPIComm) -> NDArray:
     # Distri is partial
     return partial_to_full_distribution(distri, comm)
   if distri.size == 3 and comm.Get_size() == 2:
-    # This is the corner case, but rank 0 always have [0, s1, s1+s2]
+    # This is the corner case, but rank 0 always has [0, s1, s1+s2]
     return comm.bcast(distri, root=0)
   else:
     #Distri is already full

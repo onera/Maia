@@ -26,7 +26,8 @@ def test_collect_shifted_pl_one():
     RENUM._collect_shifted_pl_one(subset)
 
 def test_update_pl_one():
-  subset = PT.new_GridConnectivity(point_list=[[1,3,5,7]], point_range_donor=[[101,120]])
+  v = 42 # Unused, since initial value will be erased
+  subset = PT.new_GridConnectivity(point_list=[[v,v,v,v]], point_range_donor=[[v,v]])
   RENUM._update_pl_one(subset, np.array([[0,1,2,3]]), shift=1)
   assert (PT.get_child_from_name(subset, 'PointList')[1] == [[1,2,3,4]]).all()
   RENUM._update_pl_one(subset, np.array([[10,11,12,13]]), donor=True, shift=1)
@@ -46,7 +47,6 @@ def test_local_bounds():
   assert RENUM.local_bounds(np.array([25, 50, 100]), 50,54) == (25,25)
   assert RENUM.local_bounds(np.array([25, 50, 100]), 400,500) == (25,25)
   assert RENUM.local_bounds(np.array([25, 50, 100]), 0,100) == (0,25)
-  assert RENUM.local_bounds(np.array([25, 50, 100]), 0,500) == (0,25)
   assert RENUM.local_bounds(np.array([25, 50, 100]), 0,500) == (0,25)
   assert RENUM.local_bounds(np.array([25, 50, 100]), 20,40) == (0,15)
   assert RENUM.local_bounds(np.array([25, 50, 100]), 40,60) == (15,25)
@@ -85,7 +85,8 @@ def test_renumber_vertices(comm):
                       fields={'Id' : np.array([1,2,3,4,5,6])[vtx_distri[0]:vtx_distri[1]]},
                       parent=PT.find_node_from_name(tree, 'Left'))
 
-  new_vtx_id = np.array([5,4,3,2,1,0], ztype)[vtx_distri[0]:vtx_distri[1]]
+  new_vtx_id = np.array([5,4,3,2,1,0], ztype)[vtx_distri[0]:vtx_distri[1]] # Choose a new numbering
+  RENUM.renumber_vertices(tree, 'Base/Left', new_vtx_id, comm)
 
   # For Right zone, only GC should be modified
   expt_zone2 = PT.deep_copy(PT.find_node_from_name(tree, 'Right'))
@@ -133,9 +134,6 @@ def test_renumber_vertices(comm):
   # RM Distri/ElementConnectivity for comparaison
   for elt in PT.get_nodes_from_label(expt_zone1, 'Elements_t'):
     PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
-
-
-  RENUM.renumber_vertices(tree, 'Base/Left', new_vtx_id, comm)
 
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Left'), expt_zone1)
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Right'), expt_zone2)
@@ -238,7 +236,7 @@ def test_renumber_faces_3d_poly(comm):
   zone = PT.get_all_Zone_t(tree)[0]
   ztype = PT.get_np_value(zone).dtype
 
-  # Juste permute Xmin (1) and Xmax (3) faces
+  # Just permute Xmin (1) and Xmax (3) faces
   new_id = np.array([3,2,1,4,5,6,7,8,9,10,11], ztype) - 1
   new_id = new_id[:6] if comm.rank == 0 else new_id[6:]
 
