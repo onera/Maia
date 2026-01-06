@@ -22,6 +22,7 @@ OK = ''
 
 
 IS_POLY = PTp.IS_POLY2D_ZONE | PTp.IS_POLY3D_ZONE
+IS_GC_MATCH = PT.pred.is_gc_of_kind(is_1to1=True)
 
 class utils:
     # Just a namespace to store utils functions
@@ -53,6 +54,34 @@ class utils:
             erange = np.array([last+1, last+PT.Zone.n_cell(zone)], last.dtype)
             elts.append(PT.new_NFaceElements(erange=erange))
         return elts
+
+class MatchingJnsTable:
+    def __init__(self):
+        self.computed = False
+        self.table = defaultdict(list)
+    def __getitem__(self, key):
+        return self.table[key]
+    def compute(self, tree, comm):
+        from maia.algo.dist.matching_jns_tools import _create_local_match_table
+        
+        gc_paths = PT.predicates_to_paths(tree, ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", IS_GC_MATCH])
+
+        local_match_table = _create_local_match_table(tree,
+                                                      [PT.get_node_from_path(tree, p) for p in gc_paths],
+                                                      [PT.utils.path_head(p, 2) for p in gc_paths],
+                                                      comm)
+
+        global_match_table = np.empty_like(local_match_table)
+        comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)
+
+        rows, cols = np.where(global_match_table)
+
+        for r, c in zip(rows, cols):
+            self.table[gc_paths[r]].append(gc_paths[c])
+
+        self.computed = True
+
+matching_jns_table = MatchingJnsTable()
 
 # Errors code 300-399
 
@@ -529,6 +558,150 @@ def invalid_elt_subset_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
 
 
     return OK
+
+def missing_opposite_join(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E310 - Missing opposite join
+
+    For each GridConnectivity(1to1)_t node of type 'Abutting1to1' G, an opposite
+    GridConnectivity(1to1)_t node G' should exist within the target zone of G, such that:
+    - The GridLocation of G and G' are identical
+    - The number of mesh entities of G and G' are identical
+    - For each pair (local_id=i, opp_id=j) of G, the pair (local_id=j, opp_id=i) exists in G'
+
+    Erroneous tree examples:
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───\033[32mmatchAB\033[0m GridConnectivity_t \033[32m"ZoneB"\033[0m
+    │           ├───GridConnectivityType GridConnectivityType_t \033[32m"Abutting1to1"\033[0m
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 [[10 11 12]]
+    │           └───PointListDonor IndexArray_t I4 [[7 8 9]]
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            ╵╴╴╴\033[91mMissing ZoneB to ZoneA join\033[0m
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───\033[32mmatchAB\033[0m GridConnectivity_t \033[32m"ZoneB"\033[0m
+    │           ├───GridConnectivityType GridConnectivityType_t \033[32m"Abutting1to1"\033[0m
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 [[10 11 12]]
+    │           └───PointListDonor IndexArray_t I4 [[7 8 9]]
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t \033[32m"ZoneA"\033[0m
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 \033[91m[[1 2 3]] # Not consistent with matchAB/PointListDonor\033[0m 
+                └───PointListDonor IndexArray_t I4 [[12 11 10]]
+
+    Correct example:
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───\033[32mmatchAB\033[0m GridConnectivity_t \033[32m"ZoneB"\033[0m
+    │           ├───GridConnectivityType GridConnectivityType_t \033[32m"Abutting1to1"\033[0m
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 [[10 11 12]]
+    │           └───PointListDonor IndexArray_t I4 [[7 8 9]]
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t \033[32m"ZoneA"\033[0m
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 [[9 8 7]]
+                └───PointListDonor IndexArray_t I4 [[12 11 10]]
+    """
+    
+    # Search matching JNs only once, on the full tree
+    last = nodes[-1]
+    if len(nodes) == 1 and not matching_jns_table.computed:
+        matching_jns_table.compute(last, comm)
+
+    # Report errors on GC_t nodes
+    elif IS_GC_MATCH(last):
+        path = '/'.join(n[0] for n in nodes[1:])
+        opp_jns = matching_jns_table[path]
+        if len(opp_jns) == 0:
+            return "Opposite 1to1 GridConnectivity_t node not found in tree"
+        elif len(opp_jns) > 1:
+            return f"Several opposite 1to1 GridConnectivity_t node found (1 expected) : {opp_jns}"
+
+    return OK
+
+def non_symmetric_opposite_joins(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """W311 - Non symmetric opposite joins
+
+    This rules extends E310 by adding this additional constraint of symmetry
+    between two related Abutting1to1 GridConnectivity_t nodes G and G':
+
+          PointList(G) == PointListDonor(G')     (or resp. PointRange)
+      and PointListDonor(G) == PointList(G')     (or resp. PointRange)
+
+    In other words, the pairs (local_id, opp_id) must be described in same order
+    in the two related joins. This rule is not required by the CGNS standard,
+    but some solvers or tools rely on it.
+
+    Erroneous tree example:
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───matchAB GridConnectivity_t "ZoneB"
+    │           ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 \033[32m[[10 11 12]]\033[0m
+    │           └───PointListDonor IndexArray_t I4 \033[32m[[7 8 9]]\033[0m
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t "ZoneA"
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 \033[93m[[9 8 7]]\033[0m
+                └───PointListDonor IndexArray_t I4 \033[93m[[12 11 10]] # Order is permuted\033[0m 
+
+    Correct example:
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───matchAB GridConnectivity_t "ZoneB"
+    │           ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 \033[32m[[10 11 12]]\033[0m
+    │           └───PointListDonor IndexArray_t I4 \033[32m[[7 8 9]]\033[0m
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t "ZoneA"
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 \033[32m[[7 8 9]]\033[0m
+                └───PointListDonor IndexArray_t I4 \033[32m[[10 11 12]]\033[0m
+    """
+    # Search matching JNs only once, on the full tree
+    last = nodes[-1]
+    if len(nodes) == 1 and not matching_jns_table.computed:
+        matching_jns_table.compute(last, comm)
+
+    elif IS_GC_MATCH(last):
+        from maia.algo.dist.matching_jns_tools import _jn_is_symmetric_loc
+        cur_path = '/'.join(n[0] for n in nodes[1:])
+        opp_paths = matching_jns_table[cur_path]
+        assert len(opp_paths) == 1 # Can not proceed if donor is not found
+        opp_path = opp_paths[0]
+
+        is_symm_loc = _jn_is_symmetric_loc(last, PT.find_node_from_path(nodes[0], opp_path))
+        if not comm.allreduce(is_symm_loc, MPI.LAND):
+            return f"Subsets ordering of matching GC_t node /{opp_path} differ"
+
+    return OK
+
+
+
 _funcs = inspect.getmembers(sys.modules[__name__], inspect.isfunction)
 
 DNODE_RULES = {func[1].__doc__[:4] : func[1] for func in _funcs}
