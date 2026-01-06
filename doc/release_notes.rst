@@ -12,14 +12,14 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
-🚀 Feature improvements
-^^^^^^^^^^^^^^^^^^^^^^^
-- VStrideArray: implement OUTER_AXIS mode for ``sort`` and ``unique`` functions
-
 💡 New Features
 ^^^^^^^^^^^^^^^
 - Algo module: add ``agglomerate_cells`` to create structured coarsened meshes
 - Algo module: add ``enforce_symmetric_joins`` to have a simplier description of matching interfaces
+
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- VStrideArray: implement OUTER_AXIS mode for ``sort`` and ``unique`` functions
 
 🐞 Fixes
 ^^^^^^^^
@@ -29,6 +29,7 @@ Development version
 - extract_part_from_family: fixup concatenation order of fields when ``data_transfer=True``
 - adapt_mesh_with_feflo: fix failure on 2D meshes by adding default 2D elements tag
 - merge_zones: prevent a dtype issue on 2D meshes
+- extrude: fixup boundary faces orientation when working on 2D poly meshes
 
 v1.8 (September 2025)
 ---------------------

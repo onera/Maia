@@ -214,9 +214,9 @@ def _extrude_bar_to_ngon(bar, n_vtx, n_cell, align=True):
   third_nodes  = second_nodes + n_vtx
   fourth_nodes = first_nodes  + n_vtx
   if align:
-    new_ec = np_utils.interweave_arrays([second_nodes, first_nodes, fourth_nodes, third_nodes])
-  else:
     new_ec = np_utils.interweave_arrays([first_nodes, second_nodes, third_nodes, fourth_nodes])
+  else:
+    new_ec = np_utils.interweave_arrays([second_nodes, first_nodes, fourth_nodes, third_nodes])
   PT.set_value(ec_n, new_ec)
   # > Create ElementConnectivity distribution
   MT.new_Distribution({'ElementConnectivity' : 4*distrib_elem}, parent=bar)

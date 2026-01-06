@@ -7,7 +7,7 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
-from maia.utils import par_utils
+from maia.utils import par_utils, np_utils
 
 from maia.algo.dist import extrusion as EXT
 
@@ -116,13 +116,13 @@ def test_extrude_bar_to_ngon(align):
   assert (PT.Element.Range(bar) == [1, 17]).all()
   
   if align:
-    assert (get_elt_ec(bar) == [2,1,1+n_vtx,2+n_vtx, 3,2,2+n_vtx,3+n_vtx,
-                                4,3,3+n_vtx,4+n_vtx, 1,4,4+n_vtx,1+n_vtx,
-                                3,1,1+n_vtx,3+n_vtx]).all()
-  else:
     assert (get_elt_ec(bar) == [1,2,2+n_vtx,1+n_vtx, 2,3,3+n_vtx,2+n_vtx,
                                 3,4,4+n_vtx,3+n_vtx, 4,1,1+n_vtx,4+n_vtx,
                                 1,3,3+n_vtx,1+n_vtx]).all()
+  else:
+    assert (get_elt_ec(bar) == [2,1,1+n_vtx,2+n_vtx, 3,2,2+n_vtx,3+n_vtx,
+                                4,3,3+n_vtx,4+n_vtx, 1,4,4+n_vtx,1+n_vtx,
+                                3,1,1+n_vtx,3+n_vtx]).all()
   bar_eso = PT.get_child_from_name(bar, 'ElementStartOffset')
   assert (bar_eso[1] == [20, 24, 28, 32, 36, 40]).all()
 
@@ -330,8 +330,8 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   dist_tree = maia.factory.generate_dist_block(3, 'TRI_3', comm)
   maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
 
-  zone = PT.get_all_Zone_t(dist_tree)[0]
-  zdtype=PT.get_np_value(zone).dtype
+  zone   = PT.get_all_Zone_t(dist_tree)[0]
+  zdtype = PT.get_np_value(zone).dtype
 
   n_cell = PT.Zone.n_cell(zone)
   n_vtx  = PT.Zone.n_vtx(zone)
@@ -468,6 +468,47 @@ def test_extrusion_2d_cart_ngon_loc(dupl_vtx_data, comm):
   assert PT.Subset.GridLocation(ymax) == 'Vertex'
   assert (PT.get_node_from_name(ymax, 'PointList'     )[1][0] == [7,8,9,  16,17,18]).all()
   assert (PT.get_node_from_name(ymax, 'PointListDonor')[1][0] == [1,2,3, 10,11,12]).all()
+
+
+@pytest_parallel.mark.parallel([1])
+@pytest.mark.parametrize("elem_type", ['TRI_3', 'QUAD_4'])
+@pytest.mark.parametrize("ksubset_as", ['BC', 'GC'])
+def test_extrusion_2d_cart_ngon_orientation(elem_type, ksubset_as, comm):
+
+  # Prepare test
+  dist_tree = maia.factory.generate_dist_block(5, elem_type, comm)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+
+  zone = PT.get_all_Zone_t(dist_tree)[0]
+
+  # Run test
+  EXT.extrude(dist_tree, [0., 0., 1.], comm, ksubset_as=ksubset_as)
+
+  # Verification    
+  maia.algo.compute_elements_normal(dist_tree, comm)
+  maia.algo.compute_elements_center(dist_tree,3, comm)
+  maia.algo.compute_elements_center(dist_tree,2, comm)
+  
+  geo3d = PT.get_child_from_name(zone, 'Geometry_3d')
+  geo2d = PT.get_child_from_name(zone, 'Geometry_2d')
+  ngon  = PT.Zone.NGonNode(zone)
+  pe    = PT.get_child_from_name(ngon, 'ParentElements')[1]
+
+  bnd_nodes = PT.get_nodes_from_predicate(zone, PT.pred.label_in(['BC_t', 'GridConnectivity_t']))
+  all_pls = [PT.get_child_from_name(node, 'PointList')[1] for node in bnd_nodes]
+  pl_tot = np_utils.concatenate_point_list(all_pls)[1]
+
+  cell_offset = PT.Element.Range(ngon)[1]+1
+  ext_cells = pe[:,0][pl_tot-1]
+  ps = np.zeros(pl_tot.size)
+  for c in 'XYZ':
+    # Compute scalar product of n_F . (C_F - C_K)
+    center_ext_face = PT.get_child_from_name(geo2d, f'Center{c}')[1][pl_tot-1]
+    center_ext_cell = PT.get_child_from_name(geo3d, f'Center{c}')[1][ext_cells-cell_offset]
+    normal_ext_face = PT.get_child_from_name(geo2d, f'Normal{c}')[1][pl_tot-1]
+    ps += (center_ext_face-center_ext_cell)*normal_ext_face
+
+  assert np.all(ps>0)
 
 
 @pytest_parallel.mark.parallel(2)
