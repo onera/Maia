@@ -20,6 +20,7 @@ Development version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - VStrideArray: implement OUTER_AXIS mode for ``sort`` and ``unique`` functions
+- More robust 1to1 periodic joins concatenation (used notably by merge_zones)
 
 🐞 Fixes
 ^^^^^^^^

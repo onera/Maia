@@ -9,17 +9,26 @@ from maia.algo.dist import matching_jns_tools as MJT
 import numpy as np
 
 
-def find_suffix(perio:PT.PeriodicValues, perio_refs:List[PT.PeriodicValues], add_opp_perio=False):
+def find_suffix(perio:PT.PeriodicValues, perio_refs:List[PT.PeriodicValues], add_opp_perio=False,
+                perio_to_one_side_path_jn={}, cur_path='', donor_path=''):
   found = False
   for i,perio_ref in enumerate(perio_refs):
     if all([np.allclose(a,b,1e-5,1e-16) for a,b in zip(perio, perio_ref)]):
-      suffix = f'.P{i}'
+      if donor_path=='':
+        suffix = f'.P{i}'
+      elif donor_path not in perio_to_one_side_path_jn[i]:
+        suffix = f'.P{i}'
+        perio_to_one_side_path_jn[i].append(cur_path)
+      else:
+        suffix = f'.P{i+1}'
       found = True
       break
   if not found:
     perio_refs.append(perio)
     suffix = f'.P{len(perio_refs)-1}'
+    perio_to_one_side_path_jn[len(perio_refs)-1] = [cur_path]
     if add_opp_perio:
+      perio_to_one_side_path_jn[len(perio_refs)] = []
       perio_refs.append(-perio)
   return suffix
   
@@ -143,6 +152,9 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   
   match_perio_refs:List[PT.PeriodicValues]   = []
   nomatch_perio_refs:List[PT.PeriodicValues] = []
+  
+  perio_to_one_side_path_jn = {}
+  
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     
     zone_path = '/'.join([PT.get_name(node) for node in [base, zone]])
@@ -178,7 +190,9 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
         if is_perio_gc:
           perio = PT.GridConnectivity.periodic_values(jn)
           if type=="Abutting1to1":
-            suffix = find_suffix(perio, match_perio_refs, add_opp_perio=intra_gc)
+            suffix = find_suffix(perio, match_perio_refs, add_opp_perio=intra_gc,
+                                 perio_to_one_side_path_jn=perio_to_one_side_path_jn,
+                                 cur_path=cur_jn_path, donor_path=opp_jn_path)
           elif type=="Abutting":
             suffix = find_suffix(perio, nomatch_perio_refs)
         #Manage intrazone -- prevent merge of two sides into one
@@ -195,7 +209,14 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
         elif suffix == '.I1':
           opp_suffix = '.I0'
         elif (suffix.startswith(".P")):
-          opp_suffix = find_suffix(-perio, match_perio_refs)
+          if type=="Abutting1to1":
+            suff_int = int(suffix[2:])
+            if suff_int%2 == 0:
+              opp_suffix = f'.P{suff_int+1}'
+            else:
+              opp_suffix = f'.P{suff_int-1}'
+          elif type=="Abutting":
+            opp_suffix = find_suffix(-perio, nomatch_perio_refs)
         else:
           opp_suffix = suffix
   

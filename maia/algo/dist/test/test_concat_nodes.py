@@ -345,11 +345,82 @@ def test_concatenate_jns_all_abutting(comm, type, perio):
     else:
       suffix_to_rot_angle = {".P0": [-10., 0., 0.],
                              ".P1": [ 10., 0., 0.],
-                             ".P2": [-20., 0., 0.],
-                             ".P3": [ 20., 0., 0.]}
+                             ".P2": [ 20., 0., 0.],
+                             ".P3": [-20., 0., 0.]}
     for gc in gcs:
       suffix = f'.P{PT.get_name(gc).split(".P")[-1]}'
       assert np.array_equal(PT.GridConnectivity.periodic_values(gc)[1], suffix_to_rot_angle[suffix])
+
+
+
+@pytest_parallel.mark.parallel([1])
+def test_concatenate_jns_with_same_perio(comm):
+  yt = """
+  ZoneA Zone_t [[101, 100, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    ZGC ZoneGridConnectivity_t:
+      intraperio1a GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1, 2, 3]]:
+        PointListDonor IndexArray_t [[4, 5, 6]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio1b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[4, 5, 6]]:
+        PointListDonor IndexArray_t [[1, 2, 3]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio2a GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[7, 8]]:
+        PointListDonor IndexArray_t [[9, 10]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+      intraperio2b GridConnectivity_t "ZoneA":
+        GridConnectivityType GridConnectivityType_t "Abutting1to1":
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[9, 10]]:
+        PointListDonor IndexArray_t [[7, 8]]:
+        GridConnectivityProperty GridConnectivityProperty_t:
+          Periodic Periodic_t:
+            RotationAngle DataArray_t R4 [10., 0., 0.]:
+            RotationCenter DataArray_t R4 [0., 0., 0.]:
+            Translation DataArray_t R4 [0., 0., 0.]:
+  """
+  tree = PT.yaml.to_cgns_tree(yt)
+  dist_tree = F2D.full_to_dist_tree(tree, comm)
+
+  GN.concatenate_jns(dist_tree, comm)
+  
+  gcs    = PT.get_nodes_from_label(dist_tree, 'GridConnectivity_t')
+  perios = PT.get_nodes_from_label(dist_tree, 'GridConnectivityProperty_t')
+  
+  assert all(len(PT.get_name(gc)) <= 32 for gc in gcs)
+  
+  assert all(['.P' in PT.get_name(gc) for gc in gcs])
+  
+  assert all('GCMatch' in PT.get_name(gc) for gc in gcs)
+  
+  assert len(gcs)    == 2
+  assert len(perios) == 2
+  
+  suffix_to_rot_angle = {".P0": [ 10., 0., 0.],
+                         ".P1": [ 10., 0., 0.]}
+  for gc in gcs:
+    assert np.array_equal(PT.GridConnectivity.periodic_values(gc)[1], [ 10., 0., 0.])
 
 @pytest.mark.parametrize("specified", [True, False])
 @pytest_parallel.mark.parallel(3)
