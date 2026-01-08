@@ -315,7 +315,7 @@ def enforce_symmetric_joins(dist_tree:CGNSDistTree, comm:MPIComm):
         :end-before: #enforce_symmetric_joins@end
         :dedent: 2
   """
-  MT.check_cgns_dist_tree(dist_tree)
+  #MT.check_cgns_dist_tree(dist_tree) # Function is called by fix_tree before computing distribution
   find_joins_donor_name(dist_tree, comm)
   jn_pairs = get_matching_jns(dist_tree)
 
