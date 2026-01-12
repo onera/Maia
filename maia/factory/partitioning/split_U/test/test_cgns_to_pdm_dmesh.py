@@ -144,7 +144,7 @@ def test_cgns_dist_zone_to_pdm_dmesh_2d(comm):
   maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
-  dmesh = CTP.cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm)
+  dmesh = CTP.cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm, needs_bc=True)
   assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
 
 @pytest_parallel.mark.parallel(3)

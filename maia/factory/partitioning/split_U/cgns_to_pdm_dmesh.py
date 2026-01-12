@@ -9,7 +9,7 @@ from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
 from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMesh, DistributedMeshNodal
-from Pypdm.Pypdm import _PDM_CONNECTIVITY_TYPE_FACE_VTX, _PDM_BOUND_TYPE_FACE, \
+from Pypdm.Pypdm import _PDM_CONNECTIVITY_TYPE_FACE_VTX, _PDM_BOUND_TYPE_FACE, _PDM_BOUND_TYPE_EDGE, \
                         _PDM_CONNECTIVITY_TYPE_FACE_CELL, _PDM_CONNECTIVITY_TYPE_CELL_FACE, \
                         _PDM_CONNECTIVITY_TYPE_EDGE_VTX, _PDM_CONNECTIVITY_TYPE_EDGE_FACE
 
@@ -135,7 +135,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm, needs_bc=False):
 
   return dmesh
 
-def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
+def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm, needs_bc=False):
   """
   Create a pdm_dmesh structure from a 2d distributed zone
   """
@@ -181,12 +181,23 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm):
   dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_EDGE_VTX,  dedge_vtx_idx, dedge_vtx)
   dmesh.dmesh_connectivity_set(_PDM_CONNECTIVITY_TYPE_EDGE_FACE, None, dedge_face)
 
+  # > Prepare bnd (needed for HPC renumbering)
+  if needs_bc:
+    point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'], filter_loc=['EdgeCenter'])
+    dedge_bound_idx, dedge_bound = np_utils.concatenate_point_list(point_lists, pdm_gnum_dtype)
+  else:
+    dedge_bound_idx = np.zeros(1, dtype=np.int32)
+    dedge_bound     = np.empty(0, dtype=pdm_gnum_dtype)
+  dmesh.dmesh_bound_set(_PDM_BOUND_TYPE_EDGE, dedge_bound_idx, dedge_bound)
+
   # keep dvtx_coord object alive for ParaDiGM
   multi_part_node = PT.update_child(dist_zone, ':CGNS#MultiPart', 'UserDefinedData_t')
-  PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
-  PT.new_DataArray('dedge_vtx', dedge_vtx, parent=multi_part_node)
-  PT.new_DataArray('dedge_face', dedge_face, parent=multi_part_node)
-  PT.new_DataArray('dedge_vtx_idx', dedge_vtx_idx, parent=multi_part_node)
+  PT.new_DataArray('dvtx_coord'     , dvtx_coord     , parent=multi_part_node)
+  PT.new_DataArray('dedge_vtx'      , dedge_vtx      , parent=multi_part_node)
+  PT.new_DataArray('dedge_face'     , dedge_face     , parent=multi_part_node)
+  PT.new_DataArray('dedge_vtx_idx'  , dedge_vtx_idx  , parent=multi_part_node)
+  PT.new_DataArray('dedge_bound_idx', dedge_bound_idx, parent=multi_part_node)
+  PT.new_DataArray('dedge_bound'    , dedge_bound    , parent=multi_part_node)
 
   return dmesh
 

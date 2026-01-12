@@ -126,7 +126,7 @@ def set_mpart_dmeshes(multi_part, u_zones, comm, needs_bc, keep_alive):
         keep_alive.append(dmesh)
         multi_part.dmesh_set(i_zone, dmesh)
       else:
-        dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_2d(zone, comm)
+        dmesh = cgns_to_pdm_dmesh.cgns_dist_zone_to_pdm_dmesh_2d(zone, comm, needs_bc=needs_bc)
         keep_alive.append(dmesh)
         multi_part.dmesh_set(i_zone, dmesh)
     else:
