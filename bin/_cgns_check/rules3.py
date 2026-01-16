@@ -55,6 +55,20 @@ class utils:
             elts.append(PT.new_NFaceElements(erange=erange))
         return elts
 
+    @staticmethod
+    def compute_distri(tab, comm):
+        gmax = comm.allreduce(tab.max(), MPI.MAX)
+        gmin = comm.allreduce(tab.min(), MPI.MIN)
+        length = int(gmax) - int(gmin) + 1
+        div = length // comm.size
+        rmd = length - div*comm.size
+        distri = np.empty(comm.size+1, tab.dtype)
+        distri[0] = gmin
+        for i in range(comm.size):
+            distri[i+1] = distri[i] + div + (i < rmd)
+        
+        return distri
+
 class MatchingJnsTable:
     def __init__(self):
         self.computed = False
@@ -697,6 +711,176 @@ def non_symmetric_opposite_joins(nodes:List[CGNSTree], comm:MPIComm) -> str:
         is_symm_loc = _jn_is_symmetric_loc(last, PT.find_node_from_path(nodes[0], opp_path))
         if not comm.allreduce(is_symm_loc, MPI.LAND):
             return f"Subsets ordering of matching GC_t node /{opp_path} differ"
+
+    return OK
+
+
+def duplicated_elts_connectivity(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E312 - Duplicated mesh entities
+
+    Within a same zone, two different mesh entities should not be defined by
+    the same list of vertices (or faces for NFACE_n elements).
+
+    Erroneous tree examples:
+
+    Zone Zone_t
+    └───NG Elements_t I4 [22 0]
+        ├───ElementRange IndexRange_t I4 [1 3]
+        ├───ElementStartOffset DataArray_t I4 [0 3 4 7]
+        └───ElementConnectivity DataArrray_t I4 [\033[32m1 3 4\033[0m  1 4 5 6  \033[91m3 4 1\033[0m] \033[91m# Already defined\033[0m
+
+    Zone Zone_t
+    ├───TRI_1 Elements_t I4 [5 0]
+    │   ├───ElementRange IndexRange_t I4 [1 3]
+    │   └───ElementConnectivity DataArrray_t I4 [1 2 3 \033[32m1 3 4\033[0m 1 4 5]
+    └───TRI_2 Elements_t I4 [5 0]
+        ├───ElementRange IndexRange_t I4 [4 5]
+        └───ElementConnectivity DataArrray_t I4 [1 5 6 \033[91m3 4 1\033[0m] \033[91m # Already defined in TRI_1 section\033[0m
+    """
+
+    last = nodes[-1]
+    if PT.get_label(last) != 'Zone_t':
+        return OK
+
+    all_elts = PT.Zone.get_ordered_elements(last)
+    batches = [
+        [e for e in all_elts if PT.Element.Type(e) not in ['NFACE_n']],
+        [e for e in all_elts if PT.Element.Type(e) == 'NFACE_n'],
+    ]
+
+    tot_duplicated = 0
+    all_duplicated = []
+    for elts in batches:
+        if len(elts) == 0:
+            continue
+        cnts = [MT.Element.connectivity(e) for e in elts]
+        cnts = [abs(cnt) if PT.Element.Type(e) == 'NFACE_n' else cnt
+                for e,cnt in zip(elts, cnts)]
+        cnt = vs.concatenate(cnts, vs.OUTER_AXIS) if len(cnts) > 1 else cnts[0]
+
+        # Compute hash using PROD (few collisions)
+        # We do it on unsigned integers to have defined behaviour
+        # in case of overflow
+        ini_dtype = cnt.dtype
+        u_dtype = {'i' : np.uint32, 'l' : np.uint64}[ini_dtype.char]
+        cnt.values.dtype = u_dtype
+        _hash = cnt.reduce(vs.ReduceOp.PROD)
+        cnt.values.dtype = ini_dtype
+        if ini_dtype.char == 'l':
+            # uint64 can give very large dispersion -> reduce to uint32
+            hash = np.empty(_hash.size, np.uint32)
+            np.mod(_hash, 2**32, out=hash)
+        else:
+            hash = _hash
+        # Uniform distribution should be suffisant if hash function is
+        # reparted. In addition PDM does not manage hash values < 1 
+        #distri = PDM.compute_weighted_distribution([hash], [np.ones(len(hash))], comm)
+        distri = utils.compute_distri(hash, comm)
+        # output distribution [0, last[ (size n_rank+1). To do binary search we
+        # don't need the external bounds
+
+        dest = np.searchsorted(distri[1:-1], hash, side='right')
+        sort_idx = np.argsort(dest)
+
+        # Phase 1 : Send hash to relevant rank for counting
+
+        send_n = np.zeros(comm.size, np.int32)
+        recv_n = np.empty(comm.size, np.int32)
+        np.add.at(send_n, dest, 1)
+
+        comm.Alltoall(send_n, recv_n) # Hash numbers
+
+        recv_hash = np.empty(recv_n.sum(), hash.dtype)
+        comm.Alltoallv((hash[sort_idx], send_n), (recv_hash, recv_n)) # Hash lists
+        #ideal = comm.allreduce(recv_hash.size) / comm.size
+        #diff = abs(recv_hash.size-ideal)/ideal
+        #print(f"{comm.rank} N RECV HASH {recv_hash.size} ({'+' if recv_hash.size >= ideal else '-'}{100*diff:.3f}%)")
+
+        # Detect hash appearing twice
+        _, inv, counts = np.unique(recv_hash, return_inverse=True, return_counts=True)
+        is_dupl = counts[inv] != 1
+
+        if not comm.allreduce(is_dupl.any(), MPI.LOR):
+            continue # Early exit if all hashes are unique
+
+        initial_is_dupl_mpi = np.empty(hash.size, bool) # View on initial ranks, but sorted in MPI order
+        comm.Alltoallv((is_dupl, recv_n), (initial_is_dupl_mpi, send_n))
+
+        initial_is_dupl = np.empty_like(initial_is_dupl_mpi)
+        initial_is_dupl[sort_idx] = initial_is_dupl_mpi   # View on initial ranks, unsorted (initial order)
+
+        # Phase 2 : Filter values for collising hashes and send it for collision resolution
+        # We already have sort order (to prepare MPI buffs), we just need to exclude
+        # unique values
+        selector = sort_idx[initial_is_dupl_mpi]
+        filtered_cnt = vs.take(cnt, selector)
+
+        elt_ranges = [PT.Element.Range(e) for e in elts]
+        elt_distri = [MT.distribution_value(e, 'Element') for e in elts]
+        starts = np.array([d[0]+r[0] for d,r in zip(elt_distri, elt_ranges)])
+        stops  = np.array([d[1]+r[0] for d,r in zip(elt_distri, elt_ranges)])
+        elt_ids = np_utils.multi_arange(starts, stops)[selector]
+
+        # Reuse send_counts / recv_counts arrays
+        send_n.fill(0)
+        np.add.at(send_n, dest[initial_is_dupl], 1)
+
+        comm.Alltoall(send_n, recv_n)
+
+        send_counts = filtered_cnt.counts
+        recv_counts = np.zeros(recv_n.sum(), send_counts.dtype)
+        recv_ids    = np.zeros(recv_n.sum(), elt_ids.dtype)
+        comm.Alltoallv((send_counts, send_n), (recv_counts, recv_n))
+        comm.Alltoallv((elt_ids, send_n), (recv_ids, recv_n))
+
+        # Reuse again send_n / recv_n (update inplace)
+        for n_item, counts in zip((send_n, recv_n), (send_counts, recv_counts)):
+            start = 0
+            for i in range(comm.size):
+                end = start + n_item[i]
+                n_item[i] = counts[start:end].sum()
+                start = end
+
+        recv_vals = np.empty(recv_n.sum(), filtered_cnt.dtype)
+        comm.Alltoallv((filtered_cnt.values, send_n), (recv_vals, recv_n))
+        recv_vstride = vs.from_counts(recv_counts, recv_vals)
+
+        # Here we assume that collisions are rare enought to do this
+        # with a pure python loop
+        recv_vstride._inner_sort()
+        counter = defaultdict(list)
+        for id,blk in zip(recv_ids, recv_vstride):
+            counter[blk.tobytes()].append(id)
+
+        duplicated_ids = [set(val) for val in counter.values() if len(val) > 1]
+        
+        # Gather duplicates on rank 0
+        if (n_duplicated := comm.allreduce(len(duplicated_ids))) > 0:
+            tot_duplicated += n_duplicated
+            all_duplicated_batch = comm.reduce(duplicated_ids[:3], root=0)
+            if comm.rank == 0:
+                all_duplicated += all_duplicated_batch
+                
+    
+    # Loop completed, return duplicated
+    if len(all_duplicated) > 0: # Only rank 0
+        # Here we retrieve the name of elements to display more information
+        allstops = [PT.Element.Range(e)[1] for e in all_elts]
+        allnames = [PT.get_name(e) for e in all_elts]
+        sub_msgs = list()
+        for ids in all_duplicated[:3]:
+            sub = "{"
+            for id in ids:
+                j = 0
+                while id > allstops[j]:
+                    j += 1
+                sub += f"{id} ({allnames[j]}), "
+            sub_msgs.append(sub[:-2] + '}')
+
+        msg = f"Some mesh elements have the same definition : {', '.join(sub_msgs)}"
+        if tot_duplicated > 3:
+            msg += f' ... ({tot_duplicated} groups detected)'
+        return msg
 
     return OK
 
