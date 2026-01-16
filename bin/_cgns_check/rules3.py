@@ -884,6 +884,141 @@ def duplicated_elts_connectivity(nodes:List[CGNSTree], comm:MPIComm) -> str:
 
     return OK
 
+def duplicated_elt_vertex(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E313 - Duplicated entity in connectivity
+
+    The local connectivity table of each mesh entity should not include
+    duplicated ids.
+
+    Erroneous tree examples:
+
+    Zone Zone_t
+    └───TRI Elements_t I4 [5 0]
+        ├───ElementRange IndexRange_t I4 [1 3]
+        └───ElementConnectivity DataArrray_t I4 [1 2 3  \033[91m1 3 3\033[0m  1 4 5] \033[91m # Duplicated vertex id for TRI n°2\033[0m
+    """
+
+    last = nodes[-1]
+    if PT.get_label(last) != 'Elements_t':
+        return OK
+    
+    cnt = MT.Element.connectivity(last)
+    if PT.Element.Type(last) == 'NFACE_n':
+        cnt = abs(cnt)
+
+    unique = vs.unique(cnt, vs.INNER_AXIS)
+
+    distri = MT.distribution_value(last, 'Element')
+    wrong_ids = np.arange(distri[0]+1, distri[1]+1)[unique.counts != cnt.counts]
+
+    if (n_wrong := comm.allreduce(wrong_ids.size)) > 0:
+        all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+
+        if comm.rank == 0:
+            msg = f"Local element{'s' if n_wrong > 1 else ''} "
+            msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            msg += f" {'have' if n_wrong > 1 else 'has'} duplicated ids in {'their' if n_wrong > 1 else 'its'} connectivity"
+
+            return msg
+
+    return OK
+
+
+def out_of_range_element_connectivity(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E314 - Out of range element connectivity
+
+    The local connectivity table of each mesh entity should refer
+    to valid vertices (or faces for NFACE_n elements) ids.
+
+    Erroneous tree examples:
+
+    Zone Zone_t I4 [[\033[32m6\033[0m 2 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    └───QUAD Elements_t I4 [7 0]
+        ├───ElementRange IndexRange_t I4 [1 2]
+        └───ElementConnectivity DataArrray_t I4 [1 2 4 3  3 4 \033[91m7\033[0m 5] \033[91m # Zone has only 6 vertices\033[0m
+    """
+
+    last = nodes[-1]
+    if PT.get_label(last) != 'Elements_t':
+        return OK
+
+    zone = nodes[-2]
+    cnt = MT.Element.connectivity(last)
+
+    if PT.Element.Type(last) == 'NFACE_n':
+        cnt = abs(cnt)
+        elts = PT.get_children_from_predicate(zone, PT.pred.is_element_of_type('NGON_n'))
+        low  = int(min(PT.Element.Range(e)[0] for e in elts))
+        high = int(max(PT.Element.Range(e)[1] for e in elts))
+        tgt = 'faces'
+    else:
+        low, high = (1, PT.Zone.n_vtx(zone))
+        tgt = 'vertices'
+
+    ko = ((cnt < low) | (high < cnt)).reduce(vs.ReduceOp.LOR)
+    distri = MT.distribution_value(last, 'Element')
+    wrong_ids = np.flatnonzero(ko) + distri[0] + 1
+
+    if (n_wrong := comm.allreduce(wrong_ids.size)) > 0:
+        all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+
+        if comm.rank == 0:
+            msg = f"Local element{'s' if n_wrong > 1 else ''} "
+            msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            msg += f" {'refer' if n_wrong > 1 else 'refers'} to out-of-range {tgt}"
+
+            return msg
+
+    return OK
+
+
+def orphean_vertex_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """W315 - Orphean vertex id
+
+    Each vertex of an unstructured zone should appears in at least one mesh entity.
+
+    Erroneous tree examples:
+
+    Zone Zone_t I4 [[\033[91m7\033[0m 2 0]] \033[91m # Vertex id n°4 does never appears in Elements_t\033[0m
+    ├──ZoneType ZoneType_t "Unstructured"
+    └───QUAD Elements_t I4 [7 0]
+        ├───ElementRange IndexRange_t I4 [1 2]
+        └───ElementConnectivity DataArrray_t I4 [1 2 5 3  3 5 7 6]
+    """
+
+    last = nodes[-1]
+
+    if PT.get_label(last) != 'Zone_t' or PT.Zone.Type(last) != 'Unstructured':
+        return OK
+
+    vtx_distri = MT.distribution_value(last, 'Vertex')
+
+    is_vtx_elt = PTp.label_is('Elements_t') & ~PTp.is_element_of_type('NFACE_n')
+    elt_vtx = [PT.get_np_value(PT.get_child_from_name(elt, 'ElementConnectivity')) \
+               for elt in PT.get_children_from_predicate(last, is_vtx_elt)]
+    GI = EP.GlobalIndexer(vtx_distri, elt_vtx, comm, gnum_offset=1)
+
+    orphean = np.flatnonzero(GI.access_counts == 0) + vtx_distri[0] + 1
+
+    if (n_wrong := comm.allreduce(orphean.size)) > 0:
+        all_orphean = comm.reduce(orphean.tolist()[:5], root=0)
+
+        if comm.rank == 0:
+            msg = f"Vert{'ices' if n_wrong > 1 else 'ex'} "
+            msg += ', '.join(str(x) for x in all_orphean[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            msg += f" {'does' if n_wrong > 1 else 'do'} not appear in any mesh entity"
+
+            return msg
+
+    return OK
+
 
 
 _funcs = inspect.getmembers(sys.modules[__name__], inspect.isfunction)
