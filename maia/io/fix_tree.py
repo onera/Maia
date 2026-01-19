@@ -250,8 +250,8 @@ def ensure_signed_nface_connectivity(dist_tree, comm):
     if PT.Zone.has_nface_elements(zone):
       nface = PT.Zone.NFaceNode(zone)
       nface_ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
-      is_signed = nface_ec.size == 0 or np.any(nface_ec < 0)
-      if PT.Element.Size(nface) > 1 and not comm.allreduce(is_signed, MPI.LAND):
+      is_signed = np.any(nface_ec < 0)
+      if PT.Element.Size(nface) > 1 and not comm.allreduce(is_signed, MPI.LOR):
         PT.rm_child(zone, nface)
         maia.algo.pe_to_nface(zone, comm)
         n_fixed += 1
