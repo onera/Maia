@@ -125,15 +125,6 @@ def load_tree_from_filter(filename: str,
   if(unlock_at_least_one is False):
     raise RuntimeError("Something strange in the loading process")
 
-  n_shifted = ensure_PE_global_indexing(dist_tree)
-  if n_shifted > 0 and comm.Get_rank() == 0:
-    mlog.error(f"ParentElements arrays of NGON_n elements have been recomputed "\
-               f"because they were wrongly defined (local indexing)")
-  n_shifted = ensure_signed_nface_connectivity(dist_tree, comm)
-  if n_shifted > 0 and comm.Get_rank() == 0:
-    mlog.error(f"ElementConnectivity arrays of NFACE_n elements have been recomputed "\
-               f"because they were wrongly defined (missing orientations)")
-
 def save_tree_from_filter(filename: str,
                           dist_tree: CGNSDistTree, 
                           comm: MPIComm, 
@@ -164,6 +155,16 @@ def fill_size_tree(tree: CGNSTree,
   hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
 
   load_tree_from_filter(filename, tree, comm, hdf_filter)
+
+  n_shifted = ensure_PE_global_indexing(tree)
+  if n_shifted > 0 and comm.Get_rank() == 0:
+    mlog.error(f"ParentElements arrays of NGON_n elements have been recomputed "\
+               f"because they were wrongly defined (local indexing)")
+  n_shifted = ensure_signed_nface_connectivity(tree, comm)
+  if n_shifted > 0 and comm.Get_rank() == 0:
+    mlog.error(f"ElementConnectivity arrays of NFACE_n elements have been recomputed "\
+               f"because they were wrongly defined (missing orientations)")
+
   PT.rm_nodes_from_name(tree, '*#Size')
 
 
