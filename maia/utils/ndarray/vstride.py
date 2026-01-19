@@ -373,7 +373,7 @@ class VStrideArray:
     Example: 
       >>> a = vs.from_counts([3,5,2], np.arange(10))
       >>> a.reduce(vs.ReduceOp.SUM)
-      array([ 3, 23, 17])
+      array([ 3, 25, 17])
     """
     # For information : output type depending on input/op
     #
@@ -564,7 +564,7 @@ def array(data, *, dtype=None):
       [1, 2],
       [3, 4, 5],
       [],
-      [6]
+      [6],
     ], dtype=int64)
     >>> data = np.ma.array([[1, 2, 3], [4,5,6], [7, 8, 9]], # From masked array
     ...               mask=[[0, 0, 1], [0,0,0], [0,1,1]])
@@ -590,8 +590,11 @@ def array(data, *, dtype=None):
     # Inner data must be 1d sequence (TODO : checks)
     #if len(data) == 0 and dtype is None:
       #raise ValueError("Can not infer dtype from empty list")
-    arrays = [np.asarray(block, dtype=dtype) for block in data]
-    counts = np.array([len(a) for a in arrays], int)
+    counts = np.array([len(a) for a in data], int)
+    if dtype is not None:
+      arrays = [np.asarray(block, dtype=dtype) for block in data]
+    else:
+      arrays = [np.asarray(block) for block in data if len(block) > 0]
     if len(arrays) == 0:
       if dtype is None:
         raise ValueError("Can not concatenate empty list of arrays if dtype is not provided")
@@ -1130,10 +1133,10 @@ def concatenate(array_l, axis:Axis):
     vsarray([
       [0, 1],
       [2, 3, 4],
-      [5,6],
+      [5, 6],
       [],
       [0, 1, 2, 3],
-      [4, 5, 6],
+      [4, 6, 7],
     ], dtype=int64)
     >>> vs.concatenate([a1, a2], vs.INNER_AXIS)
     vsarray([
@@ -1186,7 +1189,10 @@ def sign(array:VStrideArray, dtype=None):
       [-1],
     ], dtype=int64)
   """
-  return VStrideArray(array._displs, array._counts, np.sign(array.values).astype(dtype=dtype, copy=False))
+  _values = np.sign(array.values)
+  if dtype is not None:
+    _values = _values.astype(dtype=dtype, copy=False)
+  return VStrideArray(array._displs, array._counts, _values)
 
 def strides_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
   """ ``True`` if the two input *VS arrays* have the same *strides*, ``False`` otherwise.
@@ -1197,11 +1203,11 @@ def strides_equal(a1:VStrideArray, a2:VStrideArray) -> bool:
   Returns:
     bool  : comparison result
   Example:
-    >>> vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
-    ...                vs.from_counts([2,3,1], [6,5,4,3,2,1]))
+    >>> vs.strides_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+    ...                  vs.from_counts([2,3,1], [6,5,4,3,2,1]))
     True
-    >>> vs.array_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
-    ...                vs.from_counts([3,2,1], [1,2,3,4,5,6]))
+    >>> vs.strides_equal(vs.from_counts([2,3,1], [1,2,3,4,5,6]),
+    ...                  vs.from_counts([3,2,1], [1,2,3,4,5,6]))
     False
   """
   if a1._counts is not None and a2._counts is not None:

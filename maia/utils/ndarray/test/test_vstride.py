@@ -270,7 +270,9 @@ def test_array():
   assert np.array_equal(a.values, [1,2,3,4,5,6])
 
   # From empty list(s)
-  a = vs.array([[]])
+  with pytest.raises(ValueError):
+    a = vs.array([[]])
+  a = vs.array([[]], dtype=float)
   assert len(a) == 1 and a.dtype == float and a.counts.dtype == int
 
   a = vs.array([], dtype=int)
