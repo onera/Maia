@@ -17,11 +17,18 @@ from maia.utils import vstride as vs
 from maia.typing import List, CGNSTree, MPIComm # Strangly import * brings NamedTuple as a function
 
 
+# Errors code 300-399
+# 301 - 310 : Zone consistency
+# 311 - 320 : Local elements connectivity
+# 321 - 330 : Global connectivity
+# 331 - 340 : Subsets
+# 341 - 350 : JNs
 
 OK = ''
 
 
 IS_POLY = PTp.IS_POLY2D_ZONE | PTp.IS_POLY3D_ZONE
+IS_GC_MATCH = PT.pred.is_gc_of_kind(is_1to1=True)
 
 class utils:
     # Just a namespace to store utils functions
@@ -54,75 +61,104 @@ class utils:
             elts.append(PT.new_NFaceElements(erange=erange))
         return elts
 
-# Errors code 300-399
+    @staticmethod
+    def compute_distri(tab, comm):
+        gmax = comm.allreduce(tab.max(initial=np.iinfo(tab.dtype).min), MPI.MAX)
+        gmin = comm.allreduce(tab.min(initial=np.iinfo(tab.dtype).max), MPI.MIN)
+        length = int(gmax) - int(gmin) + 1
+        div = length // comm.size
+        rmd = length - div*comm.size
+        distri = np.empty(comm.size+1, tab.dtype)
+        distri[0] = gmin
+        for i in range(comm.size):
+            distri[i+1] = distri[i] + div + (i < rmd)
+        
+        return distri
 
+class MatchingJnsTable:
+    def __init__(self):
+        self.computed = False
+        self.table = defaultdict(list)
+    def __getitem__(self, key):
+        return self.table[key]
+    def compute(self, tree, comm):
+        from maia.algo.dist.matching_jns_tools import _create_local_match_table
+        
+        gc_paths = PT.predicates_to_paths(tree, ["CGNSBase_t", "Zone_t", "ZoneGridConnectivity_t", IS_GC_MATCH])
 
-def eso_values(nodes:List[CGNSTree], comm:MPIComm) -> str: 
-    """E301 - ElementStartOffset values
-    
-    ElementStartOffset arrays should have the following properties:
-        - first value is 0
-        - array is stricly increasing (eso[i] < eso[i+1])
-        - last value is the size of related ElementConnectivity array
-    
-    Erroneous tree example:
+        local_match_table = _create_local_match_table(tree,
+                                                      [PT.get_node_from_path(tree, p) for p in gc_paths],
+                                                      [PT.utils.path_head(p, 2) for p in gc_paths],
+                                                      comm)
 
-    NGonElements Elements_t I4 [22 0]
-    ├───ElementRange IndexRange_t I4 [13 16]
-    ├───ElementStartOffset DataArray_t I4 [0 4 \033[91m14\033[m 12 16]
-    └───ElementConnectivity DataArray_t I4 (16,)
-    """
-    # Careful : we need an additional rule that report missing ESO on NGON/NFACE/MIXED TODO
-    last = nodes[-1]
-    if PT.get_name(last) == 'ElementStartOffset' and PT.get_label(nodes[-2]) == 'Elements_t':
-        eso = PT.get_np_value(last)
-        if not (st:=comm.bcast(eso[0], root=0)) == 0:
-            return f"ESO array should start at 0, but starting value is {st}"
-            
-        mask = ~(eso[:-1] < eso[1:])
-        lsum = mask.sum()
-        if (gsum:=comm.allreduce(lsum)) > 0:
-            distri = MT.distribution_value(nodes[-2], 'Element')
-            lval = np.where(mask)[0][0] + distri[0] if lsum > 0 else distri[2]+1
-            gval = comm.allreduce(lval, MPI.MIN)
-            return f"ESO array is not strictly increasing (ESO[i] < ESO[i+1]) : {gsum} indices are wrong, first one beeing {gval}"
+        global_match_table = np.empty_like(local_match_table)
+        comm.Allreduce(local_match_table, global_match_table, op=MPI.LAND)
 
-    return OK
+        rows, cols = np.where(global_match_table)
 
+        for r, c in zip(rows, cols):
+            self.table[gc_paths[r]].append(gc_paths[c])
 
-def left_parent_for_bnd_cells(nodes:List[CGNSTree], comm:MPIComm) -> str: 
-    """E302 - Right parent for boundary entities
+        self.computed = True
 
-    Faces (resp. edges) on the boundary of a 3D (resp. 2D) domain
-    should have a second parent (pe[entiy,1]) set to zero.
-    In other words, first parent (pe[entity,0]) should never be zero.
+class FaceCellBuilder:
+    """ Cache for E321, E322"""
 
-    Erroneous tree example:
+    @staticmethod
+    def sorted_elts_of_type(zone, type):
+        elts = sorted(PT.get_children_from_predicate(zone, PT.pred.is_element_of_type(type)),
+                      key=lambda e: PT.Element.Range(e)[0])
+        ranges = [PT.Element.Range(e) for e in elts]
+        assert ([r[0] for r in ranges[1:]] == [r[1]+1 for r in ranges[:-1]]) # Raise if not contiguous
+        return elts
 
-    EdgeElements Elements_t I4 [3 0]
-    ├───ElementRange IndexRange_t I4 [1 7]
-    ├───ElementConnectivity DataArray_t I4 (14,)
-    └───ParentElements DataArray_t I4 (7,2)
-        [[8 0]]
-        [[8 9]]
-        [[9 0]]
-        [[8 0]]
-        \033[91m[[0 9]]\033[m
-        [[8 0]]
-        [[9 0]]
-    """
-    #TODO maybe warning ? pas sur que le cgns dise que second = 2e position
-    last = nodes[-1]
-    if PT.get_name(last) == 'ParentElements' and PT.get_label(nodes[-2]) == 'Elements_t':
+    def __init__(self):
+        self.last_computed = ''
+        self.dict = dict()
+    def __getitem__(self, key):
+        return self.dict[key]
+    def compute(self, zone, comm):
+        nface_nodes = self.sorted_elts_of_type(zone, 'NFACE_n')
+        ngon_nodes  = self.sorted_elts_of_type(zone, 'NGON_n')
 
-        has_right_parent = PT.get_np_value(last)[:,0] == 0
-        if (gsum:=comm.allreduce(has_right_parent.sum())) > 0:
-            return f"Some lowerdim elements have no first parent: {gsum} elements are wrong"
+        cell_face_l = [MT.Element.connectivity(e) for e in nface_nodes]
+        cell_id_l   = [np.arange(MT.distribution_value(e, 'Element')[0] + PT.Element.Range(e)[0],
+                                 MT.distribution_value(e, 'Element')[1] + PT.Element.Range(e)[0]) for e in nface_nodes]
+        cell_id = np.concatenate(cell_id_l)
+        cell_face = vs.concatenate(cell_face_l, vs.OUTER_AXIS) if len(cell_face_l) > 1 else cell_face_l[0]
 
-    return OK
+        cell_id_rep = np.repeat(cell_id, cell_face.counts)
+        cell_id_rep *= np.sign(cell_face.values)
+
+        n_face = sum(PT.Element.Size(e) for e in ngon_nodes)
+        face_offset = PT.Element.Range(ngon_nodes[0])[0]
+        face_distri = par_utils.uniform_distribution(n_face, comm)
+
+        GI = EP.GlobalIndexer(face_distri, abs(cell_face.values)-face_offset, comm)
+
+        counts, values = GI.Put_v((np.ones(cell_face.dsize, np.int32), cell_id_rep), extend=True)
+        recv_signs = vs.from_counts(counts, values)
+
+        self.dict["face_cell"] = recv_signs
+        self.dict["face_offset"] = face_offset
+        self.dict["face_distri"] = face_distri
+
+    def compute_if_needed(self, zone, comm):
+        # Recomputed for each new zone. Since we loop on nodes, then on rules,
+        # we should have caching
+        if self.last_computed != PT.get_name(zone):
+            self.dict.clear()
+            self.compute(zone, comm)
+            self.last_computed = PT.get_name(zone)
+
+# Cache objects
+matching_jns_table = MatchingJnsTable()
+face_cell_builder = FaceCellBuilder()
+
+# Rules
 
 def zone_cell_dimension_mixed(nodes:List[CGNSTree], comm:MPIComm) -> str: 
-    """E303 - Zone cell dimension (MIXED elements)
+    """E301 - Zone cell dimension (MIXED elements)
 
     The maximal dimension of elements a given Zone_t must be consistent with the cell
     dimension of its CGNSBase parent.
@@ -182,7 +218,7 @@ def zone_cell_dimension_mixed(nodes:List[CGNSTree], comm:MPIComm) -> str:
     return OK
 
 def zone_number_of_elements_mixed(nodes:List[CGNSTree], comm:MPIComm) -> str:
-    """E304 - Number of native mesh elements (MIXED elements)
+    """E302 - Number of native mesh elements (MIXED elements)
 
     The total number of mesh elements whose dimension equals CellDimension
     must be equal to the number of elements of the Zone_t node.
@@ -260,8 +296,690 @@ def zone_number_of_elements_mixed(nodes:List[CGNSTree], comm:MPIComm) -> str:
     return OK
 
 
+def orphean_vertex_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """W306 - Orphean vertex id
+
+    Each vertex of an unstructured zone should appears in at least one mesh entity.
+
+    Erroneous tree examples:
+
+    Zone Zone_t I4 [[\033[91m7\033[0m 2 0]] \033[91m # Vertex id n°4 does never appears in Elements_t\033[0m
+    ├──ZoneType ZoneType_t "Unstructured"
+    └───QUAD Elements_t I4 [7 0]
+        ├───ElementRange IndexRange_t I4 [1 2]
+        └───ElementConnectivity DataArrray_t I4 [1 2 5 3  3 5 7 6]
+    """
+
+    last = nodes[-1]
+
+    if PT.get_label(last) != 'Zone_t' or PT.Zone.Type(last) != 'Unstructured':
+        return OK
+
+    vtx_distri = MT.distribution_value(last, 'Vertex')
+
+    is_vtx_elt = PTp.label_is('Elements_t') & ~PTp.is_element_of_type('NFACE_n')
+    elt_vtx = [PT.get_np_value(PT.get_child_from_name(elt, 'ElementConnectivity')) \
+               for elt in PT.get_children_from_predicate(last, is_vtx_elt)]
+    GI = EP.GlobalIndexer(vtx_distri, elt_vtx, comm, gnum_offset=1)
+
+    orphean = np.flatnonzero(GI.access_counts == 0) + vtx_distri[0] + 1
+
+    if (n_wrong := comm.allreduce(orphean.size)) > 0:
+        all_orphean = comm.reduce(orphean.tolist()[:5], root=0)
+
+        if comm.rank == 0:
+            msg = f"Vert{'ices' if n_wrong > 1 else 'ex'} "
+            msg += ', '.join(str(x) for x in all_orphean[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            msg += f" {'does' if n_wrong > 1 else 'do'} not appear in any mesh entity"
+
+            return msg
+
+    return OK
+
+
+
+def eso_values(nodes:List[CGNSTree], comm:MPIComm) -> str: 
+    """E311 - ElementStartOffset values
+    
+    ElementStartOffset arrays should have the following properties:
+        - first value is 0
+        - array is stricly increasing (eso[i] < eso[i+1])
+        - last value is the size of related ElementConnectivity array
+    
+    Erroneous tree example:
+
+    NGonElements Elements_t I4 [22 0]
+    ├───ElementRange IndexRange_t I4 [13 16]
+    ├───ElementStartOffset DataArray_t I4 [0 4 \033[91m14\033[m 12 16]
+    └───ElementConnectivity DataArray_t I4 (16,)
+    """
+    # Careful : we need an additional rule that report missing ESO on NGON/NFACE/MIXED TODO
+    last = nodes[-1]
+    if PT.get_name(last) == 'ElementStartOffset' and PT.get_label(nodes[-2]) == 'Elements_t':
+        eso = PT.get_np_value(last)
+        if not (st:=comm.bcast(eso[0], root=0)) == 0:
+            return f"ESO array should start at 0, but starting value is {st}"
+            
+        mask = ~(eso[:-1] < eso[1:])
+        lsum = mask.sum()
+        if (gsum:=comm.allreduce(lsum)) > 0:
+            distri = MT.distribution_value(nodes[-2], 'Element')
+            lval = np.where(mask)[0][0] + distri[0] if lsum > 0 else distri[2]+1
+            gval = comm.allreduce(lval, MPI.MIN)
+            return f"ESO array is not strictly increasing (ESO[i] < ESO[i+1]) : {gsum} indices are wrong, first one beeing {gval}"
+
+    return OK
+
+def out_of_range_element_connectivity(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E312 - Out of range element connectivity
+
+    The local connectivity table of each mesh entity should refer
+    to valid vertices (or faces for NFACE_n elements) ids.
+
+    Erroneous tree examples:
+
+    Zone Zone_t I4 [[\033[32m6\033[0m 2 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    └───QUAD Elements_t I4 [7 0]
+        ├───ElementRange IndexRange_t I4 [1 2]
+        └───ElementConnectivity DataArrray_t I4 [1 2 4 3  3 4 \033[91m7\033[0m 5] \033[91m # Zone has only 6 vertices\033[0m
+    """
+
+    last = nodes[-1]
+    if PT.get_label(last) != 'Elements_t':
+        return OK
+
+    zone = nodes[-2]
+    cnt = MT.Element.connectivity(last)
+
+    if PT.Element.Type(last) == 'NFACE_n':
+        cnt = abs(cnt)
+        elts = PT.get_children_from_predicate(zone, PT.pred.is_element_of_type('NGON_n'))
+        low  = int(min(PT.Element.Range(e)[0] for e in elts))
+        high = int(max(PT.Element.Range(e)[1] for e in elts))
+        tgt = 'faces'
+    else:
+        low, high = (1, PT.Zone.n_vtx(zone))
+        tgt = 'vertices'
+
+    ko = ((cnt < low) | (high < cnt)).reduce(vs.ReduceOp.LOR)
+    distri = MT.distribution_value(last, 'Element')
+    wrong_ids = np.flatnonzero(ko) + distri[0] + 1
+
+    if (n_wrong := comm.allreduce(wrong_ids.size)) > 0:
+        all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+
+        if comm.rank == 0:
+            msg = f"Local element{'s' if n_wrong > 1 else ''} "
+            msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            msg += f" {'refer' if n_wrong > 1 else 'refers'} to out-of-range {tgt}"
+
+            return msg
+
+    return OK
+
+def duplicated_elt_vertex(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E313 - Duplicated entity in connectivity
+
+    The local connectivity table of each mesh entity should not include
+    duplicated ids.
+
+    Erroneous tree examples:
+
+    Zone Zone_t
+    └───TRI Elements_t I4 [5 0]
+        ├───ElementRange IndexRange_t I4 [1 3]
+        └───ElementConnectivity DataArrray_t I4 [1 2 3  \033[91m1 3 3\033[0m  1 4 5] \033[91m # Duplicated vertex id for TRI n°2\033[0m
+    """
+
+    last = nodes[-1]
+    if PT.get_label(last) != 'Elements_t':
+        return OK
+    
+    cnt = MT.Element.connectivity(last)
+    if PT.Element.Type(last) == 'NFACE_n':
+        cnt = abs(cnt)
+
+    unique = vs.unique(cnt, vs.INNER_AXIS)
+
+    distri = MT.distribution_value(last, 'Element')
+    wrong_ids = np.arange(distri[0]+1, distri[1]+1)[unique.counts != cnt.counts]
+
+    if (n_wrong := comm.allreduce(wrong_ids.size)) > 0:
+        all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+
+        if comm.rank == 0:
+            msg = f"Local element{'s' if n_wrong > 1 else ''} "
+            msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            msg += f" {'have' if n_wrong > 1 else 'has'} duplicated ids in {'their' if n_wrong > 1 else 'its'} connectivity"
+
+            return msg
+
+    return OK
+
+def pe_range_value(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E314 - Invalid ParentElements values
+
+    The elements ids provided in face (resp. edge) ParentElements of a 3D
+    (resp. 2D) mesh must be included in cell (resp. face) ElementRange.
+
+    Erroneous tree example:
+
+    zone Zone_t I4 [[9 8 0]]
+    ├───ZoneType ZoneType_t "Unstructured"
+    ├───EdgeElements Elements_t I4 [3  0]
+    │   ├───ElementRange IndexRange_t I4 [1 16]
+    │   ├───ElementConnectivity DataArray_t I4 (32,)
+    │   └───ParentElements DataArray_t I4 (16, 2)
+    │       [[\033[91m1\033[m 0]]
+    │       [[\033[91m1\033[m 0]] \033[91m# These edges provides numbers \033[m 
+    │       [[\033[91m3\033[m 0]] \033[91m# of parent faces in range [1,8]\033[m
+    │       [[\033[91m1 2\033[m]]
+    │        ...
+    │       [[\033[91m8\033[m 0]]
+    │       [[\033[91m8\033[m 0]]
+    └───NGonElements Elements_t I4 [22 0]
+        └───Element Range IndexRange_t I4 [\033[32m17 24\033[m] \033[91m# but range of face elements is [17,24]\033[m
+            ├───ElementStartOffset DataArray_t I4 (9,)
+            └───ElementConnectivity DataArray_t I4 (24,)
+    """
+    last = nodes[-1]
+    if PT.get_name(last) == 'ParentElements' and PT.get_label(nodes[-2]) == 'Elements_t':
+        val = PT.get_np_value(last).ravel()
+        cell_ids = val[val != 0]
+        is_ok = np.zeros(cell_ids.size, bool)
+
+        zone = nodes[-3]
+        target_dim = PT.Element.Dimension(nodes[-2]) + 1
+        is_elt_of_dim = PTp.label_is('Elements_t') & PTp.NodePredicate(lambda n : PT.Element.Dimension(n) == target_dim)
+        target_ranges = [PT.Element.Range(e) for e in PT.get_children_from_predicate(zone, is_elt_of_dim)]
+
+        # For poly meshes, we allow implicit NFace (resp. NGon) definition
+        if len(target_ranges) == 0 and IS_POLY(zone):
+            cur_range = PT.Element.Range(nodes[-2])
+            implicit_range = np.array([1, PT.Zone.n_cell(zone)]) + cur_range[1]
+            target_ranges.append(implicit_range)
+
+        for (start, end) in target_ranges:
+            in_range = (start <= cell_ids) & (cell_ids <= end)
+            is_ok |= in_range
+
+        n_wrong_loc = is_ok.size - is_ok.sum()
+        if (n_wrong:=comm.allreduce(n_wrong_loc)) > 0:
+            return f"Some values of ParentElements does not refer to {target_dim}D elements ({n_wrong} are wrong)"
+
+    return OK
+
+def left_parent_for_bnd_cells(nodes:List[CGNSTree], comm:MPIComm) -> str: 
+    """W315 - Right parent for boundary entities
+
+    Faces (resp. edges) on the boundary of a 3D (resp. 2D) domain
+    should have a second parent (pe[entiy,1]) set to zero.
+    In other words, first parent (pe[entity,0]) should never be zero.
+
+    Erroneous tree example:
+
+    EdgeElements Elements_t I4 [3 0]
+    ├───ElementRange IndexRange_t I4 [1 7]
+    ├───ElementConnectivity DataArray_t I4 (14,)
+    └───ParentElements DataArray_t I4 (7,2)
+        [[8 0]]
+        [[8 9]]
+        [[9 0]]
+        [[8 0]]
+        \033[93m[[0 9]]\033[m
+        [[8 0]]
+        [[9 0]]
+    """
+    #TODO maybe warning ? pas sur que le cgns dise que second = 2e position
+    last = nodes[-1]
+    if PT.get_name(last) == 'ParentElements' and PT.get_label(nodes[-2]) == 'Elements_t':
+
+        has_right_parent = PT.get_np_value(last)[:,0] == 0
+        if (gsum:=comm.allreduce(has_right_parent.sum())) > 0:
+            return f"Some lowerdim elements have no first parent: {gsum} elements are wrong"
+
+    return OK
+
+
+
+def nface_connectivity_table(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E321 - NFace connectivity table
+
+    The cell-face connectivity (defined in NFACE_n nodes) must satisfy the following:
+    - Each face id appears one (boundary face) or twice (internal face)
+    - The two occurences of each internal face must be of opposite sign
+
+    Erroneous tree examples:
+
+    Zone Zone_t I4 [[16 3 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    ├───NGonElements Elements_t I4 [22 0]
+    │   ╵╴╴╴(3 children masked)
+    └───NFaceElements Elements_t I4 [23 0]
+        ├───ElementRange IndexRange_t I4 [17 19]
+        ├───ElementStartOffset DataArray_t I4 [ 0  6 12 18]
+        └───ElementConnectivity DataArray_t I4 (18,)
+            [1 2 5 8 \033[91m3\033[0m 14   -2 \033[91m3\033[0m 6 9 12 15  \033[91m-3\033[0m 4 7 10 13 16] \033[91m# Face appears 3 times \033[0m
+
+
+    Zone Zone_t I4 [[16 3 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    ├───NGonElements Elements_t I4 [22 0]
+    │   ╵╴╴╴(3 children masked)
+    └───NFaceElements Elements_t I4 [23 0]
+        ├───ElementRange IndexRange_t I4 [17 19]
+        ├───ElementStartOffset DataArray_t I4 [ 0  6 12 18]
+        └───ElementConnectivity DataArray_t I4 (18,)
+            [1 \033[91m2\033[0m 5 8 11 14   \033[91m2\033[0m 3 6 9 12 15  -3 4 7 10 13 16] \033[91m# Internal face is inward for its 2 cells \033[0m
+    """
+    last = nodes[-1]
+
+    # Check at zone level since we may have several NFACE nodes, and we need
+    # to combine their values
+    if not (PT.get_label(last) == 'Zone_t' and PT.Zone.has_nface_elements(last)):
+        return OK
+
+    face_cell_builder.compute_if_needed(last, comm)
+    recv_signs = vs.sign(face_cell_builder['face_cell'])
+    face_offset = face_cell_builder['face_offset']
+    face_distri = face_cell_builder['face_distri']
+
+    wrong_ids1 = np.flatnonzero(recv_signs.counts < 1) + face_distri[0] + face_offset
+    wrong_ids2 = np.flatnonzero(recv_signs.counts > 2) + face_distri[0] + face_offset
+
+    is_internal = recv_signs.counts == 2
+    internal_sign_prod = recv_signs.reduce(vs.ReduceOp.PROD)[is_internal]
+    internal_ids = np.arange(face_distri[0], face_distri[1])[is_internal] + face_offset
+    wrong_ids3 = internal_ids[internal_sign_prod > 0]
+
+    wrong_ids_l = [wrong_ids1, wrong_ids2, wrong_ids3]
+    reasons = [" never appear in ElementConnectivity table of NFACE_n nodes",
+               " appear more than twice in ElementConnectivity table of NFACE_n nodes",
+               " appear twice with same sign in ElementConnectivity table of NFACE_n nodes"]
+
+    for wrong_ids, reason in zip(wrong_ids_l, reasons):
+        if (n_wrong := comm.allreduce(wrong_ids.size)):
+            all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+            if comm.rank == 0:
+                msg = f"Face{'s' if n_wrong > 1 else ''} "
+                msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+                if n_wrong > 5:
+                    msg += f', ... ({n_wrong} detected)'
+                msg += reason
+            else:
+                msg = reason # Return something to exit loop
+            return msg
+
+    return OK
+
+def pe_and_nface_compatibility(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E322 - NGON_n/ParentElements vs NFACE_n/ElementConnectivity
+
+    If both cell-face (NFACE_n/ElementConnectivity) and face-cell (NGON_n/ParentElements)
+    connectivity tables are defined, they must be compatible.
+
+    Erroneous tree example:
+
+    Zone Zone_t I4 [[12 2 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    ├───NGonElements Elements_t I4 [22 0]
+    │   ├───ElementRange IndexRange_t I4 [1 11]
+    │   ├───ElementStartOffset DataArray_t I4 (12,)
+    │   ├───ElementConnectivity DataArray_t I4 (44,)
+    │   └───ParentElements DataArray_t I4 (11, 2)
+    │       [[12 0]
+    │        [12 13] \033[91m# Face 2 does not appears in cell-face connectivity for cell 13 as it should\033[0m
+    │        [13  0]
+    │        [12  0] \033[91m# Face 4 appears in cell-face connectivity for cell 13 but should not\033[0m
+    │        [13  0]
+    │        [12  0]
+    │        [13  0]
+    │        [12  0]
+    │        [13  0] \033[91m# Face 9 is negative in cell-face connectivity for cell 13, but sould be positive\033[0m
+    │        [12  0] 
+    │        [13  0]]
+    └───NFaceElements Elements_t I4 [23 0]
+        ├───ElementRange IndexRange_t I4 [12 13]
+        ├───ElementStartOffset DataArray_t I4 [ 0  6 12]
+        └───ElementConnectivity DataArray_t I4 (12,)
+            [1 \033[32m2 4\033[0m 6 8 10  \033[91m-4\033[0m 3 5 7 \033[91m-9\033[0m 11]
+    """
+    last = nodes[-1]
+
+    # As for E321, check at zone level since we may have several NFACE nodes, and we need
+    # to combine their values
+    if not (PT.get_label(last) == 'Zone_t' and PT.Zone.has_nface_elements(last)):
+        return OK
+
+    ngon_nodes = FaceCellBuilder.sorted_elts_of_type(last, 'NGON_n')
+    if not all(PT.get_child_from_name(ng, 'ParentElements') is not None for ng in ngon_nodes):
+        return OK # Skip rule if ParentElements is not defined
+
+
+    # Get rebuild facecell from NFACE/ElementConnectivity
+    face_cell_builder.compute_if_needed(last, comm)
+    nface_facecell_vs = face_cell_builder['face_cell']
+
+    # Convert vs -> full PE
+    nface_facecell = np.zeros((len(nface_facecell_vs), 2), dtype=nface_facecell_vs.dtype, order='F')
+    is_internal = nface_facecell_vs.counts == 2
+    # External faces : put in pe[:,0] or pe[:,1] depending on sign
+    external = vs.take(nface_facecell_vs, np.where(~is_internal)[0]).values
+    nface_facecell[~is_internal, (1-np.sign(external))//2] = abs(external)
+    # Internal faces : we received 2 values, one <0 and one >0
+    # We put positive value in PE[:,0] and negative in PE[:,1]
+    internal = vs.take(nface_facecell_vs, np.where(is_internal)[0]).values
+    positive = np.maximum(internal, 0)
+    negative = abs(np.minimum(internal, 0))
+    nface_facecell[is_internal, 0] = positive[0::2] + positive[1::2]
+    nface_facecell[is_internal, 1] = negative[0::2] + negative[1::2]
+
+
+    # Remap each NGON_n node to global face distribution (usefull if several NGON_n nodes)
+    # This also ensure same distribution than the one used above
+
+    face_offset = face_cell_builder['face_offset']
+    face_distri = face_cell_builder['face_distri']
+    ids = [np.arange(MT.distribution_value(ng, 'Element')[0] + PT.Element.Range(ng)[0] - face_offset,
+                     MT.distribution_value(ng, 'Element')[1] + PT.Element.Range(ng)[0] - face_offset) for ng in ngon_nodes]
+    pe = [PT.get_np_value(PT.find_child_from_name(ng, 'ParentElements')).flatten(order='F') for ng in ngon_nodes]
+
+
+    ngon_facecell = EP.GlobalIndexer(face_distri, ids, comm).Put(pe, count=2)
+    ngon_facecell = ngon_facecell.reshape((face_distri[1]-face_distri[0], 2), order='F')
+
+    # Now compare nface_facecell (from NFACE_n) and ngon_facecell (from NGON_n)
+    ko = np.any(nface_facecell != ngon_facecell, axis=1)
+    wrong_ids = np.flatnonzero(ko) + face_distri[0] + face_offset
+
+    if (n_wrong := comm.allreduce(wrong_ids.size)):
+        all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+        if comm.rank == 0:
+            msg = f"NFACE-PE incompatibility for face{'s' if n_wrong > 1 else ''} "
+            msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            return msg
+
+    return OK
+
+def duplicated_elts_connectivity(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E323 - Duplicated mesh entities
+
+    Within a same zone, two different mesh entities should not be defined by
+    the same list of vertices (or faces for NFACE_n elements).
+
+    Erroneous tree examples:
+
+    Zone Zone_t
+    └───NG Elements_t I4 [22 0]
+        ├───ElementRange IndexRange_t I4 [1 3]
+        ├───ElementStartOffset DataArray_t I4 [0 3 4 7]
+        └───ElementConnectivity DataArrray_t I4 [\033[32m1 3 4\033[0m  1 4 5 6  \033[91m3 4 1\033[0m] \033[91m# Already defined\033[0m
+
+    Zone Zone_t
+    ├───TRI_1 Elements_t I4 [5 0]
+    │   ├───ElementRange IndexRange_t I4 [1 3]
+    │   └───ElementConnectivity DataArrray_t I4 [1 2 3 \033[32m1 3 4\033[0m 1 4 5]
+    └───TRI_2 Elements_t I4 [5 0]
+        ├───ElementRange IndexRange_t I4 [4 5]
+        └───ElementConnectivity DataArrray_t I4 [1 5 6 \033[91m3 4 1\033[0m] \033[91m # Already defined in TRI_1 section\033[0m
+    """
+
+    last = nodes[-1]
+    if PT.get_label(last) != 'Zone_t':
+        return OK
+
+    all_elts = PT.Zone.get_ordered_elements(last)
+    batches = [
+        [e for e in all_elts if PT.Element.Type(e) not in ['NFACE_n']],
+        [e for e in all_elts if PT.Element.Type(e) == 'NFACE_n'],
+    ]
+
+    tot_duplicated = 0
+    all_duplicated = []
+    for elts in batches:
+        if len(elts) == 0:
+            continue
+        cnts = [MT.Element.connectivity(e) for e in elts]
+        cnts = [abs(cnt) if PT.Element.Type(e) == 'NFACE_n' else cnt
+                for e,cnt in zip(elts, cnts)]
+        cnt = vs.concatenate(cnts, vs.OUTER_AXIS) if len(cnts) > 1 else cnts[0]
+
+        # Compute hash using PROD (few collisions)
+        # We do it on unsigned integers to have defined behaviour
+        # in case of overflow
+        ini_dtype = cnt.dtype
+        u_dtype = {'i' : np.uint32, 'l' : np.uint64}[ini_dtype.char]
+        cnt.values.dtype = u_dtype
+        _hash = cnt.reduce(vs.ReduceOp.PROD)
+        cnt.values.dtype = ini_dtype
+        if ini_dtype.char == 'l':
+            # uint64 can give very large dispersion -> reduce to uint32
+            hash = np.empty(_hash.size, np.uint32)
+            np.mod(_hash, 2**32, out=hash)
+        else:
+            hash = _hash
+        # Uniform distribution should be suffisant if hash function is
+        # reparted. In addition PDM does not manage hash values < 1 
+        #distri = PDM.compute_weighted_distribution([hash], [np.ones(len(hash))], comm)
+        distri = utils.compute_distri(hash, comm)
+        # output distribution [0, last[ (size n_rank+1). To do binary search we
+        # don't need the external bounds
+
+        dest = np.searchsorted(distri[1:-1], hash, side='right')
+        sort_idx = np.argsort(dest)
+
+        # Phase 1 : Send hash to relevant rank for counting
+
+        send_n = np.zeros(comm.size, np.int32)
+        recv_n = np.empty(comm.size, np.int32)
+        np.add.at(send_n, dest, 1)
+
+        comm.Alltoall(send_n, recv_n) # Hash numbers
+
+        recv_hash = np.empty(recv_n.sum(), hash.dtype)
+        comm.Alltoallv((hash[sort_idx], send_n), (recv_hash, recv_n)) # Hash lists
+        #ideal = comm.allreduce(recv_hash.size) / comm.size
+        #diff = abs(recv_hash.size-ideal)/ideal
+        #print(f"{comm.rank} N RECV HASH {recv_hash.size} ({'+' if recv_hash.size >= ideal else '-'}{100*diff:.3f}%)")
+
+        # Detect hash appearing twice
+        _, inv, counts = np.unique(recv_hash, return_inverse=True, return_counts=True)
+        is_dupl = counts[inv] != 1
+
+        if not comm.allreduce(is_dupl.any(), MPI.LOR):
+            continue # Early exit if all hashes are unique
+
+        initial_is_dupl_mpi = np.empty(hash.size, bool) # View on initial ranks, but sorted in MPI order
+        comm.Alltoallv((is_dupl, recv_n), (initial_is_dupl_mpi, send_n))
+
+        initial_is_dupl = np.empty_like(initial_is_dupl_mpi)
+        initial_is_dupl[sort_idx] = initial_is_dupl_mpi   # View on initial ranks, unsorted (initial order)
+
+        # Phase 2 : Filter values for collising hashes and send it for collision resolution
+        # We already have sort order (to prepare MPI buffs), we just need to exclude
+        # unique values
+        selector = sort_idx[initial_is_dupl_mpi]
+        filtered_cnt = vs.take(cnt, selector)
+
+        elt_ranges = [PT.Element.Range(e) for e in elts]
+        elt_distri = [MT.distribution_value(e, 'Element') for e in elts]
+        starts = np.array([d[0]+r[0] for d,r in zip(elt_distri, elt_ranges)])
+        stops  = np.array([d[1]+r[0] for d,r in zip(elt_distri, elt_ranges)])
+        elt_ids = np_utils.multi_arange(starts, stops)[selector]
+
+        # Reuse send_counts / recv_counts arrays
+        send_n.fill(0)
+        np.add.at(send_n, dest[initial_is_dupl], 1)
+
+        comm.Alltoall(send_n, recv_n)
+
+        send_counts = filtered_cnt.counts
+        recv_counts = np.zeros(recv_n.sum(), send_counts.dtype)
+        recv_ids    = np.zeros(recv_n.sum(), elt_ids.dtype)
+        comm.Alltoallv((send_counts, send_n), (recv_counts, recv_n))
+        comm.Alltoallv((elt_ids, send_n), (recv_ids, recv_n))
+
+        # Reuse again send_n / recv_n (update inplace)
+        for n_item, counts in zip((send_n, recv_n), (send_counts, recv_counts)):
+            start = 0
+            for i in range(comm.size):
+                end = start + n_item[i]
+                n_item[i] = counts[start:end].sum()
+                start = end
+
+        recv_vals = np.empty(recv_n.sum(), filtered_cnt.dtype)
+        comm.Alltoallv((filtered_cnt.values, send_n), (recv_vals, recv_n))
+        recv_vstride = vs.from_counts(recv_counts, recv_vals)
+
+        # Here we assume that collisions are rare enought to do this
+        # with a pure python loop
+        recv_vstride._inner_sort()
+        counter = defaultdict(list)
+        for id,blk in zip(recv_ids, recv_vstride):
+            counter[blk.tobytes()].append(id)
+
+        duplicated_ids = [set(val) for val in counter.values() if len(val) > 1]
+        
+        # Gather duplicates on rank 0
+        if (n_duplicated := comm.allreduce(len(duplicated_ids))) > 0:
+            tot_duplicated += n_duplicated
+            all_duplicated_batch = comm.reduce(duplicated_ids[:3], root=0)
+            if comm.rank == 0:
+                all_duplicated += all_duplicated_batch
+                
+    
+    # Loop completed, return duplicated
+    if len(all_duplicated) > 0: # Only rank 0
+        # Here we retrieve the name of elements to display more information
+        allstops = [PT.Element.Range(e)[1] for e in all_elts]
+        allnames = [PT.get_name(e) for e in all_elts]
+        sub_msgs = list()
+        for ids in all_duplicated[:3]:
+            sub = "{"
+            for id in ids:
+                j = 0
+                while id > allstops[j]:
+                    j += 1
+                sub += f"{id} ({allnames[j]}), "
+            sub_msgs.append(sub[:-2] + '}')
+
+        msg = f"Some mesh elements have the same definition : {', '.join(sub_msgs)}"
+        if tot_duplicated > 3:
+            msg += f' ... ({tot_duplicated} groups detected)'
+        return msg
+
+    return OK
+
+
+
+def invalid_vtx_subset_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E331 - Out of range vertex subset values
+
+    The values of vertex-located PointList must be included in range [1, n_vtx].
+
+    Erroneous tree example:
+
+    FlatPlate Zone_t I4 [[\033[32m876\033[m 1633 0]]
+    ├───ZoneType ZoneType_t "Unstructured"
+    └───ZoneSubRegion ZoneSubRegion_t
+        ├───GridLocation GridLocation_t "Vertex"
+        ├───PointList IndexArray_t I4 [[\033[32m400 600 \033[91m900\033[m]] \033[91m # Maximal vtx id is 876\033[m
+        └───Density DataArray_t R8 [1.013 1.014 1.013]
+
+    """
+    last = nodes[-1]
+    if PT.get_name(last) == 'PointList' and PT.Subset.GridLocation(nodes[-2]) == 'Vertex':
+        # zone node can be at diffent level
+        zone = next(node for node in nodes if PT.get_label(node) == 'Zone_t')
+        vtx_size = PT.Zone.VertexSize(zone)
+        idx_dim = len(vtx_size)
+        pl = PT.get_np_value(last)
+
+        wrong_id = np.zeros(pl.shape[1], bool)
+        for i in range(idx_dim):
+            wrong_id |= (pl[i] < 1) | (vtx_size[i] < pl[i])
+
+        n_wrong_loc = wrong_id.sum()
+        if (n_wrong := comm.allreduce(n_wrong_loc)) > 0:
+            zrange = '[' + ', '.join(f"[1, {vtx_size[i]}]" for i in range(idx_dim)) + ']'
+            return f"Some ids of this Vertex located subset are out of vertex range {zrange} ({n_wrong} found)"
+
+    return OK
+
+def invalid_elt_subset_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E332 - Invalid element subset values
+
+    The values of element-located PointList (EdgeCenter, FaceCenter, CellCenter)
+    should represent element ids of corresponding dimension.
+
+    Erroneous tree example:
+
+    zone Zone_t I4 [[125 320 0]]
+    ├───ZoneType ZoneType_t "Unstructured"
+    ├───TETRA_4 Elements_t I4 [10 0]
+    │   └───ElementRange IndexRange_t I4 [1 320]
+    ├───TRI_3 Elements_t I4 [5 0]
+    │   └───ElementRange IndexRange_t I4 [321 512]
+    ├───ZoneBC ZoneBC_t
+    │   └───BC BC_t "BCWall"
+    │       ├───GridLocation GridLocation_t "FaceCenter"
+    │       └───PointList IndexArray_t I4 [[\033[32m460\033[m \033[91m560\033[m]] \033[91m# Maximal element id is 512\033[m
+    └───ZoneSubRegion ZoneSubRegion_t
+        ├───GridLocation GridLocation_t "CellCenter"
+        ├───PointList IndexArray_t I4 [[\033[32m200 300 \033[91m400\033[m]] \033[91m# Location is CellCenter, but elt 400 is a face (TRI_3)\033[m
+        └───Density DataArray_t R8 [1.013 1.014 1.013]
+    """
+
+    last = nodes[-1]
+    if PT.get_name(last) == 'PointList' and (loc:=PT.Subset.GridLocation(nodes[-2])) != 'Vertex':
+        # zone/base node can be at diffent level
+        base = next(node for node in nodes if PT.get_label(node) == 'CGNSBase_t')
+        zone = next(node for node in nodes if PT.get_label(node) == 'Zone_t')
+        if PT.Zone.Type(zone) != 'Unstructured':
+            return OK
+         
+        if loc == 'CellCenter':
+            dim = PT.Base.CellDimension(base)
+        else:
+            dim = {'EdgeCenter' : 1, 'FaceCenter' : 2}[loc]
+
+        pl = PT.get_np_value(last)[0]
+        tgt_dim = -1*np.ones(pl.size, np.int8)
+        for elt in utils.get_zone_elements(zone):
+            elt_range = PT.Element.Range(elt)
+            tgt_dim[(elt_range[0] <= pl) & (pl <= elt_range[1])] = PT.Element.Dimension(elt)
+
+        ref, count = np.unique(tgt_dim, return_counts=True)
+        dim_to_count = defaultdict(int, {d:c for d,c in zip(ref, count) if d!=dim})
+        dim_to_count_g = comm.allreduce(dim_to_count, op = utils.defaultdict_sum)
+
+        if -1 in dim_to_count_g:
+            return f"No corresponding ElementRange for {dim_to_count_g[-1]} ids of this element located subset"
+        elif len(dim_to_count_g) > 0:
+            details = ''
+            while (dim_to_count_g):
+                key, val = dim_to_count_g.popitem()
+                details += f"{key} ({val})"
+                if len(dim_to_count_g) > 1:
+                    details += ', '
+                elif len(dim_to_count_g) == 1:
+                    details += ' and '
+            return f"Subset location is {loc}, but some ids reference entities of dimension {details}"
+
+
+    return OK
+
 def unflagged_bc_elements(nodes:List[CGNSTree], comm:MPIComm) -> str:
-    """E305 - Unflagged boundary elements
+    """E333 - Unflagged boundary elements
 
     For 3D (resp. 2D) polyedric meshes, boundary faces (resp. edges) should
     be present in at least one BC_t or GridConnectivity_t node.
@@ -325,7 +1043,7 @@ def unflagged_bc_elements(nodes:List[CGNSTree], comm:MPIComm) -> str:
     return OK
 
 def multiflagged_bc_elements(nodes:List[CGNSTree], comm:MPIComm) -> str:
-    """E306 - Redondant boundary elements
+    """E334 - Redondant boundary elements
 
     For 3D (resp. 2D) polyedric meshes, boundary faces (resp. edges) should
     be present in at most one BC_t or GridConnectivity_t node.
@@ -380,155 +1098,149 @@ def multiflagged_bc_elements(nodes:List[CGNSTree], comm:MPIComm) -> str:
     return OK
 
 
-def pe_range_value(nodes:List[CGNSTree], comm:MPIComm) -> str:
-    """E307 - Invalid ParentElements values
 
-    The elements ids provided in face (resp. edge) ParentElements of a 3D
-    (resp. 2D) mesh must be included in cell (resp. face) ElementRange.
+def missing_opposite_join(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E341 - Missing opposite join
 
-    Erroneous tree example:
+    For each GridConnectivity(1to1)_t node of type 'Abutting1to1' G, an opposite
+    GridConnectivity(1to1)_t node G' should exist within the target zone of G, such that:
+    - The GridLocation of G and G' are identical
+    - The number of mesh entities of G and G' are identical
+    - For each pair (local_id=i, opp_id=j) of G, the pair (local_id=j, opp_id=i) exists in G'
 
-    zone Zone_t I4 [[9 8 0]]
-    ├───ZoneType ZoneType_t "Unstructured"
-    ├───EdgeElements Elements_t I4 [3  0]
-    │   ├───ElementRange IndexRange_t I4 [1 16]
-    │   ├───ElementConnectivity DataArray_t I4 (32,)
-    │   └───ParentElements DataArray_t I4 (16, 2)
-    │       [[\033[91m1\033[m 0]]
-    │       [[\033[91m1\033[m 0]] \033[91m# These edges provides numbers \033[m 
-    │       [[\033[91m3\033[m 0]] \033[91m# of parent faces in range [1,8]\033[m
-    │       [[\033[91m1 2\033[m]]
-    │        ...
-    │       [[\033[91m8\033[m 0]]
-    │       [[\033[91m8\033[m 0]]
-    └───NGonElements Elements_t I4 [22 0]
-        └───Element Range IndexRange_t I4 [\033[32m17 24\033[m] \033[91m# but range of face elements is [17,24]\033[m
-            ├───ElementStartOffset DataArray_t I4 (9,)
-            └───ElementConnectivity DataArray_t I4 (24,)
+    Erroneous tree examples:
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───\033[32mmatchAB\033[0m GridConnectivity_t \033[32m"ZoneB"\033[0m
+    │           ├───GridConnectivityType GridConnectivityType_t \033[32m"Abutting1to1"\033[0m
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 [[10 11 12]]
+    │           └───PointListDonor IndexArray_t I4 [[7 8 9]]
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            ╵╴╴╴\033[91mMissing ZoneB to ZoneA join\033[0m
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───\033[32mmatchAB\033[0m GridConnectivity_t \033[32m"ZoneB"\033[0m
+    │           ├───GridConnectivityType GridConnectivityType_t \033[32m"Abutting1to1"\033[0m
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 [[10 11 12]]
+    │           └───PointListDonor IndexArray_t I4 [[7 8 9]]
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t \033[32m"ZoneA"\033[0m
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 \033[91m[[1 2 3]] # Not consistent with matchAB/PointListDonor\033[0m 
+                └───PointListDonor IndexArray_t I4 [[12 11 10]]
+
+    Correct example:
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───\033[32mmatchAB\033[0m GridConnectivity_t \033[32m"ZoneB"\033[0m
+    │           ├───GridConnectivityType GridConnectivityType_t \033[32m"Abutting1to1"\033[0m
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 [[10 11 12]]
+    │           └───PointListDonor IndexArray_t I4 [[7 8 9]]
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t \033[32m"ZoneA"\033[0m
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 [[9 8 7]]
+                └───PointListDonor IndexArray_t I4 [[12 11 10]]
     """
+    
+    # Search matching JNs only once, on the full tree
     last = nodes[-1]
-    if PT.get_name(last) == 'ParentElements' and PT.get_label(nodes[-2]) == 'Elements_t':
-        val = PT.get_np_value(last).ravel()
-        cell_ids = val[val != 0]
-        is_ok = np.zeros(cell_ids.size, bool)
+    if len(nodes) == 1 and not matching_jns_table.computed:
+        matching_jns_table.compute(last, comm)
 
-        zone = nodes[-3]
-        target_dim = PT.Element.Dimension(nodes[-2]) + 1
-        is_elt_of_dim = PTp.label_is('Elements_t') & PTp.NodePredicate(lambda n : PT.Element.Dimension(n) == target_dim)
-        target_ranges = [PT.Element.Range(e) for e in PT.get_children_from_predicate(zone, is_elt_of_dim)]
-
-        # For poly meshes, we allow implicit NFace (resp. NGon) definition
-        if len(target_ranges) == 0 and IS_POLY(zone):
-            cur_range = PT.Element.Range(nodes[-2])
-            implicit_range = np.array([1, PT.Zone.n_cell(zone)]) + cur_range[1]
-            target_ranges.append(implicit_range)
-
-        for (start, end) in target_ranges:
-            in_range = (start <= cell_ids) & (cell_ids <= end)
-            is_ok |= in_range
-
-        n_wrong_loc = is_ok.size - is_ok.sum()
-        if (n_wrong:=comm.allreduce(n_wrong_loc)) > 0:
-            return f"Some values of ParentElements does not refer to {target_dim}D elements ({n_wrong} are wrong)"
+    # Report errors on GC_t nodes
+    elif IS_GC_MATCH(last):
+        path = '/'.join(n[0] for n in nodes[1:])
+        opp_jns = matching_jns_table[path]
+        if len(opp_jns) == 0:
+            return "Opposite 1to1 GridConnectivity_t node not found in tree"
+        elif len(opp_jns) > 1:
+            return f"Several opposite 1to1 GridConnectivity_t node found (1 expected) : {opp_jns}"
 
     return OK
 
-def invalid_vtx_subset_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
-    """E308 - Out of range vertex subset values
+def non_symmetric_opposite_joins(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """W342 - Non symmetric opposite joins
 
-    The values of vertex-located PointList must be included in range [1, n_vtx].
+    This rules extends E341 by adding this additional constraint of symmetry
+    between two related Abutting1to1 GridConnectivity_t nodes G and G':
 
-    Erroneous tree example:
+          PointList(G) == PointListDonor(G')     (or resp. PointRange)
+      and PointListDonor(G) == PointList(G')     (or resp. PointRange)
 
-    FlatPlate Zone_t I4 [[\033[32m876\033[m 1633 0]]
-    ├───ZoneType ZoneType_t "Unstructured"
-    └───ZoneSubRegion ZoneSubRegion_t
-        ├───GridLocation GridLocation_t "Vertex"
-        ├───PointList IndexArray_t I4 [[\033[32m400 600 \033[91m900\033[m]] \033[91m # Maximal vtx id is 876\033[m
-        └───Density DataArray_t R8 [1.013 1.014 1.013]
-
-    """
-    last = nodes[-1]
-    if PT.get_name(last) == 'PointList' and PT.Subset.GridLocation(nodes[-2]) == 'Vertex':
-        # zone node can be at diffent level
-        zone = next(node for node in nodes if PT.get_label(node) == 'Zone_t')
-        vtx_size = PT.Zone.VertexSize(zone)
-        idx_dim = len(vtx_size)
-        pl = PT.get_np_value(last)
-
-        wrong_id = np.zeros(pl.shape[1], bool)
-        for i in range(idx_dim):
-            wrong_id |= (pl[i] < 1) | (vtx_size[i] < pl[i])
-
-        n_wrong_loc = wrong_id.sum()
-        if (n_wrong := comm.allreduce(n_wrong_loc)) > 0:
-            zrange = '[' + ', '.join(f"[1, {vtx_size[i]}]" for i in range(idx_dim)) + ']'
-            return f"Some ids of this Vertex located subset are out of vertex range {zrange} ({n_wrong} found)"
-
-    return OK
-
-def invalid_elt_subset_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
-    """E309 - Invalid element subset values
-
-    The values of element-located PointList (EdgeCenter, FaceCenter, CellCenter)
-    should represent element ids of corresponding dimension.
+    In other words, the pairs (local_id, opp_id) must be described in same order
+    in the two related joins. This rule is not required by the CGNS standard,
+    but some solvers or tools rely on it.
 
     Erroneous tree example:
 
-    zone Zone_t I4 [[125 320 0]]
-    ├───ZoneType ZoneType_t "Unstructured"
-    ├───TETRA_4 Elements_t I4 [10 0]
-    │   └───ElementRange IndexRange_t I4 [1 320]
-    ├───TRI_3 Elements_t I4 [5 0]
-    │   └───ElementRange IndexRange_t I4 [321 512]
-    ├───ZoneBC ZoneBC_t
-    │   └───BC BC_t "BCWall"
-    │       ├───GridLocation GridLocation_t "FaceCenter"
-    │       └───PointList IndexArray_t I4 [[\033[32m460\033[m \033[91m560\033[m]] \033[91m# Maximal element id is 512\033[m
-    └───ZoneSubRegion ZoneSubRegion_t
-        ├───GridLocation GridLocation_t "CellCenter"
-        ├───PointList IndexArray_t I4 [[\033[32m200 300 \033[91m400\033[m]] \033[91m# Location is CellCenter, but elt 400 is a face (TRI_3)\033[m
-        └───Density DataArray_t R8 [1.013 1.014 1.013]
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───matchAB GridConnectivity_t "ZoneB"
+    │           ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 \033[32m[[10 11 12]]\033[0m
+    │           └───PointListDonor IndexArray_t I4 \033[32m[[7 8 9]]\033[0m
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t "ZoneA"
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 \033[93m[[9 8 7]]\033[0m
+                └───PointListDonor IndexArray_t I4 \033[93m[[12 11 10]] # Order is permuted\033[0m 
+
+    Correct example:
+
+    Base CGNSBase_t I4 [2 2]
+    ├───ZoneA Zone_t
+    │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+    │       └───matchAB GridConnectivity_t "ZoneB"
+    │           ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+    │           ├───GridLocation GridLocation_t "EdgeCenter"
+    │           ├───PointList IndexArray_t I4 \033[32m[[10 11 12]]\033[0m
+    │           └───PointListDonor IndexArray_t I4 \033[32m[[7 8 9]]\033[0m
+    └───ZoneB Zone_t
+        └───ZoneGridConnectivity ZoneGridConnectivity_t 
+            └───matchBA GridConnectivity_t "ZoneA"
+                ├───GridConnectivityType GridConnectivityType_t "Abutting1to1"
+                ├───GridLocation GridLocation_t "EdgeCenter"
+                ├───PointList IndexArray_t I4 \033[32m[[7 8 9]]\033[0m
+                └───PointListDonor IndexArray_t I4 \033[32m[[10 11 12]]\033[0m
     """
-
+    # Search matching JNs only once, on the full tree
     last = nodes[-1]
-    if PT.get_name(last) == 'PointList' and (loc:=PT.Subset.GridLocation(nodes[-2])) != 'Vertex':
-        # zone/base node can be at diffent level
-        base = next(node for node in nodes if PT.get_label(node) == 'CGNSBase_t')
-        zone = next(node for node in nodes if PT.get_label(node) == 'Zone_t')
-        if PT.Zone.Type(zone) != 'Unstructured':
-            return OK
-         
-        if loc == 'CellCenter':
-            dim = PT.Base.CellDimension(base)
-        else:
-            dim = {'EdgeCenter' : 1, 'FaceCenter' : 2}[loc]
+    if len(nodes) == 1 and not matching_jns_table.computed:
+        matching_jns_table.compute(last, comm)
 
-        pl = PT.get_np_value(last)[0]
-        tgt_dim = -1*np.ones(pl.size, np.int8)
-        for elt in utils.get_zone_elements(zone):
-            elt_range = PT.Element.Range(elt)
-            tgt_dim[(elt_range[0] <= pl) & (pl <= elt_range[1])] = PT.Element.Dimension(elt)
+    elif IS_GC_MATCH(last):
+        from maia.algo.dist.matching_jns_tools import _jn_is_symmetric_loc
+        cur_path = '/'.join(n[0] for n in nodes[1:])
+        opp_paths = matching_jns_table[cur_path]
+        assert len(opp_paths) == 1 # Can not proceed if donor is not found
+        opp_path = opp_paths[0]
 
-        ref, count = np.unique(tgt_dim, return_counts=True)
-        dim_to_count = defaultdict(int, {d:c for d,c in zip(ref, count) if d!=dim})
-        dim_to_count_g = comm.allreduce(dim_to_count, op = utils.defaultdict_sum)
-
-        if -1 in dim_to_count_g:
-            return f"No corresponding ElementRange for {dim_to_count_g[-1]} ids of this element located subset"
-        elif len(dim_to_count_g) > 0:
-            details = ''
-            while (dim_to_count_g):
-                key, val = dim_to_count_g.popitem()
-                details += f"{key} ({val})"
-                if len(dim_to_count_g) > 1:
-                    details += ', '
-                elif len(dim_to_count_g) == 1:
-                    details += ' and '
-            return f"Subset location is {loc}, but some ids reference entities of dimension {details}"
-
+        is_symm_loc = _jn_is_symmetric_loc(last, PT.find_node_from_path(nodes[0], opp_path))
+        if not comm.allreduce(is_symm_loc, MPI.LAND):
+            return f"Subsets ordering of matching GC_t node /{opp_path} differ"
 
     return OK
+
+
 _funcs = inspect.getmembers(sys.modules[__name__], inspect.isfunction)
 
 DNODE_RULES = {func[1].__doc__[:4] : func[1] for func in _funcs}

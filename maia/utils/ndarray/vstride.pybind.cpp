@@ -584,7 +584,11 @@ void register_vstride_module(py::module_& parent) {
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
   m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, int32_t>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, uint32_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
   m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, int64_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, uint64_t>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
   m.def("accumulate_by_stride", &accumulate_by_stride<int32_t, float>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
@@ -594,7 +598,11 @@ void register_vstride_module(py::module_& parent) {
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
   m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, int32_t>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, uint32_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
   m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, int64_t>, 
+        py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
+  m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, uint64_t>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());
   m.def("accumulate_by_stride", &accumulate_by_stride<int64_t, float>, 
         py::arg("displs").noconvert(), py::arg("values").noconvert(), py::arg("op").noconvert());

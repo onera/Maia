@@ -245,7 +245,13 @@ def fill_cgns(tree: CGNSTree, filename:Path, exclude:List[str], comm:MPIComm):
         PT.keep_children_from_label(base, 'Zone_t')
 
     # Effective loading for remaning arrays
-    IOT.fill_size_tree(tree, filename, comm)
+    # Done manually to avoid addition corrections of fill_size_tree
+    IOT.add_distribution_info(tree, comm)
+    hdf_filter = IOT.create_tree_hdf_filter(tree)
+    # Coords#Size appears in dict -> remove it
+    hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
+    IOT.load_tree_from_filter(str(filename), tree, comm, hdf_filter)
+    PT.rm_nodes_from_name(tree, '*#Size')
 
 
 

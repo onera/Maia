@@ -21,6 +21,7 @@ Development version
 ^^^^^^^^^^^^^^^^^^^^^^^
 - VStrideArray: implement OUTER_AXIS mode for ``sort`` and ``unique`` functions
 - More robust 1to1 periodic joins concatenation (used notably by merge_zones)
+- maia_cgns_check: introduce stage 3 including some topological checks
 
 🐞 Fixes
 ^^^^^^^^
