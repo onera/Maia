@@ -15,6 +15,7 @@ Development version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - VStrideArray: implement OUTER_AXIS mode for ``sort`` and ``unique`` functions
+- maia_cgns_check: introduce stage 3 including some topological checks
 
 💡 New Features
 ^^^^^^^^^^^^^^^
