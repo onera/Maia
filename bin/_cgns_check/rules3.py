@@ -57,8 +57,8 @@ class utils:
 
     @staticmethod
     def compute_distri(tab, comm):
-        gmax = comm.allreduce(tab.max(), MPI.MAX)
-        gmin = comm.allreduce(tab.min(), MPI.MIN)
+        gmax = comm.allreduce(tab.max(initial=np.iinfo(tab.dtype).min), MPI.MAX)
+        gmin = comm.allreduce(tab.min(initial=np.iinfo(tab.dtype).max), MPI.MIN)
         length = int(gmax) - int(gmin) + 1
         div = length // comm.size
         rmd = length - div*comm.size
@@ -95,7 +95,61 @@ class MatchingJnsTable:
 
         self.computed = True
 
+class FaceCellBuilder:
+    """ Cache for E316, E317"""
+
+    @staticmethod
+    def sorted_elts_of_type(zone, type):
+        elts = sorted(PT.get_children_from_predicate(zone, PT.pred.is_element_of_type(type)),
+                      key=lambda e: PT.Element.Range(e)[0])
+        ranges = [PT.Element.Range(e) for e in elts]
+        assert ([r[0] for r in ranges[1:]] == [r[1]+1 for r in ranges[:-1]]) # Raise if not contiguous
+        return elts
+
+    def __init__(self):
+        self.last_computed = ''
+        self.dict = dict()
+    def __getitem__(self, key):
+        return self.dict[key]
+    def compute(self, zone, comm):
+        nface_nodes = self.sorted_elts_of_type(zone, 'NFACE_n')
+        ngon_nodes  = self.sorted_elts_of_type(zone, 'NGON_n')
+
+        cell_face_l = [MT.Element.connectivity(e) for e in nface_nodes]
+        cell_id_l   = [np.arange(MT.distribution_value(e, 'Element')[0] + PT.Element.Range(e)[0],
+                                 MT.distribution_value(e, 'Element')[1] + PT.Element.Range(e)[0]) for e in nface_nodes]
+        cell_id = np.concatenate(cell_id_l)
+        cell_face = vs.concatenate(cell_face_l, vs.OUTER_AXIS) if len(cell_face_l) > 1 else cell_face_l[0]
+
+        cell_id_rep = np.repeat(cell_id, cell_face.counts)
+        cell_id_rep *= np.sign(cell_face.values)
+
+        n_face = sum(PT.Element.Size(e) for e in ngon_nodes)
+        face_offset = PT.Element.Range(ngon_nodes[0])[0]
+        face_distri = par_utils.uniform_distribution(n_face, comm)
+
+        GI = EP.GlobalIndexer(face_distri, abs(cell_face.values)-face_offset, comm)
+
+        counts, values = GI.Put_v((np.ones(cell_face.dsize, np.int32), cell_id_rep), extend=True)
+        recv_signs = vs.from_counts(counts, values)
+
+        self.dict["face_cell"] = recv_signs
+        self.dict["face_offset"] = face_offset
+        self.dict["face_distri"] = face_distri
+
+    def compute_if_needed(self, zone, comm):
+        # Recomputed for each new zone. Since we loop on nodes, then on rules,
+        # we should have caching
+        if self.last_computed != PT.get_name(zone):
+            self.dict.clear()
+            self.compute(zone, comm)
+            self.last_computed = PT.get_name(zone)
+
+
+
+# Cache objects
 matching_jns_table = MatchingJnsTable()
+face_cell_builder = FaceCellBuilder()
 
 # Errors code 300-399
 
@@ -1019,6 +1073,167 @@ def orphean_vertex_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
 
     return OK
 
+def nface_connectivity_table(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E316 - NFace connectivity table
+
+    The cell-face connectivity (defined in NFACE_n nodes) must satisfy the following:
+    - Each face id appears one (boundary face) or twice (internal face)
+    - The two occurences of each internal face must be of opposite sign
+
+    Erroneous tree examples:
+
+    Zone Zone_t I4 [[16 3 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    ├───NGonElements Elements_t I4 [22 0]
+    │   ╵╴╴╴(3 children masked)
+    └───NFaceElements Elements_t I4 [23 0]
+        ├───ElementRange IndexRange_t I4 [17 19]
+        ├───ElementStartOffset DataArray_t I4 [ 0  6 12 18]
+        └───ElementConnectivity DataArray_t I4 (18,)
+            [1 2 5 8 \033[91m3\033[0m 14   -2 \033[91m3\033[0m 6 9 12 15  \033[91m-3\033[0m 4 7 10 13 16] \033[91m# Face appears 3 times \033[0m
+
+
+    Zone Zone_t I4 [[16 3 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    ├───NGonElements Elements_t I4 [22 0]
+    │   ╵╴╴╴(3 children masked)
+    └───NFaceElements Elements_t I4 [23 0]
+        ├───ElementRange IndexRange_t I4 [17 19]
+        ├───ElementStartOffset DataArray_t I4 [ 0  6 12 18]
+        └───ElementConnectivity DataArray_t I4 (18,)
+            [1 \033[91m2\033[0m 5 8 11 14   \033[91m2\033[0m 3 6 9 12 15  -3 4 7 10 13 16] \033[91m# Internal face is inward for its 2 cells \033[0m
+    """
+    last = nodes[-1]
+
+    # Check at zone level since we may have several NFACE nodes, and we need
+    # to combine their values
+    if not (PT.get_label(last) == 'Zone_t' and PT.Zone.has_nface_elements(last)):
+        return OK
+
+    face_cell_builder.compute_if_needed(last, comm)
+    recv_signs = vs.sign(face_cell_builder['face_cell'])
+    face_offset = face_cell_builder['face_offset']
+    face_distri = face_cell_builder['face_distri']
+
+    wrong_ids1 = np.flatnonzero(recv_signs.counts < 1) + face_distri[0] + face_offset
+    wrong_ids2 = np.flatnonzero(recv_signs.counts > 2) + face_distri[0] + face_offset
+
+    is_internal = recv_signs.counts == 2
+    internal_sign_prod = recv_signs.reduce(vs.ReduceOp.PROD)[is_internal]
+    internal_ids = np.arange(face_distri[0], face_distri[1])[is_internal] + face_offset
+    wrong_ids3 = internal_ids[internal_sign_prod > 0]
+
+    wrong_ids_l = [wrong_ids1, wrong_ids2, wrong_ids3]
+    reasons = [" never appear in ElementConnectivity table of NFACE_n nodes",
+               " appear more than twice in ElementConnectivity table of NFACE_n nodes",
+               " appear twice with same sign in ElementConnectivity table of NFACE_n nodes"]
+
+    for wrong_ids, reason in zip(wrong_ids_l, reasons):
+        if (n_wrong := comm.allreduce(wrong_ids.size)):
+            all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+            if comm.rank == 0:
+                msg = f"Face{'s' if n_wrong > 1 else ''} "
+                msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+                if n_wrong > 5:
+                    msg += f', ... ({n_wrong} detected)'
+                msg += reason
+            else:
+                msg = reason # Return something to exit loop
+            return msg
+
+    return OK
+
+
+def pe_and_nface_compatibility(nodes:List[CGNSTree], comm:MPIComm) -> str:
+    """E317 - NGON_n/ParentElements vs NFACE_n/ElementConnectivity
+
+    If both cell-face (NFACE_n/ElementConnectivity) and face-cell (NGON_n/ParentElements)
+    connectivity tables are defined, they must be compatible.
+
+    Erroneous tree example:
+
+    Zone Zone_t I4 [[12 2 0]]
+    ├──ZoneType ZoneType_t "Unstructured"
+    ├───NGonElements Elements_t I4 [22 0]
+    │   ├───ElementRange IndexRange_t I4 [1 11]
+    │   ├───ElementStartOffset DataArray_t I4 (12,)
+    │   ├───ElementConnectivity DataArray_t I4 (44,)
+    │   └───ParentElements DataArray_t I4 (11, 2)
+    │       [[12 0]
+    │        [12 13] \033[91m# Face 2 does not appears in cell-face connectivity for cell 13 as it should\033[0m
+    │        [13  0]
+    │        [12  0] \033[91m# Face 4 appears in cell-face connectivity for cell 13 but should not\033[0m
+    │        [13  0]
+    │        [12  0]
+    │        [13  0]
+    │        [12  0]
+    │        [13  0] \033[91m# Face 9 is negative in cell-face connectivity for cell 13, but sould be positive\033[0m
+    │        [12  0] 
+    │        [13  0]]
+    └───NFaceElements Elements_t I4 [23 0]
+        ├───ElementRange IndexRange_t I4 [12 13]
+        ├───ElementStartOffset DataArray_t I4 [ 0  6 12]
+        └───ElementConnectivity DataArray_t I4 (12,)
+            [1 \033[32m2 4\033[0m 6 8 10  \033[91m-4\033[0m 3 5 7 \033[91m-9\033[0m 11]
+    """
+    last = nodes[-1]
+
+    # As for E316, check at zone level since we may have several NFACE nodes, and we need
+    # to combine their values
+    if not (PT.get_label(last) == 'Zone_t' and PT.Zone.has_nface_elements(last)):
+        return OK
+
+    ngon_nodes = FaceCellBuilder.sorted_elts_of_type(last, 'NGON_n')
+    if not all(PT.get_child_from_name(ng, 'ParentElements') is not None for ng in ngon_nodes):
+        return OK # Skip rule if ParentElements is not defined
+
+
+    # Get rebuild facecell from NFACE/ElementConnectivity
+    face_cell_builder.compute_if_needed(last, comm)
+    nface_facecell_vs = face_cell_builder['face_cell']
+
+    # Convert vs -> full PE
+    nface_facecell = np.zeros((len(nface_facecell_vs), 2), dtype=nface_facecell_vs.dtype, order='F')
+    is_internal = nface_facecell_vs.counts == 2
+    # External faces : put in pe[:,0] or pe[:,1] depending on sign
+    external = vs.take(nface_facecell_vs, np.where(~is_internal)[0]).values
+    nface_facecell[~is_internal, (1-np.sign(external))//2] = abs(external)
+    # Internal faces : we received 2 values, one <0 and one >0
+    # We put positive value in PE[:,0] and negative in PE[:,1]
+    internal = vs.take(nface_facecell_vs, np.where(is_internal)[0]).values
+    positive = np.maximum(internal, 0)
+    negative = abs(np.minimum(internal, 0))
+    nface_facecell[is_internal, 0] = positive[0::2] + positive[1::2]
+    nface_facecell[is_internal, 1] = negative[0::2] + negative[1::2]
+
+
+    # Remap each NGON_n node to global face distribution (usefull if several NGON_n nodes)
+    # This also ensure same distribution than the one used above
+
+    face_offset = face_cell_builder['face_offset']
+    face_distri = face_cell_builder['face_distri']
+    ids = [np.arange(MT.distribution_value(ng, 'Element')[0] + PT.Element.Range(ng)[0] - face_offset,
+                     MT.distribution_value(ng, 'Element')[1] + PT.Element.Range(ng)[0] - face_offset) for ng in ngon_nodes]
+    pe = [PT.get_np_value(PT.find_child_from_name(ng, 'ParentElements')).flatten(order='F') for ng in ngon_nodes]
+
+
+    ngon_facecell = EP.GlobalIndexer(face_distri, ids, comm).Put(pe, count=2)
+    ngon_facecell = ngon_facecell.reshape((face_distri[1]-face_distri[0], 2), order='F')
+
+    # Now compare nface_facecell (from NFACE_n) and ngon_facecell (from NGON_n)
+    ko = np.any(nface_facecell != ngon_facecell, axis=1)
+    wrong_ids = np.flatnonzero(ko) + face_distri[0] + face_offset
+
+    if (n_wrong := comm.allreduce(wrong_ids.size)):
+        all_wrong_ids = comm.reduce(wrong_ids.tolist()[:5], root=0)
+        if comm.rank == 0:
+            msg = f"NFACE-PE incompatibility for face{'s' if n_wrong > 1 else ''} "
+            msg += ', '.join(str(x) for x in all_wrong_ids[:5])
+            if n_wrong > 5:
+                msg += f', ... ({n_wrong} detected)'
+            return msg
+
+    return OK
 
 
 _funcs = inspect.getmembers(sys.modules[__name__], inspect.isfunction)
