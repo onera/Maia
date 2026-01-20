@@ -179,8 +179,18 @@ class WallDistance:
     for dist_zone_path, part_zones in parts_per_dom.items():
       
       i_dom += 1
-      parts_datas = [data for data in extract_surf_from_bc(part_zones, self.bc_predicate, comm)]
-      face_parent_gnum = parts_datas.pop(3)
+      ext_zones = extract_surf_from_bc(part_zones, self.bc_predicate, comm)
+      ext_elts = []
+      for ext_zone in ext_zones:
+        # TODO robustify
+        pred = PT.pred.label_is('Elements_t') & (lambda n : PT.Element.Dimension(n)==PT.Zone.CellDimension(ext_zone))
+        ext_elts.append(MT.Element.connectivity(PT.find_child_from_predicate(ext_zone, pred)))
+      parts_datas = [[elt.values for elt in ext_elts],
+                     [elt.displs for elt in ext_elts],
+                     [MT.globalnumbering_value(ext_zone, 'Cell') for ext_zone in ext_zones],
+                     [np_utils.interweave_arrays(PT.Zone.coordinates(ext_zone)) for ext_zone in ext_zones],
+                     [MT.globalnumbering_value(ext_zone, 'Vertex') for ext_zone in ext_zones]]
+      face_parent_gnum = [PT.get_node_from_name(ext_zone, 'ParentFace')[1] for ext_zone in ext_zones]
 
       self.face_parent_gnum_l.extend(face_parent_gnum) # -> Volumic gnum for each partition of the surface
       self.face_ln_to_gn_l.extend([t + self._n_face_orig_bnd_tot_idx[-1] for t in parts_datas[2]]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
