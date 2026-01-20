@@ -97,62 +97,35 @@ class WallDistance:
     self.perio = perio
     self.periodicities_per_group:Dict[int, List[PT.PeriodicValues]] = {}
     
-  def _shift_id_and_push_in_global_list(self, 
-                                        parts_datas: List[List[NDArray]], 
-                                        all_parts_datas: List[List[NDArray]], 
-                                        i_dom: int, 
-                                        perio_ghost: bool) -> None:
+  @staticmethod
+  def _shift_ids(part_dict:Dict[str, NDArray],
+                 face_offset:int,
+                 vtx_offset:int) -> Dict[str, NDArray]:
 
-    face_vtx_bnd_z, face_vtx_bnd_idx_z, face_ln_to_gn_z, vtx_bnd_z, vtx_ln_to_gn_z = parts_datas
-    face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l = all_parts_datas
+    new_part = dict()
+    for key, val in part_dict.items():
+      if key == 'face_lngn':
+        new_part[key] = val + face_offset
+      elif key == 'vtx_lngn':
+        new_part[key] = val + vtx_offset
+      else:
+        new_part[key] = val
+    return new_part
 
-    #Find the maximal vtx/face id for this initial domain
-    n_face_bnd_t = 0
-    for face_ln_to_gn in face_ln_to_gn_z:
-      n_face_bnd_t = max(n_face_bnd_t, np.max(face_ln_to_gn, initial=0))
-    n_face_bnd_t = self.mpi_comm.allreduce(n_face_bnd_t, op=MPI.MAX)
-    self._n_face_bnd_tot_idx.append(self._n_face_bnd_tot_idx[-1] + n_face_bnd_t)
-    if not perio_ghost:
-      self._n_face_orig_bnd_tot_idx.append(self._n_face_orig_bnd_tot_idx[-1] + n_face_bnd_t)
+  @staticmethod
+  def _apply_perio(part_dict:Dict[str, NDArray],
+                   perio) -> Dict[str, NDArray]:
 
-    n_vtx_bnd_t = 0
-    for vtx_ln_to_gn in vtx_ln_to_gn_z:
-      n_vtx_bnd_t = max(n_vtx_bnd_t, np.max(vtx_ln_to_gn, initial=0))
-    n_vtx_bnd_t = self.mpi_comm.allreduce(n_vtx_bnd_t, op=MPI.MAX)
-    self._n_vtx_bnd_tot_idx.append(self._n_vtx_bnd_tot_idx[-1] + n_vtx_bnd_t)
+    coords = part_dict['vtx_coords']
+    cx, cy, cz = np_utils.transform_cart_vectors(coords[0::3], coords[1::3], coords[2::3],
+                                                 perio[2], perio[0], perio[1]) #Perio is center, angle, trans
+    new_coords = np_utils.interweave_arrays([cx, cy, cz])
 
-    #Shift the face and vertex lngn because PDM does not manage multiple domain. This will avoid
-    # overlapping face / vtx coming from different domain but having same id
-    face_ln_to_gn_z = [face_ln_to_gn + self._n_face_bnd_tot_idx[i_dom] for face_ln_to_gn in face_ln_to_gn_z]
-    vtx_ln_to_gn_z  = [vtx_ln_to_gn + self._n_vtx_bnd_tot_idx[i_dom] for vtx_ln_to_gn in vtx_ln_to_gn_z]
-
-    #Extended global lists
-    face_vtx_bnd_l.extend(face_vtx_bnd_z)
-    face_vtx_bnd_idx_l.extend(face_vtx_bnd_idx_z)
-    vtx_bnd_l.extend(vtx_bnd_z)
-    face_ln_to_gn_l.extend(face_ln_to_gn_z)
-    vtx_ln_to_gn_l.extend(vtx_ln_to_gn_z)
+    new_part = {key: val for key, val in part_dict.items()}
+    new_part['vtx_coords'] = new_coords
     
-  def _dupl_shift_id_and_push_in_global_list(self, 
-                                             parts_datas: List[List[NDArray]], 
-                                             all_parts_datas: List[List[NDArray]], 
-                                             i_dom: int, 
-                                             perio: PT.PeriodicValues) -> List[List[NDArray]]:
+    return new_part
 
-    vtx_bnd_z = parts_datas[3]
-    vtx_bnd_dupl_z = []
-    for vtx_bnd in vtx_bnd_z:
-      cx = vtx_bnd[0::3]
-      cy = vtx_bnd[1::3]
-      cz = vtx_bnd[2::3]
-      cx, cy, cz = np_utils.transform_cart_vectors(cx, cy, cz, perio[2], perio[0], perio[1]) #Perio is center, angle, trans
-      vtx_bnd_dupl_z.append(np_utils.interweave_arrays([cx, cy, cz]))
-    
-    dupl_parts_data = [l for l in parts_datas]
-    dupl_parts_data[3] = vtx_bnd_dupl_z #Udpate with duplicated coords
-
-    self._shift_id_and_push_in_global_list(dupl_parts_data, all_parts_datas, i_dom, True)
-    return dupl_parts_data
 
   def _setup_surf_mesh(self, 
                        surf_tree: CGNSTree,
@@ -161,11 +134,7 @@ class WallDistance:
     Setup the surfacic mesh for wall distance computing
     """
     #This will concatenate part data of all initial domains
-    face_vtx_bnd_l:List[NDArray] = []
-    face_vtx_bnd_idx_l:List[NDArray] = []
-    face_ln_to_gn_l:List[NDArray] = []
-    vtx_bnd_l:List[NDArray] = []
-    vtx_ln_to_gn_l:List[NDArray] = []
+    all_parts_dict = []
 
     # These will be used at the end to recover the ClosestEltGnum in volumic mesh numbering  
     # We save this only for "real" domains (not for periodic ghost) because the link
@@ -173,75 +142,93 @@ class WallDistance:
     self.face_parent_gnum_l = []
     self.face_ln_to_gn_l = []
 
-    all_parts_datas = [face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l]
-
-    i_dom = -1
-
     for dist_zone_path, surf_zones in get_parts_per_blocks(surf_tree, comm).items():
       
-      i_dom += 1
-      ext_elts = []
-      for ext_zone in surf_zones:
-        # TODO robustify
-        pred = PT.pred.label_is('Elements_t') & (lambda n : PT.Element.Dimension(n)==PT.Zone.CellDimension(ext_zone))
-        ext_elts.append(MT.Element.connectivity(PT.find_child_from_predicate(ext_zone, pred)))
-      parts_datas = [[elt.values for elt in ext_elts],
-                     [elt.displs for elt in ext_elts],
-                     [MT.globalnumbering_value(ext_zone, 'Cell') for ext_zone in surf_zones],
-                     [np_utils.interweave_arrays(PT.Zone.coordinates(ext_zone)) for ext_zone in surf_zones],
-                     [MT.globalnumbering_value(ext_zone, 'Vertex') for ext_zone in surf_zones]]
-      face_parent_gnum = [PT.get_node_from_name(ext_zone, 'ParentFace')[1] for ext_zone in surf_zones]
+
+      domain_parts = list()
+      face_parent_gnum = []
+      for surf_zone in surf_zones:
+        pred = PT.pred.label_is('Elements_t') & (lambda n : PT.Element.Dimension(n)==PT.Zone.CellDimension(surf_zone))
+        elts = PT.get_children_from_predicate(surf_zone, pred)
+        assert len(elts) == 1, "Mutliple elt nodes not managed"
+        elt = MT.Element.connectivity(elts[0])
+        domain_parts.append(
+          {'face_vtx_idx' : elt.displs,
+          'face_vtx' : elt.values,
+          'face_lngn' : MT.globalnumbering_value(surf_zone, 'Cell'),
+          'vtx_coords' : np_utils.interweave_arrays(PT.Zone.coordinates(surf_zone)),
+          'vtx_lngn' : MT.globalnumbering_value(surf_zone, 'Vertex')})
+        face_parent_gnum.append(PT.get_node_from_name(surf_zone, 'ParentFace')[1])
+
 
       self.face_parent_gnum_l.extend(face_parent_gnum) # -> Volumic gnum for each partition of the surface
-      self.face_ln_to_gn_l.extend([t + self._n_face_orig_bnd_tot_idx[-1] for t in parts_datas[2]]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
+      self.face_ln_to_gn_l.extend([p['face_lngn'] + self._n_face_orig_bnd_tot_idx[-1] for p in domain_parts]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
 
-      self._shift_id_and_push_in_global_list(parts_datas, all_parts_datas, i_dom, False)
+      domain_nface = MT.Zone.n_cell(surf_zones, comm)
+      domain_nvtx  = MT.Zone.n_vtx(surf_zones, comm)
+
+      all_parts_dict.extend([self._shift_ids(part, self._n_face_bnd_tot_idx[-1], self._n_vtx_bnd_tot_idx[-1]) \
+                             for part in domain_parts])
+
+      self._n_face_bnd_tot_idx.append(self._n_face_bnd_tot_idx[-1] + domain_nface)
+      self._n_vtx_bnd_tot_idx.append(self._n_vtx_bnd_tot_idx[-1] + domain_nvtx)
+      self._n_face_orig_bnd_tot_idx.append(self._n_face_orig_bnd_tot_idx[-1] + domain_nface)
       
       if self.perio:
         for gn, group in enumerate(self.grouped_zone_paths):
           if dist_zone_path in group:
             group_num = gn
             break
-        parts_surf_to_dupl_l = [parts_datas]
+        parts_surf_to_dupl_l = [domain_parts]
         for perio_val in self.periodicities_per_group[group_num]:
           perio_val_opp = PT.PeriodicValues(perio_val[0], -perio_val[1], -perio_val[2]) #Center, angle, translation
 
           parts_surf_to_dupl_next_l = []
           for parts_surf_to_dupl in parts_surf_to_dupl_l:
             parts_surf_to_dupl_next_l.append(parts_surf_to_dupl)
-            i_dom += 1
-            dupl_parts_surf = self._dupl_shift_id_and_push_in_global_list(
-                    parts_surf_to_dupl, all_parts_datas, i_dom, perio_val)
+            
+            # Apply periodicity to input partitions, without shifting gnums,
+            # and add result to next duplication
+            dupl_parts_surf = [self._apply_perio(part, perio_val) for part in parts_surf_to_dupl]
+            parts_surf_to_dupl_next_l.append(dupl_parts_surf)
+            # Now shift gnums and register in all domain list
+            shifted_dupl_parts_surf = [self._shift_ids(part, self._n_face_bnd_tot_idx[-1], self._n_vtx_bnd_tot_idx[-1]) \
+                                                       for part in dupl_parts_surf] # Shift
+            all_parts_dict.extend(shifted_dupl_parts_surf)
+
+            # Update shift values (reuse nface/nvtx, which are unchanged)
+            self._n_face_bnd_tot_idx.append(self._n_face_bnd_tot_idx[-1] + domain_nface)
+            self._n_vtx_bnd_tot_idx.append(self._n_vtx_bnd_tot_idx[-1] + domain_nvtx)
+
+            # Same with opposite periodicity
+
+            dupl_parts_surf = [self._apply_perio(part, perio_val_opp) for part in parts_surf_to_dupl]# Apply periodicity
             parts_surf_to_dupl_next_l.append(dupl_parts_surf)
 
-            i_dom += 1
-            dupl_parts_surf = self._dupl_shift_id_and_push_in_global_list(
-                    parts_surf_to_dupl, all_parts_datas, i_dom, perio_val_opp)
-            parts_surf_to_dupl_next_l.append(dupl_parts_surf)
+            shifted_dupl_parts_surf = [self._shift_ids(part, self._n_face_bnd_tot_idx[-1], self._n_vtx_bnd_tot_idx[-1]) \
+                                                       for part in dupl_parts_surf] # Shift
+            all_parts_dict.extend(shifted_dupl_parts_surf)
+            
+            self._n_face_bnd_tot_idx.append(self._n_face_bnd_tot_idx[-1] + domain_nface)
+            self._n_vtx_bnd_tot_idx.append(self._n_vtx_bnd_tot_idx[-1] + domain_nvtx)
 
           parts_surf_to_dupl_l = parts_surf_to_dupl_next_l
-
-    n_part = len(vtx_bnd_l)
-    for i in range(n_part):
-    # Keep numpy alive
-      for array in (face_vtx_bnd_l[i], face_vtx_bnd_idx_l[i], face_ln_to_gn_l[i], vtx_bnd_l[i], vtx_ln_to_gn_l[i],):
-        self._keep_alive.append(array)
 
     #Get global data (total number of faces / vertices)
     #This create the surf_mesh objects in PDM, thus it must be done before surf_mesh_part_set
     self._walldist.surf_mesh_global_data_set()
     
     #Setup partitions
-    for i_part in range(n_part):
-      n_face_bnd = face_vtx_bnd_idx_l[i_part].shape[0]-1
-      n_vtx_bnd  = vtx_ln_to_gn_l[i_part].shape[0]
-      self._walldist.surf_mesh_part_set(i_part, n_face_bnd,
-                                        face_vtx_bnd_idx_l[i_part],
-                                        face_vtx_bnd_l[i_part],
-                                        face_ln_to_gn_l[i_part],
-                                        n_vtx_bnd,
-                                        vtx_bnd_l[i_part],
-                                        vtx_ln_to_gn_l[i_part])
+    for i_part, part in enumerate(all_parts_dict):
+      self._keep_alive.append(part)
+      self._walldist.surf_mesh_part_set(i_part, part['face_lngn'].size,
+                                        part['face_vtx_idx'],
+                                        part['face_vtx'],
+                                        part['face_lngn'],
+                                        part['vtx_lngn'].size,
+                                        part['vtx_coords'],
+                                        part['vtx_lngn'])
+
 
   def _setup_vol_mesh(self, 
                       i_domain: int, 
