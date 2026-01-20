@@ -12,7 +12,7 @@ from maia.utils                      import np_utils
 from maia.utils                      import logging as mlog
 from maia.transfer                   import protocols as EP
 from maia.transfer                   import utils as tr_utils
-from maia.factory.dist_from_part     import discover_nodes_from_matching
+from maia.factory.dist_from_part     import discover_nodes_from_matching, get_parts_per_blocks
 from maia.algo.part.extract_boundary import extract_surf_from_bc
 from maia.algo.part.geometry         import _compute_elements_center
 
@@ -155,7 +155,7 @@ class WallDistance:
     return dupl_parts_data
 
   def _setup_surf_mesh(self, 
-                       parts_per_dom: Dict[str, List[CGNSTree]], 
+                       surf_tree: CGNSTree,
                        comm: MPIComm) -> None:
     """
     Setup the surfacic mesh for wall distance computing
@@ -176,21 +176,21 @@ class WallDistance:
     all_parts_datas = [face_vtx_bnd_l, face_vtx_bnd_idx_l, face_ln_to_gn_l, vtx_bnd_l, vtx_ln_to_gn_l]
 
     i_dom = -1
-    for dist_zone_path, part_zones in parts_per_dom.items():
+
+    for dist_zone_path, surf_zones in get_parts_per_blocks(surf_tree, comm).items():
       
       i_dom += 1
-      ext_zones = extract_surf_from_bc(part_zones, self.bc_predicate, comm)
       ext_elts = []
-      for ext_zone in ext_zones:
+      for ext_zone in surf_zones:
         # TODO robustify
         pred = PT.pred.label_is('Elements_t') & (lambda n : PT.Element.Dimension(n)==PT.Zone.CellDimension(ext_zone))
         ext_elts.append(MT.Element.connectivity(PT.find_child_from_predicate(ext_zone, pred)))
       parts_datas = [[elt.values for elt in ext_elts],
                      [elt.displs for elt in ext_elts],
-                     [MT.globalnumbering_value(ext_zone, 'Cell') for ext_zone in ext_zones],
-                     [np_utils.interweave_arrays(PT.Zone.coordinates(ext_zone)) for ext_zone in ext_zones],
-                     [MT.globalnumbering_value(ext_zone, 'Vertex') for ext_zone in ext_zones]]
-      face_parent_gnum = [PT.get_node_from_name(ext_zone, 'ParentFace')[1] for ext_zone in ext_zones]
+                     [MT.globalnumbering_value(ext_zone, 'Cell') for ext_zone in surf_zones],
+                     [np_utils.interweave_arrays(PT.Zone.coordinates(ext_zone)) for ext_zone in surf_zones],
+                     [MT.globalnumbering_value(ext_zone, 'Vertex') for ext_zone in surf_zones]]
+      face_parent_gnum = [PT.get_node_from_name(ext_zone, 'ParentFace')[1] for ext_zone in surf_zones]
 
       self.face_parent_gnum_l.extend(face_parent_gnum) # -> Volumic gnum for each partition of the surface
       self.face_ln_to_gn_l.extend([t + self._n_face_orig_bnd_tot_idx[-1] for t in parts_datas[2]]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
@@ -411,7 +411,9 @@ class WallDistance:
           n_part_surf += len(part_zones)*3**(len(self.periodicities_per_group[group_num]))
       self._walldist = PDM.DistCloudSurf(self.mpi_comm, 1, n_part_surf, point_clouds=n_part_per_cloud)
 
-    self._setup_surf_mesh(parts_per_dom, self.mpi_comm)
+
+    surface_tree = extract_surf_from_bc(self.part_tree, self.bc_predicate, self.mpi_comm)
+    self._setup_surf_mesh(surface_tree, self.mpi_comm)
     if self._n_face_bnd_tot_idx[-1] == 0:
       return -1 # No surface found
 

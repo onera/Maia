@@ -151,9 +151,9 @@ def extract_faces_mesh(zone: CGNSTree, face_ids: NDArray) -> Tuple[NDArray, ...]
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
 
-def extract_surf_from_bc(part_zones: List[CGNSTree], 
-                         bc_predicate: Callable[[CGNSTree], bool], 
-                         comm: MPIComm) -> List[CGNSTree]:
+def extract_surf_from_bc_single(part_zones: List[CGNSTree], 
+                                bc_predicate: Callable[[CGNSTree], bool], 
+                                comm: MPIComm) -> List[CGNSTree]:
   """
   From a list of partitioned zones (coming from the same initial domain), get the list
   of faces (or edge, depending on zone dimension)
@@ -226,3 +226,19 @@ def extract_surf_from_bc(part_zones: List[CGNSTree],
 
   return ext_zones
 
+def extract_surf_from_bc(part_tree: CGNSTree, 
+                         bc_predicate: Callable[[CGNSTree], bool], 
+                         comm: MPIComm) -> CGNSTree:
+  # Light / local version of extract_part for WallDistance
+
+  from maia.factory.dist_from_part     import get_parts_per_blocks
+  ext_tree = PT.new_CGNSTree()
+  for dist_zone_path, part_zones in get_parts_per_blocks(part_tree, comm).items():
+    part_base = PT.find_child_from_name(part_tree, PT.utils.path_head(dist_zone_path))
+    new_dim = [PT.Base.CellDimension(part_base)-1, 3]
+    ext_base = PT.update_child(ext_tree, PT.get_name(part_base), PT.get_label(part_base), new_dim)
+    ext_zones = extract_surf_from_bc_single(part_zones, bc_predicate, comm)
+    for ext_zone in ext_zones:
+      PT.add_child(ext_base, ext_zone)
+  
+  return ext_tree

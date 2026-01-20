@@ -104,7 +104,7 @@ def test_extract_faces_mesh(comm):
 def test_extract_surf_from_bc(comm):
   #We dont put GlobalNumbering for BCs, since its not needed, but we should
   part_0 = f"""
-  ZoneU Zone_t [[18,4,0]]:
+  ZoneU.P0.N0 Zone_t [[18,4,0]]:
     ZoneType ZoneType_t "Unstructured":
     GridCoordinates GridCoordinates_t:
       CoordinateX DataArray_t [0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1]:
@@ -142,7 +142,7 @@ def test_extract_surf_from_bc(comm):
       Cell DataArray_t {dtype} [1,2,3,4]:
   """
   part_1 = f"""
-  ZoneU Zone_t [[18,4,0]]:
+  ZoneU.P1.N0 Zone_t [[18,4,0]]:
     ZoneType ZoneType_t "Unstructured":
     GridCoordinates GridCoordinates_t:
       CoordinateX DataArray_t [0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1]:
@@ -172,19 +172,22 @@ def test_extract_surf_from_bc(comm):
       Cell DataArray_t {dtype} [5,6,7,8]:
   """
   if comm.Get_rank() == 0:
+    part_tree = PT.yaml.to_cgns_tree(part_0)
     part_zones = [PT.yaml.to_node(part_0)]
     bc_pl = np.array([15,16,9,10])
     expt_face_lngn = [3,5,1,2]
     expt_face_parent = [25, 27, 13, 14]
     expt_vtx_lngn = [1,2,3,4,5,6,7,8,9,10]
   elif comm.Get_rank() == 1:
+    part_tree = PT.yaml.to_cgns_tree(part_1)
     part_zones = [PT.yaml.to_node(part_1)]
     bc_pl = np.array([15,16])
     expt_face_lngn = [4,6]
     expt_face_parent = [26, 28]
     expt_vtx_lngn = [11,12,13,6,7,8]
 
-  ext_zones = EXB.extract_surf_from_bc(part_zones, PT.pred.belongs_to_family('WALL'), comm)
+  ext_tree = EXB.extract_surf_from_bc(part_tree, PT.pred.belongs_to_family('WALL'), comm)
+  ext_zones = PT.get_all_Zone_t(ext_tree)
   assert len(ext_zones) == 1
   ext_zone = ext_zones[0]
 
