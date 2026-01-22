@@ -195,7 +195,7 @@ def test_extract_surf_from_bc(comm):
   bc_face_vtx_idx = PT.get_node_from_name(ext_zone, 'ElementStartOffset')[1]
   bc_face_lngn = MT.globalnumbering_value(ext_zone, 'Cell')
   bc_vtx_lngn = MT.globalnumbering_value(ext_zone, 'Vertex')
-  bc_face_parent = PT.get_node_from_name(ext_zone, 'ParentFace')[1]
+  bc_face_parent = PT.get_node_from_name(ext_zone, 'Parent')[1]
   cx,cy,cz = PT.Zone.coordinates(ext_zone)
   bc_coords = np.array([cx,cy,cz]).reshape(-1, order='F')
   

@@ -221,14 +221,14 @@ def extract_surf_from_bc_single(part_zones: List[CGNSTree],
   bc_vtx_lngn_l  = create_sub_numbering(parent_vtx_lngn_l, comm)
 
   for i, ext_zone in enumerate(ext_zones):
-    PT.new_DiscreteData(loc='CellCenter', fields={'ParentFace' : parent_face_lngn_l[i]}, parent=ext_zone)
+    PT.new_DiscreteData(loc='CellCenter', fields={'Parent' : parent_face_lngn_l[i]}, parent=ext_zone)
     MT.new_GlobalNumbering({'Vertex' : bc_vtx_lngn_l[i], 'Cell' : bc_face_lngn_l[i]}, parent=ext_zone)
 
   return ext_zones
 
-def extract_surf_from_bc(part_tree: CGNSTree, 
+def extract_surf_from_bc(part_tree: CGNSPartTree, 
                          bc_predicate: Callable[[CGNSTree], bool], 
-                         comm: MPIComm) -> CGNSTree:
+                         comm: MPIComm) -> CGNSPartTree:
   # Light / local version of extract_part for WallDistance
 
   from maia.factory.dist_from_part     import get_parts_per_blocks

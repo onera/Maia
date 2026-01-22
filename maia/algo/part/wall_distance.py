@@ -3,7 +3,6 @@ from mpi4py import MPI
 import time
 import warnings
 
-from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 from maia import npy_pdm_gnum_dtype as pdm_dtype
@@ -18,6 +17,8 @@ from maia.algo.part.geometry         import _compute_elements_center
 
 from .point_cloud_utils              import get_point_cloud
 import Pypdm.Pypdm as PDM
+
+from maia.typing import *
 
 BC_WALLS = ['BCWall', 'BCWallViscous', 'BCWallViscousHeatFlux', 'BCWallViscousIsothermal']
 
@@ -92,7 +93,7 @@ def _apply_perio(part_dict:Dict[str, NDArray],
   
   return new_part
 
-def _detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.PeriodicValues]]:
+def detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.PeriodicValues]]:
   """
   Create dist_zone_path -> [periodicities] for input tree
   """
@@ -135,10 +136,7 @@ def _detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.Per
 
   return periodicities_per_path
 
-def _setup_surf_mesh(surf_parts_per_dom,
-                     walldist,
-                     periodicities,
-                     comm: MPIComm):
+def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPIComm):
   """
   Setup the surfacic mesh for wall distance computing
   """
@@ -235,23 +233,7 @@ def _setup_surf_mesh(surf_parts_per_dom,
 
   return keep_alive, offsets
   
-  """
-  # NB :: on peut reconstruire facilement _n_face_bnd_tot_idx, _n_face_orig_bnd_tot_idx
-  #####   et _n_vtx pas nécessaire
-  ## 
-  sizes = []
-  sizes2 = []
-  for zonepath, parts in surf_parts_per_dom.items():
-    domain_nface = MT.Zone.n_cell(parts, comm)
-    perios = periodicities.get(zonepath, [])
-    sizes.extend([domain_nface] for _ in range(3**len(perios)))
-    sizes2.append(domain_nface)
-  assert (self._n_face_bnd_tot_idx == np_utils.sizes_to_indices(sizes)).all()
-  assert (self._n_face_orig_bnd_tot_idx == np_utils.sizes_to_indices(sizes2)).all()
-  """
-
-def _setup_vol_mesh(part_zones: List[CGNSTree],
-                    walldist):
+def _wd_setup_vol_mesh(part_zones: List[CGNSTree], walldist):
   """
   Setup the volumic mesh for wall distance computing (only for propagation method)
   """
@@ -293,175 +275,216 @@ def _setup_vol_mesh(part_zones: List[CGNSTree],
   return keep_alive
 
 
-def _get(walldist,
-          i_domain: int, 
-          part_zones: List[CGNSTree], 
-          loc,
-          out_fs_name,
-          offsets) -> None:
-  """
-  Get results after wall distance computation and store it in the FlowSolution
-  node of name self.out_fs_name
-  """
-  for i_part, part_zone in enumerate(part_zones):
+def _wd_get(walldist, i_dom, i_part, offsets):
+  fields = walldist.get(i_dom, i_part) if isinstance(walldist, PDM.DistCloudSurf) else walldist.get(i_part)
 
-    fields = walldist.get(i_domain, i_part) if isinstance(walldist, PDM.DistCloudSurf) else walldist.get(i_part)
+  closest_elt_dist = np.sqrt(fields['ClosestEltDistance'])
+  closest_elt_proj = np.copy(fields['ClosestEltProjected'])
+  closest_elt_gnum = np.copy(fields['ClosestEltGnum'])
 
-    # Retrieve location
-    fs_node = _create_output_container(part_zone, loc, out_fs_name)
-    shape = _get_output_shape(part_zone, fs_node)
+  # Find domain to which the face belongs
+  n_face_bnd_tot_idx = np.array(offsets['face_offset'], dtype=closest_elt_gnum.dtype)
+  closest_surf_domain = np.searchsorted(n_face_bnd_tot_idx, closest_elt_gnum-1, side='right') -1
+  closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
+  closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
+  dom_id = offsets['dom_id']
+  if not (dom_id == np.arange(len(dom_id))).all(): # Optim if not periodic
+    closest_surf_domain = dom_id[closest_surf_domain]
 
-    # Wall distance
-    wall_dist = np.sqrt(fields['ClosestEltDistance'])
-    PT.update_child(fs_node, 'Distance', 'DataArray_t', value=wall_dist.reshape(shape,order='F'))
+  return {'Distance' : closest_elt_dist,
+          'ClosestEltProjectedX' : closest_elt_proj[0::3],
+          'ClosestEltProjectedY' : closest_elt_proj[1::3],
+          'ClosestEltProjectedZ' : closest_elt_proj[2::3],
+          'ClosestEltDomId' : closest_surf_domain,
+          'ClosestEltGnum' : closest_elt_gnuml}
 
-    # Closest projected element
-    closest_elt_proj = np.copy(fields['ClosestEltProjected'])
-    PT.update_child(fs_node, 'ClosestEltProjectedX', 'DataArray_t', closest_elt_proj[0::3].reshape(shape,order='F'))
-    PT.update_child(fs_node, 'ClosestEltProjectedY', 'DataArray_t', closest_elt_proj[1::3].reshape(shape,order='F'))
-    PT.update_child(fs_node, 'ClosestEltProjectedZ', 'DataArray_t', closest_elt_proj[2::3].reshape(shape,order='F'))
+def _wd_get_defaults(size):
+  return {'Distance' : np.full(size, np.inf, dtype=float),
+          'ClosestEltProjectedX' : np.full(size, np.inf, dtype=float),
+          'ClosestEltProjectedY' : np.full(size, np.inf, dtype=float),
+          'ClosestEltProjectedZ' : np.full(size, np.inf, dtype=float),
+          'ClosestEltDomId' : np.full(size, -1, dtype=pdm_dtype),
+          'ClosestEltGnum' : np.full(size, -1, dtype=pdm_dtype)}
 
-    # Closest gnum element (face)
-    closest_elt_gnum = np.copy(fields['ClosestEltGnum'])
+def update_closest_to_parent(surface_tree, points_tree, mpi_comm):
+  # Update result (surface id) to refer to the corresponding parent face in volumic tree
+  # with a PartToPart (part 1 = surfacic face, part 2 = closest face ids, data = parent)
+  # Get part 1 + data (lngn shifted because of domains)
+  face_parent_gnum_l = []
+  face_ln_to_gn_l = []
 
-    # Find domain to which the face belongs
-    n_face_bnd_tot_idx = np.array(offsets['face_offset'], dtype=closest_elt_gnum.dtype)
-    closest_surf_domain = np.searchsorted(n_face_bnd_tot_idx, closest_elt_gnum-1, side='right') -1
-    closest_surf_domain = closest_surf_domain.astype(closest_elt_gnum.dtype)
-    closest_elt_gnuml = closest_elt_gnum - n_face_bnd_tot_idx[closest_surf_domain]
-    dom_id = offsets['dom_id']
-    if not (dom_id == np.arange(len(dom_id))).all(): # Optim is not perio
-      closest_surf_domain = dom_id[closest_surf_domain]
-    PT.update_child(fs_node, "ClosestEltDomId", "DataArray_t", value=closest_surf_domain.reshape(shape,order='F'))
-    PT.update_child(fs_node, "ClosestEltGnum", "DataArray_t", value=closest_elt_gnuml.reshape(shape,order='F'))
+  surf_per_doms = get_parts_per_blocks(surface_tree, mpi_comm)
+  pts_per_doms = get_parts_per_blocks(points_tree, mpi_comm)
 
-
-# ------------------------------------------------------------------------
-def wd_compute(part_tree: CGNSPartTree, 
-               bc_predicate: Any, 
-               mpi_comm: MPIComm, 
-               *, 
-               method: str = "cloud", 
-               point_cloud: str = 'CellCenter', 
-               out_fs_name: str = 'WallDistance', 
-               perio: bool = True) -> None:
-
-    """
-    Prepare, compute and get wall distance
-    """
-
-    assert method in ["cloud", "propagation"]
-
-
-    # Group partitions by original dist domain
-    parts_per_dom = get_parts_per_blocks(part_tree, mpi_comm)
-    assert len(parts_per_dom) >= 1
-        
-    if perio:
-      if method == "cloud":
-        periodicities_per_dom = _detect_perio(part_tree, mpi_comm)
-      else:
-        periodicities_per_dom = dict()
-        warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
-    else:
-      periodicities_per_dom = dict()
-
-        
-    # Create walldist structure
-    # Multidomain is not managed for n_part_surf, n_part_surf is the total of partitions
-    if method == "propagation":
-      first_dom = next(iter(parts_per_dom.keys()))
-      if len(parts_per_dom) > 1:
-        raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
-      elif len(parts_per_dom[first_dom]) > 0 and PT.Zone.CellDimension(parts_per_dom[first_dom][0]) != 3:
-        raise NotImplementedError("Wall_distance computation with method 'propagation' only supports 3D meshes")
-      _walldist = PDM.DistCellCenterSurf(mpi_comm, 1, n_part_vol=1)
-
-    elif method == "cloud":
-      n_part_per_cloud = [len(part_zones) for part_zones in parts_per_dom.values()]
-      _walldist = PDM.DistCloudSurf(mpi_comm, 1, 0, point_clouds=n_part_per_cloud) # n_part_surf set later
-
-
-    surface_tree = extract_surf_from_bc(part_tree, bc_predicate, mpi_comm)
-    
-    surf_per_doms = get_parts_per_blocks(surface_tree, mpi_comm)
-    _keep_alive, out = _setup_surf_mesh(surf_per_doms, _walldist, periodicities_per_dom, mpi_comm)
-
-
-    if out['face_offset'][-1] == 0:
-      return -1 # No surface found
-
-    # Prepare mesh depending on method
-    if method == "cloud":
-      for i_domain, part_zones in enumerate(parts_per_dom.values()):
-        for i_part, part_zone in enumerate(part_zones):
-          points, points_lngn = get_point_cloud(part_zone, point_cloud)
-          _keep_alive.extend([points, points_lngn])
-          _walldist.cloud_set(i_domain, i_part, points_lngn.shape[0], points, points_lngn)
-
-    elif method == "propagation":
-      for i_domain, part_zones in enumerate(parts_per_dom.values()):
-        _walldist.n_part_vol = len(part_zones)
-        if len(part_zones) > 0 and PT.Zone.Type(part_zones[0]) != 'Unstructured':
-          raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
-        _keep_alive.append(_setup_vol_mesh(part_zones, _walldist))
-
-    #Compute
-    _walldist.compute()
-
-
-    for i_domain, (dist_zone_path, part_zones) in enumerate(parts_per_dom.items()):
-      _get(_walldist, i_domain, part_zones, point_cloud, out_fs_name, out)
-
-
-
-    # Update result (surface id) to refer to the corresponding parent face in volumic tree
-    # with a PartToPart (part 1 = surfacic face, part 2 = closest face ids, data = parent)
-    # Get part 1 + data (lngn shifted because of domains)
-    face_parent_gnum_l = []
-    face_ln_to_gn_l = []
-
-    ini_zone_offset = np.zeros(len(surf_per_doms)+1, pdm_dtype)
-    for i,surf_zones in enumerate(surf_per_doms.values()):
-      for surf_zone in surf_zones:
-        face_parent_gnum_l.append(PT.get_node_from_name(surf_zone, 'ParentFace')[1])
-        face_ln_to_gn_l.append(MT.globalnumbering_value(surf_zone, 'Cell') + ini_zone_offset[i]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
-      ini_zone_offset[i+1] = ini_zone_offset[i] + MT.Zone.n_cell(surf_zones, mpi_comm)
-    # Get part 2 (use same shift)
-    closest_elt_gnum = []
-    for part_zones in parts_per_dom.values():
-      for part in part_zones:
-        closest_dom = PT.find_node_from_path(part, out_fs_name+'/ClosestEltDomId')[1].reshape(-1, order='F')
-        gnum = PT.find_node_from_path(part, out_fs_name+'/ClosestEltGnum')[1].reshape(-1, order='F')
-
-        closest_elt_gnum.append(gnum + ini_zone_offset[closest_dom])
-
-    # PartToPart to put back the ClosestEltGnum in volumic numbering (construct it only once)
-    closest_parent_face = EP.part_to_part(face_parent_gnum_l, face_ln_to_gn_l, closest_elt_gnum, mpi_comm)
-    i_part = 0
-    for part_zones in parts_per_dom.values():
-      for part_zone in part_zones:
-        fs_node = PT.get_child_from_name(part_zone, out_fs_name)
-        shape = PT.get_child_from_name(fs_node, 'Distance')[1].shape
-        PT.update_child(fs_node, "ClosestEltGnum", "DataArray_t", value=closest_parent_face[i_part].reshape(shape, order='F'))
-        i_part += 1
-
-
-    # Free unnecessary numpy
-    del _keep_alive
-
-
-# ------------------------------------------------------------------------
-def compute_projection_to(part_tree, bc_predicate, comm, point_cloud='CellCenter', out_fs_name='SurfDistance', **options):
-
-  start = time.time()
+  ini_zone_offset = np.zeros(len(surf_per_doms)+1, pdm_dtype)
+  for i,surf_zones in enumerate(surf_per_doms.values()):
+    for surf_zone in surf_zones:
+      face_parent_gnum_l.append(PT.get_node_from_path(surf_zone, 'DiscreteData/Parent')[1])
+      face_ln_to_gn_l.append(MT.globalnumbering_value(surf_zone, 'Cell') + ini_zone_offset[i]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
+    ini_zone_offset[i+1] = ini_zone_offset[i] + MT.Zone.n_cell(surf_zones, mpi_comm)
   
-  out = wd_compute(part_tree, bc_predicate, comm, point_cloud=point_cloud, out_fs_name=out_fs_name, **options)
-  end = time.time()
-  if out == -1:
-    mlog.error(f"Projection computing failed because no BC_t matches the given predicate")
-  else:
-    mlog.info(f"Projection computed ({end-start:.2f} s)")
+  if ini_zone_offset[-1] == 0:
+    # Early exit if ini_zone_offset = 0 (no surface in tree)
+    return
+
+  # Get part 2 (use same shift)
+  closest_elt_gnum = []
+
+  for part_zones in pts_per_doms.values():
+    for part in part_zones:
+      closest_dom = PT.find_node_from_path(part, 'ClosestElement/ClosestEltDomId')[1].reshape(-1, order='F')
+      gnum = PT.find_node_from_path(part, 'ClosestElement/ClosestEltGnum')[1].reshape(-1, order='F')
+
+      closest_elt_gnum.append(gnum + ini_zone_offset[closest_dom])
+
+  # PartToPart to put back the ClosestEltGnum in volumic numbering (construct it only once)
+  closest_parent_face = EP.part_to_part(face_parent_gnum_l, face_ln_to_gn_l, closest_elt_gnum, mpi_comm)
+  i_part = 0
+  for part_zones in pts_per_doms.values():
+    for part_zone in part_zones:
+      fs_node = PT.get_child_from_name(part_zone, 'ClosestElement')
+      shape = PT.get_child_from_name(fs_node, 'Distance')[1].shape
+      PT.update_child(fs_node, "ClosestEltGnum", "DataArray_t", value=closest_parent_face[i_part].reshape(shape, order='F'))
+      i_part += 1
+
+
+PointCloud = Tuple[NDArray, NDArray]
+# ------------------------------------------------------------------------
+def dist_surf_cloud_compute(surf_part_tree: CGNSPartTree,
+                            point_clouds: List[List[PointCloud]],
+                            periodicities: Dict[str, List[PT.PeriodicValues]],
+                            comm:MPIComm) -> List[List[Dict[str, NDArray]]]:
+  """
+  The lowest level of surf - point cloud computation
+  Inputs are surfacic part tree + raw point clouds
+  Output is raw dictionnary
+  Periodicities are managed with periodicites dict (use empty dict to disable it)
+  """
+
+  # Exit with default values if no surface
+  if comm.allreduce(sum(PT.Zone.n_cell(zone) for zone in PT.get_all_Zone_t(surf_part_tree))) == 0:
+    return [[_wd_get_defaults(cloud[1].size) for cloud in clouds] for clouds in point_clouds]
+
+  n_part_per_cloud = [len(clouds) for clouds in point_clouds]
+  _walldist = PDM.DistCloudSurf(comm, 1, 0, point_clouds=n_part_per_cloud) # n_part_surf set later
+
+  surf_per_doms = get_parts_per_blocks(surf_part_tree, comm)
+  _keep_alive, offsets = _wd_setup_surf_mesh(surf_per_doms, _walldist, periodicities, comm)
+
+  for i_dom, clouds in enumerate(point_clouds):
+    for i_part, cloud in enumerate(clouds):
+      coords, pts_lngn = cloud
+      _walldist.cloud_set(i_dom, i_part, pts_lngn.shape[0], coords, pts_lngn)
+
+  _walldist.compute()
+
+  all_results = [[_wd_get(_walldist, i_dom, i_part, offsets) for i_part in range(n_part)] \
+                 for i_dom, n_part in enumerate(n_part_per_cloud)]
+
+  del _keep_alive
+  return all_results
+
+
+def find_closest_element(src_part_tree: CGNSPartTree,
+                         tgt_part_tree: CGNSPartTree,
+                         location: str,
+                         comm: MPIComm,
+                         **options) -> None:
+  """
+  Search the closest element in source tree.
+  Source tree can be of dimension 1 or 2.
+  Return in a container called 'ClosestElement'
+  """
+  parts_per_dom_pts = get_parts_per_blocks(tgt_part_tree, comm).values()
+
+  all_clouds = [[get_point_cloud(part_zone, location) for part_zone in part_zones] \
+                for part_zones in parts_per_dom_pts]
+
+  periodicities = options.get('periodicities', dict())
+  results = dist_surf_cloud_compute(src_part_tree, all_clouds, periodicities, comm)
+
+  for dom_results, part_zones in zip(results, parts_per_dom_pts):
+    for result, part_zone in zip(dom_results, part_zones):
+      # Retrieve location
+      fs_node = _create_output_container(part_zone, location, 'ClosestElement')
+      shape = _get_output_shape(part_zone, fs_node)
+
+      for key, val in result.items():
+        PT.update_child(fs_node, key, 'DataArray_t', val.reshape(shape, order='F'))
+
+
+
+IS_BND = PT.pred.label_in(['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'])
+
+def find_closest_boundary(src_part_tree: CGNSPartTree,
+                          src_tgt_tree: CGNSPartTree,
+                          location: str,
+                          comm: MPIComm,
+                          surf_predicate: PT.pred.NodePredicate = IS_BND,
+                          perio: bool = True) -> None:
+
+  periodicities = detect_perio(src_part_tree, comm) if perio else dict()
+  bnd_tree = extract_surf_from_bc(src_part_tree, surf_predicate, comm)
+  find_closest_element(bnd_tree,
+                       src_tgt_tree,
+                       location,
+                       comm,
+                       periodicities=periodicities)
+
+  update_closest_to_parent(bnd_tree, src_tgt_tree, comm)
+
+
+
+
+def find_closest_boundary_propagation(part_tree: CGNSPartTree,
+                                      location: str,
+                                      mpi_comm: MPIComm,
+                                      surf_predicate: PT.pred.NodePredicate = IS_BND) -> None:
+
+  parts_per_dom = get_parts_per_blocks(part_tree, mpi_comm)
+  first_dom = next(iter(parts_per_dom.keys()))
+  if len(parts_per_dom) > 1:
+    raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
+  elif len(parts_per_dom[first_dom]) > 0 and PT.Zone.CellDimension(parts_per_dom[first_dom][0]) != 3:
+    raise NotImplementedError("Wall_distance computation with method 'propagation' only supports 3D meshes")
+  _walldist = PDM.DistCellCenterSurf(mpi_comm, 1, n_part_vol=1)
+
+  surface_tree = extract_surf_from_bc(part_tree, surf_predicate, mpi_comm)
+  
+  surf_per_doms = get_parts_per_blocks(surface_tree, mpi_comm)
+  _keep_alive, out = _wd_setup_surf_mesh(surf_per_doms, _walldist, dict(), mpi_comm)
+
+
+  if out['face_offset'][-1] == 0:
+    return -1 # No surface found
+
+  for i_domain, part_zones in enumerate(parts_per_dom.values()):
+    _walldist.n_part_vol = len(part_zones)
+    if len(part_zones) > 0 and PT.Zone.Type(part_zones[0]) != 'Unstructured':
+      raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
+    _keep_alive.append(_wd_setup_vol_mesh(part_zones, _walldist))
+
+  #Compute
+  _walldist.compute()
+  
+
+  for i_domain, part_zones in enumerate(parts_per_dom.values()):
+    for i_part, part_zone in enumerate(part_zones):
+      fields = _wd_get(_walldist, i_domain, i_part, out)
+
+      # Retrieve location
+      fs_node = _create_output_container(part_zone, location, 'ClosestElement')
+      shape = _get_output_shape(part_zone, fs_node)
+
+      for key, val in fields.items():
+        PT.update_child(fs_node, key, 'DataArray_t', val.reshape(shape, order='F'))
+
+
+
+  update_closest_to_parent(surface_tree, part_tree, mpi_comm)
+
+
+# ------------------------------------------------------------------------
 
 def compute_wall_distance(part_tree: CGNSPartTree,
                           comm: MPIComm,
@@ -504,6 +527,10 @@ def compute_wall_distance(part_tree: CGNSPartTree,
         :dedent: 2
   """
   MT.check_cgns_part_tree(part_tree)
+
+  method = options.get('method', 'cloud')
+  assert method in ["cloud", "propagation"], "Unknow method, expected 'cloud' or 'propagation'"
+
   start = time.time()
   
   # Retrieve Wall Families (warning -- if we have a Family_t appearing under two bases 
@@ -511,28 +538,42 @@ def compute_wall_distance(part_tree: CGNSPartTree,
   wall_bc_families = detect_wall_families(part_tree)
   is_wall_bc = PT.pred.value_in(BC_WALLS) | PT.pred.any([PT.pred.belongs_to_family(family) for family in wall_bc_families])
 
-  out = wd_compute(part_tree, is_wall_bc, comm, point_cloud=point_cloud, out_fs_name=out_fs_name, **options)
+  if method == "cloud":
+    find_closest_boundary(part_tree,
+                          part_tree,
+                          point_cloud,
+                          comm,
+                          is_wall_bc,
+                          perio=options.get('perio', True))
+
+  else:
+    if options.get('perio', True):
+      warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
+    find_closest_boundary_propagation(part_tree,
+                                      point_cloud,
+                                      comm,
+                                      is_wall_bc)
+
+
   end = time.time()
-  if out == -1:
+
+
+  is_inf = False
+  for zone in PT.iter_all_Zone_t(part_tree): #Rename Distance -> TurbulentDistance
+    container = PT.find_child_from_name(zone, 'ClosestElement')
+
+    PT.rm_children_from_name(container, 'TurbulenceDistance') # Cleanup
+    dist = PT.find_child_from_name(container, "Distance")
+    if len(val := PT.get_np_value(dist)) > 0:
+      is_inf = val.item(0) == np.inf
+    PT.set_name(dist, 'TurbulentDistance')
+
+    PT.rm_children_from_name(zone, out_fs_name)
+    PT.set_name(container, out_fs_name)
+
+  if comm.allreduce(is_inf, MPI.LOR):
     mlog.warning(f"Wall distance computing skipped because no wall-like BC_t have been found in tree." \
                   " Default values used for output arrays.")
-
-    for part_zone in PT.get_all_Zone_t(part_tree):
-      fs_node = _create_output_container(part_zone, point_cloud, out_fs_name)
-      shape = _get_output_shape(part_zone, fs_node)
-
-      PT.update_child(fs_node, "ClosestEltGnum",       "DataArray_t", np.full(shape, -1, dtype=pdm_dtype, order='F'))
-      PT.update_child(fs_node, "ClosestEltDomId",      "DataArray_t", np.full(shape, -1, dtype=pdm_dtype, order='F'))
-      PT.update_child(fs_node, 'TurbulentDistance',    "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
-      PT.update_child(fs_node, 'ClosestEltProjectedX', "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
-      PT.update_child(fs_node, 'ClosestEltProjectedY', "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
-      PT.update_child(fs_node, 'ClosestEltProjectedZ', "DataArray_t", np.full(shape, np.inf, dtype=float, order='F'))
-      
   else:
     mlog.info(f"Wall distance computed ({end-start:.2f} s)")
-    for zone in PT.iter_all_Zone_t(part_tree): #Rename Distance -> TurbulentDistance
-      container = PT.find_child_from_name(zone, out_fs_name)
-      PT.rm_children_from_name(container, 'TurbulenceDistance') # Cleanup
-      node = PT.find_child_from_name(container, "Distance")
-      PT.set_name(node, 'TurbulentDistance')
 
