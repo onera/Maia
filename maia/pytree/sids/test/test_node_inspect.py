@@ -423,26 +423,6 @@ def test_subset_size():
   pl = N.new_BC('SLike', point_list=[[1,1,1,1,1], [1,1,1,2,2], [1,3,5,7,9]])
   assert SIDS.Subset.n_elem(pl) == 5
 
-@pytest.mark.filterwarnings("ignore:BCDataSet.getPatch")
-def test_Patch():
-  bc = N.new_BC(point_range=[[1,5],[1,1]])
-  bcds_patch   = N.new_BCDataSet('DataSet1', point_range=[[1,2],[1,1]], parent=bc)
-  bcds_nopatch = N.new_BCDataSet('DataSet2', parent=bc)
-
-  patch = SIDS.BCDataSet.getPatch(bcds_patch, bc)
-  assert N.get_label(patch) == 'IndexRange_t' and (N.get_value(patch) == [[1,2],[1,1]]).all()
-  patch = SIDS.BCDataSet.getPatch(bcds_nopatch, bc)
-  assert N.get_label(patch) == 'IndexRange_t' and (N.get_value(patch) == [[1,5],[1,1]]).all()
-  assert patch is SIDS.Subset.getPatch(bc)
-  
-  N.new_IndexArray('PointList', [[1,2,3]], parent=bcds_patch)
-  with pytest.raises(AssertionError): # Both PL + PR not supported
-    patch = SIDS.BCDataSet.getPatch(bcds_patch, bc)
-
-  W.rm_children_from_name(bc, 'PointRange')
-  with pytest.raises(AssertionError): # No patch in ds nor in BC
-    patch = SIDS.BCDataSet.getPatch(bcds_nopatch, bc)
-
 def test_Subset():
   sol = N.new_FlowSolution(loc='Vertex')
   pl = N.new_IndexArray('PointList', [[1,6,12]], parent=sol)

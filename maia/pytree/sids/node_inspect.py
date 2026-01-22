@@ -746,11 +746,6 @@ class Element:
     return EU.id_to_name(id)
 
   @staticmethod
-  def CGNSName(elt_node:CGNSTree) -> str:
-    warnings.warn('Element.CGNSName is deprecated in favor of Element.Type', DeprecationWarning, stacklevel=3)
-    return Element.Type(elt_node)
-
-  @staticmethod
   def Dimension(elt_node:CGNSTree) -> int:
     """ Return the dimension of an Element_t node
 
@@ -1047,23 +1042,6 @@ class Subset:
       else:
         raise ValueError("Subset does not seems to have a structured PointRange")
 
-  @staticmethod
-  def ZSRExtent(zsr_node:CGNSTree, zone_node:CGNSTree) -> str:
-    ###
-    #Return the path of the node to which the ZoneSubRegion node maps
-
-    #Path start from zone_node and can point to a BC, a GC or the ZSR itself.
-    #This function only make sense for ZoneSubRegion_t nodes.
-
-    #Args:
-    #  zsr_node (CGNSTree): Input ZoneSubRegion_t node
-    #  zone_node (CGNSTree): Parent Zone_t node
-    #Returns:
-    #  str : path of zone defining the ZSR extent
-    ###
-    warnings.warn('Subset.ZSRExtent is deprecated in favor of Container.SubsetNode', DeprecationWarning, stacklevel=3)
-    return Container.SubsetNodePath(zsr_node, zone_node)
-
 
 # --------------------------------------------------------------------------
 @for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t",
@@ -1218,41 +1196,3 @@ class Container:
     return fields_dict
 
 
-# --------------------------------------------------------------------------
-@for_all_methods(check_is_label("BCDataSet_t"))
-class BCDataSet:
-
-  @staticmethod
-  def GridLocation(bcds_node:CGNSTree, bc_node:CGNSTree) -> str:
-    """ Return the GridLocation value of a BCDataSet_t node.
-    
-    This differs from
-    :func:`Subset.GridLocation` in the management of default value: BCDataSet_t nodes
-    inherit the value of their parent BC_t node, while other subset nodes have a default
-    value of ``'Vertex'``.
-
-    Args:
-      bcds_node (CGNSTree): Input BCDataSet node
-      bc_node (CGNSTree): Related BC node
-    Returns:
-      str : One of 'Null', 'UserDefined', 'Vertex', 'CellCenter', 'FaceCenter',
-      'IFaceCenter', 'JFaceCenter', 'KFaceCenter', or 'EdgeCenter'
-    """
-    warnings.warn('BCDataSet.GridLocation is deprecated in favor of Container.GridLocation', DeprecationWarning, stacklevel=3)
-    return Container.GridLocation(bcds_node, bc_node)
-
-  @staticmethod
-  def getPatch(bcds_node:CGNSTree, bc_node:CGNSTree) -> CGNSTree:
-    """ Return the PointList or PointRange node defining a BCDataSet node.
-
-    This function is a specialization of :func:`Subset.getPatch` for BCDataSet nodes:
-    if no PointList or PointRange is defined in the dataset, the one of the parent BC is returned.
-
-    Args:
-      bcds_node (CGNSTree): Input BCDataSet node
-      bc_node (CGNSTree): Related BC node
-    Returns:
-      CGNSTree : PointList or PointRange node
-    """
-    warnings.warn('BCDataSet.getPatch is deprecated in favor of Container.SubsetNode + Subset.getPatch', DeprecationWarning, stacklevel=3)
-    return Subset.getPatch(Container.SubsetNode(bcds_node, bc_node))

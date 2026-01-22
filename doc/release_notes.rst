@@ -33,6 +33,10 @@ Development version
 - merge_zones: prevent a dtype issue on 2D meshes
 - extrude: fixup boundary faces orientation when working on 2D poly meshes
 
+🚧 API change
+^^^^^^^^^^^^^
+- ``add_joins_donor_name`` renamed into ``find_joins_donor_name``
+
 v1.8 (September 2025)
 ---------------------
 
