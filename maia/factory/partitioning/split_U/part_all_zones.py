@@ -42,7 +42,7 @@ maia_to_pdm_connectivity = {"cell_elmt" : PDM._PDM_CONNECTIVITY_TYPE_CELL_ELMT,
                             "elmt_edge" : PDM._PDM_CONNECTIVITY_TYPE_ELMT_EDGE,
                             "elmt_vtx " : PDM._PDM_CONNECTIVITY_TYPE_ELMT_VTX}
 
-pdm_geometry_kinds = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE, 
+pdm_geometry_kinds = [PDM._PDM_GEOMETRY_KIND_CORNER, PDM._PDM_GEOMETRY_KIND_RIDGE,
                       PDM._PDM_GEOMETRY_KIND_SURFACIC, PDM._PDM_GEOMETRY_KIND_VOLUMIC]
 
 def prepare_part_weight(bases_to_block, zone_to_weights):
@@ -91,19 +91,19 @@ def set_mpart_reordering(multipart, reorder_options, keep_alive):
   else:
     cacheblocking_props = None
 
-  multipart.renum_method_set(-1, 
+  multipart.renum_method_set(-1,
                               PDM._PDM_MESH_ENTITY_CELL,
                               renum_cell_method.encode('utf-8'),
                               cacheblocking_props)
-  multipart.renum_method_set(-1, 
+  multipart.renum_method_set(-1,
                             PDM._PDM_MESH_ENTITY_FACE,
                             renum_face_method.encode('utf-8'),
                             cacheblocking_props)
-  multipart.renum_method_set(-1, 
+  multipart.renum_method_set(-1,
                             PDM._PDM_MESH_ENTITY_EDGE,
                             renum_edge_method.encode('utf-8'),
                             None)
-  multipart.renum_method_set(-1, 
+  multipart.renum_method_set(-1,
                             PDM._PDM_MESH_ENTITY_VTX,
                             renum_vtx_method.encode('utf-8'),
                             cacheblocking_props)
@@ -237,11 +237,11 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   # Setup
   u_zones = [zone for zones in bases_to_block_u.values() for zone in zones]
-  needs_bc = any(["HPC" in part_options['reordering'][f'{entity}_renum_method'] 
+  needs_bc = any(["HPC" in part_options['reordering'][f'{entity}_renum_method']
                   for entity in ['cell', 'face', 'vtx']])
   set_mpart_dmeshes(multi_part, u_zones, comm, needs_bc, keep_alive)
   set_mpart_reordering(multi_part, part_options['reordering'], keep_alive)
-  
+
   # Debug/Reproductible mode where each input cell knows its attributed partition id
   # In this case, dzone_to_weighted_parts must be provided, but the weight itself are ignored
   # target_part is provided as a list of n_part_u int32 nparray of size dn_cell
@@ -277,5 +277,3 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
 
   del(keep_alive)
   return bases_to_part_u
-
-

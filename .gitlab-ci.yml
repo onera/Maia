@@ -166,7 +166,7 @@ job:portability_openmpi:
     - source source.sh
     - mpiexec -np 4 test/maia_doctest_unit_tests
     - mpiexec -np 4 pytest ../../maia/
-    - mpiexec -np 4 pytest ../../test/ 
+    - mpiexec -np 4 pytest ../../test/
 
 job:portability_llvm:
   stage: test
@@ -248,7 +248,7 @@ init_deploy:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
     GIT_STRATEGY: clone
-  before_script: 
+  before_script:
     - git submodule update --init
     - (cd external/paradigm && git submodule update --init)
   script:
@@ -363,7 +363,7 @@ post_deploy:
   needs: ["deploy_spiro_socle6", "deploy_sator_socle6", "deploy_juno_socle6", "deploy_eos_openmpi"]
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  before_script: 
+  before_script:
   script:
     - ssh sonics@spiro02 "rm -rf /scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
     - ssh sonics@sator   "rm -rf /tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"

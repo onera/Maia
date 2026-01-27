@@ -55,7 +55,7 @@ def discover_nodes_from_matching(dist_node: CGNSTree,
     merge_rule accepts a function whose argument is the leaf node path. This function can map the path to an
       other, eg to merge splitted node related to a same dist node
   Todo : could be optimised using a distributed hash table -> see BM
-    
+
   Args:
     dist_node: Distributed node to update
     part_nodes: List of partitioned nodes to search in
@@ -102,18 +102,18 @@ def discover_nodes_from_matching(dist_node: CGNSTree,
         for child in childs:
           PT.add_child(ancestor, child)
 
-def get_parts_per_blocks(part_tree: CGNSPartTree, 
+def get_parts_per_blocks(part_tree: CGNSPartTree,
                          comm: MPIComm) -> Dict[str, List[CGNSPartTree]]:
   """
   Return a dict of the partitioned zones found in part_tree, sorted by initial domain.
   From the partitioned trees, retrieve the paths of the distributed blocks
   and return a dictionnary associating each path to the list of the corresponding
   partitioned zones
-  
+
   Args:
     part_tree: Partitioned CGNS tree
     comm: MPI communicator
-  
+
   Returns:
     Dictionary mapping domain paths to lists of partitioned zones
   """
@@ -153,11 +153,11 @@ def get_joins_dist_tree(part_tree: CGNSPartTree, comm:MPIComm) -> CGNSDistTree:
   parts_per_dom = get_parts_per_blocks(part_tree, comm)
   return _get_joins_dist_tree(parts_per_dom, comm)
 
-def _recover_dist_block_size(part_zones: List[CGNSPartTree], 
+def _recover_dist_block_size(part_zones: List[CGNSPartTree],
                              comm: MPIComm) -> NDArray:
   """
   Recover the size of a distributed block from its partitions.
-  
+
   Args:
     part_zones: List of partitioned zones
     comm: MPI communicator
@@ -209,12 +209,12 @@ def _recover_dist_block_size(part_zones: List[CGNSPartTree],
   d_zone_dims[:,0] = d_zone_dims[:,1] + 1 # Update vertices
   return d_zone_dims
 
-def _recover_elements(dist_zone: CGNSDistTree, 
-                      part_zones: Sequence[CGNSPartTree], 
+def _recover_elements(dist_zone: CGNSDistTree,
+                      part_zones: Sequence[CGNSPartTree],
                       comm: MPIComm) -> None:
   """
   Recover elements information for a distributed zone from its partitions.
-  
+
   Args:
     dist_zone: Distributed zone to update
     part_zones: List of partitioned zones
@@ -282,7 +282,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
     elif cell_dim == 3: #3D with NGON + NFACE or NGON only
       from maia.algo                  import pe_to_nface, nface_to_pe
       from maia.factory.partitioning  import part_bound_orient as PBO
-      
+
       _part_zones = [PT.shallow_copy(zone) for zone in part_zones] # Since we add/remove nodes, do a shallow copy
       if not PBO.orientation_preserved(_part_zones, comm):
         # This is to avoid modification of input partitioned tree
@@ -362,12 +362,12 @@ def _recover_elements(dist_zone: CGNSDistTree,
 
 
 
-def _recover_BC(dist_zone: CGNSDistTree, 
-                part_zones: List[CGNSPartTree], 
+def _recover_BC(dist_zone: CGNSDistTree,
+                part_zones: List[CGNSPartTree],
                 comm: MPIComm) -> None:
   """
   Recover BC information for a distributed zone from its partitions.
-  
+
   Args:
     dist_zone: Distributed zone to update
     part_zones: List of partitioned zones
@@ -387,7 +387,7 @@ def _recover_BC(dist_zone: CGNSDistTree,
 def _recover_GC(dist_zone: CGNSDistTree, part_zones: List[CGNSPartTree], comm: MPIComm) -> None:
   """
   Recover GridConnectivity information for a distributed zone from its partitions.
-  
+
   Args:
     dist_zone: Distributed zone to update
     part_zones: List of partitioned zones
@@ -396,7 +396,7 @@ def _recover_GC(dist_zone: CGNSDistTree, part_zones: List[CGNSPartTree], comm: M
   gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_of_kind(is_intra=False)]
 
   discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
-        child_list=['GridLocation_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
+        child_list=['GridLocation_t', 'Ordinal_t', 'GridConnectivityType_t', 'GridConnectivityProperty_t',
                     'Descriptor_t', 'Transform', 'FamilyName_t', 'AdditionalFamilyName_t'],
         merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
 
@@ -422,12 +422,12 @@ def _recover_GC(dist_zone: CGNSDistTree, part_zones: List[CGNSPartTree], comm: M
       elif par_utils.exists_everywhere(part_gcs_flat, 'PointList', comm):
         IPTB.part_pl_to_dist_pl(dist_zone, part_zones, gc_path, comm, True)
 
-def _recover_base_iterative_data(dist_tree: CGNSDistTree, 
-                                 part_tree: CGNSPartTree, 
+def _recover_base_iterative_data(dist_tree: CGNSDistTree,
+                                 part_tree: CGNSPartTree,
                                  comm: MPIComm) -> None:
   """
   Recover BaseIterativeData information for a distributed tree from its partitions.
-  
+
   Args:
     dist_tree: Distributed tree to update
     part_tree: Partitioned tree
@@ -439,7 +439,7 @@ def _recover_base_iterative_data(dist_tree: CGNSDistTree,
     # part_base may not exist on some ranks; we do something only if BaseIterativeData_t
     # exists on all rank knowing the base
     p_it_data_loc = part_base is None or PT.get_child_from_label(part_base, 'BaseIterativeData_t') is not None
-    
+
     if comm.allreduce(p_it_data_loc, MPI.LAND):
       # We remove the initial node for BaseIterativeData in the dist_tree in order to
       # ensure having all data from the part_trees when restarting an unsteady case
@@ -467,8 +467,8 @@ def _recover_base_iterative_data(dist_tree: CGNSDistTree,
         d_it_data = comm.bcast(d_it_data, root=root)
       PT.add_child(dist_base, d_it_data)
 
-def recover_dist_tree(part_tree: CGNSPartTree, 
-                      comm: MPIComm, 
+def recover_dist_tree(part_tree: CGNSPartTree,
+                      comm: MPIComm,
                       data_transfer: Union[List[str], Literal['FIELDS', 'ALL']] = []) -> CGNSDistTree:
   """ Regenerate a distributed tree from a partitioned tree.
 
@@ -503,13 +503,13 @@ def recover_dist_tree(part_tree: CGNSPartTree,
 
   dist_tree = PT.new_CGNSTree()
   # > Discover partitioned zones to build dist_tree structure
-  base_child_list = ['Family_t', 'ReferenceState_t', 'FlowEquationSet_t', 
+  base_child_list = ['Family_t', 'ReferenceState_t', 'FlowEquationSet_t',
                      'Descriptor_t', 'ConvergenceHistory_t', 'IntegralData_t']
-  zone_child_list = ['ZoneType_t', 'FamilyName_t', 'AdditionalFamilyName_t', 
-                     'ReferenceState_t', 'FlowEquationSet_t', 'Descriptor_t', 
+  zone_child_list = ['ZoneType_t', 'FamilyName_t', 'AdditionalFamilyName_t',
+                     'ReferenceState_t', 'FlowEquationSet_t', 'Descriptor_t',
                      'ConvergenceHistory_t', 'IntegralData_t']
   discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t', comm, child_list=base_child_list)
-  
+
   # Check that dist zone name will not clash with Family_t nodes
   for dbase in PT.iter_all_CGNSBase_t(dist_tree):
     basename = PT.get_name(dbase)
@@ -521,7 +521,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
       msg = f"Two children of the same CGNSBase_t node can not have the same name. " \
             f"Clash detected between Zone and Metadata nodes {meta_names & all_zone_names} under parent '{basename}'."
       raise RuntimeError(msg)
-    
+
   discover_nodes_from_matching(dist_tree, [part_tree], 'CGNSBase_t/Zone_t', comm,\
                                child_list = zone_child_list,
                                merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
@@ -581,7 +581,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     # > BND and JNS
     _recover_BC(dist_zone, part_zones, comm)
     _recover_GC(dist_zone, part_zones, comm)
-    
+
     # To mimic partitioning behaviour, we create here the geometric support of containers
     # (such as ZoneSubRegion) without transfering fields
     filter: Dict[str, Tuple[Literal['I', 'E'], List[CGNSPath]]]
@@ -623,4 +623,3 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     part_to_dist.part_tree_to_dist_tree_copy(dist_tree, part_tree, path, comm)
 
   return dist_tree
-
