@@ -212,7 +212,8 @@ def search(array:NDArray, values:NDArray, all_exists:bool=False) -> NDArray:
 
 
 def unique_sorted(sorted_array: NDArray,
-                  return_counts: bool = False) -> Union[NDArray, Tuple[NDArray, NDArray]]:
+                  return_inverse: bool = False,
+                  return_counts: bool = False) -> Union[NDArray, Tuple[NDArray, NDArray], Tuple[NDArray, NDArray, NDArray]]:
   """ A faster implementation of np.unique() if input array
   is sorted
   """
@@ -223,16 +224,19 @@ def unique_sorted(sorted_array: NDArray,
 
   unique_array = sorted_array[is_new]
 
-  if not return_counts:
-    return unique_array
+  outputs = (unique_array,)
   
-  counts_idx = np.empty(unique_array.size+1, int)
-  counts_idx[:-1] = np.arange(is_new.size)[is_new]
-  counts_idx[-1] = sorted_array.size
+  if return_inverse:
+    outputs += (np.cumsum(is_new) - 1,)
+  if return_counts:
+    counts_idx = np.empty(unique_array.size+1, int)
+    counts_idx[:-1] = np.arange(is_new.size)[is_new]
+    counts_idx[-1] = sorted_array.size
 
-  counts = np.diff(counts_idx)
+    counts = np.diff(counts_idx)
+    outputs += (counts,)
 
-  return unique_array, counts
+  return outputs if len(outputs) > 1 else outputs[0]
 
 def is_unique_strided(array: NDArray, 
                       stride: int, 

@@ -118,7 +118,7 @@ def _generate_entity_graph_comm(entity_gnum_l, comm, key):
     sorting_lid = (rankpart < opp_rank)*own_lid + (opp_rank < rankpart)*opp_lid
     sort_idx = np.lexsort([sorting_lid, opp_rank])
     opp_rank = opp_rank[sort_idx]
-    _, counts = np_utils.unique_sorted(opp_rank, True)
+    _, counts = np_utils.unique_sorted(opp_rank, return_counts=True)
 
     # Split opp_rank (agglomerated) into rank + part with binsearch
     _opp_rank = np.searchsorted(part_distri_f, opp_rank, side='right') - 1

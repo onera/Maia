@@ -229,9 +229,10 @@ def test_is_unique_strided():
 
 def test_unique_sorted():
   t = np.sort(np.random.randint(1, 50, 100))
-  unique, counts = np_utils.unique_sorted(t, return_counts=True)
-  unique_ref, counts_ref = np.unique(t, return_counts=True)
+  unique, inv, counts = np_utils.unique_sorted(t, return_inverse=True, return_counts=True)
+  unique_ref, inv_ref, counts_ref = np.unique(t, return_inverse=True, return_counts=True)
   assert np.array_equal(unique, unique_ref)
+  assert np.array_equal(inv, inv_ref)
   assert np.array_equal(counts, counts_ref)
   assert np.array_equal(np_utils.unique_sorted(t), unique_ref) # w/o counts
 
