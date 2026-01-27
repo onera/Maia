@@ -151,25 +151,22 @@ def extract_faces_mesh(zone: CGNSTree, face_ids: NDArray) -> Tuple[NDArray, ...]
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
 
-def extract_surf_from_bc(part_zones: List[CGNSTree], 
-                         bc_predicate: Callable[[CGNSTree], bool], 
-                         comm: MPIComm) -> Tuple[List[NDArray], ...]:
+def extract_surf_from_bc_single(part_zones: List[CGNSTree], 
+                                bc_predicate: Callable[[CGNSTree], bool], 
+                                comm: MPIComm) -> List[CGNSTree]:
   """
   From a list of partitioned zones (coming from the same initial domain), get the list
   of faces (or edge, depending on zone dimension)
   belonging to any bc satisfiyng bc_predicate and extract the surfacic mesh.
   In addition, compute a new global numbering (over the procs and the part_zones) of the extracted
   faces and vertex (starting a 1 without gap)
-
-  Return lists (of size n_part) of sub face_vtx connectivity, sub vtx coordinates and global numberings
   """
   for part_zone in part_zones:
     check_cgns_part_tree(part_zone)
-  bc_face_vtx_l     = []
-  bc_face_vtx_idx_l = []
-  bc_coords_l       = []
+  
   parent_face_lngn_l = []
   parent_vtx_lngn_l  = []
+  ext_zones = []
   for zone in part_zones:
     zone_dim = PT.Zone.CellDimension(zone)
     wanted_loc = 'EdgeCenter' if zone_dim == 2 else 'FaceCenter'
@@ -195,11 +192,6 @@ def extract_surf_from_bc(part_zones: List[CGNSTree],
 
     cx, cy, cz, bc_face_vtx_idx, bc_face_vtx, bc_vtx_ids = extract_faces_mesh(zone, bc_face_ids_cat)
 
-    ex_coords = np_utils.interweave_arrays([cx, cy, cz])
-    bc_coords_l.append(ex_coords)
-    bc_face_vtx_l.append(bc_face_vtx)
-    bc_face_vtx_idx_l.append(bc_face_vtx_idx)
-
     vtx_ln_to_gn_zone = MT.globalnumbering_value(zone, 'Vertex')
 
     if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
@@ -213,9 +205,40 @@ def extract_surf_from_bc(part_zones: List[CGNSTree],
     parent_face_lngn_l.append(face_ln_to_gn_zone[bc_face_ids_cat-1])
     parent_vtx_lngn_l .append(vtx_ln_to_gn_zone[bc_vtx_ids-1]  )
 
+    # Create extracted zone
+    n_face = bc_face_vtx_idx.size - 1
+    n_vtx = cz.size
+    ext_zone = PT.new_Zone(PT.get_name(zone), type='Unstructured', size=[[n_vtx, n_face, 0]])
+    PT.new_GridCoordinates(fields={f'Coordinate{d}' : c for d,c in zip('XYZ', (cx,cy,cz))}, parent=ext_zone)
+    if zone_dim - 1 == 2:
+      PT.new_NGonElements(erange=[1, n_face], eso=bc_face_vtx_idx, ec=bc_face_vtx, parent=ext_zone)
+    else:
+      PT.new_Elements(type='BAR_2', erange=[1, n_face], econn=bc_face_vtx, parent=ext_zone)
+    ext_zones.append(ext_zone)
+
   # Compute extracted gnum from parents
   bc_face_lngn_l = create_sub_numbering(parent_face_lngn_l, comm)
   bc_vtx_lngn_l  = create_sub_numbering(parent_vtx_lngn_l, comm)
 
-  return bc_face_vtx_l, bc_face_vtx_idx_l, bc_face_lngn_l, parent_face_lngn_l, bc_coords_l, bc_vtx_lngn_l
+  for i, ext_zone in enumerate(ext_zones):
+    PT.new_DiscreteData(loc='CellCenter', fields={'Parent' : parent_face_lngn_l[i]}, parent=ext_zone)
+    MT.new_GlobalNumbering({'Vertex' : bc_vtx_lngn_l[i], 'Cell' : bc_face_lngn_l[i]}, parent=ext_zone)
 
+  return ext_zones
+
+def extract_surf_from_bc(part_tree: CGNSPartTree, 
+                         bc_predicate: Callable[[CGNSTree], bool], 
+                         comm: MPIComm) -> CGNSPartTree:
+  # Light / local version of extract_part for WallDistance
+
+  from maia.factory.dist_from_part     import get_parts_per_blocks
+  ext_tree = PT.new_CGNSTree()
+  for dist_zone_path, part_zones in get_parts_per_blocks(part_tree, comm).items():
+    part_base = PT.find_child_from_name(part_tree, PT.utils.path_head(dist_zone_path))
+    new_dim = [PT.Base.CellDimension(part_base)-1, 3]
+    ext_base = PT.update_child(ext_tree, PT.get_name(part_base), PT.get_label(part_base), new_dim)
+    ext_zones = extract_surf_from_bc_single(part_zones, bc_predicate, comm)
+    for ext_zone in ext_zones:
+      PT.add_child(ext_base, ext_zone)
+  
+  return ext_tree

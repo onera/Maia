@@ -105,9 +105,9 @@ def test_projection_to(comm):
     """)
   PT.add_child(zone, zone_bc)
 
-  WD.compute_projection_to(part_tree, PT.pred.label_is('BC_t'), comm)
+  WD.find_closest_boundary(part_tree, part_tree, 'CellCenter', comm, PT.pred.label_is('BC_t'))
 
-  fs = PT.get_child_from_name(zone, 'SurfDistance')
+  fs = PT.get_child_from_name(zone, 'ClosestElement')
   assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
   assert (PT.get_child_from_name(fs, 'Distance')[1] == expected_wd).all()
   assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()

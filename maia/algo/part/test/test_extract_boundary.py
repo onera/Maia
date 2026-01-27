@@ -2,7 +2,8 @@ import pytest
 import pytest_parallel
 import numpy as np
 
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 import maia
 
@@ -103,7 +104,7 @@ def test_extract_faces_mesh(comm):
 def test_extract_surf_from_bc(comm):
   #We dont put GlobalNumbering for BCs, since its not needed, but we should
   part_0 = f"""
-  ZoneU Zone_t [[18,4,0]]:
+  ZoneU.P0.N0 Zone_t [[18,4,0]]:
     ZoneType ZoneType_t "Unstructured":
     GridCoordinates GridCoordinates_t:
       CoordinateX DataArray_t [0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1]:
@@ -141,7 +142,7 @@ def test_extract_surf_from_bc(comm):
       Cell DataArray_t {dtype} [1,2,3,4]:
   """
   part_1 = f"""
-  ZoneU Zone_t [[18,4,0]]:
+  ZoneU.P1.N0 Zone_t [[18,4,0]]:
     ZoneType ZoneType_t "Unstructured":
     GridCoordinates GridCoordinates_t:
       CoordinateX DataArray_t [0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1, 0, 0.5, 1]:
@@ -171,28 +172,38 @@ def test_extract_surf_from_bc(comm):
       Cell DataArray_t {dtype} [5,6,7,8]:
   """
   if comm.Get_rank() == 0:
+    part_tree = PT.yaml.to_cgns_tree(part_0)
     part_zones = [PT.yaml.to_node(part_0)]
     bc_pl = np.array([15,16,9,10])
     expt_face_lngn = [3,5,1,2]
     expt_face_parent = [25, 27, 13, 14]
     expt_vtx_lngn = [1,2,3,4,5,6,7,8,9,10]
   elif comm.Get_rank() == 1:
+    part_tree = PT.yaml.to_cgns_tree(part_1)
     part_zones = [PT.yaml.to_node(part_1)]
     bc_pl = np.array([15,16])
     expt_face_lngn = [4,6]
     expt_face_parent = [26, 28]
     expt_vtx_lngn = [11,12,13,6,7,8]
 
-  bc_face_vtx, bc_face_vtx_idx, bc_face_lngn, bc_face_parent, bc_coords, bc_vtx_lngn = \
-  EXB.extract_surf_from_bc(part_zones, PT.pred.belongs_to_family('WALL'), comm)
+  ext_tree = EXB.extract_surf_from_bc(part_tree, PT.pred.belongs_to_family('WALL'), comm)
+  ext_zones = PT.get_all_Zone_t(ext_tree)
+  assert len(ext_zones) == 1
+  ext_zone = ext_zones[0]
+
+  bc_face_vtx = PT.get_node_from_name(ext_zone, 'ElementConnectivity')[1]
+  bc_face_vtx_idx = PT.get_node_from_name(ext_zone, 'ElementStartOffset')[1]
+  bc_face_lngn = MT.globalnumbering_value(ext_zone, 'Cell')
+  bc_vtx_lngn = MT.globalnumbering_value(ext_zone, 'Vertex')
+  bc_face_parent = PT.get_node_from_name(ext_zone, 'Parent')[1]
+  cx,cy,cz = PT.Zone.coordinates(ext_zone)
+  bc_coords = np.array([cx,cy,cz]).reshape(-1, order='F')
   
 
-  assert len(bc_face_vtx) == len(bc_face_vtx_idx) == len(bc_face_lngn) == len(bc_face_parent) == len(bc_coords) == len(bc_vtx_lngn) == 1
-
   cx, cy, cz, expt_bc_face_vtx_idx, expt_bc_face_vtx, _ = EXB.extract_faces_mesh(part_zones[0], bc_pl)
-  assert (bc_face_vtx_idx[0] == expt_bc_face_vtx_idx).all()
-  assert (bc_face_vtx[0] == expt_bc_face_vtx).all()
-  assert (bc_coords[0] == np.array([cx,cy,cz]).reshape(-1, order='F')).all()
-  assert (bc_face_lngn[0] == expt_face_lngn).all()
-  assert (bc_vtx_lngn[0] == expt_vtx_lngn).all()
-  assert (bc_face_parent[0] == expt_face_parent).all()
+  assert (bc_face_vtx_idx == expt_bc_face_vtx_idx).all()
+  assert (bc_face_vtx == expt_bc_face_vtx).all()
+  assert (bc_coords == np.array([cx,cy,cz]).reshape(-1, order='F')).all()
+  assert (bc_face_lngn == expt_face_lngn).all()
+  assert (bc_vtx_lngn == expt_vtx_lngn).all()
+  assert (bc_face_parent == expt_face_parent).all()
