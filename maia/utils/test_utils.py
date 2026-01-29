@@ -2,8 +2,15 @@ import os
 from pathlib import Path
 import tempfile
 import shutil
+import numpy as np
 
 import maia
+
+from packaging.version import Version
+from Pypdm.Pypdm import __version__ as _PDM_VERSION
+PDM_VERSION = Version(_PDM_VERSION)
+
+
 
 mesh_dir        = Path(maia.__file__).parent.parent/'share/meshes'
 sample_mesh_dir = Path(maia.__file__).parent.parent/'share/sample_meshes'
@@ -55,3 +62,23 @@ def create_pytest_output_dir(comm):
   comm.barrier()
   return out_dir
 
+def portable_partitioning(dist_tree, wanted_cell_l, comm, **kwargs):
+  """ Create a custom partioning (chosing cells for each part) to ensure portability 
+  (require PDM >= 2.7)"""
+  import maia.pytree      as PT
+  import maia.pytree.maia as MT
+  from maia.transfer import protocols as MEP
+  from maia.utils import par_utils
+  
+  # Retrieve target part on distributed cells
+  zone_paths = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
+  assert len(zone_paths) == 1
+  cell_distri = MT.distribution_value(PT.find_node_from_path(dist_tree, zone_paths[0]), 'Cell')
+  rank_offset = par_utils.gather_and_shift(len(wanted_cell_l), comm)[comm.rank]
+  target_part_p = [np.full(w.size, rank_offset+i, np.int32) for i,w in enumerate(wanted_cell_l)]
+
+  target_part = [MEP.part_to_block(target_part_p, cell_distri, wanted_cell_l, comm, gnum_offset=1)]
+  zone_to_parts = {zone_paths[0] : [1.]*len(wanted_cell_l)} # Weights does not matter but len does
+
+  return maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts,
+                                          target_part=target_part, **kwargs)

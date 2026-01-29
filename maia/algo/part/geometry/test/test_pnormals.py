@@ -5,6 +5,7 @@ import numpy as np
 import maia
 import maia.pytree as PT
 
+from maia.utils import test_utils as TU
 from maia.algo.part.geometry import normals as GEO
 
 @pytest.mark.parametrize('unitary', [False, True])
@@ -15,7 +16,11 @@ def test_compute_edge_normal2d(elt_kind, unitary, comm):
   if elt_kind != 'TRI_3':
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
 
-  ptree = maia.factory.partition_dist_tree(tree, comm)
+  # Output depends on partitioning
+  wanted_cells = [np.array([1,2,3]),
+                  np.array([4,7,8]),
+                  np.array([5,6])][comm.rank]
+  ptree = TU.portable_partitioning(tree, [wanted_cells], comm)
 
   PT.rm_nodes_from_name(ptree, 'CoordinateZ')
   zone = PT.get_all_Zone_t(ptree)[0]
