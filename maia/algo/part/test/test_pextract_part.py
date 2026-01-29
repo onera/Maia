@@ -809,21 +809,21 @@ def test_all_transfer(transfer_dataset, eq, comm):
   assert par_utils.exists_anywhere(ext_zones, 'ZSR', comm) == transfer_dataset
   
   pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymin', comm, transfer_dataset, 'ALL', equilibrate=eq)
-  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
   for name in ['FSVtx', 'Geometry_2d']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == True
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == True
   for name in ['Geometry_3d', 'OtherZSR', 'FakeZSR']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == False
-  assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == False
+  assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
 
   pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, transfer_dataset, 'ALL', equilibrate=eq)
-  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
   for name in ['FSVtx', 'Geometry_2d', 'ZSR', 'OtherZSR']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == True
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == True
   for name in ['Geometry_3d', 'FakeZSR']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == False
-  assert par_utils.exists_anywhere([ext_zone], 'FAM', comm) == transfer_dataset
-  assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == False
+  assert par_utils.exists_anywhere(ext_zones, 'FAM', comm) == transfer_dataset
+  assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
 
 @pytest_parallel.mark.parallel(2)
 def test_extract_S_2d(comm):
