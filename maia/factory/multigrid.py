@@ -38,17 +38,17 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
       # Get partitioned zones for coarser level
       coarse_p_zones = tr_utils.get_partitioned_zones(pt_coarse_lvl, AGL.update_path_level(zone_path, lvl+1))
       start_rank_idx = par_utils.gather_and_shift(len(coarse_p_zones), comm)
-      coarse_gnum = list()
+      coarse_gnum_l = list()
       i_coarse_part = list()
       for ipart, coarse_p_zone in enumerate(coarse_p_zones):
         tgt_part_id = start_rank_idx[comm.rank] + ipart
         _coarse_gnum = MT.globalnumbering_value(coarse_p_zone, "Cell")
-        coarse_gnum.append(_coarse_gnum)
+        coarse_gnum_l.append(_coarse_gnum)
         i_coarse_part.append(np.full(_coarse_gnum.size, tgt_part_id, dtype=np.int32))
 
       # Bring back coarse tgt part on curent level distzone, using MGCellInfo value
       coarse_parent = PT.get_np_value(PT.find_node_from_path(dt_cur_lvl, zone_path + "/MultiGridCellInfo/CoarseIdx"))
-      wanted_cell_zone_i = EP.part_to_part(i_coarse_part, coarse_gnum, [coarse_parent], comm)[0]
+      wanted_cell_zone_i = EP.part_to_part(i_coarse_part, coarse_gnum_l, [coarse_parent], comm)[0]
       target_part.append(wanted_cell_zone_i)
       zone_to_parts[zone_path] = [1.]*len(coarse_p_zones)
 
@@ -57,7 +57,7 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
     
     # Split done, update MGInfo to make it local
     for zone_path in PT.predicates_to_paths(dt_cur_lvl, 'CGNSBase_t/Zone_t'):
-      cur_d_zone  = PT.find_node_from_path(dt_cur_lvl, zone_path)
+      cur_d_zone:CGNSDistTree = PT.find_node_from_path(dt_cur_lvl, zone_path) #type: ignore[assignment]
       cur_p_zones = tr_utils.get_partitioned_zones(pt, zone_path)
       # First we need to transfer some field, if not already done by the user
       include_dict = {}
@@ -69,7 +69,7 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
       # Now we can update data
       for cur_p_zone in cur_p_zones:
         p_zone_path = PT.utils.path_head(zone_path) + '/' + PT.get_name(cur_p_zone)
-        coarse_p_zone = PT.find_node_from_path(mg_pt, AGL.update_path_level(p_zone_path, lvl+1))
+        coarse_p_zone = PT.find_node_from_path(mg_pt, AGL.update_path_level(p_zone_path, lvl+1)) #type:ignore[assignment]
 
         coarse_gnum = MT.globalnumbering_value(coarse_p_zone, "Cell")
         coarse_idx_n = PT.find_node_from_path(cur_p_zone, "MultiGridCellInfo/CoarseIdx")

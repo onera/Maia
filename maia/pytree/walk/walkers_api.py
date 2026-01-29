@@ -304,7 +304,7 @@ def get_node_from_predicates(root:CGNSTree, predicates:Predicates, ancestors:boo
   if not predicates: # Empty predicate list
     return () if ancestors else None
 
-  search = iter_nodes_from_predicates(root, predicates, ancestors, **kwargs)
+  search = iter_nodes_from_predicates(root, predicates, ancestors, **kwargs) #type:ignore[call-overload]
   try:
     return next(search)
   except StopIteration:

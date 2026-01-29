@@ -35,7 +35,7 @@ def convert_s_to_ngon(tree:CGNSDistTree, comm:MPIComm):
     to_index_func = s_numbering.ij_to_index_from_loc if celldim == 2 else s_numbering.ijk_to_index_from_loc
     mg_cell_info = PT.find_child_from_name(zone, "MultiGridCellInfo")
     coarse_idx_ijk = [PT.get_np_value(PT.find_child_from_name(mg_cell_info, f"{p}CoarseIdx")) for p in prefix]
-    u_c_idx = to_index_func(*coarse_idx_ijk, "CellCenter", n_vtx_s_coarse)
+    u_c_idx = to_index_func(*coarse_idx_ijk, "CellCenter", n_vtx_s_coarse) #type:ignore
     PT.rm_children_from_name(mg_cell_info, "*CoarseIdx")
     PT.new_DataArray("CoarseIdx", u_c_idx, parent=mg_cell_info)
 
@@ -43,7 +43,7 @@ def convert_s_to_ngon(tree:CGNSDistTree, comm:MPIComm):
       mg_face_info = PT.find_child_from_name(bc, "MultiGridBCFaceInfo")
       coarse_idx_ijk = [PT.get_np_value(PT.find_node_from_name(mg_face_info, f"{p}CoarseIdx")) for p in prefix]
       bc_loc = PT.get_str_value(PT.find_node_from_path(mg_face_info, "BCStructuredLocation"))
-      u_c_idx = to_index_func(*coarse_idx_ijk, bc_loc, n_vtx_s_coarse)
+      u_c_idx = to_index_func(*coarse_idx_ijk, bc_loc, n_vtx_s_coarse) #type: ignore
 
       # Now BC and BCDS should be FaceCenter with same PointList
       assert np.array_equal(PT.get_np_value(PT.find_child_from_name(bc, 'PointList')),
@@ -96,7 +96,8 @@ def merge_connected_zones(tree:CGNSDistTree, comm:MPIComm, **kwargs):
 
           if lvl < nb_lvl:
             node = PT.find_node_from_path(bc, 'MultiGridBCFaceInfo/DirichletData/CoarseIdx')
-            node[1] += offset_next
+            val = PT.get_np_value(node)
+            val += offset_next
 
         offset_cur += n_face_group_cur[j]
         if lvl < nb_lvl:

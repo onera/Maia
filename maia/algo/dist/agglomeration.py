@@ -1,4 +1,5 @@
 import numpy as np
+from typing import TypeVar
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
@@ -28,10 +29,11 @@ def path_to_level(path:CGNSPath) -> int:
 def n_level(tree) -> int:
   return max(path_to_level(PT.get_name(b)) for b in PT.get_all_CGNSBase_t(tree))
   
-def single_level_tree(tree:CGNSTree, lvl:int) -> CGNSTree:
+Tree = TypeVar('Tree', bound=CGNSTree)
+def single_level_tree(tree:Tree, lvl:int) -> Tree:
   # Return a containing only Bases of specified level
   pred = ~PT.pred.label_is('CGNSBase_t') | PT.pred.name_matches(f'*.LV{lvl}')
-  return PT.new_node('CGNSTree', 'CGNSTree_t', children=PT.get_children_from_predicate(tree, pred))
+  return PT.new_node('CGNSTree', 'CGNSTree_t', children=PT.get_children_from_predicate(tree, pred)) #type:ignore[return-value]
 
 def update_path_level(path:CGNSPath, new_lvl:int) -> CGNSPath:
   cur_lvl = path_to_level(path)
