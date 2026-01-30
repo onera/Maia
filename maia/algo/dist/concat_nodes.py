@@ -136,7 +136,7 @@ def concatenate_bc_nodes(bc_nodes: List[CGNSTree],
   return bc_n
 
 
-def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
+def concatenate_jns(tree: CGNSDistTree, comm: MPIComm) -> None:
   """
   Parse the GridConnectivity_t of a tree and concatenate the GCs related to a same zone:
   if we have two jns A and B from zone1 to zone2 and two jns C and D from zone2 to zone1,
@@ -153,7 +153,7 @@ def concatenate_jns(tree: CGNSTree, comm: MPIComm) -> None:
   match_perio_refs:List[PT.PeriodicValues]   = []
   nomatch_perio_refs:List[PT.PeriodicValues] = []
   
-  perio_to_one_side_path_jn = {}
+  perio_to_one_side_path_jn:Dict[int, List[str]] = {}
   
   for base, zone in PT.iter_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
     

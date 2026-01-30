@@ -224,19 +224,19 @@ def unique_sorted(sorted_array: NDArray,
 
   unique_array = sorted_array[is_new]
 
-  outputs = (unique_array,)
+  outputs = [unique_array]
   
   if return_inverse:
-    outputs += (np.cumsum(is_new) - 1,)
+    outputs.append(np.cumsum(is_new) - 1)
   if return_counts:
     counts_idx = np.empty(unique_array.size+1, int)
     counts_idx[:-1] = np.arange(is_new.size)[is_new]
     counts_idx[-1] = sorted_array.size
 
     counts = np.diff(counts_idx)
-    outputs += (counts,)
+    outputs.append(counts)
 
-  return outputs if len(outputs) > 1 else outputs[0]
+  return tuple(outputs) if len(outputs) > 1 else outputs[0]
 
 def is_unique_strided(array: NDArray, 
                       stride: int, 

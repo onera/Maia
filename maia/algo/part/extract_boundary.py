@@ -151,7 +151,7 @@ def extract_faces_mesh(zone: CGNSTree, face_ids: NDArray) -> Tuple[NDArray, ...]
   return ex_cx, ex_cy, ex_cz, ex_face_vtx_idx, ex_face_vtx, vtx_ids
 
 
-def extract_surf_from_bc_single(part_zones: List[CGNSTree], 
+def extract_surf_from_bc_single(part_zones: List[CGNSPartTree], 
                                 bc_predicate: Callable[[CGNSTree], bool], 
                                 comm: MPIComm) -> List[CGNSTree]:
   """

@@ -103,7 +103,7 @@ def detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.Peri
       merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
     #After GC discovery, cleanup donor name suffix
     for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
-      val = PT.get_value(jn)
+      val = PT.get_str_value(jn)
       PT.set_value(jn, MT.conv.get_part_prefix(val))
 
   grouped_zone_paths = PT.Tree.find_connected_zones(skeleton_tree)
@@ -114,7 +114,7 @@ def detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.Peri
     for zone_path in group:
       PT.add_child(fake_base, PT.get_node_from_path(skeleton_tree, zone_path))
     all_periodicities, _ = PT.Tree.find_periodic_jns(fake_tree)
-    group_periodicities = []
+    group_periodicities:List[PT.PeriodicValues] = []
     for perio_val in all_periodicities:
       for u_perio in group_periodicities:
         if _are_same_perio_abs(perio_val, u_perio):
@@ -140,7 +140,7 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
 
     domain_parts = list()
     for surf_zone in surf_zones:
-      pred = PT.pred.label_is('Elements_t') & (lambda n : PT.Element.Dimension(n)==PT.Zone.CellDimension(surf_zone))
+      pred = PT.pred.label_is('Elements_t') & PT.pred.NodePredicate(lambda n : PT.Element.Dimension(n)==PT.Zone.CellDimension(surf_zone))
       elts = PT.get_children_from_predicate(surf_zone, pred)
       assert len(elts) == 1, "Mutliple elt nodes not managed"
       elt = MT.Element.connectivity(elts[0])
@@ -148,7 +148,7 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
         {'face_vtx_idx' : elt.displs,
         'face_vtx' : elt.values,
         'face_lngn' : MT.globalnumbering_value(surf_zone, 'Cell'),
-        'vtx_coords' : np_utils.interweave_arrays(PT.Zone.coordinates(surf_zone)),
+        'vtx_coords' : np_utils.interweave_arrays(PT.Zone.coordinates(surf_zone)), #type: ignore[arg-type]
         'vtx_lngn' : MT.globalnumbering_value(surf_zone, 'Vertex')})
 
 
@@ -223,7 +223,7 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
 
   return keep_alive, offsets
   
-def _wd_setup_vol_mesh(part_zones: List[CGNSTree], walldist):
+def _wd_setup_vol_mesh(part_zones: List[CGNSPartTree], walldist):
   """
   Setup the volumic mesh for wall distance computing (only for propagation method)
   """
@@ -445,7 +445,7 @@ def find_closest_boundary_propagation(part_tree: CGNSPartTree,
 
 
   if out['face_offset'][-1] == 0:
-    return -1 # No surface found
+    return
 
   for i_domain, part_zones in enumerate(parts_per_dom.values()):
     _walldist.n_part_vol = len(part_zones)

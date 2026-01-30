@@ -11,10 +11,9 @@ import maia.pytree.maia as MT
 from   maia.utils import s_numbering, par_utils
 from   maia.utils import logging as mlog
 
-from maia.algo.part import extract_part as EP
+from maia.utils import test_utils as TU
 
-from Pypdm.Pypdm import __version__ as _PDM_VERSION
-PDM_VERSION = Version(_PDM_VERSION)
+from maia.algo.part import extract_part as EP
 
 class LogCapture():
   def __init__(self):
@@ -224,82 +223,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
   data  = PT.get_node_from_name(extr_sol, 'gnum')[1]
   assert np.array_equal(extractor.exch_tool_box['Base/zone']['parent_elt']['FaceCenter'][0][pl-PT.Element.Range(ngon)[0]], data)
 
-def portable_partitioning(dist_tree, wanted_cell_l, comm, **kwargs):
-  """ Create a custom partioning (chosing cells for each part) to ensure portability
-  The switch will be remove when PDM 2.6 is no longer supported
-  """
-  from Pypdm.Pypdm import MultiPart
-  from maia.transfer import protocols as MEP
-  
-  if hasattr(MultiPart, 'dpart_id_set'):
-    # Retrieve target part on distributed cells
 
-    zone_paths = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
-    assert len(zone_paths) == 1
-    cell_distri = MT.distribution_value(PT.find_node_from_path(dist_tree, zone_paths[0]), 'Cell')
-    rank_offset = par_utils.gather_and_shift(len(wanted_cell_l), comm)[comm.rank]
-    target_part_p = [np.full(w.size, rank_offset+i, np.int32) for i,w in enumerate(wanted_cell_l)]
-
-    target_part = [MEP.part_to_block(target_part_p, cell_distri, wanted_cell_l, comm, gnum_offset=1)]
-    zone_to_parts = {zone_paths[0] : [1.]*len(wanted_cell_l)} # Weights does not matter but len does
-
-    return maia.factory.partition_dist_tree(dist_tree, comm, zone_to_parts=zone_to_parts,
-                                            target_part=target_part, **kwargs)
-
-  from maia.algo.dist.localize import minimal_partitioning
-  from maia.factory.partitioning import post_split
-  # Retrieve wanted cells from target part
-
-  # Reorder cells, to give to each rank its wanted cells
-  maia.algo.pe_to_nface(dist_tree, comm)
-  
-  wanted_cell_n = [len(w) for w in wanted_cell_l]
-
-  n_part_max = comm.allreduce(len(wanted_cell_n), MPI.MAX)
-  size_per_batch_l = [wanted_cell_l[i].size if i < len(wanted_cell_n) else 0 for i in range(n_part_max)]
-  size_per_batch = [comm.allreduce(k, MPI.SUM) for k in size_per_batch_l]
-
-  ptree = PT.new_CGNSTree()
-  pbase = PT.new_CGNSBase(parent=ptree)
-
-  # A but ugly : since minimal_partioning produce only one part / rank, we group
-  # parts per batch and loop over batchs to create several parts
-  offset = 0
-  for i in range(n_part_max):
-    
-    wanted_cell = wanted_cell_l[i] if i < len(wanted_cell_l) else np.empty(0, int)
-    zone = PT.shallow_copy(PT.get_all_Zone_t(dist_tree)[0])
-    assert PT.Zone.CellDimension(zone) == 3
-    nface = PT.Zone.NFaceNode(zone)
-    cell_face = MT.Element.connectivity(nface)
-    selected_cell_face = MEP.block_to_part(cell_face, MT.distribution_value(nface, 'Element'), wanted_cell-1, comm)
-    PT.set_value(PT.find_child_from_name(nface, 'ElementStartOffset'), selected_cell_face.displs)
-    PT.set_value(PT.find_child_from_name(nface, 'ElementConnectivity'), selected_cell_face.values)
-    MT.new_Distribution({'Element' : par_utils.dn_to_distribution(len(wanted_cell) , comm),
-                        'ElementConnectivity' : par_utils.dn_to_distribution(selected_cell_face.dsize, comm)}, nface)
-    MT.new_Distribution({'Cell' : par_utils.dn_to_distribution(len(wanted_cell), comm)}, zone)
-
-    # Call minimal_partitioning and reconstruct partitions
-    data = minimal_partitioning(zone, comm)
-
-    data[5] += offset # Shift gnum to not overlap previous batches
-    offset += size_per_batch[i]
-    if data[7].size > 0:
-      pzone = PT.new_Zone(f'zone.P{comm.rank}.N{i}', type='Unstructured', size=[[data[7].size, data[5].size, 0]], parent=pbase)
-      PT.new_GridCoordinates(fields={f'Coordinate{d}': data[4][i::3] for i,d in enumerate('XYZ')}, parent=pzone)
-      elt = PT.new_NGonElements(erange=[1,data[6].size], eso=data[2], ec=data[3], parent=pzone)
-      MT.new_GlobalNumbering({'Element' : data[6]}, elt)
-      elt = PT.new_NFaceElements(erange=[data[6].size+1, data[6].size+data[5].size], eso=data[0], ec=data[1], parent=pzone)
-      MT.new_GlobalNumbering({'Element' : data[5]}, elt)
-      MT.new_GlobalNumbering({'Vertex' : data[7], 'Cell' : data[5]}, pzone)
-
-  
-  # Complete partition with post_split + transfer
-  post_split.post_partitioning(dist_tree, ptree, comm)
-  if kwargs.get('data_transfer', None) == 'ALL':
-    maia.transfer.dist_tree_to_part_tree_all(dist_tree, ptree, comm)
-  
-  return ptree
 
 @pytest_parallel.mark.parallel(3)
 def test_extr_U_local(comm):
@@ -347,7 +271,7 @@ def test_extr_U_local(comm):
   wanted_cell_l = [[np.array([1,2,10,11,19,20]), np.array([3,6,12,15,21,24])],
                    [],
                    [np.array([4,5,7,8,9,13,14,16,17,18,22,23,25,26,27])]][comm.rank]
-  part_tree = portable_partitioning(dist_tree, wanted_cell_l, comm, data_transfer='ALL')
+  part_tree = TU.portable_partitioning(dist_tree, wanted_cell_l, comm, data_transfer='ALL')
 
   # NB : BC Xmin is covered by the P0.N0 and P2.N0, BC Xmax by P0.N1 and P2.N0
   for part_zone in PT.get_all_Zone_t(part_tree):
@@ -593,7 +517,7 @@ def test_extract_fam_dataset(comm, equilibrate):
   assert PT.get_child_from_name(ext_zone, 'ZSR') is None
   assert PT.get_child_from_name(ext_zone, 'Ymin') is None
 
-@pytest.mark.skipif(PDM_VERSION < Version('2.7'), reason="Portable partitioning require PDM >= 2.7")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.7'), reason="Portable partitioning require PDM >= 2.7")
 @pytest.mark.parametrize("equilibrate", [True, False])
 @pytest_parallel.mark.parallel(2)
 def test_extract_from_zsr_U_2d(equilibrate, comm):
@@ -700,7 +624,7 @@ Base CGNSBase_t I4 [1, 3]:
               -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
   """)
   if not equilibrate: # Somehow in local mode, one PL is different
-    if Version('2.7') <= PDM_VERSION:
+    if Version('2.7') <= TU.PDM_VERSION:
       node = PT.find_node_from_name(ref_edge, 'Ymax')
       pl = PT.find_child_from_name(node, 'PointList')
       PT.set_value(pl, np.array([[27, 32, 29, 33, 31]]))
@@ -793,7 +717,7 @@ Base CGNSBase_t I4 [2, 3]:
   # Portable partionning
   wanted_cell_l = [[np.array([3,4,5,8,9,10,13]), np.array([14,15,19,20,24,25])],
                    [np.array([16,17,18,21,22,23]), np.array([1,2,6,7,11,12])]][comm.rank]
-  part_tree = portable_partitioning(dist_tree, wanted_cell_l, comm, data_transfer='ALL', preserve_orientation=True)
+  part_tree = TU.portable_partitioning(dist_tree, wanted_cell_l, comm, data_transfer='ALL', preserve_orientation=True)
 
   # Extract part Faces
   part_tree_ep = EP.extract_part_from_zsr(part_tree, "ZSR_Faces", comm,
@@ -885,21 +809,21 @@ def test_all_transfer(transfer_dataset, eq, comm):
   assert par_utils.exists_anywhere(ext_zones, 'ZSR', comm) == transfer_dataset
   
   pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymin', comm, transfer_dataset, 'ALL', equilibrate=eq)
-  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
   for name in ['FSVtx', 'Geometry_2d']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == True
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == True
   for name in ['Geometry_3d', 'OtherZSR', 'FakeZSR']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == False
-  assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == False
+  assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
 
   pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, transfer_dataset, 'ALL', equilibrate=eq)
-  ext_zone = PT.find_node_from_label(pext, 'Zone_t')
+  ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
   for name in ['FSVtx', 'Geometry_2d', 'ZSR', 'OtherZSR']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == True
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == True
   for name in ['Geometry_3d', 'FakeZSR']:
-    assert par_utils.exists_anywhere([ext_zone], name, comm) == False
-  assert par_utils.exists_anywhere([ext_zone], 'FAM', comm) == transfer_dataset
-  assert par_utils.exists_anywhere([ext_zone], 'Ymin', comm) == transfer_dataset
+    assert par_utils.exists_anywhere(ext_zones, name, comm) == False
+  assert par_utils.exists_anywhere(ext_zones, 'FAM', comm) == transfer_dataset
+  assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
 
 @pytest_parallel.mark.parallel(2)
 def test_extract_S_2d(comm):
@@ -1035,7 +959,7 @@ def test_extract_S_2d(comm):
     assert len(ext_zones) == 0
 
 
-@pytest.mark.skipif(PDM_VERSION < Version('2.7'), reason="Require PDM >= 2.7")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.7'), reason="Require PDM >= 2.7")
 @pytest_parallel.mark.parallel(2)
 def test_vol_groups(comm):
   tree = maia.factory.generate_dist_block(11, 'Poly', comm)
