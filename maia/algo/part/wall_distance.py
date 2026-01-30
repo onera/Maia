@@ -110,8 +110,13 @@ def compute_wall_distance(part_tree: CGNSPartTree,
       is_inf = val.item(0) == np.inf
     PT.set_name(dist, 'TurbulentDistance')
 
-    PT.rm_children_from_name(zone, out_fs_name)
-    PT.set_name(container, out_fs_name)
+    if (dest := PT.get_child_from_name(zone, out_fs_name)) is not None:
+      assert PT.Container.GridLocation(dest) == PT.Container.GridLocation(container)
+      for array in PT.get_children_from_label(container, 'DataArray_t'):
+        PT.update_child(dest, PT.get_name(array), 'DataArray_t', PT.get_value(array))
+      PT.rm_child(zone, container)
+    else:
+      PT.set_name(container, out_fs_name)
 
   if comm.allreduce(is_inf, MPI.LOR):
     mlog.warning(f"Wall distance computing skipped because no wall-like BC_t have been found in tree." \

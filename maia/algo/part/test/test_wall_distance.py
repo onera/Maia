@@ -263,6 +263,7 @@ def test_walldistance_vtx(comm):
         FamilyName FamilyName_t "WALL":
     """)
   PT.add_child(zone, zone_bc)
+  PT.new_FlowSolution("MyWallDistance", fields={'Dummy' : np.ones(PT.Zone.n_vtx(zone))}, parent=zone)
 
   WD.compute_wall_distance(part_tree, comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
 
@@ -270,6 +271,7 @@ def test_walldistance_vtx(comm):
   assert fs is not None and PT.Container.GridLocation(fs) == 'Vertex'
   assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
   assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
+  assert PT.get_child_from_name(fs, 'Dummy') is not None
 
 @pytest.mark.parametrize('elt_kind', ['Nodal', 'Poly'])
 @pytest_parallel.mark.parallel(2)
