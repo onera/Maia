@@ -9,7 +9,7 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Development version
+v1.9 (January 2026)
 -------------------
 
 💡 New Features
@@ -22,6 +22,7 @@ Development version
 - VStrideArray: implement OUTER_AXIS mode for ``sort`` and ``unique`` functions
 - More robust 1to1 periodic joins concatenation (used notably by merge_zones)
 - maia_cgns_check: introduce stage 3 including some topological checks
+- mesh_adaptation: allow 2D metric fields
 
 🐞 Fixes
 ^^^^^^^^
@@ -32,6 +33,8 @@ Development version
 - adapt_mesh_with_feflo: fix failure on 2D meshes by adding default 2D elements tag
 - merge_zones: prevent a dtype issue on 2D meshes
 - extrude: fixup boundary faces orientation when working on 2D poly meshes
+- concatenate_subsets_from_families: fixup a corner case (dataset size < n_rank)
+- VstrideArray: fixup default dtype of ``vs.sign`` and ``vs.array``
 
 🚧 API change
 ^^^^^^^^^^^^^
