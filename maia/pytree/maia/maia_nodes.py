@@ -125,76 +125,235 @@ def _n_entity(input:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm], nam
     return int(par_utils.arrays_max(gnum_l, comm))
 
 class Zone:
+  """ The following functions apply to Zone_t nodes """
 
   @staticmethod
   def dn_cell(zone_node:CGNSTree) -> int:
+    """ Return the local number of cells of a **distributed** zone
+
+    Args:
+      zone_node (CGNSDistTree): Input Zone_t node
+    Returns:
+      int : local number of cells
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[77, 60, 0]])
+      >>> MT.new_Distribution({'Cell' : [30, 45, 60]}, parent=zone)
+      >>> MT.Zone.dn_cell(zone)
+      15
+    """
     # Return the local number of cells (only for distributed zones)
     distri = distribution_value(zone_node, 'Cell')
     return int(distri[1] - distri[0])
 
   @staticmethod
   def pn_cell(zone_node:CGNSTree) -> int:
-    # Return the local number of cells (only for partitioned zones)
+    """ Return the local number of cells of a **partitioned** zone
+
+    Args:
+      zone_node (CGNSPartTree): Input Zone_t node
+    Returns:
+      int : local number of cells
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[14, 6, 0]])
+      >>> MT.new_GlobalNumbering({'Cell' : [21,61,41,51,11,31]}, parent=zone)
+      >>> MT.Zone.pn_cell(zone)
+      6
+    """
     gnum = globalnumbering_value(zone_node, 'Cell')
     return gnum.size
 
   @staticmethod
   def n_cell(zone_node:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
-    # Return the total number of cells, for partitioned or distributed zone
-    # For distributed meshes, a single node is expected,
-    # For partitioned meshes, the list of "sister" zones is expected, and comm is mandatory
+    """ Return the **total** number of cells of a zone.
+
+    The input zone can be either distributed (a single node is expected) or partitioned
+    (the whole list of partitions is expected).
+
+    Args:
+      zone_node (CGNSDistTree or List[CGNSPartTree]): Input Zone_t node(s)
+      comm (MPIComm): MPI communicator, mandatory for partitioned zones
+    Returns:
+      int : total number of cells
+    Examples:
+      >>> zone = PT.new_Zone('Zone', type='Unstructured', size=[[14, 6, 0]])
+      >>> MT.new_Distribution({'Cell' : [3,6,6]}, parent=zone)
+      >>> MT.Zone.n_cell(zone)
+      6
+
+      >>> zones = [PT.new_Zone('Zone.P1.N0', type='Unstructured', size=[[6, 2, 0]]),
+      ...          PT.new_Zone('Zone.P1.N1', type='Unstructured', size=[[10, 4, 0]])]
+      >>> MT.new_GlobalNumbering({'Cell' : [4,1]},     parent=zones[0])
+      >>> MT.new_GlobalNumbering({'Cell' : [2,6,3,5]}, parent=zones[1])
+      >>> MT.Zone.n_cell(zones, comm)
+      6
+    """
     return _n_entity(zone_node, comm, 'Cell')
 
   @staticmethod
   def dn_vtx(zone_node:CGNSTree) -> int:
-    # Return the local number of vertices (only for distributed zones)
+    """ Return the local number of vertices of a **distributed** zone
+
+    Args:
+      zone_node (CGNSDistTree): Input Zone_t node
+    Returns:
+      int : local number of vertices
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[77, 60, 0]])
+      >>> MT.new_Distribution({'Vertex' : [39, 58, 77]}, parent=zone)
+      >>> MT.Zone.dn_vtx(zone)
+      19
+    """
     distri = distribution_value(zone_node, 'Vertex')
     return int(distri[1] - distri[0])
 
   @staticmethod
   def pn_vtx(zone_node:CGNSTree) -> int:
-    # Return the local number of vertices (only for partitioned zones)
+    """ Return the local number of vertices of a **partitioned** zone
+
+    Args:
+      zone_node (CGNSPartTree): Input Zone_t node
+    Returns:
+      int : local number of vertices
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[8, 3, 0]])
+      >>> MT.new_GlobalNumbering({'Vertex' : [9,11,13,14,16,10,12,15]}, parent=zone)
+      >>> MT.Zone.pn_vtx(zone)
+      8
+    """
     gnum = globalnumbering_value(zone_node, 'Vertex')
     return gnum.size
 
 
   @staticmethod
   def n_vtx(zone_node:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
-    # Return the total number of vertices, for partitioned or distributed zone
-    # For distributed meshes, a single node is expected,
-    # For partitioned meshes, the list of "sister" zones is expected, and comm is mandatory
+    """ Return the **total** number of vertices of a zone.
+
+    The input zone can be either distributed (a single node is expected) or partitioned
+    (the whole list of partitions is expected).
+
+    Args:
+      zone_node (CGNSDistTree or List[CGNSPartTree]): Input Zone_t node(s)
+      comm (MPIComm): MPI communicator, mandatory for partitioned zones
+    Returns:
+      int : total number of vertices
+    Examples:
+      >>> zone = PT.new_Zone('Zone', type='Unstructured', size=[[5, 4, 0]])
+      >>> MT.new_Distribution({'Vertex' : [3,5,5]}, parent=zone)
+      >>> MT.Zone.n_vtx(zone)
+      5
+
+      >>> zones = [PT.new_Zone('Zone.P1.N0', type='Unstructured', size=[[3, 2, 0]]),
+      ...          PT.new_Zone('Zone.P1.N1', type='Unstructured', size=[[3, 2, 0]])]
+      >>> MT.new_GlobalNumbering({'Vertex' : [1,3,2]}, parent=zones[0])
+      >>> MT.new_GlobalNumbering({'Vertex' : [3,4,5]}, parent=zones[1])
+      >>> MT.Zone.n_vtx(zones, comm)
+      5
+    """
     return _n_entity(zone_node, comm, 'Vertex')
 
   @staticmethod
   def EdgeNode(zone_node:CGNSTree) -> CGNSTree:
+    """Return the Elements_t node of kind ``BAR_2`` of a Zone_t node
+    
+    This function aims to be the counterpart of :func:`~maia.pytree.Zone.NGonNode`
+    for 2D polyedric zones.
+    
+    Args:
+      zone_node (CGNSTree): Input Zone_t node
+    Returns:
+      CGNSTree : BAR_2 node
+    Raises:
+      RuntimeError: if not exactly one ``BAR_2`` element node exists in zone
+    """
+    #TODO :: maybe in pytree directly ?
     is_edge = lambda n : N.get_label(n) == 'Elements_t' and S.Element.Type(n) == 'BAR_2'
     edge_elts_nodes = W.get_children_from_predicate(zone_node, is_edge)
-    assert len(edge_elts_nodes) == 1, "Exactly one EdgeElements_t node must be defined"
+    if len(edge_elts_nodes) != 1:
+      raise RuntimeError("Exactly one EdgeElements_t node must be defined")
     return edge_elts_nodes[0]
 
 class Element:
+  """ The following functions apply to Elements_t nodes """
 
   @staticmethod
   def dn_elt(elt_node:CGNSTree) -> int:
-    # Return the local number of elements (only for distributed zones)
+    """ Return the local number of elements of a **distributed** element section
+
+    Args:
+      elt_node (CGNSTree): Input Elements_t node, distributed
+    Returns:
+      int : local number of elements
+    Example:
+      >>> elt = PT.new_Elements(type='TRI_3', erange=[1,10], econn=[1,5,4, 2,8,12])
+      >>> MT.new_Distribution({'Element' : [4, 6, 10]}, parent=elt)
+      >>> MT.Element.dn_elt(elt)
+      2
+    """
     distri = distribution_value(elt_node, 'Element')
     return int(distri[1] - distri[0])
 
   @staticmethod
   def pn_elt(elt_node:CGNSTree) -> int:
+    """ Return the local number of elements of a **partitioned** element section
+
+    Args:
+      elt_node (CGNSTree): Input Elements_t node, partitioned
+    Returns:
+      int : local number of elements
+    Example:
+      >>> elt = PT.new_Elements(type='TRI_3', erange=[1,3])
+      >>> MT.new_GlobalNumbering({'Element' : [4, 9, 3]}, parent=elt)
+      >>> MT.Element.pn_elt(elt)
+      3
+    """
+    
     # Return the local number of elements (only for partitioned zones)
     gnum = globalnumbering_value(elt_node, 'Element')
     return gnum.size
 
   @staticmethod
   def n_elt(elt_node:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
-    # Return the total number of elements for this section, for partitioned or distributed zone
-    # For distributed meshes, a single node is expected,
-    # For partitioned meshes, the list of "sister" zones is expected, and comm is mandatory
+    """ Return the **total** number of elements of a element section.
+
+    The input Elements_t can be either distributed (a single node is expected) or partitioned
+    (the whole list of related nodes is expected).
+
+    Args:
+      elt_node (CGNSTree or List[CGNSTree]): Input Elements_t node(s)
+      comm (MPIComm): MPI communicator, mandatory for partitioned elements
+    Returns:
+      int : total number of elements
+    Examples:
+      >>> tris = [PT.new_Elements(type='TRI_3', erange=[1,3]),
+      ...         PT.new_Elements(type='TRI_3', erange=[1,4])]
+      >>> MT.new_GlobalNumbering({'Element' : [1,5,4]}, parent=tris[0])
+      >>> MT.new_GlobalNumbering({'Element' : [4,3,5,2]}, parent=tris[1])
+      >>> MT.Element.n_elt(tris, comm)
+      5
+    """
     return _n_entity(elt_node, comm, 'Element')
 
   @staticmethod
   def connectivity(elt_node:CGNSTree) -> vs.VStrideArray:  
+    """ Return a :class:`~maia.utils.ndarray.vstride.VStrideArray` describing
+    the connectivity of the provided Elements_t node
+
+    For distributed polyedric or mixed sections, the ElementStartOffset is
+    automatticaly shifted to obtain the ``displs`` array.
+
+    Args:
+      elt_node (CGNSTree): Input Elements_t node
+    Returns:
+      VSrideArray : element connectivity
+    Example:
+      >>> ng = PT.new_NGonElements(eso=[0,3,7,10], ec=[1,5,4, 2,3,6,5, 4,9,8])
+      >>> MT.Element.connectivity(ng)
+      vsarray([
+        [1, 5, 4],
+        [2, 3, 6, 5],
+        [4, 9, 8],
+      ], dtype=int32)
+    """
     eso = W.get_child_from_name(elt_node, 'ElementStartOffset')
     ec  = W.find_child_from_name(elt_node, 'ElementConnectivity')
     assert ec[1] is not None
@@ -211,15 +370,40 @@ class Element:
       return vs.from_counts(ec[1].dtype.type(counts), ec[1])
       
 class Subset:
+  """ A subset is a node defining a subregion of the mesh through a PointList
+  or a PointRange node (eg BC_t, some ZoneSubRegion_t, …). """
 
   @staticmethod
   def dn_elem(subset_node:CGNSTree) -> int:
-    # Return the local number of indices (only for distributed subsets)
+    """ Return the local number of entities of a **distributed** subset
+
+    Args:
+      subset_node (CGNSTree): Input subset node, distributed
+    Returns:
+      int : local number of entities
+    Example:
+      >>> bc = PT.new_BC(point_list=[[23, 55, 42, 13, 56]])
+      >>> MT.new_Distribution({'Index' : [5,10,20]}, parent=bc)
+      >>> MT.Subset.dn_elem(bc)
+      5
+    """
     distri = distribution_value(subset_node, 'Index')
     return int(distri[1] - distri[0])
 
   @staticmethod
   def pn_elem(subset_node:CGNSTree) -> int:
+    """ Return the local number of entities of a **partitioned** subset
+
+    Args:
+      subset_node (CGNSTree): Input subset node, partitioned
+    Returns:
+      int : local number of entities
+    Example:
+      >>> zsr = PT.new_ZoneSubRegion(point_list=[[4,6,2,8]])
+      >>> MT.new_GlobalNumbering({'Index' : [9,11,13,14]}, parent=zsr)
+      >>> MT.Subset.pn_elem(zsr)
+      4
+    """
     # Return the local number of indices (only for partitioned subsets)
     # Use PT.Subset to deal missing gnum arrays
     import maia.pytree as PT
@@ -227,6 +411,24 @@ class Subset:
 
   @staticmethod
   def n_elem(subset_node:Union[List[CGNSTree], CGNSTree], comm:Optional[MPIComm]=None) -> int:
+    """ Return the **total** number of entities of a subset.
+
+    The input subset can be either distributed (a single node is expected) or partitioned
+    (the whole list of related nodes is expected).
+
+    Args:
+      subset_node (CGNSTree or List[CGNSTree]): Input subset node(s)
+      comm (MPIComm): MPI communicator, mandatory for partitioned zones
+    Returns:
+      int : total number of entities
+    Examples:
+      >>> bcs = [PT.new_BC(point_list=[[1,4,7,10]]),
+      ...        PT.new_BC(point_list=[[2,4,6,8]])]
+      >>> MT.new_GlobalNumbering({'Index' : [1,3,5,7]},  parent=bcs[0])
+      >>> MT.new_GlobalNumbering({'Index' : [2,4,6,8]}, parent=bcs[1])
+      >>> MT.Subset.n_elem(bcs, comm)
+      8
+    """
     # Special case: for partitioned PointRange (S meshes), gnum array is
     # not always created -> we can not process
     if not is_single_node(subset_node):

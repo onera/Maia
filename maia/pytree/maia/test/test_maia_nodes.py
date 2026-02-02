@@ -63,14 +63,14 @@ def test_get_GlobalNumbering():
 
 def test_get_edge_node():
   zone = PT.new_Zone('zone')
-  with pytest.raises(AssertionError):
+  with pytest.raises(RuntimeError):
     mNode.Zone.EdgeNode(zone)
 
   elt = PT.new_Elements('BAR', 'BAR_2', parent=zone)
   assert PT.is_same_node(elt, mNode.Zone.EdgeNode(zone))
 
   elt = PT.new_Elements('SECONDBAR', 'BAR_2', parent=zone)
-  with pytest.raises(AssertionError):
+  with pytest.raises(RuntimeError):
     mNode.Zone.EdgeNode(zone)
 
 @pytest_parallel.mark.parallel(2)

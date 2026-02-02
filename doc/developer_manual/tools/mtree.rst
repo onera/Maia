@@ -11,7 +11,19 @@ from the module namespace, shortened as ``MT``::
 Node inspection
 ---------------
 
-Extends :ref:`pt_inspect`.
+The following functions extend :ref:`pt_inspect` and provide getters for data
+specific to maia trees.
+They use the same namespace classification as pytree.
+
+.. autoclass:: maia.pytree.maia.Zone
+  :members:
+
+.. autoclass:: maia.pytree.maia.Element
+  :members:
+
+.. autoclass:: maia.pytree.maia.Subset
+  :members:
+
 
 
 Node creation presets
