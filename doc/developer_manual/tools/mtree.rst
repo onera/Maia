@@ -42,6 +42,8 @@ create Maia-specific nodes.
 Node searching
 --------------
 
+.. autofunction:: maia.pytree.maia.get_Distribution
+.. autofunction:: maia.pytree.maia.get_GlobalNumbering
 
 Tree operations
 ---------------
