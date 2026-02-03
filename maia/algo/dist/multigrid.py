@@ -112,7 +112,7 @@ def merge_connected_zones(tree:CGNSDistTree, comm:MPIComm, **kwargs):
       # Postreat to update CoarseIdx
       # --> Update cells for current level
       if lvl < nb_lvl:
-        cell_distrib = MT.distribution_value(merged_zone, 'Cell')
+        cell_distrib = MT.Zone.cell_distribution(merged_zone)
         c_u_idx = PT.get_np_value(PT.find_node_from_path(merged_zone, "MultiGridCellInfo/CoarseIdx"))
         start = 0
         shift_value = 0

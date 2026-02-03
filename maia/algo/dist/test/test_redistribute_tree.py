@@ -78,7 +78,7 @@ def test_redistribute_pl_node_S(comm):
   RDT.redistribute_pl_node(bc, par_utils.uniform_distribution, comm)
 
   distri_out_expt = par_utils.full_to_partial_distribution(np.array([0, 2, 4, 5]), comm)
-  assert (MT.distribution_value(bc, 'Index') == distri_out_expt).all()
+  assert (MT.Subset.distribution(bc) == distri_out_expt).all()
   if comm.Get_rank() == 0:
     assert (PT.get_child_from_name(bc, 'PointList')[1] == [[1,2], [10,20], [100,200]]).all()
   elif comm.Get_rank() == 1:
@@ -427,17 +427,17 @@ def test_redistribute_tree_S(dim, comm):
   nft = 0   if dim == 2 else 3*5*5*6
 
   if comm.rank == 0:
-    assert (MT.distribution_value(zone, 'Vertex') == [0, 0, nvt]).all()
-    assert (MT.distribution_value(zone, 'Cell')   == [0, 0, nct]).all()
+    assert (MT.Zone.vtx_distribution(zone) == [0, 0, nvt]).all()
+    assert (MT.Zone.cell_distribution(zone)   == [0, 0, nct]).all()
     if dim == 3:
       assert (MT.distribution_value(zone, 'Face') == [0, 0, nft]).all()
   elif comm.rank == 1:
-    assert (MT.distribution_value(zone, 'Vertex') == [0, nvt, nvt]).all()
-    assert (MT.distribution_value(zone, 'Cell')   == [0, nct, nct]).all()
+    assert (MT.Zone.vtx_distribution(zone) == [0, nvt, nvt]).all()
+    assert (MT.Zone.cell_distribution(zone)   == [0, nct, nct]).all()
     if dim == 3:
       assert (MT.distribution_value(zone, 'Face') == [0, nft, nft]).all()
   else:
-    assert (MT.distribution_value(zone, 'Vertex') == [nvt, nvt, nvt]).all()
-    assert (MT.distribution_value(zone, 'Cell')   == [nct, nct, nct]).all()
+    assert (MT.Zone.vtx_distribution(zone) == [nvt, nvt, nvt]).all()
+    assert (MT.Zone.cell_distribution(zone)   == [nct, nct, nct]).all()
     if dim == 3:
       assert (MT.distribution_value(zone, 'Face') == [nft, nft, nft]).all()

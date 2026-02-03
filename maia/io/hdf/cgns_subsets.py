@@ -34,7 +34,7 @@ def create_zone_bc_filter(zone, zone_path, hdf_filter):
       bc_path = zone_bc_path+"/"+bc[0]
 
       distrib_bc_n = MT.get_Distribution(bc)
-      distrib_bc   = MT.distribution_value(bc, 'Index')
+      distrib_bc   = MT.Subset.distribution(bc)
 
       _create_pl_filter(bc, bc_path, 'PointList', distrib_bc, hdf_filter)
 
@@ -81,7 +81,7 @@ def create_zone_grid_connectivity_filter(zone, zone_path, hdf_filter):
     zone_gc_path = zone_path+"/"+zone_gc[0]
     for gc in PT.iter_children_from_label(zone_gc, 'GridConnectivity_t'):
       gc_path = zone_gc_path+"/"+gc[0]
-      distrib_ia = MT.distribution_value(gc, 'Index')
+      distrib_ia = MT.Subset.distribution(gc)
       _create_pl_filter(gc, gc_path, 'PointList', distrib_ia, hdf_filter)
       _create_pl_filter(gc, gc_path, 'PointListDonor', distrib_ia, hdf_filter)
 
@@ -92,8 +92,8 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   if present, or using allCells / allVertex if no pointList is present.
   Filter is created for the arrays and for the PointList if present
   """
-  distrib_vtx  = MT.distribution_value(zone, 'Vertex')
-  distrib_cell = MT.distribution_value(zone, 'Cell')
+  distrib_vtx  = MT.Zone.vtx_distribution(zone)
+  distrib_cell = MT.Zone.cell_distribution(zone)
   is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t'])
   for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)

@@ -138,7 +138,7 @@ def test_exch_field(cgns_name, partial, comm):
   # Add field
   for zone in PT.get_all_Zone_t(part_tree):
     n_vtx = PT.Zone.n_vtx(zone)
-    gnum = MT.globalnumbering_value(zone, 'Vertex')
+    gnum = MT.Zone.vtx_globalnumbering(zone)
     if partial: #Take one over two
       if cgns_name=='Structured':
         pr = np.array([[1,3],[1,1],[1,5]], np.int32)
@@ -174,7 +174,7 @@ def test_exch_field(cgns_name, partial, comm):
       lnum = extractor.exch_tool_box['Base/zone'][PT.get_name(extr_zone)]['parent_lnum_vtx']
       lnum = lnum[pl-1]
       zone = PT.get_all_Zone_t(part_tree)[0]
-      gnum = MT.globalnumbering_value(zone, 'Vertex')
+      gnum = MT.Zone.vtx_globalnumbering(zone)
       gnum = gnum[lnum-1]
     else:
       pl = PT.get_node_from_name(extr_sol, 'PointList')[1][0]
@@ -185,7 +185,7 @@ def test_exch_field(cgns_name, partial, comm):
     if cgns_name=='Structured':
       lnum = extractor.exch_tool_box['Base/zone'][PT.get_name(extr_zone)]['parent_lnum_vtx']
       zone = PT.get_all_Zone_t(part_tree)[0]
-      gnum = MT.globalnumbering_value(zone, 'Vertex')
+      gnum = MT.Zone.vtx_globalnumbering(zone)
       gnum = gnum[lnum-1].reshape(PT.Zone.VertexSize(extr_zone), order='F')
     else:
       gnum = extractor.exch_tool_box['Base/zone']['parent_elt']['Vertex'][0]
@@ -198,7 +198,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
 
   # Add field
   for zone in PT.get_all_Zone_t(part_tree):
-    gnum = MT.globalnumbering_value(PT.get_node_from_name(zone, 'NGonElements'), 'Element')
+    gnum = MT.Element.globalnumbering(PT.get_node_from_name(zone, 'NGonElements'))
     bc_n = PT.get_child_from_predicates(zone, f'ZoneBC_t/{bc_name}')
     if bc_n is not None:
       bc_pl   = PT.get_value(PT.get_node_from_name(bc_n, "PointList"))
@@ -233,7 +233,7 @@ def test_extr_U_local(comm):
   zone = PT.find_node_from_label(dist_tree, 'Zone_t')
   dtype = PT.get_np_value(zone).dtype
   n_vtx = PT.Zone.n_vtx(zone)
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
 
   co_node = PT.find_child_from_name(zone, 'GridCoordinates')
 
@@ -313,11 +313,11 @@ def test_extr_U_local(comm):
 
     vtxzsr = PT.get_child_from_name(zone, 'VtxSubRegion')
     if PT.get_name(zone) == 'Zone.P0.N0':
-      assert (MT.globalnumbering_value(vtxzsr, 'Index') == [5, 6, 2, 1, 9, 10, 13, 14]).all()
+      assert (MT.Subset.globalnumbering(vtxzsr) == [5, 6, 2, 1, 9, 10, 13, 14]).all()
     if PT.get_name(zone) == 'Zone.P0.N1':
       assert vtxzsr is None
     if PT.get_name(zone) == 'Zone.P2.N0':
-      assert (MT.globalnumbering_value(vtxzsr, 'Index') == [6, 7, 3, 2, 8, 4, 10, 11, 12, 14, 15, 16]).all()
+      assert (MT.Subset.globalnumbering(vtxzsr) == [6, 7, 3, 2, 8, 4, 10, 11, 12, 14, 15, 16]).all()
 
 
 @pytest_parallel.mark.parallel(3)
@@ -692,7 +692,7 @@ Base CGNSBase_t I4 [2, 3]:
   bck = pl_faces.copy()
   fcx = fcx[pl_faces]
   ngon = PT.Zone.NGonNode(zone)
-  distrib_faces = MT.distribution_value(zone, 'Cell')
+  distrib_faces = MT.Zone.cell_distribution(zone)
   pl_faces += PT.Element.Range(ngon)[0] + distrib_faces[0]
   zsr_faces = PT.new_ZoneSubRegion("ZSR_Faces", point_list=pl_faces.reshape((1,-1), order='F'), loc='CellCenter', fields={'cx': fcx}, parent=zone)
   MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_faces.size, comm)}, zsr_faces)
@@ -701,7 +701,7 @@ Base CGNSBase_t I4 [2, 3]:
   pl_edges = (np.where(ecy > 0.)[0]).astype(ztype)
   ecx = ecx[pl_edges]
   bar_2 = MT.Zone.EdgeNode(zone)
-  distrib_edges = MT.distribution_value(bar_2, 'Element')
+  distrib_edges = MT.Element.distribution(bar_2)
   pl_edges += PT.Element.Range(bar_2)[0] + distrib_edges[0]
   zsr_edges = PT.new_ZoneSubRegion("ZSR_Edges", point_list=pl_edges.reshape((1,-1), order='F'), loc='EdgeCenter', fields={'cx': ecx}, parent=zone)
   MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_edges.size, comm)}, zsr_edges)
@@ -709,7 +709,7 @@ Base CGNSBase_t I4 [2, 3]:
   # Create ZSR on Vertices with FlowSolution
   pl_vtx = (np.where(cy > 0.)[0]).astype(ztype)
   cx = cx[pl_vtx]
-  distrib_vtx = MT.distribution_value(zone, 'Vertex')
+  distrib_vtx = MT.Zone.vtx_distribution(zone)
   pl_vtx += 1 + distrib_vtx[0]
   zsr_vtx = PT.new_ZoneSubRegion("ZSR_Vtx", point_list=pl_vtx.reshape((1,-1), order='F'), loc='Vertex', fields={'cx': cx}, parent=zone)
   MT.new_Distribution({'Index' : par_utils.dn_to_distribution(pl_vtx.size, comm)}, zsr_vtx)
@@ -882,7 +882,7 @@ def test_extract_S_2d(comm):
   assert PT.Container.GridLocation(partial) == 'CellCenter'
   assert (PT.find_node_from_name(partial, 'PointRange')[1] == [[1,1],[1,2]]).all()
   assert (PT.find_node_from_name(partial, 'Field')[1] == expt_zsr_field).all()
-  assert (MT.globalnumbering_value(partial, 'Index') == expt_zsr_gnum).all()
+  assert (MT.Subset.globalnumbering(partial) == expt_zsr_gnum).all()
      
 
   # Remove CZ for this test
@@ -893,7 +893,7 @@ def test_extract_S_2d(comm):
   pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymax', comm)
   ext_zone = PT.get_all_Zone_t(pext)[0]
 
-  gnum_t = 'I4' if MT.distribution_value(zone, 'Vertex').dtype == np.int32 else 'I8'
+  gnum_t = 'I4' if MT.Zone.vtx_distribution(zone).dtype == np.int32 else 'I8'
   if comm.rank == 0:
     expt = PT.yaml.to_node(f"""
     zone.P0.N0 Zone_t [[3, 2, 0]]:
@@ -935,7 +935,7 @@ def test_extract_S_2d(comm):
   # Add full vtx sol
   if comm.rank == 0:
     pzone = PT.get_all_Zone_t(ptree)[0]
-    PT.new_FlowSolution('VtxSol', fields={'GId' : MT.globalnumbering_value(pzone, 'Vertex')}, parent=pzone)
+    PT.new_FlowSolution('VtxSol', fields={'GId' : MT.Zone.vtx_globalnumbering(pzone)}, parent=pzone)
 
   pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Xmin', comm, containers_name='ALL')
   ext_zones = PT.get_all_Zone_t(pext)
@@ -967,7 +967,7 @@ def test_vol_groups(comm):
   zone = PT.get_all_Zone_t(tree)[0]
   
   # Create BC groups on dist tree
-  distri = MT.distribution_value(zone, 'Cell')
+  distri = MT.Zone.cell_distribution(zone)
   cell_gn = np.arange(distri[0]+1, distri[1]+1)
   is_pair = (cell_gn % 2) == 0
   offset = PT.Element.Range(PT.Zone.NFaceNode(zone))[0] + distri[0]

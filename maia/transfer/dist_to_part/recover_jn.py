@@ -24,7 +24,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     join_to_ref[pathes[0]] = i
     join_to_ref[pathes[1]] = i
     gc = PT.get_node_from_path(dist_tree, pathes[0])
-    nb_face_in_joins[i] = te_utils.get_cgns_distribution(gc, 'Index')[2]
+    nb_face_in_joins[i] = MT.Subset.n_elem(gc)
 
   face_in_join_offset = np_utils.sizes_to_indices(nb_face_in_joins)
 
@@ -44,7 +44,7 @@ def get_pl_donor(dist_tree, part_tree, comm):
     gc_id = 2*itrf_id + int(d_gc_path < MJT.get_jn_donor_path(dist_tree, d_gc_path))
 
     gc = PT.get_node_from_path(part_tree, p_gc_path)
-    lngn = MT.globalnumbering_value(gc, 'Index')
+    lngn = MT.Subset.globalnumbering(gc)
     shifted_lntogn.append(lngn + face_in_join_offset[itrf_id])
     pl = PT.get_child_from_name(gc, 'PointList')[1][0]
     part_data['pl'].append(pl)

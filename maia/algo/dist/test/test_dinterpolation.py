@@ -27,7 +27,7 @@ def test_simple_2d(all_cnt, comm):
 
   tgt_zone = PT.get_all_Zone_t(tgt_tree)[0]
   tgt_center = maia.algo.dist.geometry._compute_elements_center(tgt_zone, 'CellCenter', comm)
-  cell_distri = MT.distribution_value(tgt_zone, 'Cell')
+  cell_distri = MT.Zone.cell_distribution(tgt_zone)
   dn_cell = cell_distri[1] - cell_distri[0]
   sols_name = ['Geometry_2d', 'Geometry_2d_dupl'] if all_cnt else ['Geometry_2d']
   for sol_name in sols_name:

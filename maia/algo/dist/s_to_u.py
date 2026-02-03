@@ -108,7 +108,7 @@ def bc_s_to_bc_u(bc_s, n_vtx_zone, output_loc, i_rank, n_rank):
   for bcds in PT.iter_children_from_label(bc_s, 'BCDataSet_t'):
     subset_node = PT.Container.SubsetNode(bcds, bc_s)
     ds_point_range = PT.find_child_from_name(subset_node, 'PointRange')
-    ds_distri = MT.distribution_value(subset_node, 'Index')
+    ds_distri = MT.Subset.distribution(subset_node)
     ds_size = PT.Subset.SizePerIndex(subset_node)
     ds_loc = PT.Subset.GridLocation(subset_node)
     ds_slabs = HFR2S.compute_slabs(ds_size, ds_distri[0:2])
@@ -439,7 +439,7 @@ def convert_s_to_u(dist_tree:CGNSDistTree,
           elt_type = {2: 'QUAD_4', 3: 'HEXA_8'}[cell_dim]
           erange = np.array([1, PT.Zone.n_cell(zone)], zdtype)
           elt = PT.new_Elements(elt_type, elt_type, erange=erange, econn=cell_vtx.values, parent=zone)
-          MT.new_Distribution({'Element' : MT.distribution_value(zone, 'Cell').copy()}, elt)
+          MT.new_Distribution({'Element' : MT.Zone.cell_distribution(zone).copy()}, elt)
         else:
           # Poly elements --> compute surfacic (resp. lineic) elts 1 ... n_face
           # Then FaceCenter (resp. EdgeCenter) BCs are ready

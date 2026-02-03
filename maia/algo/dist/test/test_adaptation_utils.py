@@ -52,7 +52,7 @@ def test_duplicate_specified_vtx(comm):
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), expected_cx)
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), expected_cx)
 
-  new_distri = MT.distribution_value(zone_n, 'Vertex')
+  new_distri = MT.Zone.vtx_distribution(zone_n)
   assert PT.Zone.n_vtx(zone_n)==14
   assert (maia.utils.par_utils.partial_to_full_distribution(new_distri, comm) == [0,7,14]).all()
 
@@ -73,7 +73,7 @@ def test_remove_specified_vtx(comm):
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'CoordinateX')), expected_cx)
   assert np.allclose(PT.get_value(PT.get_node_from_name(zone_n, 'cX')), expected_cx)
 
-  new_distri = MT.distribution_value(zone_n, 'Vertex')
+  new_distri = MT.Zone.vtx_distribution(zone_n)
   assert PT.Zone.n_vtx(zone_n)==4
   assert (maia.utils.par_utils.partial_to_full_distribution(new_distri, comm) == [0,3,4]).all()
 
@@ -260,9 +260,9 @@ def test_add_undefined_faces(comm):
   assert PT.Zone.n_vtx(zone)==27
   assert PT.Zone.n_cell(zone)==40
   assert np.array_equal(PT.Element.Range(tet_n),np.array([ 1,40], dtype=np.int32))
-  assert MT.distribution_value(tet_n, 'Element')[2]==40
+  assert MT.Element.distribution(tet_n)[2]==40
   assert np.array_equal(PT.Element.Range(tri_n),np.array([41,96], dtype=np.int32))
-  assert MT.distribution_value(tri_n, 'Element')[2]==56
+  assert MT.Element.distribution(tri_n)[2]==56
 
 
 @pytest_parallel.mark.parallel([1,3])

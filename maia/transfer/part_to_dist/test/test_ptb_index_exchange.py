@@ -148,7 +148,7 @@ def test_part_pl_to_dist_pl(comm):
   IPTB.part_pl_to_dist_pl(dist_zone, part_zones, "ZSR", comm)
 
   dist_pl     = PT.get_node_from_path(dist_zsr, 'PointList')[1]
-  dist_distri = MT.distribution_value(dist_zsr, 'Index')
+  dist_distri = MT.Subset.distribution(dist_zsr)
   assert dist_distri.dtype == pdm_gnum_dtype
 
   if comm.Get_rank() == 0:
@@ -339,7 +339,7 @@ Zone.P2.N0 Zone_t:
   assert (PT.Element.Range(elt) == [1,8]).all()
   assert (elt[1] == [7,0]).all()
   assert (PT.get_child_from_name(elt, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = MT.distribution_value(elt, 'Element')
+  distri_elt  = MT.Element.distribution(elt)
   assert distri_elt.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
 
@@ -435,7 +435,7 @@ Zone.P2.N1 Zone_t:
   if with_pe:
     assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = MT.distribution_value(ngon, 'Element')
+  distri_elt  = MT.Element.distribution(ngon)
   distri_eltc = MT.distribution_value(ngon, 'ElementConnectivity')
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
@@ -534,7 +534,7 @@ Zone.P2.N1 Zone_t [[12,2,0]]:
   assert nface is not None
   assert (PT.get_child_from_name(nface, 'ElementStartOffset')[1] == expected_eso).all()
   assert (PT.get_child_from_name(nface, 'ElementConnectivity')[1] == expected_ec).all()
-  distri_elt  = MT.distribution_value(nface, 'Element')
+  distri_elt  = MT.Element.distribution(nface)
   distri_eltc = MT.distribution_value(nface, 'ElementConnectivity')
   assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()

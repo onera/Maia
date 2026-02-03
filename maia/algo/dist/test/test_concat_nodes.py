@@ -60,7 +60,7 @@ def test_concatenate_subset_nodes(default_bcds, comm):
   assert PT.get_name(node) == 'BothBC'
   assert PT.get_value(node) == 'BCFarfield'
   assert PT.Subset.GridLocation(node) == 'FaceCenter'
-  assert (MT.distribution_value(node, 'Index') == expected_distri).all()
+  assert (MT.Subset.distribution(node) == expected_distri).all()
   assert (PT.get_child_from_name(node, 'PointList')[1][0] == expected_pl).all()
 
   assert PT.get_label(PT.get_node_from_path(node, 'BCDataSet/BCData')) == 'BCData_t'

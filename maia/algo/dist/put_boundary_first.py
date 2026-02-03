@@ -52,7 +52,7 @@ def put_boundary_first(t:CGNSDistTree, comm:MPIComm):
       elt_vtx = MT.Element.connectivity(node)
 
       if (n_bnd_elts:=PT.get_np_value(node)[1]) != 0:
-        elt_distri = MT.distribution_value(node, 'Element')
+        elt_distri = MT.Element.distribution(node)
         end = max(min(elt_distri[1], n_bnd_elts) - elt_distri[0], 0) # Get local bound
         elt_vtx.displs[end]
         bnd_vertices = elt_vtx.values[:elt_vtx.displs[end]]
@@ -81,7 +81,7 @@ def put_boundary_first(t:CGNSDistTree, comm:MPIComm):
         #   - decompose volumic elts into faces and search faces appearing twice (~elt->ng)
         #   - search faces appearing in BC/GC
         if (n_bnd_elts:=PT.get_np_value(elt)[1]) != 0:
-          elt_distri = MT.distribution_value(elt, 'Element')
+          elt_distri = MT.Element.distribution(elt)
           end = max(min(elt_distri[1], n_bnd_elts) - elt_distri[0], 0) # Get local bound
           bnd_vertices.append(ec[0:end*PT.Element.NVtx(elt)]) # BND elements are first
         else:
@@ -89,7 +89,7 @@ def put_boundary_first(t:CGNSDistTree, comm:MPIComm):
 
     if needs_vtx_ordering:
       # Reorder vertices
-      vtx_distri = MT.distribution_value(zone, 'Vertex')
+      vtx_distri = MT.Zone.vtx_distribution(zone)
       GI = EP.GlobalIndexer(vtx_distri, bnd_vertices, comm, gnum_offset=1)
       is_bnd_vtx = GI.access_counts > 0
       new_vtx_id = flag_to_old2new(is_bnd_vtx, comm, ztype)

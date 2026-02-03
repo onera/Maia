@@ -45,7 +45,7 @@ def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             elem_type = EU.name_to_id(PT.Element.Type(element))
             elem_er = PT.Element.Range(element)
             elem_ec = PT.get_np_value(PT.find_child_from_name(element,'ElementConnectivity'))
-            elem_distrib = MT.distribution_value(element, 'Element')
+            elem_distrib = MT.Element.distribution(element)
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
 
             if PT.Element.Type(element) == 'MIXED':

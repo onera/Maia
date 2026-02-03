@@ -148,7 +148,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   is_bar_bc  = PT.pred.is_bc_of_location('EdgeCenter')
 
   elt_n  = PT.get_child_from_predicate(dist_zone, is_tet_elt)
-  elt_distrib = MT.distribution_value(elt_n, 'Element')
+  elt_distrib = MT.Element.distribution(elt_n)
   n_elt  = elt_distrib[1]-elt_distrib[0]
   elt_er = PT.get_child_from_name(elt_n,'ElementRange')[1]
   assert np.array_equal(elt_er, np.array([1, n_tet[elt_name]]))
@@ -156,11 +156,11 @@ def test_remove_elts_from_pl(elt_name, comm):
   assert elt_distrib[2]==n_tet[elt_name]
 
   cell_distri = par_utils.dn_to_distribution(n_elt, comm)
-  assert np.array_equal(MT.distribution_value(dist_zone, 'Cell'), cell_distri)
+  assert np.array_equal(MT.Zone.cell_distribution(dist_zone), cell_distri)
 
   elt_n  = PT.get_child_from_predicate(dist_zone, is_tri_elt)
   elt_er = PT.get_child_from_name(elt_n,'ElementRange')[1]
-  elt_distrib = MT.distribution_value(elt_n, 'Element')
+  elt_distrib = MT.Element.distribution(elt_n)
   n_elt  = elt_distrib[1]-elt_distrib[0]
   expected_er = np.array([n_tet[elt_name]+1, n_tet[elt_name]+n_tri[elt_name]])
   assert np.array_equal(elt_er, expected_er)
@@ -172,7 +172,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   if elt_name=='TRI_3':
     assert PT.get_node_from_name_and_label(dist_zone, 'Zmin', 'BC_t') is None
     zmax_bc_n = PT.get_node_from_name_and_label(dist_zone, 'Zmax', 'BC_t')
-    assert MT.distribution_value(zmax_bc_n, 'Index')[2]==6
+    assert MT.Subset.distribution(zmax_bc_n)[2]==6
 
   if elt_name=='BAR_2':
     assert PT.get_child_from_name(dist_zone, 'BAR_2') is None
@@ -180,7 +180,7 @@ def test_remove_elts_from_pl(elt_name, comm):
   else: 
     elt_n  = PT.get_child_from_predicate(dist_zone, is_bar_elt)
     elt_er = PT.get_child_from_name(elt_n,'ElementRange')[1]
-    elt_distrib = MT.distribution_value(elt_n, 'Element')
+    elt_distrib = MT.Element.distribution(elt_n)
     n_elt  = elt_distrib[1]-elt_distrib[0]
     expected_er = np.array([n_tet[elt_name]+n_tri[elt_name]+1,
                             n_tet[elt_name]+n_tri[elt_name]+n_bar[elt_name]])
@@ -237,13 +237,13 @@ def test_remove_elts_from_pl_conflict_bc(comm):
   for elt_name, elt_er in expected_elt_er.items():
     elt_n = PT.get_child_from_name(dist_zone, elt_name)
     assert np.array_equal(PT.Element.Range(elt_n), elt_er)
-    assert np.array_equal(MT.distribution_value(elt_n, 'Element'), expected_elt_dn[elt_name])
+    assert np.array_equal(MT.Element.distribution(elt_n), expected_elt_dn[elt_name])
   
   expected_bc_pl = np.array([[[1]],[[4]]][rank])
   expected_bc_dn = np.array([[0,1,2],[1,2,2]][rank])
   bc_n = PT.get_node_from_label(dist_zone, 'BC_t')
   assert np.array_equal(PT.Subset.getPatch(bc_n)[1], expected_bc_pl)
-  assert np.array_equal(MT.distribution_value(bc_n, 'Index'), expected_bc_dn)
+  assert np.array_equal(MT.Subset.distribution(bc_n), expected_bc_dn)
 
   expected_cell_dn = np.array([[0,1,1],[1,1,1]][rank])
-  assert np.array_equal(MT.distribution_value(dist_zone, 'Cell'), expected_cell_dn)
+  assert np.array_equal(MT.Zone.cell_distribution(dist_zone), expected_cell_dn)

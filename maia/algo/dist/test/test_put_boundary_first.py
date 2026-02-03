@@ -21,7 +21,7 @@ def test_put_boundary_first(comm):
   expt_cz_f = [0,0,0, 0,0,0, 0,0,0,   .5,.5,.5, .5,.5, .5,.5,.5,  1,1,1, 1,1,1, 1,1,1,  .5]
 
   zone = PT.get_all_Zone_t(tree)[0]
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
   assert (PT.get_np_value(zone) == [27,8,26]).all()
   cx,cy,cz = PT.Zone.coordinates(zone)
   assert (cx == np.array(expt_cx_f)[vtx_distri[0]:vtx_distri[1]]).all()
@@ -43,7 +43,7 @@ def test_put_boundary_first(comm):
   for expt, name in zip([expt_ymax, expt_zmin], ['Ymax', 'Zmin']):
     bc = PT.find_node_from_name(tree, name)
     pl = PT.get_child_from_name(bc, 'PointList')
-    distri = MT.distribution_value(bc, 'Index')
+    distri = MT.Subset.distribution(bc)
     assert (pl[1][0] == expt[distri[0]:distri[1]]).all()
 
 @pytest_parallel.mark.parallel(1)
@@ -52,7 +52,7 @@ def test_put_boundary_first_2d_elt(comm):
   put_boundary_first.put_boundary_first(tree, comm)
 
   zone = PT.find_node_from_label(tree, 'Zone_t')
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
   expt_cx = np.array([0, 1, 2, 3, 0, 3, 0, 3, 0, 1, 2, 3, 1, 2, 1, 2]) / 3,
   expt_cy = np.array([0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 3, 3, 1, 1, 2, 2]) / 3
   

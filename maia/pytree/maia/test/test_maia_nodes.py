@@ -50,8 +50,8 @@ def test_get_Distribution():
   distri_arrays = {'Cell' : [0,15,30], 'Vertex' : [100,1000,1000]}
   distri = mNode.new_Distribution(distri_arrays, zone)
   assert mNode.get_Distribution(zone) is distri
-  assert (mNode.distribution_value(zone, 'Cell') == [0,15,30]).all()
-  assert (mNode.distribution_value(zone, 'Vertex') == [100,1000,1000]).all()
+  assert (mNode.Zone.cell_distribution(zone) == [0,15,30]).all()
+  assert (mNode.Zone.vtx_distribution(zone) == [100,1000,1000]).all()
 
 def test_get_GlobalNumbering():
   zone = PT.new_Zone('zone')
@@ -196,3 +196,37 @@ def test_maia_sizes(comm):
   [PT.rm_nodes_from_name(n, ':CGNS#GlobalNumbering') for n in pbc1s]
   with pytest.raises(RuntimeError):
     mNode.Subset.n_elem(pbc1s, comm)
+
+def test_container_distribution():
+  zone = PT.yaml.to_node("""
+  Zone Zone_t [[1,1,0]]:
+    ZoneType ZoneType_t "Unstructured":
+    :CGNS#Distribution UserDefinedData_t:
+      Vertex DataArray_t I4 [1]:
+      Cell DataArray_t I4 [1]:
+    FlowSolVtx FlowSolution_t:
+      GridLocation GridLocation_t "Vertex":
+    PartialFlowSolFace FlowSolution_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[1]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t I4 [2]:
+    FlowSolCell FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+    PartialFlowSolVtx FlowSolution_t:
+      GridLocation GridLocation_t "Vertex":
+      PointList IndexArray_t [[1]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t I4 [4]:
+    WrongFlowSolCell FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      PointList IndexArray_t [[1]]:
+  """)
+  node_names     = ['FlowSolVtx','PartialFlowSolFace','FlowSolCell','PartialFlowSolVtx']
+  expected_vals  = [[1]    ,      [2],                 [1],          [4]]
+  for node_name, expected_val in zip(node_names, expected_vals):
+    node = PT.get_node_from_name(zone, node_name)
+    assert (mNode.Container.distribution(node, zone) == expected_val).all()
+  with pytest.raises(Exception):
+    node = PT.get_node_from_name(zone, 'WrongFlowSolCell')
+    mNode.Container.distribution(node, zone)

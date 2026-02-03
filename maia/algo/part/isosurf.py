@@ -412,7 +412,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
     # > Create BC described by edges
-    gnum = MT.globalnumbering_value(bar_n, 'Element') if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
+    gnum = MT.Element.globalnumbering(bar_n) if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
     for i_group, bc_path in enumerate(gdom_bcs_path):
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
       edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\

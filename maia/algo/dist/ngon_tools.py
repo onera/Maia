@@ -51,8 +51,8 @@ def pe_to_nface(zone, comm, remove_PE=False):
       Defaults to False.
   """
   ngon_node = PT.Zone.NGonNode(zone)
-  nface_distri = MT.distribution_value(zone, 'Cell')
-  ngon_distri  = MT.distribution_value(ngon_node, 'Element')
+  nface_distri = MT.Zone.cell_distribution(zone)
+  ngon_distri  = MT.Element.distribution(ngon_node)
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
   assert PT.Element.Range(ngon_node)[0] == 1
@@ -84,8 +84,8 @@ def nface_to_pe(zone, comm, remove_NFace=False):
   """
   ngon_node  = PT.Zone.NGonNode(zone)
   nface_node = PT.Zone.NFaceNode(zone)
-  ngon_distri    = MT.distribution_value(ngon_node , 'Element')
-  nface_distri   = MT.distribution_value(nface_node, 'Element')
+  ngon_distri    = MT.Element.distribution(ngon_node)
+  nface_distri   = MT.Element.distribution(nface_node)
 
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   cell_distri = par_utils.partial_to_full_distribution(nface_distri, comm)
@@ -136,7 +136,7 @@ def ngon_to_edge_pe(zone, comm, remove_NGon=False):
 
   # NGON Data
   ngon_node = PT.Zone.NGonNode(zone)
-  distri_face = MT.distribution_value(ngon_node, 'Element')
+  distri_face = MT.Element.distribution(ngon_node)
   face_vtx = MT.Element.connectivity(ngon_node)
 
   first_vtx  = face_vtx
@@ -197,9 +197,9 @@ def edge_pe_to_ngon(zone, comm, remove_PE=False):
   """
 
   edge_node = MT.Zone.EdgeNode(zone)
-  edge_distri = MT.distribution_value(edge_node, 'Element')
+  edge_distri = MT.Element.distribution(edge_node)
   edge_distri = par_utils.partial_to_full_distribution(edge_distri, comm)
-  ngon_distri = MT.distribution_value(zone, 'Cell') # ngon = face = cell in tree
+  ngon_distri = MT.Zone.cell_distribution(zone) # ngon = face = cell in tree
   face_distri = par_utils.partial_to_full_distribution(ngon_distri, comm)
   assert PT.Element.Range(edge_node)[0] == 1
   local_pe = indexing.get_pe_local(edge_node).reshape(-1, order='C')

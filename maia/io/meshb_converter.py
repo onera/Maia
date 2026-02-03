@@ -113,7 +113,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
-  distrib_vtx = MT.distribution_value(dist_zone, "Vertex")
+  distrib_vtx = MT.Zone.vtx_distribution(dist_zone)
 
   field_names = tree_info['field_names']
   n_itp_flds  = sum([len(fld_names) for fld_names in field_names.values()])

@@ -127,7 +127,7 @@ def _determine_mesh_orientation(zone, extrusion_vector, comm):
   # > Get coordinates of nodes of the first face
   coords = PT.Zone.coordinates(zone)
   dist_coords_data = coords._asdict()
-  distrib_vtx = MT.distribution_value(zone, 'Vertex')
+  distrib_vtx = MT.Zone.vtx_distribution(zone)
   part_coords_data = EP.block_to_part(dist_coords_data, distrib_vtx, nodes_of_first_face-1, comm)
   align = 0
   # > Compute scalar product
@@ -174,7 +174,7 @@ def _ngon_duplication(zone, comm, align=True):
   n_vtx_2d  = PT.Zone.n_vtx(zone)
   # > Add ParentElements to NGon node
   ngon_n = PT.Zone.NGonNode(zone)
-  distrib_elem = MT.distribution_value(ngon_n, 'Element')
+  distrib_elem = MT.Element.distribution(ngon_n)
   er = PT.Element.Range(ngon_n)
   pe = np.zeros((distrib_elem[1]-distrib_elem[0],2), dtype=er.dtype)
   pe[:,0] = np.arange(distrib_elem[0], distrib_elem[1]) + er[0] + 2*n_cell_2d
@@ -200,7 +200,7 @@ def _extrude_bar_to_ngon(bar, n_vtx, n_cell, align=True):
   """
   Internal function used by _extrusion_2d_u_ngon to create face by extrusion of BAR elements
   """
-  distrib_elem = MT.distribution_value(bar, 'Element')
+  distrib_elem = MT.Element.distribution(bar)
   ec_n = PT.get_child_from_name(bar, 'ElementConnectivity')
 
   # > Change value: 3 => 22
@@ -240,7 +240,7 @@ def _merge_ngons(zone, comm):
     ec  = PT.find_child_from_name(ngon_n, 'ElementConnectivity')[1]
     eso = PT.find_child_from_name(ngon_n, 'ElementStartOffset')[1]
     pe  = PT.find_child_from_name(ngon_n, 'ParentElements')[1]
-    distrib_elem = MT.distribution_value(ngon_n, 'Element')
+    distrib_elem = MT.Element.distribution(ngon_n)
     part_ec.append((np.diff(eso).astype(np.int32), ec))
     part_pe0.append(pe[:,0])
     part_pe1.append(pe[:,1])
@@ -395,8 +395,8 @@ def _extrude_tri_to_prism_and_tris(tri, num, n_vtx, n_cell, er_max, align=True):
 
   new_tri1 = PT.new_Elements(f'TRI_3.{num}a', 'TRI_3', erange=new_tri1_er, econn=new_tri1_ec)
   new_tri2 = PT.new_Elements(f'TRI_3.{num}b', 'TRI_3', erange=new_tri2_er, econn=new_tri2_ec)
-  MT.new_Distribution({'Element' : MT.distribution_value(tri, 'Element').copy()}, new_tri1)
-  MT.new_Distribution({'Element' : MT.distribution_value(tri, 'Element').copy()}, new_tri2)
+  MT.new_Distribution({'Element' : MT.Element.distribution(tri).copy()}, new_tri1)
+  MT.new_Distribution({'Element' : MT.Element.distribution(tri).copy()}, new_tri2)
   return (new_tri1, new_tri2)
 
 
@@ -436,8 +436,8 @@ def _extrude_quad_to_hexa_and_quads(quad, num, n_vtx, n_cell, er_max, align=True
 
   new_quad1 = PT.new_Elements(f'QUAD_4.{num}a', 'QUAD_4', erange=new_quad1_er, econn=new_quad1_ec)
   new_quad2 = PT.new_Elements(f'QUAD_4.{num}b', 'QUAD_4', erange=new_quad2_er, econn=new_quad2_ec)
-  MT.new_Distribution({'Element' : MT.distribution_value(quad, 'Element').copy()}, new_quad1)
-  MT.new_Distribution({'Element' : MT.distribution_value(quad, 'Element').copy()}, new_quad2)
+  MT.new_Distribution({'Element' : MT.Element.distribution(quad).copy()}, new_quad1)
+  MT.new_Distribution({'Element' : MT.Element.distribution(quad).copy()}, new_quad2)
   return (new_quad1, new_quad2)
 
 def _extrude_bar_to_quad(bar, num, n_vtx, align=True):
@@ -589,7 +589,7 @@ def extrude(dist_tree: CGNSDistTree,
     if not PT.Zone.CellDimension(zone) == 2:
       raise ValueError("Only 2D zones are supported in this function")
 
-    distrib_vtx_2d_n = MT.distribution_value(zone, 'Vertex').copy()
+    distrib_vtx_2d_n = MT.Zone.vtx_distribution(zone).copy()
     zone_to_distrib_vtx[zone_path] = distrib_vtx_2d_n
 
     coord_n = PT.get_child_from_label(zone, 'GridCoordinates_t')
@@ -687,11 +687,10 @@ def extrude(dist_tree: CGNSDistTree,
       for container in PT.get_children_from_predicate(zone, is_container & is_vertex):
         if has_pl(container):
           maybe_pl = PT.find_child_from_name(container, 'PointList')[1]
-          distrib_idx = MT.distribution_value(container, 'Index')
+          distrib_idx = MT.Container.distribution(container, zone)
         elif PT.get_label(container) == 'ZoneSubRegion_t': # Related ZSR *or* PR defined ZSR
           maybe_pl = None
-          extent_node = PT.Container.SubsetNode(container, zone)
-          distrib_idx = MT.distribution_value(extent_node, 'Index')
+          distrib_idx = MT.Container.distribution(container, zone)
         else: # Full containers
           maybe_pl = None
           distrib_idx = distrib_vtx_2d

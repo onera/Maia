@@ -278,7 +278,7 @@ def shrink_to_subset(array, zone, subset, comm):
     return array
   loc = PT.Subset.GridLocation(subset)
   is_partitioned = MT.get_Distribution(zone) is None
-  subset_distri = None if is_partitioned else MT.distribution_value(subset, 'Index')
+  subset_distri = None if is_partitioned else MT.Subset.distribution(subset)
   if PT.Zone.Type(zone) == 'Unstructured':
     if pl is None:
       assert pr is not None

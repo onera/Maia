@@ -21,7 +21,7 @@ def _update_ngon_exchange_PE(ngon, ref_faces, del_faces, comm):
   """
   Update ParentElements in ngon to combinate faces
   """
-  face_distri = MT.distribution_value(ngon, 'Element')
+  face_distri = MT.Element.distribution(ngon)
   pe          = PT.get_node_from_path(ngon, 'ParentElements')[1]
 
 
@@ -40,7 +40,7 @@ def _update_ngon_remove_faces(ngon, del_faces, comm):
   """
   Remove faces from EC, PE and ESO and update distribution info in ngon
   """
-  face_distri = MT.distribution_value(ngon, 'Element')
+  face_distri = MT.Element.distribution(ngon)
   
   GI = EP.GlobalIndexer(face_distri, del_faces-1, comm)
   local_faces = np.nonzero(GI.access_counts > 0)[0]
@@ -235,7 +235,7 @@ def _update_vtx_data(zone, vtx_to_remove, comm):
   managed : GridCoordinates, FlowSolution, DiscreteData)
   and update vertex distribution info
   """
-  vtx_distri_ini  = MT.distribution_value(zone, 'Vertex')
+  vtx_distri_ini  = MT.Zone.vtx_distribution(zone)
 
   GI = EP.GlobalIndexer(vtx_distri_ini, vtx_to_remove-1, comm)
   mask = GI.access_counts == 0
@@ -318,8 +318,8 @@ def merge_intrazone_jn(dist_tree, jn_pathes, comm):
   assert np.intersect1d(ref_vtx, vtx_to_remove).size == 0
 
   #Get initial distributions
-  face_distri_ini = MT.distribution_value(ngon, 'Element').copy()
-  vtx_distri_ini  = MT.distribution_value(zone, 'Vertex')
+  face_distri_ini = MT.Element.distribution(ngon).copy()
+  vtx_distri_ini  = MT.Zone.vtx_distribution(zone)
 
   old_to_new_face = merge_distributed_ids(face_distri_ini, face_to_remove, ref_faces, comm, True)
   old_to_new_vtx  = merge_distributed_ids(vtx_distri_ini, vtx_to_remove, ref_vtx, comm)

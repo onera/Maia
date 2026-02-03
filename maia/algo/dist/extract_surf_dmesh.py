@@ -21,7 +21,7 @@ def _extract_faces(dist_zone, face_list, comm):
   dface_vtx = PT.find_child_from_name(ngon_node, 'ElementConnectivity')[1]
   ngon_eso  = PT.find_child_from_name(ngon_node, 'ElementStartOffset' )[1]
 
-  distrib_face     = MT.distribution_value(ngon_node, 'Element')
+  distrib_face     = MT.Element.distribution(ngon_node)
   distrib_face_vtx = MT.distribution_value(ngon_node, 'ElementConnectivity')
 
   dn_face = distrib_face[1] - distrib_face[0]
@@ -44,7 +44,7 @@ def _extract_surf_zone(dist_zone, face_list, comm):
     ex_face_old_to_new = _extract_faces(dist_zone, face_list, comm)
 
   # > Transfert extracted vertex coordinates
-  distrib_vtx      = MT.distribution_value(dist_zone, 'Vertex')
+  distrib_vtx      = MT.Zone.vtx_distribution(dist_zone)
   dn_vtx  = distrib_vtx [1] - distrib_vtx [0]
   if dn_vtx > 0:
     cx, cy, cz = PT.Zone.coordinates(dist_zone)

@@ -58,7 +58,7 @@ def enforce_boundary_pe_left(tree:CGNSDistTree, comm:MPIComm) -> None:
     # Change sign in NFace (only for 3d zones; for 2d zones, the orientation of edges
     # does not impact the NGON node so we don't do anything)
     if PT.Zone.has_nface_elements(zone):
-      face_distri   = MT.distribution_value(bnd_elt_node, 'Element')
+      face_distri   = MT.Element.distribution(bnd_elt_node)
       nface_node = PT.Zone.NFaceNode(zone)
       cell_face = PT.get_np_value(PT.find_child_from_name(nface_node, 'ElementConnectivity'))
       GI = EP.GlobalIndexer(face_distri, abs(cell_face)-PT.Element.Range(bnd_elt_node)[0], comm)
@@ -121,7 +121,7 @@ def fix_normal_orientation(tree:CGNSDistTree, comm:MPIComm) -> None:
     # > Internal faces
 
     # For each internal face (resp. edge), get the center of the left and right cell (resp. face)
-    cell_distri   = MT.distribution_value(zone, 'Cell')
+    cell_distri   = MT.Zone.cell_distribution(zone)
     parents_center = EP.GlobalIndexer(cell_distri,
                                       np.ravel(pe[boundary_flag]) - PT.Element.Range(nface_node)[0],
                                       comm).Take(cell_center, count=phy_dim)
@@ -140,7 +140,7 @@ def fix_normal_orientation(tree:CGNSDistTree, comm:MPIComm) -> None:
     np.invert(boundary_flag, out=boundary_flag)
 
     # Compute face center, only for external faces
-    face_distri = MT.distribution_value(ngon_node, 'Element')
+    face_distri = MT.Element.distribution(ngon_node)
     external_face_pl = np.arange(face_distri[0], face_distri[1])[boundary_flag] + PT.Element.Range(ngon_node)[0]
     external_face_pl = external_face_pl.reshape((1,-1), order='F')
     external_faces_center = _compute_elements_center(zone, phy_dim-1, comm, external_face_pl)

@@ -149,13 +149,13 @@ ZoneU Zone_t [[6,0,0]]:
     assert part_bc is None
     assert PT.Subset.GridLocation(part_sol) == 'CellCenter'
     assert (PT.get_child_from_name(part_sol, 'PointList')[1] == [2,3,4]).all()
-    assert (MT.globalnumbering_value(part_sol, 'Index') == [1,3,2]).all()
+    assert (MT.Subset.globalnumbering(part_sol) == [1,3,2]).all()
   if comm.Get_rank() == 1:
     assert part_sol is None
     assert PT.get_child_from_name(part_bc, 'PointList')[1].size == 0 #No specified in list => skipped, only child are constructed
     assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
     assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [1]).all()
-    assert (MT.globalnumbering_value(part_ds, 'Index') == [1]).all()
+    assert (MT.Subset.globalnumbering(part_ds) == [1]).all()
 
   with pytest.raises(ValueError):
     IBTP.dist_pl_to_part_pl(dist_zone, part_zones, ['FlowSolution_t'], 'FaceCenter', comm)
@@ -201,4 +201,4 @@ ZoneU.P1.N0 Zone_t [[3,0,0]]:
   assert PT.get_child_from_name(part_bc, 'PointList')[1].size == 0
   assert PT.Subset.GridLocation(part_ds) == 'FaceCenter'
   assert (PT.get_child_from_name(part_ds, 'PointList')[1] == [42]).all()
-  assert (MT.globalnumbering_value(part_ds, 'Index') == [9]).all()
+  assert (MT.Subset.globalnumbering(part_ds) == [9]).all()

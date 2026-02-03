@@ -31,7 +31,7 @@ def test_filter_vtx_coordinates(comm):
   empty = np.empty(0, int)
   tree = dcube_generator.dcube_generate(5,1.,[0,0,0], comm)
   vtx_coords = PT.get_node_from_label(tree, 'GridCoordinates_t')
-  vtx_distri   = MT.distribution_value(PT.get_all_Zone_t(tree)[0], 'Vertex')
+  vtx_distri   = MT.Zone.vtx_distribution(PT.get_all_Zone_t(tree)[0])
   if comm.Get_rank() == 1:
     requested_vtx_ids = np.array([2,6,7,106,3,103,107,102])
     expected_vtx_coords = np.array([[0.25, 0., 0.], [0., 0.25, 0.], [0.25, 0.25, 0.], [0., 0.25, 1.],
@@ -45,7 +45,7 @@ def test_filter_vtx_coordinates(comm):
 
   tree = maia.factory.generate_dist_block([5,4], 'Poly', comm, origin=[0,0])
   vtx_coords = PT.get_node_from_label(tree, 'GridCoordinates_t')
-  vtx_distri   = MT.distribution_value(PT.get_all_Zone_t(tree)[0], 'Vertex')
+  vtx_distri   = MT.Zone.vtx_distribution(PT.get_all_Zone_t(tree)[0])
   if comm.Get_rank() == 0:
     requested_vtx_ids = np.array([8,2,14])
     expected_vtx_coords = np.array([0.5, 1./3,  .25,0,  .75,2./3])

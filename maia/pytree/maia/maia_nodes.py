@@ -279,6 +279,69 @@ class Zone:
     return _n_entity(zone_node, comm, 'Vertex')
 
   @staticmethod
+  def vtx_distribution(zone_node:CGNSTree) -> NDArray:
+    """ Return the vertices distribution array of a **distributed** zone
+
+    Args:
+      zone_node (CGNSDistTree): Input Zone_t node
+    Returns:
+      NDArray : distribution array for vertices
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[77, 60, 0]])
+      >>> MT.new_Distribution({'Vertex' : [39, 58, 77]}, parent=zone)
+      >>> MT.Zone.vtx_distribution(zone)
+      array([39, 58, 77], dtype=int32)
+    """
+    return distribution_value(zone_node, 'Vertex')
+  @staticmethod
+  def cell_distribution(zone_node:CGNSTree) -> NDArray:
+    """ Return the cells distribution array of a **distributed** zone
+
+    Args:
+      zone_node (CGNSDistTree): Input Zone_t node
+    Returns:
+      NDArray : distribution array for cells
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[77, 60, 0]])
+      >>> MT.new_Distribution({'Cell' : [45, 60, 60]}, parent=zone)
+      >>> #MT.Zone.vtx_distribution(zone)
+      >>> MT.Zone.cell_distribution(zone)
+      array([45, 60, 60], dtype=int32)
+    """
+    return distribution_value(zone_node, 'Cell')
+
+  @staticmethod
+  def cell_globalnumbering(zone_node:CGNSTree) -> NDArray:
+    """ Return the cells absolute numbering array of a **partitioned** zone
+
+    Args:
+      zone_node (CGNSPartTree): Input Zone_t node
+    Returns:
+      NDArray : global numbering array for cells
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[8, 3, 0]])
+      >>> MT.new_GlobalNumbering({'Cell' : [5,1,9]}, parent=zone)
+      >>> MT.Zone.cell_globalnumbering(zone)
+      array([5, 1, 9], dtype=int32)
+    """
+    return globalnumbering_value(zone_node, 'Cell')
+  @staticmethod
+  def vtx_globalnumbering(zone_node:CGNSTree) -> NDArray:
+    """ Return the vertices absolute numbering array of a **partitioned** zone
+
+    Args:
+      zone_node (CGNSPartTree): Input Zone_t node
+    Returns:
+      NDArray : global numbering array for vertices
+    Example:
+      >>> zone = PT.new_Zone(type='Unstructured', size=[[8, 3, 0]])
+      >>> MT.new_GlobalNumbering({'Vertex' : [9,11,13,14,16,10,12,15]}, parent=zone)
+      >>> MT.Zone.vtx_globalnumbering(zone)
+      array([ 9, 11, 13, 14, 16, 10, 12, 15], dtype=int32)
+    """
+    return globalnumbering_value(zone_node, 'Vertex')
+
+  @staticmethod
   def EdgeNode(zone_node:CGNSTree) -> CGNSTree:
     """Return the Elements_t node of kind ``BAR_2`` of a Zone_t node
     
@@ -301,6 +364,38 @@ class Zone:
 
 class Element:
   """ The following functions apply to Elements_t nodes """
+
+  @staticmethod
+  def distribution(elt_node:CGNSTree) -> NDArray:
+    """ Return the distribution array of a **distributed** element section
+
+    Args:
+      elt_node (CGNSTree): Input Elements_t node, distributed
+    Returns:
+      NDArray : distribution array
+    Example:
+      >>> elt = PT.new_Elements(type='TRI_3', erange=[1,10], econn=[1,5,4, 2,8,12])
+      >>> MT.new_Distribution({'Element' : [4, 6, 10]}, parent=elt)
+      >>> MT.Element.distribution(elt)
+      array([ 4,  6, 10], dtype=int32)
+    """
+    return distribution_value(elt_node, 'Element')
+  @staticmethod
+  def globalnumbering(elt_node:CGNSTree) -> NDArray:
+    """ Return the absolute numbering array of a **partitioned** element section
+
+    Args:
+      elt_node (CGNSTree): Input Elements_t node, partitioned
+    Returns:
+      NDArray : global numbering array
+    Example:
+      >>> elt = PT.new_Elements(type='TRI_3', erange=[1,3])
+      >>> MT.new_GlobalNumbering({'Element' : [4, 9, 3]}, parent=elt)
+      >>> MT.Element.globalnumbering(elt)
+      array([4, 9, 3], dtype=int32)
+    """
+    return globalnumbering_value(elt_node, 'Element')
+
 
   @staticmethod
   def dn_elt(elt_node:CGNSTree) -> int:
@@ -401,6 +496,39 @@ class Subset:
   or a PointRange node (eg BC_t, some ZoneSubRegion_t, …). """
 
   @staticmethod
+  def distribution(subset_node:CGNSTree) -> NDArray:
+    """ Return the distribution array of a **distributed** subset
+
+    Args:
+      subset_node (CGNSTree): Input subset node, distributed
+    Returns:
+      NDArray : distribution array
+    Example:
+      >>> bc = PT.new_BC(point_list=[[23, 55, 42, 13, 56]])
+      >>> MT.new_Distribution({'Index' : [5,10,20]}, parent=bc)
+      >>> MT.Subset.distribution(bc)
+      array([ 5, 10, 20], dtype=int32)
+    """
+    return distribution_value(subset_node, 'Index')
+
+  @staticmethod
+  def globalnumbering(subset_node:CGNSTree) -> NDArray:
+    """ Return the absolute numbering of a **partitioned** subset
+
+    Args:
+      subset_node (CGNSTree): Input subset node, partitioned
+    Returns:
+      NDArray : global numbering array
+    Example:
+      >>> zsr = PT.new_ZoneSubRegion(point_list=[[4,6,2,8]])
+      >>> MT.new_GlobalNumbering({'Index' : [9,11,13,14]}, parent=zsr)
+      >>> MT.Subset.globalnumbering(zsr)
+      array([ 9, 11, 13, 14], dtype=int32)
+    """
+    return globalnumbering_value(subset_node, 'Index')
+
+
+  @staticmethod
   def dn_elem(subset_node:CGNSTree) -> int:
     """ Return the local number of entities of a **distributed** subset
 
@@ -467,5 +595,47 @@ class Subset:
 
     # Fallback to standard case
     return _n_entity(subset_node, comm, 'Index')
+
+class Container:
+  """ A container is node designed to store fields, such as FlowSolution_t, ZoneSubRegion_t, ...  """
+
+  @staticmethod
+  def distribution(cnt_node:CGNSTree, parent_node:Optional[CGNSTree]=None) -> NDArray:
+    
+    # Simplest case : container has its own distribution
+    if S.Container._is_subset(cnt_node):
+      return Subset.distribution(cnt_node)
+
+    assert parent_node is not None, f"parent_node is mandatory for related container node"
+
+    # Container is a related ZSR or BCDS
+    if N.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t']:
+      subset = S.Container.SubsetNode(cnt_node, parent_node)
+      return Subset.distribution(subset)
+
+    # Container is a full FSLike (normally CellCenter or Vertex)
+    loc = S.Container.GridLocation(cnt_node)
+    fn = {'Vertex' : Zone.vtx_distribution, 'CellCenter' : Zone.cell_distribution}[loc]
+    return fn(parent_node)
+
+  @staticmethod
+  def globalnumbering(cnt_node:CGNSTree, parent_node:Optional[CGNSTree]=None) -> NDArray:
+    
+    # Simplest case : container has its own distribution
+    idx_gnum = get_GlobalNumbering(cnt_node, 'Index')
+    if idx_gnum is not None:
+      return N.get_np_value(idx_gnum)
+
+    assert parent_node is not None, f"parent_node is mandatory for related container node"
+
+    # Container is a related ZSR or BCDS
+    if N.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t']:
+      subset = S.Container.SubsetNode(cnt_node, parent_node)
+      return Subset.globalnumbering(subset)
+
+    # Container is a full FSLike (normally CellCenter or Vertex)
+    loc = S.Container.GridLocation(cnt_node)
+    fn = {'Vertex' : Zone.vtx_globalnumbering, 'CellCenter' : Zone.cell_globalnumbering}[loc]
+    return fn(parent_node)
 
 end_api_export()

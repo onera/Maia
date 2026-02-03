@@ -43,15 +43,15 @@ class Test_compute_ngon_from_std_elements:
     assert (PT.Element.Range(ngon) == [1,56]).all()
     assert (PT.Element.Range(nface) == [57,76]).all()
     if rank == 0:
-      assert (MT.distribution_value(ngon, 'Element') == [0,27,56]).all()
+      assert (MT.Element.distribution(ngon) == [0,27,56]).all()
       assert (MT.distribution_value(ngon, 'ElementConnectivity') == [0,81,168]).all()
-      assert (MT.distribution_value(nface, 'Element') == [0,10,20]).all()
+      assert (MT.Element.distribution(nface) == [0,10,20]).all()
       assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1][:6] == [1,4,2,2,4,5]).all()
       assert (PT.get_child_from_name(ngon, 'ParentElements')[1][8:12] == [[68,0], [67,0], [72,0], [58,61]]).all()
     elif rank == 1:
-      assert (MT.distribution_value(ngon, 'Element') == [27,56,56]).all()
+      assert (MT.Element.distribution(ngon) == [27,56,56]).all()
       assert (MT.distribution_value(ngon, 'ElementConnectivity') == [81,168,168]).all()
-      assert (MT.distribution_value(nface, 'Element') == [10,20,20]).all()
+      assert (MT.Element.distribution(nface) == [10,20,20]).all()
       assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1][-6:] == [14,15,18,14,18,17]).all()
       assert (PT.get_child_from_name(ngon, 'ParentElements')[1][4:8] == [[59,70], [67,0], [64,66], [73,76]]).all()
     assert (PT.get_child_from_name(nface, 'ElementStartOffset')[1] ==  np.arange(0,44,4)+40*rank).all()
@@ -82,16 +82,16 @@ class Test_compute_ngon_from_std_elements:
     assert (PT.Element.Range(edge) == [1,17]).all()
     assert (PT.Element.Range(ngon) == [18,23]).all()
     if rank == 0:
-      assert (MT.distribution_value(edge, 'Element') == [0,9,17]).all()
-      assert (MT.distribution_value(ngon, 'Element') == [0,3,6]).all()
+      assert (MT.Element.distribution(edge) == [0,9,17]).all()
+      assert (MT.Element.distribution(ngon) == [0,3,6]).all()
       assert (MT.distribution_value(ngon, 'ElementConnectivity') == [0,12,24]).all()
 
       assert (PT.find_child_from_name(edge, 'ElementConnectivity')[1] == [1,2,2,3,5,1,3,4,2,6,3,7,6,5,4,8,7,6]).all()
       assert (PT.find_child_from_name(ngon, 'ElementStartOffset')[1] == [0,4,8,12]).all()
       assert (PT.find_child_from_name(ngon, 'ElementConnectivity')[1] == [1,2,6,5, 6,2,3,7, 7,3,4,8]).all()
     elif rank == 1:
-      assert (MT.distribution_value(edge, 'Element') == [9,17,17]).all()
-      assert (MT.distribution_value(ngon, 'Element') == [3,6,6]).all()
+      assert (MT.Element.distribution(edge) == [9,17,17]).all()
+      assert (MT.Element.distribution(ngon) == [3,6,6]).all()
       assert (MT.distribution_value(ngon, 'ElementConnectivity') == [12,24,24]).all()
 
       assert (PT.find_child_from_name(edge, 'ElementConnectivity')[1] == [9,5,8,7,6,10,7,11,10,9,8,12,11,10,12,11]).all()

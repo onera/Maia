@@ -532,7 +532,7 @@ def test_recover_poly3d_nface_validity(comm):
   nface = PT.Zone.NFaceNode(zone)
   ec = PT.get_child_from_name(nface, 'ElementConnectivity')[1]
 
-  distri = MT.distribution_value(PT.Zone.NGonNode(zone), 'Element')
+  distri = MT.Element.distribution(PT.Zone.NGonNode(zone))
 
   out_sign = EP.part_to_block(np.sign(ec), distri, np.abs(ec)-1, comm, reduce_op=EP.ReduceOp.SUM)
   assert not comm.allreduce((out_sign > 1).any(), MPI.LOR)

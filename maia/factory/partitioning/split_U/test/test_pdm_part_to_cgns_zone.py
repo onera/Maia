@@ -241,8 +241,8 @@ def test_pdm_part_to_cgns_zone(fields):
   assert len(part_zones) == len(l_dims)
   for ipart, part_zone in enumerate(part_zones):
     assert PT.get_name(part_zone) == PT.get_name(d_zone) + '.P0.N{0}'.format(ipart)
-    assert (MT.globalnumbering_value(part_zone, 'Vertex') == l_data[ipart]['np_vtx_ln_to_gn']).all()
-    assert (MT.globalnumbering_value(part_zone, 'Cell') == l_data[ipart]['np_cell_ln_to_gn']).all()
+    assert (MT.Zone.vtx_globalnumbering(part_zone) == l_data[ipart]['np_vtx_ln_to_gn']).all()
+    assert (MT.Zone.cell_globalnumbering(part_zone) == l_data[ipart]['np_cell_ln_to_gn']).all()
   
   def test_pdm_part_to_cgns_zone_empty():
     # add Case where n_vtx == 0

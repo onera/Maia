@@ -32,56 +32,6 @@ BaseB CGNSBase_t:
   assert get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone3')) == []
   assert get_names(utils.get_partitioned_zones(part_tree, 'BaseB/Zone3')) == ['Zone3.P0.N0']
 
-def test_get_cgns_distribution():
-  yt = """
-Zone Zone_t:
-  ZBC ZoneBC_t:
-    bc1 BC_t "Farfield":
-      PointList IndexArray_t:
-      :CGNS#Distribution UserDefinedData_t:
-        Index DataArray_t [1,4,4]:
-  :CGNS#Distribution UserDefinedData_t:
-    Cell DataArray_t [1,2,4]:
-"""
-  dist_zone = PT.yaml.to_node(yt)
-  zone_distri = utils.get_cgns_distribution(dist_zone, 'Cell')
-  bc_distri   = utils.get_cgns_distribution(PT.get_node_from_path(dist_zone, 'ZBC/bc1'), 'Index')
-  assert (zone_distri == [1,2,4]).all()
-  assert (bc_distri   == [1,4,4]).all()
-
-def test_get_subset_distribution():
-  zone = PT.yaml.to_node("""
-  Zone Zone_t [[1,1,0]]:
-    ZoneType ZoneType_t "Unstructured":
-    :CGNS#Distribution UserDefinedData_t:
-      Vertex DataArray_t I4 [1]:
-      Cell DataArray_t I4 [1]:
-    FlowSolVtx FlowSolution_t:
-      GridLocation GridLocation_t "Vertex":
-    PartialFlowSolFace FlowSolution_t:
-      GridLocation GridLocation_t "FaceCenter":
-      PointList IndexArray_t [[1]]:
-      :CGNS#Distribution UserDefinedData_t:
-        Index DataArray_t I4 [2]:
-    FlowSolCell FlowSolution_t:
-      GridLocation GridLocation_t "CellCenter":
-    PartialFlowSolVtx FlowSolution_t:
-      GridLocation GridLocation_t "Vertex":
-      PointList IndexArray_t [[1]]:
-      :CGNS#Distribution UserDefinedData_t:
-        Index DataArray_t I4 [4]:
-    WrongFlowSolCell FlowSolution_t:
-      GridLocation GridLocation_t "CellCenter":
-      PointList IndexArray_t [[1]]:
-  """)
-  node_names     = ['FlowSolVtx','PartialFlowSolFace','FlowSolCell','PartialFlowSolVtx']
-  expected_vals  = [[1]    ,      [2],                 [1],          [4]]
-  for node_name, expected_val in zip(node_names, expected_vals):
-    node = PT.get_node_from_name(zone, node_name)
-    assert (utils.get_subset_distribution(zone, node) == expected_val).all()
-  with pytest.raises(RuntimeError):
-    node = PT.get_node_from_name(zone, 'WrongFlowSolCell')
-    utils.get_subset_distribution(zone, node)
 
 
 @pytest_parallel.mark.parallel(2)
@@ -101,30 +51,6 @@ def test_create_all_elt_distribution(comm):
     assert (distri == [0,50,100]).all()
   elif comm.Get_rank() == 1:
     assert (distri == [50,100,100]).all()
-
-def test_collect_cgns_g_numering():
-  yt = """
-Zone.P0.N0 Zone_t:
-  ZBC ZoneBC_t:
-    bc1 BC_t "Farfield":
-      PointList IndexArray_t:
-      :CGNS#GlobalNumbering UserDefinedData_t:
-        Index DataArray_t [1,2,3,4]:
-  :CGNS#GlobalNumbering UserDefinedData_t:
-    Cell DataArray_t [1,2]:
-Zone.P0.N1 Zone_t:
-  ZBC ZoneBC_t:
-  :CGNS#GlobalNumbering UserDefinedData_t:
-    Cell DataArray_t [3,4]:
-"""
-  part_zones = PT.yaml.to_nodes(yt)
-  cell_lngn = utils.collect_cgns_g_numbering(part_zones, 'Cell')
-  bc1_lngn  = utils.collect_cgns_g_numbering(part_zones, 'Index', 'ZBC/bc1')
-  assert len(cell_lngn) == len(bc1_lngn) == 2
-  assert (cell_lngn[0] == [1,2]).all()
-  assert (cell_lngn[1] == [3,4]).all()
-  assert (bc1_lngn[0] == [1,2,3,4]).all()
-  assert (bc1_lngn[1] == []).all()
 
 def test_create_all_elt_g_numbering():
   yt = """

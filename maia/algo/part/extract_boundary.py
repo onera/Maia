@@ -192,7 +192,7 @@ def extract_surf_from_bc_single(part_zones: List[CGNSPartTree],
 
     cx, cy, cz, bc_face_vtx_idx, bc_face_vtx, bc_vtx_ids = extract_faces_mesh(zone, bc_face_ids_cat)
 
-    vtx_ln_to_gn_zone = MT.globalnumbering_value(zone, 'Vertex')
+    vtx_ln_to_gn_zone = MT.Zone.vtx_globalnumbering(zone)
 
     if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
       elt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]

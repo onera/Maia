@@ -154,7 +154,7 @@ def split_original_joins(p_tree):
       for gc in PT.get_children_from_predicate(zone_gc, is_initial_gc):
         pl       = PT.get_child_from_name(gc, 'PointList')[1]
         pl_d     = PT.get_child_from_name(gc, 'PointListDonor')[1]
-        lngn     = MT.globalnumbering_value(gc, 'Index')
+        lngn     = MT.Subset.globalnumbering(gc)
         donor    = PT.get_child_from_name(gc, 'Donor')[1]
         # > List of couples (procs, parts) holding the opposite join
         opposed_parts = np.unique(donor, axis=0)

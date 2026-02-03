@@ -42,6 +42,9 @@ create Maia-specific nodes.
 Node searching
 --------------
 
+The following functions extend :ref:`searches<pt_node_search>` to easily
+get Maia-specific nodes.
+
 .. autofunction:: maia.pytree.maia.get_Distribution
 .. autofunction:: maia.pytree.maia.get_GlobalNumbering
 

@@ -44,7 +44,7 @@ def _convert_nface2d_to_ngon(zone, comm):
   face_bar_n = PT.get_child_from_name(nface_n, 'ElementConnectivity')
   face_vtx = combine_face_edge_and_edge_vtx(PT.get_child_from_name(nface_n, 'ElementStartOffset')[1],
                                             face_bar_n[1],
-                                            MT.distribution_value(bar_n, 'Element'),
+                                            MT.Element.distribution(bar_n),
                                             PT.get_child_from_name(bar_n, 'ElementConnectivity')[1],
                                             comm)
   PT.set_value(face_bar_n, face_vtx)
@@ -64,8 +64,8 @@ def _bar_pe_to_nface2d(zone, comm):
   bar_n = MT.Zone.EdgeNode(zone)
   PT.set_value(bar_n, [22, 0])
   
-  edge_distrib = MT.distribution_value(bar_n, 'Element')
-  face_distrib = MT.distribution_value(zone, 'Cell')
+  edge_distrib = MT.Element.distribution(bar_n)
+  face_distrib = MT.Zone.cell_distribution(zone)
   
   edge_face = maia.algo.indexing.get_pe_local(bar_n).reshape(-1,order='C')
   edge_face_idx = 2*np.arange(edge_distrib[0], edge_distrib[1]+1, dtype=np.int32)

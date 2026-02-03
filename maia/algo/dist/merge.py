@@ -387,11 +387,13 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
   selected_l:Dict[str, List[NDArray]]      = {entity : [] for entity in entities}
   for zone in zones:
     for entity in entities:
-      if entity == 'Face':
+      if entity == 'Vertex':
+        distri = as_pdm_gnum(MT.Zone.vtx_distribution(zone))
+      elif entity == 'Face':
         elt_node = PT.Zone.NGonNode(zone) if cell_dim == 3 else MT.Zone.EdgeNode(zone)
-        distri = as_pdm_gnum(MT.distribution_value(elt_node, 'Element'))
-      else:
-        distri = as_pdm_gnum(MT.distribution_value(zone, entity))
+        distri = as_pdm_gnum(MT.Element.distribution(elt_node))
+      elif entity == 'Cell':
+        distri = as_pdm_gnum(MT.Zone.cell_distribution(zone))
       blocks_distri_l[entity].append(par_utils.partial_to_full_distribution(distri, comm))
       selected_l[entity].append(np.arange(distri[0], distri[1], dtype=pdm_dtype)+1)
 
@@ -673,13 +675,13 @@ def _merge_pl_data(mbm, zones, subset_nodes, loc, data_query, comm):
   assert len(zones) == len(subset_nodes)
   for zone, node in zip(zones, subset_nodes):
     if loc == 'Vertex':
-      distri_ptb = MT.distribution_value(zone, 'Vertex')
+      distri_ptb = MT.Zone.vtx_distribution(zone)
     elif loc == 'EdgeCenter':
-      distri_ptb = MT.distribution_value(MT.Zone.EdgeNode(zone), 'Element')
+      distri_ptb = MT.Element.distribution(MT.Zone.EdgeNode(zone))
     elif loc == 'FaceCenter':
-      distri_ptb = MT.distribution_value(PT.Zone.NGonNode(zone), 'Element')
+      distri_ptb = MT.Element.distribution(PT.Zone.NGonNode(zone))
     elif loc == 'CellCenter':
-      distri_ptb = MT.distribution_value(zone, 'Cell')
+      distri_ptb = MT.Zone.cell_distribution(zone)
     if node is not None:
       ref_node = node #Take any node as reference, to build name/type/value of merged node
 
@@ -816,7 +818,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     dom_id_send = zone_to_id[zone_path_send]
     zone_send = PT.get_node_from_path(tree, zone_path_send)
     face_send = get_face_node(zone_send)
-    face_distri_send = MT.distribution_value(face_send, 'Element')
+    face_distri_send = MT.Element.distribution(face_send)
     pe_send          = PT.get_child_from_name(face_send, 'UpdatedPE')[1]
 
     gcs = PT.get_nodes_from_predicate(zone_send, query, depth=2)
@@ -835,7 +837,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
       face_node = get_face_node(zone)
       pe      = PT.get_np_value(PT.find_child_from_name(face_node, 'UpdatedPE'))
       pe_dom  = PT.get_np_value(PT.find_child_from_name(face_node, 'PEDomain'))
-      face_distri = MT.distribution_value(face_node, 'Element')
+      face_distri = MT.Element.distribution(face_node)
 
       GI = EP.GlobalIndexer(face_distri, pld-1, comm)
       local_faces = GI.access_counts > 0

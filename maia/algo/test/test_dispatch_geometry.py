@@ -145,7 +145,7 @@ def test_compute_elements_center(parallel, comm):
             if parallel == 'part':
               assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1))
             else:
-              distri = MT.distribution_value(sol, 'Index')
+              distri = MT.Subset.distribution(sol)
               # Works but probably because only one section per dim, otherwise PL may mix elements
               assert np.array_equal(pl, np.arange(elt_d_range[0], elt_d_range[1]+1)[distri[0]:distri[1]])
 
@@ -268,6 +268,6 @@ def test_compute_elements_measure(parallel, comm):
             else:
               starts, ends = [], []
               for elt in PT.Zone.get_ordered_elements_per_dim(zone)[dim]:
-                starts.append(MT.distribution_value(elt, 'Element')[0] + PT.Element.Range(elt)[0])
-                ends  .append(MT.distribution_value(elt, 'Element')[1] + PT.Element.Range(elt)[0])
+                starts.append(MT.Element.distribution(elt)[0] + PT.Element.Range(elt)[0])
+                ends  .append(MT.Element.distribution(elt)[1] + PT.Element.Range(elt)[0])
               assert np.array_equal(pl, np_utils.multi_arange(starts, ends))

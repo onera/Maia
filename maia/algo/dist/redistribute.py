@@ -19,7 +19,7 @@ def redistribute_pl_node(node: CGNSTree,
   each process.
   """
   distri_n = MT.find_Distribution(node)
-  node_distrib = MT.distribution_value(node, 'Index')
+  node_distrib = MT.Subset.distribution(node)
   new_distrib = distribution(node_distrib[2], comm)
   new_size = new_distrib[1] - new_distrib[0]
   MT.new_Distribution({'Index' : new_distrib}, node)
@@ -86,7 +86,7 @@ def redistribute_elements_node(node: CGNSTree,
   has_eso = PT.Element.Type(node) in ['NGON_n', 'NFACE_n', 'MIXED']
 
   # Get element distribution
-  elt_distrib = MT.distribution_value(node, "Element")
+  elt_distrib = MT.Element.distribution(node)
   n_elt       = elt_distrib[2]
 
   # New element distribution
@@ -160,8 +160,8 @@ def redistribute_zone(zone: CGNSTree,
                       comm: MPIComm) -> None:
 
   # Get distribution
-  old_distrib = {'Vertex' : MT.distribution_value(zone, "Vertex"),
-                 'Cell'   : MT.distribution_value(zone, "Cell")}
+  old_distrib = {'Vertex' : MT.Zone.vtx_distribution(zone),
+                 'Cell'   : MT.Zone.cell_distribution(zone)}
   if PT.Zone.Type(zone) == 'Structured' and PT.Zone.IndexDimension(zone) == 3:
     old_distrib['Face'] = MT.distribution_value(zone, "Face")
 

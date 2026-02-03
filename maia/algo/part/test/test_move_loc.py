@@ -25,7 +25,7 @@ def test_centers_to_nodes(cross_domain, comm):
 
   # Create sol on partitions
   for part in PT.get_all_Zone_t(part_tree):
-    gnum = MT.globalnumbering_value(part, 'Cell')
+    gnum = MT.Zone.cell_globalnumbering(part)
     PT.new_FlowSolution('FSol', loc='CellCenter', fields={'gnum': gnum}, parent=part)
 
   ML.centers_to_nodes(part_tree, comm, ['FSol'], idw_power=0, cross_domain=cross_domain)
@@ -38,7 +38,7 @@ def test_centers_to_nodes(cross_domain, comm):
     expected_dfield_f = np.array([4.,4.5,5.,4.,4.5,5.,4.,4.5,5.,4.,4.5,5.,4.,4.5,5.,4.,4.5,5.,4.,4.5,5.,4.,4.5,5.,4.,4.5,5.])
   else:
     expected_dfield_f = np.array([1.,1.5,2.,2.,2.5,3.,3.,3.5,4.,3.,3.5,4.,4.,4.5,5.,5.,5.5,6.,5.,5.5,6.,6.,6.5,7.,7.,7.5,8.])
-  distri_vtx = MT.distribution_value(PT.get_all_Zone_t(dist_tree)[0], 'Vertex')
+  distri_vtx = MT.Zone.vtx_distribution(PT.get_all_Zone_t(dist_tree)[0])
   expected_dfield = expected_dfield_f[distri_vtx[0]:distri_vtx[1]]
 
   assert (dfield_vtx == expected_dfield).all()
@@ -171,7 +171,7 @@ def test_nodes_to_centers(from_api, comm):
 
   # Create sol on partitions
   for part in PT.get_all_Zone_t(part_tree):
-    gnum = MT.globalnumbering_value(part, 'Vertex')
+    gnum = MT.Zone.vtx_globalnumbering(part)
     PT.new_FlowSolution('FSol', loc='Vertex', fields={'gnum': gnum}, parent=part)
 
   if from_api:

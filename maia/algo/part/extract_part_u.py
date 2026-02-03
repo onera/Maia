@@ -472,7 +472,7 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
           bc_n  = PT.get_node_from_path(part_zone, bc_path)
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
-          bc_gn = MT.globalnumbering_value(bc_n, 'Index') if bc_n is not None else np.empty(0, pdm_gnum_dtype)
+          bc_gn = MT.Subset.globalnumbering(bc_n) if bc_n is not None else np.empty(0, pdm_gnum_dtype)
           bc_type = loc_to_pdm_bnd_type[dim_name]
           PDM_EP_group_set(pdm_ep, i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, _LOC_TO_DIM[dim_name]) , bc_gn)
 
