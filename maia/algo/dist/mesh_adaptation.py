@@ -1,6 +1,7 @@
 import time
 import subprocess
 from pathlib import Path
+import shutil
 
 import maia
 import maia.pytree        as PT
@@ -55,7 +56,7 @@ def unpack_metric(dist_tree, metric_paths):
 
 def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
                            metric: Union[None, str, List[str]],
-                           comm: MPIComm, 
+                           comm: MPIComm,
                            containers_name: List[str],
                            constraints: Optional[str],
                            feflo_opts: str,
@@ -101,7 +102,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
     # Adapt with feflo
     feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(containers_name)!=0 else []
-    feflo_command  = ['feflo.a', '-in', in_file_mshb] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()        
+    feflo_command  = ['feflo.a', '-in', in_file_mshb] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()
     if len(constraint_tags['FaceCenter'])!=0:
       feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(constraint_tags['FaceCenter'])]#[str(tag) for tag in constraint_tags['FaceCenter']]
     if len(constraint_tags['EdgeCenter'])!=0:
@@ -268,6 +269,96 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo
 
   return tree
 
+def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
+                         metric: Union[None, str, List[str]],
+                         sol: Union[None, str],
+                         comm: MPIComm,
+                         mmg_opts: str,
+                         tmp_dir: str) -> CGNSDistTree:
+  # > Create tmp directory
+  tmp_repo = Path(tmp_dir)
+
+  # Input/output files
+  in_file_mshb = 'in_mesh.mesh'
+  in_file_solb = 'in_field.sol'
+  in_files = {'mesh': tmp_repo / in_file_mshb,
+              'sol' : tmp_repo / in_file_solb}
+  out_file_mshb = 'out_mesh.mesh'
+  out_file_solb = 'out_mesh.sol'
+  out_files = {'mesh': tmp_repo / out_file_mshb,
+               'sol' : tmp_repo / out_file_solb}
+
+  if comm.Get_rank()==0:
+    if tmp_repo.is_dir():
+      shutil.rmtree(tmp_repo)
+    tmp_repo.mkdir(exist_ok=True)
+  comm.barrier
+
+  # > Get field nodes
+  field_nodes = None
+  mmg_args = []
+  if metric is not None:
+    field_nodes = unpack_metric(dist_tree, metric)
+    mmg_args = f"-sol {in_file_solb} -ls".split()
+  elif sol is not None:
+    field_nodes = unpack_metric(dist_tree, sol)
+    if len(field_nodes) == 1:
+      f"-met {in_file_solb}".split()
+    elif len(field_nodes) == 6:
+      f"-met {in_file_solb} -A".split()
+
+  # > Get tree structure and names
+  tree_info = get_tree_info(dist_tree, [])
+  tree_info = comm.bcast(tree_info, root=0)
+  input_base = PT.find_child_from_label(dist_tree, 'CGNSBase_t')
+  input_zone = PT.find_child_from_label(input_base, 'Zone_t')
+
+  # > CGNS to meshb conversion
+  if comm.Get_rank()==0:
+    _ = cgns_to_meshb(dist_tree, in_files, field_nodes, [], None)
+
+    # Adapt with mmg
+    cell_dims = [PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(dist_tree)]
+    assert len(cell_dims) == 1
+    if cell_dims[0] == 2:
+      mmg_exe = 'mmg2d'
+    else:
+      mmg_exe = 'mmg3d'
+    mmg_command     = [mmg_exe, '-in', in_file_mshb, '-out', out_file_mshb] + mmg_args + mmg_opts.split()
+    str_mmg_command = ' '.join(mmg_command) # Split + join to remove useless spaces
+    mlog.info(f"Start mesh adaptation using MMG...")
+    start = time.time()
+
+    subprocess.run(str_mmg_command, shell=True, cwd=Path(tmp_dir))
+
+    end = time.time()
+    mlog.info(f"MMG mesh adaptation completed ({end-start:.2f} s)")
+
+  # > Get adapted dist_tree
+  adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
+
+  # > Set names and copy base data
+  adapted_base = PT.find_child_from_label(adapted_dist_tree, 'CGNSBase_t')
+  adapted_zone = PT.find_child_from_label(adapted_base, 'Zone_t')
+  PT.set_name(adapted_base, PT.get_name(input_base))
+  PT.set_name(adapted_zone, PT.get_name(input_zone))
+
+  to_copy = PT.pred.label_in(['Family_t'])
+  for node in PT.get_nodes_from_predicate(input_base, to_copy):
+    PT.add_child(adapted_base, node)
+
+  # > Copy BC data
+  to_copy = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
+  for bc_path in PT.predicates_to_paths(adapted_zone, 'ZoneBC_t/BC_t'):
+    adapted_bc = PT.get_node_from_path(adapted_zone, bc_path)
+    input_bc   = PT.get_node_from_path(input_zone, bc_path)
+    if input_bc is not None:
+      assert adapted_bc is not None
+      PT.set_value(adapted_bc, PT.get_value(input_bc))
+      for node in PT.get_nodes_from_predicate(input_bc, to_copy):
+        PT.add_child(adapted_bc, node)
+
+  return adapted_dist_tree
 
 
 def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
@@ -371,5 +462,82 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
     # > Recover original dist_tree
     maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
+
+  return adapted_dist_tree
+
+
+def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
+                        metric: Union[None, str, List[str]],
+                        sol: Union[None, str],
+                        comm: MPIComm,
+                        mmg_opts: str = "",
+                        **options) -> CGNSDistTree:
+  """Run a mesh adaptation step using *MMG* software.
+
+  Important:
+    - MMG (mmg2d & mmg3d) is an Inria software which must be installed by you and exposed in your ``$PATH``.
+    - This API is experimental. It may change in the future.
+
+  Input tree must be unstructured and have an element connectivity.
+  Boundary conditions other than Vertex located are managed.
+
+  Adapted mesh is returned as an independant distributed tree.
+
+  **Setting the metric**
+
+  Metric choice is available through the ``metric`` argument, which can take the following values:
+
+  - *None* : isotropic adaptation is performed (-hsiz option to prescribe the edge length)
+  - *str* : path (starting a Zone_t level) to a scalar vertex located size field:
+  - *list of 6 str* : each string must be a path to a vertex located field representing one component
+    of the user-defined metric tensor (expected order is ``XX, XY, XZ, YY, YZ, ZZ``)
+
+  Args:
+    dist_tree      (CGNSDistTree): Distributed tree to be adapted. Only U-Elements
+      single zone trees are managed.
+    metric         (str or list) : Path(s) to metric fields (see above)
+    sol            (str)         : Path to vertex located levelset field
+    comm           (MPIComm)     : MPI communicator
+    mmg_opts       (str)         : Additional arguments passed to MMG
+    **options                    : Additional options (see below)
+  Returns:
+    CGNSTree: Adapted mesh (distributed)
+
+  The function allows the additional optional parameters:
+
+  - ``tmp_dir`` (str, default to ``./TMP_adapt_dir``) -- Absolute or relative path to the directory
+    where meshb files are written
+
+  Warning:
+    Although this function interface is parallel, keep in mind that MMG is a sequential tool.
+    Input tree is thus internally gathered to a single process, which can cause memory issues on large cases.
+
+  Example:
+      .. literalinclude:: snippets/test_algo.py
+        :start-after: #adapt_with_mmg@start
+        :end-before: #adapt_with_mmg@end
+        :dedent: 2
+  """
+  MT.check_cgns_dist_tree(dist_tree)
+  tmp_dir = options.get('tmp_dir', './TMP_adapt_dir')
+
+  # Check options
+  if metric is not None: assert(sol    is None)
+  if sol    is not None: assert(metric is None)
+
+  # > Gathering dist_tree on proc 0
+  maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
+
+  adapted_dist_tree = _adapt_mesh_with_mmg(dist_tree, metric, sol, comm, mmg_opts, tmp_dir)
+  PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','DiscreteData_t')
+
+  # Handle same physical dimension for output tree
+  phy_dims = [PT.Base.PhysicalDimension(b) for b in PT.iter_all_CGNSBase_t(dist_tree)]
+  assert len(phy_dims) == 1
+  if phy_dims[0] == 2:
+    PT.rm_node_from_name(adapted_dist_tree, 'CoordinateZ')
+
+  # > Recover original dist_tree
+  maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
 
   return adapted_dist_tree

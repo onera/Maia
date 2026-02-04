@@ -2,6 +2,7 @@ import pytest
 import shutil
 
 feflo_exists = shutil.which('feflo.a') is not None
+mmg3d_exists = shutil.which('mmg3d')   is not None
 
 def test_convert_s_to_u():
   #convert_s_to_u@start
@@ -660,6 +661,49 @@ def test_adapt_with_feflo():
   #adapt_with_feflo@end
 
 
+@pytest.mark.skipif(not mmg3d_exists, reason="Require mmg3d")
+def test_adapt_with_mmg():
+  #adapt_with_mmg@start
+  import numpy
+  import mpi4py.MPI as MPI
+  import maia
+  import maia.pytree as PT
+
+  from maia.algo.dist import adapt_mesh_with_mmg
+
+  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # > Create a metric field
+  cx, _, _ = PT.Zone.coordinates(zone)
+  metric = numpy.ones_like(cx)
+  metric[cx <  0.5] = 0.1
+  metric[cx >= 0.5] = 0.2
+  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields={'metric' : metric}, parent=zone)
+
+  # > Adapt mesh according to scalar metric
+  adpt_dist_tree = adapt_mesh_with_mmg(dist_tree,
+                                       "FlowSolution/metric",
+                                       None,
+                                       MPI.COMM_WORLD,
+                                       mmg_opts="-hgrad 1.3")
+
+  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', MPI.COMM_WORLD)
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+
+  # > Create a levelset field
+  cx, _, _ = PT.Zone.coordinates(zone)
+  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields={'ls' : cx-0.5}, parent=zone)
+
+  # > Adapt mesh according to scalar metric
+  adpt_dist_tree = adapt_mesh_with_mmg(dist_tree,
+                                       None,
+                                       "FlowSolution/ls",
+                                       MPI.COMM_WORLD,
+                                       mmg_opts="-hgrad 1.2")
+  #adapt_with_mmg@end
+
+
 def test_change_basis():
   #change_basis@start
   import mpi4py.MPI as MPI
@@ -779,7 +823,7 @@ def test_find_joins_donor_name():
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'axisym_mesh.yaml', MPI.COMM_WORLD)
   maia.algo.dist.find_joins_donor_name(dist_tree, MPI.COMM_WORLD)
-  
+
   assert len(PT.get_nodes_from_name(dist_tree, 'GridConnectivityDonorName')) == 2
   #find_joins_donor_name@end
 

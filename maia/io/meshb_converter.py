@@ -100,10 +100,14 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
   range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
 
-  if cell_groups is not None:
-    groups_to_bcs(cell_groups, zone_bc, "CellCenter",                   0, comm)
-  if face_groups is not None:
-    groups_to_bcs(face_groups, zone_bc, "FaceCenter", range_per_dim[3][1], comm)
+  if cell_dim == 3:
+    if cell_groups is not None:
+      groups_to_bcs(cell_groups, zone_bc, "CellCenter",                   0, comm)
+    if face_groups is not None:
+      groups_to_bcs(face_groups, zone_bc, "FaceCenter", range_per_dim[3][1], comm)
+  else:
+    if face_groups is not None:
+      groups_to_bcs(face_groups, zone_bc, "CellCenter",                   0, comm)
   if edge_groups is not None:
     groups_to_bcs(edge_groups, zone_bc, "EdgeCenter", range_per_dim[2][1], comm)
   if vtx_groups  is not None:
@@ -231,6 +235,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
 
     # > Coordinates
     cx, cy, cz = PT.Zone.coordinates(zone)
+    if cz is None: cz = np.zeros_like(cx)
 
     # > Gathering elements by type
     #   For each element type, get info from element nodes of this type:
@@ -252,7 +257,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
         pdm_elmt_range[elmt_pdm_t].append(PT.Element.Range(elmt_n))
 
         if PT.Element.Size(elmt_n)!=0:
-          is_3d = PT.Element.Dimension(elmt_n)==3 # Works cause elements are ordered by dim  
+          is_3d = PT.Element.Dimension(elmt_n)==3 # Works cause elements are ordered by dim
           is_2d = PT.Element.Dimension(elmt_n)==2
 
     # > Reduce information and init tag
