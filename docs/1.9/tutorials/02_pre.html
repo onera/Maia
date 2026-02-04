@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your first workflow &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Towards custom mesh manipulation" href="04_post.html" />
+    <link rel="prev" title="Maia basics" href="01_basic.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.9
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="01_basic.html">Maia basics</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Your first workflow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#objective-and-plan">Objective and plan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#development">Development</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#prelude">Prelude</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#file-reading">File reading</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#connectivity-conversion">Connectivity conversion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#field-initialization">Field initialization</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#duplication">360° duplication</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#recovering-gridconnectivity-t-nodes">Recovering GridConnectivity_t nodes</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#effective-duplication">Effective duplication</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#merging-zones">Merging zones</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#performance-overview">Performance overview</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="04_post.html">Towards custom mesh manipulation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Your first workflow</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/02_pre.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="your-first-workflow">
+<span id="tuto2"></span><h1>Your first workflow<a class="headerlink" href="#your-first-workflow" title="Permalink to this heading"></a></h1>
+<p>This tutorial will teach you how to chain functionalities to create a simple workflow.
+Based on a real CFD case, the objectives are to demonstrate how Maia simplifies distributed
+mesh operations and to provide a solid foundation for creating your own parallel CGNS workflows.</p>
+<p>Our use case involves a Rotor37 geometry mesh.
+The input mesh is available in different sizes; please download one from the table below.
+The illustrations on this page were created using the medium-sized mesh.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>Light</p></th>
+<th class="head"><p>Medium</p></th>
+<th class="head"><p>Large</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Initial cell size</p></td>
+<td><p>~60K</p></td>
+<td><p>~200K</p></td>
+<td><p>~21M</p></td>
+</tr>
+<tr class="row-odd"><td><p>File size</p></td>
+<td><p>6 MiB</p></td>
+<td><p>16 MiB</p></td>
+<td><p>1 GiB</p></td>
+</tr>
+<tr class="row-even"><td><p>(Final cell size)</p></td>
+<td><p>~2M</p></td>
+<td><p>~7M</p></td>
+<td><p>~762M</p></td>
+</tr>
+<tr class="row-odd"><td><p>Download link</p></td>
+<td><p><a class="reference external" href="https://github.com/onera/Maia/releases/download/v1.8/rotor37_small.cgns">rotor_37_small.cgns</a></p></td>
+<td><p><a class="reference external" href="https://github.com/onera/Maia/releases/download/v1.8/rotor37_medium.cgns">rotor_37_medium.cgns</a></p></td>
+<td><p><a class="reference external" href="https://github.com/onera/Maia/releases/download/v1.8/rotor37_large.cgns">rotor_37_large.cgns</a></p></td>
+</tr>
+</tbody>
+</table>
+<p>Then, ensure you have access to a valid installation of maia and create
+an empty file <code class="file docutils literal notranslate"><span class="pre">02_workflow.py</span></code>.
+You will complete this file as you work through the tutorial; look out for
+instructions preceded by the symbol ✏️.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>During the experimentation phase, we advise you to use a light mesh and a low number of processes, especially if you are displaying data.
+Once the script is ready, you can use more processes and move to larger meshes.</p>
+</div>
+<section id="objective-and-plan">
+<h2>Objective and plan<a class="headerlink" href="#objective-and-plan" title="Permalink to this heading"></a></h2>
+<p>The aim of the workflow is to recombine a complete 360° mesh from the input angular section,
+with a data field initialized on it:</p>
+<figure class="align-center" id="id1">
+<a class="reference internal image-reference" href="../_images/7bb9f1fd7beda9587c7fda62a45831293088bc0137a9b8233209951d8dbbc917.png"><img alt="../_images/7bb9f1fd7beda9587c7fda62a45831293088bc0137a9b8233209951d8dbbc917.png" src="../_images/7bb9f1fd7beda9587c7fda62a45831293088bc0137a9b8233209951d8dbbc917.png" style="width: 85%;" /></a>
+<figcaption>
+<p><span class="caption-text">Initial (left) and expected final (right) mesh, colored from <code class="docutils literal notranslate"><span class="pre">VelocityY</span></code> field. Black lines
+show the initial angular section position.</span><a class="headerlink" href="#id1" title="Permalink to this image"></a></p>
+</figcaption>
+</figure>
+<p>We precise that we expect to have a single <code class="docutils literal notranslate"><span class="pre">Zone_t</span></code> node on the 360° mesh.</p>
+<p>👉 Before starting to code, let’s see what will be needed. Open the <a class="reference internal" href="../user_manual/user_manual.html#user-manual"><span class="std std-ref">User Manual</span></a>
+and answer the following questions:</p>
+<p>❓ Which function(s) you will need to use ?</p>
+<p><em>Hint : try to search 360 or duplicate in the search bar</em></p>
+<div class="toggle docutils container">
+<p>The main functions you are going to use are :</p>
+<ul class="simple">
+<li><p><code class="xref py py-func docutils literal notranslate"><span class="pre">duplicate_from_rotation_jns_to_360()</span></code> to duplicate the input mesh,</p></li>
+<li><p><a class="reference internal" href="../user_manual/algo.html#maia.algo.dist.merge_zones" title="maia.algo.dist.merge_zones"><code class="xref py py-func docutils literal notranslate"><span class="pre">merge_zones()</span></code></a> (or equivalent) to merge the resulting zones in a single one.</p></li>
+</ul>
+<p>In addition, you will need some <code class="docutils literal notranslate"><span class="pre">PT</span></code> functions to create and store the initial field, as well as
+the standard <code class="docutils literal notranslate"><span class="pre">maia.io</span></code> functions.</p>
+</div>
+<p>❓ Will you need to work on a partioned view of the input mesh ?</p>
+<div class="toggle docutils container">
+<p>All the functions mentionned above operate on a distributed tree. Thus, partioning the
+tree will not be necessary.</p>
+</div>
+<p>❓ When should you create the initial field ?</p>
+<div class="toggle docutils container">
+<p>You can create the initial field anytime in your workflow, but it is probably more
+efficient to do it before the duplication (since there will be more cells
+to compute after).</p>
+</div>
+<p>👉 Last step: it is a good practice to quickly check the input mesh, <em>eg</em> with <code class="docutils literal notranslate"><span class="pre">maia_print_tree</span></code>:</p>
+<div class="cell tag_remove-input tag_no-parallel docutils container">
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-C33">CGNSTree</span> <span class=" -Color -Color-C246">CGNSTree_t</span> 
+├───CGNSLibraryVersion <span class=" -Color -Color-C246">CGNSLibraryVersion_t</span> R4 [4.2]
+└───<span class=" -Color -Color-Bold -Color-Bold-C33">Base</span> <span class=" -Color -Color-C246">CGNSBase_t</span> I4 [3 3]
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C220">Amont</span> <span class=" -Color -Color-C246">Family_t</span> 
+    │   └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;BCInflowSubsonic&quot;
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C220">Aval</span> <span class=" -Color -Color-C246">Family_t</span> 
+    │   └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;BCOutflowSubsonic&quot;
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C220">Carter</span> <span class=" -Color -Color-C246">Family_t</span> 
+    │   └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;BCWallViscous&quot;
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C220">AubeMoyeu</span> <span class=" -Color -Color-C246">Family_t</span> 
+    │   └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;BCWallViscous&quot;
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C33">Rotor</span> <span class=" -Color -Color-C246">Zone_t</span> I4 [[211897 197568      0]]
+    │   ├───<span class=" -Color -Color-Bold -Color-Bold-C183">ZoneType</span> <span class=" -Color -Color-C246">ZoneType_t</span> &quot;Unstructured&quot;
+    │   ├───<span class=" -Color -Color-Bold -Color-Bold-C183">GridCoordinates</span> <span class=" -Color -Color-C246">GridCoordinates_t</span> 
+    │   │   ╵╴╴╴ (3 children masked)
+    │   ├───<span class=" -Color -Color-Bold -Color-Bold-C183">ZoneBC</span> <span class=" -Color -Color-C246">ZoneBC_t</span> 
+    │   │   ╵╴╴╴ (6 children masked)
+    │   ├───<span class=" -Color -Color-Bold -Color-Bold-C183">QUAD_4</span> <span class=" -Color -Color-C246">Elements_t</span> I4 [7 0]
+    │   │   ╵╴╴╴ (2 children masked)
+    │   └───<span class=" -Color -Color-Bold -Color-Bold-C183">HEXA_8</span> <span class=" -Color -Color-C246">Elements_t</span> I4 [17  0]
+    │       ╵╴╴╴ (2 children masked)
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C220">perright</span> <span class=" -Color -Color-C246">Family_t</span> 
+    │   └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;UserDefined&quot;
+    └───<span class=" -Color -Color-Bold -Color-Bold-C220">perleft</span> <span class=" -Color -Color-C246">Family_t</span> 
+        └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;UserDefined&quot;
+</pre></div>
+</div>
+</div>
+</div>
+<p>❓ Is the input mesh suitable for the functions you plan to call ?</p>
+<div class="toggle docutils container">
+<p>❌️ No! The input mesh is described by standard elements, but the function
+<a class="reference internal" href="../user_manual/algo.html#maia.algo.dist.merge_zones" title="maia.algo.dist.merge_zones"><code class="xref py py-func docutils literal notranslate"><span class="pre">merge_zones()</span></code></a> only applies to polyedric elements.
+Thus, a mesh conversion into polyedric (<code class="docutils literal notranslate"><span class="pre">NGON_n</span></code>) elements will be needed.</p>
+</div>
+<p>👉 All these informations allow us to propose the following plan:</p>
+<div class="toggle docutils container">
+<ol class="arabic simple">
+<li><p>Load mesh</p></li>
+<li><p>Convert into polyedric tree</p></li>
+<li><p>Initialize fields</p></li>
+<li><p>Duplicate</p></li>
+<li><p>Merge zones</p></li>
+</ol>
+</div>
+</section>
+<section id="development">
+<h2>Development<a class="headerlink" href="#development" title="Permalink to this heading"></a></h2>
+<section id="prelude">
+<h3>Prelude<a class="headerlink" href="#prelude" title="Permalink to this heading"></a></h3>
+<p>✏️ As in <a class="reference internal" href="01_basic.html#tuto1"><span class="std std-ref">first tutorial</span></a>, get the communicator
+from <code class="docutils literal notranslate"><span class="pre">mpi4py</span></code> package and import the modules that we will use: <code class="docutils literal notranslate"><span class="pre">maia</span></code> and <code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code>.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show code cell content</span>
+<span class="expanded">Hide code cell content</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">maia</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">maia.pytree</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">PT</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="file-reading">
+<h3>File reading<a class="headerlink" href="#file-reading" title="Permalink to this heading"></a></h3>
+<p>✏️ Read the CGNS file of your choice from the disk using the main file reading function :
+<a class="reference internal" href="../user_manual/io.html#maia.io.file_to_dist_tree" title="maia.io.file_to_dist_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.io.file_to_dist_tree()</span></code></a>.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="s1">&#39;rotor37_medium.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Distributed read of file rotor37_medium.cgns...
+Read completed (0.13 s) -- Size of dist_tree for current rank is 2.9MiB (Σ=11.5MiB)
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="connectivity-conversion">
+<h3>Connectivity conversion<a class="headerlink" href="#connectivity-conversion" title="Permalink to this heading"></a></h3>
+<p>👉 Search in the <a class="reference internal" href="../user_manual/user_manual.html#user-manual"><span class="std std-ref">User Manual</span></a> the relevant function to convert the
+elements description from standard elements to polyedric (<code class="docutils literal notranslate"><span class="pre">NGON_n</span></code>) elements.</p>
+<p>✏️ Call the function and check it worked by printing the
+<a class="reference internal" href="../maia_pytree/inspect.html#maia.pytree.Element.Type" title="maia.pytree.Element.Type"><code class="xref py py-func docutils literal notranslate"><span class="pre">Type()</span></code></a> of <code class="docutils literal notranslate"><span class="pre">Elements_t</span></code> nodes.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show code cell content</span>
+<span class="expanded">Hide code cell content</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">elt_kinds</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">iter_nodes_from_label</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;Elements_t&#39;</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Elements type was </span><span class="si">{</span><span class="n">elt_kinds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">convert_elements_to_ngon</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="n">elt_kinds</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">iter_nodes_from_label</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;Elements_t&#39;</span><span class="p">))</span>
+<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Elements type are now </span><span class="si">{</span><span class="n">elt_kinds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Elements type was {&#39;QUAD_4&#39;, &#39;HEXA_8&#39;}
+Elements type are now {&#39;NGON_n&#39;, &#39;NFACE_n&#39;}
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The <a class="reference internal" href="../maia_pytree/inspect.html#pt-inspect"><span class="std std-ref">Node inspection</span></a> page lists various functions to easily get
+data related to the most frequent node labels.</p>
+</div>
+</section>
+<section id="field-initialization">
+<h3>Field initialization<a class="headerlink" href="#field-initialization" title="Permalink to this heading"></a></h3>
+<p>In order to illustrate the ability of the duplication to move the vectorial fields
+together with the mesh, we are going to create a vectorial initial field in the input zone.</p>
+<p>This will made you use some functions of <a class="reference internal" href="../maia_pytree/pytree_module.html#pytree-module"><span class="std std-ref">The pytree module</span></a>.</p>
+<p>✏️ Get the (cartesian) coordinates <span class="math notranslate nohighlight">\(x\)</span>,<span class="math notranslate nohighlight">\(y\)</span>, and <span class="math notranslate nohighlight">\(z\)</span> of the input zone and use it to compute
+the following vertex located velocity :</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">vx</span> <span class="o">=</span> <span class="n">α</span> 
+<span class="n">vy</span> <span class="o">=</span> <span class="o">-</span><span class="n">α</span><span class="o">*</span><span class="n">sin</span><span class="p">(</span><span class="n">Θ</span><span class="p">)</span>     <span class="n">where</span> <span class="n">α</span> <span class="o">=</span> <span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
+<span class="n">vz</span> <span class="o">=</span>  <span class="n">α</span><span class="o">*</span><span class="n">cos</span><span class="p">(</span><span class="n">Θ</span><span class="p">)</span>           <span class="n">Θ</span> <span class="o">=</span> <span class="n">atan</span><span class="p">(</span><span class="n">z</span><span class="o">/</span><span class="n">y</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which corresponds to the uniform field <span class="math notranslate nohighlight">\((0, \alpha, \alpha)\)</span> in the cylindric coordinates
+<span class="math notranslate nohighlight">\((\vec{e_{r}}, \vec{e_{\theta}}, \vec{e_{x}})\)</span> (since <span class="math notranslate nohighlight">\(\vec{e_x}\)</span> is the revolution axis of the mesh).</p>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>You need to create arrays locally sized as <span class="math notranslate nohighlight">\(x\)</span>, <span class="math notranslate nohighlight">\(y\)</span> and <span class="math notranslate nohighlight">\(z\)</span>. Use one of the ndarray methods to get this size.</p>
+</div>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zone</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">find_node_from_label</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;Zone_t&#39;</span><span class="p">)</span> <span class="c1"># OK because tree has only one zone</span>
+<span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">cz</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">Zone</span><span class="o">.</span><span class="n">coordinates</span><span class="p">(</span><span class="n">zone</span><span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="n">α</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span>
+<span class="n">Θ</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">(</span><span class="n">cz</span><span class="o">/</span><span class="n">cy</span><span class="p">)</span>
+<span class="n">vx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cx</span><span class="p">),</span> <span class="n">α</span><span class="p">)</span>
+<span class="n">vy</span> <span class="o">=</span> <span class="o">-</span><span class="n">α</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">Θ</span><span class="p">)</span>
+<span class="n">vz</span> <span class="o">=</span>  <span class="n">α</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">Θ</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>✏️ Add the fields in a FlowSolution container. Be carefull to end the names
+by X,Y and Z to have it considered as a vectorial field later.</p>
+<div class="cell tag_hide-cell tag_remove-output docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">PT</span><span class="o">.</span><span class="n">new_FlowSolution</span><span class="p">(</span><span class="s1">&#39;FlowSolution&#39;</span><span class="p">,</span>
+                    <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;Vertex&#39;</span><span class="p">,</span>
+                    <span class="n">fields</span><span class="o">=</span><span class="p">{</span>
+                      <span class="s1">&#39;VelocityX&#39;</span> <span class="p">:</span> <span class="n">vx</span><span class="p">,</span>
+                      <span class="s1">&#39;VelocityY&#39;</span> <span class="p">:</span> <span class="n">vy</span><span class="p">,</span>
+                      <span class="s1">&#39;VelocityZ&#39;</span> <span class="p">:</span> <span class="n">vz</span><span class="p">},</span>
+                    <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>An alternative approach would have be to convert the mesh into cylindrical coordinates,
+then to create the FlowSolution with the uniform field <span class="math notranslate nohighlight">\((0, \alpha, \alpha)\)</span> (using this time
+R, Theta, and Z suffixes) before moving back the mesh to cartesian coordinates.
+Try it if you want!</p>
+</div>
+</section>
+<section id="duplication">
+<h3>360° duplication<a class="headerlink" href="#duplication" title="Permalink to this heading"></a></h3>
+<p>👉 It is time to apply the duplication operation with <code class="xref py py-func docutils literal notranslate"><span class="pre">duplicate_from_rotation_jns_to_360()</span></code>.</p>
+<p>❓ This function takes as an input the paths of the <code class="docutils literal notranslate"><span class="pre">GridConnectivity_t</span></code> nodes that define
+the periodic transformation. What is wrong with this mesh ?</p>
+<div class="toggle docutils container">
+<p>Our mesh has no <code class="docutils literal notranslate"><span class="pre">GridConnectivity_t</span></code> nodes ! Apparently, the meshing tool did not store it and we need to
+recover it. Congratulations if you anticipated it at the begining of this tutorial 🏅️</p>
+</div>
+<section id="recovering-gridconnectivity-t-nodes">
+<h4>Recovering GridConnectivity_t nodes<a class="headerlink" href="#recovering-gridconnectivity-t-nodes" title="Permalink to this heading"></a></h4>
+<p>In fact, the concerned boundary faces are stored in two <code class="docutils literal notranslate"><span class="pre">BC_t</span></code> nodes : <code class="docutils literal notranslate"><span class="pre">perleft</span></code> and <code class="docutils literal notranslate"><span class="pre">perright</span></code>; it is ‘only’
+the 1-to-1 mapping which is missing.</p>
+<p>✏️ Read the documentation of <a class="reference internal" href="../user_manual/algo.html#maia.algo.dist.connect_1to1_families" title="maia.algo.dist.connect_1to1_families"><code class="xref py py-func docutils literal notranslate"><span class="pre">connect_1to1_families()</span></code></a> and call it to rebuild the 1to1 connection
+between these two subsets.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>The rotation angle to go from perleft subset to perright subset is <code class="docutils literal notranslate"><span class="pre">2*pi/36</span></code></p>
+</div>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">36</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">connect_1to1_families</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span>
+                                     <span class="p">(</span><span class="s1">&#39;perleft&#39;</span><span class="p">,</span> <span class="s1">&#39;perright&#39;</span><span class="p">),</span> 
+                                     <span class="n">comm</span><span class="p">,</span>
+                                     <span class="n">periodic</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;rotation_angle&#39;</span> <span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">a</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])})</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>✏️ Then check the presence of <code class="docutils literal notranslate"><span class="pre">GridConnectivity_t</span></code> nodes in the tree and note their path.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] 
+ CGNSTree CGNSTree_t 
+ ├───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
+ └───Base CGNSBase_t I4 [3 3]
+     ├───Amont Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCInflowSubsonic&quot;
+     ├───Aval Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCOutflowSubsonic&quot;
+     ├───Carter Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCWallViscous&quot;
+     ├───AubeMoyeu Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCWallViscous&quot;
+     ├───Rotor Zone_t I4 [[211897 197568      0]]
+     │   ├───ZoneType ZoneType_t &quot;Unstructured&quot;
+     │   ├───GridCoordinates GridCoordinates_t 
+     │   │   ├───CoordinateX DataArray_t R8 (52975,)
+     │   │   ├───CoordinateY DataArray_t R8 (52975,)
+     │   │   └───CoordinateZ DataArray_t R8 (52975,)
+     │   ├───ZoneBC ZoneBC_t 
+     │   │   ├───bc_AubeMoyeu BC_t &quot;FamilySpecified&quot;
+     │   │   │   ╵╴╴╴ (4 children masked)
+     │   │   ├───bc_Carter BC_t &quot;FamilySpecified&quot;
+     │   │   │   ╵╴╴╴ (4 children masked)
+     │   │   ├───bc_Amont BC_t &quot;FamilySpecified&quot;
+     │   │   │   ╵╴╴╴ (4 children masked)
+     │   │   └───bc_Aval BC_t &quot;FamilySpecified&quot;
+     │   │       ╵╴╴╴ (4 children masked)
+     │   ├───:CGNS#Distribution UserDefinedData_t 
+     │   │   ├───Vertex DataArray_t I4 [     0  52975 211897]
+     │   │   └───Cell DataArray_t I4 [     0  49392 197568]
+     │   ├───NGonElements Elements_t I4 [22  0]
+     │   │   ├───ElementRange IndexRange_t I4 [     1 606880]
+     │   │   ├───ElementStartOffset DataArray_t I4 (151793,)
+     │   │   ├───ElementConnectivity DataArray_t I4 (607168,)
+     │   │   ├───ParentElements DataArray_t I4 (151792, 2)
+     │   │   └───:CGNS#Distribution UserDefinedData_t 
+     │   │       ╵╴╴╴ (2 children masked)
+     │   ├───NFaceElements Elements_t I4 [23  0]
+     │   │   ├───ElementRange IndexRange_t I4 [606881 804448]
+     │   │   ├───ElementStartOffset DataArray_t I4 (49393,)
+     │   │   ├───ElementConnectivity DataArray_t I4 (296352,)
+     │   │   └───:CGNS#Distribution UserDefinedData_t 
+     │   │       ╵╴╴╴ (2 children masked)
+     │   ├───FlowSolution FlowSolution_t 
+     │   │   ├───GridLocation GridLocation_t &quot;Vertex&quot;
+     │   │   ├───VelocityX DataArray_t R8 (52975,)
+     │   │   ├───VelocityY DataArray_t R8 (52975,)
+     │   │   └───VelocityZ DataArray_t R8 (52975,)
+     │   └───ZoneGridConnectivity ZoneGridConnectivity_t 
+     │       ├───perleft_0 GridConnectivity_t &quot;Base/Rotor&quot;
+     │       │   ╵╴╴╴ (8 children masked)
+     │       └───perright_0 GridConnectivity_t &quot;Base/Rotor&quot;
+     │           ╵╴╴╴ (8 children masked)
+     ├───perright Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;UserDefined&quot;
+     └───perleft Family_t 
+         └───FamilyBC FamilyBC_t &quot;UserDefined&quot;
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="effective-duplication">
+<h4>Effective duplication<a class="headerlink" href="#effective-duplication" title="Permalink to this heading"></a></h4>
+<p>Now that tree has periodic joins, we can call the duplication function.</p>
+<p>✏️ Use the paths of the <code class="docutils literal notranslate"><span class="pre">GridConnectivity_t</span></code> created nodes to call the duplication function.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zone_paths</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Base/Rotor&quot;</span><span class="p">]</span>
+<span class="n">left_jns</span>   <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Base/Rotor/ZoneGridConnectivity/perleft_0&quot;</span><span class="p">]</span>
+<span class="n">right_jns</span>  <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Base/Rotor/ZoneGridConnectivity/perright_0&quot;</span><span class="p">]</span>
+
+<span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">duplicate_from_rotation_jns_to_360</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span>
+                                           <span class="n">zone_paths</span><span class="p">,</span>
+                                           <span class="n">jn_paths_for_dupl</span> <span class="o">=</span> <span class="p">(</span><span class="n">left_jns</span><span class="p">,</span> <span class="n">right_jns</span><span class="p">),</span>
+                                           <span class="n">comm</span> <span class="o">=</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>❓ How many <code class="docutils literal notranslate"><span class="pre">Zone_t</span></code> nodes are registered in the tree after the duplication ?</p>
+<div class="toggle docutils container">
+<p>The tree has 36 zones after the duplication operation
+(since the periodicity angle was <span class="math notranslate nohighlight">\(\frac{2\pi}{36}\)</span>).
+You can check this with <code class="docutils literal notranslate"><span class="pre">len(PT.get_all_Zone_t(tree))</span></code>.</p>
+</div>
+</section>
+</section>
+<section id="merging-zones">
+<h3>Merging zones<a class="headerlink" href="#merging-zones" title="Permalink to this heading"></a></h3>
+<p>As you noticed, the tree has now several physical zones (due to the duplication).
+Sometimes it can be useful to merge these zones, which are still connected throught
+1to1 matching joins, into a single one, for example:</p>
+<ul class="simple">
+<li><p>to call a tool that does not manage multiblock meshes (e.g. mesh adaptation)</p></li>
+<li><p>to avoid interface management in the solver.</p></li>
+</ul>
+<p>Search in the <a class="reference internal" href="../user_manual/user_manual.html#user-manual"><span class="std std-ref">documentation</span></a> the function to call to merge the zones.</p>
+<p>✏️ Call the function and check again the number of <code class="docutils literal notranslate"><span class="pre">Zone_t</span></code> nodes in the output tree.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">merge_connected_zones</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;The number zones is now </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">tree</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] The number zones is now 1
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+</section>
+<section id="conclusion">
+<h3>Conclusion<a class="headerlink" href="#conclusion" title="Permalink to this heading"></a></h3>
+<p>Our preprocessing workflow is completed 🚀!</p>
+<p>This is what the final tree looks like:</p>
+<div class="cell tag_scroll_output tag_hide-output docutils container">
+<div class="cell_input above-output-prompt docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<details class="hide below-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show code cell output</span>
+<span class="expanded">Hide code cell output</span>
+</summary>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] 
+ CGNSTree CGNSTree_t 
+ ├───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
+ └───Base CGNSBase_t I4 [3 3]
+     ├───Amont Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCInflowSubsonic&quot;
+     ├───Aval Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCOutflowSubsonic&quot;
+     ├───Carter Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCWallViscous&quot;
+     ├───AubeMoyeu Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;BCWallViscous&quot;
+     ├───perright Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;UserDefined&quot;
+     ├───perleft Family_t 
+     │   └───FamilyBC FamilyBC_t &quot;UserDefined&quot;
+     └───mergedZone0 Zone_t I4 [[7432272 7112448       0]]
+         ├───ZoneType ZoneType_t &quot;Unstructured&quot;
+         ├───NGonElements Elements_t I4 [22  0]
+         │   ├───ElementRange IndexRange_t I4 [       1 21657600]
+         │   ├───ElementStartOffset DataArray_t I4 (5424961,)
+         │   ├───ElementConnectivity DataArray_t I4 (21699840,)
+         │   ├───ParentElements DataArray_t I4 (5424960, 2)
+         │   └───:CGNS#Distribution UserDefinedData_t 
+         │       ├───Element DataArray_t I4 [       0  5424960 21657600]
+         │       └───ElementConnectivity DataArray_t I4 [       0 21699840 86630400]
+         ├───GridCoordinates GridCoordinates_t 
+         │   ├───CoordinateX DataArray_t R8 (1868958,)
+         │   ├───CoordinateY DataArray_t R8 (1868958,)
+         │   └───CoordinateZ DataArray_t R8 (1868958,)
+         ├───FlowSolution FlowSolution_t 
+         │   ├───VelocityX DataArray_t R8 (1868958,)
+         │   ├───VelocityY DataArray_t R8 (1868958,)
+         │   ├───VelocityZ DataArray_t R8 (1868958,)
+         │   └───GridLocation GridLocation_t &quot;Vertex&quot;
+         ├───ZoneBC ZoneBC_t 
+         │   ├───bc_AubeMoyeu BC_t &quot;FamilySpecified&quot;
+         │   │   ├───PointList IndexArray_t I4 (1, 87120)
+         │   │   ├───GridLocation GridLocation_t &quot;FaceCenter&quot;
+         │   │   ├───FamilyName FamilyName_t &quot;AubeMoyeu&quot;
+         │   │   └───:CGNS#Distribution UserDefinedData_t 
+         │   │       └───Index DataArray_t I4 [     0  87120 348480]
+         │   ├───bc_Carter BC_t &quot;FamilySpecified&quot;
+         │   │   ├───PointList IndexArray_t I4 (1, 57168)
+         │   │   ├───GridLocation GridLocation_t &quot;FaceCenter&quot;
+         │   │   ├───FamilyName FamilyName_t &quot;Carter&quot;
+         │   │   └───:CGNS#Distribution UserDefinedData_t 
+         │   │       └───Index DataArray_t I4 [     0  57168 228672]
+         │   ├───bc_Amont BC_t &quot;FamilySpecified&quot;
+         │   │   ├───PointList IndexArray_t I4 (1, 7920)
+         │   │   ├───GridLocation GridLocation_t &quot;FaceCenter&quot;
+         │   │   ├───FamilyName FamilyName_t &quot;Amont&quot;
+         │   │   └───:CGNS#Distribution UserDefinedData_t 
+         │   │       └───Index DataArray_t I4 [    0  7920 31680]
+         │   └───bc_Aval BC_t &quot;FamilySpecified&quot;
+         │       ├───PointList IndexArray_t I4 (1, 7920)
+         │       ├───GridLocation GridLocation_t &quot;FaceCenter&quot;
+         │       ├───FamilyName FamilyName_t &quot;Aval&quot;
+         │       └───:CGNS#Distribution UserDefinedData_t 
+         │           └───Index DataArray_t I4 [    0  7920 31680]
+         └───:CGNS#Distribution UserDefinedData_t 
+             ├───Vertex DataArray_t I4 [      0 1868958 7432272]
+             └───Cell DataArray_t I4 [      0 1778112 7112448]
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>👉 If you want to create a visualisation, you can save it using <a class="reference internal" href="../user_manual/io.html#maia.io.dist_tree_to_file" title="maia.io.dist_tree_to_file"><code class="xref py py-func docutils literal notranslate"><span class="pre">dist_tree_to_file()</span></code></a>.
+Be careful with the large mesh, as it requires more than 70 GiB of disk space.</p>
+<p>You can also download the final script <a class="reference download internal" download="" href="../_downloads/147dbf5aa4369f603e08b17af99afffb/02_pre.py"><code class="xref download docutils literal notranslate"><span class="pre">02_pre.py</span></code></a>.</p>
+</section>
+</section>
+<section id="performance-overview">
+<h2>Performance overview<a class="headerlink" href="#performance-overview" title="Permalink to this heading"></a></h2>
+<p>This mini workflow provides an opportunity to take a quick look at performance.</p>
+<p>We slightly modify the input script to apply the following methodology: imports and file
+reading are performed once, after which the workflow is run five times, measuring elapsed time.
+The mean value of these five runs is then computed, and we repeat the operation for different
+number of processes.</p>
+<p>The medium sized mesh is well suited for this study if we only have access to a laptop or a workstation.
+This is what we get on a Intel Xeon (4 cores) CPU:</p>
+<iframe src="../_static/tuto02_perf_med.html" style="display:block; margin:auto; width:500px; height:500px; border:none;"></iframe><p>The quantity plotted is the parallel speedup defined as <span class="math notranslate nohighlight">\(T_1/T_p\)</span> as a fonction
+of <span class="math notranslate nohighlight">\(p\)</span>, where <span class="math notranslate nohighlight">\(T_1\)</span> is the serial execution time and <span class="math notranslate nohighlight">\(T_p\)</span> is the
+parallel execution time on <span class="math notranslate nohighlight">\(p\)</span> processes.</p>
+<p>The orange line represents the ideal speedup; we can see that the scaling is quite good.
+In addition, it is worth noting that:</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<ul class="simple">
+<li><p>No changes to the script are required for parallel execution,</p></li>
+<li><p>The output file is exactly the same, whatever the number of processes.</p></li>
+</ul>
+</div>
+<p>In order to conduct the study on the large mesh, we will need to run the cases on a supercomputer.
+The material configuration is a cluster of Cascade Lake CPUs, each node of the cluster
+having 2 CPUs of 24 cores (and thus 48 processes).</p>
+<p>Firstly, we observe that the run fails if the number of nodes is less than four
+because the requested memory is too high. Consequently, we use the elapsed time on four nodes
+as the basis for calculating the speed-up, represented on the left of the figure below.
+On the right, we plot the parallel execution time divided by the number of cells per process.
+Once again, the orange line represents the ideal value (this ratio should remain constant).</p>
+<iframe src="../_static/tuto02_perf_large.html" style="display:block; margin:auto; width:800px; height:500px; border:none;"></iframe><p>On both figures, we can see that the scaling is good up to 10 nodes (480p)
+but decreases slightly thereafter.
+This number of processes corresponds to approximately 1.6 million cells per rank,
+which is roughly the value we recommend for pre-processing workflows.</p>
+<p>The time taken for each cell remains at around 10 µs for all runs, meaning that the cost
+of this workflow is roughly equivalent to ten solver iterations.
+To conclude, we can state that, from user point of view,</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<ul class="simple">
+<li><p>The MPI parallelisation allows to use more nodes when the requested memory is too important,</p></li>
+<li><p>On 10 nodes, the excution time of this exemple workflow is lower than <strong>20 seconds</strong>.</p></li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="01_basic.html" class="btn btn-neutral float-left" title="Maia basics" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="04_post.html" class="btn btn-neutral float-right" title="Towards custom mesh manipulation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.9
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.9/">1.9</a></dd>
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

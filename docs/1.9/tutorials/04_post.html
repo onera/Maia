@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Towards custom mesh manipulation &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="User Manual" href="../user_manual/user_manual.html" />
+    <link rel="prev" title="Your first workflow" href="02_pre.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.9
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="01_basic.html">Maia basics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="02_pre.html">Your first workflow</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Towards custom mesh manipulation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#basic-postprocessing">Basic postprocessing</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#warmup">Warmup</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#extraction">Extraction</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#slice">Slice</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#d-profile">1D profile</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#advanced-partitioned-algorithms">Advanced partitioned algorithms</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Towards custom mesh manipulation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/04_post.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="towards-custom-mesh-manipulation">
+<span id="tuto4"></span><h1>Towards custom mesh manipulation<a class="headerlink" href="#towards-custom-mesh-manipulation" title="Permalink to this heading"></a></h1>
+<p>The previous tutorial had you search the documentation for functionalities
+and chain them together to create your workflow. In this tutorial, you will take a
+step on the developer side, as some questions require you to manipulate the mesh directly,
+especially in the second part of the tutorial.</p>
+<p>This time, we will explore some post processing capabilities of maia.
+We work on an CRM airplane mesh, with data fields computed by a solver.</p>
+<p>To run this tutorial, you need to download the input mesh <a class="reference external" href="https://github.com/onera/Maia/releases/download/v1.8/airplane.cgns">airplane.cgns</a> and
+the script <a class="reference download internal" download="" href="../_downloads/d87992374ac5a4675d1659c5716efc33/04_post.py"><code class="xref download docutils literal notranslate"><span class="pre">04_post.py</span></code></a>. We prepared few functions for you in the script,
+but you will need to complete it as usual.</p>
+<section id="basic-postprocessing">
+<h2>Basic postprocessing<a class="headerlink" href="#basic-postprocessing" title="Permalink to this heading"></a></h2>
+<section id="warmup">
+<h3>Warmup<a class="headerlink" href="#warmup" title="Permalink to this heading"></a></h3>
+<p>👉️ As usual, we import the useful modules and we get the MPI communicator</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">maia</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">maia.pytree</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">PT</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>👉️ Then, we use the following function which simulates a solver run.</p>
+<div class="cell tag_remove-output docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tree</span> <span class="o">=</span> <span class="n">get_solver_tree</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>❓ What is the parallel kind of the returned tree ?</p>
+<div class="toggle docutils container">
+<p>The tree is partitioned. Since the function <code class="docutils literal notranslate"><span class="pre">get_solver_tree</span></code> is private, the only way to answer the question is
+to display the tree with <a class="reference internal" href="../maia_pytree/basic.html#maia.pytree.print_tree" title="maia.pytree.print_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">print_tree()</span></code></a>.</p>
+</div>
+</section>
+<section id="extraction">
+<h3>Extraction<a class="headerlink" href="#extraction" title="Permalink to this heading"></a></h3>
+<p>The first task is to extract a surface mesh from the input volumetric mesh.
+As is often the case, the surfaces of the input mesh are flagged with <code class="docutils literal notranslate"><span class="pre">FamilyName</span></code>
+nodes to indicate their logical group. Here, we want to extract the airplane surface,
+which is referred to as the <code class="docutils literal notranslate"><span class="pre">Walls</span></code> family.</p>
+<p>✏️ Extract a surfacic mesh corresponding to the faces belonging to Walls family</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">surf_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">extract_part_from_family</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;Walls&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Extraction from Family &quot;Walls&quot; completed (0.13 s) -- Extracted tree has locally 20.7K faces (Σ=123.4K)
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>❓ What is the dimension of the returned tree ?</p>
+<div class="toggle docutils container">
+<p>The output mesh has a <a class="reference internal" href="../maia_pytree/inspect.html#maia.pytree.Base.CellDimension" title="maia.pytree.Base.CellDimension"><code class="xref py py-func docutils literal notranslate"><span class="pre">CellDimension()</span></code></a> of two, because
+we extracted surfacic entities.
+Fortunately, several of Maia’s functions allow 2D trees to be used as input.</p>
+</div>
+<p>Note that the output tree is still a partioned tree: as you learned in the
+<a class="reference internal" href="01_basic.html#tuto1"><span class="std std-ref">first tutorial</span></a>, functions belonging to <code class="docutils literal notranslate"><span class="pre">maia.algo</span></code> do not change
+the parallel nature of trees. In the first tutorial, we used the Transfer module
+to bring back data to a distributed tree and save it using <a class="reference internal" href="../user_manual/io.html#maia.io.dist_tree_to_file" title="maia.io.dist_tree_to_file"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.io.dist_tree_to_file()</span></code></a>.</p>
+<p>❓ Here, we can no do that. Why ?</p>
+<div class="toggle docutils container">
+<p>The extraction function created a new partitioned tree. There is no distributed
+tree associated to it.</p>
+</div>
+<p>👉 We can still save the partitioned tree using <a class="reference internal" href="../user_manual/io.html#maia.io.part_tree_to_file" title="maia.io.part_tree_to_file"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.io.part_tree_to_file()</span></code></a>:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">part_tree_to_file</span><span class="p">(</span><span class="n">surf_tree</span><span class="p">,</span> <span class="s1">&#39;airplane_walls_part.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>However, if you display it with <code class="docutils literal notranslate"><span class="pre">maia_print_tree</span></code> or visualise it, you will notice that
+the mesh retains information about parallelism.
+This is not satisfactory because we want a unified result that is independent of parallelism.</p>
+<p>Indeed, we need to develop a distributed vision of the partitioned tree — the reverse
+of the partitioning process.</p>
+<p>✏️ Use <a class="reference internal" href="../user_manual/factory.html#maia.factory.recover_dist_tree" title="maia.factory.recover_dist_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.factory.recover_dist_tree()</span></code></a> to rebuild a distributed view of the tree.
+Then, write it on the disk.</p>
+<p><em>Hint : do not forget to transfer the data fields as well</em></p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dsurf_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">recover_dist_tree</span><span class="p">(</span><span class="n">surf_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">data_transfer</span><span class="o">=</span><span class="s1">&#39;FIELDS&#39;</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">dist_tree_to_file</span><span class="p">(</span><span class="n">dsurf_tree</span><span class="p">,</span> <span class="s1">&#39;airplane_walls.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Distributed write of a 1.5MiB dist_tree (Σ=9.1MiB)...
+Write completed [airplane_walls.cgns] (0.72 s)
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Saving partitioned trees is useful mainly for experimentation or debugging purposes,
+but it should be avoided in a finalized workflow.</p>
+</div>
+</section>
+<section id="slice">
+<h3>Slice<a class="headerlink" href="#slice" title="Permalink to this heading"></a></h3>
+<p>Another family of post processing functionnalities are isosurface and slices functions.</p>
+<p>✏️ Create a plane slice from the equation <span class="math notranslate nohighlight">\(y=1\)</span>.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">slice_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">plane_slice</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Plane slice completed (0.25 s)
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>❓ Do you have any data fields on the output tree ? If not, modify your
+call to the slicing function to ensure that the volumic solution
+<code class="docutils literal notranslate"><span class="pre">FlowSolution#Centers</span></code> is transfered on the slice.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">slice_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">plane_slice</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">comm</span><span class="p">,</span>
+                                        <span class="n">containers_name</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FlowSolution#Centers&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Plane slice completed (0.36 s)
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>👉️ Then, we save the slice on the disk using the same methodology as above:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dslice_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">recover_dist_tree</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">,</span> <span class="n">data_transfer</span><span class="o">=</span><span class="s1">&#39;FIELDS&#39;</span><span class="p">)</span>
+<span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">dist_tree_to_file</span><span class="p">(</span><span class="n">dslice_tree</span><span class="p">,</span> <span class="s1">&#39;airplane_slice.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Distributed write of a 1.7MiB dist_tree (Σ=10.5MiB)...
+Write completed [airplane_slice.cgns] (0.55 s)
+</pre></div>
+</div>
+</div>
+</div>
+<p>Combining the surfacic extraction and slice, we obtain the following visualization.</p>
+<div class="cell tag_remove-input tag_no-parallel docutils container">
+<div class="cell_output docutils container">
+<img alt="../_images/2747189d8386a3ef53f55c279841c17e7677b3f83592f5a663640d489a9b218f.png" src="../_images/2747189d8386a3ef53f55c279841c17e7677b3f83592f5a663640d489a9b218f.png" />
+</div>
+</div>
+<div class="admonition-did-you-notice admonition">
+<p class="admonition-title">Did you notice ?</p>
+<p>If you open the surfacic mesh by yourself, you will have only half of the plane.
+Can you guess which other function of maia we used to generate this figure ?</p>
+</div>
+</section>
+<section id="d-profile">
+<h3>1D profile<a class="headerlink" href="#d-profile" title="Permalink to this heading"></a></h3>
+<p>In this last step, we are going to update again our slice in order
+to plot a one dimensioanl profile <span class="math notranslate nohighlight">\(P = f(x)\)</span> around the wing.</p>
+<p>❓ Do you see the pressure array in the slice tree ? Why ?</p>
+<div class="toggle docutils container">
+<p>We transfered the volumic fields <code class="docutils literal notranslate"><span class="pre">FlowSolution#Centers</span></code> to the slice, but there is no volumic pressure field
+in the input mesh.
+All we have is a FaceCenter value of the pressure in the BCDataSet related to the wing.</p>
+</div>
+<p>✏️ As the slice function can only transfer containers of type <code class="docutils literal notranslate"><span class="pre">FlowSolution_t</span></code> or <code class="docutils literal notranslate"><span class="pre">ZoneSubRegion_t</span></code>,
+create a container of type <code class="docutils literal notranslate"><span class="pre">ZoneSubRegion_t</span></code> on the volumic tree and move the fields inside it.</p>
+<p><em>Hint : you can do it by hand, or using a function of <a class="reference internal" href="../maia_pytree/operations.html#pt-operations-edit"><span class="std std-ref">maia.pytree</span></a></em></p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">zone</span> <span class="ow">in</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_all_Zone_t</span><span class="p">(</span><span class="n">tree</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name_and_label</span><span class="p">(</span><span class="n">zone</span><span class="p">,</span> <span class="s1">&#39;Wing&#39;</span><span class="p">,</span> <span class="s1">&#39;BC_t&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">PT</span><span class="o">.</span><span class="n">new_ZoneSubRegion</span><span class="p">(</span><span class="s1">&#39;WingFields&#39;</span><span class="p">,</span> <span class="n">bc_name</span><span class="o">=</span><span class="s1">&#39;Wing&#39;</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">zone</span><span class="p">)</span>
+<span class="n">PT</span><span class="o">.</span><span class="n">subregion_fields_from_bcdataset</span><span class="p">(</span><span class="n">tree</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>️
+✏️ Update (one last time) the slice function call to get the wing pressure field on the computed slice</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">slice_tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">plane_slice</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.</span><span class="p">,</span><span class="mf">1.</span><span class="p">,</span><span class="mf">0.</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">comm</span><span class="p">,</span>
+                                        <span class="n">containers_name</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;FlowSolution#Centers&#39;</span><span class="p">,</span> <span class="s1">&#39;WingFields&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Plane slice completed (0.77 s)
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>👉️ You should now have a EdgeCenter pressure field on the slice tree:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="n">PT</span><span class="o">.</span><span class="n">print_tree</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="n">max_depth</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] 
+ CGNSTree CGNSTree_t 
+ ├───CGNSLibraryVersion CGNSLibraryVersion_t R4 [4.2]
+ └───Base CGNSBase_t I4 [2 3]
+     └───Zone.P0.N0 Zone_t I4 [[15847 31192     0]]
+         ├───ZoneType ZoneType_t &quot;Unstructured&quot;
+         ├───GridCoordinates GridCoordinates_t 
+         │   ╵╴╴╴ (3 children masked)
+         ├───TRI_3 Elements_t I4 [5 0]
+         │   ╵╴╴╴ (3 children masked)
+         ├───BAR_2 Elements_t I4 [3 0]
+         │   ╵╴╴╴ (3 children masked)
+         ├───ZoneBC ZoneBC_t 
+         │   ╵╴╴╴ (1 child masked)
+         ├───:CGNS#GlobalNumbering UserDefinedData_t 
+         │   ╵╴╴╴ (2 children masked)
+         ├───maia#surface_data UserDefinedData_t 
+         │   ╵╴╴╴ (6 children masked)
+         ├───FamilyName FamilyName_t &quot;Unspecified&quot;
+         ├───FlowSolution#Centers FlowSolution_t 
+         │   ╵╴╴╴ (6 children masked)
+         └───WingFields ZoneSubRegion_t 
+             ╵╴╴╴ (7 children masked)
+</pre></div>
+</div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you launch the script in parallel, only the processes touching the wing <code class="docutils literal notranslate"><span class="pre">BC_t</span></code> on the slice have
+the <code class="docutils literal notranslate"><span class="pre">ZoneSubRegion_t</span></code> node (as for the volumic tree).</p>
+</div>
+<p>✏️ We have a EdgeCenter located pressure, we need a EdgeCenter located position to plot the profile.
+Compute the centers of the edges on <code class="docutils literal notranslate"><span class="pre">slice_tree</span></code> using <a class="reference internal" href="../user_manual/algo.html#maia.algo.compute_elements_center" title="maia.algo.compute_elements_center"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.algo.compute_elements_center()</span></code></a>.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">compute_elements_center</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>Now starts the difficult part: we have the center of all edges, but the pressure is
+defined only for edges belonging the <code class="docutils literal notranslate"><span class="pre">BC_t</span></code> subset <code class="docutils literal notranslate"><span class="pre">Wing</span></code>.
+Thus, we need to extract the center for edges in the <code class="docutils literal notranslate"><span class="pre">Wing</span></code> subset.
+The steps to do it are:</p>
+<ul class="simple">
+<li><p>get the component X of the computed edges center (computed for all edges)</p></li>
+<li><p>get the list of edges indices belonging to the Wing subset, ie the <code class="docutils literal notranslate"><span class="pre">PointList</span></code> of the <code class="docutils literal notranslate"><span class="pre">BC_t</span></code>
+or of the related <code class="docutils literal notranslate"><span class="pre">ZoneSubRegion_t</span></code> node (the two should be equal)</p></li>
+<li><p>use these indices to extract X centers (be careful, the indices must be shifted to start at 0)</p></li>
+</ul>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>Keep in mind that some ranks may not know the Wing subset at all.
+For these ranks, empty arrays must be created.
+This is the main pitfall of working with partitioned meshes.</p>
+</div>
+<p>✏️ Implement the above strategy to compute the <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">pressure</span></code> arrays on each rank.</p>
+<div class="cell tag_hide-cell docutils container">
+<details class="hide above-input">
+<summary aria-label="Toggle hidden content">
+<span class="collapsed">Show solution</span>
+<span class="expanded">Hide solution</span>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="n">zsr_n</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="s1">&#39;WingFields&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">zsr_n</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Get X component of computed edge centers</span>
+    <span class="n">center_x</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="s1">&#39;CenterX&#39;</span><span class="p">))</span>
+    <span class="c1"># Get edges ids belonging to Wing subset</span>
+    <span class="n">edge_ids</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_np_value</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_child_from_name</span><span class="p">(</span><span class="n">zsr_n</span><span class="p">,</span> <span class="s1">&#39;PointList&#39;</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Get edge offset</span>
+    <span class="n">edge_n</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_predicate</span><span class="p">(</span><span class="n">slice_tree</span><span class="p">,</span> <span class="n">PT</span><span class="o">.</span><span class="n">pred</span><span class="o">.</span><span class="n">is_element_of_type</span><span class="p">(</span><span class="s1">&#39;BAR_2&#39;</span><span class="p">))</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">Element</span><span class="o">.</span><span class="n">Range</span><span class="p">(</span><span class="n">edge_n</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Extract x values, and get pressure field</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">center_x</span><span class="p">[</span><span class="n">edge_ids</span> <span class="o">-</span> <span class="n">offset</span><span class="p">]</span>
+    <span class="n">pressure</span> <span class="o">=</span> <span class="n">PT</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_child_from_name</span><span class="p">(</span><span class="n">zsr_n</span><span class="p">,</span> <span class="s1">&#39;Pressure&#39;</span><span class="p">))</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Create empty array for ranks not related to the Wing subset</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">pressure</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+</div>
+<p>👉️ Then, you can use the following function to plot the <span class="math notranslate nohighlight">\(P=f(x)\)</span> profile:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">plot_1d_profile</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">pressure</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<iframe src="../_static/tuto04_1dprofile.html" style="display:block; margin:auto; width:600px; height:500px; border:none;"></iframe><p>This ends the first part of this tutorial 🏁 !</p>
+<p>We explored some of maia’s postprocessing capabilities to produce results of interest
+in a parallel context. We even started to manipulated partitioned meshes by hand.
+The final script should now look like this: <a class="reference download internal" download="" href="../_downloads/c1edf7796df880d34577f14bbe926150/04_post_final.py"><code class="xref download docutils literal notranslate"><span class="pre">04_post_final.py</span></code></a>.</p>
+<p>The next section will take us a step further: we will manipulate partitioned trees more
+directly and implement some of the missing pieces ourselves.</p>
+</section>
+</section>
+<section id="advanced-partitioned-algorithms">
+<h2>Advanced partitioned algorithms<a class="headerlink" href="#advanced-partitioned-algorithms" title="Permalink to this heading"></a></h2>
+<p>🏗️ Under construction</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="02_pre.html" class="btn btn-neutral float-left" title="Your first workflow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../user_manual/user_manual.html" class="btn btn-neutral float-right" title="User Manual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.9
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.9/">1.9</a></dd>
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

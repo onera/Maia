@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spack &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Maia tools" href="tools/tools.html" />
+    <link rel="prev" title="Development workflow" href="development_workflow.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.9
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="developer_manual.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="development_workflow.html">Development workflow</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Spack</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installation-through-spack">Installation through Spack</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#source-the-build-folder">Source the build folder</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#development-workflow-with-submodules">Development workflow with submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tools/tools.html">Maia tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="algo_description/algo_description.html">Algorithms description</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="developer_manual.html">Developer Manual</a></li>
+      <li class="breadcrumb-item active">Spack</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/spack.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="spack">
+<h1>Spack<a class="headerlink" href="#spack" title="Permalink to this heading"></a></h1>
+<section id="installation-through-spack">
+<h2>Installation through Spack<a class="headerlink" href="#installation-through-spack" title="Permalink to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The procedure is not up-to-date</p>
+</div>
+<p>Maia depends on quite a few libraries of different kinds, be it system libraries like MPI, third-party libraries like HDF5, ONERA libraries like ParaDiGM , git submodules (std_e…), or Python modules (mpi4py, pyyaml). The prefered way of installing Maia in a coherent environment is by using the <a class="reference external" href="https://spack.readthedocs.io/">Spack package manager</a>. A Spack recipe for Maia can be found on the <a class="reference external" href="https://gitlab.onera.net/informatics/infra/onera_spack_repo">ONERA Spack repository</a>.</p>
+<ol class="arabic simple">
+<li><p>Source a Spack repository on your machine.</p></li>
+<li><p>If you don’t have a Spack repository ready, you can download one with <code class="code docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/spack/spack.git</span></code>. On ONERA machines, it is advised to use the <a class="reference external" href="https://gitlab.onera.net/informatics/infra/spacky">Spacky</a> helper.</p></li>
+<li><p>Download the <strong>ONERA Spack repository</strong> with <code class="code docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://gitlab.onera.net/informatics/infra/onera_spack_repo.git</span></code></p></li>
+<li><p>Tell Spack that package recipes are in <code class="code docutils literal notranslate"><span class="pre">onera_spack_repo</span></code> by adding the following lines to <code class="code docutils literal notranslate"><span class="pre">$SPACK_ROOT/etc/repos.yaml</span></code>:</p></li>
+</ol>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">repos</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">path/to/onera_spack_repo</span>
+</pre></div>
+</div>
+<p>(note that <strong>spacky</strong> does steps 3. and 4. for you)</p>
+<ol class="arabic simple" start="5">
+<li><p>You should be able to see the package options of Maia with <code class="code docutils literal notranslate"><span class="pre">spack</span> <span class="pre">info</span> <span class="pre">maia</span></code></p></li>
+<li><p>To install Maia: <code class="code docutils literal notranslate"><span class="pre">spack</span> <span class="pre">install</span> <span class="pre">maia</span></code></p></li>
+</ol>
+<section id="dependencies">
+<h3>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this heading"></a></h3>
+<p>To get access to Maia dependencies in your development environment, you have several choices:</p>
+<ul class="simple">
+<li><p>Install a Spack version of Maia, source it in your development environment to get all the dependencies, then override with your own compiled version of Maia</p></li>
+<li><p>Do the same, but use a Spack environment containing Maia instead of just the Maia package</p></li>
+<li><p>Source a Spack environment where Maia has been removed from the environment view. This can be done by adding the following lines to the <code class="code docutils literal notranslate"><span class="pre">spack.yaml</span></code> environement file:</p></li>
+</ul>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">view</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;maia&#39;</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>This last option is cleaner because you are sure that you are not using another version of Maia (but it means you need to create or have access to such an environment view)</p>
+</section>
+<section id="source-the-build-folder">
+<h3>Source the build folder<a class="headerlink" href="#source-the-build-folder" title="Permalink to this heading"></a></h3>
+<p>You can develop without the need to install Maia. However, in addition to sourcing your dependencies in your development environment, you also need to source the build artifacts by:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span><span class="nv">$MAIA_BUILD_FOLDER</span>
+<span class="nb">source</span><span class="w"> </span>source.sh
+</pre></div>
+</div>
+<p>The <code class="code docutils literal notranslate"><span class="pre">source.sh</span></code> file is created by CMake and will source all Maia artifacts (dynamic libraries, python modules…)</p>
+</section>
+</section>
+<section id="development-workflow-with-submodules">
+<h2>Development workflow with submodules<a class="headerlink" href="#development-workflow-with-submodules" title="Permalink to this heading"></a></h2>
+<p>For development, you can still use Spack to have Maia dependencies, but then follow a typical CMake workflow with <code class="code docutils literal notranslate"><span class="pre">cmake/make</span></code>.
+If you are developping within Maia and its submodules, you can filter them out from your Spack environment view like so:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">view</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">default</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">exclude</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&#39;maia&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;std-e&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;cpp-cgns&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;paradigm&#39;</span><span class="p p-Indicator">,</span><span class="s">&#39;pytest_parallel&#39;</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="development_workflow.html" class="btn btn-neutral float-left" title="Development workflow" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tools/tools.html" class="btn btn-neutral float-right" title="Maia tools" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.9
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.9/">1.9</a></dd>
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

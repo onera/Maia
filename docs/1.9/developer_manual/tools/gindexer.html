@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Indexer &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script src="../../_static/clipboard.min.js"></script>
+        <script src="../../_static/copybutton.js"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Algorithms description" href="../algo_description/algo_description.html" />
+    <link rel="prev" title="Variable stride arrays" href="vstride.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.9
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../developer_manual.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../development_workflow.html">Development workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../spack.html">Spack</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="tools.html">Maia tools</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="logging.html">Log management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="vstride.html">Variable stride arrays</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Global Indexer</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#purpose">Purpose</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#api-reference">API reference</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../algo_description/algo_description.html">Algorithms description</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../developer_manual.html">Developer Manual</a></li>
+          <li class="breadcrumb-item"><a href="tools.html">Maia tools</a></li>
+      <li class="breadcrumb-item active">Global Indexer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/developer_manual/tools/gindexer.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="global-indexer">
+<h1>Global Indexer<a class="headerlink" href="#global-indexer" title="Permalink to this heading"></a></h1>
+<p>The global indexer is a <em>protocol object</em> allowing to access distributed data in read or
+write mode.</p>
+<p>It has been inspired by the <code class="docutils literal notranslate"><span class="pre">BlockToPart</span></code> and <code class="docutils literal notranslate"><span class="pre">PartToBlock</span></code> protocols implemented in
+<a class="reference external" href="https://github.com/onera/paradigm">ParaDiGM</a>
+library, and influenced by some conventions used in
+<a class="reference external" href="https://numpy.org/doc/stable/user/basics.indexing.html#">numpy</a> and
+<a class="reference external" href="https://mpi4py.readthedocs.io/en/stable/tutorial.html">mpi4py</a> packages.</p>
+<section id="purpose">
+<h2>Purpose<a class="headerlink" href="#purpose" title="Permalink to this heading"></a></h2>
+<p>Since the global indexer can be seen as an extension of numpy <code class="docutils literal notranslate"><span class="pre">take</span></code> and <code class="docutils literal notranslate"><span class="pre">put</span></code>
+functions, let’s start by recalling what these functions do.</p>
+<p>Considering  a one-dimensional data array <code class="docutils literal notranslate"><span class="pre">arr</span></code> of size <span class="math notranslate nohighlight">\(n\)</span>,
+a list of indices <code class="docutils literal notranslate"><span class="pre">ind</span></code> of size <span class="math notranslate nohighlight">\(p\)</span> (where each index <code class="docutils literal notranslate"><span class="pre">i</span></code> satisfies <span class="math notranslate nohighlight">\(0 \le i \lt n\)</span>),
+and a list of values <code class="docutils literal notranslate"><span class="pre">val</span></code> of size <span class="math notranslate nohighlight">\(p\)</span> :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">numpy.take(arr,</span> <span class="pre">ind)</span></code> loops over each index <code class="docutils literal notranslate"><span class="pre">i</span></code> of <code class="docutils literal notranslate"><span class="pre">ind</span></code>, extracts the value <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns a new array of size <span class="math notranslate nohighlight">\(p\)</span>.
+Note that this is also the operation performed by <code class="docutils literal notranslate"><span class="pre">out</span> <span class="pre">=</span> <span class="pre">arr[ind]</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">numpy.put(arr,</span> <span class="pre">ind,</span> <span class="pre">val)</span></code> loops over each index/value pair <code class="docutils literal notranslate"><span class="pre">i,v</span></code>, and writes the value <code class="docutils literal notranslate"><span class="pre">v</span></code> at the position <code class="docutils literal notranslate"><span class="pre">i</span></code> in <code class="docutils literal notranslate"><span class="pre">arr</span></code>.
+Note that this is also the operation performed by <code class="docutils literal notranslate"><span class="pre">arr[ind]</span> <span class="pre">=</span> <span class="pre">val</span></code>.</p></li>
+</ul>
+<p>The aim of the global indexer is to offer similar functionnalities on <strong>distributed data</strong>, in a parallel context.</p>
+<p>Distributed data is the term used to describe a <em>collection</em> (in general a data array)
+that is dispatched across several MPI processes. The way the global data is dispatched must fulfill
+some rules described in the <a class="reference internal" href="../../introduction/introduction.html#intro"><span class="std std-ref">introduction</span></a>, but the main idea is that each MPI process gets a section
+of the collection, function of its rank in the MPI communicator:</p>
+<a class="reference internal image-reference" href="../../_images/dist_array.png"><img alt="../../_images/dist_array.png" class="align-center" src="../../_images/dist_array.png" style="width: 75%;" /></a>
+<p>To access data, each MPI process comes with a sequence of indices. Each index <code class="docutils literal notranslate"><span class="pre">i</span></code> is provided using
+<em>global indexing</em>, ie. the (virtual) numerotation of the global collection. In other words, as in
+the numpy analogy, each index <code class="docutils literal notranslate"><span class="pre">i</span></code> must satisfy the relation <span class="math notranslate nohighlight">\(0 \le i \lt n\)</span> where <span class="math notranslate nohighlight">\(n\)</span> is the
+global size of the distributed collection; it is the role of the global indexer to access data physically hold
+by other processes.
+Note also that the number of indices may be different on each process:</p>
+<a class="reference internal image-reference" href="../../_images/dist_access.png"><img alt="../../_images/dist_access.png" class="align-center" src="../../_images/dist_access.png" style="width: 75%;" /></a>
+<p>Now, let’s give a glance on what the global collection can actually represent; different kind of data
+are supported, and we provide a different put/take implementation for each of them. Here
+following mpi4py conventions, the supported data kind are:</p>
+<ul>
+<li><p><strong>Generic Python objects</strong>: the global collection is a list of size <span class="math notranslate nohighlight">\(n\)</span>, and each of its items
+is an ordinary Python object:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#    0     1     2        3                      4   # Global Index</span>
+<span class="n">d</span> <span class="o">=</span> <span class="p">[</span><span class="mf">3.14</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;chars&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;even&#39;</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;list&#39;</span><span class="p">],</span> <span class="mi">42</span><span class="p">]</span> <span class="c1"># Sequence</span>
+</pre></div>
+</div>
+<p>Methods to be used in this case start with a lowercase letter, such as
+<code class="xref py py-func docutils literal notranslate"><span class="pre">take()</span></code> or <code class="xref py py-func docutils literal notranslate"><span class="pre">put()</span></code>.
+Objects are serialized during exchanges, using the <code class="docutils literal notranslate"><span class="pre">pickle</span></code> module: this is all-purpose but slowest
+way.</p>
+</li>
+<li><p><strong>Buffer-like objects</strong>: the global collection is a buffer, <em>ie.</em> a flat and homogeneous array
+(typically, a numpy array) of size <span class="math notranslate nohighlight">\(c*n\)</span> with <span class="math notranslate nohighlight">\(c \in N^\star\)</span> : each item
+of it is a group of <span class="math notranslate nohighlight">\(c\)</span> values. Of course, it is common
+to have <span class="math notranslate nohighlight">\(c=1\)</span>, meaning that each item of the collection is a single value:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#          0     1      2     3     4                   # Global Index</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span> <span class="c1"># Buffer (c=1)</span>
+
+<span class="c1">#          0    1    2      3      4                    # Global Index</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span><span class="mi">13</span><span class="p">,</span> <span class="mi">17</span><span class="p">,</span><span class="mi">19</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span><span class="mi">31</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>   <span class="c1"># Buffer (c=2)</span>
+</pre></div>
+</div>
+<p>Methods to be used in this case start with an uppercase letter, such as
+<code class="xref py py-func docutils literal notranslate"><span class="pre">Take()</span></code> or <code class="xref py py-func docutils literal notranslate"><span class="pre">Put()</span></code>.</p>
+</li>
+<li><p><strong>Variable buffer objects</strong>: the global collection is still an homogeneous buffer, but
+the number of values may differ from each item; consequently, two arrays are needed:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>a counting array of <span class="math notranslate nohighlight">\(n\)</span> integers, storing the number of data <span class="math notranslate nohighlight">\(c_i\)</span> for each item <span class="math notranslate nohighlight">\(i\)</span></p></li>
+<li><p>the buffer array of size <span class="math notranslate nohighlight">\(\sum_i c_i\)</span>, storing the data values:</p></li>
+</ul>
+</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#          0  1   2   3       4                       # Global Index</span>
+<span class="n">c</span> <span class="o">=</span>       <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>  <span class="mi">1</span><span class="p">,</span>  <span class="mi">2</span><span class="p">,</span>      <span class="mi">3</span>         <span class="p">]</span>             <span class="c1"># Counts</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">21</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="c1"># Buffer</span>
+</pre></div>
+</div>
+<p>Methods to be used for such data start with an uppercase letter and finish with <code class="docutils literal notranslate"><span class="pre">_v</span></code>, such as
+<code class="xref py py-func docutils literal notranslate"><span class="pre">Take_v()</span></code> or <code class="xref py py-func docutils literal notranslate"><span class="pre">Put_v()</span></code>.</p>
+</li>
+</ul>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h2>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>The instanciation of the global indexer, as well as all the <code class="docutils literal notranslate"><span class="pre">take</span></code> and <code class="docutils literal notranslate"><span class="pre">put</span></code>
+implementations, hide collective MPI communications. Deadlocks will occur
+if they are not called by all the processes of the provided communicator.</p>
+</div>
+<p class="rubric">Initialization</p>
+<p>The first step is to initialize the <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer" title="maia.transfer._protocols.g_indexer.GlobalIndexer"><code class="xref py py-class docutils literal notranslate"><span class="pre">GlobalIndexer</span></code></a>
+object by providing, in addition to the MPI communicator, two informations:</p>
+<ul class="simple">
+<li><p>How the global collection is distributed: this is done through the <code class="docutils literal notranslate"><span class="pre">distrib</span></code> array,
+an integer array of size <span class="math notranslate nohighlight">\(s+1\)</span> (<span class="math notranslate nohighlight">\(s\)</span> beeing the number of processes)
+where <code class="docutils literal notranslate"><span class="pre">distrib[j]</span></code> and <code class="docutils literal notranslate"><span class="pre">distrib[j+1]</span></code> represents
+respectively the lower (included) and upper (excluded) bounds held by process <span class="math notranslate nohighlight">\(j\)</span>.
+This data must be the same for all calling processes.</p></li>
+<li><p>The list of global indices to access: this is done through the <code class="docutils literal notranslate"><span class="pre">idx</span></code> array,
+an integer array of size <span class="math notranslate nohighlight">\(p_j\)</span> where each index <span class="math notranslate nohighlight">\(i\)</span> satisfies
+<span class="math notranslate nohighlight">\(0 \le i \lt n\)</span>.
+This data can be (and most of time, is) different on each calling process.</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py.MPI</span><span class="w"> </span><span class="kn">import</span> <span class="n">COMM_WORLD</span> <span class="k">as</span> <span class="n">comm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy</span><span class="w">      </span><span class="kn">import</span> <span class="n">array</span><span class="p">,</span> <span class="n">empty</span>
+<span class="n">rank</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>
+
+<span class="c1"># This example has been written for 3 processes</span>
+<span class="n">distri</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">])</span>         <span class="c1"># Global collection size is 5</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="n">idx</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>   <span class="c1"># P0 will access indices 4 and 0</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="n">idx</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>   <span class="c1"># P1 will access indices 3 and 1</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="n">idx</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">])</span>      <span class="c1"># P2 will access index 0</span>
+
+<span class="n">GI</span> <span class="o">=</span> <span class="n">GlobalIndexer</span><span class="p">(</span><span class="n">distri</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The creation of the object will fail if any requested index outpasses the bounds of the
+distribution. All other configurations are managed, including the following cases:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>a process can request access to no indices, by providing an empty integer array;</p></li>
+<li><p>two processes can request access to the same index, and a given process can even
+request access to the same index more than once;</p></li>
+<li><p>it is not mandatory to have all the indices of the collection to be accessed.</p></li>
+</ul>
+</div></blockquote>
+<p class="rubric">Exchanges</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The global indexer is a <em>protocol object</em>: once initialized, it allows to access
+multiple global arrays in the same specific manner. One of the main reason to use a
+global indexer in the first place is that we can construct the protocol
+(which is costly) only once, and then exchange data over multiple arrays by using it.</p>
+</div>
+<p>It is important to understand that thanks to the variable buffer mode, two distributed data
+of different kind can share the same distribution and access indices: all
+the below examples are illustrated for the same distribution and access indices.</p>
+<p><strong>Generic Python objects</strong>:
+to read or write generic Python object, one just have to store them in lists:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="n">dist_data</span> <span class="o">=</span> <span class="p">[</span><span class="mf">3.14</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>              <span class="c1">#global indices 0..2</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="n">dist_data</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;chars&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;list&#39;</span><span class="p">]]</span>  <span class="c1">#global indices 2..4</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="n">dist_data</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">]</span>                      <span class="c1">#global indices 4..5</span>
+
+<span class="n">extr</span> <span class="o">=</span> <span class="n">GI</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">dist_data</span><span class="p">)</span>
+<span class="c1"># P0 : extr = [42, 3.14]                          #requested indices [4,0]</span>
+<span class="c1"># P1 : extr = [None, [&#39;a&#39;, &#39;list&#39;]]               #requested indices [1,3]</span>
+<span class="c1"># P2 : extr = [3.14]                              #requested indices [0]</span>
+
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">]</span>                  <span class="c1">#write at indices [4,0]</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">,</span> <span class="s1">&#39;LIST&#39;</span><span class="p">]]</span>       <span class="c1">#write at indices [1,3]</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="n">data</span> <span class="o">=</span> <span class="p">[</span><span class="mf">.314</span><span class="p">]</span>                      <span class="c1">#write at indices [0]</span>
+
+<span class="n">dist_data</span> <span class="o">=</span> <span class="n">GI</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="c1"># P0 : dist_data = [.314, None]                      #global indices 0..2</span>
+<span class="c1"># P1 : dist_data = [None, [&#39;A&#39;, &#39;LIST&#39;]]             #global indices 2..4</span>
+<span class="c1"># P2 : dist_data = [42]                              #global indices 4..5</span>
+</pre></div>
+</div>
+<p>There is nothing surprising for the <code class="docutils literal notranslate"><span class="pre">take</span></code> case. For the <code class="docutils literal notranslate"><span class="pre">put</span></code> case, notice that:</p>
+<ul class="simple">
+<li><p>several processes provided data for global index 0 : the last one
+(with inscreasing ranks order) was kept;</p></li>
+<li><p>no process provided data for global index 2 : the value <code class="docutils literal notranslate"><span class="pre">None</span></code> has been used.</p></li>
+</ul>
+<p>The first rule is also the default behavious of buffers implementations; for the second rule,
+unreferenced indices will remain unitialized when using
+<code class="xref py py-func docutils literal notranslate"><span class="pre">Put()</span></code>, and will get a zero counts when using
+<code class="xref py py-func docutils literal notranslate"><span class="pre">Put_v()</span></code>.</p>
+<p><strong>Buffer-like objects</strong>:
+for buffer object of constant size, we offer two alternatives: the
+output buffer can either be provided to the function by the user, as in mpi4py,
+or be allocated by the function as a numpy array if <code class="docutils literal notranslate"><span class="pre">None</span></code> value is used:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Buffer of ints, with 2 values per index (c=2)</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="n">dist_data</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">7</span><span class="p">],</span>     <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>  <span class="c1">#glob idx 0..2</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="n">dist_data</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">11</span><span class="p">,</span><span class="mi">13</span><span class="p">,</span><span class="mi">17</span><span class="p">,</span><span class="mi">19</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>  <span class="c1">#glob idx 2..4</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="n">dist_data</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">29</span><span class="p">,</span><span class="mi">31</span><span class="p">],</span>       <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>  <span class="c1">#glob idx 4..5</span>
+
+<span class="n">extr</span> <span class="o">=</span> <span class="n">GI</span><span class="o">.</span><span class="n">Take</span><span class="p">(</span><span class="n">dist_data</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># We extract 2 values per requested index</span>
+<span class="c1"># P0 : extr = array([29,31,3,5], dtype=int)   #requested indices [4,0]</span>
+<span class="c1"># P1 : extr = array([5,7,17,19], dtype=int)   #requested indices [1,3]</span>
+<span class="c1"># P2 : extr = array([3,5],       dtype=int)   #requested indices [0]</span>
+
+<span class="n">dn</span> <span class="o">=</span> <span class="n">distri</span><span class="p">[</span><span class="n">rank</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">distri</span><span class="p">[</span><span class="n">rank</span><span class="p">]</span>
+<span class="n">dist_data_new</span> <span class="o">=</span> <span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">dn</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="c1"># To track unitialized values</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span> <span class="c1"># To illustrate write priority</span>
+  <span class="n">extr</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># Now P2 has extr = array([-3,-5], dtype=int)</span>
+
+<span class="n">GI</span><span class="o">.</span><span class="n">Put</span><span class="p">(</span><span class="n">extr</span><span class="p">,</span> <span class="n">dist_data_new</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="c1"># P0 : dist_data_new = array([-3,-5,5,7],   dtype=int)      #glob idx 0..2</span>
+<span class="c1"># P1 : dist_data_new = array([0,0,17,19],   dtype=int)      #glob idx 2..4</span>
+<span class="c1"># P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5</span>
+</pre></div>
+</div>
+<p>Note that as explained above, data at position 2 in <code class="docutils literal notranslate"><span class="pre">dist_data_new</span></code> kept
+its original value, since no process provided data for this index.
+On the other side, the value written at position 0 is the one coming from rank 2,
+since this is the last encountered.</p>
+<p>An alternative is to use one of the available <a class="reference internal" href="#reduceop"><span class="std std-ref">reduction function</span></a> to accumulate the data
+coming from the different processes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">GI</span><span class="o">.</span><span class="n">Put</span><span class="p">(</span><span class="n">extr</span><span class="p">,</span> <span class="n">dist_data_new</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">reduce</span><span class="o">=</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">MAX</span><span class="p">)</span>
+<span class="c1"># P0 : dist_data_new = array([3,5,5,7],     dtype=int)      #glob idx 0..2</span>
+<span class="c1"># P1 : dist_data_new = array([0,0,17,19],   dtype=int)      #glob idx 2..4</span>
+<span class="c1"># P2 : dist_data_new = array([29,31],       dtype=int)      #glob idx 4..5</span>
+</pre></div>
+</div>
+<p>In this case, the size of the output data remains the same, but the reduction function is
+applied to the data written at the same index to compute the result.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The reduction also include the initial value of the output array. In preallocated mode,
+it is the user’s responsibility to choose this initial value. In allocating mode, we use
+the neutral element of the requested operation.</p></li>
+<li><p>If <span class="math notranslate nohighlight">\(c \neq 1\)</span>, the reduction is applied to each item independently.</p></li>
+</ul>
+</div>
+<p><strong>Variable buffer objects</strong>:
+when it’s come to variable buffer, an additional array of counts has to be used.
+For now, this array has to be a numpy array of integers, while the data buffer
+can be a numpy array of any datatype.
+This is the most complex implementation, but it allows to work with sparse data
+since a count of 0 is allowed for any global index.</p>
+<p>Following what is done in the previous paragraph, the output variable buffer
+is allocated by the function as a pair of numpy array if <code class="docutils literal notranslate"><span class="pre">None</span></code> argument is used,
+or can be provided to the function by the user. In this case, indices that are
+not accessed by any process keep their initial values.</p>
+<p>Here is an exemple of the <code class="docutils literal notranslate"><span class="pre">take</span></code> implementation for a variable buffer:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Variable buffer of ints, with number of values described by counts array</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="n">counts</span>    <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>                 <span class="c1">#nb of values for glob idx 0..2</span>
+  <span class="n">dist_data</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">11</span><span class="p">],</span>     <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="c1">#values (1, then 1)</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+  <span class="n">counts</span>    <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>                 <span class="c1">#nb of values for glob idx 2..4</span>
+  <span class="n">dist_data</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">21</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">11</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="c1">#values (1, then 2)</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+  <span class="n">counts</span>    <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">3</span><span class="p">])</span>                   <span class="c1">#nb of values for glob idx 4..5</span>
+  <span class="n">dist_data</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">11</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">21</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="c1">#values (3)</span>
+
+<span class="n">counts_o</span><span class="p">,</span> <span class="n">extr</span> <span class="o">=</span> <span class="n">GI</span><span class="o">.</span><span class="n">Take_v</span><span class="p">((</span><span class="n">counts</span><span class="p">,</span> <span class="n">dist_data</span><span class="p">))</span>
+<span class="c1"># P0 : counts_o = array([3,1])                   #nb of vals got for [4,0]</span>
+<span class="c1">#      extr     = array([11,12,21,1], dtype=int) #values (3, then 1)</span>
+<span class="c1"># P1 : counts_o = array([1,2])                   #nb of vals got for [1,3]</span>
+<span class="c1">#      extr     = array([11,12,11], dtype=int)   #values (1, then 2)</span>
+<span class="c1"># P2 : counts_o = array([1])                     #nb of vals got for [0]</span>
+<span class="c1">#      extr     = array([1], dtype=int)          #values (1)</span>
+</pre></div>
+</div>
+<p>which can be illustrated as follow:</p>
+<a class="reference internal image-reference" href="../../_images/take_v.png"><img alt="../../_images/take_v.png" class="align-center" src="../../_images/take_v.png" style="width: 75%;" /></a>
+<p>And here is an exemple of the <code class="docutils literal notranslate"><span class="pre">put</span></code> implementation for a variable buffer:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+  <span class="n">counts</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">])</span>                       <span class="c1">#nb of vals to write at [4,0]</span>
+  <span class="n">values</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mf">4.1</span><span class="p">,</span><span class="mf">0.1</span><span class="p">,</span><span class="mf">0.2</span><span class="p">,</span><span class="mf">0.3</span><span class="p">],</span><span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span> <span class="c1">#values (1, then 3)</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+  <span class="n">counts</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">])</span>                       <span class="c1">#nb of vals to write at [1,3]</span>
+  <span class="n">values</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mf">13.1</span><span class="p">],</span>           <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span> <span class="c1">#values (0, then 1)</span>
+<span class="k">if</span> <span class="n">rank</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+  <span class="n">counts</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mi">2</span><span class="p">])</span>                         <span class="c1">#nb of vals to write at [0]</span>
+  <span class="n">values</span> <span class="o">=</span> <span class="n">array</span><span class="p">([</span><span class="mf">20.1</span><span class="p">,</span><span class="mf">20.2</span><span class="p">],</span>      <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span> <span class="c1">#values (2)</span>
+
+<span class="n">counts_new</span><span class="p">,</span> <span class="n">dist_data_new</span> <span class="o">=</span> <span class="n">GI</span><span class="o">.</span><span class="n">Put_v</span><span class="p">((</span><span class="n">counts</span><span class="p">,</span> <span class="n">values</span><span class="p">))</span>
+<span class="c1"># P0 : counts_new    = array([2,0])                  #nb of vals for 0..2</span>
+<span class="c1">#      dist_data_new = array([20.1,20.2], dtype=&#39;f&#39;) #values (2, then 0)</span>
+<span class="c1"># P1 : counts_new    = array([0,1])                  #nb of vals for 2..4</span>
+<span class="c1">#      dist_data_new = array([13.1],      dtype=&#39;f&#39;) #values (0, then 1)</span>
+<span class="c1"># P2 : counts_new    = array([1])                    #nb of vals for 4..5</span>
+<span class="c1">#      dist_data_new = array([4.1],       dtype=&#39;f&#39;) #values (1)</span>
+</pre></div>
+</div>
+<p>with its corresponding illustration (note that 0-length data does not <em>really</em> exist in memory):</p>
+<a class="reference internal image-reference" href="../../_images/put_v.png"><img alt="../../_images/put_v.png" class="align-center" src="../../_images/put_v.png" style="width: 60%;" /></a>
+<p>We can check that, in each case, the size of the counting array is equal to
+the number of described data (ie the length of the distributed section, or
+the length of the requested indices list), and that the size of the data buffer
+is equal to the sum of the associated counting array.</p>
+<p>Note than unaccessed indices (such as index 2) automatically get a 0 count after
+the <code class="docutils literal notranslate"><span class="pre">Put_v</span></code> operation: on the other side, index 1 get a 0 count because it was
+explicitly put by P1.
+Once again, one can observe the resolution of writting conflicts:
+for global index 0, which is accessed twice, the written data
+(and thus its counts value) come from the process having the highest rank (P2).
+This is why we used a dashed arrow for P0 on the scheme: its value is not written
+in the distributed array, because of priority order.</p>
+<p>This rule can be disabled with the parameter <code class="docutils literal notranslate"><span class="pre">extend=True</span></code>: when used, all the data
+written at a same global index are concatenated according to their apparition order
+(in increasing rank order):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">counts_new</span><span class="p">,</span> <span class="n">dist_data_new</span> <span class="o">=</span> <span class="n">GI</span><span class="o">.</span><span class="n">Put_v</span><span class="p">((</span><span class="n">counts</span><span class="p">,</span> <span class="n">values</span><span class="p">),</span> <span class="n">extend</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="c1">#P0 : counts_new    = array([5,0])                   #nb of vals for 0..2</span>
+<span class="c1">#     dist_data_new = array([0.1,0.2,0.3,20.1,20.2]) #values (5, then 0)</span>
+<span class="c1">#P1 : counts_new    = array([0,1])                   #nb of vals for 2..4</span>
+<span class="c1">#     dist_data_new = array([30.1],                ) #values (0, then 1)</span>
+<span class="c1">#P2 : counts_new    = array([1])                     #nb of vals for 4..5</span>
+<span class="c1">#     dist_data_new = array([4.1],                 ) #values (1)</span>
+</pre></div>
+</div>
+<p>On the above example, we can see that with <code class="docutils literal notranslate"><span class="pre">extend=True</span></code>, global index 0 get a counts
+of 5 because 3 values has been written by P0, then 2 values by P2.</p>
+<a class="reference internal image-reference" href="../../_images/put_v_ext.png"><img alt="../../_images/put_v_ext.png" class="align-center" src="../../_images/put_v_ext.png" style="width: 60%;" /></a>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The concatenation also include the initial values of the output variable array, which allows
+the users to update existing data.
+If no output array is provided, as in the above example, we simply use internally an empty (counts == 0) initial array.</p></li>
+</ul>
+</div>
+</section>
+<section id="api-reference">
+<h2>API reference<a class="headerlink" href="#api-reference" title="Permalink to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GlobalIndexer</span></span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer" title="Permalink to this definition"></a></dt>
+<dd><p>A protocol object allowing to access distributed data in read or write mode.</p>
+<p>The documentation uses the following notations:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(s\)</span> : number of processes (equal to <code class="docutils literal notranslate"><span class="pre">comm.Get_size()</span></code>)</p></li>
+<li><p><span class="math notranslate nohighlight">\(n\)</span> : global size of the distributed collection (equal to <code class="docutils literal notranslate"><span class="pre">distri[s+1]</span></code>)</p></li>
+<li><p><span class="math notranslate nohighlight">\(dn\)</span> : for each rank <span class="math notranslate nohighlight">\(j\)</span>, size of its section of the collection
+(equal to <code class="docutils literal notranslate"><span class="pre">distri[j+1]-distri[j]</span></code>)</p></li>
+<li><p><span class="math notranslate nohighlight">\(pn\)</span> : for each rank <span class="math notranslate nohighlight">\(j\)</span>, number of accessed indices (equal to <code class="docutils literal notranslate"><span class="pre">len(g_idx)</span></code>)</p></li>
+<li><p><span class="math notranslate nohighlight">\(c\)</span> : for constant buffer access, number of data per item of the collection</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">distri</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g_idx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Create a GlobalIndexer protocol object</p>
+<p>The protocol object is described by two arrays of integer,
+satisfying these rules:</p>
+<ul class="simple">
+<li><p><strong>distri</strong> (size <span class="math notranslate nohighlight">\(s+1\)</span>):</p>
+<ul>
+<li><p>same value on all processes;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">distri[0]</span> <span class="pre">==</span> <span class="pre">0</span></code>, <code class="docutils literal notranslate"><span class="pre">distri[s]</span> <span class="pre">==</span> <span class="pre">n</span></code>, and <code class="docutils literal notranslate"><span class="pre">distri[j]</span> <span class="pre">&lt;=</span> <span class="pre">distri[j+1]</span></code> for all <code class="docutils literal notranslate"><span class="pre">j</span></code>.</p></li>
+</ul>
+</li>
+<li><p><strong>g_idx</strong> (size <span class="math notranslate nohighlight">\(pn\)</span>):</p>
+<ul>
+<li><p>different size and value on each process;</p></li>
+<li><p>values in range <span class="math notranslate nohighlight">\([0, n-1]\)</span>.</p></li>
+</ul>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>distri</strong> (integer array of size <span class="math notranslate nohighlight">\(s+1\)</span>) – distribution of the collection</p></li>
+<li><p><strong>g_idx</strong> (integer array of size <span class="math notranslate nohighlight">\(pn\)</span>) – accessed global indices</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – communicator</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.take">
+<span class="sig-name descname"><span class="pre">take</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.take" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">take</span></code> implementation for generic Python objects</p>
+<p>Exchanged data are serialized using <code class="docutils literal notranslate"><span class="pre">pickle</span></code> module, which has
+a negative impact on performances; if data is a buffer object, it is
+strongly advised to use <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.Take" title="maia.transfer.protocols._protocols.GlobalIndexer.Take"><code class="xref py py-func docutils literal notranslate"><span class="pre">Take()</span></code></a> method instead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_data</strong> (list of size <span class="math notranslate nohighlight">\(dn\)</span>) – section of the distributed data</p></li>
+<li><p><strong>local_data</strong> (list of size <span class="math notranslate nohighlight">\(pn\)</span>, optional) – preallocated list to store extracted values or <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of size <span class="math notranslate nohighlight">\(pn\)</span> – values extracted at the requested indices.
+The return object is <code class="docutils literal notranslate"><span class="pre">local_data</span></code> if it was given by the user.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.put" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">put</span></code> implementation for generic Python objects</p>
+<p>Exchanged data are serialized using <code class="docutils literal notranslate"><span class="pre">pickle</span></code> module, which has
+a negative impact on performances; if data is a buffer object, it is
+strongly advised to use <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.Put" title="maia.transfer.protocols._protocols.GlobalIndexer.Put"><code class="xref py py-func docutils literal notranslate"><span class="pre">Put()</span></code></a> method instead.</p>
+<p>Note that:</p>
+<ul>
+<li><p>if a global index appears more than once in the idx lists, the associated data in the output
+buffer will be the last appearing (in increasing processes order)</p></li>
+<li><p>if a global index does not appears in any idx list, its associated data in the output
+buffer will be:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>the user provided value if <code class="docutils literal notranslate"><span class="pre">dist_data</span></code> is provided;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">None</span></code> otherwise.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_data</strong> (list of size <span class="math notranslate nohighlight">\(pn\)</span>) – data to write at each accessed index</p></li>
+<li><p><strong>dist_data</strong> (list of size <span class="math notranslate nohighlight">\(dn\)</span>, optional) – preallocated list to store distributed data or None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of size <span class="math notranslate nohighlight">\(dn\)</span> – output distributed data. The return object is <code class="docutils literal notranslate"><span class="pre">dist_data</span></code> if it was given by the user.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.Take">
+<span class="sig-name descname"><span class="pre">Take</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.Take" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">take</span></code> implementation for buffer-like objects</p>
+<p>Input buffer must be of size <span class="math notranslate nohighlight">\(c*dn\)</span>, where <span class="math notranslate nohighlight">\(c\)</span> is a
+positive integer.
+The value of <span class="math notranslate nohighlight">\(c\)</span> and the datatype &lt;T&gt; of the input buffer must be the
+same across all the processes.</p>
+<p>The output buffer is either:</p>
+<ul class="simple">
+<li><p>provided by the caller as a buffer of size <span class="math notranslate nohighlight">\(c*pn\)</span> and of datatype &lt;T&gt;,</p></li>
+<li><p>or automatically allocated by the method as a new numpy array if <code class="docutils literal notranslate"><span class="pre">local_data=None</span></code>.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_data</strong> (buffer of size <span class="math notranslate nohighlight">\(c*dn\)</span>) – section of the distributed data</p></li>
+<li><p><strong>local_data</strong> (buffer of size <span class="math notranslate nohighlight">\(c*pn\)</span>, optional) – preallocated buffer
+to store extracted values or None</p></li>
+<li><p><strong>count</strong> (<em>int</em>) – scalar value of <span class="math notranslate nohighlight">\(c\)</span>. Defaults to 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>buffer of size <span class="math notranslate nohighlight">\(c*pn\)</span> – values extracted at the requested indices.
+The return object is <code class="docutils literal notranslate"><span class="pre">local_data</span></code> if it was given by the user.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.Put">
+<span class="sig-name descname"><span class="pre">Put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.Put" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">put</span></code> implementation for buffer-like objects</p>
+<p>Input buffer must be of size <span class="math notranslate nohighlight">\(c*pn\)</span>, where <span class="math notranslate nohighlight">\(c\)</span> is a
+positive integer.
+The value of <span class="math notranslate nohighlight">\(c\)</span> and the datatype &lt;T&gt; of the input buffer must be the
+same across all the processes.</p>
+<p>The output buffer is either:</p>
+<ul class="simple">
+<li><p>provided by the caller as a buffer of size <span class="math notranslate nohighlight">\(c*dn\)</span> and of datatype &lt;T&gt;,</p></li>
+<li><p>or automatically allocated by the method as a new numpy array if <code class="docutils literal notranslate"><span class="pre">dist_data=None</span></code>.</p></li>
+</ul>
+<p>Note that:</p>
+<ul class="simple">
+<li><p>if a global index appears more than once in the idx lists, the associated data in the output
+buffer will be</p>
+<ul>
+<li><p>the last appearing (in increasing processes order) if <code class="docutils literal notranslate"><span class="pre">reduce=None</span></code>;</p></li>
+<li><p>the result of the reduction function, applied to the input candidates otherwise.</p></li>
+</ul>
+</li>
+<li><p>if a global index does not appears in any idx list, its associated data in the output
+buffer will be</p>
+<ul>
+<li><p>the user provided value if <code class="docutils literal notranslate"><span class="pre">dist_data</span></code> is preallocated;</p></li>
+<li><p>an uninitialized value if <code class="docutils literal notranslate"><span class="pre">reduce=None</span></code> and if <code class="docutils literal notranslate"><span class="pre">dist_data</span></code> is not preallocated;</p></li>
+<li><p>the neutral element of the reduction function otherwise.</p></li>
+</ul>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_data</strong> (buffer of size <span class="math notranslate nohighlight">\(c*pn\)</span>) – data to write at each accessed index</p></li>
+<li><p><strong>dist_data</strong> (buffer of size <span class="math notranslate nohighlight">\(c*dn\)</span>, optional) – preallocated buffer
+to store distributed data or None</p></li>
+<li><p><strong>count</strong> (<em>int</em>) – scalar value of <span class="math notranslate nohighlight">\(c\)</span>. Defaults to 1.</p></li>
+<li><p><strong>reduce</strong> (<a class="reference internal" href="#maia.transfer.protocols._protocols.ReduceOp" title="maia.transfer.protocols._protocols.ReduceOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReduceOp</span></code></a>, optional) – Binary operation applied to the data written
+at the same global index. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>buffer of size <span class="math notranslate nohighlight">\(c*dn\)</span> – output distributed data.
+The return object is <code class="docutils literal notranslate"><span class="pre">dist_data</span></code> if it was given by the user.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.Take_v">
+<span class="sig-name descname"><span class="pre">Take_v</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.Take_v" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">take</span></code> implementation for variable buffer-like objects</p>
+<p>The input variable buffer is described by a tuple of two objects:</p>
+<ol class="arabic simple">
+<li><p>an integer array <code class="docutils literal notranslate"><span class="pre">dist_counts</span></code> of size <span class="math notranslate nohighlight">\(dn\)</span>;</p></li>
+<li><p>a buffer object of size <code class="docutils literal notranslate"><span class="pre">dist_counts.sum()</span></code>.
+The datatype &lt;T&gt; of this input buffer must be the same across all the processes.</p></li>
+</ol>
+<p>Similarly, the output variable buffer is described by the tuple of two objects:</p>
+<ol class="arabic simple">
+<li><p>an integer array <code class="docutils literal notranslate"><span class="pre">local_counts</span></code> of size <span class="math notranslate nohighlight">\(pn\)</span>;</p></li>
+<li><p>a buffer object <code class="docutils literal notranslate"><span class="pre">local_buff</span></code> of size <code class="docutils literal notranslate"><span class="pre">local_count.sum()</span></code> and datatype &lt;T&gt;.</p></li>
+</ol>
+<p>This output data is either:</p>
+<ul class="simple">
+<li><p>provided by the caller, in which case <code class="docutils literal notranslate"><span class="pre">local_counts</span></code> must be already filled, <em>eg.</em>
+with <code class="xref py py-obj docutils literal notranslate"><span class="pre">Take(dist_counts,</span> <span class="pre">local_counts)</span></code>, and <code class="docutils literal notranslate"><span class="pre">local_buff</span></code>
+must be prellocated at relevant size and datatype;</p></li>
+<li><p>or automatically allocated by the method as a pair of new numpy array if <code class="docutils literal notranslate"><span class="pre">local_data=None</span></code>.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_data</strong> (<em>variable buffer</em>) – section of the distributed data, ie pair of values
+(<strong>dist_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(dn\)</span> <em>int</em>), <strong>dist_buff</strong> (<em>buffer</em>))</p></li>
+<li><p><strong>local_data</strong> (<em>variable buffer</em><em>, </em><em>optional</em>) – preallocated buffer to store extracted values or None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>variable buffer</em> – data extracted at the requested indices, as a tuple of values
+(<strong>local_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(pn\)</span> <em>int</em>), <strong>local_buff</strong> (<em>buffer</em>)).
+The return object is <code class="docutils literal notranslate"><span class="pre">local_data</span></code> if it was given by the user.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.Put_v">
+<span class="sig-name descname"><span class="pre">Put_v</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.Put_v" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">put</span></code> implementation for variable buffer-like objects</p>
+<p>The variable input buffer is described by a tuple of two objects:</p>
+<ol class="arabic simple">
+<li><p>an integer array <code class="docutils literal notranslate"><span class="pre">local_counts</span></code> of size <span class="math notranslate nohighlight">\(pn\)</span>;</p></li>
+<li><p>a buffer object of size <code class="docutils literal notranslate"><span class="pre">local_counts.sum()</span></code>.
+The datatype &lt;T&gt; of this input buffer must be the same across all the processes.</p></li>
+</ol>
+<p>Similarly, the output variable buffer is described by the tuple of two objects:</p>
+<ol class="arabic simple">
+<li><p>an integer array <code class="docutils literal notranslate"><span class="pre">dist_counts</span></code> of size <span class="math notranslate nohighlight">\(dn\)</span>;</p></li>
+<li><p>a buffer object <code class="docutils literal notranslate"><span class="pre">dist_buff</span></code> of size <code class="docutils literal notranslate"><span class="pre">dist_counts.sum()</span></code> and datatype &lt;T&gt;.</p></li>
+</ol>
+<p>This output data is either:</p>
+<ul class="simple">
+<li><p>initialized by the caller,</p></li>
+<li><p>or automatically allocated by the method as a pair of new numpy array if <code class="docutils literal notranslate"><span class="pre">dist_data=None</span></code>.</p></li>
+</ul>
+<p>Note that:</p>
+<ul class="simple">
+<li><p>if a global index appears more than once in the idx lists, the associated data in the output
+variable buffer will be</p>
+<ul>
+<li><p>the last appearing (in increasing processes order) if <code class="docutils literal notranslate"><span class="pre">extend=False</span></code>;</p></li>
+<li><p>the concatenation of all input candidates (including initial value if provided) otherwise.</p></li>
+</ul>
+</li>
+<li><p>if a global index does not appears in any idx list, its associated data in the output
+variable buffer will be</p>
+<ul>
+<li><p>the user provided value if <code class="docutils literal notranslate"><span class="pre">dist_data</span></code> is not <code class="docutils literal notranslate"><span class="pre">None</span></code>;</p></li>
+<li><p>an empty subset of values (counts=0) otherwise.</p></li>
+</ul>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_data</strong> (<em>variable buffer</em>) – data to write at each accessed index, ie tuple
+(<strong>local_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(pn\)</span> <em>int</em>), <strong>local_buff</strong> (<em>buffer</em>))</p></li>
+<li><p><strong>dist_data</strong> (<em>variable buffer</em><em>, </em><em>optional</em>) – initial output buffer to store distributed data or <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
+<li><p><strong>extend</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, gather the values written at a same global index.
+Otherwise, keep only the last one. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>variable buffer</em> – output distributed data, returned as the tuple of values
+(<strong>dist_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(dn\)</span> <em>int</em>), <strong>dist_buff</strong> (<em>buffer</em>)).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalIndexer.access_counts">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">access_counts</span></span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalIndexer.access_counts" title="Permalink to this definition"></a></dt>
+<dd><p>For each global index, total number of apparitions in the <code class="docutils literal notranslate"><span class="pre">g_idx</span></code> arrays,
+returned as an integer array of size <span class="math notranslate nohighlight">\(dn\)</span>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GlobalMultiIndexer</span></span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer" title="Permalink to this definition"></a></dt>
+<dd><p>This is a generalization of <code class="xref py py-class docutils literal notranslate"><span class="pre">GlobalIndexer</span></code> where each
+process can request access to several lists of global indices.</p>
+<p>We thus need to introduce the additional notations, which are local for each rank:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(N\)</span> number of global indices list provided (equal to <code class="docutils literal notranslate"><span class="pre">len(g_idx_l)</span></code>)</p></li>
+<li><p><span class="math notranslate nohighlight">\(pn_k\)</span>: for each index list <span class="math notranslate nohighlight">\(k\)</span>, number of accessed indices (equal to <code class="docutils literal notranslate"><span class="pre">len(g_idx_l[k])</span></code>)</p></li>
+</ul>
+<p>All the methods described in <code class="xref py py-class docutils literal notranslate"><span class="pre">GlobalIndexer</span></code> are available,
+but the arguments related to the accessed indices (<em>ie</em> the output of <code class="docutils literal notranslate"><span class="pre">take</span></code> methods, and the
+input of <code class="docutils literal notranslate"><span class="pre">put</span></code> methods) are now lists of size <span class="math notranslate nohighlight">\(N\)</span>.</p>
+<p>Note that in particular, a given process can set <span class="math notranslate nohighlight">\(N=0\)</span>; in this case, empty lists should be used
+whenever a list is expected.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">distri</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g_idx_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comm</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Generalization of <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.__init__" title="maia.transfer.protocols._protocols.GlobalIndexer.__init__"><code class="xref py py-func docutils literal notranslate"><span class="pre">GlobalIndexer.__init__()</span></code></a> for multi index access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>distri</strong> (integer array of size <span class="math notranslate nohighlight">\(s+1\)</span>) – distribution of the collection</p></li>
+<li><p><strong>g_idx_l</strong> (N integer arrays of size <span class="math notranslate nohighlight">\(pn_k\)</span>) – accessed global indices</p></li>
+<li><p><strong>comm</strong> (<em>MPIComm</em>) – communicator</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.take">
+<span class="sig-name descname"><span class="pre">take</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_data_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.take" title="Permalink to this definition"></a></dt>
+<dd><p>Generalization of <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.take" title="maia.transfer.protocols._protocols.GlobalIndexer.take"><code class="xref py py-func docutils literal notranslate"><span class="pre">GlobalIndexer.take()</span></code></a> for multi index access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_data</strong> (list of size <span class="math notranslate nohighlight">\(dn\)</span>) – section of the distributed data</p></li>
+<li><p><strong>local_data_l</strong> (<span class="math notranslate nohighlight">\(N\)</span> list of size <span class="math notranslate nohighlight">\(pn_k\)</span>, optional) – preallocated lists
+to store extracted values corresponding to each index list, or None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="math notranslate nohighlight">\(N\)</span> list of size <span class="math notranslate nohighlight">\(pn_k\)</span> – for each index list,
+values extracted at the requested indices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_data_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.put" title="Permalink to this definition"></a></dt>
+<dd><p>Generalization of <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.put" title="maia.transfer.protocols._protocols.GlobalIndexer.put"><code class="xref py py-func docutils literal notranslate"><span class="pre">GlobalIndexer.put()</span></code></a> for multi index access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_data_l</strong> (<span class="math notranslate nohighlight">\(N\)</span> list of size <span class="math notranslate nohighlight">\(pn_k\)</span>) – for each index list, data to write
+at each accessed index</p></li>
+<li><p><strong>dist_data</strong> (list of size <span class="math notranslate nohighlight">\(dn\)</span>, optional) – preallocated list to store distributed data or None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of size <span class="math notranslate nohighlight">\(dn\)</span> – output distributed data</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.Take">
+<span class="sig-name descname"><span class="pre">Take</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_data_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.Take" title="Permalink to this definition"></a></dt>
+<dd><p>Generalization of <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.Take" title="maia.transfer.protocols._protocols.GlobalIndexer.Take"><code class="xref py py-func docutils literal notranslate"><span class="pre">GlobalIndexer.Take()</span></code></a> for multi index access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_data</strong> (buffer of size <span class="math notranslate nohighlight">\(c*dn\)</span>) – section of the distributed data</p></li>
+<li><p><strong>local_data_l</strong> (list of <span class="math notranslate nohighlight">\(N\)</span> buffer, optional) – preallocated buffers to store extracted values
+corresponding to each index list, or None</p></li>
+<li><p><strong>count</strong> (<em>int</em>) – scalar value of <span class="math notranslate nohighlight">\(c\)</span>. Defaults to 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="math notranslate nohighlight">\(N\)</span> buffer of size <span class="math notranslate nohighlight">\(c*pn_k\)</span> – for each index list,
+values extracted at the requested indices</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.Put">
+<span class="sig-name descname"><span class="pre">Put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_data_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reduce</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.Put" title="Permalink to this definition"></a></dt>
+<dd><p>Generalization of <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.Put" title="maia.transfer.protocols._protocols.GlobalIndexer.Put"><code class="xref py py-func docutils literal notranslate"><span class="pre">GlobalIndexer.Put()</span></code></a> for multi index access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_data_l</strong> (<span class="math notranslate nohighlight">\(N\)</span> buffer of size <span class="math notranslate nohighlight">\(c*pn_k\)</span>) – for each index list,
+data to write at each accessed index</p></li>
+<li><p><strong>dist_data</strong> (<em>buffer</em><em>, </em><em>optional</em>) – preallocated buffer to store distributed data or None</p></li>
+<li><p><strong>count</strong> (<em>int</em>) – scalar value of <span class="math notranslate nohighlight">\(c\)</span>. Defaults to 1.</p></li>
+<li><p><strong>reduce</strong> (<a class="reference internal" href="#maia.transfer.protocols._protocols.ReduceOp" title="maia.transfer.protocols._protocols.ReduceOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReduceOp</span></code></a>, optional) – Binary operation applied to the data written
+at the same global index. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>buffer of size <span class="math notranslate nohighlight">\(c*dn\)</span> – output distributed data</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.Take_v">
+<span class="sig-name descname"><span class="pre">Take_v</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dist_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_data_l</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.Take_v" title="Permalink to this definition"></a></dt>
+<dd><p>Generalization of <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.Take_v" title="maia.transfer.protocols._protocols.GlobalIndexer.Take_v"><code class="xref py py-func docutils literal notranslate"><span class="pre">GlobalIndexer.Take_v()</span></code></a> for multi index access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dist_data</strong> (<em>variable buffer</em>) – section of the distributed data, ie pair of values
+(<strong>dist_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(dn\)</span> <em>int</em>), <strong>dist_buff</strong> (<em>buffer</em>))</p></li>
+<li><p><strong>local_data_l</strong> (<em>list</em><em> of </em><em>N variable buffer</em><em>, </em><em>optional</em>) – list of preallocated buffer to store
+extracted values or None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>list of N variable buffer</em> – for each index list, data extracted as tuple of values         (<strong>local_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(pn_k\)</span> <em>int</em>), <strong>local_buff</strong> (<em>buffer</em>))</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.Put_v">
+<span class="sig-name descname"><span class="pre">Put_v</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">local_data_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.Put_v" title="Permalink to this definition"></a></dt>
+<dd><p>Generalization of <a class="reference internal" href="#maia.transfer.protocols._protocols.GlobalIndexer.Put_v" title="maia.transfer.protocols._protocols.GlobalIndexer.Put_v"><code class="xref py py-func docutils literal notranslate"><span class="pre">GlobalIndexer.Put_v()</span></code></a> for multi index access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>local_data_l</strong> (<em>list</em><em> of </em><em>N var. buffer</em>) – for each index list, values to write as pair         (<strong>local_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(pn_k\)</span> <em>int</em>), <strong>local_buff</strong> (<em>buffer</em>))</p></li>
+<li><p><strong>dist_data</strong> (<em>variable buffer</em><em>, </em><em>optional</em>) – preallocated buffer to store distributed data or None</p></li>
+<li><p><strong>extend</strong> (<em>bool</em><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, gather the values written at a same global index.
+Otherwise, keep only the last one. Defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>variable buffer</em> – output distributed data, returned as pair of values         (<strong>dist_counts</strong> (<em>np array of</em> <span class="math notranslate nohighlight">\(dn\)</span> <em>int</em>), <strong>dist_buff</strong> (<em>buffer</em>))</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.GlobalMultiIndexer.access_counts">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">access_counts</span></span><a class="headerlink" href="#maia.transfer.protocols._protocols.GlobalMultiIndexer.access_counts" title="Permalink to this definition"></a></dt>
+<dd><p>For each global index, total number of apparitions in the <code class="docutils literal notranslate"><span class="pre">g_idx</span></code> arrays,
+returned as an integer array of size <span class="math notranslate nohighlight">\(dn\)</span>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<span class="target" id="reduceop"></span><dl class="py data">
+<dt class="sig sig-object py" id="maia.transfer.protocols._protocols.ReduceOp">
+<span class="sig-name descname"><span class="pre">ReduceOp</span></span><em class="property"><span class="w"> </span><span class="pre">:</span> <span class="pre">Enum</span> <span class="pre">class</span></em><a class="headerlink" href="#maia.transfer.protocols._protocols.ReduceOp" title="Permalink to this definition"></a></dt>
+<dd><p>Enumeration storing the available operations. Members are <code class="xref py py-attr docutils literal notranslate"><span class="pre">SUM</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">PROD</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">MIN</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">MAX</span></code>,
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">LAND</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">LOR</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">BAND</span></code> and <code class="xref py py-attr docutils literal notranslate"><span class="pre">BOR</span></code>,
+where ‘L’ stands for logical operations and ‘B’ for bitwise operations.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="vstride.html" class="btn btn-neutral float-left" title="Variable stride arrays" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../algo_description/algo_description.html" class="btn btn-neutral float-right" title="Algorithms description" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.9
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.9/">1.9</a></dd>
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

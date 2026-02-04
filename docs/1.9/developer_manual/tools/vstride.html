@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Variable stride arrays &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/togglebutton.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script src="../../_static/clipboard.min.js"></script>
+        <script src="../../_static/copybutton.js"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../../_static/togglebutton.js"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+        <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Global Indexer" href="gindexer.html" />
+    <link rel="prev" title="Log management" href="logging.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.9
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../developer_manual.html">Developer Manual</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../development_workflow.html">Development workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../spack.html">Spack</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="tools.html">Maia tools</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="logging.html">Log management</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Variable stride arrays</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#rationale">Rationale</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#python-module">Python module</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#the-vstridearray-object">The VStrideArray object</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#arrays-routines">Arrays routines</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="gindexer.html">Global Indexer</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../algo_description/algo_description.html">Algorithms description</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../developer_manual.html">Developer Manual</a></li>
+          <li class="breadcrumb-item"><a href="tools.html">Maia tools</a></li>
+      <li class="breadcrumb-item active">Variable stride arrays</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/developer_manual/tools/vstride.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="variable-stride-arrays">
+<h1>Variable stride arrays<a class="headerlink" href="#variable-stride-arrays" title="Permalink to this heading"></a></h1>
+<p>This page presents the concept of variable stride array objects
+and an utility class to manipulate it.</p>
+<section id="rationale">
+<h2>Rationale<a class="headerlink" href="#rationale" title="Permalink to this heading"></a></h2>
+<p>A variable stride array (hereafter <em>VS array</em>) is conceptually an array of <span class="math notranslate nohighlight">\(N\)</span> arrays,
+where each subarray have a different size but the same datatype. This differs from multidimensional arrays
+(such as numpy <a class="reference external" href="https://numpy.org/doc/stable/reference/arrays.ndarray.html">ndarray</a>)
+which have a rectangular shape.</p>
+<p>A typical usage of <em>VS array</em> is the representation of mesh connectivities,
+since the number of neighbor is not the same for each entity of the mesh. For exemple,
+if we want to describe the vertex-to-cell connectivity of the following mesh,</p>
+<a class="reference internal image-reference" href="../../_images/mesh_vstride.svg"><img alt="../../_images/mesh_vstride.svg" class="align-center" src="../../_images/mesh_vstride.svg" width="25%" /></a>
+<p>we would have the single value 1 for the first vertex, then the pair of values (1,2) for the
+second vertex, the pair of values (2,3) for the third vertex, etc. The vertex most connected
+vertex is n°5 for which we would have the five values (1,2,3,4,5).</p>
+<p>A <em>VS array</em> could be implemented as a list of arrays (here <code class="docutils literal notranslate"><span class="pre">[[1],</span> <span class="pre">[1,2],</span> <span class="pre">[2,3],</span> <span class="pre">...,</span> <span class="pre">[5]]</span></code>),
+but for performance issues, it is often preferable to store the data in a single memory contiguous buffer.
+We call it the <code class="docutils literal notranslate"><span class="pre">values</span></code> of the <em>VS array</em>.  Therefore, an additional information is needed
+to know where starts and ends each subarray: we can use either</p>
+<ul>
+<li><p>a counting array <code class="docutils literal notranslate"><span class="pre">counts</span></code> of size <span class="math notranslate nohighlight">\(N\)</span>, where <code class="docutils literal notranslate"><span class="pre">counts[i]</span></code> store the lenght of the <em>i-th</em> subarray,</p></li>
+<li><p>or a displacements array <code class="docutils literal notranslate"><span class="pre">displs</span></code> of size <span class="math notranslate nohighlight">\(N+1\)</span>, where <code class="docutils literal notranslate"><span class="pre">displs[i]</span></code> store the starting position of the <em>i-th</em>
+subarray in the <code class="docutils literal notranslate"><span class="pre">values</span></code> array.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Index    0  1     2     3     4              5     6  7     8</span>
+<span class="n">counts</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span>    <span class="mi">2</span><span class="p">,</span>    <span class="mi">2</span><span class="p">,</span>    <span class="mi">5</span><span class="p">,</span>             <span class="mi">2</span><span class="p">,</span>    <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span>    <span class="mi">1</span><span class="p">]</span>
+<span class="n">displs</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span>    <span class="mi">3</span><span class="p">,</span>    <span class="mi">5</span>     <span class="mi">7</span><span class="p">,</span>             <span class="mi">12</span><span class="p">,</span>   <span class="mi">14</span><span class="p">,</span><span class="mi">15</span><span class="p">,</span>   <span class="mi">17</span><span class="p">,</span> <span class="mi">18</span><span class="p">]</span>
+<span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>Note that <code class="docutils literal notranslate"><span class="pre">counts</span></code> and <code class="docutils literal notranslate"><span class="pre">displs</span></code> are redondant: in the data structure described here, it is not permitted
+to use the <code class="docutils literal notranslate"><span class="pre">displs</span></code> array to jump over some parts of <code class="docutils literal notranslate"><span class="pre">values</span></code> or to change the order of elements.
+Thus, the following properties holds:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">counts</span> <span class="pre">≥</span> <span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">counts.sum()</span> <span class="pre">==</span> <span class="pre">values.size</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">displs[i+1]</span> <span class="pre">=</span> <span class="pre">displs[i]</span> <span class="pre">+</span> <span class="pre">counts[i]</span></code>, with <code class="docutils literal notranslate"><span class="pre">displs[0]</span> <span class="pre">=</span> <span class="pre">0</span></code>. In particular, <code class="docutils literal notranslate"><span class="pre">displs[N]==values.size</span></code>.</p></li>
+</ul>
+<p>In the remaining of this page, we will use the term <em>strides</em> to designate
+this virtual slicing of the <em>VS array</em>. The subarrays, who are thus sections of the
+<code class="docutils literal notranslate"><span class="pre">values</span></code> arrays, will be called <em>blocks</em>. We emphasize the fact that an <em>element</em>
+of the <em>VS array</em> is a whole <em>block</em>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<ul class="simple">
+<li><p>The CGNS standard uses the <code class="docutils literal notranslate"><span class="pre">displs</span></code> option to describe polyedric elements;
+this is the purpose of the <code class="docutils literal notranslate"><span class="pre">ElementStartOffset</span></code> node.</p></li>
+<li><p>In sparse linear algebra, the <a class="reference external" href="https://en.wikipedia.org/wiki/Sparse_matrix">CSR data structure</a>
+is quite similar to a <em>VS array</em>,
+with the difference that CSR stores an additional array containing the column
+index of its elements.</p></li>
+</ul>
+</div>
+</section>
+<section id="python-module">
+<h2>Python module<a class="headerlink" href="#python-module" title="Permalink to this heading"></a></h2>
+<p>Maia provides the <code class="docutils literal notranslate"><span class="pre">vstride</span></code> module in order to operate on such data structure.
+This module defines the <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> class as well as some functions
+operating on <em>VS arrays</em>.</p>
+<p>For now, the underlying fields of a <em>VS array</em> are represented by numpy arrays.
+The <code class="docutils literal notranslate"><span class="pre">values</span></code> array is allowed to have any supported datatype, while the <code class="docutils literal notranslate"><span class="pre">counts</span></code>
+and <code class="docutils literal notranslate"><span class="pre">displs</span></code> arrays are requested to be integer arrays of same datatype
+(either <code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">int64</span></code>).</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>In this documentation, the module namespace is denoted <code class="docutils literal notranslate"><span class="pre">vs</span></code>, while <code class="docutils literal notranslate"><span class="pre">np</span></code> designate the
+<code class="docutils literal notranslate"><span class="pre">numpy</span></code> module:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">maia.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">vstride</span> <span class="k">as</span> <span class="n">vs</span>
+</pre></div>
+</div>
+</div>
+<section id="the-vstridearray-object">
+<h3>The VStrideArray object<a class="headerlink" href="#the-vstridearray-object" title="Permalink to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.VStrideArray">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">VStrideArray</span></span><a class="headerlink" href="#maia.utils.ndarray.vstride.VStrideArray" title="Permalink to this definition"></a></dt>
+<dd><p>A class representing a variable stride array.</p>
+<p>Once created, a <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> instance <code class="docutils literal notranslate"><span class="pre">arr</span></code> has the
+following attributes:</p>
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">displs</span></code></p></td>
+<td><p>view on displs array</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">counts</span></code></p></td>
+<td><p>view on counts array</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">values</span></code></p></td>
+<td><p>values array</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">dsize</span></code></p></td>
+<td><p>size of the underlying <code class="docutils literal notranslate"><span class="pre">values</span></code> array</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-attr docutils literal notranslate"><span class="pre">dtype</span></code></p></td>
+<td><p>datatype of the underlying <code class="docutils literal notranslate"><span class="pre">values</span></code> array</p></td>
+</tr>
+</tbody>
+</table>
+<p>In addition, the following operations are supported:</p>
+<ul class="simple">
+<li><p>Length: <code class="docutils literal notranslate"><span class="pre">len(arr)</span></code> returns the number of elements N.</p></li>
+<li><p>Basic indexing: <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> returns the i-th <em>block</em>, ie a view on the <code class="docutils literal notranslate"><span class="pre">values</span></code> array.</p></li>
+<li><p>Basic assignement: <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">=</span> <span class="pre">val</span></code> replace the <span class="math notranslate nohighlight">\(m_i\)</span> values of the i-th <em>block</em>
+using the provided input <code class="docutils literal notranslate"><span class="pre">val</span></code>, which must be an array of relevant size <span class="math notranslate nohighlight">\(m_i\)</span> or a scalar
+(it will be broadcasted).</p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>We strongly advise to <strong>not</strong> iterate over blocks using python loops such as
+<code class="docutils literal notranslate"><span class="pre">func(blk)</span> <span class="pre">for</span> <span class="pre">blk</span> <span class="pre">in</span> <span class="pre">arr</span></code>. As for numpy arrays, this would lead to poor performances.
+Several functions or methods are provided to avoid such loops.</p>
+</div>
+<ul>
+<li><p>Unary arithmetic operations <code class="docutils literal notranslate"><span class="pre">-</span></code>, <code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">abs()</span></code> and <code class="docutils literal notranslate"><span class="pre">~</span></code> applies
+element wise on the <code class="docutils literal notranslate"><span class="pre">values</span></code> array.</p></li>
+<li><p>Binary arithmetic operations (such as <code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, <code class="docutils literal notranslate"><span class="pre">*</span></code>, <code class="docutils literal notranslate"><span class="pre">/</span></code>, <code class="docutils literal notranslate"><span class="pre">%</span></code>, <code class="docutils literal notranslate"><span class="pre">**</span></code>, <code class="docutils literal notranslate"><span class="pre">&amp;</span></code>, etc.)
+and comparison operation (such as <code class="docutils literal notranslate"><span class="pre">==</span></code>, <code class="docutils literal notranslate"><span class="pre">!=</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;</span></code>, <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>, etc.)
+also apply element wise on the <code class="docutils literal notranslate"><span class="pre">values</span></code> array. The right operand can be:</p>
+<ul>
+<li><p>another <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> object. In this case, the <em>strides</em> of the two operand must be equal:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">2.6</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">b</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">2.3</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">&lt;=</span> <span class="n">b</span>
+<span class="go">vsarray([</span>
+<span class="go">  [False,  True],</span>
+<span class="go">  [False,  True],</span>
+<span class="go">  [False],</span>
+<span class="go">], dtype=bool)</span>
+</pre></div>
+</div>
+</li>
+<li><p>a numpy array of size <span class="math notranslate nohighlight">\(N\)</span>. In this case, each value will be repeated <span class="math notranslate nohighlight">\(m_i\)</span> times:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0, 1],</span>
+<span class="go">  [3, 4],</span>
+<span class="go">  [6],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</li>
+<li><p>a scalar value. In this case, it will we broadcasted to a constant array of size <code class="docutils literal notranslate"><span class="pre">values.size</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span> <span class="o">*</span> <span class="mi">2</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0, 2],</span>
+<span class="go">  [4, 6],</span>
+<span class="go">  [8],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>These operations return a new <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> instance. The output dtype of its <code class="docutils literal notranslate"><span class="pre">values</span></code> array is
+determined by numpy, to which the operation itself is delegated.</p>
+</li>
+<li><p>Inplace arithmetic operations (such as <code class="docutils literal notranslate"><span class="pre">+=</span></code>, <code class="docutils literal notranslate"><span class="pre">-=</span></code>, <code class="docutils literal notranslate"><span class="pre">*=</span></code>, etc.) are also supported
+under the same conditions for the right operand.</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.VStrideArray.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">displs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.VStrideArray.__init__" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> object.</p>
+<p>At least one of <code class="docutils literal notranslate"><span class="pre">displs</span></code> or <code class="docutils literal notranslate"><span class="pre">counts</span></code> argument must not be <code class="docutils literal notranslate"><span class="pre">None</span></code>.
+The argument <code class="docutils literal notranslate"><span class="pre">values</span></code> must never be <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>displs</strong> (<em>integer ndarray</em><em>, </em><em>optional</em>) – array of displs or None</p></li>
+<li><p><strong>counts</strong> (<em>integer ndarray</em><em>, </em><em>optional</em>) – array of counts or None</p></li>
+<li><p><strong>values</strong> (<em>ndarray</em>) – array of values</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">VStrideArray</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">]),</span>  <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0, 1, 2],</span>
+<span class="go">  [3, 4, 5, 6, 7],</span>
+<span class="go">  [8, 9],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.VStrideArray.reduce">
+<span class="sig-name descname"><span class="pre">reduce</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">op</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.VStrideArray.reduce" title="Permalink to this definition"></a></dt>
+<dd><p>Apply a reduction operation within each <em>block</em>.</p>
+<p>The avalaible operations are the members of the enumeration <a class="reference internal" href="#maia.utils.ndarray.vstride.ReduceOp" title="maia.utils.ndarray.vstride.ReduceOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReduceOp</span></code></a>.</p>
+<p>This function returns an array of size <span class="math notranslate nohighlight">\(N\)</span> (one value per <em>block</em>).
+The datatype of the output array depends on the input datatype and the requested operation:
+it is generally the same than the input datatype, excepted for logical operations that always
+return boolean arrays and for <code class="xref py py-attr docutils literal notranslate"><span class="pre">ReduceOp.SUM</span></code> that return <code class="docutils literal notranslate"><span class="pre">int64</span></code> when applied to a boolean
+input.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For empty <em>blocks</em> (<em>ie</em> for the set of <code class="docutils literal notranslate"><span class="pre">i</span></code> such that <code class="docutils literal notranslate"><span class="pre">counts[i]</span> <span class="pre">==</span> <span class="pre">0</span></code>), the corresponding
+result <code class="docutils literal notranslate"><span class="pre">out[i]</span></code> will be initialized with the neutral value of the corresponding operation.</p>
+<p>It is still possible to filter the result afterward, <em>eg</em> with <code class="docutils literal notranslate"><span class="pre">out[self.counts</span> <span class="pre">&gt;</span> <span class="pre">0]</span></code>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>op</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.ReduceOp" title="maia.utils.ndarray.vstride.ReduceOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">ReduceOp</span></code></a>) – operation performed to reduce the <em>blocks</em></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>flat ndarray of size N</em> – result of the reduction</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
+<span class="go">array([ 3, 25, 17])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.VStrideArray.restride">
+<span class="sig-name descname"><span class="pre">restride</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">displs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">counts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.VStrideArray.restride" title="Permalink to this definition"></a></dt>
+<dd><p>Change the <em>strides</em> (<code class="docutils literal notranslate"><span class="pre">counts</span></code> and <code class="docutils literal notranslate"><span class="pre">displs</span></code>) of the array, without updating its <code class="docutils literal notranslate"><span class="pre">values</span></code>.</p>
+<p>Eiher a new <code class="docutils literal notranslate"><span class="pre">displs</span></code> or a new <code class="docutils literal notranslate"><span class="pre">counts</span></code> array can be provided. If both arguments are <code class="docutils literal notranslate"><span class="pre">None</span></code>,
+the object remain unchanged. Note that the new strides must be compatible with the <code class="xref py py-attr docutils literal notranslate"><span class="pre">array.dsize</span></code>
+attribute.</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">restride</span><span class="p">(</span><span class="n">counts</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0.4, 0.3, 0.5, 0.1],</span>
+<span class="go">  [0.7, 0.2, 0.6, 0.9],</span>
+<span class="go">], dtype=float64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.VStrideArray.to_array_list">
+<span class="sig-name descname"><span class="pre">to_array_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.VStrideArray.to_array_list" title="Permalink to this definition"></a></dt>
+<dd><p>Return the <code class="docutils literal notranslate"><span class="pre">values</span></code> as a list of NumPy 1d arrays.</p>
+<p>The len of the output list is <code class="docutils literal notranslate"><span class="pre">N</span></code>, and the size of each element <code class="docutils literal notranslate"><span class="pre">i</span></code> is <code class="docutils literal notranslate"><span class="pre">counts[i]</span></code>.
+Data is copied into the 1d arrays.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>list of ndarray</em> – values as a list of 1d arrays</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">to_array_list</span><span class="p">()</span>
+<span class="go">[array([], dtype=float64), array([0.3, 0.5]), array([0.1, 0.7, 0.2, 0.6, 0.9])]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.VStrideArray.to_masked_array">
+<span class="sig-name descname"><span class="pre">to_masked_array</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.VStrideArray.to_masked_array" title="Permalink to this definition"></a></dt>
+<dd><p>Return the <code class="docutils literal notranslate"><span class="pre">values</span></code> as a NumPy <a class="reference external" href="https://numpy.org/doc/stable/reference/maskedarray.html">masked ndarray</a>.</p>
+<p>Output is a 2d array of shape <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">max(counts))</span></code>, where the masked value is used to complete each row
+<code class="docutils literal notranslate"><span class="pre">i</span></code> for which <code class="docutils literal notranslate"><span class="pre">counts[i]</span> <span class="pre">&lt;</span> <span class="pre">max(counts)</span></code>.
+Data is copied into the masked array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><em>masked ndarray</em> – values as a masked array</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_displs</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">10</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">to_masked_array</span><span class="p">())</span>
+<span class="go">[[1 3 3]</span>
+<span class="go"> [4 5 6]</span>
+<span class="go"> [-- -- --]</span>
+<span class="go"> [7 8 --]</span>
+<span class="go"> [10 -- --]]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="arrays-routines">
+<h3>Arrays routines<a class="headerlink" href="#arrays-routines" title="Permalink to this heading"></a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">vstride</span></code> module provides the following routines in order to create or
+manipulate <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> instances:</p>
+<p><strong>Creation routines</strong> : these routines offer shortcuts to create a new <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> from other input data.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.array" title="maia.utils.ndarray.vstride.array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array</span></code></a></p></td>
+<td><p>Create a new instance from the input data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.from_counts" title="maia.utils.ndarray.vstride.from_counts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_counts</span></code></a></p></td>
+<td><p>Create a new instance from a 1d array described by its <code class="docutils literal notranslate"><span class="pre">counts</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.from_displs" title="maia.utils.ndarray.vstride.from_displs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_displs</span></code></a></p></td>
+<td><p>Create a new instance from a 1d array described by its <code class="docutils literal notranslate"><span class="pre">displs</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Indexing routines</strong> : these routines create a new <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> by acting on the
+specified indices of the input array.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.take" title="maia.utils.ndarray.vstride.take"><code class="xref py py-obj docutils literal notranslate"><span class="pre">take</span></code></a></p></td>
+<td><p>Take elements from the input <em>VS array</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.put" title="maia.utils.ndarray.vstride.put"><code class="xref py py-obj docutils literal notranslate"><span class="pre">put</span></code></a></p></td>
+<td><p>Update the specified elements of input <em>VS array</em> with provided values.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.insert" title="maia.utils.ndarray.vstride.insert"><code class="xref py py-obj docutils literal notranslate"><span class="pre">insert</span></code></a></p></td>
+<td><p>Insert new elements in the input <em>VS array</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.delete" title="maia.utils.ndarray.vstride.delete"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delete</span></code></a></p></td>
+<td><p>Remove elements from the input <em>VS array</em>.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Algorithms</strong> : these routines apply an algorithm to <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> object.
+All these functions take a parameter <code class="docutils literal notranslate"><span class="pre">axis</span></code> to indicate if the algorithm is applied:</p>
+<ul class="simple">
+<li><p>independantly on each <em>block</em> of the array (using <a class="reference internal" href="#maia.utils.ndarray.vstride.INNER_AXIS" title="maia.utils.ndarray.vstride.INNER_AXIS"><code class="xref py py-data docutils literal notranslate"><span class="pre">INNER_AXIS</span></code></a>);</p></li>
+<li><p>globally over the elements of the array (using <a class="reference internal" href="#maia.utils.ndarray.vstride.OUTER_AXIS" title="maia.utils.ndarray.vstride.OUTER_AXIS"><code class="xref py py-data docutils literal notranslate"><span class="pre">OUTER_AXIS</span></code></a>).</p></li>
+</ul>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.flip" title="maia.utils.ndarray.vstride.flip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flip</span></code></a></p></td>
+<td><p>Reverse the order of values of the input <em>VS array</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.sort" title="maia.utils.ndarray.vstride.sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sort</span></code></a></p></td>
+<td><p>Sort the values of the input <em>VS array</em>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.unique" title="maia.utils.ndarray.vstride.unique"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unique</span></code></a></p></td>
+<td><p>Find the unique values of the input <em>VS array</em>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.roll" title="maia.utils.ndarray.vstride.roll"><code class="xref py py-obj docutils literal notranslate"><span class="pre">roll</span></code></a></p></td>
+<td><p>Roll the values of the input <em>VS array</em>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.concatenate" title="maia.utils.ndarray.vstride.concatenate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">concatenate</span></code></a></p></td>
+<td><p>Join a sequence of <em>VS arrays</em>.</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Additional operators</strong> : few operators that are not part of language keywords,
+or additional comparison functions.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.sign" title="maia.utils.ndarray.vstride.sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sign</span></code></a></p></td>
+<td><p>Create a new <em>VS array</em> storing the sign of <code class="xref py py-attr docutils literal notranslate"><span class="pre">array.values</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.strides_equal" title="maia.utils.ndarray.vstride.strides_equal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">strides_equal</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the two input <em>VS arrays</em> have the same <em>strides</em>, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.array_equal" title="maia.utils.ndarray.vstride.array_equal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array_equal</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the two input <em>VS arrays</em> have the same <em>strides</em> and values, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#maia.utils.ndarray.vstride.array_close" title="maia.utils.ndarray.vstride.array_close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array_close</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the two input <em>VS arrays</em> have the same <em>strides</em> and close values, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p></td>
+</tr>
+</tbody>
+</table>
+<hr class="docutils" />
+<span class="target" id="module-maia.utils.ndarray.vstride"></span><dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.array">
+<span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.array" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new instance from the input data.</p>
+<p>Input data can be either:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>a list of objects convertible to a 1d ndarray. This include <em>eg</em> list of lists, list
+of arrays, but not list of scalars;</p></li>
+<li><p>a 2d <a class="reference external" href="https://numpy.org/doc/stable/reference/maskedarray.html">masked ndarray</a>, in which case
+only <em>visible</em> values are selected;</p></li>
+<li><p>another <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> instance.</p></li>
+</ul>
+</div></blockquote>
+<p>Input data is always copied to create the new <em>VS array</em>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>object</em>) – see above</p></li>
+<li><p><strong>dtype</strong> (<em>data-type</em><em>, </em><em>optional</em>) – expected datatype of the <code class="docutils literal notranslate"><span class="pre">values</span></code> array.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, datatype is inferred by NumPy from the input data.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – new <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">],</span> <span class="p">[],</span> <span class="p">[</span><span class="mi">6</span><span class="p">]])</span> <span class="c1"># From nested lists</span>
+<span class="go">vsarray([</span>
+<span class="go">  [1, 2],</span>
+<span class="go">  [3, 4, 5],</span>
+<span class="go">  [],</span>
+<span class="go">  [6],</span>
+<span class="go">], dtype=int64)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">]],</span> <span class="c1"># From masked array</span>
+<span class="gp">... </span>              <span class="n">mask</span><span class="o">=</span><span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [1, 2],</span>
+<span class="go">  [4, 5, 6],</span>
+<span class="go">  [7],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.from_counts">
+<span class="sig-name descname"><span class="pre">from_counts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">counts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.from_counts" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new instance from a 1d array described by its <code class="docutils literal notranslate"><span class="pre">counts</span></code>.</p>
+<p>Arguments are converted to ndarray using
+<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.asarray.html#numpy.asarray">np.asarray</a>:
+this operation is copyless if arguments are already ndarray objects and
+if <code class="docutils literal notranslate"><span class="pre">values</span></code> matches the requested datatype.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>counts</strong> (<em>array_like</em>) – an object convertible to a 1d integer ndarray</p></li>
+<li><p><strong>values</strong> (<em>array_like</em>) – an object convertible to a 1d ndarray</p></li>
+<li><p><strong>dtype</strong> (<em>data-type</em><em>, </em><em>optional</em>) – override datatype of the <code class="docutils literal notranslate"><span class="pre">values</span></code> array.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, datatype is inferred from the input data.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – new <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">])</span>
+<span class="go">vsarray([</span>
+<span class="go">  [],</span>
+<span class="go">  [0.3, 0.5],</span>
+<span class="go">  [0.1, 0.7, 0.2, 0.6, 0.9],</span>
+<span class="go">], dtype=float64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.from_displs">
+<span class="sig-name descname"><span class="pre">from_displs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">displs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.from_displs" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new instance from a 1d array described by its <code class="docutils literal notranslate"><span class="pre">displs</span></code>.</p>
+<p>Arguments are converted to ndarray using
+<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.asarray.html#numpy.asarray">np.asarray</a>:
+this operation is copyless if arguments are already ndarray objects and
+if <code class="docutils literal notranslate"><span class="pre">values</span></code> matches the requested datatype.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>displs</strong> (<em>array_like</em>) – an object convertible to a 1d integer ndarray</p></li>
+<li><p><strong>values</strong> (<em>array_like</em>) – an object convertible to a 1d ndarray</p></li>
+<li><p><strong>dtype</strong> (<em>data-type</em><em>, </em><em>optional</em>) – override datatype of the <code class="docutils literal notranslate"><span class="pre">values</span></code> array.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, datatype is inferred from the input data.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – new <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">from_displs</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f4&#39;</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0.3, 0.5],</span>
+<span class="go">  [0.1, 0.7, 0.2],</span>
+<span class="go">], dtype=float32)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.take">
+<span class="sig-name descname"><span class="pre">take</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.take" title="Permalink to this definition"></a></dt>
+<dd><p>Take elements from the input <em>VS array</em>.</p>
+<p>Indices to extract directly refer to elements number,
+and must thus be included in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">len(array)[</span></code>.
+A given index can be provided more than once.</p>
+<p>A new object is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>indices</strong> (<em>array</em><em> of </em><em>int</em>) – indices of the elements to extract</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – extracted <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_displs</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span> <span class="n">values</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">take</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="go">vsarray([</span>
+<span class="go">  [4, 5],</span>
+<span class="go">  [2, 3],</span>
+<span class="go">  [9],</span>
+<span class="go">  [2, 3],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.put">
+<span class="sig-name descname"><span class="pre">put</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.put" title="Permalink to this definition"></a></dt>
+<dd><p>Update the specified elements of input <em>VS array</em> with provided values.</p>
+<p>Indices to update directly refer to elements number,
+and must thus be included in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">len(array)[</span></code>.
+A given index can be provided more than once; in this case, only the last
+corresponding value is used.</p>
+<p>The new <code class="docutils literal notranslate"><span class="pre">values</span></code> must be provided as a <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> of lenght <code class="docutils literal notranslate"><span class="pre">len(indices)</span></code>.
+Its datatype will be converted if needed to match <code class="xref py py-attr docutils literal notranslate"><span class="pre">array.dtype</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">indices</span></code> is a scalar value, then a single 1d array_like object is allowed for
+<code class="docutils literal notranslate"><span class="pre">values</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Contrary to np.put, this function does not operate inplace,
+since the <em>strides</em> of the input <em>VS array</em> can be modified. A new
+object is returned.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>indices</strong> (<em>int</em><em> or </em><em>array</em><em> of </em><em>int</em>) – indices of the elements to update</p></li>
+<li><p><strong>values</strong> (array_like or <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – <em>block(s)</em> to write</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – updated <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">9</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vals</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span><span class="o">-</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">99</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">],</span> <span class="n">vals</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [99],</span>
+<span class="go">  [ 2,  3,  4],</span>
+<span class="go">  [-1, -2, -3, -4],</span>
+<span class="go">  [ 6,  7,  8],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.delete">
+<span class="sig-name descname"><span class="pre">delete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.delete" title="Permalink to this definition"></a></dt>
+<dd><p>Remove elements from the input <em>VS array</em>.</p>
+<p>Indices to delete directly refer to elements number,
+and must thus be included in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">len(array)[</span></code>.</p>
+<p>A new object is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>indices</strong> (<em>array</em><em> of </em><em>int</em>) – indices of the elements to remove</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – filtered <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_displs</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">])</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0, 1],</span>
+<span class="go">  [6, 7, 8],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.insert">
+<span class="sig-name descname"><span class="pre">insert</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.insert" title="Permalink to this definition"></a></dt>
+<dd><p>Insert new elements in the input <em>VS array</em>.</p>
+<p>The indices where the new block(s) are insered must be
+included in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">len(array)]</span></code>. The insered <code class="docutils literal notranslate"><span class="pre">values</span></code>
+must be provided as a <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> of length <code class="docutils literal notranslate"><span class="pre">len(indices)</span></code>.
+Its datatype will be converted if needed to match <code class="xref py py-attr docutils literal notranslate"><span class="pre">array.dtype</span></code>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">indices</span></code> is a scalar value, then a single 1d array_like object is expected for
+<code class="docutils literal notranslate"><span class="pre">values</span></code>.</p>
+<p>A new object is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>index</strong> (<em>int</em><em> of </em><em>array</em><em> of </em><em>int</em>) – position where the <em>block(s)</em> should be insered</p></li>
+<li><p><strong>values</strong> (array_like or <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – <em>block(s)</em> to insert</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – new <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">9</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span><span class="mi">10</span><span class="p">,</span><span class="mi">11</span><span class="p">])</span>
+<span class="go">vsarray([</span>
+<span class="go">  [ 0,  1],</span>
+<span class="go">  [ 9, 10, 11],</span>
+<span class="go">  [ 2,  3,  4,  5],</span>
+<span class="go">  [ 6,  7,  8],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.flip">
+<span class="sig-name descname"><span class="pre">flip</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.flip" title="Permalink to this definition"></a></dt>
+<dd><p>Reverse the order of values of the input <em>VS array</em>.</p>
+<p>Depending on the <code class="docutils literal notranslate"><span class="pre">axis</span></code> argument, the operation reverse:</p>
+<ul>
+<li><p>the order of <em>blocks</em> if <code class="docutils literal notranslate"><span class="pre">axis==OUTER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">blk</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">array</span><span class="p">][::</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+</li>
+<li><p>each <em>block</em> independently if <code class="docutils literal notranslate"><span class="pre">axis==INNER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">blk</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">array</span><span class="p">)]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>In both cases, a copy is done and a new object is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>axis</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.Axis" title="maia.utils.ndarray.vstride.Axis"><code class="xref py py-class docutils literal notranslate"><span class="pre">Axis</span></code></a>) – direction used to reverse</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – flipped <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">9</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">OUTER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [6, 7, 8],</span>
+<span class="go">  [2, 3, 4, 5],</span>
+<span class="go">  [0, 1],</span>
+<span class="go">], dtype=int64)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">flip</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">INNER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [1, 0],</span>
+<span class="go">  [5, 4, 3, 2],</span>
+<span class="go">  [8, 7, 6],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.sort">
+<span class="sig-name descname"><span class="pre">sort</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.sort" title="Permalink to this definition"></a></dt>
+<dd><p>Sort the values of the input <em>VS array</em>.</p>
+<p>Depending on the <code class="docutils literal notranslate"><span class="pre">axis</span></code> argument, the operation sort:</p>
+<ul>
+<li><p>the elements if <code class="docutils literal notranslate"><span class="pre">axis==OUTER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">sorted</span><span class="p">([</span><span class="n">blk</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">array</span><span class="p">]))</span>
+</pre></div>
+</div>
+<p>In this case, lexicographic order is used to compare two <em>blocks</em>.</p>
+</li>
+<li><p>each block if <code class="docutils literal notranslate"><span class="pre">axis==INNER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">sort</span><span class="p">(</span><span class="n">blk</span><span class="p">)</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">array</span><span class="p">)]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>In both cases, a copy is done and a new VStrideArray is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>axis</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.Axis" title="maia.utils.ndarray.vstride.Axis"><code class="xref py py-class docutils literal notranslate"><span class="pre">Axis</span></code></a>) – direction used to sort</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – sorted <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">8</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">OUTER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [3, 1, 5, 2],</span>
+<span class="go">  [3, 2],</span>
+<span class="go">  [9, 5, 8],</span>
+<span class="go">], dtype=int64)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">INNER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [2, 3],</span>
+<span class="go">  [1, 2, 3, 5],</span>
+<span class="go">  [5, 8, 9],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.unique">
+<span class="sig-name descname"><span class="pre">unique</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.unique" title="Permalink to this definition"></a></dt>
+<dd><p>Find the unique values of the input <em>VS array</em>.</p>
+<p>Depending on the <code class="docutils literal notranslate"><span class="pre">axis</span></code> argument, the operation applies to:</p>
+<ul>
+<li><p>the elements if <code class="docutils literal notranslate"><span class="pre">axis==OUTER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">unique</span><span class="p">([</span><span class="n">blk</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">array</span><span class="p">]))</span>
+</pre></div>
+</div>
+</li>
+<li><p>each block if <code class="docutils literal notranslate"><span class="pre">axis==INNER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">unique</span><span class="p">(</span><span class="n">blk</span><span class="p">)</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">array</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>In this case, the output array have the same number of elements <span class="math notranslate nohighlight">\(N\)</span>,
+but a different <code class="docutils literal notranslate"><span class="pre">counts</span></code> array.</p>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>axis</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.Axis" title="maia.utils.ndarray.vstride.Axis"><code class="xref py py-class docutils literal notranslate"><span class="pre">Axis</span></code></a>) – direction in which algorithm is applied</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – unique <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">5</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">INNER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [2],</span>
+<span class="go">  [9, 5],</span>
+<span class="go">  [3, 1, 2],</span>
+<span class="go">  [9, 5],</span>
+<span class="go">], dtype=int64)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">OUTER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [2, 2],</span>
+<span class="go">  [3, 1, 3, 2],</span>
+<span class="go">  [9, 5, 5],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.roll">
+<span class="sig-name descname"><span class="pre">roll</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shift</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.roll" title="Permalink to this definition"></a></dt>
+<dd><p>Roll the values of the input <em>VS array</em>.</p>
+<p>Positive values of <code class="docutils literal notranslate"><span class="pre">shift</span></code> move the elements to the right, while negative values
+move them to the left.
+Values leaving the array are reintroduced on the opposite side.</p>
+<p>Depending on the <code class="docutils literal notranslate"><span class="pre">axis</span></code> argument, the operation apply to:</p>
+<ul>
+<li><p>the elements if <code class="docutils literal notranslate"><span class="pre">axis==OUTER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">array</span><span class="p">[</span><span class="o">-</span><span class="n">shift</span><span class="p">:]</span> <span class="o">+</span> <span class="n">array</span><span class="p">[:</span><span class="n">shift</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> <span class="c1"># for positive shift</span>
+</pre></div>
+</div>
+</li>
+<li><p>each block if <code class="docutils literal notranslate"><span class="pre">axis==INNER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">roll</span><span class="p">(</span><span class="n">blk</span><span class="p">,</span> <span class="n">shift</span><span class="p">)</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">array</span><span class="p">)]</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>In both cases, a copy is done and a new VStrideArray is returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>shift</strong> (<em>int</em>) – number of places by which the elements are shifted</p></li>
+<li><p><strong>axis</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.Axis" title="maia.utils.ndarray.vstride.Axis"><code class="xref py py-class docutils literal notranslate"><span class="pre">Axis</span></code></a>) – direction used to roll</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – rolled <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">9</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">2</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">OUTER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [2, 7, 2, 5, 9],</span>
+<span class="go">  [6, 4, 4, 2],</span>
+<span class="go">  [1, 2],</span>
+<span class="go">  [3, 1, 1],</span>
+<span class="go">], dtype=int64)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">roll</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">vs</span><span class="o">.</span><span class="n">INNER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [2, 1],</span>
+<span class="go">  [1, 1, 3],</span>
+<span class="go">  [7, 2, 5, 9, 2],</span>
+<span class="go">  [4, 4, 2, 6],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.concatenate">
+<span class="sig-name descname"><span class="pre">concatenate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array_l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.concatenate" title="Permalink to this definition"></a></dt>
+<dd><p>Join a sequence of <em>VS arrays</em>.</p>
+<p>Depending on the <code class="docutils literal notranslate"><span class="pre">axis</span></code> argument, the concatenation is applied to:</p>
+<ul>
+<li><p>the elements if <code class="docutils literal notranslate"><span class="pre">axis==OUTER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">blk</span> <span class="k">for</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">array_l</span> <span class="k">for</span> <span class="n">blk</span> <span class="ow">in</span> <span class="n">arr</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>In this case, the input arrays can have a different length; the
+number of elements of the output array is the sum of the input lenghts.</p>
+</li>
+<li><p>each block if <code class="docutils literal notranslate"><span class="pre">axis==INNER_AXIS</span></code>, which is roughly equivalent to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">concatenate</span><span class="p">(</span><span class="n">blks</span><span class="p">)</span> <span class="k">for</span> <span class="n">blks</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">array_l</span><span class="p">)])</span>
+</pre></div>
+</div>
+<p>In this case, all the input arrays must have the same number of elements <span class="math notranslate nohighlight">\(N\)</span>,
+which is the number of elements of the output array.</p>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array_l</strong> (sequence of <a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – <em>VS arrays</em> to concatenate</p></li>
+<li><p><strong>axis</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.Axis" title="maia.utils.ndarray.vstride.Axis"><code class="xref py py-class docutils literal notranslate"><span class="pre">Axis</span></code></a>) – direction used to concatenate</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – concatenated <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a1</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span>  <span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]],</span>  <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a2</span> <span class="o">=</span> <span class="n">vs</span><span class="o">.</span><span class="n">array</span><span class="p">([[],</span>  <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">],</span> <span class="n">vs</span><span class="o">.</span><span class="n">OUTER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0, 1],</span>
+<span class="go">  [2, 3, 4],</span>
+<span class="go">  [5, 6],</span>
+<span class="go">  [],</span>
+<span class="go">  [0, 1, 2, 3],</span>
+<span class="go">  [4, 6, 7],</span>
+<span class="go">], dtype=int64)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">],</span> <span class="n">vs</span><span class="o">.</span><span class="n">INNER_AXIS</span><span class="p">)</span>
+<span class="go">vsarray([</span>
+<span class="go">  [0, 1],</span>
+<span class="go">  [2, 3, 4, 0, 1, 2, 3],</span>
+<span class="go">  [5, 6, 4, 6, 7],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.sign">
+<span class="sig-name descname"><span class="pre">sign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.sign" title="Permalink to this definition"></a></dt>
+<dd><p>Create a new <em>VS array</em> storing the sign of <code class="xref py py-attr docutils literal notranslate"><span class="pre">array.values</span></code>.
+The <em>strides</em> of the output array are identical to the input strides.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – input <em>VS array</em></p></li>
+<li><p><strong>dtype</strong> (<em>data-type</em><em>, </em><em>optional</em>) – desired datatype for the output</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a> – sign <em>VS array</em></p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="o">-</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mi">6</span><span class="p">]))</span>
+<span class="go">vsarray([</span>
+<span class="go">  [ 1,  1],</span>
+<span class="go">  [-1,  1,  0],</span>
+<span class="go">  [-1],</span>
+<span class="go">], dtype=int64)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.strides_equal">
+<span class="sig-name descname"><span class="pre">strides_equal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.strides_equal" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the two input <em>VS arrays</em> have the same <em>strides</em>, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a1</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – first input</p></li>
+<li><p><strong>a2</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – second input</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>bool</em> – comparison result</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">strides_equal</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]),</span>
+<span class="gp">... </span>                 <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">strides_equal</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]),</span>
+<span class="gp">... </span>                 <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]))</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.array_equal">
+<span class="sig-name descname"><span class="pre">array_equal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.array_equal" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the two input <em>VS arrays</em> have the same <em>strides</em> and values, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a1</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – first input</p></li>
+<li><p><strong>a2</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – second input</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>bool</em> – comparison result</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]),</span>
+<span class="gp">... </span>               <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]),</span>
+<span class="gp">... </span>               <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">6</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]))</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.array_close">
+<span class="sig-name descname"><span class="pre">array_close</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-08</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#maia.utils.ndarray.vstride.array_close" title="Permalink to this definition"></a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the two input <em>VS arrays</em> have the same <em>strides</em> and close values, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+<p>Value comparison is performed by
+<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.isclose.html">np.isclose</a>. See the
+related documentation for description of <code class="docutils literal notranslate"><span class="pre">rtol</span></code> and <code class="docutils literal notranslate"><span class="pre">atol</span></code> parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a1</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – first input</p></li>
+<li><p><strong>a2</strong> (<a class="reference internal" href="#maia.utils.ndarray.vstride.VStrideArray" title="maia.utils.ndarray.vstride.VStrideArray"><code class="xref py py-class docutils literal notranslate"><span class="pre">VStrideArray</span></code></a>) – second input</p></li>
+<li><p><strong>rtol</strong> (<em>float</em><em>, </em><em>optional</em>) – relative tolerance for comparison</p></li>
+<li><p><strong>atol</strong> (<em>float</em><em>, </em><em>optional</em>) – absolute tolerance for comparison</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><em>bool</em> – comparison result</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">array_close</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]),</span>
+<span class="gp">... </span>               <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="o">+</span><span class="mf">1e-9</span><span class="p">]))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">vs</span><span class="o">.</span><span class="n">array_close</span><span class="p">(</span><span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">]),</span>
+<span class="gp">... </span>               <span class="n">vs</span><span class="o">.</span><span class="n">from_counts</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mf">6.2</span><span class="p">]))</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.Axis">
+<span class="sig-name descname"><span class="pre">Axis</span></span><em class="property"><span class="w"> </span><span class="pre">:</span> <span class="pre">Enum</span> <span class="pre">class</span></em><a class="headerlink" href="#maia.utils.ndarray.vstride.Axis" title="Permalink to this definition"></a></dt>
+<dd><p>Enumeration to indicate the axis on which a function should operate. Members are <code class="xref py py-attr docutils literal notranslate"><span class="pre">INNER</span></code> and <code class="xref py py-attr docutils literal notranslate"><span class="pre">OUTER</span></code>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.ReduceOp">
+<span class="sig-name descname"><span class="pre">ReduceOp</span></span><em class="property"><span class="w"> </span><span class="pre">:</span> <span class="pre">Enum</span> <span class="pre">class</span></em><a class="headerlink" href="#maia.utils.ndarray.vstride.ReduceOp" title="Permalink to this definition"></a></dt>
+<dd><p>Enumeration storing the available operations. Members are <code class="xref py py-attr docutils literal notranslate"><span class="pre">SUM</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">PROD</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">MIN</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">MAX</span></code>,
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">LAND</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">LOR</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">BAND</span></code> and <code class="xref py py-attr docutils literal notranslate"><span class="pre">BOR</span></code>,
+where ‘L’ stands for logical operations and ‘B’ for bitwise operations.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.INNER_AXIS">
+<span class="sig-name descname"><span class="pre">INNER_AXIS</span></span><a class="headerlink" href="#maia.utils.ndarray.vstride.INNER_AXIS" title="Permalink to this definition"></a></dt>
+<dd><p>A shortcut to <code class="xref py py-data docutils literal notranslate"><span class="pre">Axis.INNER</span></code></p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="maia.utils.ndarray.vstride.OUTER_AXIS">
+<span class="sig-name descname"><span class="pre">OUTER_AXIS</span></span><a class="headerlink" href="#maia.utils.ndarray.vstride.OUTER_AXIS" title="Permalink to this definition"></a></dt>
+<dd><p>A shortcut to <code class="xref py py-data docutils literal notranslate"><span class="pre">Axis.OUTER</span></code></p>
+</dd></dl>
+
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="logging.html" class="btn btn-neutral float-left" title="Log management" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="gindexer.html" class="btn btn-neutral float-right" title="Global Indexer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.9
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.9/">1.9</a></dd>
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
