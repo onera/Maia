@@ -874,7 +874,7 @@ def test_extract_S_2d(comm):
   assert PT.get_np_value(cx).shape == expt_vtx_shape
   assert len(PT.get_nodes_from_label(ext_zone, 'GridConnectivity1to1_t')) == 1
   assert MT.get_GlobalNumbering(ext_zone, 'Face') is None
-  assert (MT.globalnumbering_value(ext_zone, 'Edge') == expt_edge_gnum).all()
+  assert (MT.find_GlobalNumbering(ext_zone, 'Edge')[1] == expt_edge_gnum).all()
   # Fields
   full = PT.find_node_from_name_and_label(ext_zone, 'Geometry_2d', 'DiscreteData_t')
   assert not PT.Container._is_partial(full)

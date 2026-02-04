@@ -55,7 +55,7 @@ NGon Elements_t [22, 0]:
   cgns_elements.load_element_connectivity_from_eso(element, 'pathtozone', hdf_filter)
   assert hdf_filter['pathtozone/NGon/ElementConnectivity'] == \
       [[0], [1], [28-8], [1], [8], [1], [28-8], [1], [40], [0]]
-  element_connectivity_distri = MT.distribution_value(element, 'ElementConnectivity')
+  element_connectivity_distri = MT.find_Distribution(element, 'ElementConnectivity')[1]
   assert (element_connectivity_distri == [8,28,40]).all()
       
 

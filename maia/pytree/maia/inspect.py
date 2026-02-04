@@ -23,13 +23,13 @@ def _n_entity(input:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm], nam
   if is_single_node(input):
     # Distributed implementation
     node = typing.cast(CGNSTree, input)
-    distri = search.distribution_value(node, name)
+    distri = PT.get_np_value(search.find_Distribution(node, name))
     return int(distri[2])
   else:
     # Partitioned implementation
     nodes = typing.cast(List[CGNSTree], input)
     assert comm is not None
-    gnum_l = [search.globalnumbering_value(n, name) for n in nodes]
+    gnum_l = [PT.get_np_value(search.find_GlobalNumbering(n, name)) for n in nodes]
     return int(par_utils.arrays_max(gnum_l, comm))
 
 class Zone:
@@ -50,7 +50,7 @@ class Zone:
       15
     """
     # Return the local number of cells (only for distributed zones)
-    distri = search.distribution_value(zone_node, 'Cell')
+    distri = Zone.cell_distribution(zone_node)
     return int(distri[1] - distri[0])
 
   @staticmethod
@@ -67,7 +67,7 @@ class Zone:
       >>> MT.Zone.pn_cell(zone)
       6
     """
-    gnum = search.globalnumbering_value(zone_node, 'Cell')
+    gnum = PT.get_np_value(search.find_GlobalNumbering(zone_node, 'Cell'))
     return gnum.size
 
   @staticmethod
@@ -111,7 +111,7 @@ class Zone:
       >>> MT.Zone.dn_vtx(zone)
       19
     """
-    distri = search.distribution_value(zone_node, 'Vertex')
+    distri = Zone.vtx_distribution(zone_node)
     return int(distri[1] - distri[0])
 
   @staticmethod
@@ -128,7 +128,7 @@ class Zone:
       >>> MT.Zone.pn_vtx(zone)
       8
     """
-    gnum = search.globalnumbering_value(zone_node, 'Vertex')
+    gnum = PT.get_np_value(search.find_GlobalNumbering(zone_node, 'Vertex'))
     return gnum.size
 
 
@@ -173,7 +173,13 @@ class Zone:
       >>> MT.Zone.vtx_distribution(zone)
       array([39, 58, 77], dtype=int32)
     """
-    return search.distribution_value(zone_node, 'Vertex')
+    return PT.get_np_value(search.find_Distribution(zone_node, 'Vertex'))
+  @staticmethod
+  def face_distribution(zone_node:CGNSTree) -> NDArray:
+    return PT.get_np_value(search.find_Distribution(zone_node, 'Face'))
+  @staticmethod
+  def face_globalnumbering(zone_node:CGNSTree) -> NDArray:
+    return PT.get_np_value(search.find_GlobalNumbering(zone_node, 'Face'))
   @staticmethod
   def cell_distribution(zone_node:CGNSTree) -> NDArray:
     """ Return the cells distribution array of a **distributed** zone
@@ -189,7 +195,7 @@ class Zone:
       >>> MT.Zone.cell_distribution(zone)
       array([45, 60, 60], dtype=int32)
     """
-    return search.distribution_value(zone_node, 'Cell')
+    return PT.get_np_value(search.find_Distribution(zone_node, 'Cell'))
 
   @staticmethod
   def cell_globalnumbering(zone_node:CGNSTree) -> NDArray:
@@ -205,7 +211,7 @@ class Zone:
       >>> MT.Zone.cell_globalnumbering(zone)
       array([5, 1, 9], dtype=int32)
     """
-    return search.globalnumbering_value(zone_node, 'Cell')
+    return PT.get_np_value(search.find_GlobalNumbering(zone_node, 'Cell'))
   @staticmethod
   def vtx_globalnumbering(zone_node:CGNSTree) -> NDArray:
     """ Return the vertices absolute numbering array of a **partitioned** zone
@@ -220,7 +226,7 @@ class Zone:
       >>> MT.Zone.vtx_globalnumbering(zone)
       array([ 9, 11, 13, 14, 16, 10, 12, 15], dtype=int32)
     """
-    return search.globalnumbering_value(zone_node, 'Vertex')
+    return PT.get_np_value(search.find_GlobalNumbering(zone_node, 'Vertex'))
 
   @staticmethod
   def EdgeNode(zone_node:CGNSTree) -> CGNSTree:
@@ -260,7 +266,7 @@ class Element:
       >>> MT.Element.distribution(elt)
       array([ 4,  6, 10], dtype=int32)
     """
-    return search.distribution_value(elt_node, 'Element')
+    return PT.get_np_value(search.find_Distribution(elt_node, 'Element'))
   @staticmethod
   def globalnumbering(elt_node:CGNSTree) -> NDArray:
     """ Return the absolute numbering array of a **partitioned** element section
@@ -275,7 +281,7 @@ class Element:
       >>> MT.Element.globalnumbering(elt)
       array([4, 9, 3], dtype=int32)
     """
-    return search.globalnumbering_value(elt_node, 'Element')
+    return PT.get_np_value(search.find_GlobalNumbering(elt_node, 'Element'))
 
 
   @staticmethod
@@ -292,7 +298,7 @@ class Element:
       >>> MT.Element.dn_elt(elt)
       2
     """
-    distri = search.distribution_value(elt_node, 'Element')
+    distri = Element.distribution(elt_node)
     return int(distri[1] - distri[0])
 
   @staticmethod
@@ -311,7 +317,7 @@ class Element:
     """
     
     # Return the local number of elements (only for partitioned zones)
-    gnum = search.globalnumbering_value(elt_node, 'Element')
+    gnum = PT.get_np_value(search.find_GlobalNumbering(elt_node, 'Element'))
     return gnum.size
 
   @staticmethod
@@ -390,7 +396,7 @@ class Subset:
       >>> MT.Subset.distribution(bc)
       array([ 5, 10, 20], dtype=int32)
     """
-    return search.distribution_value(subset_node, 'Index')
+    return PT.get_np_value(search.find_Distribution(subset_node, 'Index'))
 
   @staticmethod
   def globalnumbering(subset_node:CGNSTree) -> NDArray:
@@ -406,7 +412,7 @@ class Subset:
       >>> MT.Subset.globalnumbering(zsr)
       array([ 9, 11, 13, 14], dtype=int32)
     """
-    return search.globalnumbering_value(subset_node, 'Index')
+    return PT.get_np_value(search.find_GlobalNumbering(subset_node, 'Index'))
 
 
   @staticmethod
@@ -423,7 +429,7 @@ class Subset:
       >>> MT.Subset.dn_elem(bc)
       5
     """
-    distri = search.distribution_value(subset_node, 'Index')
+    distri = Subset.distribution(subset_node)
     return int(distri[1] - distri[0])
 
   @staticmethod

@@ -119,7 +119,7 @@ def create_part_pr_gnum(dist_zone: CGNSDistTree,
       if loc == 'FaceCenter':
         raise RuntimeError(f"Wrong location for node {node_path} (FaceCenter). Please use one of [IFaceCenter, JFaceCenter, KFaceCenter]")
 
-      ln_to_gn_all = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
+      ln_to_gn_all = PT.get_np_value(MT.find_GlobalNumbering(part_zone, LOC_TO_GN[loc]))
 
       # Get entity local numbering as full list
       part_pr = PT.get_np_value(PT.find_child_from_name(node, 'PointRange'))
@@ -196,7 +196,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
             ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
           part_pl_list['pl_i'].append(ln_to_gn[part_pl[0]-1])
         else:
-          ln_to_gn = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
+          ln_to_gn = PT.get_np_value(MT.find_GlobalNumbering(part_zone, LOC_TO_GN[loc]))
           ijk_glob = _part_triplet_to_dist_triplet(part_pl, loc, ln_to_gn, PT.Zone.VertexSize(part_zone), PT.Zone.VertexSize(dist_zone))
           for i, key in enumerate(keys):
             part_pl_list[key].append(ijk_glob[i])
@@ -272,7 +272,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
       proc_permuted = proc_permuted | permuted
 
       # Get the global triplet related to the min and max corners of the window
-      ln_to_gn = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
+      ln_to_gn = PT.get_np_value(MT.find_GlobalNumbering(part_zone, LOC_TO_GN[loc]))
       proc_bottom.append(_part_triplet_to_dist_triplet(pr[:,0], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
       proc_top.append(_part_triplet_to_dist_triplet(pr[:,1], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
 

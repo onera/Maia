@@ -90,7 +90,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
                 ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
 
       if elt_n is not None :
-        part1_ln_to_gn   = [MT.globalnumbering_value(elt_n, _gridLocation[gridLocation])]
+        part1_ln_to_gn   = [PT.get_np_value(MT.find_GlobalNumbering(elt_n, _gridLocation[gridLocation]))]
       else :
         part1_ln_to_gn   = []
 
@@ -125,7 +125,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     part2_ln_to_gn      = list()
     for part_zone in part_zones:
       elt_n            = part_zone if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone)
-      part2_ln_to_gn.append(MT.globalnumbering_value(elt_n, _gridLocation[gridLocation]))
+      part2_ln_to_gn.append(PT.get_np_value(MT.find_GlobalNumbering(elt_n, _gridLocation[gridLocation])))
         
 
     # > P2P Object

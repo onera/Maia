@@ -196,7 +196,7 @@ def extract_surf_from_bc_single(part_zones: List[CGNSPartTree],
 
     if PT.Zone.Type(zone) == 'Unstructured' and not PT.Zone.has_ngon_elements(zone):
       elt_2d_nodes = PT.Zone.get_ordered_elements_per_dim(zone)[zone_dim-1]
-      elt_2d_gnums = [MT.globalnumbering_value(elt, "Sections") for elt in elt_2d_nodes]
+      elt_2d_gnums = [PT.get_np_value(MT.find_GlobalNumbering(elt, "Sections")) for elt in elt_2d_nodes]
       face_ln_to_gn_zone = np.concatenate(elt_2d_gnums) if len(elt_2d_nodes) else np.empty(0, dtype=pdm_dtype)
     else:
       face_ln_to_gn_zone = te_utils.get_entities_numbering(zone)[zone_dim-1] # Face if dim==3; Edge if dim == 2

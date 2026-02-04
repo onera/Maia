@@ -130,13 +130,13 @@ def test_pdm_elmt_to_cgns_elmt_ngon():
   assert (PT.get_node_from_path(ngon_n, 'ElementStartOffset')[1] == data['np_face_vtx_idx']).all()
   assert (PT.get_node_from_path(ngon_n, 'ElementConnectivity')[1] == data['np_face_vtx']).all()
   assert (PT.get_node_from_path(ngon_n, 'ElementRange')[1] == [1,6]).all()
-  assert (MT.globalnumbering_value(ngon_n, 'Element') == data['np_face_ln_to_gn']).all()
+  assert (MT.find_GlobalNumbering(ngon_n, 'Element')[1] == data['np_face_ln_to_gn']).all()
 
   nface_n = PT.get_node_from_path(p_zone, 'NFaceElements')
   assert (PT.get_node_from_path(nface_n, 'ElementStartOffset')[1] == data['np_cell_face_idx']).all()
   assert (PT.get_node_from_path(nface_n, 'ElementConnectivity')[1] == data['np_cell_face']).all()
   assert (PT.get_node_from_path(nface_n, 'ElementRange')[1] == [7,7]).all()
-  assert (MT.globalnumbering_value(nface_n, 'Element') == data['np_cell_ln_to_gn']).all()
+  assert (MT.find_GlobalNumbering(nface_n, 'Element')[1] == data['np_cell_ln_to_gn']).all()
 
 def test_pdm_elmt_to_cgns_elmt_elmt():
   d_zone = PT.new_Zone('Zone', type='Unstructured')
@@ -183,9 +183,9 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   assert (PT.get_value(quad_n) == [7,0]).all()
   assert (PT.get_node_from_path(quad_n, 'ElementConnectivity')[1] == data['2dsections'][0]['np_connec']).all()
   assert (PT.get_node_from_path(quad_n, 'ElementRange')[1] == [5,10]).all()
-  assert (MT.globalnumbering_value(quad_n, 'Element') == data['2dsections'][0]['np_numabs']).all()
-  assert (MT.globalnumbering_value(quad_n, 'Sections') == data['2dsections'][0]['np_numabs']).all()
-  assert (MT.globalnumbering_value(quad_n, 'Entity') == data['2dsections'][0]['np_parent_entity_g_num']).all()
+  assert (MT.find_GlobalNumbering(quad_n, 'Element')[1] == data['2dsections'][0]['np_numabs']).all()
+  assert (MT.find_GlobalNumbering(quad_n, 'Sections')[1] == data['2dsections'][0]['np_numabs']).all()
+  assert (MT.find_GlobalNumbering(quad_n, 'Entity')[1] == data['2dsections'][0]['np_parent_entity_g_num']).all()
   assert (PT.get_value(PT.get_node_from_path(quad_n, ':CGNS#LocalNumbering/Entity')) == \
       data['2dsections'][0]['np_parent_num']).all()
 
@@ -193,8 +193,8 @@ def test_pdm_elmt_to_cgns_elmt_elmt():
   assert (PT.get_value(hexa_n) == [17,0]).all()
   assert (PT.get_node_from_path(hexa_n, 'ElementConnectivity')[1] == data['3dsections'][0]['np_connec']).all()
   assert (PT.get_node_from_path(hexa_n, 'ElementRange')[1] == [11,11]).all()
-  assert (MT.globalnumbering_value(hexa_n, 'Element') == data['3dsections'][0]['np_numabs']).all()
-  assert (MT.globalnumbering_value(hexa_n, 'Sections') == data['3dsections'][0]['np_numabs']).all()
+  assert (MT.find_GlobalNumbering(hexa_n, 'Element')[1] == data['3dsections'][0]['np_numabs']).all()
+  assert (MT.find_GlobalNumbering(hexa_n, 'Sections')[1] == data['3dsections'][0]['np_numabs']).all()
   assert (PT.get_value(PT.get_node_from_path(hexa_n, ':CGNS#LocalNumbering/Entity')) == \
       data['3dsections'][0]['np_parent_num']).all()
   

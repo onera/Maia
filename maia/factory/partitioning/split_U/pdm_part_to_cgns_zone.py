@@ -303,7 +303,7 @@ def pdm_part_to_cgns_zone(dist_zone, l_dims, l_data, comm, options):
     else:
       is_dim_elt = lambda n : PT.get_label(n) == 'Elements_t' and PT.Element.Dimension(n) == base_dim
       elts = PT.get_nodes_from_predicate(part_zone, is_dim_elt)
-      section_gnum = [MT.globalnumbering_value(elt, 'Sections') for elt in elts]
+      section_gnum = [PT.get_np_value(MT.find_GlobalNumbering(elt, 'Sections')) for elt in elts]
       numberings['Cell'] = np_utils.concatenate_np_arrays(section_gnum, cell_lngn.dtype)[1]
 
     MT.new_GlobalNumbering(numberings, parent=part_zone)

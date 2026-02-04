@@ -20,7 +20,7 @@ def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   if PT.get_child_from_name(distrib, 'ElementConnectivity') is None:
     compute_connectivity_distribution(elmt)
 
-  distrib_ec = MT.distribution_value(elmt, "ElementConnectivity")
+  distrib_ec = PT.get_np_value(MT.find_Distribution(elmt, "ElementConnectivity"))
   dn_elmt_c  = distrib_ec[1] - distrib_ec[0]
   n_elmt_c   = distrib_ec[2]
 

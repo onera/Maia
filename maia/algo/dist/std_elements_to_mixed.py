@@ -54,7 +54,7 @@ def convert_elements_to_mixed(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                 mixed_partial_eso = eso[:-1] + nb_nodes_prev
                 stride_ec = np.diff(eso).astype(int, copy=False)
                 #nb_nodes_prev += elem_ec.size
-                nb_nodes_prev += int(MT.distribution_value(element, 'ElementConnectivity')[2])
+                nb_nodes_prev += int(PT.get_np_value(MT.find_Distribution(element, 'ElementConnectivity'))[2])
                 
             else: 
                 nb_nodes_per_elem = PT.Element.NVtx(element)

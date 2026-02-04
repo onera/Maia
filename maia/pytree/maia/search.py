@@ -5,8 +5,7 @@ from maia.pytree.meta import CGNSNodeNotFoundError
 
 from .conventions import DISTRI_NAME, GLBNUM_NAME
 
-__all__ = ['get_Distribution', 'get_GlobalNumbering', 'find_Distribution',
-           'find_GlobalNumbering', 'distribution_value', 'globalnumbering_value']
+__all__ = ['get_Distribution', 'get_GlobalNumbering', 'find_Distribution', 'find_GlobalNumbering']
 
 def get_Distribution(root:CGNSTree, name:Optional[str]=None) -> Optional[CGNSTree]:
   """ Get a distribution node under the specified root
@@ -61,11 +60,4 @@ def find_GlobalNumbering(root:CGNSTree, name:Optional[str]=None) -> CGNSTree:
   if (node := get_GlobalNumbering(root, name)) is not None:
     return node
   raise CGNSNodeNotFoundError(root, GLBNUM_NAME)
-
-
-
-def distribution_value(root:CGNSTree, distri_name:str) -> NDArray:
-  return PT.get_np_value(find_Distribution(root, distri_name))
-def globalnumbering_value(root:CGNSTree, lngn_name:str) -> NDArray:
-  return PT.get_np_value(find_GlobalNumbering(root, lngn_name))
 

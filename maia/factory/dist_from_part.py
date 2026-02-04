@@ -342,7 +342,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
         elt_n = PT.get_child_from_name(part_zone, PT.get_name(elt_node))
         if elt_n is not None and PT.Element.Size(elt_n) > 0:
           # Retrieve the ElementRange within the given dimension
-          any_id_l[i] = MT.globalnumbering_value(elt_n, 'Sections')[0]
+          any_id_l[i] = PT.get_np_value(MT.find_GlobalNumbering(elt_n, 'Sections'))[0]
           break
     #Get values for proc having no elt
     comm.Allreduce(any_id_l, any_id_g, MPI.MAX)
@@ -549,7 +549,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     elif PT.Zone.Type(dist_zone) == "Structured":
       d_zone_dims = _recover_dist_block_size(part_zones, comm)
       if d_zone_dims.shape[0] == 3:
-        face_lngn_list = [MT.globalnumbering_value(zone, 'Face') for zone in part_zones]
+        face_lngn_list = [MT.Zone.face_globalnumbering(zone) for zone in part_zones]
         face_distri = par_utils.distribution_from_gnum(face_lngn_list, comm)
         MT.new_Distribution({'Face' : face_distri}, parent=dist_zone)
     else:

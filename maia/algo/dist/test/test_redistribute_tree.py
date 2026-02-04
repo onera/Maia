@@ -430,14 +430,14 @@ def test_redistribute_tree_S(dim, comm):
     assert (MT.Zone.vtx_distribution(zone) == [0, 0, nvt]).all()
     assert (MT.Zone.cell_distribution(zone)   == [0, 0, nct]).all()
     if dim == 3:
-      assert (MT.distribution_value(zone, 'Face') == [0, 0, nft]).all()
+      assert (MT.Zone.face_distribution(zone) == [0, 0, nft]).all()
   elif comm.rank == 1:
     assert (MT.Zone.vtx_distribution(zone) == [0, nvt, nvt]).all()
     assert (MT.Zone.cell_distribution(zone)   == [0, nct, nct]).all()
     if dim == 3:
-      assert (MT.distribution_value(zone, 'Face') == [0, nft, nft]).all()
+      assert (MT.Zone.face_distribution(zone) == [0, nft, nft]).all()
   else:
     assert (MT.Zone.vtx_distribution(zone) == [nvt, nvt, nvt]).all()
     assert (MT.Zone.cell_distribution(zone)   == [nct, nct, nct]).all()
     if dim == 3:
-      assert (MT.distribution_value(zone, 'Face') == [nft, nft, nft]).all()
+      assert (MT.Zone.face_distribution(zone) == [nft, nft, nft]).all()

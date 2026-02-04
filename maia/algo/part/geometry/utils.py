@@ -93,7 +93,8 @@ def place_in_container(zone, rq_dim, fields):
           pl[0,start:start+sizes[i]] = np.arange(er[0], er[1]+1, dtype=np.int32)
           start += sizes[i]
         # For gnum, we computed on all face or edge so Element/GlobalNumbering/Sections should be fine
-        _, gnum = np_utils.concatenate_np_arrays([MT.globalnumbering_value(e, 'Sections') for e in ordered_faces])
+        gnums = [PT.get_np_value(MT.find_GlobalNumbering(e, 'Sections')) for e in ordered_faces]
+        _, gnum = np_utils.concatenate_np_arrays(gnums)
 
       existing_pl = PT.get_child_from_name(container, 'PointList')
       if existing_pl is not None:

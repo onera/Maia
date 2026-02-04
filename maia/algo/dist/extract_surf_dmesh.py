@@ -22,12 +22,10 @@ def _extract_faces(dist_zone, face_list, comm):
   ngon_eso  = PT.find_child_from_name(ngon_node, 'ElementStartOffset' )[1]
 
   distrib_face     = MT.Element.distribution(ngon_node)
-  distrib_face_vtx = MT.distribution_value(ngon_node, 'ElementConnectivity')
 
-  dn_face = distrib_face[1] - distrib_face[0]
   np_face_distrib = par_utils.partial_to_full_distribution(distrib_face, comm)
 
-  dface_vtx_idx = np.add(ngon_eso, -distrib_face_vtx[0], dtype=np.int32) #Local index is int32bits
+  dface_vtx_idx = np.add(ngon_eso, -ngon_eso[0], dtype=np.int32) #Local index is int32bits
 
   return dconnectivity_to_extract_dconnectivity(comm, face_list, np_face_distrib, dface_vtx_idx, dface_vtx)
 

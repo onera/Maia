@@ -95,7 +95,7 @@ def redistribute_elements_node(node: CGNSTree,
 
   # > ElementStartOffset
   if has_eso :
-    ec_distrib     = MT.distribution_value(node, "ElementConnectivity")
+    ec_distrib     = PT.get_np_value(MT.find_Distribution(node, "ElementConnectivity"))
 
     eso_n = PT.find_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_np_value(eso_n)
@@ -163,7 +163,7 @@ def redistribute_zone(zone: CGNSTree,
   old_distrib = {'Vertex' : MT.Zone.vtx_distribution(zone),
                  'Cell'   : MT.Zone.cell_distribution(zone)}
   if PT.Zone.Type(zone) == 'Structured' and PT.Zone.IndexDimension(zone) == 3:
-    old_distrib['Face'] = MT.distribution_value(zone, "Face")
+    old_distrib['Face'] = MT.Zone.face_distribution(zone)
 
   # New distribution
   new_distrib = {'Vertex' : distribution(PT.Zone.n_vtx(zone) , comm),

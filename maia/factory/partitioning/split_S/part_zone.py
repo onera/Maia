@@ -187,7 +187,7 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
 def create_subsets(d_zone, p_zone):
   """ Create subset nodes (such as ZoneSubRegion) on partitioned zones 
   by computing intersection of the input PR with the part zone size """
-  part_range = MT.globalnumbering_value(p_zone, 'CellRange')
+  part_range = PT.get_np_value(MT.find_GlobalNumbering(p_zone, 'CellRange'))
   for subset in PT.get_children_from_predicate(d_zone, is_subset):
     subset_pr  = PT.Subset.getPatch(subset)[1]
     subset_loc = PT.Subset.GridLocation(subset)
