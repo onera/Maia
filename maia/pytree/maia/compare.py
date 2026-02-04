@@ -54,7 +54,27 @@ def equal_array_report(x, ref, comm):
         return False, '', ''
 
 class EqualArray:
-  def __init__(self, comm=MPI.COMM_SELF):
+  """
+  A callable object generating a report for :func:`~maia.pytree.diff_tree`,
+  using an exact point-to-point comparison.
+
+  This is the extension of :func:`~maia.pytree.compare.EqualArray` for distributed trees.
+
+  Args:
+    comm (MPIComm): MPI communicator
+  Example:
+    >>> comp = MT.compare.EqualArray(comm)
+    >>> sol1 = PT.new_FlowSolution(fields={'Density' : [1., 1.002, 1.]})
+    >>> sol2 = PT.new_FlowSolution(fields={'Density' : [1., 1.001, 1.]})
+    >>> PT.diff_tree(sol1, sol2, comp=comp)
+    DiffReport(
+      status=False,
+      errors='/FlowSolution/Density -- Values differ: [1.    1.002 1.   ] <> [1.    1.001 1.   ]\\n',
+      warnings=''
+      )
+  """
+
+  def __init__(self, comm):
     self.comm = comm
 
   def is_same_value_shape(self, stack1, stack2):
@@ -182,11 +202,28 @@ def relative_norm_comparison(tol, comm, n_dim=1):
 
 
 class FieldComparison(EqualArray):
-  """ Creates a function to compare scalar fields with a relative tolerance
+  """ A comparison object for :func:`~maia.pytree.diff_tree` that
+  compare arrays with a relative tolerance.
+
+  Floating points arrays are considered equal if :math:`||a-b|| \leq \mathrm{tol}\ ||b||`,
+  where :math:`||\cdot||` is the :math:`L^2` norm,
+  while integer arrays fallback to :func:`EqualArray` comparison.
+
+  This function operate on distributed trees.
 
   Args:
-    tol (Float): tolerance
-    comm (MPIComm): MPI communicator on which to call the collective comparison
+    tol (float) : tolerance
+    comm (MPIComm) : MPI communicator
+  Exemple:
+    >>> comp = MT.compare.FieldComparison(1E-2, comm)
+    >>> sol1 = PT.new_FlowSolution(fields={'Density' : [1., 1.002, 1.]})
+    >>> sol2 = PT.new_FlowSolution(fields={'Density' : [1., 1.001, 1.]})
+    >>> PT.diff_tree(sol1, sol2, comp=comp)
+    DiffReport(
+      status=True,
+      errors='',
+      warnings='/FlowSolution/Density -- Values differ: RMS mean diff: 5.773e-04, RMS ref mean: 1.000e+00, rel error: 5.771e-04\\n'
+    )
   """
   def __init__(self, tol, comm):
     EqualArray.__init__(self, comm)
@@ -286,19 +323,21 @@ def _tensor_info(name):
 
 
 class TensorFieldComparison(EqualArray):
-  """ Creates a function to compare tensor fields with a relative tolerance
+  """ A comparison object for :func:`~maia.pytree.diff_tree` that
+  compare tensorial fields with a relative tolerance.
+  
+  This comparison method is similar to :func:`FieldComparison`,
+  but tensors fields components are treated together.
 
-  To identify tensors, the functions looks at the name of the current field.
-  If it ends with 'X' or 'XX', then it will look for 'Y'/'Z' or 'XY'/... sibling nodes,
-  reconstruct a tensor field from them, and then do the comparison on them
-
-  Tensor of rank 0 (i.e. scalar field), 1 and 2 are supported.
-  Rank-2 tensors that only have components ['XX','XY','YY'] or ['XX','XY','XZ','YY','YZ','ZZ'] are interpreted as symmetric tensors.
-  Missing components (e.g. having 'VelocityZ' without 'VelocityX/Y') will result in a error.
+  Tensors of rank 0 (i.e. scalar field), 1 (components ending with ``X``, ``Y`` and ``Z``)
+  and 2 (components ending with ``XX``, ``XY``, ..., ``ZZ``) are supported.
+  Rank-2 tensors that only have components ``[XX, XY, YY]`` or ``[XX, XY, XZ, YY, YZ, ZZ]``
+  are interpreted as symmetric tensors.
+  Missing components (e.g. having ``VelocityZ`` without ``VelocityX/Y``) will result in a error.
 
   Args:
-    tol (Float): tolerance
-    comm (MPIComm): MPI communicator on which to call the collective comparison
+    tol (float) : tolerance
+    comm (MPIComm): MPI communicator
   """
   @staticmethod
   def modify_name(path): # Ugly hack around CGNS being retarded

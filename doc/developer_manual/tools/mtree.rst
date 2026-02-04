@@ -50,3 +50,12 @@ get Maia-specific nodes.
 
 Tree operations
 ---------------
+
+The ``MT`` extension provides comparison operators that can
+be used by :func:`~maia.pytree.diff_tree` to compare **distributed**
+trees.
+These functions are available in ``MT.compare`` namespace.
+
+.. autofunction:: maia.pytree.maia.compare.EqualArray
+.. autofunction:: maia.pytree.maia.compare.FieldComparison
+.. autofunction:: maia.pytree.maia.compare.TensorFieldComparison
