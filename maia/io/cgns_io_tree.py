@@ -6,6 +6,7 @@ import mpi4py.MPI as MPI
 from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from   maia.pytree.maia   import metrics
 import maia.utils.logging as mlog
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
@@ -196,7 +197,7 @@ def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDist
     dist_tree = CGNSDistTree(size_tree)
 
   end = time.time()
-  dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
+  dt_size     = sum(metrics.dtree_nbytes(dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)
   mlog.info(f"Read completed ({end-start:.2f} s) --"
             f" Size of dist_tree for current rank is {mlog.bsize_to_str(dt_size)}"
@@ -225,7 +226,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
     for link in links: # Links override data, so delete data
       PT.rm_node_from_path(dist_tree, link[3])
 
-  dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
+  dt_size     = sum(metrics.dtree_nbytes(dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)
   mlog.info(f"Distributed write of a {mlog.bsize_to_str(dt_size)} dist_tree"
             f" (Σ={mlog.bsize_to_str(all_dt_size)})...")

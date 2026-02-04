@@ -3,6 +3,7 @@ from mpi4py import MPI
 import maia.pytree       as PT
 import maia.pytree.utils as PTu
 import maia.pytree.maia  as MT
+from   maia.pytree.maia  import pdm_elts
 from   maia.typing import *
 
 import Pypdm.Pypdm as PDM
@@ -39,7 +40,7 @@ def _shift_face_num(cgns_ids:NDArray, zone:CGNSTree, reverse:bool=False) -> NDAr
 def _nodal_sections_to_face_vtx(sections: List[Dict[str, Any]],
                                 rank: int) -> Tuple[NDArray, NDArray]:
   """ Rebuild a Ngon like connectivity (face_vtx) from sections coming from PDM """
-  elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=MT.pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
+  elem_n_vtx = lambda pdm_type : PT.Element.NVtx(PT.new_Elements(type=pdm_elts.pdm_elt_name_to_cgns_element_type(pdm_type)))
 
   face_n_vtx_list = [elem_n_vtx(section['pdm_type']) for section in sections]
 

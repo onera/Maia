@@ -5,6 +5,7 @@ from maia.typing        import *
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from   maia.pytree.maia   import pdm_elts
 import maia.utils.logging as mlog
 
 from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
@@ -246,7 +247,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                        "QUADRIC" : PDM.IsoSurface.quadric_equation_set}
 
   PDM_iso_type = eval(f"PDM._PDM_ISO_SURFACE_KIND_{iso_kind}")
-  PDM_elt_type = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elt_type)
+  PDM_elt_type = pdm_elts.cgns_elt_name_to_pdm_element_type(elt_type)
 
   if iso_kind=="FIELD" : 
     assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)

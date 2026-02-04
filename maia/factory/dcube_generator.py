@@ -4,6 +4,7 @@ import maia
 from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from   maia.pytree.maia   import pdm_elts
 
 from maia.pytree.sids import elements_utils as EU
 from maia.utils import np_utils, par_utils, layouts
@@ -37,7 +38,7 @@ def _dmesh_nodal_to_cgns_zone(dmesh_nodal, comm: MPIComm, elt_min_dim: int =0) -
   elt_shift = 1
   for dim_sections in sections_per_dim:
     for i_section, section in enumerate(dim_sections["sections"]):
-      cgns_elmt_name = MT.pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
+      cgns_elmt_name = pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
       distrib   = par_utils.full_to_partial_distribution(section["np_distrib"], comm)
 
       _erange = np.array([elt_shift, elt_shift+distrib[-1]-1], section["np_connec"].dtype)
@@ -135,7 +136,7 @@ def dcube_nodal_generate(n_vtx: Union[int, Sequence[int]],
   return a CGNS PyTree
   """
 
-  t_elmt = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
+  t_elmt = pdm_elts.cgns_elt_name_to_pdm_element_type(cgns_elmt_name)
   cgns_elt_index = [prop[0] for prop in EU.elements_properties].index(cgns_elmt_name)
   cell_dim = EU.id_to_dim(cgns_elt_index)
   assert cell_dim is not None

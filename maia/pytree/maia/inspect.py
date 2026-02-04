@@ -1,135 +1,16 @@
 import typing
-import numpy as np
 
-from maia.pytree.typing import *
+import maia.pytree as PT
+from   maia.pytree.typing import *
 from maia.typing import MPIComm
-from maia.pytree.meta   import begin_api_export, end_api_export, for_all_methods, check_is_label, CGNSNodeNotFoundError
 
-from maia.pytree import walk as W
-from maia.pytree import node as N
-from maia.pytree import sids as S
 from maia.utils import vstride as vs
 from maia.utils import par_utils
 
-begin_api_export()
+from . import search
+from . conventions import GLBNUM_NAME
 
-DISTRI_NAME = ':CGNS#Distribution'
-GLBNUM_NAME = ':CGNS#GlobalNumbering'
-
-def get_Distribution(root:CGNSTree, name:Optional[str]=None) -> Optional[CGNSTree]:
-  """ Get a distribution node under the specified root
-
-  If ``name`` is not None, the DataArray_t node of corresponding name is returned.
-  Otherwise, the distribution container is returned itself.
-
-  Args:
-    root (CGNSTree) : Root in which search is performed (distributed)
-    name (str, optional): Name a specific array to get
-  Example:
-    >>> zone = PT.new_Zone(type='Unstructured', size=[[77,60,0]])
-    >>> MT.new_Distribution({'Cell' : [0,15,60], 'Vertex' : [0,20,77]}, parent=zone)
-    >>> PT.print_tree(MT.get_Distribution(zone))
-    :CGNS#Distribution UserDefinedData_t 
-    ├───Cell DataArray_t I4 [ 0 15 60]
-    └───Vertex DataArray_t I4 [ 0 20 77]
-    >>> PT.print_tree(MT.get_Distribution(zone, 'Vertex'))
-    Vertex DataArray_t I4 [ 0 20 77]
-  """
-  path = f'{DISTRI_NAME}/{name}' if name else DISTRI_NAME
-  return W.get_node_from_path(root, path)
-
-def find_Distribution(root:CGNSTree, name:Optional[str]=None) -> CGNSTree:
-  if (node := get_Distribution(root, name)) is not None:
-    return node
-  raise CGNSNodeNotFoundError(root, DISTRI_NAME)
-
-def distribution_value(root:CGNSTree, distri_name:str) -> NDArray:
-  return N.get_np_value(find_Distribution(root, distri_name))
-
-def get_GlobalNumbering(root:CGNSTree, name:Optional[str]=None) -> Optional[CGNSTree]:
-  """ Get a global numbering node under the specified root
-
-  If ``name`` is not None, the DataArray_t node of corresponding name is returned.
-  Otherwise, the global numbering container is returned itself.
-
-  Args:
-    root (CGNSTree) : Root in which search is performed (partitioned)
-    name (str, optional): Name a specific array to get
-  Example:
-    >>> zsr = PT.new_ZoneSubRegion(point_list=[[4,6,2,8]])
-    >>> MT.new_GlobalNumbering({'Index' : [9,11,13,14]}, parent=zsr)
-    >>> PT.print_tree(MT.get_GlobalNumbering(zsr))
-    :CGNS#GlobalNumbering UserDefinedData_t 
-    └───Index DataArray_t I4 [ 9 11 13 14]
-    >>> MT.get_GlobalNumbering(zsr, 'Index')
-    ['Index', array([ 9, 11, 13, 14], dtype=int32), [], 'DataArray_t']
-  """
-  path = f'{GLBNUM_NAME}/{name}' if name else GLBNUM_NAME
-  return W.get_node_from_path(root, path)
-
-def find_GlobalNumbering(root:CGNSTree, name:Optional[str]=None) -> CGNSTree:
-  if (node := get_GlobalNumbering(root, name)) is not None:
-    return node
-  raise CGNSNodeNotFoundError(root, GLBNUM_NAME)
-
-def globalnumbering_value(root:CGNSTree, lngn_name:str) -> NDArray:
-  return N.get_np_value(find_GlobalNumbering(root, lngn_name))
-
-
-def new_Distribution(fields:Mapping[str, ArrayLike] = {},
-                     parent:Optional[CGNSTree] = None) -> CGNSTree:
-  """
-  Create a :CGNS#Distribution node.
-
-  This Maia specific node describes how data is distributed
-  (see :ref:`specification <dist_tree>`).
-
-  Args:
-    fields (dict) : distribution values to create under the container (see :ref:`fields setting <pt_presets_commun>`)
-    parent (CGNSTree): Node to which created distribution should be attached
-  Example:
-    >>> zone = PT.new_Zone(type='Unstructured', size=[[77,60,0]])
-    >>> MT.new_Distribution({'Cell' : [0,15,60], 'Vertex' : [0,20,77]}, parent=zone)
-    >>> PT.print_tree(zone)
-    Zone Zone_t I4 [[77 60  0]]
-    ├───ZoneType ZoneType_t "Unstructured"
-    └───:CGNS#Distribution UserDefinedData_t 
-        ├───Cell DataArray_t I4 [ 0 15 60]
-        └───Vertex DataArray_t I4 [ 0 20 77]
-  """
-  if parent:
-    distri_node = N.update_child(parent, ':CGNS#Distribution', 'UserDefinedData_t')
-  else:
-    distri_node = N.new_node(':CGNS#Distribution', 'UserDefinedData_t')
-  for name, value in fields.items():
-    N.update_child(distri_node, name, 'DataArray_t', value)
-  return distri_node
-
-def new_GlobalNumbering(fields:Mapping[str, ArrayLike] = {},
-                        parent:Optional[CGNSTree] = None) -> CGNSTree:
-  """
-  Create a :CGNS#GlobalNumbering node.
-
-  This Maia specific node describes how data is reordered after partitioning
-  (see :ref:`specification <part_tree>`).
-
-  Args:
-    fields (dict) : gnum values to create under the container (see :ref:`fields setting <pt_presets_commun>`)
-    parent (CGNSTree): Node to which created numberings should be attached
-  Example:
-    >>> gn = MT.new_GlobalNumbering({'Cell' : [6,4,7], 'Vertex' : [24,59,23,11,5]})
-    >>> PT.print_tree(gn)
-    :CGNS#GlobalNumbering UserDefinedData_t 
-    ├───Cell DataArray_t I4 [6 4 7]
-    └───Vertex DataArray_t I4 [24 59 23 11  5]
-  """
-  if parent:
-    lngn_node = N.update_child(parent, ':CGNS#GlobalNumbering', 'UserDefinedData_t')
-  else:
-    lngn_node = N.new_node(':CGNS#GlobalNumbering', 'UserDefinedData_t')
-  for name, value in fields.items():
-    N.update_child(lngn_node, name, 'DataArray_t', value)
-  return lngn_node
+__all__ = ['Zone', 'Element', 'Subset', 'Container']
 
 # --------------------------------------------------------------------------
 def is_single_node(X:Union[CGNSTree, List[CGNSTree]]) -> bool:
@@ -142,13 +23,13 @@ def _n_entity(input:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm], nam
   if is_single_node(input):
     # Distributed implementation
     node = typing.cast(CGNSTree, input)
-    distri = distribution_value(node, name)
+    distri = search.distribution_value(node, name)
     return int(distri[2])
   else:
     # Partitioned implementation
     nodes = typing.cast(List[CGNSTree], input)
     assert comm is not None
-    gnum_l = [globalnumbering_value(n, name) for n in nodes]
+    gnum_l = [search.globalnumbering_value(n, name) for n in nodes]
     return int(par_utils.arrays_max(gnum_l, comm))
 
 class Zone:
@@ -169,7 +50,7 @@ class Zone:
       15
     """
     # Return the local number of cells (only for distributed zones)
-    distri = distribution_value(zone_node, 'Cell')
+    distri = search.distribution_value(zone_node, 'Cell')
     return int(distri[1] - distri[0])
 
   @staticmethod
@@ -186,7 +67,7 @@ class Zone:
       >>> MT.Zone.pn_cell(zone)
       6
     """
-    gnum = globalnumbering_value(zone_node, 'Cell')
+    gnum = search.globalnumbering_value(zone_node, 'Cell')
     return gnum.size
 
   @staticmethod
@@ -230,7 +111,7 @@ class Zone:
       >>> MT.Zone.dn_vtx(zone)
       19
     """
-    distri = distribution_value(zone_node, 'Vertex')
+    distri = search.distribution_value(zone_node, 'Vertex')
     return int(distri[1] - distri[0])
 
   @staticmethod
@@ -247,7 +128,7 @@ class Zone:
       >>> MT.Zone.pn_vtx(zone)
       8
     """
-    gnum = globalnumbering_value(zone_node, 'Vertex')
+    gnum = search.globalnumbering_value(zone_node, 'Vertex')
     return gnum.size
 
 
@@ -292,7 +173,7 @@ class Zone:
       >>> MT.Zone.vtx_distribution(zone)
       array([39, 58, 77], dtype=int32)
     """
-    return distribution_value(zone_node, 'Vertex')
+    return search.distribution_value(zone_node, 'Vertex')
   @staticmethod
   def cell_distribution(zone_node:CGNSTree) -> NDArray:
     """ Return the cells distribution array of a **distributed** zone
@@ -308,7 +189,7 @@ class Zone:
       >>> MT.Zone.cell_distribution(zone)
       array([45, 60, 60], dtype=int32)
     """
-    return distribution_value(zone_node, 'Cell')
+    return search.distribution_value(zone_node, 'Cell')
 
   @staticmethod
   def cell_globalnumbering(zone_node:CGNSTree) -> NDArray:
@@ -324,7 +205,7 @@ class Zone:
       >>> MT.Zone.cell_globalnumbering(zone)
       array([5, 1, 9], dtype=int32)
     """
-    return globalnumbering_value(zone_node, 'Cell')
+    return search.globalnumbering_value(zone_node, 'Cell')
   @staticmethod
   def vtx_globalnumbering(zone_node:CGNSTree) -> NDArray:
     """ Return the vertices absolute numbering array of a **partitioned** zone
@@ -339,7 +220,7 @@ class Zone:
       >>> MT.Zone.vtx_globalnumbering(zone)
       array([ 9, 11, 13, 14, 16, 10, 12, 15], dtype=int32)
     """
-    return globalnumbering_value(zone_node, 'Vertex')
+    return search.globalnumbering_value(zone_node, 'Vertex')
 
   @staticmethod
   def EdgeNode(zone_node:CGNSTree) -> CGNSTree:
@@ -356,8 +237,8 @@ class Zone:
       RuntimeError: if not exactly one ``BAR_2`` element node exists in zone
     """
     #TODO :: maybe in pytree directly ?
-    is_edge = lambda n : N.get_label(n) == 'Elements_t' and S.Element.Type(n) == 'BAR_2'
-    edge_elts_nodes = W.get_children_from_predicate(zone_node, is_edge)
+    is_edge = lambda n : PT.get_label(n) == 'Elements_t' and PT.Element.Type(n) == 'BAR_2'
+    edge_elts_nodes = PT.get_children_from_predicate(zone_node, is_edge)
     if len(edge_elts_nodes) != 1:
       raise RuntimeError("Exactly one EdgeElements_t node must be defined")
     return edge_elts_nodes[0]
@@ -379,7 +260,7 @@ class Element:
       >>> MT.Element.distribution(elt)
       array([ 4,  6, 10], dtype=int32)
     """
-    return distribution_value(elt_node, 'Element')
+    return search.distribution_value(elt_node, 'Element')
   @staticmethod
   def globalnumbering(elt_node:CGNSTree) -> NDArray:
     """ Return the absolute numbering array of a **partitioned** element section
@@ -394,7 +275,7 @@ class Element:
       >>> MT.Element.globalnumbering(elt)
       array([4, 9, 3], dtype=int32)
     """
-    return globalnumbering_value(elt_node, 'Element')
+    return search.globalnumbering_value(elt_node, 'Element')
 
 
   @staticmethod
@@ -411,7 +292,7 @@ class Element:
       >>> MT.Element.dn_elt(elt)
       2
     """
-    distri = distribution_value(elt_node, 'Element')
+    distri = search.distribution_value(elt_node, 'Element')
     return int(distri[1] - distri[0])
 
   @staticmethod
@@ -430,7 +311,7 @@ class Element:
     """
     
     # Return the local number of elements (only for partitioned zones)
-    gnum = globalnumbering_value(elt_node, 'Element')
+    gnum = search.globalnumbering_value(elt_node, 'Element')
     return gnum.size
 
   @staticmethod
@@ -476,19 +357,19 @@ class Element:
         [4, 9, 8],
       ], dtype=int32)
     """
-    eso = W.get_child_from_name(elt_node, 'ElementStartOffset')
-    ec  = W.find_child_from_name(elt_node, 'ElementConnectivity')
+    eso = PT.get_child_from_name(elt_node, 'ElementStartOffset')
+    ec  = PT.find_child_from_name(elt_node, 'ElementConnectivity')
     assert ec[1] is not None
 
-    is_distri = W.get_child_from_name(elt_node, ':CGNS#Distribution') is not None
+    is_distri = search.get_Distribution(elt_node) is not None
 
     if eso is not None:
       assert eso is not None and eso[1] is not None
       eso_val = eso[1] - eso[1][0] if is_distri else eso[1]
       return vs.from_displs(eso_val, ec[1])
     else:
-      assert S.Element.Type(elt_node) not in ['NGON_n', 'NFACE_n', 'MIXED']
-      counts = S.Element.NVtx(elt_node)
+      assert PT.Element.Type(elt_node) not in ['NGON_n', 'NFACE_n', 'MIXED']
+      counts = PT.Element.NVtx(elt_node)
       return vs.from_counts(ec[1].dtype.type(counts), ec[1])
       
 class Subset:
@@ -509,7 +390,7 @@ class Subset:
       >>> MT.Subset.distribution(bc)
       array([ 5, 10, 20], dtype=int32)
     """
-    return distribution_value(subset_node, 'Index')
+    return search.distribution_value(subset_node, 'Index')
 
   @staticmethod
   def globalnumbering(subset_node:CGNSTree) -> NDArray:
@@ -525,7 +406,7 @@ class Subset:
       >>> MT.Subset.globalnumbering(zsr)
       array([ 9, 11, 13, 14], dtype=int32)
     """
-    return globalnumbering_value(subset_node, 'Index')
+    return search.globalnumbering_value(subset_node, 'Index')
 
 
   @staticmethod
@@ -542,7 +423,7 @@ class Subset:
       >>> MT.Subset.dn_elem(bc)
       5
     """
-    distri = distribution_value(subset_node, 'Index')
+    distri = search.distribution_value(subset_node, 'Index')
     return int(distri[1] - distri[0])
 
   @staticmethod
@@ -561,7 +442,6 @@ class Subset:
     """
     # Return the local number of indices (only for partitioned subsets)
     # Use PT.Subset to deal missing gnum arrays
-    import maia.pytree as PT
     return PT.Subset.n_elem(subset_node)
 
   @staticmethod
@@ -603,18 +483,18 @@ class Container:
   def distribution(cnt_node:CGNSTree, parent_node:Optional[CGNSTree]=None) -> NDArray:
     
     # Simplest case : container has its own distribution
-    if S.Container._is_subset(cnt_node):
+    if PT.Container._is_subset(cnt_node):
       return Subset.distribution(cnt_node)
 
     assert parent_node is not None, f"parent_node is mandatory for related container node"
 
     # Container is a related ZSR or BCDS
-    if N.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t']:
-      subset = S.Container.SubsetNode(cnt_node, parent_node)
+    if PT.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t']:
+      subset = PT.Container.SubsetNode(cnt_node, parent_node)
       return Subset.distribution(subset)
 
     # Container is a full FSLike (normally CellCenter or Vertex)
-    loc = S.Container.GridLocation(cnt_node)
+    loc = PT.Container.GridLocation(cnt_node)
     fn = {'Vertex' : Zone.vtx_distribution, 'CellCenter' : Zone.cell_distribution}[loc]
     return fn(parent_node)
 
@@ -622,20 +502,17 @@ class Container:
   def globalnumbering(cnt_node:CGNSTree, parent_node:Optional[CGNSTree]=None) -> NDArray:
     
     # Simplest case : container has its own distribution
-    idx_gnum = get_GlobalNumbering(cnt_node, 'Index')
-    if idx_gnum is not None:
-      return N.get_np_value(idx_gnum)
+    if PT.Container._is_subset(cnt_node):
+      return Subset.globalnumbering(cnt_node)
 
     assert parent_node is not None, f"parent_node is mandatory for related container node"
 
     # Container is a related ZSR or BCDS
-    if N.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t']:
-      subset = S.Container.SubsetNode(cnt_node, parent_node)
+    if PT.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t']:
+      subset = PT.Container.SubsetNode(cnt_node, parent_node)
       return Subset.globalnumbering(subset)
 
     # Container is a full FSLike (normally CellCenter or Vertex)
-    loc = S.Container.GridLocation(cnt_node)
+    loc = PT.Container.GridLocation(cnt_node)
     fn = {'Vertex' : Zone.vtx_globalnumbering, 'CellCenter' : Zone.cell_globalnumbering}[loc]
     return fn(parent_node)
-
-end_api_export()

@@ -1,14 +1,11 @@
 import numpy as np
 
 from maia.pytree.typing import *
-from maia.pytree.meta   import api_export
 import maia.pytree       as PT
-from   maia.pytree.utils import path_tail
 
-from maia.transfer import protocols as EP
+from maia.utils import np_utils, py_utils
 
-from maia.utils          import np_utils, py_utils
-from maia.utils.parallel import algo as par_algo
+__all__ = ['rename_zones']
 
 # Note : these two will probably go elsewhere in maia or directly in PDM
 def _encode(strings:List[str]) -> Tuple[NDArray[np.int32], NDArray[np.int8]]:
@@ -28,7 +25,6 @@ def _decode(stride:NDArray[np.int32], buff:NDArray[np.int8]) -> List[str]:
   return [bytes(buff[stride_idx[i]:stride_idx[i+1]]).decode() for i in range(stride.size)]
 
 
-@api_export
 def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
   """ Rename the zones in a partitioned context.
 
@@ -38,6 +34,8 @@ def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
   New names must be a list of size nb. zones in the parttree, giving the
   new path of each zone (note that the base name is not allowed to change)
   """
+  from maia.transfer import protocols as EP
+  from maia.utils.parallel import algo as par_algo
 
   zones_path_ini = list(old_to_new_path.keys())
   new_names = list(old_to_new_path.values())
@@ -59,7 +57,7 @@ def rename_zones(part_tree:CGNSTree, old_to_new_path:Dict[str,str], comm):
   # Update tree
   for i, path in enumerate(zones_path_ini):
     zone = PT.find_node_from_path(part_tree, path)
-    PT.set_name(zone, path_tail(new_names[i]))
+    PT.set_name(zone, PT.utils.path_tail(new_names[i]))
   for gc, new_name in zip(gcs, recv_names):
     PT.set_value(gc, new_name)
 

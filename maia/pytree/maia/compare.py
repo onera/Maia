@@ -7,6 +7,8 @@ import maia.pytree as PT
 from maia.utils import par_utils
 from maia.transfer import protocols as EP
 
+from .conventions import DISTRI_NAME
+
 def is_distributed(stack):
   last = stack[-1]
   label = PT.get_label(last)
@@ -113,7 +115,7 @@ class EqualArray:
     x   = PT.get_np_value(node_x)
     ref = PT.get_np_value(node_ref)
     
-    if len(stack1) > 1 and PT.get_name(stack1[-2]) == ':CGNS#Distribution':
+    if len(stack1) > 1 and PT.get_name(stack1[-2]) == DISTRI_NAME:
       # Distribution index itself : compare full value
       x = par_utils.partial_to_full_distribution(x, self.comm)
       ref = par_utils.partial_to_full_distribution(ref, self.comm)
@@ -205,8 +207,8 @@ class FieldComparison(EqualArray):
   """ A comparison object for :func:`~maia.pytree.diff_tree` that
   compare arrays with a relative tolerance.
 
-  Floating points arrays are considered equal if :math:`||a-b|| \leq \mathrm{tol}\ ||b||`,
-  where :math:`||\cdot||` is the :math:`L^2` norm,
+  Floating points arrays are considered equal if :math:`||a-b|| \\leq \\mathrm{tol}\\ ||b||`,
+  where :math:`||\\cdot||` is the :math:`L^2` norm,
   while integer arrays fallback to :func:`EqualArray` comparison.
 
   This function operate on distributed trees.
@@ -214,7 +216,7 @@ class FieldComparison(EqualArray):
   Args:
     tol (float) : tolerance
     comm (MPIComm) : MPI communicator
-  Exemple:
+  Example:
     >>> comp = MT.compare.FieldComparison(1E-2, comm)
     >>> sol1 = PT.new_FlowSolution(fields={'Density' : [1., 1.002, 1.]})
     >>> sol2 = PT.new_FlowSolution(fields={'Density' : [1., 1.001, 1.]})

@@ -593,7 +593,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
 
     part_to_dist._part_zones_to_dist_zone(dist_zone, part_zones, comm, filter)
     is_empty_cont = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'BCDataSet_t']) \
-                  & ~PT.pred.has_child_of_name(MT.DISTRI_NAME)
+                  & ~PT.pred.has_child_of_name(MT.conv.DISTRI_NAME)
     PT.rm_children_from_predicate(dist_zone, is_empty_cont)
     for dist_bc in PT.iter_children_from_labels(dist_zone, ['ZoneBC_t', 'BC_t']):
       PT.rm_children_from_predicate(dist_bc, is_empty_cont)
