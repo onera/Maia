@@ -1,4 +1,5 @@
 from mpi4py import MPI
+import numpy as np
 from collections import defaultdict
 
 import maia.pytree        as PT
@@ -6,6 +7,7 @@ import maia.pytree.maia   as MT
 
 from maia.typing import *
 
+from maia                        import npy_pdm_gnum_dtype as pdm_type
 from maia.utils                  import py_utils, par_utils
 from maia.utils                  import logging as mlog
 from maia.utils.ndarray.vstride  import VStrideArray
@@ -74,11 +76,25 @@ def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
     tgt_need_shift = False
     if strategy != 'Closest':
       tgt_need_shift = True
+      # We can not rely on closest point shifted gnum because number of points in closest point is 
+      # not the initial one (because of filtering), so keep this array to recompute offset
+      true_tgt_offset = np.zeros(len(tgt_clouds)+1, dtype=pdm_type)
+      for i,clouds in enumerate(tgt_clouds):
+        # Compute global offsets for this domain
+        dom_max = par_utils.arrays_max([cloud[1] for cloud in clouds], comm)
+        true_tgt_offset[i+1] = true_tgt_offset[i] + dom_max
+
       tgt_clouds = [[PCU.extract_sub_cloud(*cloud, location_out[i][j]['unlocated_ids']) for j,cloud in enumerate(clouds)] \
         for i, clouds in enumerate(tgt_clouds)]
 
     _, closest_out_inv = CLO._mdom_closest_points(src_clouds, tgt_clouds, comm, True, n_pts=n_closest_pt, need_shift=tgt_need_shift)
 
+    # Fixup shift if closest point worked on extracted data
+    if tgt_need_shift:
+      for dom_result in closest_out_inv:
+        for part_result in dom_result:
+          offset = true_tgt_offset[part_result['domain'].values-1] # Domain id is 1-based
+          part_result['tgt_in_src_shifted']._values = part_result['tgt_in_src'].values + offset
 
   all_located_inv = py_utils.to_flat_list(location_out_inv)
   all_closest_inv = py_utils.to_flat_list(closest_out_inv)

@@ -9,6 +9,13 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
+Development version
+-------------------
+
+🐞 Fixes
+^^^^^^^^
+- interpolate: fixup results of ``LocationAndClosest`` strategy on multidomain cases
+
 v1.9 (January 2026)
 -------------------
 
