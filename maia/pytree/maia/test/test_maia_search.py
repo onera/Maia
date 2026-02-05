@@ -19,3 +19,23 @@ def test_get_GlobalNumbering():
   assert (PT.get_value(MT.get_GlobalNumbering(zone, 'Cell')) == [4,21,1,2,8,12]).all()
   assert  PT.get_value(MT.get_GlobalNumbering(zone, 'Vertex')) == None
 
+def test_get_partitioned_zones():
+  pt = """
+  BaseA CGNSBase_t:
+    Zone1.P0.N1 Zone_t:
+    Zone1.P0.N2 Zone_t:
+    Zone2.With.dot.P0.N0 Zone_t:
+  BaseB CGNSBase_t:
+    Zone3.P0.N0 Zone_t:
+  """
+  part_tree = PT.yaml.to_cgns_tree(pt)
+  get_names = lambda nodes : [PT.get_name(n) for n in nodes]
+  assert get_names(MT.get_partitioned_zones(part_tree, 'BaseA/Zone1')) == ['Zone1.P0.N1', 'Zone1.P0.N2']
+  assert get_names(MT.get_partitioned_zones(part_tree, 'BaseA/Zone2.With.dot')) == ['Zone2.With.dot.P0.N0']
+  assert get_names(MT.get_partitioned_zones(part_tree, 'BaseA/Zone3')) == []
+  assert get_names(MT.get_partitioned_zones(part_tree, 'BaseB/Zone3')) == ['Zone3.P0.N0']
+  base = PT.find_child_from_name(part_tree, 'BaseA')
+  assert get_names(MT.get_partitioned_zones(base, 'Zone1')) == ['Zone1.P0.N1', 'Zone1.P0.N2']
+  assert get_names(MT.get_partitioned_zones(base, 'Zone2.With.dot')) == ['Zone2.With.dot.P0.N0']
+  assert get_names(MT.get_partitioned_zones(base, 'Zone3')) == []
+

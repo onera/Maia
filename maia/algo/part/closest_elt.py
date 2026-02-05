@@ -96,7 +96,7 @@ def detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.Peri
   # Recover existing periodicities
   for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
     dist_zone  = PT.find_node_from_path(skeleton_tree, dist_zone_path)
-    part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
+    part_zones = MT.get_partitioned_zones(part_tree, dist_zone_path)
 
     discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
       child_list=['GridConnectivityProperty_t', 'GridConnectivityType_t'],

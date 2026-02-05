@@ -226,7 +226,7 @@ def _exchange_field(part_tree: CGNSPartTree,
   # Loop over domains
   for domain_path, part_zones in part_tree_per_dom.items():
     # Get zone from isosurf (one zone by domain)
-    iso_part_zones = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}")
+    iso_part_zones = MT.get_partitioned_zones(iso_part_tree, f"{domain_path}")
     iso_part_zone  = iso_part_zones[0] if len(iso_part_zones)!=0 else None
     exchange_field_one_domain(part_zones, iso_part_zone, containers_name_per_dom[domain_path], comm)
 

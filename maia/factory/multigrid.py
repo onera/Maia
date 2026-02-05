@@ -36,7 +36,7 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
     target_part = list()
     for zone_path in PT.predicates_to_paths(dt_cur_lvl, 'CGNSBase_t/Zone_t'):
       # Get partitioned zones for coarser level
-      coarse_p_zones = tr_utils.get_partitioned_zones(pt_coarse_lvl, AGL.update_path_level(zone_path, lvl+1))
+      coarse_p_zones = MT.get_partitioned_zones(pt_coarse_lvl, AGL.update_path_level(zone_path, lvl+1))
       start_rank_idx = par_utils.gather_and_shift(len(coarse_p_zones), comm)
       coarse_gnum_l = list()
       i_coarse_part = list()
@@ -58,7 +58,7 @@ def partition_dist_tree(dist_tree:CGNSDistTree, comm:MPIComm, **kwargs) -> CGNSP
     # Split done, update MGInfo to make it local
     for zone_path in PT.predicates_to_paths(dt_cur_lvl, 'CGNSBase_t/Zone_t'):
       cur_d_zone:CGNSDistTree = PT.find_node_from_path(dt_cur_lvl, zone_path) #type: ignore[assignment]
-      cur_p_zones = tr_utils.get_partitioned_zones(pt, zone_path)
+      cur_p_zones = MT.get_partitioned_zones(pt, zone_path)
       # First we need to transfer some field, if not already done by the user
       include_dict = {}
       if data_transfer not in ['ALL', 'FIELDS'] and 'DiscreteData_t' not in data_transfer:

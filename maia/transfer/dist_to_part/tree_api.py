@@ -103,7 +103,7 @@ def dist_tree_to_part_tree_only_labels(dist_tree: CGNSDistTree,
   assert isinstance(labels, list)
   include_dict = {label : ['*'] for label in labels}
   for d_base, d_zone in PT.get_children_from_labels(dist_tree, ['CGNSBase_t', 'Zone_t'], ancestors=True):
-    p_zones = tr_utils.get_partitioned_zones(part_tree, PT.get_name(d_base) + '/' + PT.get_name(d_zone))
+    p_zones = MT.get_partitioned_zones(part_tree, PT.get_name(d_base) + '/' + PT.get_name(d_zone))
     dist_zone_to_part_zones_only(CGNSDistTree(d_zone), p_zones, comm, include_dict)
 
 def dist_tree_to_part_tree_all(dist_tree: CGNSDistTree,

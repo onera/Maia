@@ -122,7 +122,7 @@ def get_parts_per_blocks(part_tree: CGNSPartTree,
                                     merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
   parts_per_dom = dict()
   for zone_path in PT.predicates_to_paths(dist_doms, 'CGNSBase_t/Zone_t'):
-    parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
+    parts_per_dom[zone_path] = MT.get_partitioned_zones(part_tree, zone_path)
   return parts_per_dom
 
 def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSPartTree]], comm: MPIComm) -> CGNSDistTree:
@@ -532,7 +532,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     dist_base = PT.find_child_from_name(dist_tree, PT.utils.path_head(dist_zone_path))
     dist_zone = CGNSDistTree(PT.find_node_from_path(dist_tree, dist_zone_path))
 
-    part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
+    part_zones = MT.get_partitioned_zones(part_tree, dist_zone_path)
 
     discover_nodes_from_matching(dist_zone, part_zones, "ZoneIterativeData_t/*",
                                  comm, get_value="all")

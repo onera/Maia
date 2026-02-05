@@ -9,17 +9,9 @@ from maia.utils import np_utils, par_utils
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 def get_partitioned_zones(part_tree: CGNSPartTree, dist_zone_path: CGNSPath) -> List[CGNSPartTree]:
-  """
-  Return a list of the partitioned zones created from a distributed zone name
-  found in part_tree
-  """
-  base_name, zone_name = PTu.path_head(dist_zone_path), PTu.path_tail(dist_zone_path)
-  part_base = PT.get_node_from_path(part_tree, base_name)
-  if part_base:
-    return [part for part in PT.iter_all_Zone_t(CGNSPartTree(part_base)) if \
-        MT.conv.get_part_prefix(PT.get_name(part)) == zone_name]
-  else:
-    return []
+  import warnings
+  warnings.warn("This function is deprecated, use MT.get_partitioned_zones", DeprecationWarning, stacklevel=2)
+  return MT.get_partitioned_zones(part_tree, dist_zone_path)
 
 
 def create_all_elt_distribution(dist_elts: List[CGNSTree], comm: MPIComm) -> NDArray:

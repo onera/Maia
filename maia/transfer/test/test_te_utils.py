@@ -8,32 +8,6 @@ from maia import npy_pdm_gnum_dtype
 from maia.transfer import utils
 import pytest_parallel
 
-def test_get_partitioned_zones():
-  dt = """
-BaseA CGNSBase_t:
-  Zone1 Zone_t:
-  Zone2.With.dot Zone_t:
-  Zone3 Zone_t:
-BaseB CGNSBase_t:
-  Zone3 Zone_t:
-"""
-  pt = """
-BaseA CGNSBase_t:
-  Zone1.P0.N1 Zone_t:
-  Zone1.P0.N2 Zone_t:
-  Zone2.With.dot.P0.N0 Zone_t:
-BaseB CGNSBase_t:
-  Zone3.P0.N0 Zone_t:
-"""
-  part_tree = PT.yaml.to_cgns_tree(pt)
-  get_names = lambda nodes : [PT.get_name(n) for n in nodes]
-  assert get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone1')) == ['Zone1.P0.N1', 'Zone1.P0.N2']
-  assert get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone2.With.dot')) == ['Zone2.With.dot.P0.N0']
-  assert get_names(utils.get_partitioned_zones(part_tree, 'BaseA/Zone3')) == []
-  assert get_names(utils.get_partitioned_zones(part_tree, 'BaseB/Zone3')) == ['Zone3.P0.N0']
-
-
-
 @pytest_parallel.mark.parallel(2)
 def test_create_all_elt_distribution(comm):
   yt = """

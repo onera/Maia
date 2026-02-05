@@ -51,6 +51,8 @@ get Maia-specific nodes.
 .. seealso:: These two functions have counterpart :func:`find_Distribution` and :func:`find_GlobalNumbering` that
   raise an error if no result is found.
 
+.. autofunction:: maia.pytree.maia.get_partitioned_zones
+
 Tree operations
 ---------------
 
