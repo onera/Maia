@@ -117,13 +117,11 @@ def get_parts_per_blocks(part_tree: CGNSPartTree,
   Returns:
     Dictionary mapping domain paths to lists of partitioned zones
   """
-  dist_doms = PT.new_CGNSTree()
-  discover_nodes_from_matching(dist_doms, [part_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-  parts_per_dom = dict()
-  for zone_path in PT.predicates_to_paths(dist_doms, 'CGNSBase_t/Zone_t'):
-    parts_per_dom[zone_path] = MT.get_partitioned_zones(part_tree, zone_path)
-  return parts_per_dom
+  loc = set(MT.conv.get_part_prefix(zpath) for zpath in PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'))
+  glob = set() # Faster than allreduce + and
+  for s in comm.allgather(loc):
+    glob |= s
+  return {path: MT.get_partitioned_zones(part_tree, path) for path in sorted(glob)}
 
 def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSPartTree]], comm: MPIComm) -> CGNSDistTree:
   """
