@@ -32,7 +32,10 @@ def get_Distribution(root:CGNSTree, name:Optional[str]=None) -> Optional[CGNSTre
 def find_Distribution(root:CGNSTree, name:Optional[str]=None) -> CGNSTree:
   if (node := get_Distribution(root, name)) is not None:
     return node
-  raise CGNSNodeNotFoundError(root, DISTRI_NAME)
+  if PT.get_child_from_name(root, DISTRI_NAME) is not None:
+    raise CGNSNodeNotFoundError(root, f'{DISTRI_NAME}/{name}')
+  else:
+    raise CGNSNodeNotFoundError(root, DISTRI_NAME)
 
 
 def get_GlobalNumbering(root:CGNSTree, name:Optional[str]=None) -> Optional[CGNSTree]:
@@ -59,5 +62,8 @@ def get_GlobalNumbering(root:CGNSTree, name:Optional[str]=None) -> Optional[CGNS
 def find_GlobalNumbering(root:CGNSTree, name:Optional[str]=None) -> CGNSTree:
   if (node := get_GlobalNumbering(root, name)) is not None:
     return node
-  raise CGNSNodeNotFoundError(root, GLBNUM_NAME)
+  if PT.get_child_from_name(root, GLBNUM_NAME) is not None:
+    raise CGNSNodeNotFoundError(root, f'{GLBNUM_NAME}/{name}')
+  else:
+    raise CGNSNodeNotFoundError(root, GLBNUM_NAME)
 

@@ -191,7 +191,6 @@ class Zone:
     Example:
       >>> zone = PT.new_Zone(type='Unstructured', size=[[77, 60, 0]])
       >>> MT.new_Distribution({'Cell' : [45, 60, 60]}, parent=zone)
-      >>> #MT.Zone.vtx_distribution(zone)
       >>> MT.Zone.cell_distribution(zone)
       array([45, 60, 60], dtype=int32)
     """
