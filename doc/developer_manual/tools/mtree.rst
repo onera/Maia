@@ -14,6 +14,12 @@ Node inspection
 The following functions extend :ref:`pt_inspect` and provide getters for data
 specific to maia trees.
 They use the same namespace classification as pytree.
+Within each namespace, the functions provided are typically getters for:
+
+- the *local* sizes of a distributed (:func:`dn_xxx`) or partitioned (:func:`pn_xxx`) mesh
+- the *global* size of a partitioned mesh (:func:`n_xxx`), which is collectively computed
+- the distribution (:func:`distribution`) or global numbering (:func:`globalnumbering`) arrays
+
 
 .. autoclass:: maia.pytree.maia.Zone
   :members:

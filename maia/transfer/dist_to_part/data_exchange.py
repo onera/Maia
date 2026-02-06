@@ -190,7 +190,7 @@ def dist_dataset_to_part_dataset(dist_zone: CGNSDistTree,
             assert PT.Zone.Type(dist_zone) == "Structured"
             IPTB.create_part_pr_gnum(dist_zone, part_zones, bc_path, comm)
 
-        distri_node = MT.get_Distribution(PT.Container.SubsetNode(d_dataset, d_bc))
+        distri_node = MT.find_Distribution(PT.Container.SubsetNode(d_dataset, d_bc))
 
         #Get data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
@@ -206,7 +206,7 @@ def dist_dataset_to_part_dataset(dist_zone: CGNSDistTree,
         # Get gnum from DS or BC depending on has_own_distri
         path = ds_path if is_subset else bc_path
         _part_zones = [zone for zone in part_zones if PT.get_node_from_path(zone, path) is not None]
-        p_subsets   = [PT.get_node_from_path(zone, path) for zone in _part_zones]
+        p_subsets   = [PT.find_node_from_path(zone, path) for zone in _part_zones]
         lngn_list   = [MT.Subset.globalnumbering(p_subset) for p_subset in p_subsets]
 
         #Exchange (local data)
