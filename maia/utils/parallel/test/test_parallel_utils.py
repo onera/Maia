@@ -160,6 +160,16 @@ def test_gather_and_shift(comm):
   assert (distri == [0,6,15,17]).all()
 
 @pytest_parallel.mark.parallel(3)
+def test_exscan_size(comm):
+  size = [10, 20, 50][comm.rank]
+  expt = [0, 10, 30][comm.rank]
+  assert utils.exscan_size(size, comm) == expt
+
+  size = [10, 0, 50][comm.rank]
+  expt = [0, 10, 10][comm.rank]
+  assert utils.exscan_size(size, comm) == expt
+
+@pytest_parallel.mark.parallel(3)
 def test_arrays_max(comm):
   if comm.Get_rank() == 0:
     arrays = [np.array([1,6,2]), np.array([3,4,2])]

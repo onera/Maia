@@ -1,3 +1,4 @@
+import pytest
 import pytest_parallel
 
 import numpy as np
@@ -9,6 +10,27 @@ from maia.factory    import dcube_generator   as DCG
 from maia.factory    import dsphere_generator as DSG
 from maia.factory    import full_to_dist      as F2D
 from maia.algo.dist  import ngon_tools as NGT
+
+from maia.utils import vstride as vs
+
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize("as_i4", [False, True])
+def test_cgns_connectivity_from_vs(as_i4, comm):
+  if comm.rank == 0:
+    face_vtx = vs.from_counts([3, 4, 3], [1,2,4,  4,5,2,7,  6,9,1])
+    expt_eso = np.array([0,3,7,10])
+    expt_val = np.array([1,2,4,  4,5,2,7,  6,9,1])
+  else:
+    face_vtx = vs.from_displs([0, 4, 8], [5,4,2,6,  8,4,9,1])
+    expt_eso = np.array([10, 14, 18])
+    expt_val = np.array([5,4,2,6,  8,4,9,1])
+
+  dtype = np.int32 if as_i4 else None
+  out_dtype = np.int32 if as_i4 else np.int64
+  eso, val = NGT.cgns_connectivity_from_vs(face_vtx, comm, dtype)
+  assert np.array_equal(eso, expt_eso) and eso.dtype == out_dtype
+  assert np.array_equal(val, expt_val) and val.dtype == out_dtype
+  assert face_vtx.values is None
 
 @pytest_parallel.mark.parallel([1,3])
 def test_pe_to_nface(comm):

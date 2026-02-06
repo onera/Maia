@@ -14,6 +14,7 @@ from maia.utils.parallel     import algo as par_algo
 from .merge_ids      import merge_distributed_ids
 from .vertex_list    import face_ids_to_vtx_ids
 from .geometry.utils import get_local_coordinates
+from .ngon_tools     import cgns_connectivity_from_vs
 
 from maia.algo.dist  import merge_jn       as MJN
 
@@ -42,12 +43,11 @@ def _remove_dup_ids_in_ESO(poly, comm):
   poly_ec_n  = PT.get_child_from_name(poly, 'ElementConnectivity')
   
   new_poly = vstride.unique(MT.Element.connectivity(poly), vstride.INNER_AXIS)
-  
-  ec_distri = par_utils.dn_to_distribution(new_poly.dsize, comm) # JC TODO EXSCAN
+  new_eso, new_val = cgns_connectivity_from_vs(new_poly, comm)
 
   # Update arrays and distribution
-  PT.set_value(poly_eso_n, new_poly.displs + ec_distri[0])
-  PT.set_value(poly_ec_n,  new_poly.values)
+  PT.set_value(poly_eso_n, new_eso)
+  PT.set_value(poly_ec_n,  new_val)
 
 # ------------------------------------------------------------------------------------------
 def _update_ngon(ngon, del_faces, vtx_distri_ini, old_to_new_vtx, comm):

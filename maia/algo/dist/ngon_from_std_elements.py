@@ -87,15 +87,12 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     n_face  = distrib_face[-1]
     n_cell  = distrib_cell[-1]
 
-    distrib_face_vtx  = par_utils.gather_and_shift(dface_vtx_idx[-1], comm, distrib_face.dtype) # JC TODO EXSCAN
-    distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[-1], comm, distrib_cell.dtype)# JC TODO EXSCAN
-
     # Create NGON
     ngon_er  = np.array([1, n_face], dtype=zone[1].dtype)
     ngon_pe  = _create_pe_global(np_utils.safe_int_cast(dface_cell, ngon_er.dtype), n_face)
     ngon_ec  = np_utils.safe_int_cast(dface_vtx, ngon_er.dtype)
     ngon_eso = np_utils.safe_int_cast(dface_vtx_idx, ngon_er.dtype)
-    ngon_eso += distrib_face_vtx[i_rank]
+    ngon_eso += par_utils.exscan_size(dface_vtx.size, comm)
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe, parent=zone)
     MT.new_Distribution({'Element' :par_utils.full_to_partial_distribution(distrib_face, comm)}, ngon_n)
@@ -104,7 +101,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     nface_er  = np.array([1+n_face, n_cell+n_face], dtype=zone[1].dtype)
     nface_ec  = np_utils.safe_int_cast(dcell_face, nface_er.dtype)
     nface_eso = np_utils.safe_int_cast(dcell_face_idx, nface_er.dtype)
-    nface_eso += distrib_cell_face[i_rank]
+    nface_eso += par_utils.exscan_size(dcell_face.size, comm)
 
     nfac_n = PT.new_NFaceElements(erange=nface_er, eso=nface_eso, ec=nface_ec, parent=zone)
     MT.new_Distribution({'Element' : par_utils.full_to_partial_distribution(distrib_cell, comm)}, nfac_n)
@@ -119,8 +116,6 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     n_edge  = distrib_edge[-1]
     n_face  = distrib_face[-1]
 
-    distrib_face_vtx  = par_utils.gather_and_shift(dface_edge_idx[-1], comm, distrib_face.dtype) # Same as distri_face_edge
-    
     edge_er = np.array([1, n_edge], dtype=zone[1].dtype)
     edge_ec = np_utils.safe_int_cast(dedge_vtx, edge_er.dtype)
     edge_pe = _create_pe_global(np_utils.safe_int_cast(dedge_face, edge_er.dtype), n_edge)
@@ -135,7 +130,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     ngon_ec = PDM.compute_dfacevtx_from_face_and_edge(comm, distrib_face, distrib_edge, dface_edge_idx, dface_edge, dedge_vtx)
     ngon_ec  = np_utils.safe_int_cast(ngon_ec, ngon_er.dtype)
     ngon_eso = np_utils.safe_int_cast(dface_edge_idx, ngon_er.dtype)
-    ngon_eso += distrib_face_vtx[i_rank] # JC TODO EXSCAN
+    ngon_eso += par_utils.exscan_size(ngon_ec.size, comm)
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, parent=zone)
     MT.new_Distribution({'Element' : par_utils.full_to_partial_distribution(distrib_face, comm)}, ngon_n)
