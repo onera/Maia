@@ -465,10 +465,8 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
     np_utils.shift_nonzeros(dist_pe, n_faceTot)
     PT.new_DataArray('ParentElements', dist_pe, parent=elt_node)
 
-  DistriFaceVtx = par_utils.gather_and_shift(dist_ec.shape[0], comm, pdm_gnum_dtype)
   distri_ud = MT.new_Distribution(parent=elt_node)
   PT.new_DataArray('Element',                    distri[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
-  PT.new_DataArray('ElementConnectivity', DistriFaceVtx[[i_rank, i_rank+1, n_rank]], parent=distri_ud)
 
 def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   """
@@ -512,5 +510,4 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   elt_range = np.array([1, n_cellTot], dtype=pdm_gnum_dtype)
   elt_node = PT.new_NFaceElements(elem_name, erange=elt_range, eso=dist_eso, ec=dist_ec, parent=dist_zone)
 
-  distri_cell_face = par_utils.dn_to_distribution(dist_ec.shape[0], comm)
-  MT.new_Distribution({'Element' : distri_cell, 'ElementConnectivity' : distri_cell_face}, parent=elt_node)
+  MT.new_Distribution({'Element' : distri_cell}, parent=elt_node)

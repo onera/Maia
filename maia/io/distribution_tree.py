@@ -48,33 +48,11 @@ def compute_subset_distribution(node, comm, distri_func):
     pl_size = PT.get_np_value(pls_n)[1]
     MT.new_Distribution({'Index' : distri_func(pl_size, comm)}, parent=node)
 
-def compute_connectivity_distribution(node):
-  """
-  Once ESO is loaded, update element distribution with ElementConnectivity array
-  """
-  eso_n  = PT.get_child_from_name(node, 'ElementStartOffset')
-  if eso_n is None:
-    raise RuntimeError
-  size_n = PT.find_child_from_name(node, 'ElementConnectivity#Size')
-  size = PT.get_np_value(size_n)[0]
-  par_utils.watch_overflow(size)
-
-  beg  = PT.get_np_value(eso_n)[0]
-  end  = PT.get_np_value(eso_n)[-1]
-
-  distri_n = MT.find_Distribution(node)
-  dtype = PT.get_np_value(PT.find_child_from_name(distri_n, 'Element')).dtype
-  PT.new_DataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
-
-
 def compute_elements_distribution(zone, comm, distri_func):
   """
   """
   for elt in PT.iter_children_from_label(zone, 'Elements_t'):
     MT.new_Distribution({'Element' : distri_func(PT.Element.Size(elt), comm)}, parent=elt)
-    eso_n = PT.get_child_from_name(elt, 'ElementStartOffset')
-    if eso_n is not None and eso_n[1] is not None:
-      compute_connectivity_distribution(elt)
 
 def compute_zone_distribution(zone, comm, distri_func):
   """

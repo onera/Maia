@@ -172,7 +172,6 @@ def test_zonedims_to_ngon(comm):
   assert n_faces == expected_n_faces
   assert (PT.get_child_from_name(ngon, 'ElementRange')[1] == [1, 29]).all()
   assert (PT.get_child_from_name(ngon, 'ElementStartOffset')[1] == expected_eso).all()
-  assert PT.get_node_from_path(ngon, ':CGNS#Distribution/ElementConnectivity')[1][2] == 4*29
   assert PT.get_child_from_name(ngon, 'ParentElements')[1].shape == (expected_n_faces, 2)
   assert PT.get_child_from_name(ngon, 'ElementConnectivity')[1].shape == (4*expected_n_faces,)
 ###############################################################################

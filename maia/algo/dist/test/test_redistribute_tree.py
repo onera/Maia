@@ -196,11 +196,10 @@ def test_redistribute_elements_node_U(elt, comm):
                  'ElementStartOffset'                     : np.array([0, 3, 6, 9, 12, 15, 18, 21, 24]),
                  'ParentElements'                         : np.array([ [1, 4], [9, 2], [9, 4], [2, 5], [1, 2], [7, 6], [8, 1], [9, 2]]),
                  ':CGNS#Distribution/Element'             : np.array([0, 8, 8 ]),
-                 ':CGNS#Distribution/ElementConnectivity' : np.array([0, 24, 24 ]),
                  }
 
     for path, expt_value in expt_node.items():
-      if path in ['ElementStartOffset', ':CGNS#Distribution/ElementConnectivity']:
+      if path in ['ElementStartOffset']:
         if elt == 'NGON_n':
           assert np.array_equal(PT.get_node_from_path(dist_elt, path)[1], expt_value)
         else:
@@ -215,11 +214,8 @@ def test_redistribute_elements_node_U(elt, comm):
                           np.array([8, 8, 8 ]))
     if elt == 'NGON_n':
       assert PT.get_child_from_name(dist_elt, 'ElementStartOffset' )[1].size == 1
-      assert np.array_equal(PT.get_node_from_path(dist_elt, ':CGNS#Distribution/ElementConnectivity')[1],
-                            np.array([24, 24, 24 ]))
     else :
-      assert PT.get_node_from_name(dist_elt, 'ElementStartOffset'                    ) is None
-      assert PT.get_node_from_name(dist_elt, ':CGNS#Distribution/ElementConnectivity') is None
+      assert PT.get_node_from_name(dist_elt, 'ElementStartOffset') is None
 # ---------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
@@ -261,7 +257,6 @@ def test_redistribute_mixed_elements_node_U(comm):
                   'ElementStartOffset'                     : np.array([0, 3, 8, 12, 15, 19, 24]),
                   'ParentElements'                         : np.array([ [1, 4], [9, 2], [9, 4], [2, 5], [1, 2], [7, 6]]),
                   ':CGNS#Distribution/Element'             : np.array([0, 6, 6]),
-                  ':CGNS#Distribution/ElementConnectivity' : np.array([0, 24, 24]),
                   }
 
     for path,expt_value in expt_value.items():
@@ -273,8 +268,6 @@ def test_redistribute_mixed_elements_node_U(comm):
     assert np.array_equal(PT.get_node_from_path(dist_elt, ':CGNS#Distribution/Element')[1],
                           np.array([6, 6, 6]))
     assert PT.get_child_from_name(dist_elt, 'ElementStartOffset' )[1].size == 1
-    assert np.array_equal(PT.get_node_from_path(dist_elt, ':CGNS#Distribution/ElementConnectivity')[1],
-                          np.array([24, 24, 24]))
 # ---------------------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------------------
@@ -354,9 +347,7 @@ def test_redistribute_zone_U(comm):
 
   if comm.Get_rank() == 0:
     distri_to_check = {'Base/zone/NGonElements/:CGNS#Distribution/Element'                  : np.array([ 0,  36,  36]),
-                       'Base/zone/NGonElements/:CGNS#Distribution/ElementConnectivity'      : np.array([ 0, 144, 144]), 
                        'Base/zone/NFaceElements/:CGNS#Distribution/Element'                 : np.array([ 0,   8,   8]),
-                       'Base/zone/NFaceElements/:CGNS#Distribution/ElementConnectivity'     : np.array([ 0,  48,  48]), 
                        'Base/zone/:CGNS#Distribution/Vertex'                                : np.array([ 0,  27,  27]), 
                        'Base/zone/:CGNS#Distribution/Cell'                                  : np.array([ 0,   8,   8]), 
                        'Base/zone/ZoneBC/Xmin/:CGNS#Distribution/Index'                     : np.array([ 0,   4,   4]), 
@@ -379,9 +370,7 @@ def test_redistribute_zone_U(comm):
 
   else :
     distri_to_check = {'Base/zone/NGonElements/:CGNS#Distribution/Element'                  : np.array([ 36,  36,  36]),
-                       'Base/zone/NGonElements/:CGNS#Distribution/ElementConnectivity'      : np.array([144, 144, 144]), 
                        'Base/zone/NFaceElements/:CGNS#Distribution/Element'                 : np.array([  8,   8,   8]),
-                       'Base/zone/NFaceElements/:CGNS#Distribution/ElementConnectivity'     : np.array([ 48,  48,  48]), 
                        'Base/zone/:CGNS#Distribution/Vertex'                                : np.array([ 27,  27,  27]), 
                        'Base/zone/:CGNS#Distribution/Cell'                                  : np.array([  8,   8,   8]), 
                        'Base/zone/ZoneBC/Xmin/:CGNS#Distribution/Index'                     : np.array([  4,   4,   4]), 

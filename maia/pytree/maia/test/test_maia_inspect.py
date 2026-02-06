@@ -41,9 +41,8 @@ def test_element_connectivity(comm):
     eso = np.array([12,18], np.int32)
     ec = np.array([-15, 5, 6, 11, 12, 16], np.int32)
   distri_e  = par_utils.full_to_partial_distribution(np.array([0,2,3]), comm)
-  distri_ec = par_utils.full_to_partial_distribution(np.array([0,12,18]), comm)
   nface = PT.new_NFaceElements(eso=eso, ec=ec)
-  MT.new_Distribution({'Element' : distri_e, 'ElementConnectivity' : distri_ec}, parent=nface)
+  MT.new_Distribution({'Element' : distri_e}, parent=nface)
   
   cell_face = MT.Element.connectivity(nface) # In //, recompute displs
   assert cell_face._values is ec

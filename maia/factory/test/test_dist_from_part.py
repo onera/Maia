@@ -455,8 +455,6 @@ def test_recover_dist_tree_elt(void_part, comm):
   assert PT.get_value(PT.get_child_from_name(dist_zone, 'MyDescr')) == 'Some descr'
 
   # Update dist_tree for comparison
-  for elt in PT.get_nodes_from_label(dist_tree_bck, 'Elements_t'):
-    PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
   for bc in PT.get_nodes_from_label(dist_tree_bck, 'BC_t'):
     PT.new_UserDefinedData('.solver#BC', parent=bc)
 

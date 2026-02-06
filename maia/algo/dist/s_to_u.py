@@ -278,7 +278,7 @@ def zonedims_to_ngon_3d(n_vtx_zone, comm, dtype=None):
   _erange = np.array([1, n_face_tot], dtype=dtype)
   ngon = PT.new_NGonElements('NGonElements', erange=_erange, eso=face_vtx_idx, ec=face_vtx, pe=face_pe)
 
-  MT.new_Distribution({'Element' : face_distri, 'ElementConnectivity' : 4*face_distri}, parent=ngon)
+  MT.new_Distribution({'Element' : face_distri}, parent=ngon)
 
   return ngon
 ###############################################################################

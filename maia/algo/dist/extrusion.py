@@ -218,8 +218,6 @@ def _extrude_bar_to_ngon(bar, n_vtx, n_cell, align=True):
   else:
     new_ec = np_utils.interweave_arrays([second_nodes, first_nodes, fourth_nodes, third_nodes])
   PT.set_value(ec_n, new_ec)
-  # > Create ElementConnectivity distribution
-  MT.new_Distribution({'ElementConnectivity' : 4*distrib_elem}, parent=bar)
   # > Update PE
   # Remark: new cells are the former faces because we keep the order
   #         so we just have to shift there values of 2*n_cell
@@ -262,13 +260,13 @@ def _merge_ngons(zone, comm):
   GI.Put(part_pe0, new_pe[:,0])
   GI.Put(part_pe1, new_pe[:,1])
   # > Define new ElementConnectivity distribution
-  new_distrib_ec = par_utils.dn_to_distribution(new_diff_eso.sum(), comm)
+  new_distrib_ec = par_utils.dn_to_distribution(new_diff_eso.sum(), comm) #JC TODO EXSCAN
   new_eso = np_utils.sizes_to_indices(new_diff_eso) + new_distrib_ec[0]
   # > Delete old ngons
   PT.rm_children_from_predicate(zone, PTp.is_element_of_type('NGON_n'))
   # > Create new NGon node
   new_ngon_n = PT.new_NGonElements(erange=new_er, eso=new_eso, ec=new_ec, pe=new_pe, parent=zone)
-  MT.new_Distribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
+  MT.new_Distribution({'Element' : new_distrib_elem}, parent=new_ngon_n)
     
 def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
   """

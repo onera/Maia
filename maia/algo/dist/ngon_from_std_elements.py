@@ -87,8 +87,8 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     n_face  = distrib_face[-1]
     n_cell  = distrib_cell[-1]
 
-    distrib_face_vtx  = par_utils.gather_and_shift(dface_vtx_idx[-1], comm, distrib_face.dtype)
-    distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[-1], comm, distrib_cell.dtype)
+    distrib_face_vtx  = par_utils.gather_and_shift(dface_vtx_idx[-1], comm, distrib_face.dtype) # JC TODO EXSCAN
+    distrib_cell_face = par_utils.gather_and_shift(dcell_face_idx[-1], comm, distrib_cell.dtype)# JC TODO EXSCAN
 
     # Create NGON
     ngon_er  = np.array([1, n_face], dtype=zone[1].dtype)
@@ -98,9 +98,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     ngon_eso += distrib_face_vtx[i_rank]
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, pe=ngon_pe, parent=zone)
-    MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
-                        'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_face_vtx, comm)},
-                        ngon_n)
+    MT.new_Distribution({'Element' :par_utils.full_to_partial_distribution(distrib_face, comm)}, ngon_n)
 
     # Create NFACE
     nface_er  = np.array([1+n_face, n_cell+n_face], dtype=zone[1].dtype)
@@ -109,9 +107,7 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     nface_eso += distrib_cell_face[i_rank]
 
     nfac_n = PT.new_NFaceElements(erange=nface_er, eso=nface_eso, ec=nface_ec, parent=zone)
-    MT.new_Distribution({'Element' :            par_utils.full_to_partial_distribution(distrib_cell, comm),
-                        'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_cell_face, comm)},
-                         nfac_n)
+    MT.new_Distribution({'Element' : par_utils.full_to_partial_distribution(distrib_cell, comm)}, nfac_n)
 
   elif extract_dim == 2:
     dedge_face_idx, dedge_face = result_dmesh.dmesh_connectivity_get(PDM._PDM_CONNECTIVITY_TYPE_EDGE_FACE)
@@ -139,12 +135,10 @@ def pdm_dmesh_to_cgns_zone(result_dmesh, zone, comm, extract_dim):
     ngon_ec = PDM.compute_dfacevtx_from_face_and_edge(comm, distrib_face, distrib_edge, dface_edge_idx, dface_edge, dedge_vtx)
     ngon_ec  = np_utils.safe_int_cast(ngon_ec, ngon_er.dtype)
     ngon_eso = np_utils.safe_int_cast(dface_edge_idx, ngon_er.dtype)
-    ngon_eso += distrib_face_vtx[i_rank]
+    ngon_eso += distrib_face_vtx[i_rank] # JC TODO EXSCAN
 
     ngon_n  = PT.new_NGonElements(erange=ngon_er, eso=ngon_eso, ec=ngon_ec, parent=zone)
-    MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(distrib_face, comm),
-                        'ElementConnectivity' : par_utils.full_to_partial_distribution(distrib_face_vtx, comm)},
-                        ngon_n)
+    MT.new_Distribution({'Element' : par_utils.full_to_partial_distribution(distrib_face, comm)}, ngon_n)
 
 
   # > Shift CellCenter located pointlist

@@ -75,7 +75,7 @@ def dcube_generate(n_vtx: int,
   distrib_cell    = par_utils.dn_to_distribution(dcube_dims['dn_cell'],   comm)
   distrib_vtx     = par_utils.dn_to_distribution(dcube_dims['dn_vtx'],    comm)
   distrib_face    = par_utils.dn_to_distribution(dcube_dims['dn_face'],   comm)
-  distrib_facevtx = par_utils.dn_to_distribution(dcube_dims['sface_vtx'], comm)
+  distrib_facevtx = par_utils.dn_to_distribution(dcube_dims['sface_vtx'], comm) # JC TODO EXSCAN
 
   # > Generate dist_tree
   dist_tree = PT.new_CGNSTree()
@@ -120,7 +120,7 @@ def dcube_generate(n_vtx: int,
 
   # > Distributions
   MT.new_Distribution({'Cell' : distrib_cell, 'Vertex' : distrib_vtx}, parent=dist_zone)
-  MT.new_Distribution({'Element' : distrib_face, 'ElementConnectivity' : distrib_facevtx}, parent=ngon_n)
+  MT.new_Distribution({'Element' : distrib_face}, parent=ngon_n)
 
   return dist_tree
 

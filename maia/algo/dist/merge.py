@@ -877,7 +877,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
 
   # Reshift ESO to make it global
   eso_loc = np_utils.sizes_to_indices(merged_ec_stri, pdm_dtype)
-  ec_distri = par_utils.gather_and_shift(eso_loc[-1], comm)
+  ec_distri = par_utils.gather_and_shift(eso_loc[-1], comm)   # JC TODO EXSCAN
   eso = np_utils.safe_int_cast(eso_loc,out_dtype) + ec_distri[comm.Get_rank()]
 
   #Post treat PE : we need to reintroduce 0 on boundary faces (TODO : could avoid tmp array ?)
@@ -897,8 +897,8 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
     merged_face_node = PT.new_NGonElements(erange=erange, eso=eso, ec=merged_ec, pe=pe)
   else:
     merged_face_node = PT.new_Elements('EdgeElements', 'BAR_2', erange=erange, econn=merged_ec, pe=pe)
-  MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(merged_distri_face, comm),
-                       'ElementConnectivity' : par_utils.full_to_partial_distribution(ec_distri, comm)},
+  # HERE
+  MT.new_Distribution({'Element' : par_utils.full_to_partial_distribution(merged_distri_face, comm)},
                        merged_face_node)
   PT.add_child(merged_zone, merged_face_node)
 

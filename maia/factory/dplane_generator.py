@@ -28,7 +28,7 @@ def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,
   # > En 2D -> dn_edge == dn_face
   distrib_face     = par_utils.gather_and_shift(dplane_dict['dn_edge'],comm, np.int32)
   # > Connectivity by pair
-  distrib_edge_vtx = par_utils.gather_and_shift(2*dplane_dict['dn_edge'],comm, np.int32)
+  distrib_edge_vtx = par_utils.gather_and_shift(2*dplane_dict['dn_edge'],comm, np.int32) # JC TODO EXSCAN
 
   # > Generate dist_tree
   dist_tree = PT.new_CGNSTree()
@@ -78,9 +78,8 @@ def dplane_generate(xmin: float, xmax: float, ymin: float, ymax: float,
   np_distrib_cell     = np.array([distrib_cell    [i_rank], distrib_cell    [i_rank+1], distrib_cell    [n_rank]], dtype=pe.dtype)
   np_distrib_vtx      = np.array([distri_vtx      [i_rank], distri_vtx      [i_rank+1], distri_vtx      [n_rank]], dtype=pe.dtype)
   np_distrib_face     = np.array([distrib_face    [i_rank], distrib_face    [i_rank+1], distrib_face    [n_rank]], dtype=pe.dtype)
-  np_distrib_edge_vtx = np.array([distrib_edge_vtx[i_rank], distrib_edge_vtx[i_rank+1], distrib_edge_vtx[n_rank]], dtype=pe.dtype)
 
   MT.new_Distribution({'Cell' : np_distrib_cell, 'Vertex' : np_distrib_vtx}, parent=dist_zone)
-  MT.new_Distribution({'Element' : np_distrib_face, 'ElementConnectivity' : np_distrib_edge_vtx}, parent=ngon_n)
+  MT.new_Distribution({'Element' : np_distrib_face}, parent=ngon_n)
 
   return dist_tree

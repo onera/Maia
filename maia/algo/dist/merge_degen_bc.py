@@ -43,12 +43,11 @@ def _remove_dup_ids_in_ESO(poly, comm):
   
   new_poly = vstride.unique(MT.Element.connectivity(poly), vstride.INNER_AXIS)
   
-  ec_distri = par_utils.dn_to_distribution(new_poly.dsize, comm)
+  ec_distri = par_utils.dn_to_distribution(new_poly.dsize, comm) # JC TODO EXSCAN
 
   # Update arrays and distribution
   PT.set_value(poly_eso_n, new_poly.displs + ec_distri[0])
   PT.set_value(poly_ec_n,  new_poly.values)
-  MT.new_Distribution({'ElementConnectivity': ec_distri}, poly)
 
 # ------------------------------------------------------------------------------------------
 def _update_ngon(ngon, del_faces, vtx_distri_ini, old_to_new_vtx, comm):
