@@ -56,6 +56,17 @@ get Maia-specific nodes.
 Tree operations
 ---------------
 
+The following functions extend :ref:`pt_operations` with operations
+running on parallel trees.
+
+Tree editing
+^^^^^^^^^^^^
+
+.. autofunction:: maia.pytree.maia.rename_zones
+
+Tree comparisons
+^^^^^^^^^^^^^^^^
+
 The ``MT`` extension provides comparison operators that can
 be used by :func:`~maia.pytree.diff_tree` to compare **distributed**
 trees.

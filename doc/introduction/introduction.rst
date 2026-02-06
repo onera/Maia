@@ -295,6 +295,8 @@ A :cgns:`GlobalNumbering` contains information to link an entity in the partitio
 * The first element was the element of id :code:`3` in the original mesh,
 * The second element was element :code:`4` in the original mesh.
 
+.. _naming_conv:
+
 Naming conventions
 """"""""""""""""""
 
