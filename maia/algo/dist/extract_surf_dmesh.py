@@ -73,7 +73,7 @@ def _extract_surf_zone(dist_zone, face_list, comm):
   np_distrib_facevtx = ex_fvtx_distri[[i_rank, i_rank+1, n_rank]]
 
   MT.new_Distribution({'Cell' : np_distrib_face, 'Vertex' : np_distrib_vtx}, dist_extract_zone)
-  MT.new_Distribution({'Element' : np_distrib_face, 'ElementConnectivity' : np_distrib_facevtx}, extract_ngon_n)
+  MT.new_Distribution({'Element' : np_distrib_face}, extract_ngon_n)
 
   return dist_extract_zone
 

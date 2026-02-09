@@ -60,8 +60,8 @@ def test_determine_mesh_orientation(comm):
 def test_reorder_ngon_ec():
 
   # Prepare test
-  ngon_n = PT.new_NGonElements(erange=[1, 1], eso=[7, 11, 14], ec=[1,2,3,4, 5,6,7])
-  MT.new_Distribution({'ElementConnectivity': [7, 10, 25]}, parent=ngon_n)
+  ngon_n = PT.new_NGonElements(erange=[1, 4], eso=[7, 11, 14], ec=[1,2,3,4, 5,6,7])
+  MT.new_Distribution({'Element': [2,4,4]}, parent=ngon_n)
 
   # Run test
   EXT._reorder_ngon_ec(ngon_n)

@@ -45,12 +45,13 @@ def test_update_ngon(comm):
 
   MJ._update_ngon(ngon, ref_faces, del_faces, vtx_distri_ini, old_to_new_vtx, comm)
 
+  eso = PT.find_node_from_name(ngon, 'ElementStartOffset')[1]
   start, end     = PT.get_node_from_path(ngon, ':CGNS#Distribution/Element')[1][[0,1]]
-  start_e, end_e = PT.get_node_from_path(ngon, ':CGNS#Distribution/ElementConnectivity')[1][[0,1]]
+  start_e, end_e = eso[0], eso[-1]
   assert (PT.get_node_from_name(ngon, 'ElementRange')[1]        == [1,34]                      ).all()
   assert (PT.get_node_from_name(ngon, 'ParentElements')[1]      == expected_pe_full[start:end]    ).all()
   assert (PT.get_node_from_name(ngon, 'ElementConnectivity')[1] == expected_ec_full[start_e:end_e]).all()
-  assert (PT.get_node_from_name(ngon, 'ElementStartOffset')[1]  == expected_eso_f[start:end+1] ).all()
+  assert (eso  == expected_eso_f[start:end+1] ).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_update_nface(comm):
@@ -65,7 +66,7 @@ def test_update_nface(comm):
   nface = PT.new_NFaceElements(erange = [36+1,36+8],
                                eso    = eso_full[cell_distri_ini[0]:cell_distri_ini[1]+1],
                                ec     = nface_ec_full[cell_distri_ini_e[0]:cell_distri_ini_e[1]])
-  MT.new_Distribution({'Element' : cell_distri_ini, 'ElementConnectivity' : cell_distri_ini_e}, nface)
+  MT.new_Distribution({'Element' : cell_distri_ini}, nface)
 
   #from maia.transform.dist_tree.merge_ids import merge_distributed_ids
   #old_to_new_face = merge_distributed_ids(face_distri_ini, np.array([23,24]), np.array([15,16]), comm, True)
@@ -79,7 +80,7 @@ def test_update_nface(comm):
   expected_ec_full = [1, 5, 13, 17, 23, 27, 2, 6, -17, 21, 25, 29, 3, 7, 14, 18, -27, 31, 4, 8, -18, 22, -29, 33, \
                   -5, 9, 15, 19, 24, 28, -6, 10, -19, -1*15, 26, 30, -7, 11, 16, 20, -28, 32, -8, 12, -20, -1*16, -30, 34]
 
-  start_e, end_e = PT.get_node_from_path(nface, ':CGNS#Distribution/ElementConnectivity')[1][[0,1]]
+  start_e, end_e = cell_distri_ini_e[0], cell_distri_ini_e[1]
   assert (PT.get_node_from_name(nface, 'ElementConnectivity')[1] == expected_ec_full[start_e:end_e]).all()
   assert (PT.get_node_from_name(nface, 'ElementStartOffset')[1]  == eso_full[cell_distri_ini[0]:cell_distri_ini[1]+1]).all()
 

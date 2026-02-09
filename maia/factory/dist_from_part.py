@@ -257,7 +257,6 @@ def _recover_elements(dist_zone: CGNSDistTree,
         assert (dist_edge_elt_val:=dist_edge_elt[1]) is not None
         dist_edge_elt_val[0] = 3
         PT.rm_node_from_path(dist_edge_elt, 'ElementStartOffset')
-        PT.rm_node_from_path(dist_edge_elt, ':CGNS#Distribution/ElementConnectivity')
       if has_ngon:
         # Now treat true 2D NGON node
         ngon_name = elt_names[elt_kinds.index('NGON_n')]

@@ -75,7 +75,6 @@ def dcube_generate(n_vtx: int,
   distrib_cell    = par_utils.dn_to_distribution(dcube_dims['dn_cell'],   comm)
   distrib_vtx     = par_utils.dn_to_distribution(dcube_dims['dn_vtx'],    comm)
   distrib_face    = par_utils.dn_to_distribution(dcube_dims['dn_face'],   comm)
-  distrib_facevtx = par_utils.dn_to_distribution(dcube_dims['sface_vtx'], comm)
 
   # > Generate dist_tree
   dist_tree = PT.new_CGNSTree()
@@ -86,13 +85,14 @@ def dcube_generate(n_vtx: int,
   # > Grid coordinates
   cx, cy, cz = layouts.interlaced_to_tuple_coords(dcube_val['dvtx_coord'])
   coords = {'CoordinateX' : cx, 'CoordinateY' : cy, 'CoordinateZ' : cz}
-  grid_coord = PT.new_GridCoordinates(fields=coords, parent=dist_zone)
+  PT.new_GridCoordinates(fields=coords, parent=dist_zone)
 
   # > NGon node
   dn_face = dcube_dims['dn_face']
 
   # > For Offset we have to shift to be global
-  eso = distrib_facevtx[0] + np_utils.safe_int_cast(dcube_val['dface_vtx_idx'], distrib_face.dtype)
+  eso = np_utils.safe_int_cast(dcube_val['dface_vtx_idx'], distrib_face.dtype)
+  eso += par_utils.exscan_size(eso[-1], comm)
 
   pe     = dcube_val['dface_cell'].reshape(dn_face, 2)
   erange = np.array([1, distrib_face[-1]], dtype=distrib_face.dtype)
@@ -120,7 +120,7 @@ def dcube_generate(n_vtx: int,
 
   # > Distributions
   MT.new_Distribution({'Cell' : distrib_cell, 'Vertex' : distrib_vtx}, parent=dist_zone)
-  MT.new_Distribution({'Element' : distrib_face, 'ElementConnectivity' : distrib_facevtx}, parent=ngon_n)
+  MT.new_Distribution({'Element' : distrib_face}, parent=ngon_n)
 
   return dist_tree
 

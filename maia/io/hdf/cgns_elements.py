@@ -4,7 +4,6 @@ import numpy as np
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
-from maia.io.distribution_tree import compute_connectivity_distribution
 from .hdf_dataspace import create_pe_dataspace
 
 def gen_elemts(zone_tree):
@@ -15,17 +14,13 @@ def gen_elemts(zone_tree):
 def load_element_connectivity_from_eso(elmt, zone_path, hdf_filter):
   """
   """
-  #If needed (reading), update distribution using ESO, which is now loaded
-  distrib = MT.get_Distribution(elmt)
-  if PT.get_child_from_name(distrib, 'ElementConnectivity') is None:
-    compute_connectivity_distribution(elmt)
-
-  distrib_ec = PT.get_np_value(MT.find_Distribution(elmt, "ElementConnectivity"))
-  dn_elmt_c  = distrib_ec[1] - distrib_ec[0]
-  n_elmt_c   = distrib_ec[2]
+  ec_size = PT.get_np_value(PT.pop_node_from_path(elmt, 'ElementConnectivity#Size'))
+  eso     = PT.get_np_value(PT.find_child_from_name(elmt, 'ElementStartOffset'))
+  dn_elmt_c  = eso[-1] - eso[0]
+  n_elmt_c   = ec_size[0]
 
   DSMMRYEC = [[0            ], [1], [dn_elmt_c], [1]]
-  DSFILEEC = [[distrib_ec[0]], [1], [dn_elmt_c], [1]]
+  DSFILEEC = [[eso[0]       ], [1], [dn_elmt_c], [1]]
   DSGLOBEC = [[n_elmt_c]]
   DSFORMEC = [[0]]
 

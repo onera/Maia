@@ -2,6 +2,7 @@ _LEGACY_IO  = False
 import os
 import time
 import mpi4py.MPI as MPI
+import numpy as np
 
 from maia.typing import *
 import maia.pytree        as PT
@@ -20,6 +21,16 @@ else:
   from . import _hdf_io_h5py as _hdf_io #type:ignore[no-redef]
 
 from maia.factory     import full_to_dist
+
+def recompute_ec_size(tree, comm):
+  # In write mode, retrieve ElementConnectivity#Size to feed hdf dataspaces
+  pred = PT.pred.label_is('Elements_t') & PT.pred.has_child_of_name('ElementStartOffset')
+  elts = PT.get_children_from_predicates(tree, ['CGNSBase_t', 'Zone_t', pred])
+  sizes = np.array([PT.get_np_value(PT.find_child_from_name(e, 'ElementConnectivity')).size for e in elts])
+  gsizes = np.zeros_like(sizes)
+  comm.Allreduce(sizes, gsizes)
+  for e,s in zip(elts, gsizes):
+    PT.new_DataArray('ElementConnectivity#Size', s, parent=e)
 
 def load_size_tree(filename: Union[str, PathLike], 
                    comm: MPIComm) -> CGNSTree:
@@ -236,6 +247,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
   # Check if folder exists
   create_parent_folder(filename, comm)
 
+  recompute_ec_size(dist_tree, comm)
   hdf_filter = create_tree_hdf_filter(dist_tree)
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links)
   end = time.time()

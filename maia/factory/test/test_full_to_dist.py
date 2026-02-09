@@ -87,7 +87,6 @@ def test_distribute_element(comm):
 
     assert (PT.Element.Range(dist_elem) == [1,4]).all()
     assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/Element') is not None
-    assert PT.get_node_from_path(dist_elem, ':CGNS#Distribution/ElementConnectivity') is not None
     if comm.Get_rank() == 0:
       assert (PT.get_child_from_name(dist_elem, 'ElementConnectivity')[1] == [4,1,3,8, 8,2,3,1]).all()
       assert (PT.get_child_from_name(dist_elem, 'ElementStartOffset')[1] == [0,4,8]).all()

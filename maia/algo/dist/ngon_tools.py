@@ -10,6 +10,8 @@ from maia.transfer import protocols as EP
 from maia.utils    import par_utils, np_utils
 from maia.utils    import vstride as vs
 
+from maia.typing import *
+
 def PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, face_cell):
   _face_distri = np_utils.safe_int_cast(face_distri, PDM.npy_pdm_gnum_dtype)
   _cell_distri = np_utils.safe_int_cast(cell_distri, PDM.npy_pdm_gnum_dtype)
@@ -37,6 +39,17 @@ def PDM_dfacevtx_from_face_and_edge(comm, face_distri, edge_distri, face_edge:vs
   face_vtx  = np_utils.safe_int_cast(_face_vtx, face_edge.dtype)
   return vs.from_displs(face_edge.displs, face_vtx) # Same displs
 
+def cgns_connectivity_from_vs(array:vs.VStrideArray, comm:MPIComm, dtype:DTypeLike=None):
+  # Consume a VSArray to return a CGNS-like distributed connectivity (shifted eso + values)
+  # VSArray **can not** be used afterward.
+  eso,val = array.displs, array.values
+  eso.flags.writeable = True
+  eso += par_utils.exscan_size(array.dsize, comm)
+  array._values = None # vsarray now invalid
+  if dtype is not None:
+    eso = np_utils.safe_int_cast(eso, dtype)
+    val = np_utils.safe_int_cast(val, dtype)
+  return eso, val
 
 def pe_to_nface(zone, comm, remove_PE=False):
   """Create a NFace node from a NGon node with ParentElements.
@@ -60,13 +73,10 @@ def pe_to_nface(zone, comm, remove_PE=False):
 
   cell_face = PDM_dfacecell_to_dcellface(comm, face_distri, cell_distri, local_pe)
   cell_face_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Zone.n_face(zone)
-  nface_ec_distr_f = par_utils.gather_and_shift(cell_face.dsize, comm)
-  nface_ec_distri  = par_utils.full_to_partial_distribution(nface_ec_distr_f, comm)
-  nface_ec_distri  = np_utils.safe_int_cast(nface_ec_distri, nface_distri.dtype)
-  eso = cell_face.displs + nface_ec_distri[0]
+  eso, val = cgns_connectivity_from_vs(cell_face, comm) 
 
-  nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=cell_face.values, parent=zone)
-  MT.new_Distribution({"Element" : nface_distri, "ElementConnectivity" : nface_ec_distri}, nface)
+  nface = PT.new_NFaceElements(erange=cell_face_range, eso=eso, ec=val, parent=zone)
+  MT.new_Distribution({"Element" : nface_distri}, nface)
 
   if remove_PE:
     PT.rm_children_from_name(ngon_node, "ParentElements")
@@ -208,13 +218,11 @@ def edge_pe_to_ngon(zone, comm, remove_PE=False):
   face_edge = PDM_dfacecell_to_dcellface(comm, edge_distri, face_distri, local_pe)
   face_vtx = PDM_dfacevtx_from_face_and_edge(comm, face_distri, edge_distri, face_edge, edge_vtx)
   face_vtx_range  = np.array([1, PT.Zone.n_cell(zone)], zone[1].dtype) + PT.Element.Range(edge_node)[1] #n_cell = n_face
-  ngon_ec_distr_f = par_utils.gather_and_shift(face_edge.dsize, comm)
-  ngon_ec_distri  = par_utils.full_to_partial_distribution(ngon_ec_distr_f, comm)
-  ngon_ec_distri  = np_utils.safe_int_cast(ngon_ec_distri, ngon_distri.dtype)
-  eso = face_edge.displs + ngon_ec_distri[0]
+  
+  eso, val = cgns_connectivity_from_vs(face_vtx, comm)
 
-  ngon = PT.new_NGonElements(erange=face_vtx_range, eso=eso, ec=face_vtx.values, parent=zone)
-  MT.new_Distribution({"Element" : ngon_distri, "ElementConnectivity" : ngon_ec_distri}, ngon)
+  ngon = PT.new_NGonElements(erange=face_vtx_range, eso=eso, ec=val, parent=zone)
+  MT.new_Distribution({"Element" : ngon_distri}, ngon)
 
   if remove_PE:
     PT.rm_children_from_name(edge_node, "ParentElements")

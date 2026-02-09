@@ -2,8 +2,10 @@ from maia.pytree.typing import *
 
 from maia.pytree.utils import path_head, path_tail
 
-from .walkers_api import get_node_from_path
+from .walkers_api import get_node_from_path, find_node_from_path
 from .auto_pred import name_matches, label_matches, value_is
+
+from maia.pytree.meta import CGNSNodeNotFoundError
 
 
 def _rm_nodes_from_predicate_with_level__(parent, predicate, depth, level=1):
@@ -187,22 +189,20 @@ def rm_node_from_path(root:CGNSTree, path:str) -> None:
   See also:
     Also exists as :func:`pop_node_from_path`, which removes the node and returns it.
   """
-  pop_node_from_path(root, path)
+  try:
+    pop_node_from_path(root, path)
+  except CGNSNodeNotFoundError:
+    pass # Do nothing if path does not exists
 
-def pop_node_from_path(root:CGNSTree, path:str) -> Optional[CGNSTree]:
-  parent:Optional[CGNSTree] = None
-  node:Optional[CGNSTree] = None
-
+def pop_node_from_path(root:CGNSTree, path:str) -> CGNSTree:
   if not '/' in path:
     parent = root
     name = path
   else:
-    parent = get_node_from_path(root, path_head(path))
+    parent = find_node_from_path(root, path_head(path))
     name = path_tail(path)
 
-  if parent is not None:
-    for i, child in enumerate(parent[2]):
-      if child[0] == name:
-        node = parent[2].pop(i)
-        break
-  return node
+  for i, child in enumerate(parent[2]):
+    if child[0] == name:
+      return parent[2].pop(i)
+  raise CGNSNodeNotFoundError(root, path)

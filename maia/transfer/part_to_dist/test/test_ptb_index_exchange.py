@@ -436,10 +436,8 @@ Zone.P2.N1 Zone_t:
     assert (PT.get_child_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (PT.get_child_from_name(ngon, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = MT.Element.distribution(ngon)
-  distri_eltc = MT.find_Distribution(ngon, 'ElementConnectivity')[1]
-  assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
+  assert distri_elt.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
-  assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("nface_first", [False, True])
@@ -535,7 +533,5 @@ Zone.P2.N1 Zone_t [[12,2,0]]:
   assert (PT.get_child_from_name(nface, 'ElementStartOffset')[1] == expected_eso).all()
   assert (PT.get_child_from_name(nface, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = MT.Element.distribution(nface)
-  distri_eltc = MT.find_Distribution(nface, 'ElementConnectivity')[1]
-  assert distri_elt.dtype == distri_eltc.dtype == pdm_gnum_dtype
+  assert distri_elt.dtype == pdm_gnum_dtype
   assert (distri_elt  == expected_elt_distri_full [[rank, rank+1, size]]).all()
-  assert (distri_eltc == expected_eltc_distri_full[[rank, rank+1, size]]).all()

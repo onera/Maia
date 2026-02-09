@@ -109,6 +109,11 @@ def is_same_distri(distri1:NDArray, distri2:NDArray, comm:MPIComm) -> bool:
                         auto_expand_distri(distri2, comm))
 
 
+def exscan_size(val:int, comm:MPIComm) -> int:
+  send = np.array(val, dtype=int)
+  recv = np.array(0,   dtype=int)
+  comm.Exscan(send, recv)
+  return int(recv)
 
 def gather_and_shift(value: Union[int, np.integer],
                      comm: MPIComm, 

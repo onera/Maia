@@ -10,7 +10,10 @@ from maia           import npy_pdm_gnum_dtype  as pdm_dtype
 from maia.algo.dist import ngon_tools
 from maia.transfer  import protocols as EP
 from maia.utils     import np_utils, par_utils, s_numbering
+from maia.utils     import vstride as vs
 from maia.utils     import logging as mlog
+
+from .ngon_tools import cgns_connectivity_from_vs
 
 IS_BAR  = PTp.is_element_of_type('BAR_2')
 IS_TRI  = PTp.is_element_of_type('TRI_3')
@@ -218,8 +221,6 @@ def _extrude_bar_to_ngon(bar, n_vtx, n_cell, align=True):
   else:
     new_ec = np_utils.interweave_arrays([second_nodes, first_nodes, fourth_nodes, third_nodes])
   PT.set_value(ec_n, new_ec)
-  # > Create ElementConnectivity distribution
-  MT.new_Distribution({'ElementConnectivity' : 4*distrib_elem}, parent=bar)
   # > Update PE
   # Remark: new cells are the former faces because we keep the order
   #         so we just have to shift there values of 2*n_cell
@@ -256,19 +257,17 @@ def _merge_ngons(zone, comm):
   new_distrib_elem = par_utils.uniform_distribution(n_faces,  comm)
   # > Exchange to define new ElementStartOffset, ElementConnectivity and ParentElements
   GI = EP.GlobalIndexer(new_distrib_elem, ln_to_gn_elem_l, comm)
-  new_diff_eso, new_ec = GI.Put_v(part_ec)
-  dn = new_distrib_elem[1] - new_distrib_elem[0]
-  new_pe = np.empty((dn, 2), order='F', dtype=zone[1].dtype)
+
+  new_face_vtx = vs.from_counts(*GI.Put_v(part_ec))
+  new_pe = np.empty((len(new_face_vtx), 2), order='F', dtype=zone[1].dtype)
   GI.Put(part_pe0, new_pe[:,0])
   GI.Put(part_pe1, new_pe[:,1])
-  # > Define new ElementConnectivity distribution
-  new_distrib_ec = par_utils.dn_to_distribution(new_diff_eso.sum(), comm)
-  new_eso = np_utils.sizes_to_indices(new_diff_eso) + new_distrib_ec[0]
   # > Delete old ngons
   PT.rm_children_from_predicate(zone, PTp.is_element_of_type('NGON_n'))
   # > Create new NGon node
+  new_eso, new_ec = cgns_connectivity_from_vs(new_face_vtx, comm)
   new_ngon_n = PT.new_NGonElements(erange=new_er, eso=new_eso, ec=new_ec, pe=new_pe, parent=zone)
-  MT.new_Distribution({'Element' : new_distrib_elem, 'ElementConnectivity' : new_distrib_ec}, parent=new_ngon_n)
+  MT.new_Distribution({'Element' : new_distrib_elem}, parent=new_ngon_n)
     
 def _extrusion_2d_s(zone, extrusion_vector, comm, align, ksubset_as):
   """

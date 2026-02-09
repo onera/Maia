@@ -12,11 +12,14 @@ import maia
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 from maia.utils import np_utils, par_utils, as_pdm_gnum, logging
+from maia.utils import vstride as vs
 
 from maia.algo.dist import matching_jns_tools as MJT
 from maia.algo.dist import concat_nodes as GN
 from maia.algo.dist import vertex_list as VL
 from maia.transfer  import protocols as EP
+
+from .ngon_tools import cgns_connectivity_from_vs
 
 HAS_POINTLIST = PTp.has_child_of_name('PointList')
 
@@ -876,9 +879,7 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
   merged_distri_face = all_mbm['Face'].get_merged_distri()
 
   # Reshift ESO to make it global
-  eso_loc = np_utils.sizes_to_indices(merged_ec_stri, pdm_dtype)
-  ec_distri = par_utils.gather_and_shift(eso_loc[-1], comm)
-  eso = np_utils.safe_int_cast(eso_loc,out_dtype) + ec_distri[comm.Get_rank()]
+  merged_cnt = vs.from_counts(merged_ec_stri, merged_ec)
 
   #Post treat PE : we need to reintroduce 0 on boundary faces (TODO : could avoid tmp array ?)
   bnd_faces = np.where(merged_pe_stri == 1)[0]
@@ -892,13 +893,14 @@ def _merge_ngon(all_mbm, tree, merged_zone, comm):
 
   # Finally : create ngon node
   erange = np.array([1, merged_distri_face[-1]], out_dtype)
-  merged_ec = np_utils.safe_int_cast(merged_ec, out_dtype)
   if dim == 3:
+    eso, merged_ec = cgns_connectivity_from_vs(merged_cnt, comm, out_dtype)
     merged_face_node = PT.new_NGonElements(erange=erange, eso=eso, ec=merged_ec, pe=pe)
   else:
+    merged_ec = np_utils.safe_int_cast(merged_cnt.values, out_dtype)
     merged_face_node = PT.new_Elements('EdgeElements', 'BAR_2', erange=erange, econn=merged_ec, pe=pe)
-  MT.new_Distribution({'Element' :             par_utils.full_to_partial_distribution(merged_distri_face, comm),
-                       'ElementConnectivity' : par_utils.full_to_partial_distribution(ec_distri, comm)},
+  # HERE
+  MT.new_Distribution({'Element' : par_utils.full_to_partial_distribution(merged_distri_face, comm)},
                        merged_face_node)
   PT.add_child(merged_zone, merged_face_node)
 

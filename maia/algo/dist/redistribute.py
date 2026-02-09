@@ -95,10 +95,13 @@ def redistribute_elements_node(node: CGNSTree,
 
   # > ElementStartOffset
   if has_eso :
-    ec_distrib     = PT.get_np_value(MT.find_Distribution(node, "ElementConnectivity"))
 
     eso_n = PT.find_child_from_name(node, 'ElementStartOffset')
     eso   = PT.get_np_value(eso_n)
+    ec_n = PT.find_child_from_name(node, 'ElementConnectivity')
+    ec   = PT.get_np_value(ec_n)
+
+    ec_distrib = np.array([eso[0], eso[-1], comm.allreduce(ec.size)])
 
     # To be consistent with initial distribution, send everything excepted last elt
     eso_wo_last = MTP.block_to_block(eso[:-1], elt_distrib, new_elt_distrib, comm)
@@ -123,10 +126,7 @@ def redistribute_elements_node(node: CGNSTree,
 
     PT.set_value(eso_n, eso_gather)
 
-    new_ec_distrib = np.copy(ec_distrib)
-    new_ec_distrib[0] = eso_gather[0]
-    new_ec_distrib[1] = eso_gather[-1]
-    new_distrib['ElementConnectivity'] = new_ec_distrib
+    new_ec_distrib = np.array([eso_gather[0], eso_gather[-1], ec_distrib[2]])
 
   else:
     ec_distrib     =     elt_distrib*PT.Element.NVtx(node)

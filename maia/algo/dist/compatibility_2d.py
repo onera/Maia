@@ -26,7 +26,6 @@ def _convert_ngon2d_to_bar(zone):
   
   # > Del ESO
   PT.rm_node_from_path(ngon_n, 'ElementStartOffset')
-  PT.rm_node_from_path(ngon_n, ':CGNS#Distribution/ElementConnectivity')
 
   # > Change name and value (22 => 3)
   PT.update_node(ngon_n, name='EdgeElements', value=[3,0])
@@ -70,7 +69,6 @@ def _bar_pe_to_nface2d(zone, comm):
   edge_face = maia.algo.indexing.get_pe_local(bar_n).reshape(-1,order='C')
   edge_face_idx = 2*np.arange(edge_distrib[0], edge_distrib[1]+1, dtype=np.int32)
   PT.new_DataArray('ElementStartOffset', value=edge_face_idx, parent=bar_n)
-  MT.new_Distribution({'ElementConnectivity': 2*edge_distrib}, parent=bar_n)
   
   full_edge_distrib = par_utils.partial_to_full_distribution(edge_distrib, comm)
   full_face_distrib = par_utils.partial_to_full_distribution(face_distrib, comm)
@@ -85,8 +83,7 @@ def _bar_pe_to_nface2d(zone, comm):
   nface_er = np.array([1, face_distrib[-1]], face_edge.dtype) + PT.Element.Range(bar_n)[1]
   nface_n = PT.new_NFaceElements(erange=nface_er, ec=face_edge.values, eso=eso, parent=zone)
 
-  MT.new_Distribution({'Element': face_distrib, 'ElementConnectivity': face_edge_distri},
-                     parent = nface_n)
+  MT.new_Distribution({'Element': face_distrib}, parent = nface_n)
 
 
 

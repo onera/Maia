@@ -62,7 +62,6 @@ def test_remove_ngons(comm):
   assert (PT.get_node_from_name(ngon, 'ParentElements')[1] == expected_pe).all()
   assert (PT.get_node_from_name(ngon, 'ElementStartOffset')[1] == np.arange(0,31,2)).all()
   assert (PT.get_node_from_path(ngon, ':CGNS#Distribution/Element')[1] == [0,15,15]).all()
-  assert (PT.get_node_from_path(ngon, ':CGNS#Distribution/ElementConnectivity')[1] == [0,30,30]).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_remove_ngons_2p(comm):

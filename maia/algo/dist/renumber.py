@@ -9,6 +9,7 @@ from maia.utils import vstride as vs
 from maia.utils import par_utils, np_utils
 
 from .sections_tools import _concatenate_elt_sections, concatenate_elt_sections_if
+from .ngon_tools     import cgns_connectivity_from_vs
 
 from maia.typing import *
 
@@ -282,18 +283,15 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
       
       face_vtx_ini = MT.Element.connectivity(ng)
       face_vtx = vs.from_counts(*GI.Put_v((face_vtx_ini.counts, face_vtx_ini.values)))
-      # Distribution of ElementConnectivity can change (the one of Element is fixed)
-      elt_distri = par_utils.dn_to_distribution(face_vtx.dsize, comm)
-      PT.update_child(ng, 'ElementStartOffset', value=face_vtx.displs + elt_distri[0].astype(face_vtx.displs.dtype))
-      PT.update_child(ng, 'ElementConnectivity', value=face_vtx.values)
+      eso, val = cgns_connectivity_from_vs(face_vtx, comm)
+      PT.update_child(ng, 'ElementStartOffset', value=eso)
+      PT.update_child(ng, 'ElementConnectivity', value=val)
 
       # Update PE if existing (inplace ok because face distri did not change)
       if (pe_n := PT.get_child_from_name(ng, 'ParentElements')) is not None:
         pe = PT.get_np_value(pe_n)
         GI.Put(pe[:,0], pe[:,0])
         GI.Put(pe[:,1], pe[:,1])
-
-      MT.new_Distribution({'ElementConnectivity' : elt_distri}, parent=ng)
 
       # Poly3d zone; update cell-->face connectivity if existing
       if PT.Zone.has_nface_elements(zone):
@@ -361,12 +359,9 @@ def renumber_cells(tree:CGNSDistTree, zone_path:CGNSPath, new_cell_id:NDArray, c
       cell_face_ini = MT.Element.connectivity(nf)
       cell_face = EP.part_to_block(cell_face_ini, cell_distri, new_cell_id_elt, comm)
 
-      # Distribution of ElementConnectivity can change (the one of Element is fixed)
-      elt_distri = par_utils.dn_to_distribution(cell_face.dsize, comm)
-      PT.update_child(nf, 'ElementStartOffset', value=cell_face.displs + elt_distri[0].astype(cell_face.displs.dtype))
-      PT.update_child(nf, 'ElementConnectivity', value=cell_face.values)
-
-      MT.new_Distribution({'ElementConnectivity' : elt_distri}, parent=ng)
+      eso, val = cgns_connectivity_from_vs(cell_face, comm)
+      PT.update_child(nf, 'ElementStartOffset', value=eso)
+      PT.update_child(nf, 'ElementConnectivity', value=val)
 
 
   else: # Standard elements

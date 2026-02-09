@@ -131,9 +131,6 @@ def test_renumber_vertices(comm):
       Id DataArray_t I8 [6,5,4,3,2,1]:
   """)
   expt_zone1 = maia.factory.full_to_dist_tree(expt_zone1_f, comm)
-  # RM Distri/ElementConnectivity for comparaison
-  for elt in PT.get_nodes_from_label(expt_zone1, 'Elements_t'):
-    PT.rm_node_from_path(elt, ':CGNS#Distribution/ElementConnectivity')
 
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Left'), expt_zone1)
   assert PT.is_same_tree(PT.find_node_from_name(tree, 'Right'), expt_zone2)
