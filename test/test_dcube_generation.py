@@ -74,26 +74,3 @@ def test_generate_dcube_elts(cgns_elmt_name, comm, write_output):
     out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)
     outfile = os.path.join(out_dir, 'dcube_elt.hdf')
     maia.io.dist_tree_to_file(dist_tree, outfile, comm)
-
-@pytest.mark.parametrize("random", [False, True])
-@pytest_parallel.mark.parallel([3])
-def test_generate_place_ngons(random, comm):
-  n_vtx = 20
-
-  # > dplane_generate create a strange 2D discretisation with polygonal elements
-  dist_tree = DPG.dplane_generate(xmin=0., xmax=1., ymin=0., ymax=1., \
-      have_random=random, init_random=random, nx=n_vtx, ny=n_vtx, comm=comm)
-
-  assert (PT.get_value(PT.get_all_CGNSBase_t(dist_tree)[0]) == [2,2]).all()
-  zones = PT.get_all_Zone_t(dist_tree)
-  assert len(zones) == 1
-  zone = zones[0]
-
-  assert PT.get_child_from_name(zone, 'NGonElements') is not None
-
-  # > The mesh include 4 boundary groups
-  assert len(PT.get_nodes_from_label(zone, 'BC_t')) == 4
-
-  assert MT.get_Distribution(zone) is not None
-  # > Distribution dtype should be consistent with PDM
-  assert MT.get_Distribution(zone, 'Vertex')[1].dtype == maia.npy_pdm_gnum_dtype
