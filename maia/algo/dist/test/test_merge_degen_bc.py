@@ -261,8 +261,8 @@ def test_merge_degen_faces(ZSR,JN,comm):
   MT.new_Distribution({'Index': distri2}, parent=zsr_data2)
   # A fake BC mixing faces to remove (ymin) and face to keep (xmin), with bcds 
   plmix = np.concatenate([pl_ymin,pl_xmin], axis=1)
-  distri1 = MT.distribution_value(ymin_n, 'Index')
-  distri2 = MT.distribution_value(xmin_n, 'Index')
+  distri1 = MT.Subset.distribution(ymin_n)
+  distri2 = MT.Subset.distribution(xmin_n)
   bcmix = PT.new_BC('BCMix', point_list=plmix, loc='FaceCenter', parent=zonebc_n)
   MT.new_Distribution({'Index' : distri1+distri2}, bcmix)
   ds = PT.new_child(bcmix, "BCDataSet", "BCDataSet_t")
@@ -287,7 +287,7 @@ def test_merge_degen_faces(ZSR,JN,comm):
   # Move nodes to generate sector of cylinder
   theta_x, theta_y, theta_z = sector_angle/(nz-1), 0., 0.
   
-  vtx_distri = MT.distribution_value(zone_n, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone_n)
   coord_x, coord_y, coord_z = PT.Zone.coordinates(zone_n)
   
   multiple, remainder = np.divmod(vtx_distri, nx*ny)

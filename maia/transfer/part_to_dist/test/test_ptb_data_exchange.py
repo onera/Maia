@@ -85,7 +85,7 @@ class Test__discover_wrapper:
     fs = PT.find_child_from_name(dist_zone, 'FS')
     assert PT.get_label(fs) == 'DiscreteData_t'
     dist_pl     = PT.find_node_from_path(fs, 'PointList')[1]
-    dist_distri = MT.distribution_value(fs, 'Index')
+    dist_distri = MT.Subset.distribution(fs)
     assert dist_distri.dtype == pdm_dtype
 
     if comm.Get_rank() == 0:

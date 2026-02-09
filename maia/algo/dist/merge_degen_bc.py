@@ -83,7 +83,7 @@ def _remove_subset_fictive_faces(zone, comm):
     is_empty = False
     if comm.allreduce(has_last, MPI.LOR):
       # Update distribution, on all ranks
-      distri_entity = MT.distribution_value(node, 'Index')
+      distri_entity = MT.Subset.distribution(node)
       mask = (distri_entity == distri_entity[2])
       distri_entity[mask] -= 1
 
@@ -178,8 +178,8 @@ def remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, pl_deg
   n_rmvd_face    = comm.allreduce(len(face_to_remove), op=MPI.SUM)
   
   # Need dto copy face distribution before it changes in ngon update !!!
-  vtx_distri_ini  = MT.distribution_value(zone_n, 'Vertex').copy()
-  face_distri_ini = MT.distribution_value(ngon_n, 'Element').copy()
+  vtx_distri_ini  = MT.Zone.vtx_distribution(zone_n).copy()
+  face_distri_ini = MT.Element.distribution(ngon_n).copy()
   
   # Update ngon node
   #> define old to new global numbering for nodes of degenerated faces to remove
@@ -250,7 +250,7 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
   MT.check_cgns_dist_tree(dist_tree)
   for zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     zone_n = PT.find_node_from_path(dist_tree, zone_path)
-    vtx_distri = MT.distribution_value(zone_n, 'Vertex')
+    vtx_distri = MT.Zone.vtx_distribution(zone_n)
     
     pl_degen_faces_list = []
     for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):

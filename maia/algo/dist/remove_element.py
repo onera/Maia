@@ -92,7 +92,7 @@ def remove_ngons(dist_ngon, ngon_to_remove, comm):
   n_rmvd_ec_offset  = par_utils.gather_and_shift(n_rmvd_ec_local, comm)
   n_rmvd_ec_total   = n_rmvd_ec_offset[-1]
 
-  ngon_distri = MT.distribution_value(dist_ngon, 'Element')
+  ngon_distri = MT.Element.distribution(dist_ngon)
   ngon_distri[0] -= n_rmvd_offset[comm.Get_rank()]
   ngon_distri[1] -= (n_rmvd_offset[comm.Get_rank()] + n_rmvd_local)
   ngon_distri[2] -= n_rmvd_total
@@ -195,7 +195,7 @@ def remove_elts_from_pl(zone, elt_n, elt_pl, comm):
   # > Update zone size and distribution
   if elt_dim==PT.Zone.CellDimension(zone):
     zone[1][:,1] -= n_elt_to_rm
-    distri_cell = MT.distribution_value(zone, 'Cell')
+    distri_cell = MT.Zone.cell_distribution(zone)
     distri_cell -= rm_distrib
 
   # > Shift other Element Range, if the have higher ids

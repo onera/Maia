@@ -31,7 +31,7 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   
   edge_vtx     = PT.get_np_value(PT.find_child_from_name(edge_n, 'ElementConnectivity'))
   pe           = PT.get_np_value(PT.find_child_from_name(edge_n, 'ParentElements'))
-  edge_distri  = MT.distribution_value(edge_n, 'Element')
+  edge_distri  = MT.Element.distribution(edge_n)
 
   old_edge_pl = _collected_shifted_pl(zone, 'EdgeCenter', -PT.Element.Range(edge_n)[0])
   GMI = EP.GlobalIndexer(edge_distri, old_edge_pl, comm)
@@ -61,7 +61,7 @@ def _ngon_to_elements_zone_2d(zone:CGNSTree, comm:MPIComm) -> None:
   # Now take care of the faces
   ngon_n = PT.Zone.NGonNode(zone)
 
-  face_distri = MT.distribution_value(ngon_n, 'Element')
+  face_distri = MT.Element.distribution(ngon_n)
   face_vtx    = MT.Element.connectivity(ngon_n)
   n_face_loc  = len(face_vtx)
 
@@ -132,7 +132,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   
   face_vtx     = MT.Element.connectivity(ngon_n)
   pe           = PT.get_np_value(PT.find_child_from_name(ngon_n, 'ParentElements'))
-  face_distri  = MT.distribution_value(ngon_n, 'Element')
+  face_distri  = MT.Element.distribution(ngon_n)
   dn_face   = len(face_vtx)
 
   face_vtx._counts = face_vtx.counts.astype(np.int32, copy=False)
@@ -175,7 +175,7 @@ def _ngon_to_elements_zone_3d(zone:CGNSTree, comm:MPIComm):
   # Now take care of the cells 
   nface_n = PT.Zone.NFaceNode(zone)
   cell_face     = MT.Element.connectivity(nface_n)
-  cell_distri   = MT.distribution_value(nface_n, 'Element')
+  cell_distri   = MT.Element.distribution(nface_n)
   dn_cell = len(cell_face)
 
   # Design choice : get the number of vertices (with reps) for **all** cells,

@@ -5,6 +5,7 @@ from maia.typing        import *
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from   maia.pytree.maia   import pdm_elts
 import maia.utils.logging as mlog
 
 from maia          import npy_pdm_gnum_dtype   as pdm_gnum_dtype
@@ -89,7 +90,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
                 ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
 
       if elt_n is not None :
-        part1_ln_to_gn   = [MT.globalnumbering_value(elt_n, _gridLocation[gridLocation])]
+        part1_ln_to_gn   = [PT.get_np_value(MT.find_GlobalNumbering(elt_n, _gridLocation[gridLocation]))]
       else :
         part1_ln_to_gn   = []
 
@@ -124,7 +125,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     part2_ln_to_gn      = list()
     for part_zone in part_zones:
       elt_n            = part_zone if gridLocation!='FaceCenter' else PT.Zone.NGonNode(part_zone)
-      part2_ln_to_gn.append(MT.globalnumbering_value(elt_n, _gridLocation[gridLocation]))
+      part2_ln_to_gn.append(PT.get_np_value(MT.find_GlobalNumbering(elt_n, _gridLocation[gridLocation])))
         
 
     # > P2P Object
@@ -225,7 +226,7 @@ def _exchange_field(part_tree: CGNSPartTree,
   # Loop over domains
   for domain_path, part_zones in part_tree_per_dom.items():
     # Get zone from isosurf (one zone by domain)
-    iso_part_zones = TEU.get_partitioned_zones(iso_part_tree, f"{domain_path}")
+    iso_part_zones = MT.get_partitioned_zones(iso_part_tree, f"{domain_path}")
     iso_part_zone  = iso_part_zones[0] if len(iso_part_zones)!=0 else None
     exchange_field_one_domain(part_zones, iso_part_zone, containers_name_per_dom[domain_path], comm)
 
@@ -246,7 +247,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                        "QUADRIC" : PDM.IsoSurface.quadric_equation_set}
 
   PDM_iso_type = eval(f"PDM._PDM_ISO_SURFACE_KIND_{iso_kind}")
-  PDM_elt_type = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elt_type)
+  PDM_elt_type = pdm_elts.cgns_elt_name_to_pdm_element_type(elt_type)
 
   if iso_kind=="FIELD" : 
     assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)
@@ -412,7 +413,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                                   'Sections': results_edge['bnd_edge_lngn']}, parent=bar_n)
 
     # > Create BC described by edges
-    gnum = MT.globalnumbering_value(bar_n, 'Element') if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
+    gnum = MT.Element.globalnumbering(bar_n) if n_bnd_edge!=0 else np.empty(0, dtype=pdm_gnum_dtype)
     for i_group, bc_path in enumerate(gdom_bcs_path):
       n_edge_in_bc = bnd_edge_group_idx[i_group+1]-bnd_edge_group_idx[i_group]
       edge_pl = np.arange(bnd_edge_group_idx[i_group  ],\

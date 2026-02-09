@@ -427,6 +427,8 @@ def test_dist_subregion_to_part_subregion(comm, api_mode):
     pt = """
   ZoneU.P0.N0 Zone_t [[2,0,0]]:
     :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
+    ZSRWithoutPL ZoneSubRegion_t:
+      BCRegionName Descriptor_t "BC":
     ZBC ZoneBC_t:
       BC BC_t:
         PointList IndexArray_t [[1, 12, 21]]:
@@ -489,6 +491,8 @@ def test_dist_subregion_to_part_subregion(comm, api_mode):
           Index DataArray_t I4 [1]:
     ZSRWithGC.0 ZoneSubRegion_t:
       GridConnectivityRegionName Descriptor_t "GC.0":
+    ZSRWithoutPL ZoneSubRegion_t:
+      BCRegionName Descriptor_t "BC":
   """.format(dtype)
 
   dist_tree = PTy.to_cgns_tree(dt)

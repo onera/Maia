@@ -127,10 +127,10 @@ def elmt_pl_to_vtx_pl(zone, elt_n, elt_pl, comm):
   '''
   Return distributed gnum of vertices describing elements tagged in `elt_pl`.
   '''
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
 
   elt_offset = PT.Element.Range(elt_n)[0]
-  elt_distri = MT.distribution_value(elt_n, 'Element')
+  elt_distri = MT.Element.distribution(elt_n)
 
   # > Get partitioned connectivity of elt_pl
   elt_ec   = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
@@ -165,7 +165,7 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
   """
   # TRI elts
   #   Get ec
-  src_distri    = MT.distribution_value(tri_elt, 'Element')
+  src_distri    = MT.Element.distribution(tri_elt)
   size_src_elt  = PT.Element.NVtx(tri_elt)
   src_ec        = PT.get_child_from_name(tri_elt, 'ElementConnectivity')[1]
   #   Get list of TRI faces to select from other ranks
@@ -178,7 +178,7 @@ def find_shared_faces(tri_elt, tri_pl, tetra_elt, tetra_pl, comm):
 
   # TETRA elts
   #   Get ec
-  tgt_distri   = MT.distribution_value(tetra_elt, 'Element')
+  tgt_distri   = MT.Element.distribution(tetra_elt)
   size_tgt_elt = PT.Element.NVtx(tetra_elt)
   tgt_ec       = PT.get_child_from_name(tetra_elt, 'ElementConnectivity')[1]
   #   Get list of TETRA elts to select from other ranks
@@ -227,14 +227,14 @@ def update_elt_vtx_numbering(zone, elt_n, old_to_new_vtx, comm, elt_pl=None):
   if elt_n is not None:
     ec_n  = PT.get_child_from_name(elt_n, 'ElementConnectivity')
     ec    = PT.get_value(ec_n)
-    vtx_distri = MT.distribution_value(zone, 'Vertex')
+    vtx_distri = MT.Zone.vtx_distribution(zone)
 
     if elt_pl is None:
       ec = EP.block_to_part(old_to_new_vtx, vtx_distri, ec-1, comm)
     else:
       elt_size   = PT.Element.NVtx(elt_n)
       elt_offset = PT.Element.Range(elt_n)[0]
-      elt_distri = MT.distribution_value(elt_n, 'Element')
+      elt_distri = MT.Element.distribution(elt_n)
 
       GI = EP.GlobalIndexer(elt_distri, elt_pl - elt_offset, comm)
       ids  = np.flatnonzero(GI.access_counts > 0)
@@ -268,7 +268,7 @@ def merge_periodic_bc(zone, bc_names, vtx_tag, old_to_new_vtx_num, comm, keep_or
   First BC can be kept using `keep_original` argument.
   '''
   zone_bc_n = PT.find_child_from_label(zone, 'ZoneBC_t')
-  vtx_distri   = MT.distribution_value(zone, 'Vertex')
+  vtx_distri   = MT.Zone.vtx_distribution(zone)
 
   # TODO: directement choper les GCs
   pbc1_n      = PT.find_child_from_name(zone_bc_n, bc_names[0])
@@ -341,7 +341,7 @@ def update_vtx_bnds(zone, old_to_new_vtx, comm):
   Update Vertex BCs and GCs according to the new vertices numbering described in `old_to_new_vtx`.
   TODO: predicates
   '''
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
 
   zone_bc_n = PT.get_child_from_label(zone, 'ZoneBC_t')
   if zone_bc_n is not None:
@@ -386,7 +386,7 @@ def duplicate_elts(zone, elt_n, elt_pl, as_bc, elts_to_update, comm, elt_duplica
   
   new_vtx_distri = par_utils.dn_to_distribution(n_vtx_to_add, comm)
   new_vtx_pl     = np.arange(n_vtx+new_vtx_distri[0],n_vtx+new_vtx_distri[1], dtype=elt_vtx_pl.dtype)+1
-  vtx_distri     = MT.distribution_value(zone, 'Vertex')
+  vtx_distri     = MT.Zone.vtx_distribution(zone)
   new_vtx_num    = [elt_vtx_pl,new_vtx_pl]
 
   old_to_new_vtx = np.arange(vtx_distri[0],vtx_distri[1], dtype=vtx_distri.dtype)+1
@@ -566,7 +566,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   is_elt_bc = PTp.label_is('BC_t') & PTp.has_location(DIM_TO_LOC[elt_dim])
 
   # > Compute new vtx numbering merging vtx from `src_tgt_vtx` (merge_distributed_ids may not work because vtx can be in src and tgt)
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
 
   dn_elts  = vtx_distri[1] - vtx_distri[0]
   old_to_new_vtx = np.arange(dn_elts) + vtx_distri[0] + 1
@@ -586,7 +586,7 @@ def find_matching_bcs(zone, elt_n, src_pl, tgt_pl, src_tgt_vtx, comm):
   elt_offset = PT.Element.Range(elt_n)[0]
   elt_size   = PT.Element.NVtx(elt_n)
   elt_ec     = PT.get_value(PT.get_child_from_name(elt_n, 'ElementConnectivity'))
-  elt_distri = MT.distribution_value(elt_n, 'Element')
+  elt_distri = MT.Element.distribution(elt_n)
   
   # > Precompute vtx in shared numbering
   bc_vtx = [list(),list()]
@@ -634,7 +634,7 @@ def constraint_other_side_join(zone, elt_n, bc_names, old_new_vtx_num, comm):
   elt_size    = PT.Element.NVtx(elt_n)
   elt_offset  = PT.Element.Range(elt_n)[0]
   elt_vtx     = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
-  elt_distri  = MT.distribution_value(elt_n, 'Element')
+  elt_distri  = MT.Element.distribution(elt_n)
   
   # > Fake extract bc to have 2 domain in PDM.interface_vertex_to_face(...)
   for bc_name in [bc_names[1],bc_names[0]]: # ordre important pour bc_vtx_pl en dehors de la boucle
@@ -721,7 +721,7 @@ def add_undefined_faces(zone, elt_n, elt_pl, tgt_elt_n, comm, bc_names=list()):
   ec_n       = PT.get_child_from_name(elt_n, 'ElementConnectivity')
   ec         = PT.get_value(ec_n)
   elt_name   = PT.Element.Type(elt_n)
-  elt_distri = MT.distribution_value(elt_n, 'Element')
+  elt_distri = MT.Element.distribution(elt_n)
   assert elt_name=='TETRA_4'
 
   tgt_elt_size   = PT.Element.NVtx(tgt_elt_n)
@@ -979,7 +979,7 @@ def deplace_periodic_patch(tree, jn_pairs, comm):
     bc_name2 = PT.utils.path_tail(gc_paths[1])
     gc_vtx_pld = PT.get_value(PT.get_child_from_name(gc_vtx_n, 'PointListDonor'))[0]
     vtx_match_num = [gc_vtx_pl, gc_vtx_pld]
-    vtx_distri = MT.distribution_value(zone, 'Vertex')
+    vtx_distri = MT.Zone.vtx_distribution(zone)
     vtx_tag = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype)+1
     old_to_new_vtx = merge_periodic_bc(zone, (bc_name1, bc_name2), vtx_tag, vtx_match_num, comm, keep_original=True)
     

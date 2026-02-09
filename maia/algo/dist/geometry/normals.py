@@ -39,7 +39,7 @@ def compute_face_normal(zone, comm, unitary=False, face_indices=None, face_indic
       ngon_node = PT.Zone.NGonNode(zone)
       face_vtx = MT.Element.connectivity(ngon_node)
       if face_indices is not None:
-        face_distri = MT.distribution_value(ngon_node, 'Element')
+        face_distri = MT.Element.distribution(ngon_node)
         face_vtx = EP.block_to_part(face_vtx, face_distri, face_indices-PT.Element.Range(ngon_node)[0], comm)
     else: # Zone has std elements
       global_distri = (zone_dim == 2)
@@ -53,7 +53,7 @@ def compute_face_normal(zone, comm, unitary=False, face_indices=None, face_indic
         assert face_indices_loc in ['IFaceCenter', 'JFaceCenter', 'KFaceCenter'], \
           "Indices location must be specified when filtering faces on 3D structured meshes"
         _face_indices = s_numbering.ijk_to_index_from_loc(*face_indices, face_indices_loc, PT.Zone.VertexSize(zone))
-        face_distri = MT.distribution_value(ngon_node, 'Element')
+        face_distri = MT.Element.distribution(ngon_node)
         face_vtx = EP.block_to_part(face_vtx, face_distri, _face_indices-1, comm)
     elif zone_dim == 2:
       face_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim, face_indices)
@@ -86,7 +86,7 @@ def compute_edge_normal(zone, comm, unitary=False, edge_indices=None, edge_indic
       edge_node = MT.Zone.EdgeNode(zone)
       edge_vtx = MT.Element.connectivity(edge_node)
       if edge_indices is not None:
-        edge_distri = MT.distribution_value(edge_node, 'Element')
+        edge_distri = MT.Element.distribution(edge_node)
         edge_vtx = EP.block_to_part(edge_vtx, edge_distri, edge_indices-PT.Element.Range(edge_node)[0], comm)
     else: # Zone has std elements
       global_distri = (zone_dim == 1)
@@ -100,7 +100,7 @@ def compute_edge_normal(zone, comm, unitary=False, edge_indices=None, edge_indic
         assert edge_indices_loc in ['IEdgeCenter', 'JEdgeCenter'], \
           "Indices location must be specified when filtering edges on 2D structured meshes"
         _edge_indices = s_numbering.ij_to_index_from_loc(*edge_indices, edge_indices_loc, PT.Zone.VertexSize(zone))
-        edge_distri = MT.distribution_value(edge_node, 'Element')
+        edge_distri = MT.Element.distribution(edge_node)
         edge_vtx = EP.block_to_part(edge_vtx, edge_distri, _edge_indices-1, comm)
     if zone_dim == 1:
       edge_vtx = CU.cell_vtx_connectivity_S(zone, zone_dim, edge_indices)

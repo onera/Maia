@@ -3,8 +3,11 @@ import re
 import os
 import importlib
 import doctest
-import maia.pytree as PT
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 import numpy as np
+
+from mpi4py.MPI import COMM_SELF
 
 # --- Configuration ---
 VERBOSE = False
@@ -142,7 +145,8 @@ def filter_and_confirm_doctests(module_names_with_markers):
 # --- Doctest Globals & Hooks ---
 # Global namespace for doctests, accessible by all discovered doctests.
 # Includes common modules like sys, PT (maia.pytree), and np (numpy).
-test_globs = {'sys': sys, 'PT': PT, 'np': np}
+# We also use comm self when comm is involved in tests
+test_globs = {'sys': sys, 'PT': PT, 'np': np, 'MT': MT, 'comm' : COMM_SELF}
 
 # Monkey-patch PT.print_tree to inject default parameters for doctest consistency.
 _original_print_tree = PT.print_tree
@@ -171,7 +175,7 @@ def apply_hooks(doc_test):
     for example in doc_test.examples:
         code = example.source
         stripped_code = code.lstrip()
-        if stripped_code.startswith("PT.new_") or stripped_code.startswith("PT.update_"):
+        if stripped_code.startswith("PT.new_") or stripped_code.startswith("MT.new_") or stripped_code.startswith("PT.update_"):
             indentation = code[:len(code) - len(stripped_code)]
             example.source = f"{indentation}_ = {stripped_code}"
     return doc_test

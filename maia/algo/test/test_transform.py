@@ -108,8 +108,7 @@ def test_transform_affine(comm):
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
-  cell_distri = MT.distribution_value(dist_zone, 'Cell')
-  n_cell_loc =  cell_distri[1] - cell_distri[0]
+  n_cell_loc =  MT.Zone.dn_cell(dist_zone)
   fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
   PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
   PT.new_DataArray('fieldX', np.random.random(n_cell_loc), parent=fs)
@@ -132,8 +131,7 @@ def test_transform_affine_optional_args(comm, positional_fields, constant_fields
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
-  cell_distri = MT.distribution_value(dist_zone, 'Cell')
-  n_cell_loc =  cell_distri[1] - cell_distri[0]
+  n_cell_loc =  MT.Zone.dn_cell(dist_zone)
   fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
   PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
   PT.new_DataArray('fieldX', PT.deep_copy(PT.get_node_from_name(dist_zone, 'CoordinateX'))[1], parent=fs)
@@ -264,8 +262,7 @@ def test_transform_affine_2d(comm):
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   # Initialise some fields
-  cell_distri = MT.distribution_value(dist_zone, 'Cell')
-  n_cell_loc =  cell_distri[1] - cell_distri[0]
+  n_cell_loc =  MT.Zone.dn_cell(dist_zone)
   fs = PT.new_FlowSolution('FlowSolution', loc='CellCenter', parent=dist_zone)
   PT.new_DataArray('scalar', np.random.random(n_cell_loc), parent=fs)
   PT.new_DataArray('fieldX', np.random.random(n_cell_loc), parent=fs)
@@ -374,8 +371,8 @@ class Test_change_basis_simple:
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
-      n_cell = PT.Zone.CellSize(zone) if partitioned else (np.diff(MT.distribution_value(zone, 'Cell'))[0],)
-      n_vtx = PT.Zone.VertexSize(zone) if partitioned else (np.diff(MT.distribution_value(zone, 'Vertex'))[0],)
+      n_cell = PT.Zone.CellSize(zone) if partitioned else (MT.Zone.dn_cell(zone),)
+      n_vtx = PT.Zone.VertexSize(zone) if partitioned else (MT.Zone.dn_vtx(zone),)
 
       # Create fields in zone
       PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
@@ -385,13 +382,13 @@ class Test_change_basis_simple:
       PT.new_FlowSolution('FlowSolVtx', loc='Vertex', fields={f'Field{d}' : np.random.rand(*n_vtx) for d in ['X', 'Y', 'Z']}, parent=zone)
       if PT.Zone.Type(zone) == 'Unstructured':
         ng = PT.Zone.NGonNode(zone)
-        n_face = PT.Zone.n_face(zone) if partitioned else np.diff(MT.distribution_value(PT.Zone.NGonNode(zone), 'Element'))[0]
+        n_face = MT.Element.pn_elt(ng) if partitioned else MT.Element.dn_elt(ng)
         zsr = PT.new_ZoneSubRegion('SubRegionFace', loc='FaceCenter', fields={f'Field{d}' : np.random.rand(n_face) for d in ['X', 'Y', 'Z']},
                                    point_list=np.arange(1, n_face+1).reshape((1,-1)), parent=zone)
         if partitioned:
-          MT.new_GlobalNumbering({'Index': MT.globalnumbering_value(ng, 'Element')}, parent=zsr)
+          MT.new_GlobalNumbering({'Index': MT.Element.globalnumbering(ng)}, parent=zsr)
         else:
-          MT.new_Distribution({'Index': MT.distribution_value(ng, 'Element')}, parent=zsr)
+          MT.new_Distribution({'Index': MT.Element.distribution(ng)}, parent=zsr)
 
         bc = PT.get_node_from_name(zone, 'Xmax')
         if bc is not None:
@@ -403,7 +400,7 @@ class Test_change_basis_simple:
       else: # Structured:
         bc = PT.get_node_from_name(zone, 'Xmax')
         if bc is not None:
-          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.distribution_value(bc, 'Index'))[0]
+          bc_size = MT.Subset.pn_elem(bc) if partitioned else MT.Subset.dn_elem(bc)
           bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
           for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
@@ -418,7 +415,7 @@ class Test_change_basis_simple:
             pr_face = [[1,2],[1,1],[1,2]]
             MT.new_Distribution({'Index' : par_utils.uniform_distribution(4, comm)}, bc)
           PT.update_child(bc, 'PointRange', value=pr_face)
-          bc_size = PT.Subset.n_elem(bc) if partitioned else np.diff(MT.distribution_value(bc, 'Index'))[0]
+          bc_size = MT.Subset.pn_elem(bc) if partitioned else MT.Subset.dn_elem(bc)
           bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
           for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 

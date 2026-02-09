@@ -76,7 +76,7 @@ def test_multi_sections(comm):
 
   # Add a CellCenter field manually
   cell_kind_full = np.concatenate([np.ones(24), 2*np.ones(24), 3*np.ones(120)]) #TETRA, PENTA, TETRA
-  cell_distri = MT.distribution_value(zone, 'Cell')
+  cell_distri = MT.Zone.cell_distribution(zone)
   cell_kind = cell_kind_full[cell_distri[0]:cell_distri[1]]
 
   PT.new_FlowSolution('FSCC', loc='CellCenter', fields={'IniSection':cell_kind}, parent=zone)
@@ -145,8 +145,8 @@ def test_2d_multielt(comm):
                          16,17,21, 21,17,22, 22,17,18, 22,18,23, 19,20,24, 24,20,25])
   qua_expt_f = np.array([8,7,2,3, 18,13,14,19, 20,19,14,15, 19,24,23,18])
 
-  tri_distri = MT.distribution_value(tri_3, 'Element')
-  qua_distri = MT.distribution_value(qua_4, 'Element')
+  tri_distri = MT.Element.distribution(tri_3)
+  qua_distri = MT.Element.distribution(qua_4)
   assert (PT.get_child_from_name(tri_3, 'ElementConnectivity')[1] == tri_expt_f[3*tri_distri[0]:3*tri_distri[1]]).all()
   assert (PT.get_child_from_name(qua_4, 'ElementConnectivity')[1] == qua_expt_f[4*qua_distri[0]:4*qua_distri[1]]).all()
 
@@ -155,6 +155,6 @@ def test_2d_multielt(comm):
   n_vtx_expt_f = np.array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
                            3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4])
 
-  cell_distri = MT.distribution_value(zone, 'Cell')
+  cell_distri = MT.Zone.cell_distribution(zone)
   assert (PT.get_node_from_name(zone, 'CellId')[1] == cell_id_expt_f[cell_distri[0]:cell_distri[1]]).all()
   assert (PT.get_node_from_name(zone, 'nVtx'  )[1] == n_vtx_expt_f  [cell_distri[0]:cell_distri[1]]).all()

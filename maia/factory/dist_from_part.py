@@ -117,13 +117,11 @@ def get_parts_per_blocks(part_tree: CGNSPartTree,
   Returns:
     Dictionary mapping domain paths to lists of partitioned zones
   """
-  dist_doms = PT.new_CGNSTree()
-  discover_nodes_from_matching(dist_doms, [part_tree], 'CGNSBase_t/Zone_t', comm,
-                                    merge_rule=lambda zpath : MT.conv.get_part_prefix(zpath))
-  parts_per_dom = dict()
-  for zone_path in PT.predicates_to_paths(dist_doms, 'CGNSBase_t/Zone_t'):
-    parts_per_dom[zone_path] = tr_utils.get_partitioned_zones(part_tree, zone_path)
-  return parts_per_dom
+  loc = set(MT.conv.get_part_prefix(zpath) for zpath in PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'))
+  glob = set() # Faster than allreduce + and
+  for s in comm.allgather(loc):
+    glob |= s
+  return {path: MT.get_partitioned_zones(part_tree, path) for path in sorted(glob)}
 
 def _get_joins_dist_tree(parts_per_dom: Dict[str, List[CGNSPartTree]], comm: MPIComm) -> CGNSDistTree:
   """
@@ -342,7 +340,7 @@ def _recover_elements(dist_zone: CGNSDistTree,
         elt_n = PT.get_child_from_name(part_zone, PT.get_name(elt_node))
         if elt_n is not None and PT.Element.Size(elt_n) > 0:
           # Retrieve the ElementRange within the given dimension
-          any_id_l[i] = MT.globalnumbering_value(elt_n, 'Sections')[0]
+          any_id_l[i] = PT.get_np_value(MT.find_GlobalNumbering(elt_n, 'Sections'))[0]
           break
     #Get values for proc having no elt
     comm.Allreduce(any_id_l, any_id_g, MPI.MAX)
@@ -532,14 +530,14 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     dist_base = PT.find_child_from_name(dist_tree, PT.utils.path_head(dist_zone_path))
     dist_zone = CGNSDistTree(PT.find_node_from_path(dist_tree, dist_zone_path))
 
-    part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
+    part_zones = MT.get_partitioned_zones(part_tree, dist_zone_path)
 
     discover_nodes_from_matching(dist_zone, part_zones, "ZoneIterativeData_t/*",
                                  comm, get_value="all")
 
     # Create zone distributions
-    vtx_lngn_list  = tr_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
-    cell_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Cell')
+    vtx_lngn_list  = [MT.Zone.vtx_globalnumbering(part)  for part in part_zones]
+    cell_lngn_list = [MT.Zone.cell_globalnumbering(part) for part in part_zones]
     vtx_distri  = par_utils.distribution_from_gnum(vtx_lngn_list, comm)
     cell_distri = par_utils.distribution_from_gnum(cell_lngn_list, comm)
 
@@ -549,7 +547,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
     elif PT.Zone.Type(dist_zone) == "Structured":
       d_zone_dims = _recover_dist_block_size(part_zones, comm)
       if d_zone_dims.shape[0] == 3:
-        face_lngn_list = tr_utils.collect_cgns_g_numbering(part_zones, 'Face')
+        face_lngn_list = [MT.Zone.face_globalnumbering(zone) for zone in part_zones]
         face_distri = par_utils.distribution_from_gnum(face_lngn_list, comm)
         MT.new_Distribution({'Face' : face_distri}, parent=dist_zone)
     else:
@@ -593,7 +591,7 @@ def recover_dist_tree(part_tree: CGNSPartTree,
 
     part_to_dist._part_zones_to_dist_zone(dist_zone, part_zones, comm, filter)
     is_empty_cont = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'BCDataSet_t']) \
-                  & ~PT.pred.has_child_of_name(MT.DISTRI_NAME)
+                  & ~PT.pred.has_child_of_name(MT.conv.DISTRI_NAME)
     PT.rm_children_from_predicate(dist_zone, is_empty_cont)
     for dist_bc in PT.iter_children_from_labels(dist_zone, ['ZoneBC_t', 'BC_t']):
       PT.rm_children_from_predicate(dist_bc, is_empty_cont)

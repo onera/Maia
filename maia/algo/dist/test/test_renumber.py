@@ -80,7 +80,7 @@ def test_renumber_vertices(comm):
   maia.algo.dist.convert_s_to_u(tree, 'Standard', comm)
   
   # Add sol
-  vtx_distri = MT.distribution_value(PT.find_node_from_name(tree, 'Left'), 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(PT.find_node_from_name(tree, 'Left'))
   PT.new_DiscreteData(loc='Vertex',
                       fields={'Id' : np.array([1,2,3,4,5,6])[vtx_distri[0]:vtx_distri[1]]},
                       parent=PT.find_node_from_name(tree, 'Left'))
@@ -91,7 +91,7 @@ def test_renumber_vertices(comm):
   # For Right zone, only GC should be modified
   expt_zone2 = PT.deep_copy(PT.find_node_from_name(tree, 'Right'))
   gc = PT.find_node_from_name(expt_zone2, 'GC')
-  distri = MT.distribution_value(gc, 'Index')
+  distri = MT.Subset.distribution(gc)
   pld = PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor'))
   pld[0,:] = np.array([4,1])[distri[0]:distri[1]]
 
@@ -193,7 +193,7 @@ def test_renumber_edges_2d_elt(comm):
   bar = PT.find_node_from_name(tree, 'BAR_2')
   assert (PT.Element.Range(bar) == [10,21]).all()
   assert (PT.find_child_from_name(bar, 'ElementConnectivity')[1] == expt_ec).all()
-  assert (MT.distribution_value(bar, 'Element') == expt_distri).all()
+  assert (MT.Element.distribution(bar) == expt_distri).all()
 
 
 

@@ -4,6 +4,7 @@ import mpi4py.MPI as MPI
 import maia
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from   maia.pytree.maia   import metrics, pdm_elts
 import maia.utils.logging as mlog
 
 from maia                         import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -113,7 +114,7 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
 
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
-  distrib_vtx = MT.distribution_value(dist_zone, "Vertex")
+  distrib_vtx = MT.Zone.vtx_distribution(dist_zone)
 
   field_names = tree_info['field_names']
   n_itp_flds  = sum([len(fld_names) for fld_names in field_names.values()])
@@ -172,7 +173,7 @@ def meshb_to_cgns(out_files, tree_info, comm, fix_orientation_2d=False, fix_orie
   dist_tree   = dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files)
 
   end = time.time()
-  dt_size     = sum(MT.metrics.dtree_nbytes(dist_tree))
+  dt_size     = sum(metrics.dtree_nbytes(dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)
   mlog.info(f"Read completed ({end-start:.2f} s) --"
             f" Size of dist_tree for current rank is {mlog.bsize_to_str(dt_size)}"
@@ -244,7 +245,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
     for elmts in PT.Zone.get_ordered_elements_per_dim(zone):
       for elmt_n in elmts:
         elmt_name  = PT.Element.Type(elmt_n)
-        elmt_pdm_t = MT.pdm_elts.cgns_elt_name_to_pdm_element_type(elmt_name)
+        elmt_pdm_t = pdm_elts.cgns_elt_name_to_pdm_element_type(elmt_name)
 
         pdm_n_elmt    [elmt_pdm_t].append(PT.Element.Size(elmt_n))
         pdm_elmt_vtx  [elmt_pdm_t].append(np_utils.safe_int_cast(PT.get_node_from_name(elmt_n, "ElementConnectivity")[1], pdm_gnum_dtype))

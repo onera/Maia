@@ -59,8 +59,8 @@ def _discover_wrapper(dist_zone, part_zones, pl_path, data_path, comm):
           
 def part_coords_to_dist_coords(dist_zone, part_zones, comm, reduce_op=None):
 
-  distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
-  lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
+  distribution = MT.Zone.vtx_distribution(dist_zone)
+  lntogn_list = [MT.Zone.vtx_globalnumbering(pzone) for pzone in part_zones]
 
   d_grid_co = PT.get_child_from_label(dist_zone, "GridCoordinates_t")
   part_data = dict()
@@ -87,45 +87,32 @@ def _part_to_dist_sollike(dist_zone, part_zones, mask_tree, comm, reduce_op=None
   Shared code for FlowSolution_t and DiscreteData_t
   """
   for mask_sol in PT.get_children(mask_tree):
-    d_sol = PT.get_child_from_name(dist_zone, PT.get_name(mask_sol)) #True container
+    sol_name = PT.get_name(mask_sol)
+    d_sol = PT.get_child_from_name(dist_zone, sol_name) #True container
 
-    if not par_utils.exists_anywhere(part_zones, PT.get_name(d_sol), comm):
+    # Partial FlowSol may not exist on all zones
+    _part_zones = [zone for zone in part_zones if PT.get_child_from_name(zone, sol_name) is not None]
+    _part_sols  = [PT.find_child_from_name(zone, sol_name) for zone in _part_zones]
+
+    if comm.allreduce(len(_part_zones)) == 0:
       continue #Skip FS that remains on dist_tree but are not present on part tree
 
-    location = PT.Container.GridLocation(d_sol)
-    has_pl   = PT.get_child_from_name(d_sol, 'PointList') is not None
-
-    if has_pl:
-      distribution = te_utils.get_cgns_distribution(d_sol, 'Index')
-      lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Index', PT.get_name(d_sol))
-    else:
-      assert location in ['Vertex', 'CellCenter']
-      if location == 'Vertex':
-        distribution = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
-        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
-      elif location == 'CellCenter':
-        distribution = te_utils.get_cgns_distribution(dist_zone, 'Cell')
-        lntogn_list  = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
+    distribution = MT.Container.distribution(d_sol, dist_zone)
+    lntogn_list = [MT.Container.globalnumbering(p_sol, part_zone) for p_sol, part_zone in zip(_part_sols, _part_zones)]
 
     #Discover data
-    def can_be_transfered(n):
-      exists = lambda zone : PT.get_node_from_path(zone, f'{PT.get_name(d_sol)}/{PT.get_name(n)}') is not None or \
-                             PT.get_node_from_path(zone, f'{PT.get_name(d_sol)}'                 ) is     None
-      return par_utils.all_true(part_zones, exists, comm)
-    fields = [PT.get_name(n) for n in PT.get_children(mask_sol) if can_be_transfered(n)]
+    fields = [PT.get_name(n) for n in PT.get_children(mask_sol) if \
+              par_utils.exists_everywhere(_part_zones, f'{sol_name}/{PT.get_name(n)}', comm)]
 
     part_data = {field : [] for field in fields}
 
-    for part_zone in part_zones:
-      p_sol = PT.get_child_from_name(part_zone, PT.get_name(d_sol))
+    for part_sol in _part_sols:
       for field in fields:
-        if p_sol is not None:
-          flat_data = PT.get_child_from_name(p_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
-          part_data[field].append(flat_data)
+        flat_data = PT.get_child_from_name(part_sol, field)[1].ravel(order='A') #Reshape structured arrays for PDM exchange
+        part_data[field].append(flat_data)
 
     # Exchange
-    _lntogn_list = [lntogn-1 for lntogn in lntogn_list if lntogn.size > 0]
-    dist_data = EP.part_to_block(part_data, distribution, _lntogn_list, comm, reduce_op)
+    dist_data = EP.part_to_block(part_data, distribution, lntogn_list, comm, reduce_op, gnum_offset=1)
     for field, array in dist_data.items():
       dist_field = PT.get_child_from_name(d_sol, field)
       PT.set_value(dist_field, array)
@@ -190,44 +177,22 @@ def part_subregion_to_dist_subregion(dist_zone, part_zones, comm, include=[], ex
   mask_tree = te_utils.create_mask_tree(dist_zone, ['ZoneSubRegion_t', 'DataArray_t'], include, exclude)
   for mask_zsr in PT.get_children(mask_tree):
     d_zsr = PT.get_child_from_name(dist_zone, PT.get_name(mask_zsr)) #True ZSR
-    # Search matching region
-    matching_region_path = PT.Container.SubsetNodePath(d_zsr, dist_zone)
-    matching_region = PT.find_node_from_path(dist_zone, matching_region_path)
+    is_gc_related = PT.get_node_from_name(d_zsr, 'GridConnectivityRegionName') is not None
+    tgt_name = PT.get_name(d_zsr) + '.*' if is_gc_related else PT.get_name(d_zsr) 
 
     #Get distribution
-    distribution = te_utils.get_cgns_distribution(matching_region, 'Index')
+    distribution  = MT.Container.distribution(d_zsr, dist_zone)
 
     #Get lngn and data
     fields = [PT.get_name(n) for n in PT.get_children(mask_zsr)]
     part_data = {field : [] for field in fields}
-    if PT.get_label(matching_region) in ['GridConnectivity_t', 'GridConnectivity1to1_t']:
-      # ZSR have been split
-      ancestor, leaf = PT.utils.path_head(matching_region_path), PT.utils.path_tail(matching_region_path)
-      lngn_list = []
-      for part_zone in part_zones:
-        for node in PT.iter_children_from_predicates(part_zone, [ancestor, leaf+'*']):
-          # Get corresponding part ZSR
-          lngn_list.append(MT.globalnumbering_value(node, 'Index'))
-          good_zsr = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('GridConnectivityRegionName') \
-                   & PT.pred.NodePredicate(lambda n : PT.get_value(PT.get_child_from_name(n, 'GridConnectivityRegionName')) == PT.get_name(node))
-          p_zsr = PT.get_node_from_predicate(part_zone, good_zsr)
-          for field in fields:
-            part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
-    else:
-      lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', matching_region_path)
-      #Discover data
-      for part_zone in part_zones:
-        p_zsr = PT.get_node_from_path(part_zone, PT.get_name(d_zsr))
-        if p_zsr is not None:
-          for field in fields:
-            part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
-
-      #Partitions having no data must be removed from lngn list since they have no contribution
-      empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
-          if PT.get_node_from_path(part_zone, PT.get_name(d_zsr)) is None]
-      for ipart in empty_parts_ids[::-1]:
-        lngn_list.pop(ipart)
-
+    lngn_list = list()
+    for part_zone in part_zones:
+      for p_zsr in PT.iter_children_from_predicate(part_zone, tgt_name):
+        lngn_list.append(MT.Container.globalnumbering(p_zsr, part_zone))
+        for field in fields:
+          part_data[field].append(PT.get_child_from_name(p_zsr, field)[1])
+    
     # Exchange
     dist_data = EP.part_to_block(part_data, distribution, lngn_list, comm, reduce_op, gnum_offset=1)
     for field, array in dist_data.items():
@@ -257,25 +222,24 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
       for mask_dataset in PT.get_children(mask_bc):
         ds_path = bc_path + '/' + PT.get_name(mask_dataset)
         d_dataset = PT.find_node_from_path(dist_zone, ds_path) #True DataSet
-        has_own_distri = MT.get_Distribution(d_dataset) is not None
-        #If dataset has its own PointList, we must override bc distribution and lngn
-        if has_own_distri:
-          distri_node  = MT.get_Distribution(d_dataset)
-          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', ds_path)
-        else: #Fallback to bc distribution
-          distri_node  = MT.get_Distribution(d_bc)
-          lngn_list    = te_utils.collect_cgns_g_numbering(part_zones, 'Index', bc_path)
+        is_subset = PT.Container._is_subset(d_dataset)
+
+        distri_node = MT.get_Distribution(PT.Container.SubsetNode(d_dataset, d_bc))
         distribution = PT.get_child_from_name(distri_node, 'Index')[1]
+
+        path = ds_path if is_subset else bc_path
+        _part_zones = [zone for zone in part_zones if PT.get_node_from_path(zone, path) is not None]
+        p_subsets   = [PT.get_node_from_path(zone, path) for zone in _part_zones]
+        lngn_list   = [MT.Subset.globalnumbering(p_subset) for p_subset in p_subsets]
 
         #Discover data
         data_paths = PT.predicates_to_paths(mask_dataset, ['*', '*'])
         part_data = {path : [] for path in data_paths}
 
-        for part_zone in part_zones:
-          p_dataset = PT.get_node_from_path(part_zone, ds_path)
-          if p_dataset is not None:
-            for path in data_paths:
-              part_data[path].append(PT.get_node_from_path(p_dataset, path)[1])
+        for part_zone in _part_zones:
+          p_dataset = PT.find_node_from_path(part_zone, ds_path)
+          for path in data_paths:
+            part_data[path].append(PT.get_node_from_path(p_dataset, path)[1])
 
         # Filter global (size == 1) data
         size_1_loc = {path : all([t.size == 1 and gn.size != 1 for t,gn in zip(data, lngn_list)]) for path,data in part_data.items()}
@@ -284,12 +248,6 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
         comm.Allreduce(loc_values, glo_values, MPI.LAND)
         part_data_loc = {path: data for i,(path,data) in enumerate(part_data.items()) if not glo_values[i]}
         part_data_glo = {path: data for i,(path,data) in enumerate(part_data.items()) if     glo_values[i]}
-
-        #Partitions having no data must be removed from lngn list since they have no contribution
-        empty_parts_ids = [ipart for ipart, part_zone in enumerate(part_zones)\
-            if PT.get_node_from_path(part_zone, ds_path) is None]
-        for ipart in empty_parts_ids[::-1]:
-          lngn_list.pop(ipart)
 
         #Exchange local data
         dist_data = EP.part_to_block(part_data_loc, distribution, lngn_list, comm, reduce_op, gnum_offset=1)
@@ -311,7 +269,7 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
         # Update BCDataGlobal node  
         global_arrays_node = PT.get_child_from_name(distri_node, 'BCDataGlobal')
         old_global_arrays = PT.get_value(global_arrays_node).split('\n') if global_arrays_node is not None else []
-        if has_own_distri:
+        if is_subset:
           prefix = ''
           new_global_arrays = [] # Init to empty 
         else:

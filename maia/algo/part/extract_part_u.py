@@ -188,7 +188,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box
       elt_n = MT.Zone.EdgeNode(part_zone)
     else:
       elt_n = part_zone
-    base_gnum = MT.globalnumbering_value(elt_n, _grid_location[grid_location])
+    base_gnum = PT.get_np_value(MT.find_GlobalNumbering(elt_n, _grid_location[grid_location]))
 
     if is_partial:
       # If volumic container is partial, we need to retrieve the position of parent entity (given in gnum)
@@ -227,7 +227,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box
           elt_n_ext = MT.Zone.EdgeNode(extr_zone)
         else:
           elt_n_ext = extr_zone
-        base_gnum_ext = MT.globalnumbering_value(elt_n_ext, _grid_location[grid_location])
+        base_gnum_ext = PT.get_np_value(MT.find_GlobalNumbering(elt_n_ext, _grid_location[grid_location]))
         partial_gnum.append(base_gnum_ext[_extr_pl])
 
     else:
@@ -299,7 +299,7 @@ def exchange_field_one_domain_req(part_zones, extract_zones, dims, exch_tool_box
     else:
       elt_n = extract_zone
     if elt_n is None :return
-    part1_ln_to_gn   = [MT.globalnumbering_value(elt_n, _grid_location[grid_location])]
+    part1_ln_to_gn   = [PT.get_np_value(MT.find_GlobalNumbering(elt_n, _grid_location[grid_location]))]
 
   # Get reordering informations if point_list
   # https://stackoverflow.com/questions/8251541/numpy-for-every-element-in-one-array-find-the-index-in-another-array
@@ -472,7 +472,7 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
           bc_n  = PT.get_node_from_path(part_zone, bc_path)
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
-          bc_gn = MT.globalnumbering_value(bc_n, 'Index') if bc_n is not None else np.empty(0, pdm_gnum_dtype)
+          bc_gn = MT.Subset.globalnumbering(bc_n) if bc_n is not None else np.empty(0, pdm_gnum_dtype)
           bc_type = loc_to_pdm_bnd_type[dim_name]
           PDM_EP_group_set(pdm_ep, i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, _LOC_TO_DIM[dim_name]) , bc_gn)
 

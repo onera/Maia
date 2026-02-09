@@ -39,8 +39,8 @@ def conformize_jn_pair(dist_tree: CGNSDistTree,
     raise RuntimeError(f"Unsupported grid location for jn {jn_paths[0]}")
 
   zones = [PT.find_node_from_path(dist_tree, PT.utils.path_head(path, 2)) for path in jn_paths]
-  dist_coords = [PT.Zone.coordinates(zone)             for zone in zones]
-  vtx_distris = [MT.distribution_value(zone, 'Vertex') for zone in zones]
+  dist_coords = [PT.Zone.coordinates(zone)      for zone in zones]
+  vtx_distris = [MT.Zone.vtx_distribution(zone) for zone in zones]
 
   indexer0 = EP.GlobalIndexer(vtx_distris[0], pl_vtx_list[0]-1, comm)
   indexer1 = EP.GlobalIndexer(vtx_distris[1], pl_vtx_list[1]-1, comm)

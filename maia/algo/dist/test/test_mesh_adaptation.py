@@ -119,7 +119,7 @@ def test_adapt_with_feflo(comm, multi_elt, custom_dir):
   # > To check meshb_reader after feflo since it doesn't preserve volumic BCs when multiple 3d elements
   if not multi_elt:
     zone_bc = PT.get_node_from_label(zone, 'ZoneBC_t')
-    cell_distrib = MT.distribution_value(zone, "Cell")
+    cell_distrib = MT.Zone.cell_distribution(zone)
     cell_pl = np.arange(cell_distrib[0], cell_distrib[1], dtype=pdm_gnum_dtype).reshape((1,-1), order='F')+1
     cell_bc = PT.new_BC("vol_bc", type="BCWall", loc="CellCenter", point_list=cell_pl, parent=zone_bc)
     MT.new_Distribution({"Index":cell_distrib}, parent=cell_bc)
@@ -173,8 +173,7 @@ def test_periodic_adapt_with_feflo(comm):
 
   # > Define metric
   dist_zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  vtx_distri = MT.distribution_value(dist_zone, 'Vertex')
-  dn_vtx = vtx_distri[1] - vtx_distri[0]
+  dn_vtx = MT.Zone.dn_vtx(dist_zone)
   fld_metric = np.ones(dn_vtx, dtype=float)
   PT.new_FlowSolution('Metric', loc='Vertex', fields={'metric':fld_metric}, parent=dist_zone)
 

@@ -14,35 +14,29 @@ def get_point_cloud(zone, comm, location):
   If location == Center, compute and return the (interlaced) coordinates of
   cell centers and cell global numbering of a partitioned zone
   """
-  vtx_distri   = MT.distribution_value(zone, 'Vertex')
-  cell_distri  = MT.distribution_value(zone, 'Cell')
 
   if location == 'Vertex':
-    vtx_ln_to_gn = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype) + 1
+    distri   = MT.Zone.vtx_distribution(zone)
     _coords = PT.Zone.coordinates(zone)
     coords = [c if c is not None else np.zeros_like(_coords[0]) for c in _coords]
-    vtx_coords   = np_utils.interweave_arrays(coords)
-    return vtx_coords, vtx_ln_to_gn
+    coords   = np_utils.interweave_arrays(coords)
 
   elif location == 'CellCenter':
-    cell_distri   = MT.distribution_value(zone, 'Cell')
-    cell_ln_to_gn = np.arange(cell_distri[0], cell_distri[1], dtype=cell_distri.dtype) + 1
-    center_cell = _compute_elements_center(zone, 'CellCenter', comm)
-    return center_cell, cell_ln_to_gn
+    distri   = MT.Zone.cell_distribution(zone)
+    coords = _compute_elements_center(zone, 'CellCenter', comm)
   
-  else: #Try to catch a container with the given name
-    container = PT.get_child_from_name(zone, location)
-    if container:
-      assert not PT.pred.IS_SUBSET(container)
-      coords = [PT.get_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
-      int_coords = np_utils.interweave_arrays(coords)
-      if PT.Container.GridLocation(container) == 'Vertex':
-        ln_to_gn = np.arange(vtx_distri[0], vtx_distri[1], dtype=vtx_distri.dtype) + 1
-      elif PT.Container.GridLocation(container) == 'CellCenter':
-        ln_to_gn = np.arange(cell_distri[0], cell_distri[1], dtype=cell_distri.dtype) + 1
-      return int_coords, ln_to_gn
+  #Try to catch a container with the given name
+  elif (container := PT.get_child_from_name(zone, location)) is not None:
+    assert not PT.pred.IS_SUBSET(container)
+    distri = MT.Container.distribution(container, zone)
+    coords = [PT.get_value(c).reshape(-1, order='F') for c in PT.get_children_from_name(container, 'Coordinate*')]
+    coords = np_utils.interweave_arrays(coords)
 
-  raise RuntimeError("Unknow location or node")
+  else:
+    raise RuntimeError("Unknow location or node")
+
+  ln_to_gn = np.arange(distri[0]+1, distri[1]+1, dtype=distri.dtype)
+  return coords, ln_to_gn
 
 
 def extract_sub_cloud(coords, lngn, indices):

@@ -41,7 +41,7 @@ def _collect_shifted_pl_one(subset:CGNSTree, shift:int=0, donor:bool=False) -> N
   if (pl := PT.get_child_from_name(subset, f'PointList{suffix}')) is not None:
     _pl = PT.get_np_value(pl)[0]
   elif (pr := PT.get_child_from_name(subset, f'PointRange{suffix}')) is not None:
-    distri = MT.distribution_value(subset, 'Index')
+    distri = MT.Subset.distribution(subset)
     _pl = np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), distri)[0]
   else:
     raise RuntimeError(f"Missing patch in subset node {PT.get_name(subset)}")
@@ -97,7 +97,7 @@ def _update_point_lists(tree:CGNSDistTree, zone_path:CGNSPath,
 
 def _update_full_cellcenter_containers(zone:CGNSTree, new_id:NDArray, new_id_distri:NDArray, comm:MPIComm):
   """ Apply the entity renumbering to the full CellCenter containers"""
-  cell_distri = MT.distribution_value(zone, 'Cell')
+  cell_distri = MT.Zone.cell_distribution(zone)
   _cell_distri = par_utils.partial_to_full_distribution(cell_distri, comm)
   new_id_cell = _adapt_data_to_distri(new_id, new_id_distri, _cell_distri, comm)
   GI = EP.GlobalIndexer(_cell_distri, new_id_cell, comm)
@@ -119,7 +119,7 @@ def _renumber_std_sections_of_dim(zone, dim, input_distri_f, new_id, comm):
   input_distri = par_utils.full_to_partial_distribution(input_distri_f, comm)
   # Work (cat) section by (cat) section
   for elt in elts:
-    distri = MT.distribution_value(elt, 'Element')
+    distri = MT.Element.distribution(elt)
     global_start = PT.Element.Range(elt)[0] - offset
     global_end = global_start + PT.Element.Size(elt)
     _restrict = subdistri(input_distri_f, global_start, global_end)
@@ -151,7 +151,7 @@ def renumber_vertices(tree:CGNSDistTree, zone_path:CGNSPath, new_vtx_id:NDArray,
 
   # Ensure that new_vtx_id is distributed as 'ALL_VTX' distribution
   input_distri = par_utils.dn_to_distribution(new_vtx_id.size, comm)
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
   new_vtx_id = _adapt_data_to_distri(new_vtx_id, input_distri, vtx_distri, comm)
 
   # Update Elements
@@ -206,7 +206,7 @@ def renumber_edges(tree:CGNSDistTree, zone_path:CGNSPath, new_edge_id:NDArray, c
   # Check if distribution of input new_edge_id and EdgeNode are identical
   # If not, get new_edge_id on element distribution
   input_distri = par_utils.dn_to_distribution(new_edge_id.size, comm)
-  edge_distri  = MT.distribution_value(edge_elt, 'Element')
+  edge_distri  = MT.Element.distribution(edge_elt)
   _input_distri = par_utils.partial_to_full_distribution(input_distri, comm)
   _edge_distri  = par_utils.partial_to_full_distribution(edge_distri, comm)
 
@@ -275,7 +275,7 @@ def renumber_faces(tree:CGNSDistTree, zone_path:CGNSPath, new_face_id:NDArray, c
     # If NG are present (poly2d or poly3d zone), move connectivity / parent elements
     if PT.Zone.has_ngon_elements(zone):
       ng = PT.Zone.NGonNode(zone)
-      face_distri = MT.distribution_value(ng, 'Element')
+      face_distri = MT.Element.distribution(ng)
       # Ensure that new_face_id is distributed as NG/Distribution
       new_face_id_elt = _adapt_data_to_distri(new_face_id, _input_distri, face_distri, comm)
       GI = EP.GlobalIndexer(face_distri, new_face_id_elt, comm)
@@ -355,7 +355,7 @@ def renumber_cells(tree:CGNSDistTree, zone_path:CGNSPath, new_cell_id:NDArray, c
       nf = PT.Zone.NFaceNode(zone)
 
       # Ensure that new_face_id is distributed as NG/Distribution
-      cell_distri = MT.distribution_value(nf, 'Element')
+      cell_distri = MT.Element.distribution(nf)
       new_cell_id_elt = _adapt_data_to_distri(new_cell_id, _input_distri, cell_distri, comm)
 
       cell_face_ini = MT.Element.connectivity(nf)

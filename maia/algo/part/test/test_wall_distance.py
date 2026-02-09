@@ -175,13 +175,13 @@ def test_walldistance_perio(comm):
   if comm.rank == 0:
     expected_gnum   = [[25, 27, 28, 26, 26, 28, 27, 25],
                        [25, 25, 26, 26, 26, 26, 25, 25]]
-    expected_dom_id = [[0, 0, 2, 3, 0, 0, 0, 1],
-                       [1, 0, 2, 2, 1, 0, 0, 0]]
+    expected_dom_id = [[0, 0, 1, 3, 0, 0, 0, 2],
+                       [2, 0, 1, 1, 2, 0, 0, 0]]
   elif comm.rank == 1:
     expected_gnum   = [[25, 27, 28, 26, 26, 28, 27, 25],
                        [25, 25, 26, 26, 26, 26, 25, 25]]
-    expected_dom_id = [[2, 2, 0, 1, 2, 2, 2, 3],
-                       [3, 2, 0, 0, 3, 2, 2, 2]]
+    expected_dom_id = [[1, 1, 0, 2, 1, 1, 1, 3],
+                       [3, 1, 0, 0, 3, 1, 1, 1]]
 
   for z, zone in enumerate(PT.get_all_Zone_t(part_tree)):
     fs = PT.get_child_from_name_and_label(zone, 'WallDistance', 'DiscreteData_t')

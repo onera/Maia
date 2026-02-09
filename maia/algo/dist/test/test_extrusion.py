@@ -25,14 +25,14 @@ def test_nodes_duplication(comm):
   dist_tree = maia.factory.generate_dist_block(10, 'TRI_3', comm)
   zone = PT.get_all_Zone_t(dist_tree)[0]
   coords_2d = PT.Zone.coordinates(zone)
-  distrib_vtx_2d = MT.distribution_value(zone, 'Vertex')
+  distrib_vtx_2d = MT.Zone.vtx_distribution(zone)
   dn_vtx_2d = distrib_vtx_2d[1] - distrib_vtx_2d[0]
 
   # Run test
   EXT._nodes_duplication(zone, extrusion_vector, comm)
 
   # Verification
-  assert MT.distribution_value(zone, 'Vertex')[2] == 2*distrib_vtx_2d[2]
+  assert MT.Zone.vtx_distribution(zone)[2] == 2*distrib_vtx_2d[2]
   coords = PT.Zone.coordinates(zone)
   if comm.size==1:
     for i in range(3):
@@ -570,7 +570,7 @@ def test_extrusion_2d_S(subset_as, comm):
   # Add a BCDS in zoneB
   ymin = PT.get_node_from_name(zoneB, 'Ymin')
   bcds = PT.new_BCDataSet(loc='Vertex', parent=ymin)
-  distri = MT.distribution_value(ymin, 'Index')
+  distri = MT.Subset.distribution(ymin)
   PT.new_BCData('DirichletData', fields={'field': np.arange(distri[2])[distri[0]:distri[1]]}, parent=bcds)
 
   # Create JN A -> B

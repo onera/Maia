@@ -154,7 +154,7 @@ def split_original_joins(p_tree):
       for gc in PT.get_children_from_predicate(zone_gc, is_initial_gc):
         pl       = PT.get_child_from_name(gc, 'PointList')[1]
         pl_d     = PT.get_child_from_name(gc, 'PointListDonor')[1]
-        lngn     = MT.globalnumbering_value(gc, 'Index')
+        lngn     = MT.Subset.globalnumbering(gc)
         donor    = PT.get_child_from_name(gc, 'Donor')[1]
         # > List of couples (procs, parts) holding the opposite join
         opposed_parts = np.unique(donor, axis=0)
@@ -279,7 +279,7 @@ def post_partitioning(dist_tree, part_tree, comm):
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     # Recover matching zones
     dist_zone  = PT.get_node_from_path(dist_tree, dist_zone_path)
-    part_zones = maia.transfer.utils.get_partitioned_zones(part_tree, dist_zone_path)
+    part_zones = MT.get_partitioned_zones(part_tree, dist_zone_path)
 
     # Create point list
     pl_paths = ['ZoneBC_t/BC_t', 'ZoneBC_t/BC_t/BCDataSet_t', 'ZoneSubRegion_t', 
@@ -301,7 +301,7 @@ def post_partitioning(dist_tree, part_tree, comm):
   split_original_joins(part_tree)
   for dist_zone_path in PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t'):
     dist_zone  = PT.get_node_from_path(dist_tree, dist_zone_path)
-    part_zones = maia.transfer.utils.get_partitioned_zones(part_tree, dist_zone_path)
+    part_zones = MT.get_partitioned_zones(part_tree, dist_zone_path)
     for part_zone in part_zones:
       generate_related_zsr(dist_zone, part_zone) # Make BC_ZSR and GC_ZSR
   update_gc_donor_name(part_tree, comm)

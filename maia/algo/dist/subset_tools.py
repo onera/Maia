@@ -35,7 +35,7 @@ def vtx_ids_to_face_ids(vtx_ids, elt_n, comm, elt_full):
   are returned.
   Otherwise, faces having at least one vertex in vtx_ids are returned.
   """
-  elt_distri = MT.distribution_value(elt_n, 'Element')
+  elt_distri = MT.Element.distribution(elt_n)
   delt_vtx   = PT.get_child_from_name(elt_n, 'ElementConnectivity')[1]
   if PT.Element.Type(elt_n)=='NGON_n':
     delt_vtx_idx = PT.get_child_from_name(elt_n, 'ElementStartOffset')[1]
@@ -74,7 +74,7 @@ def convert_subset_as_facelist(dist_tree:CGNSDistTree, subset_path:CGNSPath, com
     if only_bnd:
       # Exclude internal faces (see #73, #208)
       maia.algo.nface_to_pe(zone, comm) if zonedim == 3 else maia.algo.ngon_to_edge_pe(zone, comm)
-      offset = MT.distribution_value(low_dim_elt, 'Element')[0] + 1
+      offset = MT.Element.distribution(low_dim_elt)[0] + 1
       pe = PT.get_np_value(PT.find_child_from_name(low_dim_elt, 'ParentElements'))
       is_boundary = pe[face_list-offset, 1] == 0
       face_list = face_list[is_boundary]

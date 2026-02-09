@@ -154,7 +154,7 @@ def test_compute_measure_indices(comm):
   # Prepare a 2D meshes having different cell size : 
   # 1sr column : 0.05, 2n column : 0.2, 3e column: 0.25)
   tree2d = maia.factory.generate_dist_block([4,3], 'S', comm)
-  vtx_distri = MT.distribution_value(PT.get_all_Zone_t(tree2d)[0], 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(PT.get_all_Zone_t(tree2d)[0])
   new_cx_val = np.array([0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1,  0, 0.1, 0.5, 1])[vtx_distri[0]:vtx_distri[1]]
   cx = PT.find_node_from_name(tree2d, 'CoordinateX')
   PT.set_value(cx, new_cx_val)
@@ -200,7 +200,7 @@ def test_compute_measure_indices(comm):
   # Elt mesh, 1D
   tree = maia.factory.generate_dist_block(5, 'BAR_2', comm)
   zone = PT.find_node_from_label(tree, 'Zone_t')
-  vtx_distri = MT.distribution_value(zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(zone)
   cx = PT.find_node_from_name(zone, 'CoordinateX')
   PT.set_value(cx, np.array([0, 0.1, 0.3, 0.6, 1.][vtx_distri[0]:vtx_distri[1]]))
 

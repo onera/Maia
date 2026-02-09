@@ -44,7 +44,7 @@ ZoneA Zone_t [[1,1,0]]:
     CoordinateY DataArray_t R8 []:
     CoordinateZ DataArray_t R8 []:
   NGonElements Elements_t [22,0]:
-    ElementRange IndexRange_t {dtype} [1, 1]:
+    ElementRange IndexRange_t {dtype} [1, 0]:
     ElementConnectivity DataArray_t {dtype} []:
     ElementStartOffset DataArray_t {dtype} [0]:
     ParentElements DataArray_t {dtype} [[],[]]:

@@ -42,7 +42,7 @@ class utils:
         if (pl := PT.get_child_from_name(subset, 'PointList')) is not None:
             return PT.get_np_value(pl)[0]
         elif (pr := PT.get_child_from_name(subset, 'PointRange')) is not None:
-            distri = MT.distribution_value(subset, 'Index')
+            distri = MT.Subset.distribution(subset)
             return np_utils.single_dim_pr_to_pl(PT.get_np_value(pr), distri)[0]
         raise RuntimeError
 
@@ -122,8 +122,8 @@ class FaceCellBuilder:
         ngon_nodes  = self.sorted_elts_of_type(zone, 'NGON_n')
 
         cell_face_l = [MT.Element.connectivity(e) for e in nface_nodes]
-        cell_id_l   = [np.arange(MT.distribution_value(e, 'Element')[0] + PT.Element.Range(e)[0],
-                                 MT.distribution_value(e, 'Element')[1] + PT.Element.Range(e)[0]) for e in nface_nodes]
+        cell_id_l   = [np.arange(MT.Element.distribution(e)[0] + PT.Element.Range(e)[0],
+                                 MT.Element.distribution(e)[1] + PT.Element.Range(e)[0]) for e in nface_nodes]
         cell_id = np.concatenate(cell_id_l)
         cell_face = vs.concatenate(cell_face_l, vs.OUTER_AXIS) if len(cell_face_l) > 1 else cell_face_l[0]
 
@@ -315,7 +315,7 @@ def orphean_vertex_id(nodes:List[CGNSTree], comm:MPIComm) -> str:
     if PT.get_label(last) != 'Zone_t' or PT.Zone.Type(last) != 'Unstructured':
         return OK
 
-    vtx_distri = MT.distribution_value(last, 'Vertex')
+    vtx_distri = MT.Zone.vtx_distribution(last)
 
     is_vtx_elt = PTp.label_is('Elements_t') & ~PTp.is_element_of_type('NFACE_n')
     elt_vtx = [PT.get_np_value(PT.get_child_from_name(elt, 'ElementConnectivity')) \
@@ -365,7 +365,7 @@ def eso_values(nodes:List[CGNSTree], comm:MPIComm) -> str:
         mask = ~(eso[:-1] < eso[1:])
         lsum = mask.sum()
         if (gsum:=comm.allreduce(lsum)) > 0:
-            distri = MT.distribution_value(nodes[-2], 'Element')
+            distri = MT.Element.distribution(nodes[-2])
             lval = np.where(mask)[0][0] + distri[0] if lsum > 0 else distri[2]+1
             gval = comm.allreduce(lval, MPI.MIN)
             return f"ESO array is not strictly increasing (ESO[i] < ESO[i+1]) : {gsum} indices are wrong, first one beeing {gval}"
@@ -405,7 +405,7 @@ def out_of_range_element_connectivity(nodes:List[CGNSTree], comm:MPIComm) -> str
         tgt = 'vertices'
 
     ko = ((cnt < low) | (high < cnt)).reduce(vs.ReduceOp.LOR)
-    distri = MT.distribution_value(last, 'Element')
+    distri = MT.Element.distribution(last)
     wrong_ids = np.flatnonzero(ko) + distri[0] + 1
 
     if (n_wrong := comm.allreduce(wrong_ids.size)) > 0:
@@ -446,7 +446,7 @@ def duplicated_elt_vertex(nodes:List[CGNSTree], comm:MPIComm) -> str:
 
     unique = vs.unique(cnt, vs.INNER_AXIS)
 
-    distri = MT.distribution_value(last, 'Element')
+    distri = MT.Element.distribution(last)
     wrong_ids = np.arange(distri[0]+1, distri[1]+1)[unique.counts != cnt.counts]
 
     if (n_wrong := comm.allreduce(wrong_ids.size)) > 0:
@@ -687,8 +687,8 @@ def pe_and_nface_compatibility(nodes:List[CGNSTree], comm:MPIComm) -> str:
 
     face_offset = face_cell_builder['face_offset']
     face_distri = face_cell_builder['face_distri']
-    ids = [np.arange(MT.distribution_value(ng, 'Element')[0] + PT.Element.Range(ng)[0] - face_offset,
-                     MT.distribution_value(ng, 'Element')[1] + PT.Element.Range(ng)[0] - face_offset) for ng in ngon_nodes]
+    ids = [np.arange(MT.Element.distribution(ng)[0] + PT.Element.Range(ng)[0] - face_offset,
+                     MT.Element.distribution(ng)[1] + PT.Element.Range(ng)[0] - face_offset) for ng in ngon_nodes]
     pe = [PT.get_np_value(PT.find_child_from_name(ng, 'ParentElements')).flatten(order='F') for ng in ngon_nodes]
 
 
@@ -811,7 +811,7 @@ def duplicated_elts_connectivity(nodes:List[CGNSTree], comm:MPIComm) -> str:
         filtered_cnt = vs.take(cnt, selector)
 
         elt_ranges = [PT.Element.Range(e) for e in elts]
-        elt_distri = [MT.distribution_value(e, 'Element') for e in elts]
+        elt_distri = [MT.Element.distribution(e) for e in elts]
         starts = np.array([d[0]+r[0] for d,r in zip(elt_distri, elt_ranges)])
         stops  = np.array([d[1]+r[0] for d,r in zip(elt_distri, elt_ranges)])
         elt_ids = np_utils.multi_arange(starts, stops)[selector]
@@ -1024,7 +1024,7 @@ def unflagged_bc_elements(nodes:List[CGNSTree], comm:MPIComm) -> str:
         node = PT.Zone.NGonNode(last)
         loc  = 'FaceCenter'
 
-    distri = MT.distribution_value(node, 'Element')
+    distri = MT.Element.distribution(node)
     pe = PT.get_np_value(PT.find_child_from_name(node, 'ParentElements'))
     is_bnd = np.logical_or.reduce(pe==0, axis=1)
 

@@ -101,7 +101,7 @@ def test_extract_bcs_from_pl(comm):
     for bc_name, expected_pl in expected_pls.items():
       bc_n = PT.get_child_from_name(zone_bc_n, bc_name)
       bc_pl = PT.Subset.getPatch(bc_n)[1][0]
-      bc_distri = MT.distribution_value(bc_n, "Index")
+      bc_distri = MT.Subset.distribution(bc_n)
       expected_distri = par_utils.dn_to_distribution(expected_pl.size, comm)
       assert np.array_equal(bc_pl    , expected_pl)
       assert np.array_equal(bc_distri, expected_distri)

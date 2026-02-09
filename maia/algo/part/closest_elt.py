@@ -96,7 +96,7 @@ def detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.Peri
   # Recover existing periodicities
   for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
     dist_zone  = PT.find_node_from_path(skeleton_tree, dist_zone_path)
-    part_zones = tr_utils.get_partitioned_zones(part_tree, dist_zone_path)
+    part_zones = MT.get_partitioned_zones(part_tree, dist_zone_path)
 
     discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
       child_list=['GridConnectivityProperty_t', 'GridConnectivityType_t'],
@@ -147,9 +147,9 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
       domain_parts.append(
         {'face_vtx_idx' : elt.displs,
         'face_vtx' : elt.values,
-        'face_lngn' : MT.globalnumbering_value(surf_zone, 'Cell'),
+        'face_lngn' : MT.Zone.cell_globalnumbering(surf_zone),
         'vtx_coords' : np_utils.interweave_arrays(PT.Zone.coordinates(surf_zone)), #type: ignore[arg-type]
-        'vtx_lngn' : MT.globalnumbering_value(surf_zone, 'Vertex')})
+        'vtx_lngn' : MT.Zone.vtx_globalnumbering(surf_zone)})
 
 
     domain_nface = MT.Zone.n_cell(surf_zones, comm)
@@ -310,7 +310,7 @@ def update_closest_to_parent(surface_tree, points_tree, mpi_comm):
   for i,surf_zones in enumerate(surf_per_doms.values()):
     for surf_zone in surf_zones:
       face_parent_gnum_l.append(PT.get_node_from_path(surf_zone, 'DiscreteData/Parent')[1])
-      face_ln_to_gn_l.append(MT.globalnumbering_value(surf_zone, 'Cell') + ini_zone_offset[i]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
+      face_ln_to_gn_l.append(MT.Zone.cell_globalnumbering(surf_zone) + ini_zone_offset[i]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
     ini_zone_offset[i+1] = ini_zone_offset[i] + MT.Zone.n_cell(surf_zones, mpi_comm)
   
   if ini_zone_offset[-1] == 0:

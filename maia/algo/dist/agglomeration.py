@@ -71,7 +71,7 @@ def compute_agglomerated_parent(tree:CGNSDistTree, comm:MPIComm):
     ztype = PT.get_np_value(z).dtype
     
     cell_shape = PT.Zone.CellSize(z)
-    cell_slabs = HFR2S.compute_slabs(cell_shape, MT.distribution_value(z, 'Cell')[:2])
+    cell_slabs = HFR2S.compute_slabs(cell_shape, MT.Zone.cell_distribution(z)[:2])
 
     cell_coarseidx : Dict[str, List[NDArray]] = {f'{d}CoarseIdx': list() for d in 'IJK'[0:idx_dim]}
     for cell_slab in cell_slabs:
@@ -153,9 +153,9 @@ def create_agglomerated_tree(tree:CGNSDistTree, comm:MPIComm) -> CGNSDistTree:
     for zone in PT.iter_all_Zone_t(base):
 
       vtx_slabs  = HFR2S.compute_slabs(PT.Zone.VertexSize(zone),
-                                       MT.distribution_value(zone, 'Vertex')[:2])
+                                       MT.Zone.vtx_distribution(zone)[:2])
       cell_slabs = HFR2S.compute_slabs(PT.Zone.CellSize(zone),
-                                       MT.distribution_value(zone, 'Cell')[:2])
+                                       MT.Zone.cell_distribution(zone)[:2])
       nb_mg_vtx_loc  = _nb_mg_entities_from_slabs(vtx_slabs)
       nb_mg_cell_loc = _nb_mg_entities_from_slabs(cell_slabs)
 

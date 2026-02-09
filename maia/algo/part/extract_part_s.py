@@ -182,7 +182,7 @@ def extract_part_one_domain_s(part_zones, point_range, dims, location, comm):
     cell_per_dir = zone_dim[:,1]
 
     keys = ['Vertex', 'Edge', 'Cell'] if src_dim == 2 else ['Vertex', 'Face', 'Cell']
-    gn_entities = {key: MT.globalnumbering_value(part_zone, key) for key in keys}
+    gn_entities = {key: PT.get_np_value(MT.find_GlobalNumbering(part_zone, key)) for key in keys}
 
     _pr = pr.copy()
     if n_dim_pop > 0:

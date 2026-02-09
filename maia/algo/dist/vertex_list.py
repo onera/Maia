@@ -28,7 +28,7 @@ def face_ids_to_vtx_ids(face_ids, ngon, comm):
   The offset array indicates to which face the vertices belong.
   Note that vertex ids can appear twice (or more) in vtx_list if they are shared by multiple faces
   """
-  distri_ngon  = MT.distribution_value(ngon, 'Element')
+  distri_ngon  = MT.Element.distribution(ngon)
 
   face_vtx = MT.Element.connectivity(ngon)
 
@@ -208,14 +208,13 @@ def _search_with_geometry(zone, zone_d, jn, pl_face_vtx_idx, pl_face_vtx, pld_fa
 
   assert len(pl_face_vtx) == len(pld_face_vtx) == pl_face_vtx_idx[-1]
   n_face = len(pl_face_vtx_idx) - 1
-  n_face_vtx = len(pl_face_vtx)
 
   received_coords     = filter_vtx_coordinates(PT.get_child_from_label(zone, 'GridCoordinates_t'),
-                                            MT.distribution_value(zone, 'Vertex'),
-                                            pl_face_vtx, comm)
+                                               MT.Zone.vtx_distribution(zone),
+                                               pl_face_vtx, comm)
   opp_received_coords = filter_vtx_coordinates(PT.get_child_from_label(zone_d, 'GridCoordinates_t'),
-                                            MT.distribution_value(zone_d, 'Vertex'),
-                                            pld_face_vtx, comm)
+                                               MT.Zone.vtx_distribution(zone_d),
+                                               pld_face_vtx, comm)
 
   #Apply transformation
   if PT.GridConnectivity.isperiodic(jn):
@@ -295,14 +294,13 @@ def generate_jn_vertex_list(dist_tree: CGNSDistTree,
   dim = PT.Zone.CellDimension(zone)
 
   face_node = PT.Zone.NGonNode(zone) if dim == 3 else MT.Zone.EdgeNode(zone)
-  vtx_distri  = MT.distribution_value(zone, 'Vertex')
-  face_distri = MT.distribution_value(face_node, 'Element')
+  vtx_distri  = MT.Zone.vtx_distribution(zone)
+  face_distri = MT.Element.distribution(face_node)
 
   face_node_d = PT.Zone.NGonNode(zone_d) if dim == 3 else MT.Zone.EdgeNode(zone_d)
-  vtx_distri_d  = MT.distribution_value(zone_d, 'Vertex')
-  face_distri_d = MT.distribution_value(face_node_d, 'Element')
+  vtx_distri_d  = MT.Zone.vtx_distribution(zone_d)
+  face_distri_d = MT.Element.distribution(face_node_d)
 
-  distri_jn = MT.distribution_value(jn, 'Index')
   pl   = PT.get_np_value(PT.find_child_from_name(jn, 'PointList'     ))[0]
   pl_d = PT.get_np_value(PT.find_child_from_name(jn, 'PointListDonor'))[0]
 
@@ -402,8 +400,8 @@ def _generate_jns_vertex_list_2d(dist_tree: CGNSDistTree,
     opp_offset = PT.Element.Range(opp_edges_n)[0]
     cur_edges = MT.Element.connectivity(cur_edges_n)
     opp_edges = MT.Element.connectivity(opp_edges_n)
-    cur_edge_distri = MT.distribution_value(cur_edges_n, 'Element')
-    opp_edge_distri = MT.distribution_value(opp_edges_n, 'Element')
+    cur_edge_distri = MT.Element.distribution(cur_edges_n)
+    opp_edge_distri = MT.Element.distribution(opp_edges_n)
 
     # Extract (vtxA, vtxB) for each edge in PL / opp PL
     # Then we swap pairs for one of the two edges because they should be in opposite direction
@@ -414,7 +412,7 @@ def _generate_jns_vertex_list_2d(dist_tree: CGNSDistTree,
     opp_vtx = opp_vtx_pairs.values
     # Now we need to eliminate duplicated vtx/vtx opp pairs
     # This is done with a Put *without* append mode since duplicated values should be identical
-    all_vtx_distri = MT.distribution_value(cur_zone, 'Vertex')
+    all_vtx_distri = MT.Zone.vtx_distribution(cur_zone)
     GI = EP.GlobalIndexer(all_vtx_distri, cur_vtx-1, comm)
     cur_cnt, cur_merged = GI.access_counts, np.flatnonzero(GI.access_counts > 0) + all_vtx_distri[0] + 1
     opp_cnt, opp_merged = GI.Put_v((np.ones(opp_vtx.size, np.int32), opp_vtx))
@@ -451,8 +449,8 @@ def _generate_jns_vertex_list(dist_tree: CGNSDistTree,
     zone = PT.find_node_from_path(dist_tree, zone_path)
     dim = PT.Zone.CellDimension(zone)
     face = PT.Zone.NGonNode(zone) if dim == 3 else MT.Zone.EdgeNode(zone)
-    face_distri = MT.distribution_value(face, 'Element')
-    vtx_distri  = MT.distribution_value(zone, 'Vertex')
+    face_distri = MT.Element.distribution(face)
+    vtx_distri  = MT.Zone.vtx_distribution(zone)
 
     dn_vtx.append(vtx_distri[1] - vtx_distri[0])
     dn_face.append(face_distri[1] - face_distri[0])
@@ -568,7 +566,7 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
       face_node = PT.Zone.NGonNode(zone_node) if cell_dim == 3 else MT.Zone.EdgeNode(zone_node)
       n_isolated = get_pl_isolated_faces(face_node,
                                          PT.get_np_value(PT.find_node_from_path(dist_tree, interface_path_cur + '/PointList'))[0],
-                                         MT.distribution_value(zone_node, 'Vertex'),
+                                         MT.Zone.vtx_distribution(zone_node),
                                          comm).size
       have_isolated.append(bool(comm.allreduce(n_isolated, MPI.SUM) > 0))
 

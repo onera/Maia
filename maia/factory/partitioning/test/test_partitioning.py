@@ -301,7 +301,7 @@ def test_split_structured(comm):
   bcds_n_l = PT.get_nodes_from_name(part_tree, 'BCDataSet')
   sum_size_bcds = 0
   for bcds_n in bcds_n_l:
-      index_tab = MT.globalnumbering_value(bcds_n, 'Index')
+      index_tab = MT.Subset.globalnumbering(bcds_n)
       size_bcds = PT.Subset.n_elem(bcds_n)
       assert size_bcds == index_tab.shape[0]
       sum_size_bcds += size_bcds
@@ -327,10 +327,10 @@ def test_split_structured_1d(comm):
   part_zone = PT.get_all_Zone_t(part_tree)[0]
   if comm.Get_rank() == 0:
     assert PT.Zone.CellSize(part_zone) == (5,)
-    assert (MT.globalnumbering_value(part_zone, 'Cell') == [1,2,3,4,5]).all()
+    assert (MT.Zone.cell_globalnumbering(part_zone) == [1,2,3,4,5]).all()
   elif comm.Get_rank() == 1:
     assert PT.Zone.CellSize(part_zone) == (4,)
-    assert (MT.globalnumbering_value(part_zone, 'Cell') == [6,7,8,9]).all()
+    assert (MT.Zone.cell_globalnumbering(part_zone) == [6,7,8,9]).all()
   assert MT.get_GlobalNumbering(part_zone, 'Face') is None
   assert len(PT.get_nodes_from_label(part_zone, 'GridConnectivity1to1_t'))
 
@@ -345,7 +345,7 @@ def test_split_multi_elt(comm):
   # But, on partitioned mesh, sections are organized as follow : [1st hexa, 2nd hexa], [1st prism, 2nd prism]
   # so reordered gnum should be [1,2,3,4]
   zone = PT.get_node_from_label(ptree, 'Zone_t')
-  cell_gum = MT.globalnumbering_value(zone, 'Cell')
+  cell_gum = MT.Zone.cell_globalnumbering(zone)
   assert (cell_gum == [1,2,3,4]).all()
 
 @pytest.mark.parametrize("elt_kind", ['S', 'Poly', 'Standard'])

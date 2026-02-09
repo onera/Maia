@@ -2,6 +2,9 @@ import re
 from maia.pytree.typing import *
 #TODO : merge with maia_nodes ? 
 
+DISTRI_NAME = ':CGNS#Distribution'
+GLBNUM_NAME = ':CGNS#GlobalNumbering'
+
 def add_part_suffix(name:str, i_proc:int, i_part:int) -> str:
   return f"{name}.P{i_proc}.N{i_part}"
 

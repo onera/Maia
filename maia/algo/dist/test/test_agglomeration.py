@@ -117,7 +117,7 @@ def test_multigrid_s_2D(comm):
     from maia.utils import s_numbering
     thin_zone = PT.get_all_Zone_t(thin)[0]
     coarse_zone = PT.get_all_Zone_t(coarse)[0]
-    coarse_distri = MT.distribution_value(coarse_zone, 'Cell')
+    coarse_distri = MT.Zone.cell_distribution(coarse_zone)
     fi, fj = s_numbering.index_to_ij(np.arange(coarse_distri[0]+1, coarse_distri[1]+1),
                                      PT.Zone.CellSize(coarse_zone))
     PT.new_FlowSolution('CoarseId',

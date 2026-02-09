@@ -20,7 +20,7 @@ def _concatenate_elt_sections(elts:List[CGNSTree], comm:MPIComm) -> CGNSTree:
   ec_to_merge = []
   for elt in elts:
     end = start + PT.Element.Size(elt)
-    distri = MT.distribution_value(elt, 'Element')
+    distri = MT.Element.distribution(elt)
     ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
     distri_out = distri.copy()
     distri_out[0] = max(min(merged_distri[0], end), start) - start

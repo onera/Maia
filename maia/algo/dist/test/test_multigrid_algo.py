@@ -43,7 +43,7 @@ def test_mg_s_to_ngon(comm):
 
   # Check sols
   for zone in PT.get_all_Zone_t(coarse):
-    offset = MT.distribution_value(zone, 'Cell')[0] + 1 
+    offset = MT.Zone.cell_distribution(zone)[0] + 1 
     PT.new_FlowSolution('CurIdx', loc='CellCenter', fields={'Idx' : np.arange(MT.Zone.dn_cell(zone)) + offset}, parent=zone)
   maia.algo.interpolate(coarse, fine, comm, ['CurIdx'], 'CellCenter')
 
@@ -78,7 +78,7 @@ def test_mg_merge(comm):
 
   # Check sols
   for zone in PT.get_all_Zone_t(coarse):
-    offset = MT.distribution_value(zone, 'Cell')[0] + 1 
+    offset = MT.Zone.cell_distribution(zone)[0] + 1 
     PT.new_FlowSolution('CurIdx', loc='CellCenter', fields={'Idx' : np.arange(MT.Zone.dn_cell(zone)) + offset}, parent=zone)
   maia.algo.interpolate(coarse, fine, comm, ['CurIdx'], 'CellCenter')
 

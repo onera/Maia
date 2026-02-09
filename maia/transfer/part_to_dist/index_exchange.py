@@ -67,7 +67,7 @@ def create_part_pl_gnum(dist_zone: CGNSDistTree,
     if node:
       location = PT.Subset.GridLocation(node) if PT.pred.IS_SUBSET(node) else PT.Container.GridLocation(node, p_zone)
       if location == 'Vertex':
-        ln_to_gn = MT.globalnumbering_value(p_zone, 'Vertex')
+        ln_to_gn = MT.Zone.vtx_globalnumbering(p_zone)
       else:
         ln_to_gn = te_utils.create_all_elt_g_numbering(p_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
       part_pl = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))[0]
@@ -119,7 +119,7 @@ def create_part_pr_gnum(dist_zone: CGNSDistTree,
       if loc == 'FaceCenter':
         raise RuntimeError(f"Wrong location for node {node_path} (FaceCenter). Please use one of [IFaceCenter, JFaceCenter, KFaceCenter]")
 
-      ln_to_gn_all = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
+      ln_to_gn_all = PT.get_np_value(MT.find_GlobalNumbering(part_zone, LOC_TO_GN[loc]))
 
       # Get entity local numbering as full list
       part_pr = PT.get_np_value(PT.find_child_from_name(node, 'PointRange'))
@@ -169,7 +169,7 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
     for part_zone in part_zones:
       ancestor_n = part_zone if ancestor is None else PT.get_node_from_path(part_zone, ancestor)
       if ancestor_n is not None:
-        ln_to_gn_list.extend([MT.globalnumbering_value(node, 'Index') \
+        ln_to_gn_list.extend([MT.Subset.globalnumbering(node) \
             for node in PT.get_children_from_predicate(ancestor_n, name_predicate)])
   else:
     gn_path = node_path + '/:CGNS#GlobalNumbering/Index'
@@ -191,12 +191,12 @@ def part_pl_to_dist_pl(dist_zone: CGNSDistTree,
         loc = PT.Subset.GridLocation(node) if PT.pred.IS_SUBSET(node) else PT.Container.GridLocation(node, part_zone)
         if PT.Zone.Type(part_zone) == 'Unstructured':
           if loc == 'Vertex':
-            ln_to_gn = MT.globalnumbering_value(part_zone, 'Vertex')
+            ln_to_gn = MT.Zone.vtx_globalnumbering(part_zone)
           else:
             ln_to_gn = te_utils.create_all_elt_g_numbering(part_zone, PT.get_children_from_label(dist_zone, 'Elements_t'))
           part_pl_list['pl_i'].append(ln_to_gn[part_pl[0]-1])
         else:
-          ln_to_gn = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
+          ln_to_gn = PT.get_np_value(MT.find_GlobalNumbering(part_zone, LOC_TO_GN[loc]))
           ijk_glob = _part_triplet_to_dist_triplet(part_pl, loc, ln_to_gn, PT.Zone.VertexSize(part_zone), PT.Zone.VertexSize(dist_zone))
           for i, key in enumerate(keys):
             part_pl_list[key].append(ijk_glob[i])
@@ -272,7 +272,7 @@ def part_pr_to_dist_pr(dist_zone, part_zones, node_path, comm, allow_mult=False)
       proc_permuted = proc_permuted | permuted
 
       # Get the global triplet related to the min and max corners of the window
-      ln_to_gn = MT.globalnumbering_value(part_zone, LOC_TO_GN[loc])
+      ln_to_gn = PT.get_np_value(MT.find_GlobalNumbering(part_zone, LOC_TO_GN[loc]))
       proc_bottom.append(_part_triplet_to_dist_triplet(pr[:,0], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
       proc_top.append(_part_triplet_to_dist_triplet(pr[:,1], loc, ln_to_gn, part_vtx_size, dist_vtx_size))
 
@@ -306,37 +306,30 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
   On the dist_zone, ElementRange of the created node will start at 1
   and must be shifted afterward.
   """
+  # Section may not exist on some partitions
+  _part_zones = [zone for zone in part_zones if PT.get_child_from_name(zone, elem_name) is not None]
+  part_elts   = [PT.find_child_from_name(zone, elem_name) for zone in _part_zones]
 
-  vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
-  elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
+  vtx_gnum_l  = [MT.Zone.vtx_globalnumbering(p_zone) for p_zone in _part_zones]
+  elt_gnum_l  = [MT.Element.globalnumbering(p_elt)   for p_elt  in part_elts]
 
   distri_elt  = par_utils.distribution_from_gnum(elt_gnum_l, comm)
 
-  elt_id = ''
-  for ipart, part_zone in enumerate(part_zones):
-    elt_n = PT.get_child_from_name(part_zone, elem_name)
-    if elt_n is not None:
-      elt_id = PT.Element.Type(elt_n)
-      break
+  elt_id = PT.Element.Type(part_elts[0]) if len(part_elts) > 0 else ''
   #Get values for proc having no elt
   elt_id = comm.allreduce(elt_id, MPI.MAX)
 
   # NB : this function allow the ElementConnectivity to be inexistant
   # in order to use _recover_elements in a light way (just to have ElementRange values)
-  if par_utils.exists_anywhere(part_zones, f'{elem_name}/ElementConnectivity', comm):
+  if par_utils.exists_anywhere(_part_zones, f'{elem_name}/ElementConnectivity', comm):
     data_in_l = list()
-    for ipart, part_zone in enumerate(part_zones):
-      elt_n = PT.get_child_from_name(part_zone, elem_name)
-      if elt_n is not None:
-        cst_stride = PT.Element.NVtx(elt_n)
+    for ipart, part_elt in enumerate(part_elts):
+      cst_stride = PT.Element.NVtx(part_elt)
 
-        # Move to global and add in part_data
-        EC    = PT.get_np_value(PT.find_child_from_name(elt_n, 'ElementConnectivity'))
-        part_ec = vtx_gnum_l[ipart][EC-1]
-        stride_in = cst_stride*np.ones(part_ec.size // cst_stride, int)
-      else:
-        part_ec = np.empty(0, pdm_gnum_dtype)
-        stride_in = np.empty(0, int)
+      # Move to global and add in part_data
+      EC    = PT.get_np_value(PT.find_child_from_name(part_elt, 'ElementConnectivity'))
+      part_ec = vtx_gnum_l[ipart][EC-1]
+      stride_in = cst_stride*np.ones(part_ec.size // cst_stride, int)
 
       data_in_l.append((stride_in, part_ec))
 
@@ -363,9 +356,9 @@ def part_ngon_to_dist_ngon(dist_zone, part_zones, elem_name, comm):
   n_rank = comm.Get_size()
   i_rank = comm.Get_rank()
   # Prepare gnum lists
-  vtx_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
-  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Cell')
-  elt_gnum_l  = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
+  vtx_gnum_l  = [MT.Zone.vtx_globalnumbering(p_zone) for p_zone in part_zones]
+  cell_gnum_l = [MT.Zone.cell_globalnumbering(p_zone) for p_zone in part_zones]
+  elt_gnum_l  = [MT.Element.globalnumbering(PT.find_child_from_name(p_zone, elem_name)) for p_zone in part_zones]
 
   # Init dicts
   p_data_pe = list()
@@ -485,27 +478,23 @@ def part_nface_to_dist_nface(dist_zone, part_zones, elem_name, ngon_name, comm):
   On the dist_zone, ElementRange of the created NFace node will start at 1 and must
   be shifted afterward.
   """
-  n_rank = comm.Get_size()
-  i_rank = comm.Get_rank()
-  # Prepare gnum lists
-  cell_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Element', elem_name)
-  ngon_gnum_l = te_utils.collect_cgns_g_numbering(part_zones, 'Element', ngon_name)
-
   # Init dicts
   part_data = list()
-
+  cell_gnum_l = list()
   # Collect partitioned data
-  for ipart, part_zone in enumerate(part_zones):
+  for part_zone in part_zones:
     ngon_n  = PT.get_child_from_name(part_zone, ngon_name)
-    ng_offset = PT.Element.Range(ngon_n)[0]
     nface_n = PT.get_child_from_name(part_zone, elem_name)
-    EC     = PT.get_child_from_name(nface_n, 'ElementConnectivity')[1]
-    ECIdx  = PT.get_child_from_name(nface_n, 'ElementStartOffset')[1]
+    ng_offset = PT.Element.Range(ngon_n)[0]
+    EC   = MT.Element.connectivity(nface_n)
+
+    face_gnum = MT.Element.globalnumbering(ngon_n)
+    cell_gnum_l.append(MT.Element.globalnumbering(nface_n))
 
     # Move to global and add in part_data
-    EC_sign = np.sign(EC)
-    part_data.append((np.diff(ECIdx),
-                      EC_sign*ngon_gnum_l[ipart][np.abs(EC)-ng_offset]))
+    EC_sign = np.sign(EC.values)
+    part_data.append((EC.counts,
+                      EC_sign*face_gnum[np.abs(EC.values)-ng_offset]))
 
   # Exchange : we suppose that cell belong to only one part, so there is nothing to do
   distri_cell   = par_utils.distribution_from_gnum(cell_gnum_l, comm)

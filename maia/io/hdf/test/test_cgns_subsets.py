@@ -17,7 +17,7 @@ def test_create_pl_filter():
   hdf_filter = dict()
   node = PT.yaml.to_node(yt)
 
-  distri = MT.distribution_value(node, 'Index')
+  distri = MT.Subset.distribution(node)
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointListDonor", distri, hdf_filter)
 
@@ -35,7 +35,7 @@ def test_create_pl_filter():
   """
   hdf_filter = dict()
   node = PT.yaml.to_node(yt)
-  distri = MT.distribution_value(node, 'Index')
+  distri = MT.Subset.distribution(node)
   cgns_subsets._create_pl_filter(node, "path/to/node", "PointList", distri, hdf_filter)
   assert len(hdf_filter) == 0
 

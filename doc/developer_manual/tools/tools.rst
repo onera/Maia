@@ -12,4 +12,5 @@ who would like to build their own functions.
   logging
   vstride
   gindexer
+  mtree
 

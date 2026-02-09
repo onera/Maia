@@ -74,7 +74,7 @@ def compute_face_measure(zone, comm, face_indices=None, face_indices_loc=None):
 
     face_vtx = MT.Element.connectivity(ngon_node)
     if face_indices is not None:
-      face_distri = MT.distribution_value(ngon_node, 'Element')
+      face_distri = MT.Element.distribution(ngon_node)
       face_vtx = EP.block_to_part(face_vtx, face_distri, _face_indices, comm)
 
 
@@ -93,7 +93,7 @@ def _decompose_section_to_face_vtx(elt, elt_mask_loc=None):
   """
       
   ec = PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity'))
-  elt_distri = MT.distribution_value(elt, 'Element')
+  elt_distri = MT.Element.distribution(elt)
   elt_kind = PT.Element.Type(elt)
   n_elt = elt_distri[1] - elt_distri[0]
 
@@ -120,8 +120,7 @@ def compute_cell_measure(zone, comm, cell_indices=None):
   assert isinstance(coords, PT.CartesianCoordinates), "Only cartesian coordinates are supported"
   assert PT.Zone.CellDimension(zone) == 3, "CellDimension of zone must be == 3 to compute cell centers"
 
-  cell_distri = MT.distribution_value(zone, 'Cell')
-  dn_cell = cell_distri[1] - cell_distri[0]
+  cell_distri = MT.Zone.cell_distribution(zone)
 
   if cell_indices is not None:
     assert isinstance(cell_indices, np.ndarray) and cell_indices.ndim == 2
@@ -144,7 +143,7 @@ def compute_cell_measure(zone, comm, cell_indices=None):
 
     ngon_node = PT.Zone.NGonNode(zone)
     face_vtx = MT.Element.connectivity(ngon_node)
-    face_distri = MT.distribution_value(ngon_node, 'Element')
+    face_distri = MT.Element.distribution(ngon_node)
 
     if not PT.Zone.has_nface_elements(zone):
       maia.algo.pe_to_nface(zone, comm)
@@ -193,7 +192,7 @@ def compute_cell_measure(zone, comm, cell_indices=None):
       part2 = []
       all_elt_mask = []
       for elt in volumic_sections:
-        elt_distri = MT.distribution_value(elt, 'Element')
+        elt_distri = MT.Element.distribution(elt)
         elt_offset = PT.Element.Range(elt)[0]
         part2.append(np.arange(elt_distri[0], elt_distri[1]) + elt_offset)
         all_elt_mask.append(np.zeros(elt_distri[1]-elt_distri[0], bool))
@@ -226,11 +225,11 @@ def compute_cell_measure(zone, comm, cell_indices=None):
 
     else:
       # In full case, we move measure to allCell distribution (same method than _entity_vtx_connectivity_elt)
-      distri_cell = MT.distribution_value(zone, 'Cell')
+      distri_cell = MT.Zone.cell_distribution(zone)
       start = 0
       measure_cell = []
       for elt_measure, elt in zip(all_measure_elt, volumic_sections):
-        distri = MT.distribution_value(elt, 'Element')
+        distri = MT.Element.distribution(elt)
         end = start + PT.Element.Size(elt)
         distri_out = distri.copy()
         # Here we restrict the total cell distribution to ElementRange (ignoring low order elts), 

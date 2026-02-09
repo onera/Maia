@@ -3,6 +3,7 @@ from   mpi4py import MPI
 
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
+from   maia.pytree.maia   import pdm_elts
 
 from maia.utils import py_utils, np_utils, layouts, as_pdm_gnum
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
@@ -71,25 +72,21 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm, needs_bc=False):
     nface_node = PT.Zone.NFaceNode(dist_zone)
     nface_ec  = as_pdm_gnum(PT.get_child_from_name(nface_node, 'ElementConnectivity')[1])
     nface_eso = PT.get_child_from_name(nface_node, 'ElementStartOffset' )[1]
-    distrib_cell_face = as_pdm_gnum(MT.distribution_value(nface_node, 'ElementConnectivity'))
   if has_pe:
     ngon_pe = as_pdm_gnum(PT.get_child_from_name(ngon_node, 'ParentElements')[1])
 
-  distrib_face     = as_pdm_gnum(MT.distribution_value(ngon_node, 'Element'))
-  distrib_face_vtx = as_pdm_gnum(MT.distribution_value(ngon_node, 'ElementConnectivity'))
-
   dn_vtx  = MT.Zone.dn_vtx(dist_zone)
   dn_cell = MT.Zone.dn_cell(dist_zone)
-  dn_face = distrib_face[1] - distrib_face[0]
+  dn_face = MT.Element.dn_elt(ngon_node)
   dn_edge = -1 #Not used
 
   cx, cy, cz = PT.Zone.coordinates(dist_zone)
   dvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
 
-  dface_vtx_idx = np.add(ngon_eso, -distrib_face_vtx[0], dtype=np.int32) #Local index is int32bits
+  dface_vtx_idx = np.add(ngon_eso, -ngon_eso[0], dtype=np.int32) #Local index is int32bits
 
   if has_nface: #Use NFace to set cell_face
-    dcell_face_idx = np.add(nface_eso, -distrib_cell_face[0], dtype=np.int32) # Local index is int32bits
+    dcell_face_idx = np.add(nface_eso, -nface_eso[0], dtype=np.int32) # Local index is int32bits
     if ngon_first:
       dcell_face = nface_ec
     else:
@@ -98,7 +95,7 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm, needs_bc=False):
     dface_cell = np.empty(2*dn_face, dtype=pdm_gnum_dtype) # Respect pdm_gnum_type
     layouts.pe_cgns_to_pdm_face_cell(ngon_pe, dface_cell)
     if ngon_first:
-      np_utils.shift_nonzeros(dface_cell, -distrib_face[2])
+      np_utils.shift_nonzeros(dface_cell, -PT.Element.Size(ngon_node))
 
 
   # > Prepare bnd (needed for HPC renumbering)
@@ -139,8 +136,8 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm, needs_bc=False):
   """
   Create a pdm_dmesh structure from a 2d distributed zone
   """
-  distrib_vtx  = MT.distribution_value(dist_zone, 'Vertex')
-  distrib_face = MT.distribution_value(dist_zone, 'Cell') #In 2d, cell == face
+  distrib_vtx  = MT.Zone.vtx_distribution(dist_zone)
+  distrib_face = MT.Zone.cell_distribution(dist_zone) #In 2d, cell == face
 
   # Try to hook Edge nodes
   edge_node  = MT.Zone.EdgeNode(dist_zone)
@@ -153,7 +150,7 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm, needs_bc=False):
     ngon_tools.ngon_to_edge_pe(dist_zone, comm)
   edge_pe = as_pdm_gnum(PT.get_child_from_name(edge_node, 'ParentElements')[1])
 
-  distrib_edge = MT.distribution_value(edge_node, 'Element')
+  distrib_edge = MT.Element.distribution(edge_node)
 
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
   dn_face = distrib_face[1] - distrib_face[0]
@@ -208,8 +205,8 @@ def cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm):
   face_vtx (NGON) connectivity (without edge => without bc)
   It is unused now, but we save it in case of need
   """
-  distrib_vtx = MT.distribution_value(dist_zone, 'Vertex')
-  distrib_face = MT.distribution_value(dist_zone, 'Cell') #In 2d, cell == face
+  distrib_vtx = MT.Zone.vtx_distribution(dist_zone)
+  distrib_face = MT.Zone.cell_distribution(dist_zone) #In 2d, cell == face
   n_vtx   = distrib_vtx[2]
   n_face  = distrib_face[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
@@ -226,13 +223,10 @@ def cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm):
   dmesh_nodal.set_coordinates(dvtx_coord)
 
   ngon_node = PT.Zone.NGonNode(dist_zone)
-  ngon_eso  = PT.find_child_from_name(ngon_node, 'ElementStartOffset')[1]
-  ngon_ec   = PT.find_child_from_name(ngon_node, 'ElementConnectivity')[1]
+  face_vtx  = MT.Element.connectivity(ngon_node)
 
-  ngon_distri = MT.distribution_value(ngon_node, 'ElementConnectivity')
-
-  dface_vtx_idx = np.add(ngon_eso, -ngon_distri[0], dtype=np.int32) #Local index is int32bits
-  dface_vtx = as_pdm_gnum(ngon_ec)
+  dface_vtx_idx = face_vtx.displs.astype(np.int32, copy=False)
+  dface_vtx     = as_pdm_gnum(face_vtx.values)
   dmesh_nodal.set_poly2d_section(dface_vtx_idx, dface_vtx)
 
   # keep dvtx_coord object alive for ParaDiGM
@@ -247,7 +241,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   """
   Create a pdm_dmesh_nodal structure from a distributed zone
   """
-  distrib_vtx = MT.distribution_value(dist_zone, 'Vertex')
+  distrib_vtx = MT.Zone.vtx_distribution(dist_zone)
   n_vtx   = distrib_vtx[2]
   dn_vtx  = distrib_vtx[1] - distrib_vtx[0]
 
@@ -287,13 +281,11 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
     PT.new_DataArray('dvtx_coord', dvtx_coord, parent=multi_part_node)
 
   #Elements
-  to_elmt_size = lambda e : MT.distribution_value(e, 'Element')[1] - MT.distribution_value(e, 'Element')[0]
-
   for i_dim, elts in enumerate(sorted_elts_by_dim):
-    elt_pdm_types = np.array([MT.pdm_elts.cgns_elt_name_to_pdm_element_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
-    elt_lengths   = np.array([to_elmt_size(e) for e in elts], dtype=np.int32)
+    elt_pdm_types = np.array([pdm_elts.cgns_elt_name_to_pdm_element_type(PT.Element.Type(e)) for e in elts], dtype=np.int32)
+    elt_lengths   = np.array([MT.Element.dn_elt(e) for e in elts], dtype=np.int32)
     elmts_connectivities = [as_pdm_gnum(PT.get_child_from_name(e, "ElementConnectivity")[1]) for e in elts]
-    dmesh_nodal.set_sections(MT.pdm_elts.elements_dim_to_pdm_kind[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)
+    dmesh_nodal.set_sections(pdm_elts.elements_dim_to_pdm_kind[i_dim], elmts_connectivities, elt_pdm_types, elt_lengths)
 
   # Boundaries
   if needs_bc:
@@ -316,7 +308,7 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
         PT.new_DataArray('delmt_bound_idx', delmt_bound_idx, parent=pdm_node)
         PT.new_DataArray('delmt_bound'    , delmt_bound    , parent=pdm_node)
 
-        dmesh_nodal.set_group_elmt(MT.pdm_elts.elements_dim_to_pdm_kind[i_dim], n_elmt_group, delmt_bound_idx, delmt_bound)
+        dmesh_nodal.set_group_elmt(pdm_elts.elements_dim_to_pdm_kind[i_dim], n_elmt_group, delmt_bound_idx, delmt_bound)
 
   return dmesh_nodal
 

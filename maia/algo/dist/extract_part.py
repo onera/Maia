@@ -20,7 +20,7 @@ def extract_elmt_connectivity_from_pl(zone, elmt_nodes, pl, comm):
   delmt_conn      = list()
   delmt_gnum      = list()
   for elmt_n in elmt_nodes:
-    elmt_distrib = MT.distribution_value(elmt_n, 'Element')
+    elmt_distrib = MT.Element.distribution(elmt_n)
     elmt_range   = PT.Element.Range(elmt_n)
     elmt_conn    = PT.get_child_from_name(elmt_n, 'ElementConnectivity')[1]
     elmt_gnum    = np.arange(elmt_distrib[0], elmt_distrib[1], dtype=pdm_dtype) + elmt_range[0]
@@ -88,7 +88,7 @@ def extract_zone_edges(dist_zone, pl, comm):
   distri_bar = par_utils.dn_to_distribution(extract_edge_vtx.size // 2, comm)
 
   # > Compute vtx pl from extracted edge_vtx
-  vtx_distri = MT.distribution_value(dist_zone, 'Vertex')
+  vtx_distri = MT.Zone.vtx_distribution(dist_zone)
 
   GI = EP.GlobalIndexer(vtx_distri, edge_vtx, comm, gnum_offset=1)
   vtx_mask = (GI.access_counts > 0)

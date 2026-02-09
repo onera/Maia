@@ -9,41 +9,10 @@ from maia.utils import np_utils, par_utils
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 def get_partitioned_zones(part_tree: CGNSPartTree, dist_zone_path: CGNSPath) -> List[CGNSPartTree]:
-  """
-  Return a list of the partitioned zones created from a distributed zone name
-  found in part_tree
-  """
-  base_name, zone_name = PTu.path_head(dist_zone_path), PTu.path_tail(dist_zone_path)
-  part_base = PT.get_node_from_path(part_tree, base_name)
-  if part_base:
-    return [part for part in PT.iter_all_Zone_t(CGNSPartTree(part_base)) if \
-        MT.conv.get_part_prefix(PT.get_name(part)) == zone_name]
-  else:
-    return []
+  import warnings
+  warnings.warn("This function is deprecated, use MT.get_partitioned_zones", DeprecationWarning, stacklevel=2)
+  return MT.get_partitioned_zones(part_tree, dist_zone_path)
 
-def get_cgns_distribution(dist_node: CGNSTree, name: str) -> NDArray:
-  """
-  Return the (partial) distribution array of a distributed zone from
-  its path.
-  """
-  return MT.distribution_value(dist_node, name)
-
-def get_subset_distribution(zone: CGNSTree, node: CGNSTree) -> NDArray:
-  """ Return the distribution node to which a Subset is related, 
-  ie an Index distribution array or a Cell/Vertex distribution array"""
-  location = PT.Container.GridLocation(node, zone)
-  distri_n = None
-  if PT.get_node_from_name(node, 'PointList') is not None:
-    distri_n = MT.get_Distribution(node, 'Index')
-  else:
-    if location == 'Vertex':
-      distri_n = MT.get_Distribution(zone, 'Vertex')
-    elif location == 'CellCenter':
-      distri_n = MT.get_Distribution(zone, 'Cell')
-
-  if distri_n is None:
-    raise RuntimeError(f"Unable to find distribution data for subset node {PT.get_name(node)}")
-  return PT.get_np_value(distri_n)
 
 def create_all_elt_distribution(dist_elts: List[CGNSTree], comm: MPIComm) -> NDArray:
   """
@@ -53,15 +22,6 @@ def create_all_elt_distribution(dist_elts: List[CGNSTree], comm: MPIComm) -> NDA
   elt_sections_dn  = [PT.Element.Size(elt) for elt in dist_elts]
   return par_utils.uniform_distribution(sum(elt_sections_dn), comm)
 
-def collect_cgns_g_numbering(part_nodes: Sequence[CGNSTree], name: str, prefix: str = '') -> List[NDArray]:
-  """
-  Return the list of the CGNS:GlobalNumbering array of name name found for each
-  partition, stating from part_node and searching under the (optional) prefix path
-  An empty array is returned if the partitioned node does not exists
-  """
-  prefixed = lambda node : PT.get_node_from_path(node, prefix)
-  return [np.empty(0, pdm_gnum_dtype) if prefixed(part_node) is None else \
-      MT.globalnumbering_value(prefixed(part_node), name).astype(pdm_gnum_dtype) for part_node in part_nodes] #type:ignore[arg-type] #(part_node is not None)
  
 def create_all_elt_g_numbering(p_zone: CGNSPartTree, dist_elts: List[CGNSTree]) -> NDArray:
   """
@@ -73,12 +33,12 @@ def create_all_elt_g_numbering(p_zone: CGNSPartTree, dist_elts: List[CGNSTree]) 
   elt_sections_dn   = [PT.Element.Size(elt) for elt in sorted_dist_elts]
   elt_sections_idx  = np_utils.sizes_to_indices(elt_sections_dn, dtype=pdm_gnum_dtype)
   p_elts = [PT.get_node_from_name(p_zone, PT.get_name(elt)) for elt in sorted_dist_elts]
-  elt_sections_pn = [MT.globalnumbering_value(elt, 'Element').size if elt else 0 for elt in p_elts]
+  elt_sections_pn = [MT.Element.globalnumbering(elt).size if elt else 0 for elt in p_elts]
   offset = 0
   np_elt_ln_to_gn = np.empty(sum(elt_sections_pn), dtype=pdm_gnum_dtype)
   for i_elt, p_elt in enumerate(p_elts):
     if p_elt:
-      local_ln_gn = MT.globalnumbering_value(p_elt, 'Element')
+      local_ln_gn = MT.Element.globalnumbering(p_elt)
       np_elt_ln_to_gn[offset:offset+elt_sections_pn[i_elt]] = local_ln_gn + elt_sections_idx[i_elt]
       offset += elt_sections_pn[i_elt]
   return np_elt_ln_to_gn
@@ -89,10 +49,10 @@ def get_entities_numbering(part_zone: CGNSTree) -> \
   Shortcut to return vertex, edge, face and cell global numbering of a partitioned
   (structured or unstructured) zone. Arrays can be None if numbering does not exists.
   """
-  vtx_ln_to_gn  = MT.globalnumbering_value(part_zone, 'Vertex')
+  vtx_ln_to_gn  = MT.Zone.vtx_globalnumbering(part_zone)
   edge_ln_to_gn = None
   face_ln_to_gn = None
-  cell_ln_to_gn = MT.globalnumbering_value(part_zone, 'Cell')
+  cell_ln_to_gn = MT.Zone.cell_globalnumbering(part_zone)
 
   edge_ln_to_gn_n = MT.get_GlobalNumbering(part_zone, 'Edge')
   if edge_ln_to_gn_n is not None:
@@ -103,7 +63,7 @@ def get_entities_numbering(part_zone: CGNSTree) -> \
     except: # In some 2D Poly meshes, edges are not defined
       pass
     else:
-      edge_ln_to_gn = MT.globalnumbering_value(edge, 'Element')
+      edge_ln_to_gn = MT.Element.globalnumbering(edge)
 
   face_ln_to_gn_n = MT.get_GlobalNumbering(part_zone, 'Face')
   if face_ln_to_gn_n is not None:
@@ -111,7 +71,7 @@ def get_entities_numbering(part_zone: CGNSTree) -> \
   elif PT.Zone.has_ngon_elements(part_zone):
     # Face can be recovered from ngon global numbering
     ngon = PT.Zone.NGonNode(part_zone)
-    face_ln_to_gn = MT.globalnumbering_value(ngon, 'Element')
+    face_ln_to_gn = MT.Element.globalnumbering(ngon)
 
   return vtx_ln_to_gn, edge_ln_to_gn, face_ln_to_gn, cell_ln_to_gn
 

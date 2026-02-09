@@ -73,7 +73,7 @@ def portable_partitioning(dist_tree, wanted_cell_l, comm, **kwargs):
   # Retrieve target part on distributed cells
   zone_paths = PT.predicates_to_paths(dist_tree, 'CGNSBase_t/Zone_t')
   assert len(zone_paths) == 1
-  cell_distri = MT.distribution_value(PT.find_node_from_path(dist_tree, zone_paths[0]), 'Cell')
+  cell_distri = MT.Zone.cell_distribution(PT.find_node_from_path(dist_tree, zone_paths[0]))
   rank_offset = par_utils.gather_and_shift(len(wanted_cell_l), comm)[comm.rank]
   target_part_p = [np.full(w.size, rank_offset+i, np.int32) for i,w in enumerate(wanted_cell_l)]
 

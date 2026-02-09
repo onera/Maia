@@ -27,7 +27,7 @@ def collect_pl_nodes(root: CGNSTree, filter_loc: Optional[List[str]] = None) -> 
     if pl_n is not None:
       pointlist_nodes.append(pl_n)
     elif pr_n is not None and (pr:=PT.get_np_value(pr_n)).shape[0] == 1:
-      distrib = MT.distribution_value(node, 'Index')
+      distrib = MT.Subset.distribution(node)
       pl = np_utils.single_dim_pr_to_pl(pr, distrib)
       new_pl_n = PT.new_node(name='PointList', value=pl, label='IndexArray_t', parent=node)
       PT.rm_nodes_from_label(node,'IndexRange_t')
@@ -65,7 +65,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
             assert PT.Element.Type(element) not in ['NGON_n', 'NFACE_n']  
             if PT.Element.Type(element) != 'MIXED':                       
                 elem_ec  = PT.get_np_value(PT.find_child_from_name(element,'ElementConnectivity'))
-                elem_distri = MT.distribution_value(element, 'Element')
+                elem_distri = MT.Element.distribution(element)
                 elem_type = PT.Element.Type(element)
                 elem_size = elem_distri[1] - elem_distri[0]
                 elem_types[elem_type][elem_pos] = elem_size
@@ -114,7 +114,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         nb_elem_prev_element_t_nodes = 0
         for elem_pos,element in enumerate(PT.Zone.get_ordered_elements(zone)):
             is_std_elt = PT.Element.Type(element) != 'MIXED'
-            elem_distrib = MT.distribution_value(element, 'Element')
+            elem_distrib = MT.Element.distribution(element)
             nb_elem_loc = elem_distrib[1]-elem_distrib[0]
             nb_cell_loc = 0
             for et in elem_types:
@@ -244,7 +244,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
         
         # 7a. Redistribute old_to_new_cell_numbering to be coherent with
         #     cells distribution
-        cells_distrib = MT.distribution_value(zone, 'Cell')
+        cells_distrib = MT.Zone.cell_distribution(zone)
 
         GI_cell = EP.GlobalIndexer(cells_distrib, ln_to_gn_cell_list, comm)
         dist_old_to_new_cell_numbering = GI_cell.Put(old_to_new_cell_numbering_list)

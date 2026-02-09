@@ -38,7 +38,7 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
             point_lists.append(pl_raw)
         elif pr_n is not None and PT.Zone.Type(dist_zone) == 'Unstructured':
           pr = PT.get_np_value(pr_n)
-          distrib = MT.distribution_value(node, 'Index')
+          distrib = MT.Subset.distribution(node)
           point_lists.append(np_utils.single_dim_pr_to_pl(pr, distrib))
         # else:
           # point_lists.append(np.empty((1,0), dtype=np.int32, order='F'))
@@ -101,11 +101,11 @@ def dist_pl_to_part_pl(dist_zone, part_zones, type_paths, entity, comm):
 
   #Create distri and lngn
   if entity == 'Vertex':
-    distri_partial = te_utils.get_cgns_distribution(dist_zone, 'Vertex')
-    ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Vertex')
+    distri_partial = MT.Zone.vtx_distribution(dist_zone)
+    ln_to_gn_list = [MT.Zone.vtx_globalnumbering(p_zone) for p_zone in part_zones]
   elif entity == 'SFace':
-    distri_partial = te_utils.get_cgns_distribution(dist_zone, 'Face')
-    ln_to_gn_list = te_utils.collect_cgns_g_numbering(part_zones, 'Face')
+    distri_partial = MT.Zone.face_distribution(dist_zone)
+    ln_to_gn_list = [MT.Zone.face_globalnumbering(p_zone) for p_zone in part_zones]
 
   elif entity == 'Elements':
     elts = PT.get_children_from_label(dist_zone, 'Elements_t')
