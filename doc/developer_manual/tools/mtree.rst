@@ -17,7 +17,7 @@ They use the same namespace classification as pytree.
 Within each namespace, the functions provided are typically getters for:
 
 - the *local* sizes of a distributed (:func:`dn_xxx`) or partitioned (:func:`pn_xxx`) mesh
-- the *global* size of a partitioned mesh (:func:`n_xxx`), which is collectively computed
+- the *global* size of a distributed or partitioned mesh (:func:`n_xxx`), collectively computed in the partitioned case
 - the distribution (:func:`distribution`) or global numbering (:func:`globalnumbering`) arrays
 
 

@@ -55,7 +55,7 @@ class Zone:
 
   @staticmethod
   def pn_cell(zone_node:CGNSTree) -> int:
-    """ Return the local number of cells of a **partitioned** zone
+    """ Return the local number of cells of the input **partitioned** zone
 
     Args:
       zone_node (CGNSPartTree): Input Zone_t node
@@ -116,7 +116,7 @@ class Zone:
 
   @staticmethod
   def pn_vtx(zone_node:CGNSTree) -> int:
-    """ Return the local number of vertices of a **partitioned** zone
+    """ Return the local number of vertices of the input **partitioned** zone
 
     Args:
       zone_node (CGNSPartTree): Input Zone_t node
@@ -302,7 +302,7 @@ class Element:
 
   @staticmethod
   def pn_elt(elt_node:CGNSTree) -> int:
-    """ Return the local number of elements of a **partitioned** element section
+    """ Return the local number of elements of the input **partitioned** element section
 
     Args:
       elt_node (CGNSTree): Input Elements_t node, partitioned
@@ -433,7 +433,7 @@ class Subset:
 
   @staticmethod
   def pn_elem(subset_node:CGNSTree) -> int:
-    """ Return the local number of entities of a **partitioned** subset
+    """ Return the local number of entities of the input **partitioned** subset
 
     Args:
       subset_node (CGNSTree): Input subset node, partitioned

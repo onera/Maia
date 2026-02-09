@@ -78,6 +78,8 @@ def get_partitioned_zones(part_tree: CGNSPartTree, zone_path: CGNSPath) -> List[
   Search can be performed from tree level, in which case ``zone_path`` has the pattern
   ``'BaseName/ZoneName'``,
   or from base level, in which case ``zone_path`` has the pattern ``'ZoneName'``.
+  In both cases, ``ZoneName`` is the name of the corresponding distributed zone
+  (without maia naming conventions).
 
   Args:
     part_tree (CGNSPartTree) : Partitioned tree in which search is performed
