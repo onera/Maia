@@ -9,9 +9,11 @@ def pytest_configure(config):
   comm = MPI.COMM_WORLD
   if comm.Get_rank() == 0:
     if not os.path.exists('reports'):
-      os.makedirs('reports')
+      # During CI, several indepedant jobs can execute this code at same time
+      # --> use exist_ok to avoid FileExistsError
+      os.makedirs('reports', exist_ok=True)
     if not os.path.exists('reports/assets'):
-      os.makedirs('reports/assets')
+      os.makedirs('reports/assets', exist_ok=True)
   comm.barrier()
 
   #Only proc 0 holds test results, others are empty
