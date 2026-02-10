@@ -30,6 +30,7 @@ Label = Enum('Label', [
   'ArbitraryGridMotion_t',
   'Area_t',
   'AverageInterface_t',
+  'AverageInterfaceType_t',
   'Axisymmetry_t',
   'BCProperty_t',
   'BCTypeSimple_t',
