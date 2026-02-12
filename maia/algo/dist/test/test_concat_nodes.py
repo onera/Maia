@@ -452,3 +452,62 @@ def test_deconcatenate_patch(specified, comm):
   GN.deconcatenate_subsets_from_families(dist_tree, comm, families)
 
   assert PT.is_same_tree(dist_tree, dist_tree_cp)
+
+@pytest_parallel.mark.parallel(1)
+def test_deconcatenate_patch_zsr(comm):
+  yt = """
+  Base CGNSBase_t [3, 3]:
+    ZoneA Zone_t [[101, 100, 0]]:
+      ZoneType ZoneType_t "Unstructured":
+      ZoneBC ZoneBC_t:
+        BCA1 BC_t "FamilySpecified":
+          GridLocation GridLocation_t "FaceCenter":
+          FamilyName FamilyName_t "FAM":
+          PointList IndexArray_t [[1, 2, 3, 4]]:
+        BCA2 BC_t "FamilySpecified":
+          GridLocation GridLocation_t "FaceCenter":
+          FamilyName FamilyName_t "FAM":
+          PointList IndexArray_t [[5, 6, 7, 8]]:
+      ZSR_BCA1 ZoneSubRegion_t:
+        GridLocation GridLocation_t "FaceCenter":
+        BCRegionName Descriptor_t "BCA1":
+        FakeData DataArray_t [1., 2., 3., 4.]:
+      ZSR_BCA2 ZoneSubRegion_t:
+        GridLocation GridLocation_t "FaceCenter":
+        BCRegionName Descriptor_t "BCA2":
+        FakeData DataArray_t [5., 6., 7., 8.]:
+    ZoneB Zone_t [[101, 100, 0]]:
+      ZoneType ZoneType_t "Unstructured":
+      ZoneBC ZoneBC_t:
+        BCB1 BC_t "FamilySpecified":
+          GridLocation GridLocation_t "FaceCenter":
+          FamilyName FamilyName_t "FAM":
+          PointList IndexArray_t [[11, 12, 13, 14]]:
+        BCB2 BC_t "FamilySpecified":
+          GridLocation GridLocation_t "FaceCenter":
+          FamilyName FamilyName_t "FAM":
+          PointList IndexArray_t [[15, 16, 17, 18]]:
+      ZSR_BCB1 ZoneSubRegion_t:
+        GridLocation GridLocation_t "FaceCenter":
+        BCRegionName Descriptor_t "BCB1":
+        FakeData DataArray_t [11., 12., 13., 14.]:
+      ZSR_BCB2 ZoneSubRegion_t:
+        GridLocation GridLocation_t "FaceCenter":
+        BCRegionName Descriptor_t "BCB2":
+        FakeData DataArray_t [15., 16., 17., 18.]:
+        FakeData2 DataArray_t [15.5, 16.5, 17.5, 18.5]:
+    FAM Family_t:
+      FamilyBC FamilyBC_t "Null":
+  """
+  
+  tree = PT.yaml.to_cgns_tree(yt)
+  dist_tree = F2D.full_to_dist_tree(tree, comm)
+  dist_tree_cp = PT.deep_copy(dist_tree)
+
+  GN.concatenate_subsets_from_families(dist_tree, comm)
+  dist_tree_concat = PT.deep_copy(dist_tree)
+  assert len(PT.get_nodes_from_label(dist_tree, 'ZoneSubRegion_t')) == 3
+
+  GN.deconcatenate_subsets_from_families(dist_tree, comm)
+  assert PT.is_same_tree(dist_tree, dist_tree_cp)
+

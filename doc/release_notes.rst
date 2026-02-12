@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- (de)concatenate_subsets_from_families: merge ZoneSubRegion_t nodes if possible
+
 🐞 Fixes
 ^^^^^^^^
 - interpolate: fixup results of ``LocationAndClosest`` strategy on multidomain cases

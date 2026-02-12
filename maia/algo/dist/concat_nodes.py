@@ -91,11 +91,11 @@ def concatenate_subset_nodes(nodes: List[CGNSTree],
       child = childs[-1]
       PT.new_child(parent, PT.get_name(child), PT.get_label(child), PT.get_value(child), children=PT.get_children(child))
 
-  val = PT.find_child_from_name(node, 'PointList')[1]
-  assert val is not None
-  newsize = val.shape[1]
-  distri = par_utils.dn_to_distribution(newsize, comm)
-  MT.new_Distribution({'Index' : distri}, node)
+  if MT.get_Distribution(master) is not None:
+    val = PT.get_np_value(PT.find_child_from_name(node, 'PointList'))
+    newsize = val.shape[1]
+    distri = par_utils.dn_to_distribution(newsize, comm)
+    MT.new_Distribution({'Index' : distri}, node)
 
   for bcds_n in PT.get_children_from_label(node, 'BCDataSet_t'):
     bcds_pl_n = PT.get_child_from_name(bcds_n, 'PointList')
@@ -330,8 +330,8 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
     - This function add some nodes in resulting BCs to preserve pre-concatenate tree info.
       Do not delete them if, for any reason, you want to retrieve initial tree
       (see :func:`~maia.algo.dist.deconcatenate_subsets_from_families`)
-    - If ``dist_tree`` has ZoneSubRegion nodes with BCRegionName related to a concatenated BC,
-      the BCRegionName descriptor will be replaced by the associated PointList. 
+    - If ``dist_tree`` has ZoneSubRegion_t nodes with BCRegionName related to a concatenated BC,
+      the BCRegionName descriptor will be merged if they have the same children.
 
   Warning:
     For each family-grouped BCs, BCDataSet nodes must have the same tree structure
@@ -371,6 +371,8 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
       # > Go through family BCs gathering informations
       bc_nodes = list() ; bc_names = list() ; bc_ordin = list() 
+      bc_to_related_zsrs = {}
+      merge_data_fam = True
       for i_bc, bc_n in enumerate(PT.get_nodes_from_predicates(dist_zone, [is_subset_container, is_subset])):
         bc_pl  = PT.get_np_value(PT.Subset.getPatch(bc_n))[0]
         bcds_n = PT.new_BCDataSet(":maia#concatenate", parent=bc_n)
@@ -383,11 +385,8 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
         bc_name = PT.get_name(bc_n)
         is_zsr_rel_to_bc = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('BCRegionName') \
                          & PT.pred.NodePredicate(lambda n : PT.get_value(PT.find_child_from_name(n, 'BCRegionName'))==bc_name)
-        for zsr_bc_n in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
-          pl_n = PT.find_child_from_name(bc_n, 'PointList')
-          PT.new_IndexArray(value=PT.get_value(pl_n), parent=zsr_bc_n)
-          PT.new_GridLocation(PT.Subset.GridLocation(bc_n), zsr_bc_n)
-          PT.rm_children_from_name(zsr_bc_n, 'BCRegionName')
+        bc_to_related_zsrs[bc_name] = PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc)
+        merge_data_fam &= (len(bc_to_related_zsrs[bc_name]) == 1)
 
         bc_nodes.append(bc_n)
         bc_names.append(bc_name)
@@ -401,7 +400,36 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
             array = PT.get_np_value(PT.find_child_from_label(bcd_n, 'DataArray_t'))
             PT.new_DataArray('OriginalBCId', np.full(array.size, i_bc, dtype=np.int32), parent=bcd_n)
 
-        PT.rm_child(zone_bc_n, bc_n)
+      if merge_data_fam and len(bc_names) > 0:
+        _bc_to_related_zsrs = {key:val[0] for key, val in bc_to_related_zsrs.items()}
+        zsr_children = sorted(PT.get_name(n) for n in PT.get_children(_bc_to_related_zsrs[bc_names[0]]))
+        for related_zsr in _bc_to_related_zsrs.values():
+          if zsr_children != sorted(PT.get_name(n) for n in PT.get_children(related_zsr)):
+            merge_data_fam = False
+            break
+
+      if merge_data_fam:
+        zsr_nodes = list(_bc_to_related_zsrs.values())
+        zsr_names = [PT.get_name(zsr_node) for zsr_node in zsr_nodes]
+        for related_zsr in zsr_nodes:
+          PT.rm_child(dist_zone, related_zsr)
+        zsr_n = concatenate_subset_nodes(zsr_nodes, comm, output_name=f"ZSR_{family}")
+        PT.update_child(zsr_n, 'BCRegionName', value=family)
+        PT.new_Descriptor('ConcatenatedZSRNames', '\n'.join(zsr_names), parent=zsr_n)
+        PT.add_child(dist_zone, zsr_n)
+      else:
+        for bc_name, related_zsrs in bc_to_related_zsrs.items():
+          bc_n = PT.find_child_from_name(zone_bc_n, bc_name)
+          for related_zsr in related_zsrs:
+            pl_n = PT.find_child_from_name(bc_n, 'PointList')
+            PT.new_IndexArray(value=PT.get_value(pl_n), parent=related_zsr)
+            PT.update_child(related_zsr, 'GridLocation', 'GridLocation_t', PT.Subset.GridLocation(bc_n))
+            PT.add_child(related_zsr, PT.get_child_from_name(bc_n, ':CGNS#Distribution'))
+            bcrn_n = PT.find_child_from_name(related_zsr, 'BCRegionName')
+            PT.set_name(bcrn_n, ':maia#concatenate')
+
+      for bc_name in bc_to_related_zsrs.keys():
+        PT.rm_child(zone_bc_n, PT.find_child_from_name(zone_bc_n, bc_name))
 
       if len(bc_ordin)!=0:
         assert len(bc_ordin)==len(bc_nodes)
@@ -457,6 +485,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
     # > Merge bc nodes from a same family
     zone_bc_n = PT.find_child_from_label(dist_zone, "ZoneBC_t")
+    concat_zsr_to_del = set()
     for family in _families:
 
       # > Predicates to find family BCs
@@ -538,3 +567,28 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
               for data_array_n in PT.get_children_from_label(bcd_n, 'DataArray_t')}
             bc_bcd_n = PT.new_BCData(PT.get_name(bcd_n), fields=fields, parent=bc_bcds_n)
             PT.rm_children_from_name(bc_bcd_n, 'OriginalBCId')
+
+        # > Deconcatenate related ZSR
+        is_zsr_rel_to_bc = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name('BCRegionName') \
+                         & PT.pred.NodePredicate(lambda n : PT.get_value(PT.find_child_from_name(n, 'BCRegionName'))==PT.get_name(concat_bc_n))
+        for concat_zsr in PT.get_children_from_predicate(dist_zone, is_zsr_rel_to_bc):
+          fields = {PT.get_name(data_array_n):PT.get_np_value(data_array_n)[bc_pl_ids]
+            for data_array_n in PT.get_children_from_label(concat_zsr, 'DataArray_t')}
+          if (concat_zsr_names:=PT.get_child_from_name(concat_zsr, 'ConcatenatedZSRNames')) is not None:
+            zsr_name = PT.get_str_value(concat_zsr_names).split("\n")[bc_id]
+          else:
+            zsr_name = f'{PT.get_name(concat_zsr)}_{bc_id}'
+          PT.new_ZoneSubRegion(zsr_name, bc_name=bc_name,
+                               loc=PT.Subset.GridLocation(bc_n),
+                               fields = fields, parent=dist_zone)
+          concat_zsr_to_del.add(PT.get_name(concat_zsr))
+
+    for concat_zsr_name in concat_zsr_to_del:
+      PT.rm_children_from_name(dist_zone, concat_zsr_name)
+    
+    was_zsr_rel_to_bc = PT.pred.label_is('ZoneSubRegion_t') & PT.pred.has_child_of_name(':maia#concatenate')
+    for zsr in PT.get_children_from_predicate(dist_zone, was_zsr_rel_to_bc):
+      bcrn = PT.find_child_from_name(zsr, ':maia#concatenate')
+      PT.set_name(bcrn, 'BCRegionName')
+      PT.rm_children_from_name(zsr, ':CGNS#Distribution')
+      PT.rm_children_from_name(zsr, 'PointList')
