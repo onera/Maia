@@ -26,6 +26,7 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
 
   # If input zone is structured => we create a unst. zone with only relevant
   # bcs + lowerdim elements as std elements
+  s_parent_l = list()
   if PT.Zone.Type(zone) == 'Structured':
     u_size = np.prod(PT.get_np_value(zone), axis=0, dtype=ztype).reshape(1,-1)
     u_zone = PT.new_Zone(PT.get_name(zone), type='Unstructured', size=u_size)
@@ -36,6 +37,8 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
       shallow_bc = PT.new_BC(PT.get_name(bc_s), loc=PT.Subset.GridLocation(bc_s))
       PT.add_child(shallow_bc, PT.Subset.getPatch(bc_s))
       bc_u = bc_s_to_bc_u(shallow_bc, PT.Zone.VertexSize(zone), wanted_loc, comm.rank, comm.size)
+      # > Get absolute gnum in all faces numbering for structured meshes
+      s_parent_l.append(PT.get_np_value(PT.find_child_from_name(bc_u, 'PointList')))
       PT.add_child(zonebc, bc_u)
 
     elt = PT.new_Elements('DummyElt', erange=[0], parent=u_zone) # Trick to avoid offset of created element
@@ -49,6 +52,8 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
 
   # Extract face_vtx (or edge_vtx) connectivity --> depends on input connectivity, but in all
   # cases we output as poly mesh
+  # Note : for now make parent start at 1 to be consistent with partitioned version.
+  # This may change in the future (see #232)
   if PT.pred.IS_POLY3D_ZONE(u_zone):
     # We have input face_vtx --> get flagged faces and extract connectivity
     selected_face_ids = [ids[0] for ids in selected_face_ids]
@@ -57,7 +62,7 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
     face_vtx = MT.Element.connectivity(ngon_n)
     GI = EP.GlobalIndexer(face_distri, selected_face_ids, comm, gnum_offset=PT.Element.Range(ngon_n)[0])
     flagged = np.flatnonzero(GI.access_counts > 0)
-    parent = flagged.astype(ztype, copy=False) + face_distri[0] + PT.Element.Range(ngon_n)[0]
+    parent = flagged.astype(ztype, copy=False) + face_distri[0] + 1
     ext_face_vtx = vs.take(face_vtx, flagged)
   else: # Std elts or Poly2D (in which case EdgeElements are defined)
     # Std elements : face extraction is managed direcly by entity_vtx_connectivity_elt
@@ -65,6 +70,11 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
     # Here parent is simply the flagged id since connectivity is get following this order
     _, parent = np_utils.concatenate_point_list(selected_face_ids, dtype=ztype)
     ext_face_vtx = entity_vtx_connectivity_elt(u_zone, comm, zone_dim-1, False, parent)
+    if PT.Zone.Type(zone) == 'Structured':
+      parent = np_utils.concatenate_point_list(s_parent_l, dtype=ztype)[1]
+    else:
+      parent_shift = PT.Zone.get_elt_range_per_dim(u_zone)[zone_dim-1][0] - 1
+      parent -= parent_shift
 
   ext_face_distri = par_utils.dn_to_distribution(len(ext_face_vtx), comm)
 
