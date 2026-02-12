@@ -105,9 +105,9 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
         data_space = create_data_array_filter(distrib_data)
       elif(grid_location == 'CellCenter'):
         distrib_cell = MT.Zone.cell_distribution(zone)
-        data_space = create_data_array_filter(distrib_cell, PT.Zone.n_cell(zone))
+        data_space = create_data_array_filter(distrib_cell, zone[1][:,1])
       elif(grid_location == 'Vertex'):
-        data_space = create_data_array_filter(distrib_vtx, PT.Zone.n_vtx(zone))
+        data_space = create_data_array_filter(distrib_vtx, zone[1][:,0])
       else:
         raise RuntimeError(f"GridLocation {grid_location} is not allowed without PL")
     elif PT.get_label(zone) == 'ParticleZone_t':

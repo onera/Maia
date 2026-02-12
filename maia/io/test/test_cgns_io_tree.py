@@ -284,3 +284,69 @@ def test_load_from_filter(comm):
   assert PT.is_same_node(ngon_node, ngon_expected)
     
   TU.rm_collective_dir(tmp_dir, comm)
+
+@pytest_parallel.mark.parallel(1)
+def test_ptcl_dist_tree_to_file_1proc(comm):
+    yt = """
+Base CGNSBase_t I4 [3, 3]:
+  ParticleZone ParticleZone_t I4 [3]:
+    ParticleCoordinates ParticleCoordinates_t:
+      CoordinateX DataArray_t R8 [0., 1., 2.]:
+    :CGNS#Distribution UserDefinedData_t:
+      Vertex DataArray_t I4 [0, 3, 3]:
+"""
+
+    dist_tree = PT.yaml.to_cgns_tree(yt)
+
+    tmp_dir = TU.create_collective_tmp_dir(comm)
+    out_file = os.path.join(tmp_dir, 'yt.cgns')
+    maia.io.dist_tree_to_file(dist_tree, out_file, comm)
+
+    t = maia.io.read_tree(out_file)
+    assert (PT.get_value(PT.get_node_from_name(
+        t, "CoordinateX")) == [0., 1., 2.]).all()
+    TU.rm_collective_dir(tmp_dir, comm)
+
+@pytest_parallel.mark.parallel(2)
+def test_ptcl_dist_tree_to_file_2procs(comm):
+    if comm.Get_rank() == 0:
+        yt = """
+CGNSTree CGNSTree_t:
+  Base CGNSBase_t I4 [3, 3]:
+    ParticleZone ParticleZone_t 3:
+      :CGNS#Distribution UserDefinedData_t:
+        Vertex DataArray_t I8 [0, 3, 7]:
+      ParticleCoordinates ParticleCoordinates_t:
+        CoordinateX DataArray_t R8 [0.0, 3.0, 6.0]:
+        CoordinateY DataArray_t R8 [1.0, 4.0, 7.0]:
+        CoordinateZ DataArray_t R8 [2.0, 5.0, 8.0]:
+      ParticleSolution ParticleSolution_t:
+        Identifier DataArray_t I8 [0, 3, 6]:
+"""
+    else:
+        yt = """
+CGNSTree CGNSTree_t:
+  Base CGNSBase_t I4 [3, 3]:
+    ParticleZone ParticleZone_t 4:
+      :CGNS#Distribution UserDefinedData_t:
+        Vertex DataArray_t I8 [3, 7, 7]:
+      ParticleCoordinates ParticleCoordinates_t:
+        CoordinateX DataArray_t R8 [9.0, 12.0, 15.0, 18.0]:
+        CoordinateY DataArray_t R8 [10.0, 13.0, 16.0, 19.0]:
+        CoordinateZ DataArray_t R8 [11.0, 14.0, 17.0, 20.0]:
+      ParticleSolution ParticleSolution_t:
+        Identifier DataArray_t I8 [9, 12, 15, 18]:
+"""
+
+    dist_tree = PT.yaml.to_cgns_tree(yt)
+
+    tmp_dir = TU.create_collective_tmp_dir(comm)
+    out_file = os.path.join(tmp_dir, 'yt.cgns')
+    maia.io.dist_tree_to_file(dist_tree, out_file, comm)
+
+    t = maia.io.read_tree(out_file)
+    assert (PT.get_value(PT.get_node_from_name(
+        t, "CoordinateX")) == [0., 3., 6., 9., 12., 15., 18.]).all()
+    assert (PT.get_value(PT.get_node_from_name(
+        t, "Identifier")) == [0, 3, 6, 9, 12, 15, 18]).all()
+    TU.rm_collective_dir(tmp_dir, comm)
