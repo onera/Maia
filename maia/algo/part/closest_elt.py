@@ -340,7 +340,7 @@ def update_closest_to_parent(surface_tree, points_tree, mpi_comm):
 
 PointCloud = Tuple[NDArray, NDArray]
 # ------------------------------------------------------------------------
-def dist_surf_cloud_compute(surf_part_tree: CGNSPartTree,
+def dist_surf_cloud_compute(surf_per_doms: Dict[str, List[CGNSPartTree]],
                             point_clouds: List[List[PointCloud]],
                             periodicities: Dict[str, List[PT.PeriodicValues]],
                             comm:MPIComm) -> List[List[Dict[str, NDArray]]]:
@@ -352,13 +352,13 @@ def dist_surf_cloud_compute(surf_part_tree: CGNSPartTree,
   """
 
   # Exit with default values if no surface
-  if comm.allreduce(sum(PT.Zone.n_cell(zone) for zone in PT.get_all_Zone_t(surf_part_tree))) == 0:
+  n_cell_loc = sum(sum(PT.Zone.n_cell(part) for part in parts) for parts in surf_per_doms.values())
+  if comm.allreduce(n_cell_loc) == 0:
     return [[_wd_get_defaults(cloud[1].size) for cloud in clouds] for clouds in point_clouds]
 
   n_part_per_cloud = [len(clouds) for clouds in point_clouds]
   _walldist = PDM.DistCloudSurf(comm, 1, 0, point_clouds=n_part_per_cloud) # n_part_surf set later
 
-  surf_per_doms = get_parts_per_blocks(surf_part_tree, comm)
   _keep_alive, offsets = _wd_setup_surf_mesh(surf_per_doms, _walldist, periodicities, comm)
 
   for i_dom, clouds in enumerate(point_clouds):
@@ -385,14 +385,16 @@ def find_closest_element(src_part_tree: CGNSPartTree,
   Source tree can be of dimension 1 or 2.
   Return in a container called 'ClosestElement'
   """
+  surf_per_doms = get_parts_per_blocks(src_part_tree, comm)
   parts_per_dom_pts = get_parts_per_blocks(tgt_part_tree, comm).values()
 
   all_clouds = [[get_point_cloud(part_zone, location) for part_zone in part_zones] \
                 for part_zones in parts_per_dom_pts]
 
   periodicities = options.get('periodicities', dict())
-  results = dist_surf_cloud_compute(src_part_tree, all_clouds, periodicities, comm)
+  results = dist_surf_cloud_compute(surf_per_doms, all_clouds, periodicities, comm)
 
+  dom_list = '\n'.join(surf_per_doms.keys())
   for dom_results, part_zones in zip(results, parts_per_dom_pts):
     for result, part_zone in zip(dom_results, part_zones):
       # Retrieve location
@@ -401,6 +403,7 @@ def find_closest_element(src_part_tree: CGNSPartTree,
 
       for key, val in result.items():
         PT.update_child(fs_node, key, 'DataArray_t', val.reshape(shape, order='F'))
+      PT.new_Descriptor("DomainList", dom_list, parent=fs_node)
 
 
 
@@ -467,6 +470,7 @@ def find_closest_boundary_propagation(part_tree: CGNSPartTree,
 
       for key, val in fields.items():
         PT.update_child(fs_node, key, 'DataArray_t', val.reshape(shape, order='F'))
+      PT.new_Descriptor("DomainList", first_dom, parent=fs_node)
 
 
 

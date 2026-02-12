@@ -189,6 +189,8 @@ def test_walldistance_perio(comm):
     assert np.allclose(PT.get_value(PT.get_child_from_name(fs, 'TurbulentDistance')), expected_wd, rtol=1e-10)
     assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltGnum'))  == expected_gnum[z]).all()
     assert (PT.get_value(PT.get_child_from_name(fs, 'ClosestEltDomId')) == expected_dom_id[z]).all()
+    assert PT.get_value(PT.get_child_from_name(fs, 'DomainList')).split('\n') == \
+      ['Base/zone.D0.D0', 'Base/zone.D0.D1', 'Base/zone.D1.D0', 'Base/zone.D1.D1',]
 
 
 @pytest_parallel.mark.parallel(1)
