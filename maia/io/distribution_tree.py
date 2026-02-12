@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import chain
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 
@@ -123,7 +124,7 @@ def clean_distribution_info(dist_tree):
   """
   distri_name = ":CGNS#Distribution"
   is_dist = PT.pred.label_in(['Elements_t', 'ZoneSubRegion_t', 'FlowSolution_t'])
-  for zone in PT.iter_all_Zone_t(dist_tree):
+  for zone in chain(PT.iter_all_Zone_t(dist_tree), PT.iter_all_ParticleZone_t(dist_tree)):
     PT.rm_children_from_name(zone, distri_name)
     for node in PT.iter_nodes_from_predicate(zone, is_dist):
       PT.rm_children_from_name(node, distri_name)

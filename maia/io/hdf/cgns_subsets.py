@@ -93,23 +93,29 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   Filter is created for the arrays and for the PointList if present
   """
   distrib_vtx  = MT.Zone.vtx_distribution(zone)
-  distrib_cell = MT.Zone.cell_distribution(zone)
-  is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t'])
+  is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t', 'ParticleSolution_t'])
   for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)
-    grid_location = PT.Container.GridLocation(flow_solution)
-    distrib_ud_n = MT.get_Distribution(flow_solution)
-    if distrib_ud_n:
-      distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
-      _create_pl_filter(flow_solution, flow_solution_path, 'PointList', distrib_data, hdf_filter)
-      data_space = create_data_array_filter(distrib_data)
-    elif(grid_location == 'CellCenter'):
-      data_space = create_data_array_filter(distrib_cell, zone[1][:,1])
-    elif(grid_location == 'Vertex'):
-      data_space = create_data_array_filter(distrib_vtx, zone[1][:,0])
+    if PT.get_label(zone) == 'Zone_t':
+      grid_location = PT.Container.GridLocation(flow_solution)
+      distrib_ud_n = MT.get_Distribution(flow_solution)
+      if distrib_ud_n:
+        distrib_data = PT.get_child_from_name(distrib_ud_n, 'Index')[1]
+        _create_pl_filter(flow_solution, flow_solution_path, 'PointList', distrib_data, hdf_filter)
+        data_space = create_data_array_filter(distrib_data)
+      elif(grid_location == 'CellCenter'):
+        distrib_cell = MT.Zone.cell_distribution(zone)
+        data_space = create_data_array_filter(distrib_cell, PT.Zone.n_cell(zone))
+      elif(grid_location == 'Vertex'):
+        data_space = create_data_array_filter(distrib_vtx, PT.Zone.n_vtx(zone))
+      else:
+        raise RuntimeError(f"GridLocation {grid_location} is not allowed without PL")
+    elif PT.get_label(zone) == 'ParticleZone_t':
+      data_space = create_data_array_filter(distrib_vtx, zone[1])
     else:
-      raise RuntimeError(f"GridLocation {grid_location} is not allowed without PL")
+      raise RuntimeError(f"Input must be 'Zone_t' or 'ParticleZone_t', found {PT.get_label(zone)}")
     utils.apply_dataspace_to_arrays(flow_solution, flow_solution_path, data_space, hdf_filter)
+      
 
 def create_zone_subregion_filter(zone, zone_path, hdf_filter):
   """

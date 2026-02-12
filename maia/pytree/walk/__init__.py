@@ -81,6 +81,8 @@ __all__ = [
   'find_node_from_path',
   'get_all_Zone_t',
   'iter_all_Zone_t',
+  'get_all_ParticleZone_t',
+  'iter_all_ParticleZone_t',
   'get_all_CGNSBase_t',
   'iter_all_CGNSBase_t',
   'get_all_subsets',
