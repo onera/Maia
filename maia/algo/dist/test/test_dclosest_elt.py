@@ -55,6 +55,28 @@ def test_find_closest_bnd(elt_kind, comm):
   PT.set_name(pclo, 'ClosestElement') # Needed to compare but same name in tree
   assert PT.is_same_tree(dclo, pclo, abs_tol=1E-15)
 
+@pytest_parallel.mark.parallel(1)
+def test_find_closest_bnd_propagation(comm):
+  # Method is not reproductible in // (unless we use compute2 algo) -> test serial only
+  vol = maia.factory.generate_dist_sphere(5, 'NFACE_n', comm)
+
+  dCLO.find_closest_boundary_propagation(vol, comm)
+
+  # Compare use part. implementation, which is well tested
+  pvol = maia.factory.partition_dist_tree(vol, comm)
+  PT.rm_nodes_from_label(pvol, 'DiscreteData_t')
+  pCLO.find_closest_boundary_propagation(pvol, comm)
+  res = PT.find_node_from_name(pvol, 'ClosestElement')
+  PT.set_name(res, 'pClosestElement')
+
+  maia.transfer.part_tree_to_dist_tree_all(vol, pvol, comm)
+
+  dclo = PT.find_node_from_name(vol,  'ClosestElement')
+  pclo = PT.find_node_from_name(vol, 'pClosestElement')
+  PT.set_name(pclo, 'ClosestElement') # Needed to compare but same name in tree
+  assert PT.is_same_tree(dclo, pclo, abs_tol=1E-15)
+
+
 @pytest_parallel.mark.parallel(2)
 def test_find_closest_bnd_S(comm):
   treeL = maia.factory.generate_dist_block(4, 'S', comm, origin=(-1,0,0)) 

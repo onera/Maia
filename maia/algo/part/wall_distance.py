@@ -92,7 +92,6 @@ def compute_wall_distance(part_tree: CGNSPartTree,
     if options.get('perio', True):
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
     find_closest_boundary_propagation(part_tree,
-                                      point_cloud,
                                       comm,
                                       bnd_predicate)
 

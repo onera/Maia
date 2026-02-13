@@ -177,3 +177,49 @@ def find_closest_boundary(src_dist_tree: CGNSDistTree,
                        periodicities=periodicities)
 
   update_closest_to_parent(bnd_tree, src_tgt_tree, comm)
+
+
+
+def find_closest_boundary_propagation(dist_tree: CGNSDistTree,
+                                      comm: MPIComm,
+                                      surf_predicate: PT.pred.NodePredicate = IS_BND) -> None:
+
+  if len(PT.get_all_Zone_t(dist_tree)) > 1:
+    raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
+
+  bnd_tree = extract_surf_from_bc(dist_tree, surf_predicate, comm)
+
+  # Light partitioning for bnd_tree (should be poly 2D)
+  bnd_zone = PT.find_node_from_label(bnd_tree, 'Zone_t')
+  assert PT.Zone.CellDimension(bnd_zone) == 2 and PT.pred.IS_POLY2D_ZONE(bnd_zone)
+  face_vtx_idx, face_vtx, coords, face_gnum, vtx_gnum = minimal_partitioning_poly2D(bnd_zone, comm)
+  pbnd_zone = PT.new_Zone(f"{PT.get_name(bnd_zone)}.P{comm.rank}.N0", type='Unstructured')
+  PT.set_value(pbnd_zone, [[vtx_gnum.size, face_gnum.size, 0]])
+  PT.new_GridCoordinates(fields={f'Coordinate{d}': coords[i::3] for i,d in enumerate('XYZ')},
+                         parent=pbnd_zone)
+  MT.new_GlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : face_gnum}, parent=pbnd_zone)
+  PT.new_NGonElements(erange=[1, face_gnum.size], eso=face_vtx_idx, ec=face_vtx, parent=pbnd_zone)
+  
+  # Light partitioning for volumic zone
+  vol_zone = PT.find_node_from_label(dist_tree, 'Zone_t')
+  cell_face_idx,  cell_face, face_vtx_idx, face_vtx, coords, \
+    cell_gnum, face_gnum, vtx_gnum = minimal_partitioning(vol_zone, comm)
+  pvol_zone = PT.new_Zone(f"{PT.get_name(vol_zone)}.P{comm.rank}.N0", type='Unstructured', size=[[vtx_gnum.size, cell_gnum.size, 0]])
+  PT.new_GridCoordinates(fields={f'Coordinate{d}': coords[i::3] for i,d in enumerate('XYZ')},
+                         parent=pvol_zone)
+  ng = PT.new_NGonElements(erange=[1, face_gnum.size], eso=face_vtx_idx, ec=face_vtx, parent=pvol_zone)
+  MT.new_GlobalNumbering({'Element' : face_gnum}, parent=ng)
+  PT.new_NFaceElements(erange=[face_gnum.size+1, face_gnum.size+cell_gnum.size], eso=cell_face_idx, ec=cell_face, parent=pvol_zone)
+  MT.new_GlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : cell_gnum}, parent=pvol_zone)
+
+  fields = pclosest_elt.dist_cell_center_surf_compute({'SingleDom' : [pbnd_zone]},
+                                                      [pvol_zone],
+                                                      comm)[0]
+  
+  fs_node = pclosest_elt._create_output_container(vol_zone, 'CellCenter', 'ClosestElement')
+  for key, val in fields.items():
+    PT.update_child(fs_node, key, 'DataArray_t', val)
+  dom_path = PT.get_name(PT.find_child_from_label(dist_tree, 'CGNSBase_t')) + '/' +  PT.get_name(vol_zone)
+  PT.new_Descriptor("DomainList", dom_path, parent=fs_node)
+
+  update_closest_to_parent(bnd_tree, dist_tree, comm)
