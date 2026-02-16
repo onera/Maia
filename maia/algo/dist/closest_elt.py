@@ -135,7 +135,7 @@ def find_closest_element(src_dist_tree: CGNSDistTree,
   surf_per_doms_part = dict()
   for zone_path in PT.predicates_to_paths(src_dist_tree, 'CGNSBase_t/Zone_t'):
     zone = PT.find_node_from_path(src_dist_tree, zone_path)
-    assert PT.Zone.CellDimension(zone) == 2
+    assert PT.Zone.CellDimension(zone) <= 2
     if PT.pred.IS_POLY2D_ZONE(zone):
       face_vtx_idx, face_vtx, coords, face_gnum, vtx_gnum = minimal_partitioning_poly2D(zone, comm)
     else:
@@ -145,7 +145,10 @@ def find_closest_element(src_dist_tree: CGNSDistTree,
     PT.new_GridCoordinates(fields={f'Coordinate{d}': coords[i::3] for i,d in enumerate('XYZ')},
                            parent=pzone)
     MT.new_GlobalNumbering({'Vertex' : vtx_gnum, 'Cell' : face_gnum}, parent=pzone)
-    PT.new_NGonElements(erange=[1, face_gnum.size], eso=face_vtx_idx, ec=face_vtx, parent=pzone)
+    if PT.Zone.CellDimension(zone) == 2:
+      PT.new_NGonElements(erange=[1, face_gnum.size], eso=face_vtx_idx, ec=face_vtx, parent=pzone)
+    else:
+      PT.new_Elements(type='BAR_2', erange=[1, face_gnum.size], econn=face_vtx, parent=pzone)
     surf_per_doms_part[zone_path] = [pzone]
       
   periodicities = options.get('periodicities', dict())

@@ -34,7 +34,7 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
     zonebc = PT.new_ZoneBC(parent=u_zone)
     for bc_s in PT.iter_children_from_predicates(zone, [PT.pred.label_is('ZoneBC_t'), is_relevant_bc]):
       # Work on a copy w/ BCDS
-      shallow_bc = PT.new_BC(PT.get_name(bc_s), loc=PT.Subset.GridLocation(bc_s))
+      shallow_bc = PT.new_BC(PT.get_name(bc_s), type=PT.get_str_value(bc_s), loc=PT.Subset.GridLocation(bc_s))
       PT.add_child(shallow_bc, PT.Subset.getPatch(bc_s))
       bc_u = bc_s_to_bc_u(shallow_bc, PT.Zone.VertexSize(zone), wanted_loc, comm.rank, comm.size)
       # > Get absolute gnum in all faces numbering for structured meshes
