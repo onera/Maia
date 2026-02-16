@@ -19,6 +19,7 @@ Development version
 🐞 Fixes
 ^^^^^^^^
 - interpolate: fixup results of ``LocationAndClosest`` strategy on multidomain cases
+- convert_mixed_to_elements: prevent a crash on meshes having standard elements
 
 v1.9 (January 2026)
 -------------------

@@ -4,10 +4,12 @@ import numpy as np
 import os
 
 import maia.pytree        as PT
+import maia.pytree.maia   as MT
 
 import maia
 from maia.io          import file_to_dist_tree
 from maia.utils       import test_utils as TU
+from maia.utils       import vstride as vs
 
 from maia.algo.dist   import convert_elements_to_mixed
 
@@ -318,3 +320,35 @@ def test_convert_mixed_to_elements(comm):
     assert PT.get_name(data) == 'TypeElements3D'
     assert np.all(PT.get_value(data) == expected_data)
     
+
+@pytest_parallel.mark.parallel(1)
+def test_mixed_and_std(comm):
+    yaml_path = os.path.join(TU.mesh_dir, 'hex_prism_pyra_tet.yaml')
+    dist_tree = file_to_dist_tree(yaml_path, comm)
+    
+    # Assume this function is already tested
+    convert_elements_to_mixed(dist_tree, comm)
+
+    zone = PT.get_all_Zone_t(dist_tree)[0]
+
+    ztype = PT.get_np_value(zone).dtype
+    gtype = MT.Zone.vtx_distribution(zone).dtype
+
+    # Split in 2 nodes + Pyra in the middle remains Pyra
+
+    mix = MT.Element.connectivity(PT.find_node_from_label(zone, 'Elements_t'))
+    mix1 = vs.take(mix, np.arange(0,13))
+    pris = vs.take(mix, np.arange(13,14))
+    mix2 = vs.take(mix, np.arange(14,16))
+
+    PT.rm_nodes_from_label(zone, 'Elements_t')
+    elt = PT.new_Elements('Mixed1', 'MIXED', erange=np.array([1, 13], ztype), econn=mix1.values, parent=zone)
+    MT.new_Distribution({'Element' : np.array([0,13,13], gtype)}, elt)
+    PT.new_DataArray('ElementStartOffset', mix1.displs, parent=elt)
+    elt = PT.new_Elements('Prisms', 'PENTA_6', erange=np.array([14,14], ztype), econn=pris.values[1:], parent=zone)
+    MT.new_Distribution({'Element' : np.array([0,1,1], gtype)}, elt)
+    elt = PT.new_Elements('Mixed2', 'MIXED', erange=np.array([15,16], ztype), econn=mix2.values, parent=zone)
+    PT.new_DataArray('ElementStartOffset', mix2.displs, parent=elt)
+    MT.new_Distribution({'Element' : np.array([0,2,2], gtype)}, elt)
+
+    convert_mixed_to_elements(dist_tree, comm)

@@ -124,7 +124,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                     except KeyError:
                         pass
             elem_ec  = PT.get_np_value(PT.find_child_from_name(element, 'ElementConnectivity'))
-            elem_eso = PT.find_child_from_name(element, 'ElementStartOffset')
+            elem_eso = PT.get_child_from_name(element, 'ElementStartOffset')
             old_to_new_element_numbering = np.zeros(nb_elem_loc,dtype=elem_ec.dtype)
             old_to_new_cell_numbering    = np.zeros(nb_cell_loc,dtype=maia.npy_pdm_gnum_dtype)
             ln_to_gn_element = np.arange(nb_elem_loc,dtype=maia.npy_pdm_gnum_dtype) + 1\
@@ -143,7 +143,7 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                         all_cell_pos[elem_type] = np.arange(nb_elem_loc) if PT.Element.Type(element) == elem_type else np.empty(0, int)
                         
             else:
-                assert elem_eso[1] is not None
+                assert elem_eso is not None
                 elem_ec_type_pos = elem_ec[elem_eso[1][:-1]-elem_eso[1][0]] # Type of each element
                 all_elem_pos = {} # For each type, position where elts of this kind are found
                 all_non_cell_pos_tmp = []
