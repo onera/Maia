@@ -6,24 +6,8 @@ import maia.pytree        as PT
 
 import maia
 
-from maia.algo.part import wall_distance as WD
-
-def test_detect_wall_families():
-  yt = """
-  BaseA CGNSBase_t:
-    SomeWall Family_t:
-      FamilyBC FamilyBC_t "BCWallViscous":
-    SomeNoWall Family_t:
-      FamilyBC FamilyBC_t "BCFarfield":
-  BaseB CGNSBase_t:
-    SomeOtherWall Family_t:
-      FamilyBC FamilyBC_t "BCWall":
-  BaseC CGNSBase_t:
-  """
-  tree = PT.yaml.to_cgns_tree(yt)
-
-  assert WD.detect_wall_families(tree) == ['SomeWall', 'SomeOtherWall']
-
+from maia.algo.part import closest_elt as pCLO
+from maia.algo.part import compute_wall_distance
 
 # For U, we reuse the meshes defined in test_interpolate
 from maia.algo.part.test.test_pinterpolation import src_part_0, src_part_1
@@ -58,9 +42,9 @@ def test_wall_distance_U(perio, comm):
   # Test with propagation method + default out_fs_name
   if perio:
     with pytest.warns(RuntimeWarning):
-      WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
+      compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
   else:
-    WD.compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
+    compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
 
   fs = PT.get_child_from_name(zone, 'WallDistance')
   assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
@@ -71,7 +55,7 @@ def test_wall_distance_U(perio, comm):
 
   #Test with cloud method + custom fs name
   PT.rm_nodes_from_name(part_tree, 'WallDistance')
-  WD.compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
+  compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
 
   fs = PT.get_child_from_name(zone, 'MyWallDistance')
   assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
@@ -105,7 +89,7 @@ def test_projection_to(comm):
     """)
   PT.add_child(zone, zone_bc)
 
-  WD.find_closest_boundary(part_tree, part_tree, 'CellCenter', comm, PT.pred.label_is('BC_t'))
+  pCLO.find_closest_boundary(part_tree, part_tree, 'CellCenter', comm, PT.pred.label_is('BC_t'))
 
   fs = PT.get_child_from_name(zone, 'ClosestElement')
   assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
@@ -120,7 +104,7 @@ def test_walldistance_elts(comm):
   PT.set_value(bc, 'BCWall')
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
-  WD.compute_wall_distance(ptree, comm)
+  compute_wall_distance(ptree, comm)
   maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
   
   if comm.Get_rank() == 0:
@@ -168,7 +152,7 @@ def test_walldistance_perio(comm):
   part_tree = maia.factory.partition_dist_tree(dist_treeU, comm)
 
   # Test with family specification
-  WD.compute_wall_distance(part_tree, comm)
+  compute_wall_distance(part_tree, comm)
 
   expected_wd     = [0.35355339, 0.35355339, 1.06066017, 1.06066017,
                      0.35355339, 0.35355339, 1.06066017, 1.06066017]
@@ -232,7 +216,7 @@ def test_walldistance_perio_multi_groups(comm, mesh_type):
   
   #Case execution
   pt = maia.factory.partition_dist_tree(dt, comm)
-  WD.compute_wall_distance(pt, comm, perio=True)
+  compute_wall_distance(pt, comm, perio=True)
   
   #Case test
   wd1 = PT.get_node_from_path(pt, 'Base/Zone1.P0.N0/WallDistance/ClosestEltDomId')
@@ -267,7 +251,7 @@ def test_walldistance_vtx(comm):
   PT.add_child(zone, zone_bc)
   PT.new_FlowSolution("MyWallDistance", fields={'Dummy' : np.ones(PT.Zone.n_vtx(zone))}, parent=zone)
 
-  WD.compute_wall_distance(part_tree, comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
+  compute_wall_distance(part_tree, comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
 
   fs = PT.get_child_from_name(zone, 'MyWallDistance')
   assert fs is not None and PT.Container.GridLocation(fs) == 'Vertex'
@@ -279,15 +263,12 @@ def test_walldistance_vtx(comm):
 @pytest_parallel.mark.parallel(2)
 def test_walldistance_2d(elt_kind, comm):
   tree = maia.factory.generate_dist_block(4, 'TRI_3', comm)
-  # Set some BC wall
-  bc = PT.get_node_from_name(tree, 'Xmin')
-  PT.set_value(bc, 'BCWall')
 
   if elt_kind == 'Poly':
     maia.algo.dist.convert_elements_to_ngon(tree, comm)
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
-  WD.compute_wall_distance(ptree, comm)
+  pCLO.find_closest_boundary(ptree, ptree, 'CellCenter', comm, PT.pred.name_is('Xmin'))
   maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
   if comm.Get_rank() == 0:
     expected_wd = np.array([1,2,4,5,7,8, 1,2,4]) / 9.
@@ -296,7 +277,7 @@ def test_walldistance_2d(elt_kind, comm):
     expected_wd = np.array([5,7,8, 1,2,4,5,7,8]) / 9.
     expected_gnum = [13,13,13, 23,23,23,23,23,23] if elt_kind == 'Poly' else [8,8,8, 9,9,9,9,9,9]
 
-  assert np.allclose   (PT.get_node_from_name(tree, 'TurbulentDistance')[1], expected_wd)
+  assert np.allclose   (PT.get_node_from_name(tree, 'Distance')[1], expected_wd)
   assert np.array_equal(PT.get_node_from_name(tree, 'ClosestEltGnum')[1], expected_gnum)
 
 @pytest.mark.parametrize('is_perio', [False, True])
@@ -321,8 +302,7 @@ def test_walldistance_2d_S(is_perio, comm):
     PT.new_node('ZoneGridConnectivity', 'ZoneGridConnectivity_t', children=gcs, parent=zone)
 
   ptree = maia.factory.partition_dist_tree(tree, comm)
-  WD.compute_wall_distance(ptree, comm)
-  WD.compute_wall_distance(ptree, comm) # Double compute should work
+  compute_wall_distance(ptree, comm)
   maia.transfer.part_tree_to_dist_tree_all(tree, ptree, comm)
   if comm.Get_rank() == 0:
     expected_wd = np.array([7,5,3,1,  7,5]) / 8.
@@ -334,16 +314,3 @@ def test_walldistance_2d_S(is_perio, comm):
   assert np.allclose   (PT.get_node_from_name(tree, 'TurbulentDistance')[1], expected_wd)
   assert np.array_equal(PT.get_node_from_name(tree, 'ClosestEltGnum')[1], expected_gnum)
 
-@pytest_parallel.mark.parallel(2)
-def test_wall_distance_no_wall(comm):
-  dist_tree = maia.factory.generate_dist_block(4, "Poly", comm)
-  part_tree = maia.factory.partition_dist_tree(dist_tree, comm)
-  WD.compute_wall_distance(part_tree, comm)
-
-  for zone in PT.get_all_Zone_t(part_tree):
-    fs_node = PT.get_child_from_name(zone, 'WallDistance')
-    assert PT.Container.GridLocation(fs_node) == 'CellCenter'
-    assert (PT.get_child_from_name(fs_node, 'TurbulentDistance')[1] == np.inf).all()
-    assert (PT.get_child_from_name(fs_node, 'ClosestEltGnum')[1] == -1).all()
-    assert (PT.get_child_from_name(fs_node, 'ClosestEltDomId')[1] == -1).all()
-    

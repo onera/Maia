@@ -98,10 +98,6 @@ Partitioned algorithms
 
 The following algorithms apply on maia partitioned trees.
 
-Geometric calculations
-^^^^^^^^^^^^^^^^^^^^^^
-
-.. autofunction:: maia.algo.part.compute_wall_distance
 
 Mesh extractions
 ^^^^^^^^^^^^^^^^
@@ -138,6 +134,7 @@ Geometric calculations
 ^^^^^^^^^^^^^^^^^^^^^^
 .. autofunction:: maia.algo.localize_points
 .. autofunction:: maia.algo.find_closest_points
+.. autofunction:: maia.algo.compute_wall_distance
 .. autofunction:: maia.algo.compute_elements_center
 .. autofunction:: maia.algo.compute_elements_measure
 .. autofunction:: maia.algo.compute_elements_normal
