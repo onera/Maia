@@ -19,18 +19,11 @@ def test_wall_distance_S(method, comm, write_output):
 
   dist_tree = maia.io.file_to_dist_tree(mesh_file, comm)
 
-  # Partitioning
-  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, graph_part_tool='ptscotch')
-
   # Wall distance computation (BC already have wall type in the CGNS file)
-  maia.algo.part.compute_wall_distance(part_tree, comm, method=method)
-
-  # Save file and compare
-  maia.transfer.part_tree_to_dist_tree_all(dist_tree, part_tree, comm)
+  maia.algo.compute_wall_distance(dist_tree, comm, method=method)
 
   if write_output:
     out_dir = maia.utils.test_utils.create_pytest_output_dir(comm)
-    maia.io.write_trees(part_tree, os.path.join(out_dir, 'parttree_out.hdf'), comm)
     maia.io.dist_tree_to_file(dist_tree, os.path.join(out_dir, 'result.hdf'), comm)
 
   # Compare to reference solution

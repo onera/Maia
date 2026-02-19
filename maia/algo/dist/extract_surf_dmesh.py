@@ -48,7 +48,10 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
     u_zone = zone
 
   # Get selected faces or edge ids
-  selected_face_ids = collect_distributed_pl(u_zone, [[PT.pred.label_is('ZoneBC_t'), is_relevant_bc]], [wanted_loc])
+  pred = [PT.pred.label_is('ZoneBC_t'), is_relevant_bc & PT.pred.has_location(wanted_loc)]
+  selected_face_ids = collect_distributed_pl(u_zone, [pred])
+  selected_distri = [MT.Subset.distribution(s) for s in PT.get_children_from_predicates(u_zone, pred)]
+
 
   # Extract face_vtx (or edge_vtx) connectivity --> depends on input connectivity, but in all
   # cases we output as poly mesh
@@ -65,14 +68,35 @@ def extract_surf_from_bc_single(zone:CGNSDistTree,
     parent = flagged.astype(ztype, copy=False) + face_distri[0] + 1
     ext_face_vtx = vs.take(face_vtx, flagged)
   else: # Std elts or Poly2D (in which case EdgeElements are defined)
-    # Std elements : face extraction is managed direcly by entity_vtx_connectivity_elt
+    # Std elements *or* S : face extraction is managed direcly by entity_vtx_connectivity_elt
     # (note : this may not work if a face appears twice in selected_face_ids)
     # Here parent is simply the flagged id since connectivity is get following this order
-    _, parent = np_utils.concatenate_point_list(selected_face_ids, dtype=ztype)
-    ext_face_vtx = entity_vtx_connectivity_elt(u_zone, comm, zone_dim-1, False, parent)
+    # but we first do a redistribution step to be // independant and to ensure better distribution
+    
+    start = 0
+    loc_start = 0
+    distri_tot = par_utils.uniform_distribution(sum(d[2] for d in selected_distri), comm)
+    _parent = np.empty(distri_tot[1]-distri_tot[0], ztype)
     if PT.Zone.Type(zone) == 'Structured':
-      parent = np_utils.concatenate_point_list(s_parent_l, dtype=ztype)[1]
-    else:
+      parent = np.empty(distri_tot[1]-distri_tot[0], ztype)
+    for j,ids in enumerate(selected_face_ids):
+      distri_in  = selected_distri[j]
+      distri_out = distri_in.copy()
+      end = start + distri_in[2]
+      distri_out[0] = max(min(distri_tot[0], end), start) - start
+      distri_out[1] = max(min(distri_tot[1], end), start) - start
+      btb = EP.BlockToBlock(distri_in, distri_out, comm)
+      loc_end = loc_start + distri_out[1] - distri_out[0]
+      btb.exchange_inplace(ids[0], _parent[loc_start:loc_end])
+      if PT.Zone.Type(zone) == 'Structured':
+        btb.exchange_inplace(s_parent_l[j][0], parent[loc_start:loc_end])
+      start = end
+      loc_start = loc_end
+
+    ext_face_vtx = entity_vtx_connectivity_elt(u_zone, comm, zone_dim-1, False, _parent)
+
+    if PT.Zone.Type(zone) != 'Structured':
+      parent = _parent
       parent_shift = PT.Zone.get_elt_range_per_dim(u_zone)[zone_dim-1][0] - 1
       parent -= parent_shift
 

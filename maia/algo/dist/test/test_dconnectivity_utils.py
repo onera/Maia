@@ -130,3 +130,31 @@ def test_entity_vtx_connectivity_elt(distri_global, comm):
                         ][comm.rank]
     cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 2, False)
     assert vs.array_equal(cell_vtx, vs.from_displs(expected_cell_vtx_idx, expected_cell_vtx))
+
+
+@pytest_parallel.mark.parallel(2)
+def test_entity_vtx_connectivity_elt_subset(comm):
+  ft = PT.yaml.to_cgns_tree("""
+  Zone Zone_t [[12, 8, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    TRI Elements_t [5, 0]:
+      ElementRange IndexRange_t [1, 3]:
+      ElementConnectivity DataArray_t [1,2,3,  4,5,6,  7,8,9]:
+    PYRA Elements_t [12, 0]:
+      ElementRange IndexRange_t [8, 11]:
+      ElementConnectivity DataArray_t [201,202,203,204,205,  206,207,208,209,210, 211,212,213,214,215, 216,217,218,219,220]:
+    TETRA Elements_t [10, 0]:
+      ElementRange IndexRange_t [4, 7]:
+      ElementConnectivity DataArray_t [101,102,103,104,  105,106,107,108,  109,110,111,112,  113,114,115,116]:
+  """)
+  tree = maia.factory.full_to_dist_tree(ft, comm)
+  zone = PT.get_node_from_label(tree, 'Zone_t')
+
+  if comm.rank == 0:
+    subset = np.array([10,6,11])
+    exp_cell_vtx = [[211,212,213,214,215], [109,110,111,112], [216,217,218,219,220]]
+  else:
+    subset = np.array([6,5,9,7])
+    exp_cell_vtx = [[109,110,111,112], [105,106,107,108], [206,207,208,209,210], [113,114,115,116]]
+  cell_vtx = CU.entity_vtx_connectivity_elt(zone, comm, 3, False, elts_subset=subset)
+  assert vs.array_equal(cell_vtx, vs.array(exp_cell_vtx))
