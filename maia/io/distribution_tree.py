@@ -24,7 +24,32 @@ def interpret_policy(policy, comm):
 
   return distribution
 
-def compute_subset_distribution(node, comm, distri_func):
+def _partial_subset_needs_distribution(zone, node, node_size):
+  ''' Check if a partial subset needs a distribution
+      A partial subset does not contain a PL or PR (because we don't want to store the information)
+      So we need to look at other informations to determine if it is indexed or not
+  ''' 
+
+  # Precondition: this function should be called in a partial context (were the PL and PR are not present)
+  pr_n = PT.get_child_from_name(node, 'PointRange')
+  pl_n = PT.get_child_from_name(node, 'PointList')
+  assert pr_n is None
+  assert pl_n is None
+
+  if PT.get_label(node) == 'ZoneSubRegion_t':
+    bc_region = PT.get_child_from_name(node, "BCRegionName")
+    gc_region = PT.get_child_from_name(node, "GridConnectivityRegionName")
+    return bc_region is None and gc_region is None # a ZSR it needs a distribution if it is not linked to a BC nor a GC
+  else:
+    loc = PT.Container.GridLocation(node)
+    if not loc in ['Vertex', 'CellCenter']:
+      return True # Face and edge FlowSolution_t/DiscreteData_t are always indexed, so they need a distribution
+
+    zone_size = MT.Zone.n_vtx(zone) if loc == 'Vertex' else MT.Zone.n_cell(zone)
+    return node_size < zone_size # If there is a Zone distribution, compute one for our node only if it is of smaller size
+
+
+def compute_subset_distribution(zone, node, comm, distri_func):
   """
   Compute the distribution for a given node using its PointList or PointRange child
   If a PointRange node is found, the total length is getted from the product
@@ -48,7 +73,7 @@ def compute_subset_distribution(node, comm, distri_func):
     pl_size = PT.get_np_value(pls_n)[1]
     MT.new_Distribution({'Index' : distri_func(pl_size, comm)}, parent=node)
 
-  elif PT.get_label(node) == 'ZoneSubRegion_t': # In case we are loading a partial CGNS tree where the ZSR has no PR or PL
+  elif PT.get_label(node) in ['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t']: # In case we are loading a partial CGNS tree where the PR or PL info is not stored
     # Get all DataArrays that are not #Size arrays
     data_arrays = PT.get_children_from_predicate(node, PT.pred.label_is('DataArray_t') & PT.pred.value_is(None))
     data_array_sizes = [PT.find_child_from_name(node, PT.get_name(da)+'#Size') for da in data_arrays]
@@ -57,9 +82,11 @@ def compute_subset_distribution(node, comm, distri_func):
       size = PT.get_np_value(data_array_sizes[0])
       for das in data_array_sizes[1:]:
         sz = PT.get_np_value(das)
-        assert sz == size
-      MT.new_Distribution({'Index' : distri_func(size, comm)}, parent=node)
+        assert np.all(sz == size)
+      size = np.prod(size)
 
+      if _partial_subset_needs_distribution(zone, node, size):
+        MT.new_Distribution({'Index' : distri_func(size, comm)}, parent=node)
 
 def compute_elements_distribution(zone, comm, distri_func):
   """
@@ -89,7 +116,7 @@ def compute_zone_distribution(zone, comm, distri_func):
 
   for predicate in predicate_list:
     for node in PT.iter_children_from_predicates(zone, predicate):
-      compute_subset_distribution(node, comm, distri_func)
+      compute_subset_distribution(zone, node, comm, distri_func)
 
   mark_global_bcds_arrays(zone)
 

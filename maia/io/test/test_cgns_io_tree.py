@@ -294,7 +294,6 @@ def incomplete_zsr_file(comm):
         ZoneType ZoneType_t "Unstructured":
         ZSR_AIRFOIL ZoneSubRegion_t:
           GridLocation GridLocation_t "FaceCenter":
-          BCRegionName Descriptor_t "AIRFOIL":
           Density DataArray_t R8 [10., 11., 12.]:
   """)
   tmp_dir = TU.create_collective_tmp_dir(comm)
@@ -323,7 +322,6 @@ def incomplete_zsr_dist_tree(comm):
           Cell DataArray_t {dtype} [0, 0, 0]:
         ZSR_AIRFOIL ZoneSubRegion_t:
           GridLocation GridLocation_t "FaceCenter":
-          BCRegionName Descriptor_t "AIRFOIL":
           Density DataArray_t R8 {zsr_density}:
           :CGNS#Distribution UserDefinedData_t:
             Index DataArray_t {dtype} {zsr_dist}:
@@ -347,3 +345,75 @@ def test_write_incomplete_zsr(comm, incomplete_zsr_dist_tree):
   dist_tree_from_write = maia.io.file_to_dist_tree(tmp_dir/'test_write.cgns', comm)
   assert PT.is_same_tree(dist_tree_from_write, incomplete_zsr_dist_tree)
   TU.rm_collective_dir(tmp_dir, comm)
+
+
+@pytest.fixture()
+def incomplete_fs_file(comm):
+  yt = PT.yaml.to_cgns_tree("""
+    Base CGNSBase_t [2,2]:
+      ZoneU Zone_t [[6, 3, 0]]:
+        ZoneType ZoneType_t "Unstructured":
+        FS_CC_Complete FlowSolution_t:
+          GridLocation GridLocation_t "CellCenter":
+          Density DataArray_t R8 [10., 11., 12.]:
+        FS_CC_Partial FlowSolution_t:
+          GridLocation GridLocation_t "CellCenter":
+          Density DataArray_t R8 [100., 101.]:
+        FS_FC FlowSolution_t:
+          GridLocation GridLocation_t "FaceCenter":
+          Density DataArray_t R8 [0., 1., 2., 3., 5.]:
+  """)
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+  tmp_file = tmp_dir/'incomplete_fs.cgns'
+  if comm.rank == 0:
+    maia.io.write_tree(yt, tmp_file)
+  comm.barrier() # wait for rank 0 to finish writing
+  return tmp_file
+
+@pytest.fixture()
+def incomplete_fs_dist_tree(comm):
+  if comm.rank == 0:
+    vtx_dist           = '[0, 3, 6]'
+    cell_dist          = '[0, 2, 3]'
+    fs_cc_partial_dist = '[0, 1, 2]'
+    fs_fc_dist         = '[0, 3, 5]'
+    fs_cc_complete = '[10., 11.]'
+    fs_cc_partial  = '[100.]'
+    fs_fc          = '[0., 1., 2.]'
+  elif comm.rank == 1:
+    vtx_dist           = '[3, 6, 6]'
+    cell_dist          = '[2, 3, 3]'
+    fs_cc_partial_dist = '[1, 2, 2]'
+    fs_fc_dist         = '[3, 5, 5]'
+    fs_cc_complete = '[12.]'
+    fs_cc_partial  = '[101.]'
+    fs_fc          = '[3., 5.]'
+  dist_yt = PT.yaml.to_cgns_tree(f"""
+    Base CGNSBase_t [2,2]:
+      ZoneU Zone_t [[6, 3, 0]]:
+        ZoneType ZoneType_t "Unstructured":
+        :CGNS#Distribution UserDefinedData_t:
+          Vertex DataArray_t {dtype} {vtx_dist}:
+          Cell   DataArray_t {dtype} {cell_dist}:
+        FS_CC_Complete FlowSolution_t:
+          GridLocation GridLocation_t "CellCenter":
+          Density DataArray_t R8 {fs_cc_complete}:
+        FS_CC_Partial FlowSolution_t:
+          GridLocation GridLocation_t "CellCenter":
+          Density DataArray_t R8 {fs_cc_partial}:
+          :CGNS#Distribution UserDefinedData_t:
+            Index DataArray_t {dtype} {fs_cc_partial_dist}:
+        FS_FC FlowSolution_t:
+          GridLocation GridLocation_t "FaceCenter":
+          Density DataArray_t R8 {fs_fc}:
+          :CGNS#Distribution UserDefinedData_t:
+            Index DataArray_t {dtype} {fs_fc_dist}:
+  """)
+  return dist_yt
+
+@pytest_parallel.mark.parallel(2)
+def test_read_incomplete_fs(comm, incomplete_fs_file, incomplete_fs_dist_tree):
+  dist_tree = maia.io.file_to_dist_tree(incomplete_fs_file, comm)
+
+  assert PT.is_same_tree(dist_tree, incomplete_fs_dist_tree)
+  TU.rm_collective_dir(incomplete_fs_file.parent, comm)

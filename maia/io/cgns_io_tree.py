@@ -244,11 +244,10 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
   start = time.time()
   filename = str(filename)
 
-  # Check if folder exists
   create_parent_folder(filename, comm)
 
   recompute_ec_size(dist_tree, comm)
-  hdf_filter = create_tree_hdf_filter(dist_tree)
+  hdf_filter = create_tree_hdf_filter(dist_tree, mode='write')
   save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links)
   end = time.time()
   mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")

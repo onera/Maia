@@ -8,8 +8,9 @@ from   maia.io             import distribution_tree
 
 @pytest_parallel.mark.parallel(2)
 def test_compute_subset_distribution(comm):
+  zone = PT.new_Zone('Zone')
   node = PT.new_BC(name='BC', point_range=[[1,3],[1,3],[3,3]])
-  distribution_tree.compute_subset_distribution(node, comm, par_utils.uniform_distribution)
+  distribution_tree.compute_subset_distribution(zone, node, comm, par_utils.uniform_distribution)
 
   distrib_ud = MT.get_Distribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
@@ -20,7 +21,7 @@ def test_compute_subset_distribution(comm):
   node = PT.new_BC(name='BC')
   PT.new_IndexArray('PointList', None, parent=node)
   PT.new_IndexArray('PointList#Size', [1,9], parent=node)
-  distribution_tree.compute_subset_distribution(node, comm, par_utils.uniform_distribution)
+  distribution_tree.compute_subset_distribution(zone, node, comm, par_utils.uniform_distribution)
 
   distrib_ud = MT.get_Distribution(node)
   assert PT.get_label(distrib_ud) == 'UserDefinedData_t'
