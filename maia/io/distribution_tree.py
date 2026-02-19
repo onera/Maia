@@ -61,25 +61,6 @@ def compute_subset_distribution(node, comm, distri_func):
       MT.new_Distribution({'Index' : distri_func(size, comm)}, parent=node)
 
 
-def compute_connectivity_distribution(node):
-  """
-  Once ESO is loaded, update element distribution with ElementConnectivity array
-  """
-  eso_n  = PT.get_child_from_name(node, 'ElementStartOffset')
-  if eso_n is None:
-    raise RuntimeError
-  size_n = PT.find_child_from_name(node, 'ElementConnectivity#Size')
-  size = PT.get_np_value(size_n)[0]
-  par_utils.watch_overflow(size)
-
-  beg  = PT.get_np_value(eso_n)[0]
-  end  = PT.get_np_value(eso_n)[-1]
-
-  distri_n = MT.find_Distribution(node)
-  dtype = PT.get_np_value(PT.find_child_from_name(distri_n, 'Element')).dtype
-  PT.new_DataArray("ElementConnectivity", value=np.array([beg,end,size], dtype), parent=distri_n)
-
-
 def compute_elements_distribution(zone, comm, distri_func):
   """
   """

@@ -15,6 +15,7 @@ Development version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - (de)concatenate_subsets_from_families: merge ZoneSubRegion_t nodes if possible
+- IO: Allow to read or write ZoneSubRegion_t nodes when related BCs are missing
 
 🐞 Fixes
 ^^^^^^^^

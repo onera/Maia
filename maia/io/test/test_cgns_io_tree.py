@@ -8,7 +8,6 @@ import maia
 import maia.pytree as PT
 import maia.io.cgns_io_tree as IOT
 import maia.utils.test_utils as TU
-from maia.pytree import compare as CP
 
 from maia import npy_pdm_gnum_dtype as pdm_dtype
 dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
@@ -335,7 +334,8 @@ def incomplete_zsr_dist_tree(comm):
 def test_read_incomplete_zsr(comm, incomplete_zsr_file, incomplete_zsr_dist_tree):
   dist_tree = maia.io.file_to_dist_tree(incomplete_zsr_file, comm)
 
-  assert CP.diff_tree(dist_tree, incomplete_zsr_dist_tree)[1] == ''
+  assert PT.is_same_tree(dist_tree, incomplete_zsr_dist_tree)
+  TU.rm_collective_dir(incomplete_zsr_file.parent, comm)
 
 @pytest_parallel.mark.parallel(2)
 def test_write_incomplete_zsr(comm, incomplete_zsr_dist_tree):
@@ -345,4 +345,5 @@ def test_write_incomplete_zsr(comm, incomplete_zsr_dist_tree):
 
   # We suppose reading is OK (is tested above)
   dist_tree_from_write = maia.io.file_to_dist_tree(tmp_dir/'test_write.cgns', comm)
-  assert CP.diff_tree(dist_tree_from_write, incomplete_zsr_dist_tree)[1] == ''
+  assert PT.is_same_tree(dist_tree_from_write, incomplete_zsr_dist_tree)
+  TU.rm_collective_dir(tmp_dir, comm)
