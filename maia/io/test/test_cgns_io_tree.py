@@ -1,5 +1,5 @@
 import os
-import warnings 
+import warnings
 import numpy as np
 import pytest
 import pytest_parallel
@@ -80,7 +80,7 @@ Base CGNSBase_t I4 [3, 3]:
     else:
       t = maia.io.read_tree(out_file)
       assert (PT.get_value(PT.get_node_from_name(t,"CoordinateX")) == [0.,1.,2.,3.]).all()
-      
+
   TU.rm_collective_dir(tmp_dir, comm)
 
 @pytest_parallel.mark.parallel(2)
@@ -111,10 +111,10 @@ def test_write_trees(comm):
     assert os.path.exists(os.path.join(tmp_dir, f'TEST/test_{i}.cgns'))
 
   TU.rm_collective_dir(tmp_dir, comm)
-  
+
 
 @pytest_parallel.mark.parallel(2)
-def test_fill_size_tree(comm): 
+def test_fill_size_tree(comm):
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
 
   cx_u = [[1.,2.,3.], [4.,5.,6.]][comm.rank]
@@ -125,7 +125,7 @@ def test_fill_size_tree(comm):
   distri_cell_u = [[0,0,0], [0,0,0]][comm.rank]
   distri_vtx_s = [[0,2,4], [2,4,4]][comm.rank]
   distri_cell_s = [[0,1,1], [1,1,1]][comm.rank]
-  
+
   expected = PT.yaml.to_cgns_tree(f"""
   Base CGNSBase_t I4 [2, 2]:
     ZoneU Zone_t I4 [[6, 0, 0]]:
@@ -148,7 +148,7 @@ def test_fill_size_tree(comm):
 
   dist_tree = IOT.file_to_dist_tree(filename, comm)
   assert PT.is_same_tree(expected, dist_tree)
-    
+
 
 @pytest_parallel.mark.parallel(2)
 def test_load_size_tree(comm):
@@ -174,26 +174,26 @@ CGNSTree CGNSTree_t:
   """
 
   expected_size_tree = PT.yaml.to_cgns_tree(expected_size_tree_yaml)
-  
+
   size_tree = IOT.load_size_tree(filename, comm)
   assert PT.is_same_tree(size_tree, expected_size_tree)
 
 
 @pytest_parallel.mark.parallel(2)
 def test_load_partial(comm):
-    
+
   if comm.rank == 0:
     hdf_filter = {
-      'Base/ZoneU/GridCoordinates/CoordinateX': [[0], [1], [3], [1], [0], [1], [3], [1], [6], [0]], 
-      'Base/ZoneU/GridCoordinates/CoordinateY': [[0], [1], [3], [1], [0], [1], [3], [1], [6], [0]], 
-      'Base/ZoneS/GridCoordinates/CoordinateX': [[0], [1], [2], [1], [[0, 0], [1, 1], [2, 1], [1, 1]], [2, 2], [0]], 
+      'Base/ZoneU/GridCoordinates/CoordinateX': [[0], [1], [3], [1], [0], [1], [3], [1], [6], [0]],
+      'Base/ZoneU/GridCoordinates/CoordinateY': [[0], [1], [3], [1], [0], [1], [3], [1], [6], [0]],
+      'Base/ZoneS/GridCoordinates/CoordinateX': [[0], [1], [2], [1], [[0, 0], [1, 1], [2, 1], [1, 1]], [2, 2], [0]],
       'Base/ZoneS/GridCoordinates/CoordinateY': [[0], [1], [2], [1], [[0, 0], [1, 1], [2, 1], [1, 1]], [2, 2], [0]]
     }
   elif comm.rank == 1:
     hdf_filter = {
-      'Base/ZoneU/GridCoordinates/CoordinateX': [[0], [1], [3], [1], [3], [1], [3], [1], [6], [0]], 
-      'Base/ZoneU/GridCoordinates/CoordinateY': [[0], [1], [3], [1], [3], [1], [3], [1], [6], [0]], 
-      'Base/ZoneS/GridCoordinates/CoordinateX': [[0], [1], [2], [1], [[0, 1], [1, 1], [2, 1], [1, 1]], [2, 2], [0]], 
+      'Base/ZoneU/GridCoordinates/CoordinateX': [[0], [1], [3], [1], [3], [1], [3], [1], [6], [0]],
+      'Base/ZoneU/GridCoordinates/CoordinateY': [[0], [1], [3], [1], [3], [1], [3], [1], [6], [0]],
+      'Base/ZoneS/GridCoordinates/CoordinateX': [[0], [1], [2], [1], [[0, 1], [1, 1], [2, 1], [1, 1]], [2, 2], [0]],
       'Base/ZoneS/GridCoordinates/CoordinateY': [[0], [1], [2], [1], [[0, 1], [1, 1], [2, 1], [1, 1]], [2, 2], [0]]
     }
 
@@ -210,7 +210,7 @@ def test_load_partial(comm):
         CoordinateX DataArray_t:
         CoordinateY DataArray_t:
   """)
- 
+
   filename = str(TU.sample_mesh_dir / 'only_coords.hdf')
   IOT.load_partial(filename, dist_tree, hdf_filter, comm)
 
@@ -244,7 +244,7 @@ def test_load_from_filter(comm):
   size_tree = maia.io.cgns_io_tree.load_size_tree(filename, comm)
   IOT.add_distribution_info(size_tree, comm)
   hdf_filter = IOT.create_tree_hdf_filter(size_tree)
-  hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')} 
+  hdf_filter = {key:val for key,val in hdf_filter.items() if not key.endswith('#Size')}
 
   # Test function
   IOT.load_tree_from_filter(filename, size_tree, comm, hdf_filter)
@@ -282,5 +282,68 @@ def test_load_from_filter(comm):
     """)
 
   assert PT.is_same_node(ngon_node, ngon_expected)
-    
+
+  TU.rm_collective_dir(tmp_dir, comm)
+
+
+@pytest.fixture()
+def incomplete_zsr_file(comm):
+  yt = PT.yaml.to_cgns_tree("""
+    Base CGNSBase_t [2,2]:
+      ZoneU Zone_t [[6, 0, 0]]:
+        ZoneType ZoneType_t "Unstructured":
+        ZSR_AIRFOIL ZoneSubRegion_t:
+          GridLocation GridLocation_t "FaceCenter":
+          BCRegionName Descriptor_t "AIRFOIL":
+          Density DataArray_t R8 [10., 11., 12.]:
+  """)
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+  tmp_file = tmp_dir/'yt.cgns'
+  if comm.rank == 0:
+    maia.io.write_tree(yt, tmp_file)
+  comm.barrier() # wait for rank 0 to finish writing
+  return tmp_file
+
+@pytest.fixture()
+def incomplete_zsr_dist_tree(comm):
+  if comm.rank == 0:
+    vertex_dist = '[0, 3, 6]'
+    zsr_dist = '[0, 2, 3]'
+    zsr_density = '[10., 11.]'
+  elif comm.rank == 1:
+    vertex_dist = '[3, 6, 6]'
+    zsr_dist = '[2, 3, 3]'
+    zsr_density = '[12.]'
+  dist_yt = PT.yaml.to_cgns_tree(f"""
+    Base CGNSBase_t [2,2]:
+      ZoneU Zone_t [[6, 0, 0]]:
+        ZoneType ZoneType_t "Unstructured":
+        :CGNS#Distribution UserDefinedData_t:
+          Vertex DataArray_t {dtype} {vertex_dist}:
+          Cell DataArray_t {dtype} [0, 0, 0]:
+        ZSR_AIRFOIL ZoneSubRegion_t:
+          GridLocation GridLocation_t "FaceCenter":
+          BCRegionName Descriptor_t "AIRFOIL":
+          Density DataArray_t R8 {zsr_density}:
+          :CGNS#Distribution UserDefinedData_t:
+            Index DataArray_t {dtype} {zsr_dist}:
+  """)
+  return dist_yt
+
+@pytest_parallel.mark.parallel(2)
+def test_read_incomplete_zsr(comm, incomplete_zsr_file, incomplete_zsr_dist_tree):
+  dist_tree = maia.io.file_to_dist_tree(incomplete_zsr_file, comm)
+
+  assert PT.is_same_tree(dist_tree, incomplete_zsr_dist_tree)
+  TU.rm_collective_dir(incomplete_zsr_file.parent, comm)
+
+@pytest_parallel.mark.parallel(2)
+def test_write_incomplete_zsr(comm, incomplete_zsr_dist_tree):
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+
+  maia.io.dist_tree_to_file(incomplete_zsr_dist_tree, tmp_dir/'test_write.cgns', comm)
+
+  # We suppose reading is OK (is tested above)
+  dist_tree_from_write = maia.io.file_to_dist_tree(tmp_dir/'test_write.cgns', comm)
+  assert PT.is_same_tree(dist_tree_from_write, incomplete_zsr_dist_tree)
   TU.rm_collective_dir(tmp_dir, comm)
