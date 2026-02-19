@@ -233,12 +233,12 @@ def diff_nodes(nodes_stack, strict_value_type, value_comp):
 
   next_step = PT.Step.OVER # do not continue comparing children for now
   if n0 is None:
-    err_report = '> ' + path + PT.get_name(n1) + '\n'
+    err_report = '> ' + path + PT.get_name(n1) + ' [' + PT.get_label(n1) + ']\n'
   elif n1 is None:
-    err_report = '< ' + path + PT.get_name(n0) + '\n'
+    err_report = '< ' + path + PT.get_name(n0) + ' [' + PT.get_label(n0) + ']\n'
   elif not is_same_name(n0, n1):
-    err_report = '< ' + path + PT.get_name(n0) + '\n' \
-               + '> ' + path + PT.get_name(n1) + '\n'
+    err_report = '< ' + path + PT.get_name(n0) + ' [' + PT.get_label(n0) + ']\n' \
+               + '> ' + path + PT.get_name(n1) + ' [' + PT.get_label(n1) + ']\n'
 
   else:
     next_step = PT.Step.INTO # since everything it the same up to now, continue comparing children

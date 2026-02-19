@@ -120,8 +120,8 @@ def test_diff_tree():
   t2 = PT.deep_copy(t1)
   gc5_t2 = PT.get_node_from_name(t2, 'gc5')
   PT.set_name(gc5_t2, 'gc6')
-  assert CP.diff_tree(t1, t2)[1] == '< /CGNSTree/Base/ZoneI/ZGCB/gc5\n' \
-                                    '> /CGNSTree/Base/ZoneI/ZGCB/gc6\n'
+  assert CP.diff_tree(t1, t2)[1] == '< /CGNSTree/Base/ZoneI/ZGCB/gc5 [GridConnectivity_t]\n' \
+                                    '> /CGNSTree/Base/ZoneI/ZGCB/gc6 [GridConnectivity_t]\n'
 
   # ... Same label ...
   t2 = PT.deep_copy(t1)
@@ -133,7 +133,7 @@ def test_diff_tree():
   t2 = PT.deep_copy(t1)
   gc5_t2 = PT.get_node_from_name(t2, 'gc5')
   PT.new_node('Index_vii', 'IndexArray_t', parent=gc5_t2)
-  assert CP.diff_tree(t1, t2)[1] == '> /CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii\n'
+  assert CP.diff_tree(t1, t2)[1] == '> /CGNSTree/Base/ZoneI/ZGCB/gc5/Index_vii [IndexArray_t]\n'
 
   # ... And values should be equal
   t2 = PT.deep_copy(t1)
