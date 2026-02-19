@@ -12,9 +12,14 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
+🚀 Feature improvements
+^^^^^^^^^^^^^^^^^^^^^^^
+- compute_wall_distance: implementation for distributed meshes
+
 🐞 Fixes
 ^^^^^^^^
 - interpolate: fixup results of ``LocationAndClosest`` strategy on multidomain cases
+- compute_wall_distance: store DomainList in output node for multidomain cases
 
 v1.9 (January 2026)
 -------------------
