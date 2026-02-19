@@ -144,6 +144,9 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
 
     # > Field exchange
     cnt_data_arrays = PT.get_children_from_label(mask_container, 'DataArray_t')
+    if len(cnt_data_arrays)==0:
+      mlog.warning(f"{container_name} container seems to have no DataArray_t to exchange between mesh and computed isosurface")
+
     for fld_node in cnt_data_arrays:
       fld_name = PT.get_name(fld_node)
       fld_path = f"{container_name}/{fld_name}"
