@@ -19,7 +19,7 @@ ref_dir  = os.path.join(os.path.dirname(__file__), 'references')
 def generate_test_tree(n_vtx,n_part,comm, build_bc_zsr=False):
 
   dist_tree = MF.generate_dist_block(n_vtx, "Poly", comm, [-2.5, -2.5, -2.5], 5.)
-  
+
   # Partionning option
   zone_to_parts = MF.partitioning.compute_regular_weights(dist_tree, comm, n_part)
   part_tree     = MF.partition_dist_tree(dist_tree, comm,
@@ -67,7 +67,7 @@ def generate_test_tree(n_vtx,n_part,comm, build_bc_zsr=False):
 @pytest.mark.parametrize("elt_type", ["QUAD_4","NGON_n"])
 @pytest_parallel.mark.parallel([1, 3])
 def test_isosurf_U(elt_type,comm, write_output):
-  
+
   # Cube generation
   n_vtx  = 6
   n_part = 2
@@ -81,10 +81,10 @@ def test_isosurf_U(elt_type,comm, write_output):
                                   containers_name=containers,
                                   elt_type=elt_type,
                                   graph_part_tool='hilbert') # Parallelism independant
-  
+
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t', 'DiscreteData_t'])
-  
+
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'isosurf_{elt_type}.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
@@ -102,7 +102,7 @@ def test_isosurf_U(elt_type,comm, write_output):
 @pytest.mark.parametrize("elt_type", ["TRI_3","NGON_n"])
 @pytest_parallel.mark.parallel([1, 3])
 def test_plane_slice_U(elt_type,comm, write_output):
-  
+
   # Cube generation
   n_vtx  = 6
   n_part = 2
@@ -115,10 +115,10 @@ def test_plane_slice_U(elt_type,comm, write_output):
                                   containers_name=containers,
                                   elt_type=elt_type,
                                   graph_part_tool='hilbert') # Parallelism independant
-  
+
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
-  
+
   # Compare to reference solution
   ref_file = os.path.join(ref_dir, f'plane_slice_{elt_type}.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
@@ -136,7 +136,7 @@ def test_plane_slice_U(elt_type,comm, write_output):
 @pytest.mark.parametrize("elt_type", ["TRI_3","QUAD_4"])
 @pytest_parallel.mark.parallel([1, 3])
 def test_spherical_slice_U(elt_type,comm, write_output):
-  
+
   # Cube generation
   n_vtx  = 6
   n_part = 2
@@ -149,7 +149,7 @@ def test_spherical_slice_U(elt_type,comm, write_output):
                                       containers_name=containers,
                                       elt_type=elt_type,
                                       graph_part_tool='hilbert') # Parallelism independant
-  
+
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,'FIELDS')
 
@@ -161,7 +161,7 @@ def test_spherical_slice_U(elt_type,comm, write_output):
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
     Mio.dist_tree_to_file(dist_tree_iso, os.path.join(out_dir, f'spherical_slice.cgns'), comm)
     Mio.dist_tree_to_file(ref_sol, os.path.join(out_dir, f'ref_sol.cgns'), comm)
-  
+
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
@@ -170,7 +170,7 @@ def test_spherical_slice_U(elt_type,comm, write_output):
 @pytest.mark.parametrize("elt_type", ["TRI_3"])
 @pytest_parallel.mark.parallel(3)
 def test_plane_slice_gc_U(elt_type,comm, write_output):
-  
+
   # Load mesh with GCs
   from   maia.utils.test_utils import mesh_dir
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'U_Naca0012_multizone.yaml', comm)
@@ -181,7 +181,7 @@ def test_plane_slice_gc_U(elt_type,comm, write_output):
   part_tree     = MF.partition_dist_tree(dist_tree, comm,
                                          zone_to_parts=zone_to_parts,
                                          preserve_orientation=True)
-  
+
   if write_output:
     out_dir   = maia.utils.test_utils.create_pytest_output_dir(comm)
     Mio.dist_tree_to_file(dist_tree, os.path.join(out_dir, f'volumic_mesh.cgns'), comm)

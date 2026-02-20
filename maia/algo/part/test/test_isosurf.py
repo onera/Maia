@@ -152,20 +152,32 @@ def test_exchange_field_one_domain(from_api, comm):
   assert np.array_equal(PT.get_node_from_path(iso_zone, "DDCell/fieldB")[1], expected_B)
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolVtx/fieldC")[1], expected_C)
   assert np.array_equal(PT.get_node_from_path(iso_zone, "FSolBC/fieldD")[1], expected_D)
-  
+
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 def test_exchange_empty_field(comm):
-  # A reproducer for #214: we had a crash if partial containers (as ZSR) are not 
+  # A reproducer for #214: we had a crash if partial containers (as ZSR) are not
   # know by every procs *and* some arrays are not of kind R8
   tree = maia.factory.generate_dist_block(11, 'Poly', comm)
   zone = PT.get_all_Zone_t(tree)[0]
   bc = PT.find_node_from_name(zone, 'Xmax')
   distri = PT.get_np_value(MT.find_Distribution(bc, 'Index'))
   dn_elt = distri[1] - distri[0]
-  zsr = PT.new_ZoneSubRegion('ZSR', bc_name='Xmax', fields={'One': np.ones(dn_elt), 
+  zsr = PT.new_ZoneSubRegion('ZSR', bc_name='Xmax', fields={'One': np.ones(dn_elt),
                                                             'Two': 2*np.ones(dn_elt, float)}, parent=zone)
+  ptree = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=True, data_transfer='ALL')
+  stree = maia.algo.part.plane_slice(ptree, [1,0,0,0.9032], comm, ['ZSR'])
+
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
+def test_exchange_empty_partial_cnt(comm):
+  # A reproducer for #?: we had a crash if partial containers (as ZSR) has no DataArray_t
+  tree = maia.factory.generate_dist_block(11, 'Poly', comm)
+  zone = PT.get_all_Zone_t(tree)[0]
+  bc = PT.find_node_from_name(zone, 'Xmax')
+  distri = PT.get_np_value(MT.find_Distribution(bc, 'Index'))
+  dn_elt = distri[1] - distri[0]
+  zsr = PT.new_ZoneSubRegion('ZSR', bc_name='Xmax', parent=zone)
   ptree = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=True, data_transfer='ALL')
   stree = maia.algo.part.plane_slice(ptree, [1,0,0,0.9032], comm, ['ZSR'])
 
@@ -188,7 +200,7 @@ def test_isosurf_one_domain(comm):
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(2)
 def test_compute_elliptical_slice(comm):
-  
+
   dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
   slice_tree = ISO.elliptical_slice(part_tree, [0.5,0.5,0.5,.5,1.,1.,.25**2], \
@@ -196,13 +208,13 @@ def test_compute_elliptical_slice(comm):
   assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is None
   iso_zone = PT.get_all_Zone_t(slice_tree)[0]
   assert comm.allreduce(PT.Zone.n_cell(iso_zone), MPI.SUM) == 88
-  
+
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest_parallel.mark.parallel(1)  
+@pytest_parallel.mark.parallel(1)
 def test_compute_spherical_slice(comm):
   dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
-  
+
   zone      = PT.get_node_from_label(part_tree, "Zone_t")
   vol_rank  = comm.Get_rank() * np.ones(PT.Zone.n_cell(zone))
   src_sol   = PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'i_rank' : vol_rank}, parent=zone)
@@ -217,12 +229,12 @@ def test_compute_spherical_slice(comm):
   assert (PT.get_node_from_name(iso_zone, 'i_rank')[1] == 0).all()
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest_parallel.mark.parallel(2) 
+@pytest_parallel.mark.parallel(2)
 def test_compute_plane_slice(comm):
   dist_tree = maia.factory.generate_dist_block(5, 'Poly', comm)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
   slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.1], comm, elt_type='QUAD_4')
-  
+
   iso_zone = PT.get_all_Zone_t(slice_tree)[0]
   assert PT.Zone.n_cell(iso_zone) == 32 and PT.Zone.n_vtx(iso_zone) == 45
 
@@ -230,7 +242,7 @@ def test_compute_plane_slice(comm):
 
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest_parallel.mark.parallel(1) 
+@pytest_parallel.mark.parallel(1)
 def test_compute_iso_surface(comm):
   dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
   node = PT.get_node_from_name(dist_tree, 'Zmin')
@@ -249,7 +261,7 @@ def test_compute_iso_surface(comm):
 
 
 @pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest_parallel.mark.parallel(2) 
+@pytest_parallel.mark.parallel(2)
 def test_multidom(comm):
   fname = TU.mesh_dir / 'U_Naca0012_multizone.yaml'
   tree = maia.io.file_to_dist_tree(fname, comm)
