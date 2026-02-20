@@ -76,17 +76,6 @@ job:doc:
     - make maia_sphinx
 
 
-job:ctest:
-  stage: test
-  script:
-    - cd $CUSTOM_CI_DIR/build/socle6_int32
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - source source.sh
-    - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../../maia
-    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
-
 job:doc_snippets:
   stage: test
   script:
@@ -97,23 +86,7 @@ job:doc_snippets:
     - mpirun -np 1 python3 -m pytest ../../doc
     - python3 ../../maia/pytree/test/run_docstring.py
 
-job:portability_gnum:
-  stage: test
-  rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
-  script:
-    - cd $CUSTOM_CI_DIR
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - mkdir -p build/socle6_int64 && cd build/socle6_int64
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
-    - make -j 24
-    - source source.sh
-    - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../../maia/
-    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
-
-job:coverage:
+job:ctest:
   stage: test
   before_script:
     - |
@@ -131,7 +104,10 @@ job:coverage:
     - module load gcc/10.2.0
     - export PATH=$FEFLOPATH:$PATH  # Get Feflo
     - source source.sh
+
+    - mpirun -np 4 test/maia_doctest_unit_tests
     - mpirun -np 4 coverage run -m pytest ../../maia
+    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
 
     - coverage combine
     - coverage report --sort=cover --fail-under=95
@@ -152,6 +128,22 @@ job:coverage:
       coverage_report:
         coverage_format: cobertura
         path: ./coverage_unit_tests.xml
+
+job:portability_gnum:
+  stage: test
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  script:
+    - cd $CUSTOM_CI_DIR
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+    - mkdir -p build/socle6_int64 && cd build/socle6_int64
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
+    - make -j 24
+    - source source.sh
+    - mpirun -np 4 test/maia_doctest_unit_tests
+    - mpirun -np 4 python3 -m pytest ../../maia/
+    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
 
 job:portability_openmpi:
   stage: test
