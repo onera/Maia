@@ -9,7 +9,6 @@ from maia.utils     import np_utils, par_utils, s_numbering
 from maia.transfer  import utils    as te_utils
 import Pypdm.Pypdm as PDM
 
-
 def collect_distributed_pl(dist_zone: CGNSDistTree, 
                            query_list: List[Any],
                            filter_loc: Optional[List[str]] = None) -> List[NDArray]:
@@ -24,24 +23,23 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
   point_lists = []
   for query in query_list:
     for node in PT.iter_children_from_predicates(dist_zone, query):
-      loc = PT.Subset.GridLocation(node) if PT.pred.IS_SUBSET(node) else PT.Container.GridLocation(node, dist_zone)
-      if filter_loc is None or loc in filter_loc:
-        pl_n = PT.get_child_from_name(node, 'PointList')
-        pr_n = PT.get_child_from_name(node, 'PointRange')
-        if pl_n is not None:
-          pl_raw = PT.get_np_value(pl_n)
-          if PT.Zone.Type(dist_zone) == 'Structured':
-            assert pl_raw.shape[0] == 3
-            idx = s_numbering.ijk_to_index_from_loc(pl_raw[0], pl_raw[1], pl_raw[2], loc, PT.Zone.VertexSize(dist_zone))
-            point_lists.append(idx.reshape((1,-1), order='F'))
-          else:
-            point_lists.append(pl_raw)
-        elif pr_n is not None and PT.Zone.Type(dist_zone) == 'Unstructured':
-          pr = PT.get_np_value(pr_n)
-          distrib = MT.Subset.distribution(node)
-          point_lists.append(np_utils.single_dim_pr_to_pl(pr, distrib))
-        # else:
-          # point_lists.append(np.empty((1,0), dtype=np.int32, order='F'))
+      if not PT.pred.IS_SUBSET(node):
+        continue # Skip nodes w/o PL (eg. full FlowSolution_t)
+      if PT.Zone.Type(dist_zone) == 'Structured' and PT.get_child_from_name(node, 'PointRange') is not None:
+        continue # Skip structured nodes with PointRange (only PL are collected)
+      if filter_loc is not None and PT.Subset.GridLocation(node) not in filter_loc:
+        continue # Skip nodes that does not match provided loc
+
+      pl_raw = MT.Subset.distributed_pointlist(node)
+      if (s:=pl_raw.shape[0]) > 1:
+        assert PT.Zone.Type(dist_zone) == 'Structured'
+        func = s_numbering.ij_to_index_from_loc if s == 2 else s_numbering.ijk_to_index_from_loc
+        idx = func(*pl_raw, PT.Subset.GridLocation(node), PT.Zone.VertexSize(dist_zone))
+        pl = idx.reshape((1,-1), order='F')
+      else:
+        pl = pl_raw
+      point_lists.append(pl)
+
   return point_lists
 
 

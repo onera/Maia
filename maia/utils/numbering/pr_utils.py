@@ -39,36 +39,30 @@ def transform_bnd_pr_size(point_range: NDArray,
     size += (~mask)
   return size
 
-def unroll_pr(pr: NDArray) -> NDArray:
+
+def unroll_pr(pr: NDArray, start:Optional[int]=None, end:Optional[int]=None) -> NDArray:
   """
   Create a structured pointList of size (idx_dim,N) spawning the same region than the input PR.
   Unrolling if done following cgns conventions : increasing i, then j, then k
   """
-  inc = 2*(pr[:,0] <= pr[:,1]) - 1 #In each direction, 1 if pr[l,0] <= pr[l,1] else - 1
+  inc = 2*(pr[:, 0] <= pr[:, 1]) - 1
 
-  # Here we build for each direction a looping array range(start, end+1) if pr is increasing
-  # or range(start, end-1, -1) if pr is decreasing
-  np_idx_arrays = []
-  for l in range(pr.shape[0]):
-    np_idx_arrays.append(np.arange(pr[l,0], pr[l,1] + inc[l], inc[l]))
+  # sizes per direction
+  sizes = np.abs(pr[:, 1] - pr[:, 0]) + 1
+  size_tot = np.prod(sizes)
 
-  def cartesian_product(*arrays):
-    #https://stackoverflow.com/questions/11144513/cartesian-product-of-x-and-y-array-points-into-single-array-of-2d-points/
-    la = len(arrays)
-    dtype = np.result_type(*arrays)
-    arr = np.empty([len(a) for a in arrays] + [la], dtype=dtype)
-    for i, a in enumerate(np.ix_(*arrays)):
-        arr[...,i] = a
-    return arr.reshape(-1, la)
+  _start = start if start is not None else 0
+  _end   = end   if end   is not None else size_tot
 
-  out_tmp = cartesian_product(*reversed(np_idx_arrays)).T
-  out = np.empty_like(out_tmp)
+  assert 0 <= _start <= _end <= size_tot
 
-  assert pr.shape[0] >= 2
-  out[0,:] = out_tmp[-1,:]
-  out[-1,:] = out_tmp[0,:]
-  if pr.shape[0] == 3:
-    out[1,:] = out_tmp[1,:]
+  lin = np.arange(_start, _end, dtype=pr.dtype)
+  out = np.empty((len(sizes), _end - _start), order='F', dtype=pr.dtype)
+
+  for d,ni in enumerate(sizes):
+    local_idx = lin % ni
+    lin //= ni
+    out[d,:] = pr[d, 0] + inc[d] * local_idx
 
   return out
 

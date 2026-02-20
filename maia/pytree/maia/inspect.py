@@ -6,6 +6,7 @@ from maia.typing import MPIComm
 
 from maia.utils import vstride as vs
 from maia.utils import par_utils
+from maia.utils.numbering import pr_utils
 
 from . import search
 from . conventions import GLBNUM_NAME
@@ -480,6 +481,20 @@ class Subset:
 
     # Fallback to standard case
     return _n_entity(subset_node, comm, 'Index')
+
+  @staticmethod
+  def distributed_pointlist(subset_node:CGNSTree) -> NDArray:
+    # Return the local section of PointList of a **distributed** subset
+    # This function works on subset defined by a PointRange by
+    # auto-expanding the PointRange values.
+    pl_n = PT.get_child_from_name(subset_node, 'PointList')
+    pr_n = PT.get_child_from_name(subset_node, 'PointRange')
+    if pl_n is not None:
+      return PT.get_np_value(pl_n)
+    elif pr_n is not None:
+      pr = PT.get_np_value(pr_n)
+      distrib = Subset.distribution(subset_node)
+      return pr_utils.unroll_pr(pr, distrib[0], distrib[1])
 
 class Container:
   """ A container is node designed to store fields, such as FlowSolution_t, ZoneSubRegion_t, ...  """

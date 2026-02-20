@@ -7,7 +7,6 @@ import maia.pytree.maia   as MT
 from maia                      import npy_pdm_gnum_dtype     as pdm_gnum_dtype
 from maia.utils                import np_utils, par_utils, layouts
 from maia.utils                import logging as mlog
-from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 
 def _extract_faces(dist_zone, face_list, comm):
@@ -82,8 +81,13 @@ def extract_surf_zone_from_queries(dist_zone, queries, comm):
   Create a zone containing a surfacic mesh, extracted from all the faces found under the
   nodes matched by one of the queries
   """
+  all_point_list = []
+  # NB : Temporary, this will conflict with MR !216. Ignore it when merging !216
+  for query in queries:
+    for node in PT.iter_children_from_predicates(dist_zone, query):
+      if PT.Subset.GridLocation(node) == 'FaceCenter':
+        all_point_list.append(MT.Subset.distributed_pointlist(node))
 
-  all_point_list = collect_distributed_pl(dist_zone, queries, filter_loc='FaceCenter')
   _, dface_list  = np_utils.concatenate_point_list(all_point_list, pdm_gnum_dtype)
 
   return _extract_surf_zone(dist_zone, dface_list, comm)

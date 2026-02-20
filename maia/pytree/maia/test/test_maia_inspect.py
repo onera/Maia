@@ -174,3 +174,26 @@ def test_container_distribution():
   with pytest.raises(Exception):
     node = PT.get_node_from_name(zone, 'WrongFlowSolCell')
     MT.Container.distribution(node, zone)
+
+
+def test_subset_distributed_pl():
+  # Unstruct
+  bc = PT.new_BC(point_list=[[4,5,6,7]])
+  MT.new_Distribution({'Index' : [8,12,12]}, bc)
+  assert (MT.Subset.distributed_pointlist(bc) == [[4,5,6,7]]).all()
+  bc = PT.new_BC(point_range=[[20,40]])
+  MT.new_Distribution({'Index' : [8,12,20]}, bc)
+  assert (MT.Subset.distributed_pointlist(bc) == [[28,29,30,31]]).all()
+
+  # Struct
+  bc = PT.new_BC(point_list=np.array([[1,1,1,1],[5,7,9,11]], order='F'))
+  MT.new_Distribution({'Index' : [8,12,20]}, bc)
+  assert (MT.Subset.distributed_pointlist(bc) == [[1,1,1,1], [5,7,9,11]]).all()
+
+  bc = PT.new_BC(point_range=np.array([[1,1],[6,25]], order='F'))
+  MT.new_Distribution({'Index' : [8,12,20]}, bc)
+  assert (MT.Subset.distributed_pointlist(bc) == [[1,1,1,1], [14,15,16,17]]).all()
+
+  bc = PT.new_BC(point_range=np.array([[3,1],[6,25], [5,6]], order='F'))
+  MT.new_Distribution({'Index' : [8,14,120]}, bc)
+  assert (MT.Subset.distributed_pointlist(bc) == [[1,3,2,1,3,2], [8,9,9,9,10,10], [5,5,5,5,5,5]]).all()

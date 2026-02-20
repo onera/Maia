@@ -7,31 +7,12 @@ from   maia.pytree.maia   import pdm_elts
 
 from maia.utils import py_utils, np_utils, layouts, as_pdm_gnum
 from maia       import npy_pdm_gnum_dtype as pdm_gnum_dtype
-from maia.transfer.dist_to_part.index_exchange import collect_distributed_pl
 
 from Pypdm.Pypdm import DistributedMesh, DistributedMeshNodal
 from Pypdm.Pypdm import _PDM_CONNECTIVITY_TYPE_FACE_VTX, _PDM_BOUND_TYPE_FACE, _PDM_BOUND_TYPE_EDGE, \
                         _PDM_CONNECTIVITY_TYPE_FACE_CELL, _PDM_CONNECTIVITY_TYPE_CELL_FACE, \
                         _PDM_CONNECTIVITY_TYPE_EDGE_VTX, _PDM_CONNECTIVITY_TYPE_EDGE_FACE
 
-def _split_point_list_by_dim(pl_list, range_by_dim, comm):
-  """
-  Split a list of PointList nodes into 4 sublists depending on the dimension
-  of each PointList.
-  Dimension is recovered using the values of the PointList and the range_by_dim
-  array (GridLocation may be a better choice ?)
-  """
-  def _get_dim(pl):
-    min_l_pl = np.amin(pl[0,:], initial=np.iinfo(pl.dtype).max)
-    max_l_pl = np.amax(pl[0,:], initial=-1)
-
-    min_pl    = comm.allreduce(min_l_pl, op=MPI.MIN)
-    max_pl    = comm.allreduce(max_l_pl, op=MPI.MAX)
-    for i_dim in range(len(range_by_dim)):
-      if(min_pl >= range_by_dim[i_dim][0] and max_pl <= range_by_dim[i_dim][1]):
-        return i_dim
-
-  return py_utils.bucket_split(pl_list, lambda pl: _get_dim(pl), size=4)
 
 def cgns_dist_zone_to_pdm_dmesh_vtx(dist_zone, comm):
   """
@@ -100,7 +81,8 @@ def cgns_dist_zone_to_pdm_dmesh(dist_zone, comm, needs_bc=False):
 
   # > Prepare bnd (needed for HPC renumbering)
   if needs_bc:
-    point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'], filter_loc=['FaceCenter'])
+    bcs = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t', PT.pred.is_bc_of_location('FaceCenter')])
+    point_lists = [MT.Subset.distributed_pointlist(bc) for bc in bcs]
     dface_bound_idx, dface_bound = np_utils.concatenate_point_list(point_lists, pdm_gnum_dtype)
   else:
     dface_bound_idx = np.zeros(1, dtype=np.int32)
@@ -180,7 +162,8 @@ def cgns_dist_zone_to_pdm_dmesh_2d(dist_zone, comm, needs_bc=False):
 
   # > Prepare bnd (needed for HPC renumbering)
   if needs_bc:
-    point_lists = collect_distributed_pl(dist_zone, ['ZoneBC_t/BC_t'], filter_loc=['EdgeCenter'])
+    bcs = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t', PT.pred.is_bc_of_location('EdgeCenter')])
+    point_lists = [MT.Subset.distributed_pointlist(bc) for bc in bcs]
     dedge_bound_idx, dedge_bound = np_utils.concatenate_point_list(point_lists, pdm_gnum_dtype)
   else:
     dedge_bound_idx = np.zeros(1, dtype=np.int32)
@@ -291,11 +274,19 @@ def cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm, needs_vertex=True, needs_
   if needs_bc:
     range_by_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
 
+    cell_dim = PT.Zone.CellDimension(dist_zone)
+    if cell_dim == 1:
+      elts_loc = ['Vertex', 'CellCenter']
+    elif cell_dim == 2:
+      elts_loc = ['Vertex', 'EdgeCenter', 'CellCenter']
+    else:
+      elts_loc = ['Vertex', 'EdgeCenter', 'FaceCenter', 'CellCenter']
+
     # Skip Vertex-located BCs, because they are not in Element numbering
-    elts_loc = ['EdgeCenter', 'FaceCenter', 'CellCenter']
-    bc_point_lists = collect_distributed_pl(dist_zone, [['ZoneBC_t', 'BC_t']], filter_loc=elts_loc)
-    # Find out in which dim the boundary refers
-    bc_point_lists_by_dim = _split_point_list_by_dim(bc_point_lists, range_by_dim, comm)
+    bc_nodes = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t', PT.pred.label_is('BC_t') & ~PT.pred.has_location('Vertex')])
+    bc_nodes_by_dim = py_utils.bucket_split(bc_nodes, lambda bc: elts_loc.index(PT.Subset.GridLocation(bc)), size=4)
+
+    bc_point_lists_by_dim = [[MT.Subset.distributed_pointlist(node) for node in nodes] for nodes in bc_nodes_by_dim]
 
     for i_dim, bc_pl in enumerate(bc_point_lists_by_dim):
       if(len(bc_pl) > 0 ):

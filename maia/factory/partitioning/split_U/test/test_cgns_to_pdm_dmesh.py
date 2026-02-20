@@ -11,20 +11,6 @@ from maia import npy_pdm_gnum_dtype
 dtype = 'I4' if npy_pdm_gnum_dtype == np.int32 else 'I8'
 
 @pytest_parallel.mark.parallel(2)
-def test_split_point_list_by_dim(comm):
-  if comm.Get_rank() == 0:
-    pl1 = np.array([[1,5,3]], np.int32)
-    pl2 = np.array([[14,13]], np.int32)
-  elif comm.Get_rank() == 1:
-    pl1 =  np.array([[2,4,6]], np.int32)
-    pl2 =  np.empty((1,0),     np.int32)
-
-  pl_list = [pl1,pl2]
-  range_by_dim = [[0,0], [1,10], [11,20], [21,30]]
-  splitted_bc = CTP._split_point_list_by_dim(pl_list, range_by_dim, comm)
-  assert splitted_bc == [[], [pl1], [pl2], []]
-
-@pytest_parallel.mark.parallel(2)
 def test_cgns_dist_zone_to_pdm_dmesh_vtx(comm):
   if comm.Get_rank() == 0:
     dt = """
@@ -155,6 +141,7 @@ def test_cgns_dist_zone_to_pdm_dmesh_nodal(comm):
   if comm.Get_rank() == 0:
     dt = f"""
 ZoneU Zone_t [[18,6,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t R8 [0., 0.5, 1.,  0. , 0.5, 1. ]:
     CoordinateY DataArray_t R8 [0., 0.,  0.,  0.5, 0.5, 0.5]:
@@ -173,6 +160,7 @@ ZoneU Zone_t [[18,6,0]]:
   elif comm.Get_rank() == 1:
     dt = f"""
 ZoneU Zone_t [[18,6,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t R8 [0., 0.5, 1., 0., 0.5, 1.]:
     CoordinateY DataArray_t R8 [1.,  1., 1., 0.,  0., 0.]:
@@ -191,6 +179,7 @@ ZoneU Zone_t [[18,6,0]]:
   elif comm.Get_rank() == 2:
     dt = f"""
 ZoneU Zone_t [[18,6,0]]:
+  ZoneType ZoneType_t "Unstructured":
   GridCoordinates GridCoordinates_t:
     CoordinateX DataArray_t R8 [0.,  0.5, 1.,  0.,  0.5, 1.]:
     CoordinateY DataArray_t R8 [0.5, 0.5, 0.5, 1.,  1.,  1.]:
