@@ -104,6 +104,7 @@ class Test_compute_cell_center_filtered:
     cell_indices_l = ([[2,1],[2,1],[2,1]], [[2,1],[1,1],[1,1]], [[],[],[]])
     expected_l     = ([0.75,0.75,0.75,0.25,0.25,0.25], [0.75,0.25,0.25,0.25,0.25,0.25], [])
     self.run_test(cell_indices_l, expected_l)
+    del(self.tree)
 
 #endregion Cell center ---------------------------------------------------------
 

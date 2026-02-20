@@ -132,7 +132,10 @@ def test_cgns_dist_zone_to_pdm_dmesh_poly2d(comm):
   dist_zone = PT.get_all_Zone_t(dist_tree)[0]
 
   dmesh_nodal = CTP.cgns_dist_zone_to_pdm_dmesh_poly2d(dist_zone, comm)
-  dims = PDM.dmesh_nodal_get_g_dims(dmesh_nodal)
+  try:
+    dims = dmesh_nodal.dmesh_nodal_get_g_dims()
+  except AttributeError: # Old API
+    dims = PDM.dmesh_nodal_get_g_dims(dmesh_nodal)
   assert dims['n_cell_abs'] == 0
   assert dims['n_face_abs'] == 16
   assert dims['n_vtx_abs'] == 25
@@ -209,6 +212,9 @@ ZoneU Zone_t [[18,6,0]]:
   dmeshnodal = CTP.cgns_dist_zone_to_pdm_dmesh_nodal(dist_zone, comm)
 
   assert PT.get_child_from_name(dist_zone, ':CGNS#MultiPart') is not None
-  dims = PDM.dmesh_nodal_get_g_dims(dmeshnodal)
+  try:
+    dims = dmeshnodal.dmesh_nodal_get_g_dims()
+  except AttributeError: # Old API
+    dims = PDM.dmesh_nodal_get_g_dims(dmeshnodal)
   assert dims['n_cell_abs'] == 4
   assert dims['n_vtx_abs'] == 18
