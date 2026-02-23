@@ -280,7 +280,7 @@ def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
 
   # Input/output files
   in_file_mshb = 'in_mesh.mesh'
-  in_file_solb = 'in_field.sol'
+  in_file_solb = 'in_mesh.sol'
   in_files = {'mesh': tmp_repo / in_file_mshb,
               'sol' : tmp_repo / in_file_solb}
   out_file_mshb = 'out_mesh.mesh'
@@ -299,13 +299,13 @@ def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
   mmg_args = []
   if metric is not None:
     field_nodes = unpack_metric(dist_tree, metric)
-    mmg_args = f"-sol {in_file_solb} -ls".split()
-  elif sol is not None:
-    field_nodes = unpack_metric(dist_tree, sol)
     if len(field_nodes) == 1:
       f"-met {in_file_solb}".split()
     elif len(field_nodes) == 6:
       f"-met {in_file_solb} -A".split()
+  elif sol is not None:
+    field_nodes = unpack_metric(dist_tree, sol)
+    mmg_args = f"-sol {in_file_solb} -ls".split()
 
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, [])
@@ -535,7 +535,9 @@ def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
   phy_dims = [PT.Base.PhysicalDimension(b) for b in PT.iter_all_CGNSBase_t(dist_tree)]
   assert len(phy_dims) == 1
   if phy_dims[0] == 2:
-    PT.rm_node_from_name(adapted_dist_tree, 'CoordinateZ')
+    PT.rm_nodes_from_name(adapted_dist_tree, 'CoordinateZ')
+    b = PT.get_all_CGNSBase_t(adapted_dist_tree)[0]
+    PT.set_value(b, [2, 2])
 
   # > Recover original dist_tree
   maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)
