@@ -51,6 +51,12 @@ def BlockToBlock(distri_in: NDArray,
   else:
     return _protocols.BlockToBlock(_full_distri_in, _full_distri_out, comm)
 
+def MultiBlockToBlock(distri_in_l:List[NDArray], distri_out: NDArray, comm: MPIComm):
+  
+  distri_in_f = [auto_expand_distri(distri, comm) for distri in distri_in_l]
+  distri_out_f = auto_expand_distri(distri_out, comm)
+  return _protocols.MultiBlockToBlock(distri_in_f, distri_out_f, comm)
+
 
 @overload
 def GlobalIndexer(distri: NDArray,
