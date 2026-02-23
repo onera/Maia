@@ -211,33 +211,27 @@ def ensure_PE_global_indexing(dist_tree):
   is compliant with the CGNS standard ie refers faces using absolute numbering.
   This function works under the following assumptions (which could be released,
   but also seems to be imposed by the standard)
-   - At most one NGonElements node exists
    - NGonElements and standard elements can not be mixed together
   """
   n_shifted = 0
   for zone in PT.get_all_Zone_t(dist_tree):
-    elts = PT.get_children_from_label(zone, 'Elements_t')
+    elts = PT.Zone.get_ordered_elements(zone)
     ngon_nodes = [elt for elt in elts if PT.Element.Type(elt)=='NGON_n']
     oth_nodes  = [elt for elt in elts if PT.Element.Type(elt)!='NGON_n']
-    if ngon_nodes == []:
-      continue
-    elif len(ngon_nodes) == 1:
-      if PT.get_child_from_name(ngon_nodes[0], 'ParentElements') is None: # Skip next checks to allow 2D zones with NGON & BAR
-        continue
-      if len(oth_nodes) > 1 or (len(oth_nodes) == 1 and PT.Element.Type(oth_nodes[0]) != 'NFACE_n'):
+    
+    for ngon_node in ngon_nodes:
+      if (pe_n := PT.get_child_from_name(ngon_node, 'ParentElements')) is None:
+        continue # Skip next checks to allow 2D zones with NGON & BAR
+      if any(PT.Element.Type(node) != 'NFACE_n' for node in oth_nodes):
         raise RuntimeError(f"Zone {PT.get_name(zone)} has both NGon and Std elements nodes, which is not supported")
-    else:
-      raise RuntimeError(f"Multiple NGon nodes found in zone {PT.get_name(zone)}")
 
-    ngon_n = ngon_nodes[0]
-    ngon_pe_n = PT.get_child_from_name(ngon_n, 'ParentElements')
-    if ngon_pe_n:
-      n_faces = PT.Element.Size(ngon_n)
-      ngon_pe = ngon_pe_n[1]
-      if PT.Element.Range(ngon_n)[0] == 1 and ngon_pe.shape[0] > 0 and ngon_pe[0].max() <= n_faces:
-        np_utils.shift_nonzeros(ngon_pe, n_faces)
+      first_ng = PT.Element.Range(ngon_nodes[ 0])[0]
+      last_ng  = PT.Element.Range(ngon_nodes[-1])[1]
+      pe = PT.get_np_value(pe_n)
+      if first_ng == 1 and pe.shape[0] > 0 and pe[0].max() <= last_ng:
+        np_utils.shift_nonzeros(pe, last_ng)
         n_shifted += 1
-
+      
   return n_shifted
 
 def ensure_signed_nface_connectivity(dist_tree, comm):

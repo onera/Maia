@@ -353,7 +353,7 @@ def test_ensure_PE_global_indexing():
     fix_tree.ensure_PE_global_indexing(create_tree([ngon, ngon]))
   with pytest.raises(RuntimeError):
     ngon = PT.new_NGonElements(erange=[1,4], pe=np.empty((4,2), order='F'))
-    tri = PT.new_Elements('Tri', 'TRI_3')
+    tri = PT.new_Elements('Tri', 'TRI_3', erange=[5, 10])
     fix_tree.ensure_PE_global_indexing(create_tree([ngon, tri]))
 
 @pytest_parallel.mark.parallel(1)
