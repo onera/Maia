@@ -348,6 +348,24 @@ def test_ensure_PE_global_indexing():
   pe   = PT.new_DataArray('ParentElements', np.empty((0,2), order='F'), parent=ngon)
   fix_tree.ensure_PE_global_indexing(create_tree([ngon]))
 
+  # Several NG nodes (both OK)
+  ngon1 = PT.new_Elements('GoodNGon1', 'NGON_n', erange=[1,2])
+  pe1   = PT.new_DataArray('ParentElements', [[5,6],[7,0]], parent=ngon1)
+  ngon2 = PT.new_Elements('GoodNGon2', 'NGON_n', erange=[3,4])
+  pe2   = PT.new_DataArray('ParentElements', [[5,0],[6,8]], parent=ngon2)
+  fix_tree.ensure_PE_global_indexing(create_tree([ngon2, ngon1]))
+  assert (pe1[1] == [[5,6],[7,0]]).all()
+  assert (pe2[1] == [[5,0],[6,8]]).all()
+
+  # Several NG nodes (1 wrong)
+  ngon1 = PT.new_Elements('WrongNGon', 'NGON_n', erange=[1,2])
+  pe1   = PT.new_DataArray('ParentElements', [[1,2],[3,0]], parent=ngon1)
+  ngon2 = PT.new_Elements('GoodNGon', 'NGON_n', erange=[3,4])
+  pe2   = PT.new_DataArray('ParentElements', [[5,0],[6,8]], parent=ngon2)
+  fix_tree.ensure_PE_global_indexing(create_tree([ngon2, ngon1]))
+  assert (pe1[1] == [[5,6],[7,0]]).all()
+  assert (pe2[1] == [[5,0],[6,8]]).all()
+
   with pytest.raises(RuntimeError):
     ngon = PT.new_Elements('NGon', 'NGON_n')
     fix_tree.ensure_PE_global_indexing(create_tree([ngon, ngon]))

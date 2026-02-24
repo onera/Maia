@@ -1,5 +1,7 @@
 import numpy as np
 
+from maia.typing import *
+
 def _overlap_size(start1, end1, start2, end2):
   return max(min(end1, end2) - max(start1, start2), 0)
 
@@ -115,8 +117,13 @@ class MultiBlockToBlock():
   (distribution of output array can be choosed)
   """
 
-  def __init__(self, distri_in_l, distri_out, comm):
+  def __init__(self, distri_in_l:List[NDArray], distri_out:NDArray, comm:MPIComm):
+    """ Create protocol from N := len(distri_in_l) input distributions """
+    assert all(distri.size == comm.size + 1 for distri in distri_in_l)
+    assert all(distri[0] == 0 for distri in distri_in_l)
+    assert all((np.diff(distri) >= 0).all() for distri in distri_in_l)
     assert sum(distri[-1] for distri in distri_in_l) == distri_out[-1]
+
     self.btb_l = list()
     start = 0
     for distri_in in distri_in_l:
@@ -125,7 +132,9 @@ class MultiBlockToBlock():
       self.btb_l.append(BlockToBlock(distri_in, distri_out_loc, comm))
       start = end
 
-  def exchange(self, data_in_l, stride_in=1):
+  def exchange(self, data_in_l:List[NDArray], stride_in:Union[int, List]=1):
+    """ Merge cst strided (stride_in = int) or variably strided data
+    (stride_in = list of N arrays), reaching distri_out distribution """
     
     # Constant stride
     if isinstance(stride_in, int):

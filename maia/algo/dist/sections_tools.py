@@ -24,9 +24,9 @@ def _concatenate_elt_sections(elts:List[CGNSTree], comm:MPIComm) -> CGNSTree:
   distri_in = [MT.Element.distribution(elt) for elt in elts]
   mbtb = EP.MultiBlockToBlock(distri_in, merged_distri, comm)
   if elt_type in ['NGON_n', 'NFACE_n', 'MIXED']:
-    elts_ec = [MT.Element.connectivity(elt) for elt in elts]
-    merged_cnt, merged_ec = mbtb.exchange([ec.values for ec in elts_ec],
-                                          [ec.counts for ec in elts_ec])
+    elts_cnt = [MT.Element.connectivity(elt) for elt in elts]
+    merged_cnt, merged_ec = mbtb.exchange([ec.values for ec in elts_cnt],
+                                          [ec.counts for ec in elts_cnt])
     merged_eso = np_utils.sizes_to_indices(merged_cnt) + par_utils.exscan_size(merged_ec.size, comm)
   else:
     elts_ec = [PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity')) for elt in elts]
@@ -92,7 +92,7 @@ def concatenate_elt_sections_if(dist_tree: CGNSDistTree, pred: PT.pred.NodePredi
 def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
   """ Gather the ``Elements_t`` sections of same :func:`~maia.pytree.Element.Type` into a single one.
 
-  Resulting sections are named after their element type. Note that
+  Resulting sections are named after their element types. Note that
   sections of same kind must be contiguous to be gathered. This can be achieved
   using :func:`reorder_elt_sections_from_dim` function.
 
