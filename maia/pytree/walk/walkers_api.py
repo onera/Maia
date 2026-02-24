@@ -793,46 +793,12 @@ def get_all_Zone_t(root:Tree) -> List[Tree]:
   return list(iter_all_Zone_t(root))
 
 def iter_all_Zone_t(root:Tree) -> Iterator[Tree]:
-  root_label = root[3]
-  if root_label == 'Zone_t':
+  is_zone = lambda n : n[3] in {'Zone_t', 'ParticleZone_t'}
+  if is_zone(root):
     yield root
   else:
     for base in iter_all_CGNSBase_t(root):
-      yield from iter_children_from_label(base, 'Zone_t') #type:ignore[misc] #(iter_children is not generic)
-
-def get_all_ParticleZone_t(root:Tree) -> List[Tree]:
-  """ Return the list of all the ParticleZone_t nodes found in input tree
-
-  This function is SIDS aware, and will only search nodes in relevant places.
-
-  Args:
-      root (CGNSTree): Tree is which the search is performed
-  Returns:
-    list of CGNSTree: Nodes found
-  See also:
-    This function has the iterator counterpart :func:`iter_all_ParticleZone_t`
-
-  Example:
-    >>> tree = PT.yaml.to_cgns_tree('''
-    ... BaseA CGNSBase_t:
-    ...   ParticleZone1 ParticleZone_t:
-    ...   ParticleZone2 ParticleZone_t:
-    ... BaseB CGNSBase_t:
-    ...   ParticleZone3 ParticleZone_t:
-    ... ''')
-    >>> [PT.get_name(n) for n in PT.iter_all_ParticleZone_t(tree)]
-    ['ParticleZone1', 'ParticleZone2', 'ParticleZone3']
-  """
-  return list(iter_all_ParticleZone_t(root))
-
-def iter_all_ParticleZone_t(root:Tree) -> Iterator[Tree]:
-  root_label = root[3]
-  if root_label == 'ParticleZone_t':
-    yield root
-  else:
-    for base in iter_all_CGNSBase_t(root):
-      yield from iter_children_from_label(base, 'ParticleZone_t') #type:ignore[misc] #(iter_children is not generic)
-  
+      yield from iter_children_from_predicate(base, is_zone) #type:ignore[misc] #(iter_children is not generic)
 
 def get_all_CGNSBase_t(root:Tree) -> List[Tree]:
   """ Return the list of all the CGNSBase_t nodes found in input tree

@@ -384,7 +384,7 @@ def test_get_all_Zone_t():
   Base CGNSBase_t:
     Zone1 Zone_t:
     Other Something_t:
-    Zone2 Zone_t:
+    Zone2 ParticleZone_t:
   """
   tree = PTy.to_node(yaml_str)
   zones = PT.get_all_Zone_t(tree)
@@ -396,7 +396,7 @@ def test_get_all_Zone_t():
   Tree CGNSTree_t:
     BaseA CGNSBase_t:
       Zone1 Zone_t:
-      ZoneExtra Zone_t:
+      ZoneExtra ParticleZone_t:
     BaseB CGNSBase_t:
       Zone2 Zone_t:
   """
@@ -404,40 +404,6 @@ def test_get_all_Zone_t():
   zones = PT.get_all_Zone_t(tree)
   assert len(zones) == 3
   assert get_names(zones) == ["Zone1", "ZoneExtra", "Zone2"]
-
-def test_get_all_ParticleZone_t():
-  # From Zone
-  yaml_str = "MyParticleZone ParticleZone_t:"
-  tree = PTy.to_node(yaml_str)
-  zones = PT.get_all_ParticleZone_t(tree)
-  assert len(zones) == 1
-  assert PT.get_name(zones[0]) == "MyParticleZone"
-
-  # From Base
-  yaml_str = """
-  Base CGNSBase_t:
-    ParticleZone1 ParticleZone_t:
-    Other Something_t:
-    ParticleZone2 ParticleZone_t:
-  """
-  tree = PTy.to_node(yaml_str)
-  zones = PT.get_all_ParticleZone_t(tree)
-  assert len(zones) == 2
-  assert get_names(zones) == ["ParticleZone1", "ParticleZone2"]
-
-  # From Tree
-  yaml_str = """
-  Tree CGNSTree_t:
-    BaseA CGNSBase_t:
-      ParticleZone1 ParticleZone_t:
-      ParticleZoneExtra ParticleZone_t:
-    BaseB CGNSBase_t:
-      ParticleZone2 ParticleZone_t:
-  """
-  tree = PTy.to_node(yaml_str)
-  zones = PT.get_all_ParticleZone_t(tree)
-  assert len(zones) == 3
-  assert get_names(zones) == ["ParticleZone1", "ParticleZoneExtra", "ParticleZone2"]
 
 def test_get_all_cgnsbase_t_from_cgnsbase_t():
   # From Base

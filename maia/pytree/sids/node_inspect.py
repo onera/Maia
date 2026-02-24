@@ -1044,8 +1044,8 @@ class Subset:
 
 
 # --------------------------------------------------------------------------
-@for_all_methods(check_in_labels(["FlowSolution_t", "DiscreteData_t", "ZoneSubRegion_t",
-                                 "GridCoordinates_t", "BCDataSet_t", "ArbitraryGridMotion_t"]))
+@for_all_methods(check_in_labels(["FlowSolution_t", "ParticleSolution_t", "DiscreteData_t", "ZoneSubRegion_t",
+                                 "GridCoordinates_t", "ParticleCoordinates_t", "BCDataSet_t", "ArbitraryGridMotion_t"]))
 class Container:
   """
   A container is node designed to store fields, such as FlowSolution_t, ZoneSubRegion_t, ...

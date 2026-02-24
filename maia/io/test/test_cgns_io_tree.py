@@ -303,8 +303,8 @@ Base CGNSBase_t I4 [3, 3]:
     maia.io.dist_tree_to_file(dist_tree, out_file, comm)
 
     t = maia.io.read_tree(out_file)
-    assert (PT.get_value(PT.get_node_from_name(
-        t, "CoordinateX")) == [0., 1., 2.]).all()
+    # TODO : update to use dist_tree_to_file when feature is available
+    assert (PT.get_value(PT.get_node_from_name(t, "CoordinateX")) == [0., 1., 2.]).all()
     TU.rm_collective_dir(tmp_dir, comm)
 
 @pytest_parallel.mark.parallel(2)
@@ -313,7 +313,7 @@ def test_ptcl_dist_tree_to_file_2procs(comm):
         yt = """
 CGNSTree CGNSTree_t:
   Base CGNSBase_t I4 [3, 3]:
-    ParticleZone ParticleZone_t 3:
+    ParticleZone ParticleZone_t 7:
       :CGNS#Distribution UserDefinedData_t:
         Vertex DataArray_t I8 [0, 3, 7]:
       ParticleCoordinates ParticleCoordinates_t:
@@ -327,7 +327,7 @@ CGNSTree CGNSTree_t:
         yt = """
 CGNSTree CGNSTree_t:
   Base CGNSBase_t I4 [3, 3]:
-    ParticleZone ParticleZone_t 4:
+    ParticleZone ParticleZone_t 7:
       :CGNS#Distribution UserDefinedData_t:
         Vertex DataArray_t I8 [3, 7, 7]:
       ParticleCoordinates ParticleCoordinates_t:
@@ -345,8 +345,6 @@ CGNSTree CGNSTree_t:
     maia.io.dist_tree_to_file(dist_tree, out_file, comm)
 
     t = maia.io.read_tree(out_file)
-    assert (PT.get_value(PT.get_node_from_name(
-        t, "CoordinateX")) == [0., 3., 6., 9., 12., 15., 18.]).all()
-    assert (PT.get_value(PT.get_node_from_name(
-        t, "Identifier")) == [0, 3, 6, 9, 12, 15, 18]).all()
+    assert (PT.get_value(PT.get_node_from_name(t, "CoordinateX")) == [0., 3., 6., 9., 12., 15., 18.]).all()
+    assert (PT.get_value(PT.get_node_from_name(t, "Identifier")) == [0, 3, 6, 9, 12, 15, 18]).all()
     TU.rm_collective_dir(tmp_dir, comm)
