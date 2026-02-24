@@ -90,13 +90,11 @@ def concatenate_elt_sections_if(dist_tree: CGNSDistTree, pred: PT.pred.NodePredi
         PT.set_name(elts[0], kind)
 
 def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
-  """ Gather the Element_t sections of same ElementType into a single one.
+  """ Gather the ``Elements_t`` sections of same :func:`~maia.pytree.Element.Type` into a single one.
 
-  Resulting sections are named after their ElementType. Note that :
-
-  - Sections of same kind must be contiguous to be gathered. This can be achieved
-    using :func:`reorder_elt_sections_from_dim` function.
-  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kinds are not supported.
+  Resulting sections are named after their element type. Note that
+  sections of same kind must be contiguous to be gathered. This can be achieved
+  using :func:`reorder_elt_sections_from_dim` function.
 
   Input tree is modified inplace.
 

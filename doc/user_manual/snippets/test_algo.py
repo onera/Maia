@@ -591,8 +591,7 @@ def test_concatenate_elt_sections():
 
   dist_tree = maia.io.file_to_dist_tree(mesh_dir/'H_elt_and_s.yaml', MPI.COMM_WORLD)
 
-  is_quad_elt = lambda n : PT.get_label(n) == 'Elements_t' and \
-                           PT.Element.Type(n) == 'QUAD_4'
+  is_quad_elt = PT.pred.is_element_of_type('QUAD_4')
 
   assert len(PT.get_nodes_from_predicate(dist_tree, is_quad_elt)) > 1 # Several QUAD sections
   maia.algo.dist.concatenate_elt_sections(dist_tree, MPI.COMM_WORLD)
