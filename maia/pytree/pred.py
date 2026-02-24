@@ -142,14 +142,18 @@ def is_element_of_type(type:str):
 
 def is_zone_of_kind(kind:Optional[str]=None, cell_dim:Optional[int]=None):
   """ Node is a Zone_t and its connectivity is described by ``kind``
-  (one of ``S``, ``U``, ``Poly``, ``Std``) and
+  (one of ``S``, ``U``, ``Poly``, ``Std``, ``Particle``) and
   ``cell_dim`` (one of ``1``, ``2``, ``3``) [3]_
   """
   def _celldim_is(cell_dim:int):
-    return NodePredicate(lambda z: S.Zone.CellDimension(z) == cell_dim)
+    return NodePredicate(lambda z: (S.Zone.CellDimension(z) if N.get_label(z) == 'Zone_t' else 0) == cell_dim)
 
-  pred = label_is('Zone_t')
-  if kind is not None:
+  if kind is None:
+    pred = label_in({'Zone_t', 'ParticleZone_t'})
+  elif kind == 'Particle':
+    pred = label_is('ParticleZone_t')
+  else:
+    pred = label_is('Zone_t')
     if kind == 'S':
       pred &= NodePredicate(lambda z: S.Zone.Type(z) == 'Structured')
     else: # U, Poly, Std : zone need to be Unstructured

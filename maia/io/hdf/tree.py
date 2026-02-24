@@ -23,8 +23,9 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
   """
   # Coords
   distrib_vtx  = MT.Zone.vtx_distribution(zone)
-  all_vtx_dataspace   = create_data_array_filter(distrib_vtx, zone[1][:,0])
-  for grid_c in PT.iter_children_from_label(zone, 'GridCoordinates_t'):
+  vtx_shape = zone[1] if PT.get_label(zone) == 'ParticleZone_t' else zone[1][:,0]
+  all_vtx_dataspace   = create_data_array_filter(distrib_vtx, vtx_shape)
+  for grid_c in PT.iter_children_from_predicate(zone, PT.pred.label_in(['GridCoordinates_t', 'ParticleCoordinates_t'])):
     grid_coord_path = zone_path + "/" + PT.get_name(grid_c)
     utils.apply_dataspace_to_arrays(grid_c, grid_coord_path, all_vtx_dataspace, hdf_filter)
 
@@ -42,7 +43,7 @@ def create_tree_hdf_filter(dist_tree, mode='read'):
   It can be replace by a if None in tree to see if read/write ?
   """
   hdf_filter = dict()
-  for base, zone in PT.iter_nodes_from_predicates(dist_tree, 'CGNSBase_t/Zone_t', ancestors=True):
+  for base, zone in PT.iter_nodes_from_predicates(dist_tree, MT.pred.BASE_THEN_ZONE, ancestors=True):
     zone_path = PT.get_name(base)+"/"+PT.get_name(zone)
     create_zone_filter(zone, zone_path, hdf_filter, mode)
   return hdf_filter

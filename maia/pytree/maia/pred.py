@@ -15,3 +15,5 @@ FULL_CTN = PTp.label_in(['FlowSolution_t', 'DiscreteData_t']) \
 
 FULL_CTN_VTX  = FULL_CTN & PTp.has_location('Vertex') 
 FULL_CTN_CELL = FULL_CTN & PTp.has_location('CellCenter') 
+
+BASE_THEN_ZONE = [PTp.label_is('CGNSBase_t'),  PTp.label_in(['Zone_t', 'ParticleZone_t'])]

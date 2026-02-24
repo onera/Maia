@@ -384,7 +384,7 @@ def test_get_all_Zone_t():
   Base CGNSBase_t:
     Zone1 Zone_t:
     Other Something_t:
-    Zone2 Zone_t:
+    Zone2 ParticleZone_t:
   """
   tree = PTy.to_node(yaml_str)
   zones = PT.get_all_Zone_t(tree)
@@ -396,7 +396,7 @@ def test_get_all_Zone_t():
   Tree CGNSTree_t:
     BaseA CGNSBase_t:
       Zone1 Zone_t:
-      ZoneExtra Zone_t:
+      ZoneExtra ParticleZone_t:
     BaseB CGNSBase_t:
       Zone2 Zone_t:
   """

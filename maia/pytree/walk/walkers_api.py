@@ -793,13 +793,12 @@ def get_all_Zone_t(root:Tree) -> List[Tree]:
   return list(iter_all_Zone_t(root))
 
 def iter_all_Zone_t(root:Tree) -> Iterator[Tree]:
-  root_label = root[3]
-  if root_label == 'Zone_t':
+  is_zone = lambda n : n[3] in {'Zone_t', 'ParticleZone_t'}
+  if is_zone(root):
     yield root
   else:
     for base in iter_all_CGNSBase_t(root):
-      yield from iter_children_from_label(base, 'Zone_t') #type:ignore[misc] #(iter_children is not generic)
-  
+      yield from iter_children_from_predicate(base, is_zone) #type:ignore[misc] #(iter_children is not generic)
 
 def get_all_CGNSBase_t(root:Tree) -> List[Tree]:
   """ Return the list of all the CGNSBase_t nodes found in input tree

@@ -92,9 +92,7 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
   if present, or using allCells / allVertex if no pointList is present.
   Filter is created for the arrays and for the PointList if present
   """
-  distrib_vtx  = MT.Zone.vtx_distribution(zone)
-  distrib_cell = MT.Zone.cell_distribution(zone)
-  is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t'])
+  is_fs_like = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ArbitraryGridMotion_t', 'ParticleSolution_t'])
   for flow_solution in PT.iter_children_from_predicate(zone, is_fs_like):
     flow_solution_path = zone_path + "/" + PT.get_name(flow_solution)
     grid_location = PT.Container.GridLocation(flow_solution)
@@ -104,9 +102,11 @@ def create_flow_solution_filter(zone, zone_path, hdf_filter):
       _create_pl_filter(flow_solution, flow_solution_path, 'PointList', distrib_data, hdf_filter)
       data_space = create_data_array_filter(distrib_data)
     elif(grid_location == 'CellCenter'):
-      data_space = create_data_array_filter(distrib_cell, zone[1][:,1])
+      cell_shape = zone[1][:,1]
+      data_space = create_data_array_filter(MT.Zone.cell_distribution(zone), cell_shape)
     elif(grid_location == 'Vertex'):
-      data_space = create_data_array_filter(distrib_vtx, zone[1][:,0])
+      vtx_shape = zone[1] if PT.get_label(zone) == 'ParticleZone_t' else zone[1][:,0]
+      data_space = create_data_array_filter(MT.Zone.vtx_distribution(zone), vtx_shape)
     else:
       raise RuntimeError(f"GridLocation {grid_location} is not allowed without PL")
     utils.apply_dataspace_to_arrays(flow_solution, flow_solution_path, data_space, hdf_filter)
