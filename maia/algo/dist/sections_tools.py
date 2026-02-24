@@ -13,30 +13,40 @@ def _concatenate_elt_sections(elts:List[CGNSTree], comm:MPIComm) -> CGNSTree:
   elts = sorted(elts, key=lambda e: PT.Element.Range(e)[0]) # Dont forget to sort!
   tot_size = sum([PT.Element.Size(e) for e in elts])
   merged_distri = par_utils.uniform_distribution(tot_size, comm)
+  elt_type = PT.Element.Type(elts[0])
+
+  pe_exists = {PT.get_child_from_name(elt, 'ParentElements') is not None for elt in elts}
+  if len(pe_exists) != 1:
+    raise ValueError("ParentElements node must either always exist, or always not")
 
   # Initially, each section is distributed, we need to "uninterlace" 
   # to map global distribution without changing order
-  start = 0
-  ec_to_merge = []
-  for elt in elts:
-    end = start + PT.Element.Size(elt)
-    distri = MT.Element.distribution(elt)
-    ec = PT.find_child_from_name(elt, 'ElementConnectivity')[1]
-    distri_out = distri.copy()
-    distri_out[0] = max(min(merged_distri[0], end), start) - start
-    distri_out[1] = max(min(merged_distri[1], end), start) - start
+  distri_in = [MT.Element.distribution(elt) for elt in elts]
+  mbtb = EP.MultiBlockToBlock(distri_in, merged_distri, comm)
+  if elt_type in ['NGON_n', 'NFACE_n', 'MIXED']:
+    elts_cnt = [MT.Element.connectivity(elt) for elt in elts]
+    merged_cnt, merged_ec = mbtb.exchange([ec.values for ec in elts_cnt],
+                                          [ec.counts for ec in elts_cnt])
+    merged_eso = np_utils.sizes_to_indices(merged_cnt) + par_utils.exscan_size(merged_ec.size, comm)
+  else:
+    elts_ec = [PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity')) for elt in elts]
+    merged_ec = mbtb.exchange(elts_ec, stride_in=PT.Element.NVtx(elts[0]))
 
-    # NB : if we had block_to_block with preallocated buffer,
-    # we could directly fill global array
-    btb = EP.BlockToBlock(distri, distri_out, comm)
-    ec_to_merge.append(btb.exchange(ec, PT.Element.NVtx(elt)))
-    start = end
-
-  merged_ec = np_utils.concatenate_np_arrays(ec_to_merge)[1]
   merged_range = np.empty(2, merged_ec.dtype)
   merged_range[0] = PT.Element.Range(elts[0] )[0]
   merged_range[1] = PT.Element.Range(elts[-1])[1]
+
   merged_elt = PT.new_Elements(type=PT.Element.Type(elts[0]), erange=merged_range, econn=merged_ec)
+  if elt_type in ['NGON_n', 'NFACE_n', 'MIXED']:
+    PT.new_DataArray('ElementStartOffset', value=merged_eso, parent=merged_elt)
+  if list(pe_exists)[0]:
+    pe_vals  = [PT.get_np_value(PT.find_child_from_name(elt, 'ParentElements')) for elt in elts]
+    merged_pe = np.empty((merged_distri[1]-merged_distri[0], 2), order='F', dtype=pe_vals[0].dtype)
+    merged_pe[:,0] = mbtb.exchange([pe[:,0] for pe in pe_vals])
+    merged_pe[:,1] = mbtb.exchange([pe[:,1] for pe in pe_vals])
+    
+    PT.new_DataArray('ParentElements', merged_pe, parent=merged_elt)
+
   MT.new_Distribution({'Element' : merged_distri}, merged_elt)
 
   return merged_elt
@@ -80,13 +90,11 @@ def concatenate_elt_sections_if(dist_tree: CGNSDistTree, pred: PT.pred.NodePredi
         PT.set_name(elts[0], kind)
 
 def concatenate_elt_sections(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
-  """ Gather the Element_t sections of same ElementType into a single one.
+  """ Gather the ``Elements_t`` sections of same :func:`~maia.pytree.Element.Type` into a single one.
 
-  Resulting sections are named after their ElementType. Note that :
-
-  - Sections of same kind must be contiguous to be gathered. This can be achieved
-    using :func:`reorder_elt_sections_from_dim` function.
-  - ``NGON_n``, ``NFACE_n`` and ``MIXED`` element kinds are not supported.
+  Resulting sections are named after their element types. Note that
+  sections of same kind must be contiguous to be gathered. This can be achieved
+  using :func:`reorder_elt_sections_from_dim` function.
 
   Input tree is modified inplace.
 

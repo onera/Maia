@@ -43,6 +43,37 @@ def test_gather_sections(comm):
   with pytest.raises(RuntimeError):
     sections_tools.concatenate_elt_sections(tree_bck, comm)
 
+@pytest.mark.parametrize("with_pe", [False, True])
+@pytest_parallel.mark.parallel(2)
+def test_concatenate_ngon(with_pe, comm):
+  tree = PT.new_CGNSTree()
+  base = PT.new_CGNSBase(parent=tree)
+  zone = PT.new_Zone(type='Unstructured', size=[[30,10,0]], parent=base)
+  ng1 = PT.new_NGonElements('NG1', erange=[1,4], eso=[0,3,7,10,13], ec=[2,3,4, 5,6,3,7, 8,9,3, 4,2,9], parent=zone)
+  ng2 = PT.new_NGonElements('NG2', erange=[5,7], eso=[0,4,8,11], ec=[4,9,3,5, 5,9,1,8, 4,5,1], parent=zone)
+  if with_pe:
+    PT.new_DataArray('ParentElements', [[10,0], [11,0], [11,12], [13,0]],parent=ng1)
+    PT.new_DataArray('ParentElements', [[12,0],[11,0],[16,13]], parent=ng2)
+  tree = maia.factory.full_to_dist_tree(tree, comm)
+
+  sections_tools.concatenate_elt_sections(tree, comm)
+
+  assert len(PT.get_nodes_from_label(tree, 'Elements_t')) == 1
+
+  elt = PT.find_node_from_name(tree, 'NGON_n')
+  expected_ec = [[2,3,4, 5,6,3,7, 8,9,3, 4,2,9],
+                 [4,9,3,5, 5,9,1,8, 4,5,1]][comm.rank]
+  expected_eso = [[0,3,7,10,13], [13,17,21,24]][comm.rank]
+  expected_distri = [[0,4,7], [4,7,7]][comm.rank]
+  assert (PT.Element.Range(elt) == [1,7]).all()
+  assert (PT.get_np_value(PT.find_child_from_name(elt, 'ElementStartOffset')) == expected_eso).all()
+  assert (PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity')) == expected_ec).all()
+  assert (MT.Element.distribution(elt) == expected_distri).all()
+  if with_pe:
+    expected_pe = [[[10,0],[11,0],[11,12],[13,0]], [[12,0],[11,0],[16,13]]][comm.rank]
+    assert (PT.get_np_value(PT.find_child_from_name(elt, 'ParentElements')) == expected_pe).all()
+
+
 def test_reorder_elements():
   # Note:  Ids in this tree makes no sense, this is just to test
   tree = PT.new_CGNSTree()

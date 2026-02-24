@@ -1,5 +1,7 @@
 import numpy as np
 
+from maia.typing import *
+
 def _overlap_size(start1, end1, start2, end2):
   return max(min(end1, end2) - max(start1, start2), 0)
 
@@ -99,3 +101,63 @@ class SerialBlockToBlock():
       data_out[:] = data_in[:]
     else:
       raise NotImplementedError('Inplace variable buffer not yet implemented')
+
+class MultiBlockToBlock():
+  """
+  The multiblock to block pattern allows to remap N distributed arrays
+  to a single distributed array, without interlacing the inputs
+  (which is what we would have if we just concatenate arrays
+  locally on input ranks)
+  For exemple if we have 2 ranks and 3 distributed arrays
+  Array0 [A B C | D E F G]
+  Array1 [M N L | Q]
+  Array2 [P S | K X W]    ('|' marks separation for P0/P1)
+
+  Output will be [A B C D E F G M | N L Q P S K X W]
+  (distribution of output array can be choosed)
+  """
+
+  def __init__(self, distri_in_l:List[NDArray], distri_out:NDArray, comm:MPIComm):
+    """ Create protocol from N := len(distri_in_l) input distributions """
+    assert all(distri.size == comm.size + 1 for distri in distri_in_l)
+    assert all(distri[0] == 0 for distri in distri_in_l)
+    assert all((np.diff(distri) >= 0).all() for distri in distri_in_l)
+    assert sum(distri[-1] for distri in distri_in_l) == distri_out[-1]
+
+    self.btb_l = list()
+    start = 0
+    for distri_in in distri_in_l:
+      end = start + distri_in[-1]
+      distri_out_loc = np.maximum(np.minimum(distri_out, end), start) - start
+      self.btb_l.append(BlockToBlock(distri_in, distri_out_loc, comm))
+      start = end
+
+  def exchange(self, data_in_l:List[NDArray], stride_in:Union[int, List]=1):
+    """ Merge cst strided (stride_in = int) or variably strided data
+    (stride_in = list of N arrays), reaching distri_out distribution """
+    
+    # Constant stride
+    if isinstance(stride_in, int):
+      data_out = np.empty(stride_in * sum(btb.dn_out for btb in self.btb_l), data_in_l[0].dtype)
+
+      loc_start = 0
+      for data_in, btb in zip(data_in_l, self.btb_l):
+        loc_end = loc_start + stride_in * btb.dn_out
+        btb.exchange_inplace(data_in, data_out[loc_start:loc_end], stride_in=stride_in)
+        loc_start = loc_end
+
+      return data_out
+
+    # Variable stride
+    elif isinstance(stride_in, list):
+      stride_out = self.exchange(stride_in) # Exchange with stride = 1 to get output vstride
+      data_out = np.empty(stride_out.sum(), dtype=data_in_l[0].dtype)
+
+      loc_start = 0
+      for _stride_in, data_in, btb in zip(stride_in, data_in_l, self.btb_l):
+        stride_out_loc, data_out_loc = btb.exchange(data_in, _stride_in)
+        loc_end = loc_start + stride_out_loc.sum()
+        data_out[loc_start:loc_end] = data_out_loc
+        loc_start = loc_end
+
+      return stride_out, data_out

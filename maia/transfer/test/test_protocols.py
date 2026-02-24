@@ -163,3 +163,62 @@ def test_part_to_part(comm):
   elif comm.Get_rank() == 1:
     assert (recv_stride[0] == [2,2,2,1,1]).all()
     assert (recv[0] == [70.,71,50,51,50,51,10,110]).all()
+
+@pytest_parallel.mark.parallel(3)
+def test_mblock_to_block(comm):
+  # 3 ranks, 2 input data
+  if comm.rank == 0:
+    distri_in = [np.array([0, 5, 20]), np.array([0, 8, 15])]
+    distri_out = np.array([0, 7, 35])
+  elif comm.rank == 1:
+    distri_in = [np.array([5, 5, 20]), np.array([8, 12, 15])]
+    distri_out = np.array([7, 30, 35])
+  else:
+    distri_in = [np.array([5, 20, 20]), np.array([12, 15, 15])]
+    distri_out = np.array([30, 35, 35])
+
+  MBTB = EP.MultiBlockToBlock(distri_in, distri_out, comm)
+
+  # Cste stride == 1
+  data_in = [np.arange(distri[0], distri[1])+100*i for i,distri in enumerate(distri_in)]
+
+  data_out = MBTB.exchange(data_in)
+  expected = [np.arange(0, 7),
+              np.concatenate([np.arange(7, 20), np.arange(0,10)+100]),
+              np.arange(10, 15)+100][comm.rank]
+  assert np.array_equal(expected, data_out)
+  
+  # Cste stride == 3
+  data_in = [np.repeat(data, 3) + np.tile([.1, .2, .3], data.size) for data in data_in]
+  
+  data_out = MBTB.exchange(data_in, stride_in=3)
+  expected = np.repeat(expected, 3) + np.tile([.1, .2, .3], expected.size)
+
+  assert np.array_equal(expected, data_out)
+
+
+  # Variable stride
+  if comm.rank == 0:
+    stride_in = [np.array([0,1,1,0,2]), np.array([0,0,0,0,1,0,0,3])]
+    data_in = [np.array([1.1, 2.1 ,4.1,4.2]), np.array([104.1, 107.1,107.2,107.3])]
+  elif comm.rank == 1:
+    stride_in = [np.array([], int), np.array([1,3,3,1])]
+    data_in = [np.array([]), np.array([108.1, 109.1,109.2,109.3, 110.1,110.2,110.3, 111.1])]
+  elif comm.rank == 2:
+    stride_in = [np.array([1,1,1,0,0,0,0,0,2,2,0,0,0,1,0], int), np.array([0,2,0])]
+    data_in = [np.array([5.1, 6.1, 7.1, 13.1,13.2, 14.1,14.2, 18.1]), np.array([113.1,113.2])]
+
+  stride_out, data_out = MBTB.exchange(data_in, stride_in)
+  
+  if comm.rank == 0:
+    expt_stride = np.array([0,1,1,0,2,1,1])
+    expt_data = np.array([1.1, 2.1, 4.1,4.2, 5.1, 6.1])
+  elif comm.rank == 1:
+    expt_stride = np.array([1,0,0,0,0,0,2,2,0,0,0,1,0, 0,0,0,0,1,0,0,3,1,3])
+    expt_data = np.array([7.1, 13.1,13.2, 14.1,14.2, 18.1, 104.1, 107.1,107.2,107.3, 108.1, 109.1,109.2,109.3])
+  elif comm.rank == 2:
+    expt_stride = np.array([3,1,0,2,0])
+    expt_data = np.array([110.1,110.2,110.3, 111.1, 113.1,113.2])
+
+  assert np.array_equal(expt_stride, stride_out)
+  assert np.array_equal(expt_data, data_out)
