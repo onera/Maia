@@ -219,9 +219,10 @@ def test_is_zone_of_kind():
     NG Elements_t [22,0]:
       ParentElements DataArray_t:
   """)
+  part3d = PT.new_node('Particle', label='ParticleZone_t', value=[42])
 
   base = PT.new_node('Base', 'CGNSBase_t', children=[struct1d, struct2d, struct3d,
-      elt1d, elt2d, elt3d, poly2d, poly2d2, poly3d, poly3d2])
+      elt1d, elt2d, elt3d, poly2d, poly2d2, poly3d, poly3d2, part3d])
 
   assert PT.find_node_from_predicate(base, P.is_zone_of_kind('S', 2))[0] == 'Struct2D'
   assert PT.find_node_from_predicate(base, P.is_zone_of_kind('Elt', 3))[0] == 'Elt3D'
@@ -235,7 +236,9 @@ def test_is_zone_of_kind():
     == ['Struct2D', 'Elt2D', 'Poly2D', 'Poly2DPE']
   assert [PT.get_name(n) for n in PT.get_nodes_from_predicate(base, P.is_zone_of_kind('U', 3))] \
     == ['Elt3D', 'Poly3D', 'Poly3DPE']
-  assert len(PT.get_nodes_from_predicate(base, P.is_zone_of_kind(None, None))) == 10
+  assert [PT.get_name(n) for n in PT.get_nodes_from_predicate(base, P.is_zone_of_kind('Particle'))] \
+    == ['Particle']
+  assert len(PT.get_nodes_from_predicate(base, P.is_zone_of_kind(None, None))) == 11
 
 
 def test_is_gc_of_kind():
