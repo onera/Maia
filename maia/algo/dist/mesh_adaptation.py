@@ -17,7 +17,15 @@ from maia.algo.dist.adaptation_utils import convert_vtx_gcs_as_face_bcs,\
                                             retrieve_initial_domain,\
                                             rm_feflo_added_elt
 
-def unpack_metric(dist_tree, metric_paths):
+def detect_mmg(dim:int) -> str:
+  base = f'mmg{dim}d'
+  for suffix in ['', '_O3', '_O3d', 'Os']:
+    exe = base + suffix
+    if shutil.which(exe) is not None:
+      return exe  
+  raise FileNotFoundError("Unable to find MMG executable")
+
+def unpack_metric(dist_tree:CGNSDistTree, metric_paths:Union[None, str, List[str]]) -> List[CGNSTree]:
   """
   Unpacks the `metric` argument from `mesh_adapt` function.
   Assert no invalid path or argument is given and that paths leads to one, three or six fields.
@@ -61,29 +69,13 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
                            constraints: Optional[str],
                            feflo_opts: str,
                            tmp_dir: str) -> CGNSDistTree:
-  # > Create tmp directory
-  tmp_repo   = Path(tmp_dir)
-
   # Input/output files
-  in_file_mshb  = 'mesh.mesh'
-  in_file_solb  = 'metric.sol'
-  in_file_fldb  = 'field.sol'
-  in_files = {'mesh': tmp_repo / in_file_mshb,
-              'sol' : tmp_repo / in_file_solb,
-              'fld' : tmp_repo / in_file_fldb}
-
-  out_files = {'mesh': tmp_repo / 'mesh.o.mesh',
-               'sol' : tmp_repo / 'mesh.o.sol' ,
-               'fld' : tmp_repo / 'field.itp.sol' }
-
-  tmp_repo.mkdir(exist_ok=True)
-
+  files = get_file_dict(tmp_dir, comm)
 
   # > Feflo files arguments
   feflo_args    = { 'isotrop'  : f"-iso               ".split(),
-                    'from_fld' : f"-sol {in_file_solb}".split(),
-                    'from_hess': f"-met {in_file_solb}".split()}
-
+                    'from_fld' : f"-sol {files['sol_in'].name}".split(),
+                    'from_hess': f"-met {files['sol_in'].name}".split()}
 
   # > Get metric nodes
   metric_nodes = unpack_metric(dist_tree, metric)
@@ -98,11 +90,12 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
   # > CGNS to meshb conversion
   if comm.Get_rank()==0:
+    in_files = {key[:-3]:val for key,val in files.items() if key.endswith('_in')}
     constraint_tags = cgns_to_meshb(dist_tree, in_files, metric_nodes, containers_name, constraints)
 
     # Adapt with feflo
-    feflo_itp_args = f'-itp {in_file_fldb}'.split() if len(containers_name)!=0 else []
-    feflo_command  = ['feflo.a', '-in', in_file_mshb] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()
+    feflo_itp_args = f"-itp {files['fld_in'].name}".split() if len(containers_name)!=0 else []
+    feflo_command  = ['feflo.a', '-in', files['mesh_in'].name] + feflo_args[metric_type] + feflo_itp_args + feflo_opts.split()
     if len(constraint_tags['FaceCenter'])!=0:
       feflo_command  = feflo_command + ['-adap-surf-ids'] + [','.join(constraint_tags['FaceCenter'])]#[str(tag) for tag in constraint_tags['FaceCenter']]
     if len(constraint_tags['EdgeCenter'])!=0:
@@ -131,6 +124,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
   if multi_elmt:
     tree_info["bc_names"]["CellCenter"] = list()
     mlog.warning("feflo.a do not seems to manage cell BCs in multi-element meshes, they will be missing in resulting CGNS.")
+  out_files = {key[:-4]:val for key,val in files.items() if key.endswith('_out')}
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
   # > Set names and copy base data
@@ -269,43 +263,45 @@ def _adapt_mesh_with_feflo_perio(dist_tree, metric, comm, containers_name, feflo
 
   return tree
 
+def get_file_dict(tmp_dir:str, comm:MPIComm) -> Dict[str, Path]:
+  tmp_repo = Path(tmp_dir)
+
+  files = {'mesh_in' : tmp_repo / 'mesh.mesh',
+           'sol_in'  : tmp_repo / 'metric.sol',
+           'fld_in'  : tmp_repo / 'field.sol',
+           'mesh_out': tmp_repo / 'mesh.o.mesh',
+           'sol_out' : tmp_repo / 'mesh.o.sol' ,
+           'fld_out' : tmp_repo / 'field.itp.sol' }
+
+  if comm.Get_rank() == 0:
+    for file in files.values():
+      file.unlink(missing_ok=True)
+    tmp_repo.mkdir(exist_ok=True)
+  comm.barrier()
+
+  return files
+
 def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
                          metric: Union[None, str, List[str]],
-                         sol: Union[None, str],
+                         as_lvlset:bool,
                          comm: MPIComm,
                          mmg_opts: str,
                          tmp_dir: str) -> CGNSDistTree:
-  # > Create tmp directory
-  tmp_repo = Path(tmp_dir)
 
   # Input/output files
-  in_file_mshb = 'in_mesh.mesh'
-  in_file_solb = 'in_mesh.sol'
-  in_files = {'mesh': tmp_repo / in_file_mshb,
-              'sol' : tmp_repo / in_file_solb}
-  out_file_mshb = 'out_mesh.mesh'
-  out_file_solb = 'out_mesh.sol'
-  out_files = {'mesh': tmp_repo / out_file_mshb,
-               'sol' : tmp_repo / out_file_solb}
-
-  if comm.Get_rank()==0:
-    if tmp_repo.is_dir():
-      shutil.rmtree(tmp_repo)
-    tmp_repo.mkdir(exist_ok=True)
-  comm.barrier
+  files = get_file_dict(tmp_dir, comm)
 
   # > Get field nodes
-  field_nodes = None
+  field_nodes = unpack_metric(dist_tree, metric)
   mmg_args = []
-  if metric is not None:
-    field_nodes = unpack_metric(dist_tree, metric)
+  if as_lvlset:
+    assert len(field_nodes) == 1, "A scalar field is expected for level set mode"
+    mmg_args = f"-sol {files['sol_in'].name} -ls".split()
+  else:
     if len(field_nodes) == 1:
-      f"-met {in_file_solb}".split()
+      mmg_args = f"-met {files['sol_in'].name}".split()
     elif len(field_nodes) == 6:
-      f"-met {in_file_solb} -A".split()
-  elif sol is not None:
-    field_nodes = unpack_metric(dist_tree, sol)
-    mmg_args = f"-sol {in_file_solb} -ls".split()
+      mmg_args = f"-met {files['sol_in'].name} -A".split()
 
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, [])
@@ -315,16 +311,14 @@ def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
 
   # > CGNS to meshb conversion
   if comm.Get_rank()==0:
+    in_files = {key[:-3]:val for key,val in files.items() if key.endswith('_in')}
     _ = cgns_to_meshb(dist_tree, in_files, field_nodes, [], None)
 
     # Adapt with mmg
     cell_dims = [PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(dist_tree)]
     assert len(cell_dims) == 1
-    if cell_dims[0] == 2:
-      mmg_exe = 'mmg2d'
-    else:
-      mmg_exe = 'mmg3d'
-    mmg_command     = [mmg_exe, '-in', in_file_mshb, '-out', out_file_mshb] + mmg_args + mmg_opts.split()
+    mmg_exe = detect_mmg(cell_dims[0])
+    mmg_command     = [mmg_exe, '-in', files['mesh_in'].name, '-out', files['mesh_out'].name] + mmg_args + mmg_opts.split()
     str_mmg_command = ' '.join(mmg_command) # Split + join to remove useless spaces
     mlog.info(f"Start mesh adaptation using MMG...")
     start = time.time()
@@ -335,6 +329,7 @@ def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
     mlog.info(f"MMG mesh adaptation completed ({end-start:.2f} s)")
 
   # > Get adapted dist_tree
+  out_files = {key[:-4]:val for key,val in files.items() if key.endswith('_out')}
   adapted_dist_tree = meshb_to_cgns(out_files, tree_info, comm)
 
   # > Set names and copy base data
@@ -468,7 +463,7 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
 def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
                         metric: Union[None, str, List[str]],
-                        sol: Union[None, str],
+                        as_lvlset: bool,
                         comm: MPIComm,
                         mmg_opts: str = "",
                         **options) -> CGNSDistTree:
@@ -485,18 +480,15 @@ def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
 
   **Setting the metric**
 
-  Metric choice is available through the ``metric`` argument, which can take the following values:
-
-  - *None* : isotropic adaptation is performed (-hsiz option to prescribe the edge length)
-  - *str* : path (starting a Zone_t level) to a scalar vertex located size field:
-  - *list of 6 str* : each string must be a path to a vertex located field representing one component
-    of the user-defined metric tensor (expected order is ``XX, XY, XZ, YY, YZ, ZZ``)
+  See adapt_mesh_with_feflo. In addition, if as_lvlset is True, the provided field
+  is interpreted as a level set (mesh is refined where levelset = 0). In this case,
+  a scalar field is expected.
 
   Args:
     dist_tree      (CGNSDistTree): Distributed tree to be adapted. Only U-Elements
       single zone trees are managed.
     metric         (str or list) : Path(s) to metric fields (see above)
-    sol            (str)         : Path to vertex located levelset field
+    as_lvlset      (bool)        : If True, run mmg in level set mode
     comm           (MPIComm)     : MPI communicator
     mmg_opts       (str)         : Additional arguments passed to MMG
     **options                    : Additional options (see below)
@@ -521,23 +513,19 @@ def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
   MT.check_cgns_dist_tree(dist_tree)
   tmp_dir = options.get('tmp_dir', './TMP_adapt_dir')
 
-  # Check options
-  if metric is not None: assert(sol    is None)
-  if sol    is not None: assert(metric is None)
-
   # > Gathering dist_tree on proc 0
   maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
 
-  adapted_dist_tree = _adapt_mesh_with_mmg(dist_tree, metric, sol, comm, mmg_opts, tmp_dir)
-  PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo','DiscreteData_t')
+  adapted_dist_tree = _adapt_mesh_with_mmg(dist_tree, metric, as_lvlset, comm, mmg_opts, tmp_dir)
+  PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo', 'DiscreteData_t')
 
   # Handle same physical dimension for output tree
-  phy_dims = [PT.Base.PhysicalDimension(b) for b in PT.iter_all_CGNSBase_t(dist_tree)]
-  assert len(phy_dims) == 1
-  if phy_dims[0] == 2:
-    PT.rm_nodes_from_name(adapted_dist_tree, 'CoordinateZ')
-    b = PT.get_all_CGNSBase_t(adapted_dist_tree)[0]
-    PT.set_value(b, [2, 2])
+  for base in PT.iter_all_CGNSBase_t(dist_tree):
+    if PT.Base.PhysicalDimension(base) == 2:
+      adpt_base = PT.find_child_from_name(adapted_dist_tree, PT.get_name(base))
+      PT.set_value(adpt_base, [2, 2])
+      for gc in PT.get_children_from_predicates(adpt_base, 'Zone_t/GridCoordinates_t'):
+        PT.rm_children_from_name(gc, 'CoordinateZ')
 
   # > Recover original dist_tree
   maia.algo.dist.redistribute_tree(dist_tree, 'uniform', comm)

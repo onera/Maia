@@ -93,28 +93,21 @@ def dmesh_nodal_to_cgns(dmesh_nodal, comm, tree_info, out_files):
         dn_elt_bnd = end - start
         PT.new_IndexArray(value=elt_group[start:end].reshape((1,-1), order='F'), parent=bc_n)
 
-        bc_distrib = par_utils.gather_and_shift(dn_elt_bnd, comm, pdm_gnum_dtype)
         MT.new_Distribution({'Index' : par_utils.dn_to_distribution(dn_elt_bnd, comm)}, parent=bc_n)
 
 
   zone_bc = PT.new_ZoneBC(parent=dist_zone)
   range_per_dim = PT.Zone.get_elt_range_per_dim(dist_zone)
 
-  if cell_dim == 3:
-    if cell_groups is not None:
-      groups_to_bcs(cell_groups, zone_bc, "CellCenter",                   0, comm)
-    if face_groups is not None:
-      groups_to_bcs(face_groups, zone_bc, "FaceCenter", range_per_dim[3][1], comm)
-  else:
-    if face_groups is not None:
-      groups_to_bcs(face_groups, zone_bc, "CellCenter",                   0, comm)
-  if edge_groups is not None:
-    groups_to_bcs(edge_groups, zone_bc, "EdgeCenter", range_per_dim[2][1], comm)
-  if vtx_groups  is not None:
-    groups_to_bcs(vtx_groups,  zone_bc, "Vertex",     range_per_dim[1][1], comm)
-
+  locs = ['Vertex', 'EdgeCenter', 'FaceCenter', 'CellCenter']
+  for i, group in enumerate([cell_groups, face_groups, edge_groups, vtx_groups]):
+    dim = 3 - i
+    if dim <= cell_dim and group is not None:
+      loc = 'CellCenter' if dim == cell_dim else locs[dim]
+      groups_to_bcs(group, zone_bc, loc, range_per_dim[dim][0]-1, comm)
+   
   # > Add FlowSolution for vtx tag
-  fs_vtx_tag = PT.new_DiscreteData('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
+  PT.new_DiscreteData('maia_topo', loc='Vertex', fields={'vtx_tag':vtx_tag}, parent=dist_zone)
 
   # > Add FlowSolution
   n_vtx = PT.Zone.n_vtx(dist_zone)
@@ -235,7 +228,8 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
 
     # > Coordinates
     cx, cy, cz = PT.Zone.coordinates(zone)
-    if cz is None: cz = np.zeros_like(cx)
+    if cz is None:
+      cz = np.zeros_like(cx)
 
     # > Gathering elements by type
     #   For each element type, get info from element nodes of this type:
