@@ -242,10 +242,10 @@ def part_dataset_to_dist_dataset(dist_zone, part_zones, comm, include=[], exclud
             part_data[path].append(PT.get_node_from_path(p_dataset, path)[1])
 
         # Filter global (size == 1) data
-        size_1_loc = {path : all([t.size == 1 and gn.size != 1 for t,gn in zip(data, lngn_list)]) for path,data in part_data.items()}
+        size_1_loc = {path : any([t.size == 1 and gn.size != 1 for t,gn in zip(data, lngn_list)]) for path,data in part_data.items()}
         loc_values = np.array([v for v in size_1_loc.values()])
         glo_values = np.empty_like(loc_values)
-        comm.Allreduce(loc_values, glo_values, MPI.LAND)
+        comm.Allreduce(loc_values, glo_values, MPI.LOR)
         part_data_loc = {path: data for i,(path,data) in enumerate(part_data.items()) if not glo_values[i]}
         part_data_glo = {path: data for i,(path,data) in enumerate(part_data.items()) if     glo_values[i]}
 

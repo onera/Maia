@@ -642,6 +642,136 @@ ZoneU Zone_t:
     assert (PT.get_node_from_path(dist_zone, 'ZBC/BC/BCDSWithoutPL/DirichletData/field')[1] == [4,3,2,1]).all()
 
 @pytest_parallel.mark.parallel(2)
+def test_part_to_dist_glob_loc_dataset(comm):
+  if comm.Get_rank() == 0:
+    dt = """
+ZoneU Zone_t:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
+  ZBC ZoneBC_t:
+    BC1 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[7]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,1,2]:
+    BC2 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[17, 18]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,2,3]:
+    BC3 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[27, 28]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,2,3]:
+    BC4 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[37]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [0,1,1]:
+  """.format(dtype)
+    pt = """
+  ZoneU.P0.N0 Zone_t:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
+    ZBC ZoneBC_t:
+      BC1 BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [1]:
+        BCDS BCDataSet_t:
+          DirichletData BCData_t:
+            LocField DataArray_t [1.]:
+            GlobField DataArray_t [5.]:
+      BC2 BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[11, 12]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [1, 2]:
+        BCDS BCDataSet_t:
+          DirichletData BCData_t:
+            LocField DataArray_t [11., 12.]:
+            GlobField DataArray_t [5.]:
+      BC3 BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[21, 22, 23]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [1, 2, 3]:
+        BCDS BCDataSet_t:
+          DirichletData BCData_t:
+            LocField DataArray_t [21., 22., 23.]:
+            GlobField DataArray_t [5.]:
+    """.format(dtype)
+  elif comm.Get_rank() == 1:
+    dt = """
+ZoneU Zone_t:
+  :CGNS#Distribution UserDefinedData_t: # Fake distribution to avoid check
+  ZBC ZoneBC_t:
+    BC1 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[8]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [1,2,2]:
+    BC2 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[19]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [2,3,3]:
+    BC3 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[29]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [2,3,3]:
+    BC4 BC_t:
+      GridLocation GridLocation_t "FaceCenter":
+      PointList IndexArray_t [[]]:
+      :CGNS#Distribution UserDefinedData_t:
+        Index DataArray_t {0} [1,1,1]:
+  """.format(dtype)
+    pt = """
+  ZoneU.P1.N0 Zone_t:
+    :CGNS#GlobalNumbering UserDefinedData_t: # Fake partition to avoid check
+    ZBC ZoneBC_t:
+      BC1 BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [2]:
+        BCDS BCDataSet_t:
+          DirichletData BCData_t:
+            LocField DataArray_t [2.]:
+            GlobField DataArray_t [5.]:
+      BC2 BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [3]:
+        BCDS BCDataSet_t:
+          DirichletData BCData_t:
+            LocField DataArray_t [3.]:
+            GlobField DataArray_t [5.]:
+      BC4 BC_t:
+        GridLocation GridLocation_t "FaceCenter":
+        PointList IndexArray_t [[1]]:
+        :CGNS#GlobalNumbering UserDefinedData_t:
+          Index DataArray_t {0} [1]:
+        BCDS BCDataSet_t:
+          DirichletData BCData_t:
+            LocField DataArray_t [32.]:
+            GlobField DataArray_t [5.]:
+  """.format(dtype)
+
+  dist_tree = PTy.to_cgns_tree(dt)
+  part_tree = PTy.to_cgns_tree(pt)
+  dist_zone  = PT.get_all_Zone_t(dist_tree)[0]
+  part_zones = PT.get_all_Zone_t(part_tree)
+
+  PTB.part_dataset_to_dist_dataset(dist_zone, part_zones, comm)
+  assert (PT.get_node_from_path(dist_zone, 'ZBC/BC1/:CGNS#Distribution/BCDataGlobal') is None)
+  assert (PT.get_value(PT.get_node_from_path(dist_zone, 'ZBC/BC2/:CGNS#Distribution/BCDataGlobal')) == 'BCDS/DirichletData/GlobField')
+  assert (PT.get_value(PT.get_node_from_path(dist_zone, 'ZBC/BC3/:CGNS#Distribution/BCDataGlobal')) == 'BCDS/DirichletData/GlobField')
+  assert (PT.get_node_from_path(dist_zone, 'ZBC/BC4/:CGNS#Distribution/BCDataGlobal') is None)
+
+@pytest_parallel.mark.parallel(2)
 def test_part_dataset_to_dist_dataset_filter(comm):
   if comm.Get_rank() == 0:
     dt = """
