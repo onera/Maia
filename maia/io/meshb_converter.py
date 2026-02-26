@@ -15,6 +15,7 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
+PDM_NEW_WRITER_API = hasattr(PDM, 'writer_gamma_new_api') # Replace by PDM_VERSION when v2.8 is released
 
 def get_tree_info(dist_tree, containers_name):
   """
@@ -228,6 +229,7 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
 
     is_3d = False
     is_2d = False
+    phydim = PT.Zone.PhysicalDimension(zone)
 
     # > Coordinates
     cx, cy, cz = PT.Zone.coordinates(zone)
@@ -331,7 +333,8 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
     file_name = bytes(files["mesh"], 'utf-8') if isinstance(files["mesh"], str)\
            else bytes(files["mesh"])
 
-    pdm_n_elmt = np.array(pdm_n_elmt, dtype=np.int32)
+    dtype = pdm_gnum_dtype if PDM_NEW_WRITER_API else np.int32
+    pdm_n_elmt = np.array(pdm_n_elmt, dtype=dtype)
     PDM.write_meshb(file_name,
                     pdm_n_elmt, pdm_elmt_tag,
                     pdm_elmt_vtx, xyz)
@@ -339,7 +342,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
     n_metric_fld = len(metric_nodes)
     if n_metric_fld==1:
       metric_fld = PT.get_value(metric_nodes[0])
-      PDM.write_solb(bytes(files["sol"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], 1, metric_fld)
+      if PDM_NEW_WRITER_API:
+        PDM.write_solb(bytes(files["sol"]), phydim, pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], 1, metric_fld)
+      else:
+        PDM.write_solb(bytes(files["sol"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], 1, metric_fld)
     elif n_metric_fld==6:
       mxx = PT.get_value(metric_nodes[0])
       mxy = PT.get_value(metric_nodes[1])
@@ -348,7 +354,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
       myz = PT.get_value(metric_nodes[4])
       mzz = PT.get_value(metric_nodes[5])
       met = np_utils.interweave_arrays([mxx,mxy,mxz,myy,myz,mzz])
-      PDM.write_matsym_solb(bytes(files["sol"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], met)
+      if PDM_NEW_WRITER_API:
+        PDM.write_matsym_solb(bytes(files["sol"]), phydim, pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], met)
+      else:
+        PDM.write_matsym_solb(bytes(files["sol"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], met)
 
 
     # > Fields to interpolate
@@ -358,7 +367,10 @@ def cgns_to_meshb(dist_tree, files, metric_nodes, containers_name, constraints):
       fields_list += [PT.get_value(n) for n in PT.get_children_from_label(container, 'DataArray_t')]
     if len(fields_list)>0:
       fields_array = np_utils.interweave_arrays(fields_list)
-      PDM.write_solb(bytes(files["fld"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], len(fields_list), fields_array)
+      if PDM_NEW_WRITER_API:
+        PDM.write_solb(bytes(files["fld"]), phydim, pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], len(fields_list), fields_array)
+      else:
+        PDM.write_solb(bytes(files["fld"]), pdm_n_elmt[PDM._PDM_MESH_NODAL_POINT], len(fields_list), fields_array)
 
 
   end = time.time()
