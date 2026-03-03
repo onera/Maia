@@ -102,7 +102,9 @@ job:ctest:
     - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
     - source $ELSASPIRO/.env_elsA   # Get Converter
     - module load gcc/10.2.0
-    - export PATH=$FEFLOPATH:$PATH  # Get Feflo
+    - export PATH=$FEFLO_ROOT/bin:$PATH  # Get Feflo
+    - export PATH=$MMG_ROOT/bin:$PATH  # Get MMG
+    - export LD_LIBRARY_PATH=$MMG_ROOT/lib64:$LD_LIBRARY_PATH
     - source source.sh
 
     - mpirun -np 4 test/maia_doctest_unit_tests

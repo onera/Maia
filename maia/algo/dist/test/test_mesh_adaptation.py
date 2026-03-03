@@ -13,6 +13,11 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 import numpy as np
 
 feflo_exists = shutil.which('feflo.a') is not None
+mmg3d_exists = True
+try:
+  MA.detect_mmg(3)
+except FileNotFoundError:
+  mmg3d_exists = False
 
 def test_unpack_metric():
   yz = """
@@ -234,3 +239,54 @@ def test_periodic_adapt_with_feflo_axisym(comm):
   assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(dist_zone)
   adpt_gc = PT.get_node_from_name(adpt_zone, 'per0_0')
   assert PT.get_value(PT.get_child_from_name(adpt_gc, 'GridConnectivityDonorName')) == 'per1_0'
+
+
+@pytest.mark.skipif(not mmg3d_exists, reason="Require mmg3d")
+@pytest_parallel.mark.parallel(2)
+def test_adapt_with_mmg(comm):
+  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', comm)
+
+  base = PT.get_node_from_label(dist_tree, 'CGNSBase_t')
+  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
+  PT.set_name(zone, 'MyZone')
+
+  # > To check meshb_reader after mmg3d since it doesn't preserve volumic BCs when multiple 3d elements
+  zone_bc = PT.get_node_from_label(zone, 'ZoneBC_t')
+  cell_distrib = MT.Zone.cell_distribution(zone)
+  cell_pl = np.arange(cell_distrib[0], cell_distrib[1], dtype=pdm_gnum_dtype).reshape((1,-1), order='F')+1
+  cell_bc = PT.new_BC("vol_bc", type="BCWall", loc="CellCenter", point_list=cell_pl, parent=zone_bc)
+  MT.new_Distribution({"Index":cell_distrib}, parent=cell_bc)
+
+  bc = PT.get_node_from_name(zone, 'Xmin')
+  PT.set_value(bc, 'FamilySpecified')
+  PT.new_child(bc, 'FamilyName', 'FamilyName_t', 'SomeFamily')
+  PT.new_child(base, 'SomeFamily', 'Family_t')
+
+  # > Create a metric field
+  cx, _, _ = PT.Zone.coordinates(zone)
+  metric = np.ones_like(cx)
+  metric[cx <  0.5] = 0.1
+  metric[cx >= 0.5] = 0.2
+  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields={'metric' : metric}, parent=zone)
+
+  # > Adapt mesh according to scalar metric
+  adpt_dist_tree = MA.adapt_mesh_with_mmg(dist_tree,
+                                          "FlowSolution/metric",
+                                          comm,
+                                          mmg_opts="-hgrad 1.2")
+
+  # Parsing of meshb is already tested elsewhere, here we check that mmg did not failed
+  # and that metadata (eg. names, families) are well recovered
+  adpt_zone = PT.get_all_Zone_t(adpt_dist_tree)[0]
+  assert PT.get_name(adpt_zone) == 'MyZone'
+  assert PT.Zone.n_vtx(adpt_zone) != PT.Zone.n_vtx(zone)
+
+  adpt_bc = PT.get_node_from_name(adpt_zone, 'Xmin')
+  assert PT.get_value(adpt_bc) == 'FamilySpecified'
+  assert PT.get_value(PT.get_child_from_name(adpt_bc, 'FamilyName')) == 'SomeFamily'
+  assert PT.get_node_from_name_and_label(adpt_dist_tree, 'SomeFamily', 'Family_t') is not None
+
+  is_cell_bc = PT.pred.is_bc_of_location('CellCenter')
+  cell_bc_nodes = PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc)
+  assert len(PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc)) == 1
+  assert PT.get_name(cell_bc_nodes[0]) == 'vol_bc'
