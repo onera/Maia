@@ -283,7 +283,6 @@ def get_file_dict(tmp_dir:str, comm:MPIComm) -> Dict[str, Path]:
 
 def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
                          metric: Union[None, str, List[str]],
-                         as_lvlset:bool,
                          comm: MPIComm,
                          mmg_opts: str,
                          tmp_dir: str) -> CGNSDistTree:
@@ -294,14 +293,10 @@ def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
   # > Get field nodes
   field_nodes = unpack_metric(dist_tree, metric)
   mmg_args = []
-  if as_lvlset:
-    assert len(field_nodes) == 1, "A scalar field is expected for level set mode"
-    mmg_args = f"-sol {files['sol_in'].name} -ls".split()
-  else:
-    if len(field_nodes) == 1:
-      mmg_args = f"-met {files['sol_in'].name}".split()
-    elif len(field_nodes) == 6:
-      mmg_args = f"-met {files['sol_in'].name} -A".split()
+  if len(field_nodes) == 1:
+    mmg_args = f"-met {files['sol_in'].name}".split()
+  elif len(field_nodes) == 6:
+    mmg_args = f"-met {files['sol_in'].name} -A".split()
 
   # > Get tree structure and names
   tree_info = get_tree_info(dist_tree, [])
@@ -463,7 +458,6 @@ def adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
 def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
                         metric: Union[None, str, List[str]],
-                        as_lvlset: bool,
                         comm: MPIComm,
                         mmg_opts: str = "",
                         **options) -> CGNSDistTree:
@@ -478,17 +472,12 @@ def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
 
   Adapted mesh is returned as an independant distributed tree.
 
-  **Setting the metric**
-
-  See adapt_mesh_with_feflo. In addition, if as_lvlset is True, the provided field
-  is interpreted as a level set (mesh is refined where levelset = 0). In this case,
-  a scalar field is expected.
+  See :func:`adapt_mesh_with_feflo` for metric settings.
 
   Args:
     dist_tree      (CGNSDistTree): Distributed tree to be adapted. Only U-Elements
       single zone trees are managed.
     metric         (str or list) : Path(s) to metric fields (see above)
-    as_lvlset      (bool)        : If True, run mmg in level set mode
     comm           (MPIComm)     : MPI communicator
     mmg_opts       (str)         : Additional arguments passed to MMG
     **options                    : Additional options (see below)
@@ -516,7 +505,7 @@ def adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
   # > Gathering dist_tree on proc 0
   maia.algo.dist.redistribute_tree(dist_tree, 'gather.0', comm) # Modifie le dist_tree
 
-  adapted_dist_tree = _adapt_mesh_with_mmg(dist_tree, metric, as_lvlset, comm, mmg_opts, tmp_dir)
+  adapted_dist_tree = _adapt_mesh_with_mmg(dist_tree, metric, comm, mmg_opts, tmp_dir)
   PT.rm_nodes_from_name_and_label(adapted_dist_tree, 'maia_topo', 'DiscreteData_t')
 
   # Handle same physical dimension for output tree

@@ -272,7 +272,6 @@ def test_adapt_with_mmg(comm):
   # > Adapt mesh according to scalar metric
   adpt_dist_tree = MA.adapt_mesh_with_mmg(dist_tree,
                                           "FlowSolution/metric",
-                                          False,
                                           comm,
                                           mmg_opts="-hgrad 1.2")
 
@@ -291,20 +290,3 @@ def test_adapt_with_mmg(comm):
   cell_bc_nodes = PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc)
   assert len(PT.get_nodes_from_predicate(adpt_dist_tree, is_cell_bc)) == 1
   assert PT.get_name(cell_bc_nodes[0]) == 'vol_bc'
-
-@pytest.mark.skipif(not mmg3d_exists, reason="Require mmg3d")
-def test_adapt_with_mmg_lvlset(comm):
-  # Moved from doc snippet, because function is not yet in public API
-  dist_tree = maia.factory.generate_dist_block(5, 'TETRA_4', comm)
-
-  # > Create a levelset field
-  zone = PT.get_node_from_label(dist_tree, 'Zone_t')
-  cx, _, _ = PT.Zone.coordinates(zone)
-  PT.new_FlowSolution("FlowSolution", loc="Vertex", fields={'ls' : cx-0.5}, parent=zone)
-
-  # > Adapt mesh according to scalar metric
-  adpt_dist_tree = MA.adapt_mesh_with_mmg(dist_tree,
-                                          "FlowSolution/ls",
-                                          True,
-                                          comm,
-                                          mmg_opts="-hgrad 1.2")
