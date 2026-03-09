@@ -95,6 +95,17 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     assert len(PT.get_nodes_from_name(zone, 'Index')) == 3
     assert MT.get_Distribution(zone, 'Face') is not None
 
+  def test_particle(self, comm):
+    yt = """
+ParticleZone ParticleZone_t I4 [5]:
+  ParticleCoordinates ParticleCoordinates_t:
+    CoordinateX DataArray_t R8 [1., 2., 3., 4., 5.]:
+  ParticleSolution ParticleSolution_t:
+    Identifier DataArray_t I4 [1, 2, 3, 4, 5]:
+  """
+    zone = PT.yaml.to_node(yt)
+    distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
+    assert MT.get_Distribution(zone, 'Vertex') is not None
 
 @pytest_parallel.mark.parallel(2)
 def test_add_distribution_info(comm):

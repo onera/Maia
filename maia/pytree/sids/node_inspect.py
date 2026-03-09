@@ -179,7 +179,7 @@ class Base:
     return int(N.get_np_value(base_node)[1])
 
 # --------------------------------------------------------------------------
-@for_all_methods(check_is_label("Zone_t"))
+@for_all_methods(check_in_labels(["Zone_t", "ParticleZone_t"]))
 class Zone:
   """The following functions apply to any Zone_t node"""
 
