@@ -153,7 +153,8 @@ job:portability_openmpi:
     - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   script:
     - cd $CUSTOM_CI_DIR
-    - source /tmp_user/juno/sonics/dist/socle_cfd7/source.sh
+    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module load socle-cfd/7.0-gnu850-ompi502 cmake/3.29.3
     - mkdir -p build/socle7_int32 && cd build/socle7_int32
     - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
