@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import time
 
 from maia.typing        import *
@@ -21,6 +22,31 @@ import Pypdm.Pypdm as PDM
 
 IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
 IS_CNT      = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
+
+def _ptp_retrieve_part1_to_part2(ptp, gnum2):
+  req = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                          gnum2)
+  try:
+    part1_to_part2_idx = ptp.lpart1_to_part2_idx[0].copy()
+  except AttributeError:
+    part1_to_part2_idx = ptp.get_part1_to_part2_idx()[0]
+  part1_to_part2 = ptp.reverse_wait(req)[1][0]
+  return part1_to_part2_idx, part1_to_part2
+
+def find_matching_edge(all:NDArray, sub:NDArray) -> NDArray:
+  mmax = all.max()
+  all_sorted = np.sort(all.reshape(-1,2), axis=1)
+  sub_sorted = np.sort(sub.reshape(-1,2), axis=1)
+  key_all = np.empty(all.size // 2, dtype=np.int64)
+  key_sub = np.empty(sub.size // 2, dtype=np.int64)
+  key_all[:] = all_sorted[:,0] + mmax*all_sorted[:,1] # No overflow because input is int32
+  key_sub[:] = sub_sorted[:,0] + mmax*sub_sorted[:,1]
+  # Now search
+  order = np.argsort(key_all)
+  sorted_keys = key_all[order]
+  pos = np.searchsorted(sorted_keys, key_sub)
+  return order[pos]
 
 def all_containers(tree:CGNSPartTree, comm:MPIComm) -> List[str]:
   all_nodes = list()
@@ -231,12 +257,12 @@ def _exchange_field(part_tree: CGNSPartTree,
 
 
 
-def iso_surface_one_domain(part_zones: List[CGNSPartTree],
-                           iso_kind: str,
-                           iso_params: Union[List[NDArray], Sequence[float]],
-                           elt_type: str,
-                           graph_part_tool: str,
-                           comm: MPIComm) -> CGNSTree:
+def iso_surface_one_domain_old(part_zones: List[CGNSPartTree],
+                               iso_kind: str,
+                               iso_params: Union[List[NDArray], Sequence[float]],
+                               elt_type: str,
+                               graph_part_tool: str,
+                               comm: MPIComm) -> CGNSTree:
   """
   Compute isosurface in a zone
   """
@@ -466,6 +492,230 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
       comm, get_value='leaf')
 
   return iso_part_zone
+
+def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
+                               iso_kind: str,
+                               iso_params: Union[List[NDArray], Sequence[float]],
+                               elt_type: str,
+                               graph_part_tool: str,
+                               comm: MPIComm) -> CGNSTree:
+  """
+  Compute isosurface in a zone
+  """
+
+  PDM_iso_kind = eval(f"PDM.Isosurface.{iso_kind}")
+
+  if iso_kind=="FIELD" :
+    assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)
+
+  if not PBO.orientation_preserved(part_zones, comm):
+    if elt_type == 'NGON_n':
+      raise RuntimeError("Isosurface and slice functionnalies with elt_typ='NGON_n' require the mesh to have been split with preserve_orientation=True")
+    else:
+      mlog.warning("Mesh has not been partitioned with preserve_orientation=True, which can lead to inconsistent orientations for isosurface and slice outputs")
+
+
+  # Definition of the PDM object IsoSurface
+  pdm_isos = PDM.Isosurface(3, comm)
+  pdm_isos.n_part_set(len(part_zones))
+  pdm_isos.redistribution_set(PDM.Isosurface.REEQUILIBRATE, eval(f"PDM._PDM_SPLIT_DUAL_WITH_{graph_part_tool.upper()}"))
+  pdm_iso = pdm_isos.add(PDM_iso_kind, [0])
+
+  if iso_kind=="FIELD":
+    for i_part, part_zone in enumerate(part_zones):
+      pdm_isos.pfield_set(pdm_iso, i_part, iso_params[i_part])
+  else:
+    pdm_isos.equation_set(pdm_iso, iso_params)
+
+
+  # > Discover BCs and GCs over part_zones
+  dist_zone  = PT.new_Zone('Zone')
+  # > BCs
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", 'BC_t'], comm)
+  gdom_bcs_path = PT.predicates_to_paths(dist_zone, ['ZoneBC_t','BC_t'])
+  n_gdom_bcs = len(gdom_bcs_path)
+  # > GCs
+  gc_predicate = ['ZoneGridConnectivity_t', PT.pred.is_gc_of_kind(is_1to1=False)]
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm, get_value='leaf')
+  gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_of_kind(is_intra=False, is_1to1=True)]
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, gc_predicate, comm,
+        merge_rule=lambda path: MT.conv.get_split_prefix(path), get_value='leaf')
+  for jn in PT.iter_children_from_predicates(dist_zone, gc_predicate):
+    val = PT.get_str_value(jn)
+    PT.set_value(jn, MT.conv.get_part_prefix(val))
+  gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC])
+  n_gdom_gcs = len(gdom_gcs_path)
+
+  # Loop over domain zones
+  for i_part, part_zone in enumerate(part_zones):
+    cx, cy, cz = PT.Zone.coordinates(part_zone)
+    assert (cx is not None) and (cy is not None) and (cz is not None)
+    vtx_coords = np_utils.interweave_arrays([cx,cy,cz])
+
+    ngon  = PT.Zone.NGonNode(part_zone)
+    nface = PT.Zone.NFaceNode(part_zone)
+
+    cell_face = MT.Element.connectivity(nface)
+    face_vtx  = MT.Element.connectivity(ngon)
+
+    vtx_ln_to_gn, _, face_ln_to_gn, cell_ln_to_gn = TEU.get_entities_numbering(part_zone)
+    assert (vtx_ln_to_gn is not None) and (face_ln_to_gn is not None) and (cell_ln_to_gn is not None)
+
+    # Partition definition for PDM object
+    pdm_isos.pcoordinates_set(i_part, vtx_coords)
+    pdm_isos.pconnectivity_set(i_part, PDM._PDM_CONNECTIVITY_TYPE_CELL_FACE, cell_face.displs, cell_face.values)
+    pdm_isos.pconnectivity_set(i_part, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX, face_vtx.displs, face_vtx.values)
+    pdm_isos.ln_to_gn_set(i_part, PDM._PDM_MESH_ENTITY_CELL, cell_ln_to_gn)
+    pdm_isos.ln_to_gn_set(i_part, PDM._PDM_MESH_ENTITY_FACE, face_ln_to_gn)
+    pdm_isos.ln_to_gn_set(i_part, PDM._PDM_MESH_ENTITY_VTX, vtx_ln_to_gn)
+
+
+    # Add BC information
+    all_bnd_pl = list()
+    all_bnd_gn = list()
+    for bnd_path in gdom_bcs_path:
+      bnd_n = PT.get_node_from_path(part_zone, bnd_path)
+      if bnd_n is not None:
+        all_bnd_pl.append(PT.get_np_value(PT.find_child_from_name(bnd_n, 'PointList')))
+        all_bnd_gn.append(MT.Subset.globalnumbering(bnd_n))
+      else :
+        all_bnd_pl.append(np.empty((1,0), np.int32))
+        all_bnd_gn.append(np.empty(0, pdm_gnum_dtype))
+    for bnd_path in gdom_gcs_path:
+      # For gc, we glue the joins that have been splitted during partitioning
+      container_name, jn_name = bnd_path.split('/')
+      bnd_n_list = PT.get_nodes_from_names(part_zone, [container_name, jn_name+'*'])
+      if len(bnd_n_list) > 0:
+        pl_val_list = [PT.get_np_value(PT.find_node_from_name(bnd_n, 'PointList')) for bnd_n in bnd_n_list]
+        gn_val_list = [MT.Subset.globalnumbering(bnd_n) for bnd_n in bnd_n_list]
+        all_bnd_pl.append(np_utils.concatenate_np_arrays(pl_val_list)[1])
+        all_bnd_gn.append(np_utils.concatenate_np_arrays(gn_val_list)[1])
+      else:
+        all_bnd_pl.append(np.empty((1,0), np.int32))
+        all_bnd_gn.append(np.empty(0, pdm_gnum_dtype))
+
+    group_face_idx, group_face = np_utils.concatenate_point_list(all_bnd_pl, dtype=np.int32)
+    _,              group_lngn = np_utils.concatenate_np_arrays(all_bnd_gn, dtype=pdm_gnum_dtype)
+    pdm_isos.pgroup_set(i_part, PDM._PDM_MESH_ENTITY_FACE, group_face_idx, group_face, group_lngn)
+
+  # Isosurfaces compute in PDM
+  pdm_isos.part_to_part_enable(pdm_iso, PDM._PDM_MESH_ENTITY_VTX)
+  pdm_isos.part_to_part_enable(pdm_iso, PDM._PDM_MESH_ENTITY_FACE)
+  pdm_isos.compute(pdm_iso)
+
+  # Mesh build from result
+  #results = pdm_isos.part_iso_surface_surface_get()
+  out_vtx_ln_to_gn = pdm_isos.ln_to_gn_get(pdm_iso, 0, PDM._PDM_MESH_ENTITY_VTX)
+  out_elt_ln_to_gn = pdm_isos.ln_to_gn_get(pdm_iso, 0, PDM._PDM_MESH_ENTITY_FACE)
+
+  n_iso_vtx = out_vtx_ln_to_gn.shape[0]
+  n_iso_elt = out_elt_ln_to_gn.shape[0]
+
+  # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
+  iso_part_zone = PT.new_Zone(MT.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
+                              size=[[n_iso_vtx, n_iso_elt, 0]],
+                              type='Unstructured')
+
+  # > Grid coordinates
+  cx, cy, cz      = layouts.interlaced_to_tuple_coords(pdm_isos.pcoordinates_get(pdm_iso, 0))
+  assert (cx is not None) and (cy is not None) and (cz is not None)
+  iso_grid_coord  = PT.new_GridCoordinates(parent=iso_part_zone)
+  PT.new_DataArray('CoordinateX', cx, parent=iso_grid_coord)
+  PT.new_DataArray('CoordinateY', cy, parent=iso_grid_coord)
+  PT.new_DataArray('CoordinateZ', cz, parent=iso_grid_coord)
+
+  # On a face_vtx, edge_vtx est bizarre
+
+  # > Elements
+  ng_eso, ng_ec = pdm_isos.pconnectivity_get(pdm_iso, 0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
+  # Retrieve edges on 2D mesh
+  edge_data = PDM.compute_face_edge_from_face_vtx(comm,
+                                                  [n_iso_elt],
+                                                  [n_iso_vtx],
+                                                  [ng_eso],
+                                                  [ng_ec],
+                                                  [out_elt_ln_to_gn],
+                                                  [out_vtx_ln_to_gn])[0]
+  nb_bar = edge_data['np_edge_ln_to_gn'].size
+
+  bar_n = PT.new_Elements('EdgeElements', 'BAR_2',
+                  erange=[1, nb_bar],
+                  econn=edge_data['np_edge_vtx'],
+                  parent=iso_part_zone)
+  MT.new_GlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
+
+  elt_n = PT.new_NGonElements('NGonElements',
+                                erange = [nb_bar+1, nb_bar+n_iso_elt],
+                                ec=ng_ec,
+                                eso=ng_eso,
+                                parent=iso_part_zone)
+  MT.new_GlobalNumbering({'Element' : out_elt_ln_to_gn}, parent=elt_n)
+
+  
+
+  # Bnd edges
+  bnd_group_idx, bnd_group, bnd_lngn = pdm_isos.pgroup_get(pdm_iso, 0, PDM._PDM_MESH_ENTITY_EDGE)
+  # Group got from PDM are in "only bnd edges" numbering, but we reconstructed all
+  # edges => we need to retrieve matching edge in all edges numbering
+  if bnd_group.size > 0:
+    bnd_edges = pdm_isos.pconnectivity_get(pdm_iso, 0, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX)[1]
+    all_edges = edge_data['np_edge_vtx']
+    bnd_group = find_matching_edge(all_edges, bnd_edges)[bnd_group-1]+1
+  for i_group, bc_path in enumerate(gdom_bcs_path + gdom_gcs_path):
+    n_edge_in_bc = bnd_group_idx[i_group+1]-bnd_group_idx[i_group]
+    bnd_pl = np.empty((1, n_edge_in_bc), dtype=np.int32, order='F')
+    bnd_pl[0,:] = bnd_group[bnd_group_idx[i_group]:bnd_group_idx[i_group+1]]
+    bnd_gnum = bnd_lngn[bnd_group_idx[i_group]:bnd_group_idx[i_group+1]].copy()
+
+    if n_edge_in_bc != 0:
+      zonebc_n = PT.update_child(iso_part_zone, 'ZoneBC', 'ZoneBC_t')
+      bc_n = PT.new_BC(PT.utils.path_tail(bc_path), point_list=bnd_pl, loc="EdgeCenter", parent=zonebc_n)
+      MT.new_GlobalNumbering({'Index' : bnd_gnum}, parent=bc_n)
+
+
+  # > LN to GN
+  MT.new_GlobalNumbering({'Vertex' : out_vtx_ln_to_gn,
+                          'Cell'   : out_elt_ln_to_gn}, parent=iso_part_zone)
+
+
+  # > Link between vol and isosurf
+  maia_iso_zone = PT.new_node('maia#surface_data', label='UserDefinedData_t', parent=iso_part_zone)
+
+  ptp_face = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_FACE)
+  face_part1_to_part2_idx, face_part1_to_part2 = \
+    _ptp_retrieve_part1_to_part2(ptp_face, [MT.Zone.cell_globalnumbering(z) for z in part_zones])
+
+  ptp_vtx = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_VTX)
+  vtx_part1_to_part2_idx, vtx_part1_to_part2 = \
+    _ptp_retrieve_part1_to_part2(ptp_vtx, [MT.Zone.vtx_globalnumbering(z) for z in part_zones])
+  # Assume that vtx weights are well ordered
+  vtx_weight = pdm_isos.pparent_weight_get(pdm_iso, 0, PDM._PDM_MESH_ENTITY_VTX)[1]
+
+  PT.new_DataArray('Cell_parent_gnum' , face_part1_to_part2, parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_gnum'  , vtx_part1_to_part2 , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_idx'   , vtx_part1_to_part2_idx   , parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_weight', vtx_weight, parent=maia_iso_zone)
+  #if elt_type in ['TRI_3'] and n_bnd_edge!=0:
+    #PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
+    # Part 1 to part 2 si loc == FaceCenter (TODO)
+
+  # > FamilyName(s)
+  dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [IS_FAM_NAME],
+      comm, get_value='leaf')
+
+  return iso_part_zone
+
+def iso_surface_one_domain(part_zones: List[CGNSPartTree],
+                           iso_kind: str,
+                           iso_params: Union[List[NDArray], Sequence[float]],
+                           elt_type: str,
+                           graph_part_tool: str,
+                           comm: MPIComm) -> CGNSTree:
+
+  if os.environ.get('MAIA_OLD_ISOSURFACE') is not None:
+    return iso_surface_one_domain_old(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm)
+  else:
+    return iso_surface_one_domain_new(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm)
 
 
 
