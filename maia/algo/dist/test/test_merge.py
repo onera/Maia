@@ -464,6 +464,7 @@ def test_input_overflow(comm):
     ZoneType ZoneType_t "Unstructured":
     NGON Elements_t [22, 0]:
       ElementRange IndexRange_t I4 [1, 800000000]: # Fake value to overflow
+      ElementStartOffset DataArray_t I4 [0]: # Fake value for test
       ParentElements DataArray_t: # Fake value to skip PE creation
     NFace Elements_t [23, 0]:
       ElementRange IndexRange_t I4 [800000001, 1200000000]: # Fake value to overflow
@@ -472,6 +473,7 @@ def test_input_overflow(comm):
     ZoneType ZoneType_t "Unstructured":
     NGON Elements_t [22, 0]:
       ElementRange IndexRange_t I4 [1, 900000000]: # Fake value to overflow
+      ElementStartOffset DataArray_t I4 [0]: # Fake value for test
       ParentElements DataArray_t: # Fake value to skip PE creation
     NFace Elements_t [23, 0]:
       ElementRange IndexRange_t I4 [900000001, 1400000000]: # Fake value to overflow

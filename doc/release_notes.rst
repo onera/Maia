@@ -24,6 +24,7 @@ Development version
 - convert_mixed_to_elements: prevent a crash on meshes having standard elements
 - iso_surface: prevent a crash when exchange of an empty container is requested
 - part_tree_to_dist_tree: better detection of global/local ``BCDataSet_t`` nodes
+- merge_zones: add overflow prevention on NGON_n/ElementStartOffset nodes
 
 v1.9 (January 2026)
 -------------------

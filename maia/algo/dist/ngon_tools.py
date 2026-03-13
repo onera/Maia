@@ -43,12 +43,13 @@ def cgns_connectivity_from_vs(array:vs.VStrideArray, comm:MPIComm, dtype:DTypeLi
   # Consume a VSArray to return a CGNS-like distributed connectivity (shifted eso + values)
   # VSArray **can not** be used afterward.
   eso,val = array.displs, array.values
-  eso.flags.writeable = True
-  eso += par_utils.exscan_size(array.dsize, comm)
-  array._values = None # vsarray now invalid
+  offset = par_utils.exscan_size(array.dsize, comm)
   if dtype is not None:
     eso = np_utils.safe_int_cast(eso, dtype)
     val = np_utils.safe_int_cast(val, dtype)
+  eso.flags.writeable = True
+  eso += offset
+  array._values = None # vsarray now invalid
   return eso, val
 
 def pe_to_nface(zone, comm, remove_PE=False):

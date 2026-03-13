@@ -277,11 +277,14 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
 
   if cell_dim == 3:
     expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones])
+    _expected_eso_tot = sum(PT.get_child_from_name(PT.Zone.NGonNode(z), 'ElementStartOffset')[1][-1] for z in zones) if comm.rank == comm.size-1 else 0
+    expected_eso_tot = comm.bcast(_expected_eso_tot, root=comm.size-1)
   else:
     n_edge = lambda z: MT.Element.n_elt(MT.Zone.EdgeNode(z))
     expected_elt_tot = sum([PT.Zone.n_cell(z) + n_edge(z) for z in zones])
+    expected_eso_tot = 0
   output_dtype = PT.get_np_value(zones[0]).dtype
-  if expected_elt_tot > np.iinfo(np.int32).max:
+  if max(expected_elt_tot, expected_eso_tot) > np.iinfo(np.int32).max:
     if pdm_dtype == np.int32:
       msg = f"_merge_zones would overflow this I4 production of maia/ParaDiGM. "\
             f"Please try with an I8 production (using -D_PDM_ENABLE_LONG_G_NUM=ON)."
