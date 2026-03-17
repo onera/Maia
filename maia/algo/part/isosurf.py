@@ -34,6 +34,21 @@ def _ptp_retrieve_part1_to_part2(ptp, gnum2):
   part1_to_part2 = ptp.reverse_wait(req)[1][0]
   return part1_to_part2_idx, part1_to_part2
 
+def _set_n_group_face(pdm_isosurface, n_group):
+  try:
+    pdm_isosurface.n_group_set(PDM._PDM_MESH_ENTITY_FACE, n_group)
+  except AttributeError:
+    # Do dark magic to access directly C API
+    import ctypes
+    addr = id(pdm_isosurface)
+  
+    # Offset for PyObject_HEAD
+    offset = ctypes.sizeof(ctypes.c_ssize_t) + ctypes.sizeof(ctypes.c_void_p)
+    iso_ptr = ctypes.cast(addr + offset, ctypes.POINTER(ctypes.c_void_p)).contents
+
+    lib = ctypes.CDLL("libpdm.so")
+    lib.PDM_isosurface_n_group_set(iso_ptr, PDM._PDM_MESH_ENTITY_FACE, ctypes.c_int(n_group))
+
 def find_matching_edge(all:NDArray, sub:NDArray) -> NDArray:
   """ For each edge in ``sub`` array, retrieve its position in ``all`` array.
   Edges are supposed to exist once in ``all`` array.
@@ -522,10 +537,8 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     assert isinstance(iso_params, list) and len(iso_params) == len(part_zones)
 
   if not PBO.orientation_preserved(part_zones, comm):
-    if elt_type == 'NGON_n':
-      raise RuntimeError("Isosurface and slice functionnalies with elt_typ='NGON_n' require the mesh to have been split with preserve_orientation=True")
-    else:
-      mlog.warning("Mesh has not been partitioned with preserve_orientation=True, which can lead to inconsistent orientations for isosurface and slice outputs")
+    # For now, NG output only => preserve_orientation=True is mandatory
+    raise RuntimeError("Isosurface and slice functionnalies require the mesh to have been split with preserve_orientation=True")
 
 
   # Definition of the PDM object IsoSurface
@@ -558,7 +571,9 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     PT.set_value(jn, MT.conv.get_part_prefix(val))
   gdom_gcs_path = PT.predicates_to_paths(dist_zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC])
   n_gdom_gcs = len(gdom_gcs_path)
+  _set_n_group_face(pdm_isos, n_gdom_bcs + n_gdom_gcs)
 
+  keep_alive = list()
   # Loop over domain zones
   for i_part, part_zone in enumerate(part_zones):
     cx, cy, cz = PT.Zone.coordinates(part_zone)
@@ -610,6 +625,8 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     group_face_idx, group_face = np_utils.concatenate_point_list(all_bnd_pl, dtype=np.int32)
     _,              group_lngn = np_utils.concatenate_np_arrays(all_bnd_gn, dtype=pdm_gnum_dtype)
     pdm_isos.pgroup_set(i_part, PDM._PDM_MESH_ENTITY_FACE, group_face_idx, group_face, group_lngn)
+
+    keep_alive.extend([vtx_coords, group_face_idx, group_face, group_lngn])
 
   # Isosurfaces compute in PDM
   pdm_isos.part_to_part_enable(pdm_iso, PDM._PDM_MESH_ENTITY_VTX)
@@ -676,6 +693,8 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     all_edges = edge_data['np_edge_vtx']
     edge_bnd_to_all = find_matching_edge(all_edges, bnd_edges)
     bnd_group = edge_bnd_to_all[bnd_group-1]+1
+  else:
+    edge_bnd_to_all = np.empty(0, int)
   for i_group, bc_path in enumerate(gdom_bcs_path + gdom_gcs_path):
     n_edge_in_bc = bnd_group_idx[i_group+1]-bnd_group_idx[i_group]
     bnd_pl = np.empty((1, n_edge_in_bc), dtype=np.int32, order='F')
