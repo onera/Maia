@@ -35,6 +35,9 @@ def _ptp_retrieve_part1_to_part2(ptp, gnum2):
   return part1_to_part2_idx, part1_to_part2
 
 def find_matching_edge(all:NDArray, sub:NDArray) -> NDArray:
+  """ For each edge in ``sub`` array, retrieve its position in ``all`` array.
+  Edges are supposed to exist once in ``all`` array.
+  Order does not matter [13, 18] == [18, 13] """
   mmax = all.max()
   all_sorted = np.sort(all.reshape(-1,2), axis=1)
   sub_sorted = np.sort(sub.reshape(-1,2), axis=1)
@@ -109,10 +112,13 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
 
     create_container = True
     if iso_part_zone is not None:
-      elt_n = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
 
-      create_container = gridLocation!='FaceCenter' or \
-                ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
+      if os.environ.get('MAIA_OLD_ISOSURFACE') is not None:
+        elt_n = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_name(iso_part_zone, 'BAR_2')
+        create_container = gridLocation!='FaceCenter' or \
+                  ( gridLocation=='FaceCenter' and PT.get_child_from_name(iso_part_zone, 'BAR_2') is not None)
+      else:
+        elt_n = iso_part_zone if gridLocation!='FaceCenter' else PT.get_child_from_predicate(iso_part_zone, PT.pred.is_element_of_type('BAR_2'))
 
       if elt_n is not None :
         part1_ln_to_gn   = [PT.get_np_value(MT.find_GlobalNumbering(elt_n, _gridLocation[gridLocation]))]
@@ -129,7 +135,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         # Output should be edge located so check if iso surface locally has edge
         if elt_n is not None:
           part1_to_part2     = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges"))]
-          part1_to_part2_idx = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
+          part1_to_part2_idx = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges_idx"))]
         else:
           part1_to_part2     = []
           part1_to_part2_idx = []
@@ -211,8 +217,12 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     # Build PL with the last exchange stride
     if partial_field and len(cnt_data_arrays)>0:
       if len(part1_data)!=0 and part1_data[0].size!=0:
+        # Retrieve elements of part1 having data : first select those having a part 2 entry from idx array
+        # (this exclude eg. internal edges), then keep only if recv stride is positive (this exclude)
+        # boundary edges not belonging to input subset
+        is_selected = np.where(part1_to_part2_idx[0][1:] > part1_to_part2_idx[0][:-1])[0]
+        new_point_list = is_selected[part1_stride[0] > 0]
         assert iso_part_zone is not None
-        new_point_list = np.where(part1_stride[0]==1)[0]
         point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM3[gridLocation]-1)+1
         PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=container_iso)
         partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]]
@@ -485,7 +495,10 @@ def iso_surface_one_domain_old(part_zones: List[CGNSPartTree],
   PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
   PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
   if elt_type in ['TRI_3'] and n_bnd_edge!=0:
+    idx_array = np.arange(0, results_edge["bnd_edge_face_parent"].size+1, dtype=np.int32)
     PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
+    PT.new_DataArray('Face_parent_bnd_edges_idx', idx_array, parent=maia_iso_zone)
+
 
   # > FamilyName(s)
   dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [IS_FAM_NAME],
@@ -600,6 +613,7 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
 
   # Isosurfaces compute in PDM
   pdm_isos.part_to_part_enable(pdm_iso, PDM._PDM_MESH_ENTITY_VTX)
+  pdm_isos.part_to_part_enable(pdm_iso, PDM._PDM_MESH_ENTITY_EDGE)
   pdm_isos.part_to_part_enable(pdm_iso, PDM._PDM_MESH_ENTITY_FACE)
   pdm_isos.compute(pdm_iso)
 
@@ -660,7 +674,8 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
   if bnd_group.size > 0:
     bnd_edges = pdm_isos.pconnectivity_get(pdm_iso, 0, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX)[1]
     all_edges = edge_data['np_edge_vtx']
-    bnd_group = find_matching_edge(all_edges, bnd_edges)[bnd_group-1]+1
+    edge_bnd_to_all = find_matching_edge(all_edges, bnd_edges)
+    bnd_group = edge_bnd_to_all[bnd_group-1]+1
   for i_group, bc_path in enumerate(gdom_bcs_path + gdom_gcs_path):
     n_edge_in_bc = bnd_group_idx[i_group+1]-bnd_group_idx[i_group]
     bnd_pl = np.empty((1, n_edge_in_bc), dtype=np.int32, order='F')
@@ -679,25 +694,34 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
 
 
   # > Link between vol and isosurf
-  maia_iso_zone = PT.new_node('maia#surface_data', label='UserDefinedData_t', parent=iso_part_zone)
-
   ptp_face = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_FACE)
   face_part1_to_part2_idx, face_part1_to_part2 = \
     _ptp_retrieve_part1_to_part2(ptp_face, [MT.Zone.cell_globalnumbering(z) for z in part_zones])
 
+  # This one is for boundary edges (we get the id of parent face in volume mesh)
+  ptp_edge = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_EDGE)
+  _, edge_part1_to_part2 = \
+    _ptp_retrieve_part1_to_part2(ptp_edge, [MT.Element.globalnumbering(PT.Zone.NGonNode(z)) for z in part_zones])
+  # As for BCs, we need to replace it in all_edges numbering, reusing edge_bnd_to_all
+  size = np.zeros(edge_data['np_edge_ln_to_gn'].size, np.int32)
+  size[edge_bnd_to_all] = 1
+  edge_part1_to_part2_idx = np_utils.sizes_to_indices(size)
+  edge_part1_to_part2 = edge_part1_to_part2[np.argsort(edge_bnd_to_all)] # For data, we just sort using bnd_to_all order
+
+  # Vertices (with weights)
   ptp_vtx = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_VTX)
   vtx_part1_to_part2_idx, vtx_part1_to_part2 = \
     _ptp_retrieve_part1_to_part2(ptp_vtx, [MT.Zone.vtx_globalnumbering(z) for z in part_zones])
   # Assume that vtx weights are well ordered
   vtx_weight = pdm_isos.pparent_weight_get(pdm_iso, 0, PDM._PDM_MESH_ENTITY_VTX)[1]
 
-  PT.new_DataArray('Cell_parent_gnum' , face_part1_to_part2, parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_gnum'  , vtx_part1_to_part2 , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_idx'   , vtx_part1_to_part2_idx   , parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_weight', vtx_weight, parent=maia_iso_zone)
-  #if elt_type in ['TRI_3'] and n_bnd_edge!=0:
-    #PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
-    # Part 1 to part 2 si loc == FaceCenter (TODO)
+  maia_iso_zone = PT.new_node('maia#surface_data', label='UserDefinedData_t', parent=iso_part_zone)
+  PT.new_DataArray('Cell_parent_gnum',          face_part1_to_part2,     parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_gnum',           vtx_part1_to_part2,      parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_idx',            vtx_part1_to_part2_idx,  parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_weight',         vtx_weight,              parent=maia_iso_zone)
+  PT.new_DataArray('Face_parent_bnd_edges_idx', edge_part1_to_part2_idx, parent=maia_iso_zone)
+  PT.new_DataArray('Face_parent_bnd_edges',     edge_part1_to_part2,     parent=maia_iso_zone)
 
   # > FamilyName(s)
   dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [IS_FAM_NAME],

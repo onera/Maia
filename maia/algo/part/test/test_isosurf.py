@@ -85,6 +85,7 @@ def test_exchange_field_one_domain(from_api, comm):
         Vtx_parent_idx DataArray_t I4 [0,1,2]:
         Cell_parent_gnum DataArray_t {dtype} [4]:
         Face_parent_bnd_edges DataArray_t {dtype} [5, 1]:
+        Face_parent_bnd_edges_idx DataArray_t I4 [0, 1, 2]:
     """
   else:
     yt_surf = f"""
@@ -102,6 +103,7 @@ def test_exchange_field_one_domain(from_api, comm):
         Vtx_parent_idx DataArray_t I4 [0,1,3]:
         Cell_parent_gnum DataArray_t {dtype} [3, 1]:
         Face_parent_bnd_edges DataArray_t {dtype} [3]:
+        Face_parent_bnd_edges_idx DataArray_t I4 [0, 1]:
     """
     yt_vol = f"""
     VolZone.P1.N0 Zone_t:
