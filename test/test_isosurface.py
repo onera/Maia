@@ -63,10 +63,8 @@ def generate_test_tree(n_vtx,n_part,comm, build_bc_zsr=False):
   return part_tree
 
 
-@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest.mark.parametrize("elt_type", ["QUAD_4","NGON_n"])
 @pytest_parallel.mark.parallel([1, 3])
-def test_isosurf_U(elt_type,comm, write_output):
+def test_isosurf_U(comm, write_output):
 
   # Cube generation
   n_vtx  = 6
@@ -79,14 +77,14 @@ def test_isosurf_U(elt_type,comm, write_output):
                                   comm,
                                   iso_val=0.,
                                   containers_name=containers,
-                                  elt_type=elt_type,
+                                  elt_type='NGON_n',
                                   graph_part_tool='hilbert') # Parallelism independant
 
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t', 'DiscreteData_t'])
 
   # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'isosurf_{elt_type}.yaml')
+  ref_file = os.path.join(ref_dir, f'isosurf.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
@@ -98,10 +96,8 @@ def test_isosurf_U(elt_type,comm, write_output):
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-14, type_tol=True)
 
 
-@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest.mark.parametrize("elt_type", ["TRI_3","NGON_n"])
 @pytest_parallel.mark.parallel([1, 3])
-def test_plane_slice_U(elt_type,comm, write_output):
+def test_plane_slice_U(comm, write_output):
 
   # Cube generation
   n_vtx  = 6
@@ -113,14 +109,14 @@ def test_plane_slice_U(elt_type,comm, write_output):
                                   [1.,1.,1.,0.2],
                                   comm,
                                   containers_name=containers,
-                                  elt_type=elt_type,
+                                  elt_type='NGON_n',
                                   graph_part_tool='hilbert') # Parallelism independant
 
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
 
   # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'plane_slice_{elt_type}.yaml')
+  ref_file = os.path.join(ref_dir, f'plane_slice.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
@@ -132,10 +128,8 @@ def test_plane_slice_U(elt_type,comm, write_output):
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=1E-14, type_tol=True)
 
 
-@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest.mark.parametrize("elt_type", ["TRI_3","QUAD_4"])
 @pytest_parallel.mark.parallel([1, 3])
-def test_spherical_slice_U(elt_type,comm, write_output):
+def test_spherical_slice_U(comm, write_output):
 
   # Cube generation
   n_vtx  = 6
@@ -147,14 +141,14 @@ def test_spherical_slice_U(elt_type,comm, write_output):
                                       [0.,0.,0.,2.],
                                       comm,
                                       containers_name=containers,
-                                      elt_type=elt_type,
+                                      elt_type='NGON_n',
                                       graph_part_tool='hilbert') # Parallelism independant
 
   # Part to dist
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm,'FIELDS')
 
   # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'spherical_slice_{elt_type}.yaml')
+  ref_file = os.path.join(ref_dir, f'spherical_slice.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
@@ -165,11 +159,8 @@ def test_spherical_slice_U(elt_type,comm, write_output):
   # Recover dist tree force R4 so use type_tol=True
   assert maia.pytree.is_same_tree(ref_sol, dist_tree_iso, abs_tol=5E-15, type_tol=True)
 
-
-@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
-@pytest.mark.parametrize("elt_type", ["TRI_3"])
 @pytest_parallel.mark.parallel(3)
-def test_plane_slice_gc_U(elt_type,comm, write_output):
+def test_plane_slice_gc_U(comm, write_output):
 
   # Load mesh with GCs
   from   maia.utils.test_utils import mesh_dir
@@ -190,13 +181,13 @@ def test_plane_slice_gc_U(elt_type,comm, write_output):
   part_tree_iso = ISS.plane_slice(part_tree,
                                   [0.,0.,1.,0.5],
                                   comm,
-                                  elt_type=elt_type,
+                                  elt_type='NGON_n',
                                   graph_part_tool='hilbert')
 
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
 
   # Compare to reference solution
-  ref_file = os.path.join(ref_dir, f'plane_slice_with_gc_{elt_type}.yaml')
+  ref_file = os.path.join(ref_dir, f'plane_slice_with_gc.yaml')
   ref_sol  = Mio.file_to_dist_tree(ref_file, comm)
 
   if write_output:
