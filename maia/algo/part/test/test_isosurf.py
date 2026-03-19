@@ -75,10 +75,12 @@ def test_exchange_field_one_domain(from_api, comm):
     """
     yt_surf = f"""
     VolZone.P0.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       BAR_2 Elements_t [3,0]:
         ElementRange IndexRange_t [1,3]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Element DataArray_t {dtype} [3,2]:
+      NGonElements Elements_t [22,0]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Cell DataArray_t {dtype} [2]:
         Vertex DataArray_t {dtype} [1,2]:
@@ -93,10 +95,12 @@ def test_exchange_field_one_domain(from_api, comm):
   else:
     yt_surf = f"""
     VolZone.P1.N0 Zone_t:
+      ZoneType ZoneType_t "Unstructured":
       BAR_2 Elements_t [3,0]:
         ElementRange IndexRange_t [1,3]:
         :CGNS#GlobalNumbering UserDefinedData_t:
           Element DataArray_t {dtype} [1]:
+      NGonElements Elements_t [22,0]:
       :CGNS#GlobalNumbering UserDefinedData_t:
         Cell DataArray_t {dtype} [1,3]:
         Vertex DataArray_t {dtype} [2,3]:
@@ -279,3 +283,79 @@ def test_multidom(comm):
   # Should not work (no domain have FlowSol container)
   with pytest.raises(ValueError):
     stree = maia.algo.part.plane_slice(ptree, [0,0,1,0.5], comm, ['Geometry_3d', 'FlowSol'])
+
+  
+@pytest_parallel.mark.parallel(2)
+def test_slice_2d(comm):
+  dist_tree = maia.factory.generate_dist_block(11, 'QUAD_4', comm, origin=[0,0])
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, graph_part_tool='hilbert', preserve_orientation=True)
+
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Vtx sol, full
+    cx, cy, _ = PT.Zone.coordinates(zone)
+    PT.new_FlowSolution('VtxFull', fields={'CX' : cx, 'CY' : cy}, parent=zone)
+    # Vtx sol, partial ---> apparently not managed, but also not on 3D cases
+    fs = PT.new_FlowSolution('VtxPartial', fields={'CX' : cx[::2], 'CY' : cy[::2]}, parent=zone)
+    PT.new_IndexArray(value=np.arange(1, PT.Zone.n_vtx(zone)+1)[::2].reshape((1,-1), order='F'), parent=fs)
+
+    # Cell sol, full
+    maia.algo.compute_elements_center(zone, 2, comm)
+    # Cell sol, partial
+    ngoffset = PT.Element.Range(PT.Zone.NGonNode(zone))[0]
+    data = MT.Zone.cell_globalnumbering(zone)[::2]
+    fs = PT.new_FlowSolution('CellPartial', loc='CellCenter', fields={'GN' : data}, parent=zone)
+    pl = np.arange(PT.Zone.n_cell(zone))[::2].reshape((1,-1), order='F') + ngoffset
+    PT.new_IndexArray(value=pl, parent=fs)
+  
+
+  part_tree_iso = maia.algo.part.spherical_slice(part_tree, [0,0,0,.5],
+                                                 containers_name=['Geometry_2d', 'VtxFull', 'CellPartial'],
+                                                 graph_part_tool='hilbert',
+                                                 comm=comm)
+
+  part_base_iso = PT.get_all_CGNSBase_t(part_tree_iso)[0]
+  assert (PT.get_np_value(part_base_iso) == [1,2]).all()
+
+  part_zone_iso = PT.get_all_Zone_t(part_tree_iso)[0]
+  expt_cx = [[0., 0.3, 0.2, 0.11667, 0.1, 0.09, 0.3, 0.4],
+             [0.5, 0.45556, 0.4, 0.4, 0.48889, 0.48333]][comm.rank]
+  expt_cy = [[0.5, 0.4, 0.45556, 0.48333, 0.48889, 0.49, 0.4, 0.3],
+             [0., 0.2, 0.3, 0.3, 0.1, 0.11667]][comm.rank]
+  expt_bar = [[2,3, 4,5, 3,4, 5,6, 6,1, 7,2, 8,7],
+              [2,3, 3,4, 5,6, 6,2, 1,5]][comm.rank]
+
+  cx, cy, cz = PT.Zone.coordinates(part_zone_iso)
+  assert np.allclose(cx, expt_cx, rtol=1e-3)
+  assert np.allclose(cy, expt_cy, rtol=1e-3)
+  assert cz is None
+  bar = PT.find_node_from_path(part_zone_iso, 'BAR_2/ElementConnectivity')[1]
+  assert np.array_equal(bar, expt_bar)
+
+  expt_cell_full = [[0.25, 0.15, 0.15, 0.05, 0.05, 0.25, 0.35],
+                    [0.45, 0.35, 0.45, 0.45, 0.45]][comm.rank]
+  expt_cell_partial    = [[43,41,41,33], [25,15,15,5]][comm.rank]
+  expt_cell_partial_pl = [[[1,4,5,6]], [[1,3,4,5]]][comm.rank]
+
+  assert np.allclose(PT.find_node_from_path(part_zone_iso, 'Geometry_2d/CenterX')[1], expt_cell_full)
+  assert np.allclose(PT.find_node_from_path(part_zone_iso, 'VtxFull/CY')[1], expt_cy, rtol=1e-3)
+  assert np.array_equal(PT.find_node_from_path(part_zone_iso, 'CellPartial/GN')[1], expt_cell_partial)
+  assert np.array_equal(PT.find_node_from_path(part_zone_iso, 'CellPartial/PointList')[1], expt_cell_partial_pl)
+
+@pytest_parallel.mark.parallel(2)
+def test_isosurf_2d(comm):
+  dist_tree = maia.factory.generate_dist_block(11, 'TRI_3', comm)
+  maia.algo.dist.convert_elements_to_ngon(dist_tree, comm)
+
+  part_tree = maia.factory.partition_dist_tree(dist_tree, comm, graph_part_tool='hilbert', preserve_orientation=True)
+  for zone in PT.get_all_Zone_t(part_tree):
+    # Vtx sol, full
+    cx, cy, cz = PT.Zone.coordinates(zone)
+    norm = np.sqrt(cx**2 + cy**2 + cz**2)
+    PT.new_FlowSolution('FS', fields={'Magnitude' : norm}, parent=zone)
+
+  part_tree_iso = maia.algo.part.iso_surface(part_tree, 'FS/Magnitude', comm, iso_val=1., graph_part_tool='hilbert')
+  
+  assert (PT.get_np_value(PT.get_all_CGNSBase_t(part_tree_iso)[0]) == [1,3]).all()
+  assert comm.allreduce(PT.Zone.n_cell(PT.get_all_Zone_t(part_tree_iso)[0])) == 23
