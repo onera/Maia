@@ -16,14 +16,23 @@ def orientation_preserved(part_zones, comm):
   operation in order to force outward normal (typically if
   preserve_orientation is not set to True).
 
-  Only relevant for 3D NGON zones.
+  Only relevant for 2D or 3D poly zones.
   """
-  assert all([PT.pred.IS_POLY3D_ZONE(z) for z in part_zones]), "Only 3D NGon zones are supported"
+  all_poly3d = all([PT.pred.IS_POLY3D_ZONE(z) for z in part_zones])
+  all_poly2d = all([PT.pred.IS_POLY2D_ZONE(z) for z in part_zones])
+
+  assert all_poly2d or all_poly3d, "Only polyedric zones are supported"
 
   gnum_list = list()
   data_list = list()
   for part_zone in part_zones:
-    ngon_node = PT.Zone.NGonNode(part_zone)
+
+    dim = PT.Zone.CellDimension(part_zone)
+    if PT.pred.IS_POLY2D_ZONE(part_zone):
+      # Fow 2D zones, only work using ParentElements
+      maia.algo.ngon_to_edge_pe(part_zone, comm)
+
+    ngon_node = MT.Zone.EdgeNode(part_zone) if dim == 2 else PT.Zone.NGonNode(part_zone)
     pe_n = PT.get_child_from_name(ngon_node, 'ParentElements')
     face_gnum = MT.Element.globalnumbering(ngon_node)
 
