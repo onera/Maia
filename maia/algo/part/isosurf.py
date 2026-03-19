@@ -35,6 +35,9 @@ def _ptp_retrieve_part1_to_part2(ptp, gnum2):
   return part1_to_part2_idx, part1_to_part2
 
 def _set_n_group_face(pdm_isosurface, n_group):
+  """ A wrapper to call PDM_isosurface_n_group_set even if function is not available
+  through Cython API (PDM < 2.8).
+  """
   try:
     pdm_isosurface.n_group_set(PDM._PDM_MESH_ENTITY_FACE, n_group)
   except AttributeError:
@@ -524,7 +527,6 @@ def iso_surface_one_domain_old(part_zones: List[CGNSPartTree],
 def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
                                iso_kind: str,
                                iso_params: Union[List[NDArray], Sequence[float]],
-                               elt_type: str,
                                graph_part_tool: str,
                                comm: MPIComm) -> CGNSTree:
   """
@@ -758,7 +760,7 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
   if os.environ.get('MAIA_OLD_ISOSURFACE') is not None:
     return iso_surface_one_domain_old(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm)
   else:
-    return iso_surface_one_domain_new(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm)
+    return iso_surface_one_domain_new(part_zones, iso_kind, iso_params, graph_part_tool, comm)
 
 
 
@@ -813,11 +815,10 @@ def iso_surface(part_tree: CGNSPartTree,
     - Input tree must be unstructured and have a ngon connectivity.
     - Input tree must have been partitioned with ``preserve_orientation=True`` partitioning option.
     - Input field for isosurface computation must be located at vertices.
-    - This function requires ParaDiGMa access.
 
   Note:
-    - If ``elt_type`` is set to 'TRI_3', boundaries from volumic mesh are extracted as edges on
-      the isosurface (GridConnectivity_t nodes become BC_t nodes) and FaceCenter fields are allowed to be exchanged.
+    - Boundaries from volumic mesh are extracted as edges on the isosurface
+      (GridConnectivity_t nodes become BC_t nodes) and FaceCenter fields are allowed to be exchanged.
     - Partial or full containers can be transfered on the output isosurface tree.
     - Once created, additional fields can be exchanged from volumic tree to isosurface tree using
       ``_exchange_field(part_tree, iso_part_tree, containers_name, comm)``.
@@ -836,8 +837,6 @@ def iso_surface(part_tree: CGNSPartTree,
 
   Isosurface can be controled thought the optional kwargs:
 
-    - ``elt_type`` (str) -- Controls the shape of elements used to describe
-      the isosurface. Admissible values are ``TRI_3, QUAD_4, NGON_n``. Defaults to ``TRI_3``.
     - ``graph_part_tool`` (str) -- Controls the isosurface partitioning tool.
       Admissible values are ``hilbert, parmetis, ptscotch``.
       ``hilbert`` may produce unbalanced partitions for some configurations. Defaults to ``ptscotch``.

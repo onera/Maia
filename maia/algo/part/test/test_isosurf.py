@@ -205,8 +205,7 @@ def test_compute_elliptical_slice(comm):
 
   dist_tree = maia.factory.generate_dist_block(11, 'Poly', comm)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
-  slice_tree = ISO.elliptical_slice(part_tree, [0.5,0.5,0.5,.5,1.,1.,.25**2], \
-      comm, elt_type='NGON_n')
+  slice_tree = ISO.elliptical_slice(part_tree, [0.5,0.5,0.5,.5,1.,1.,.25**2], comm)
   assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is None
   iso_zone = PT.get_all_Zone_t(slice_tree)[0]
   assert comm.allreduce(PT.Zone.n_cell(iso_zone), MPI.SUM) == 88
@@ -233,7 +232,7 @@ def test_compute_spherical_slice(comm):
 def test_compute_plane_slice(comm):
   dist_tree = maia.factory.generate_dist_block(5, 'Poly', comm)
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
-  slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.1], comm, elt_type='QUAD_4')
+  slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.1], comm)
 
   iso_zone = PT.get_all_Zone_t(slice_tree)[0]
   assert PT.Zone.n_cell(iso_zone) == 8 and PT.Zone.n_vtx(iso_zone) == 15

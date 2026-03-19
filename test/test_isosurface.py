@@ -77,7 +77,6 @@ def test_isosurf_U(comm, write_output):
                                   comm,
                                   iso_val=0.,
                                   containers_name=containers,
-                                  elt_type='NGON_n',
                                   graph_part_tool='hilbert') # Parallelism independant
 
   # Part to dist
@@ -109,7 +108,6 @@ def test_plane_slice_U(comm, write_output):
                                   [1.,1.,1.,0.2],
                                   comm,
                                   containers_name=containers,
-                                  elt_type='NGON_n',
                                   graph_part_tool='hilbert') # Parallelism independant
 
   # Part to dist
@@ -141,7 +139,6 @@ def test_spherical_slice_U(comm, write_output):
                                       [0.,0.,0.,2.],
                                       comm,
                                       containers_name=containers,
-                                      elt_type='NGON_n',
                                       graph_part_tool='hilbert') # Parallelism independant
 
   # Part to dist
@@ -181,7 +178,6 @@ def test_plane_slice_gc_U(comm, write_output):
   part_tree_iso = ISS.plane_slice(part_tree,
                                   [0.,0.,1.,0.5],
                                   comm,
-                                  elt_type='NGON_n',
                                   graph_part_tool='hilbert')
 
   dist_tree_iso = MF.recover_dist_tree(part_tree_iso,comm)
