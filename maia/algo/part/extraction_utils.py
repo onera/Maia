@@ -118,13 +118,6 @@ def local_pl_offset(part_zone:CGNSTree, dim:int) -> int:
   else:
     return 0
 
-def get_relative_pl(container:CGNSTree, part_zone:CGNSTree) -> CGNSTree:
-  """Return the point_list node related to a container (from BC, GC or itself)."""
-  if PT.get_label(container)=="FlowSolution_t":
-    relative_n = container
-  else:
-    relative_n = PT.Container.SubsetNode(container, part_zone)
-  return PT.find_child_from_name(relative_n, "PointList")
 
 def get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm):
   """
@@ -139,7 +132,8 @@ def get_partial_container_stride_and_order(part_zones, container_name, gridLocat
     container = PT.get_child_from_name(part_zone, container_name)
     if container is not None:
       # > Get the right node to get PL (if ZSR linked to BC or GC)
-      point_list_n = get_relative_pl(container, part_zone)
+      subset = PT.Container.SubsetNode(container, part_zone)
+      point_list_n = PT.find_child_from_name(subset, 'PointList')
       _LOC_TO_DIM = LOC_TO_DIM[PT.Zone.CellDimension(part_zone)]
       point_list   = PT.get_np_value(point_list_n)[0] - local_pl_offset(part_zone, _LOC_TO_DIM[gridLocation]) # Gnum start at 1
 

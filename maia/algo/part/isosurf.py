@@ -131,6 +131,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     _gridLocation = {"Vertex" : "Vertex", "FaceCenter" : "Element", "CellCenter" : "Cell"}
 
     create_container = True
+    part1_lids = None
     if iso_part_zone is not None:
 
       if os.environ.get('MAIA_OLD_ISOSURFACE') is not None:
@@ -155,7 +156,11 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         # Output should be edge located so check if iso surface locally has edge
         if elt_n is not None:
           part1_to_part2     = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges"))]
-          part1_to_part2_idx = [PT.get_np_value(PT.find_child_from_name(part1_maia_iso_zone, "Face_parent_bnd_edges_idx"))]
+          if (node := PT.get_child_from_name(part1_maia_iso_zone, "Bnd_edge_to_internal")) is not None:
+            # Face input + new API => extract boundary edges gnum using Bnd_edge_to_internal
+            part1_lids = PT.get_np_value(node)
+            part1_ln_to_gn[0] = part1_ln_to_gn[0][part1_lids]
+          part1_to_part2_idx = [np.arange(0, part1_ln_to_gn[0].size+1, dtype=np.int32)]
         else:
           part1_to_part2     = []
           part1_to_part2_idx = []
@@ -237,16 +242,19 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
     # Build PL with the last exchange stride
     if partial_field and len(cnt_data_arrays)>0:
       if len(part1_data)!=0 and part1_data[0].size!=0:
-        # Retrieve elements of part1 having data : first select those having a part 2 entry from idx array
-        # (this exclude eg. internal edges), then keep only if recv stride is positive (this exclude)
-        # boundary edges not belonging to input subset
-        is_selected = np.where(part1_to_part2_idx[0][1:] > part1_to_part2_idx[0][:-1])[0]
-        new_point_list = is_selected[part1_stride[0] > 0]
+        # Retrieve elements of part1 having data using recv stride
+        # If we have part1_lids indirection (eg when working on edges), use it
+        # to build output pointlist
+        mask = part1_stride[0] == 1
+        if part1_lids is not None:
+          new_point_list = part1_lids[mask]
+        else:
+          new_point_list = np.flatnonzero(mask)
         assert iso_part_zone is not None
         zdim = PT.Zone.CellDimension(iso_part_zone) 
         point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[zdim+1][gridLocation]-1)+1
         PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=container_iso)
-        partial_part1_lngn = [part1_ln_to_gn[0][new_point_list]]
+        partial_part1_lngn = [part1_ln_to_gn[0][mask]]
       else:
         partial_part1_lngn = []
 
@@ -516,9 +524,7 @@ def iso_surface_one_domain_old(part_zones: List[CGNSPartTree],
   PT.new_DataArray('Vtx_parent_weight', results_vtx["vtx_volume_vtx_weight"], parent=maia_iso_zone)
   PT.new_DataArray('Surface'          , results_geo["elt_surface"]          , parent=maia_iso_zone)
   if elt_type in ['TRI_3'] and n_bnd_edge!=0:
-    idx_array = np.arange(0, results_edge["bnd_edge_face_parent"].size+1, dtype=np.int32)
     PT.new_DataArray('Face_parent_bnd_edges', results_edge["bnd_edge_face_parent"], parent=maia_iso_zone)
-    PT.new_DataArray('Face_parent_bnd_edges_idx', idx_array, parent=maia_iso_zone)
 
 
   # > FamilyName(s)
@@ -747,11 +753,6 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     ptp_edge = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_EDGE)
     _, edge_part1_to_part2 = \
       _ptp_retrieve_part1_to_part2(ptp_edge, [MT.Element.globalnumbering(PT.Zone.NGonNode(z)) for z in part_zones])
-    # As for BCs, we need to replace it in all_edges numbering, reusing edge_bnd_to_all
-    size = np.zeros(edge_data['np_edge_ln_to_gn'].size, np.int32)
-    size[edge_bnd_to_all] = 1
-    edge_part1_to_part2_idx = np_utils.sizes_to_indices(size)
-    edge_part1_to_part2 = edge_part1_to_part2[np.argsort(edge_bnd_to_all)] # For data, we just sort using bnd_to_all order
 
   # Vertices (with weights)
   ptp_vtx = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_VTX)
@@ -766,8 +767,8 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
   PT.new_DataArray('Vtx_parent_idx',            vtx_part1_to_part2_idx,  parent=maia_iso_zone)
   PT.new_DataArray('Vtx_parent_weight',         vtx_weight,              parent=maia_iso_zone)
   if zdim == 3:
-    PT.new_DataArray('Face_parent_bnd_edges_idx', edge_part1_to_part2_idx, parent=maia_iso_zone)
-    PT.new_DataArray('Face_parent_bnd_edges',     edge_part1_to_part2,     parent=maia_iso_zone)
+    PT.new_DataArray('Face_parent_bnd_edges', edge_part1_to_part2, parent=maia_iso_zone)
+    PT.new_DataArray('Bnd_edge_to_internal',  edge_bnd_to_all,     parent=maia_iso_zone)
 
   # > FamilyName(s)
   dist_from_part.discover_nodes_from_matching(iso_part_zone, part_zones, [IS_FAM_NAME],
