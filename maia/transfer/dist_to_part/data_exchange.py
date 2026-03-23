@@ -34,7 +34,8 @@ def dist_coords_to_part_coords(dist_zone: CGNSDistTree,
       #F is mandatory to keep shared reference. Normally no copy is done
       shaped_data = data[ipart].reshape(PT.Zone.VertexSize(part_zone), order='F')
       PT.new_DataArray(data_name, shaped_data, parent=part_gc)
-    PT.add_child(part_gc, PT.get_child_from_name(dist_gc, 'CoordinateTransform'))
+    if (node := PT.get_child_from_name(dist_gc, 'CoordinateTransform')) is not None:
+      PT.add_child(part_gc, PT.deep_copy(node))
 
 def dist_coords_to_part_coords_m(dist_zones: List[CGNSDistTree], 
                                  part_zones_per_dom: List[List[CGNSPartTree]],
@@ -66,7 +67,8 @@ def dist_coords_to_part_coords_m(dist_zones: List[CGNSDistTree],
       part_gc = PT.new_GridCoordinates('GridCoordinates', parent=part_zone)
       for dist_gc_name in dist_data.keys():
         PT.new_DataArray(dist_gc_name, None, parent=part_gc) #type:ignore[arg-type] #(will be replaced)
-      PT.add_child(part_gc, dist_gc_transform)
+      if dist_gc_transform is not None:
+        PT.add_child(part_gc, PT.deep_copy(dist_gc_transform))
 
     vtx_offset += PT.Zone.n_vtx(dist_zone)
 

@@ -37,8 +37,8 @@ def copy_referenced_families(source_base: CGNSTree, target_base: CGNSTree) -> No
     fam_name = PT.get_str_value(fam_node)
     if fam_name not in copied_families:
       copied_families.append(fam_name)
-      family_node = PT.get_child_from_predicate(source_base, fam_name)
-      PT.add_child(target_base, family_node)
+      if (family_node := PT.get_child_from_predicate(source_base, fam_name)) is not None:
+        PT.add_child(target_base, PT.deep_copy(family_node))
 
 
 def exchange_field_one_domain(part_zones: List[CGNSPartTree],

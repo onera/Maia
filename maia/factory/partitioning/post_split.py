@@ -66,10 +66,10 @@ def _copy_additional_nodes_zsr(d_zsr, p_zsr):
   reg_name = ['BCRegionName','GridConnectivityRegionName'] 
 
   for node in PT.get_children_from_predicate(d_zsr, PT.pred.label_in(labels)):
-    PT.add_child(p_zsr, node)
+    PT.add_child(p_zsr, PT.deep_copy(node))
   for node in PT.get_children_from_predicate(d_zsr, PT.pred.label_is('Descriptor_t') \
                                                  & ~PT.pred.name_in(reg_name)):
-    PT.add_child(p_zsr, node)
+    PT.add_child(p_zsr, PT.deep_copy(node))
 
 def copy_additional_nodes(dist_zone, part_zone):
   """
@@ -82,7 +82,7 @@ def copy_additional_nodes(dist_zone, part_zone):
            'ConvergenceHistory_t', 'IntegralData_t']
   for node in PT.get_children(dist_zone):
     if PT.get_label(node) in types:
-      PT.add_child(part_zone, node)
+      PT.add_child(part_zone, PT.deep_copy(node))
 
   # Full containers (FS & DD) -- partial containers are created before
   types = ['GridLocation_t', 'Descriptor_t']
@@ -90,7 +90,7 @@ def copy_additional_nodes(dist_zone, part_zone):
     p_fs = PT.new_child(part_zone, PT.get_name(d_fs), PT.get_label(d_fs), PT.get_value(d_fs))
     for node in PT.get_children(d_fs):
       if PT.get_label(node) in types:
-        PT.add_child(p_fs, node)
+        PT.add_child(p_fs, PT.deep_copy(node))
     
   #BCs
   types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ReferenceState_t', 'Ordinal_t', 'Descriptor_t']
@@ -99,7 +99,7 @@ def copy_additional_nodes(dist_zone, part_zone):
     if d_bc: #Tmp, since S splitting store external JNs as bnd
       for node in PT.get_children(d_bc):
         if PT.get_label(node) in types:
-          PT.add_child(p_bc, node)
+          PT.add_child(p_bc, PT.deep_copy(node))
   #GCs
   names = ['GridConnectivityDonorName']
   types = ['FamilyName_t', 'GridConnectivityProperty_t', 'GridConnectivityType_t', 'Descriptor_t']
@@ -109,7 +109,7 @@ def copy_additional_nodes(dist_zone, part_zone):
     if d_gc: #Skip created jns
       for node in PT.get_children(d_gc):
         if PT.get_name(node) in names or PT.get_label(node) in types:
-          PT.add_child(p_gc, node)
+          PT.add_child(p_gc, PT.deep_copy(node))
 
   #ZSRs
   for p_zsr in PT.iter_children_from_label(part_zone, 'ZoneSubRegion_t'):
@@ -188,7 +188,7 @@ def split_original_joins(p_tree):
           skip_nodes = ['PointList', 'PointListDonor', ':CGNS#GlobalNumbering', 'Donor', 'GridConnectivityType']
           for node in PT.get_children(gc):
             if PT.get_name(node) not in skip_nodes:
-              PT.add_child(join_n, node)
+              PT.add_child(join_n, PT.deep_copy(node))
           to_append.append(join_n)
 
         to_remove.append(PT.get_name(gc))

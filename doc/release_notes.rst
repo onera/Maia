@@ -25,6 +25,7 @@ Development version
 - iso_surface: prevent a crash when exchange of an empty container is requested
 - part_tree_to_dist_tree: better detection of global/local ``BCDataSet_t`` nodes
 - merge_zones: add overflow prevention on NGON_n/ElementStartOffset nodes
+- generate_jns_vertex_list: deep-copy metadata nodes to avoid shared references
 
 v1.9 (January 2026)
 -------------------

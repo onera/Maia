@@ -135,7 +135,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
 
   to_copy = PT.pred.label_in(['Family_t'])
   for node in PT.get_nodes_from_predicate(input_base, to_copy):
-    PT.add_child(adapted_base, node)
+    PT.add_child(adapted_base, PT.deep_copy(node))
 
   # > Copy BC data
   to_copy = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
@@ -146,7 +146,7 @@ def _adapt_mesh_with_feflo(dist_tree: CGNSDistTree,
       assert adapted_bc is not None
       PT.set_value(adapted_bc, PT.get_value(input_bc))
       for node in PT.get_nodes_from_predicate(input_bc, to_copy):
-        PT.add_child(adapted_bc, node)
+        PT.add_child(adapted_bc, PT.deep_copy(node))
 
   return adapted_dist_tree
 
@@ -335,7 +335,7 @@ def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
 
   to_copy = PT.pred.label_in(['Family_t'])
   for node in PT.get_nodes_from_predicate(input_base, to_copy):
-    PT.add_child(adapted_base, node)
+    PT.add_child(adapted_base, PT.deep_copy(node))
 
   # > Copy BC data
   to_copy = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
@@ -346,7 +346,7 @@ def _adapt_mesh_with_mmg(dist_tree: CGNSDistTree,
       assert adapted_bc is not None
       PT.set_value(adapted_bc, PT.get_value(input_bc))
       for node in PT.get_nodes_from_predicate(input_bc, to_copy):
-        PT.add_child(adapted_bc, node)
+        PT.add_child(adapted_bc, PT.deep_copy(node))
 
   return adapted_dist_tree
 

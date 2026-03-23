@@ -232,10 +232,10 @@ def merge_zones(dist_tree: CGNSDistTree,
           # Copy and permute pl/pld only for all the zones != merged zone OR for one gc over two for
           # merged zone
           if not is_merged_zone or jn_path_opp < jn_path:
-            PT.update_child(gc, 'PointList'     , 'IndexArray_t', jn_to_pl[jn_path_opp][1])
-            PT.update_child(gc, 'PointListDonor', 'IndexArray_t', jn_to_pl[jn_path_opp][0])
+            PT.update_child(gc, 'PointList'     , 'IndexArray_t', jn_to_pl[jn_path_opp][1].copy())
+            PT.update_child(gc, 'PointListDonor', 'IndexArray_t', jn_to_pl[jn_path_opp][0].copy())
             PT.rm_children_from_name(gc, ":CGNS#Distribution")
-            PT.add_child(gc, jn_to_pl[jn_path_opp][2])
+            PT.add_child(gc, PT.deep_copy(jn_to_pl[jn_path_opp][2]))
 
   if concatenate_jns:
     GN.concatenate_jns(dist_tree, comm)

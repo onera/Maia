@@ -617,9 +617,9 @@ def generate_jns_vertex_list(dist_tree: CGNSDistTree,
       if len(PT.get_name(gc)) > 28:
         PT.new_Descriptor('OriginalName', PT.get_name(gc) + '#Vtx', parent=jn_vtx)
 
-      PT.add_child(jn_vtx, PT.get_child_from_label(gc, 'GridConnectivityProperty_t'))
-      PT.add_child(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceId'))
-      PT.add_child(jn_vtx, PT.get_child_from_name(gc, 'DistInterfaceOrd'))
+      for pred in ['GridConnectivityProperty_t', 'DistInterfaceId', 'DistInterfaceOrd']:
+        if (node := PT.get_child_from_predicate(gc, pred)) is not None:
+          PT.add_child(jn_vtx, PT.deep_copy(node))
       donor_name_node = PT.get_child_from_name(gc, 'GridConnectivityDonorName')
       if donor_name_node is not None:
         jn_opp_name = PT.get_str_value(donor_name_node) + '#Vtx'

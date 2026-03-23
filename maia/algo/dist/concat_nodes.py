@@ -424,7 +424,7 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
             pl_n = PT.find_child_from_name(bc_n, 'PointList')
             PT.new_IndexArray(value=PT.get_value(pl_n), parent=related_zsr)
             PT.update_child(related_zsr, 'GridLocation', 'GridLocation_t', PT.Subset.GridLocation(bc_n))
-            PT.add_child(related_zsr, PT.get_child_from_name(bc_n, ':CGNS#Distribution'))
+            PT.add_child(related_zsr, PT.deep_copy(PT.find_child_from_name(bc_n, ':CGNS#Distribution')))
             bcrn_n = PT.find_child_from_name(related_zsr, 'BCRegionName')
             PT.set_name(bcrn_n, ':maia#concatenate')
 

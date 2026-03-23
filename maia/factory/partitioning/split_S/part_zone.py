@@ -173,11 +173,11 @@ def create_bcs(d_zone, p_zone, p_zone_offset):
             part_bc = PT.new_BC(PT.get_name(dist_bc), point_range=sub_pr, parent=zbc)
           PT.set_value(part_bc, PT.get_value(dist_bc))
           PT.new_GridLocation(grid_loc, parent=part_bc)
-          PT.add_child(part_bc, PT.get_child_from_name(dist_bc, 'Transform'))
-          PT.add_child(part_bc, PT.get_child_from_label(dist_bc, 'GridConnectivityType_t'))
-          PT.add_child(part_bc, PT.get_child_from_label(dist_bc, 'GridConnectivityProperty_t'))
+          for pred in ['Transform', 'GridConnectivityType_t', 'GridConnectivityProperty_t']:
+            if (node := PT.get_child_from_predicate(dist_bc, pred)) is not None:
+              PT.add_child(part_bc, PT.deep_copy(node))
           if PT.get_child_from_name(dist_bc, 'GridConnectivityDonorName') is not None:
-            PT.add_child(part_bc, PT.get_child_from_name(dist_bc, 'GridConnectivityDonorName'))
+            PT.add_child(part_bc, PT.deep_copy(PT.get_child_from_name(dist_bc, 'GridConnectivityDonorName')))
             PT.new_child(part_bc, 'distPR', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRange')[1])
             PT.new_child(part_bc, 'distPRDonor', 'IndexRange_t', PT.get_child_from_name(dist_bc, 'PointRangeDonor')[1])
             PT.new_child(part_bc, 'zone_offset', 'DataArray_t', p_zone_offset)

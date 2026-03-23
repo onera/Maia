@@ -195,7 +195,7 @@ def duplicate_from_periodic_jns(dist_tree: CGNSDistTree,
     jn_path_b_last = PT.utils.update_path_elt(jn_path_b, 1, lambda zn : zn + f".D{dupl_nb}")
     jn_b_last_node = PT.find_node_from_path(dist_tree, jn_path_b_last)
     PT.rm_children_from_label(jn_b_last_node, 'GridConnectivityProperty_t')
-    PT.add_child(jn_b_last_node, jn_b_properties[jb])
+    PT.add_child(jn_b_last_node, PT.deep_copy(jn_b_properties[jb]))
     gcp_b_last = PT.find_child_from_label(jn_b_last_node, "GridConnectivityProperty_t")
     rotation_angle_b_node = PT.find_node_from_name(gcp_b_last, "RotationAngle", depth=2)
     translation_b_node    = PT.find_node_from_name(gcp_b_last, "Translation", depth=2)
