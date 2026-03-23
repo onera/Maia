@@ -23,7 +23,7 @@ scatter_parents_to_boundary(cgns::tree& bnd_section, const ext_faces_with_parent
   // 2. Send parent cell info to the boundary faces
   // 2.0. Protocol creation
   auto partial_distri = ElementDistribution<PDM_g_num_t>(bnd_section);
-  auto distri = maia::distribution_from_partial(partial_distri,comm);
+  auto distri = maia::partial_to_full_distribution(partial_distri,comm);
   auto sp = create_exchange_protocol(distri,std::move(face_indices));
 
   // 2.1. parent_elements
