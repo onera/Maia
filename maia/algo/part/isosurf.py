@@ -46,7 +46,7 @@ def _set_n_group_face(pdm_isosurface, n_group):
     # Do dark magic to access directly C API
     import ctypes
     addr = id(pdm_isosurface)
-  
+
     # Offset for PyObject_HEAD
     offset = ctypes.sizeof(ctypes.c_ssize_t) + ctypes.sizeof(ctypes.c_void_p)
     iso_ptr = ctypes.cast(addr + offset, ctypes.POINTER(ctypes.c_void_p)).contents
@@ -251,7 +251,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
         else:
           new_point_list = np.flatnonzero(mask)
         assert iso_part_zone is not None
-        zdim = PT.Zone.CellDimension(iso_part_zone) 
+        zdim = PT.Zone.CellDimension(iso_part_zone)
         point_list = new_point_list + local_pl_offset(iso_part_zone, LOC_TO_DIM[zdim+1][gridLocation]-1)+1
         PT.new_IndexArray(name='PointList', value=point_list.reshape((1,-1), order='F'), parent=container_iso)
         partial_part1_lngn = [part1_ln_to_gn[0][mask]]
@@ -541,7 +541,6 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
   """
   Compute isosurface in a zone
   """
-
   PDM_iso_kind = eval(f"PDM.Isosurface.{iso_kind}")
 
   if iso_kind=="FIELD" :
@@ -673,9 +672,9 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
                               type='Unstructured')
 
   # > Grid coordinates
-  cx, cy, cz      = layouts.interlaced_to_tuple_coords(pdm_isos.pcoordinates_get(pdm_iso, 0))
+  cx, cy, cz = layouts.interlaced_to_tuple_coords(pdm_isos.pcoordinates_get(pdm_iso, 0))
   assert (cx is not None) and (cy is not None) and (cz is not None)
-  iso_grid_coord  = PT.new_GridCoordinates(parent=iso_part_zone)
+  iso_grid_coord = PT.new_GridCoordinates(parent=iso_part_zone)
   PT.new_DataArray('CoordinateX', cx, parent=iso_grid_coord)
   PT.new_DataArray('CoordinateY', cy, parent=iso_grid_coord)
   PT.new_DataArray('CoordinateZ', cz, parent=iso_grid_coord)
@@ -684,9 +683,9 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
   if zdim == 2:
     _, edge_vtx = pdm_isos.pconnectivity_get(pdm_iso, 0, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX)
     bar_n = PT.new_Elements('BAR_2', 'BAR_2',
-                    erange=[1, edge_vtx.size // 2],
-                    econn=edge_vtx,
-                    parent=iso_part_zone)
+                            erange=[1, edge_vtx.size // 2],
+                            econn=edge_vtx,
+                            parent=iso_part_zone)
     MT.new_GlobalNumbering({'Element' : out_elt_ln_to_gn}, parent=bar_n)
   else:
     ng_eso, ng_ec = pdm_isos.pconnectivity_get(pdm_iso, 0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
@@ -701,19 +700,17 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     nb_bar = edge_data['np_edge_ln_to_gn'].size
 
     bar_n = PT.new_Elements('EdgeElements', 'BAR_2',
-                    erange=[1, nb_bar],
-                    econn=edge_data['np_edge_vtx'],
-                    parent=iso_part_zone)
+                            erange=[1, nb_bar],
+                            econn=edge_data['np_edge_vtx'],
+                            parent=iso_part_zone)
     MT.new_GlobalNumbering({'Element' : edge_data['np_edge_ln_to_gn']}, parent=bar_n)
 
     elt_n = PT.new_NGonElements('NGonElements',
-                                  erange = [nb_bar+1, nb_bar+n_iso_elt],
-                                  ec=ng_ec,
-                                  eso=ng_eso,
-                                  parent=iso_part_zone)
+                                erange = [nb_bar+1, nb_bar+n_iso_elt],
+                                ec=ng_ec,
+                                eso=ng_eso,
+                                parent=iso_part_zone)
     MT.new_GlobalNumbering({'Element' : out_elt_ln_to_gn}, parent=elt_n)
-
-  
 
   # Bnd edges
   if zdim == 3:
@@ -738,7 +735,6 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
         bc_n = PT.new_BC(PT.utils.path_tail(bc_path), point_list=bnd_pl, loc="EdgeCenter", parent=zonebc_n)
         MT.new_GlobalNumbering({'Index' : bnd_gnum}, parent=bc_n)
 
-
   # > LN to GN
   MT.new_GlobalNumbering({'Vertex' : out_vtx_ln_to_gn,
                           'Cell'   : out_elt_ln_to_gn}, parent=iso_part_zone)
@@ -762,10 +758,10 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
   vtx_weight = pdm_isos.pparent_weight_get(pdm_iso, 0, PDM._PDM_MESH_ENTITY_VTX)[1]
 
   maia_iso_zone = PT.new_node('maia#surface_data', label='UserDefinedData_t', parent=iso_part_zone)
-  PT.new_DataArray('Cell_parent_gnum',          elt_part1_to_part2,      parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_gnum',           vtx_part1_to_part2,      parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_idx',            vtx_part1_to_part2_idx,  parent=maia_iso_zone)
-  PT.new_DataArray('Vtx_parent_weight',         vtx_weight,              parent=maia_iso_zone)
+  PT.new_DataArray('Cell_parent_gnum',  elt_part1_to_part2,     parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_gnum',   vtx_part1_to_part2,     parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_idx',    vtx_part1_to_part2_idx, parent=maia_iso_zone)
+  PT.new_DataArray('Vtx_parent_weight', vtx_weight,             parent=maia_iso_zone)
   if zdim == 3:
     PT.new_DataArray('Face_parent_bnd_edges', edge_part1_to_part2, parent=maia_iso_zone)
     PT.new_DataArray('Bnd_edge_to_internal',  edge_bnd_to_all,     parent=maia_iso_zone)
@@ -775,6 +771,7 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
       comm, get_value='leaf')
 
   return iso_part_zone
+
 
 def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                            iso_kind: str,
@@ -787,7 +784,6 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
     return iso_surface_one_domain_old(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm)
   else:
     return iso_surface_one_domain_new(part_zones, iso_kind, iso_params, graph_part_tool, comm)
-
 
 
 def _iso_surface(part_tree: CGNSPartTree,

@@ -282,7 +282,7 @@ def test_multidom(comm):
   with pytest.raises(ValueError):
     stree = maia.algo.part.plane_slice(ptree, [0,0,1,0.5], comm, ['Geometry_3d', 'FlowSol'])
 
-  
+
 @pytest_parallel.mark.parallel(2)
 def test_slice_2d(comm):
   dist_tree = maia.factory.generate_dist_block(11, 'QUAD_4', comm, origin=[0,0])
@@ -306,7 +306,6 @@ def test_slice_2d(comm):
     fs = PT.new_FlowSolution('CellPartial', loc='CellCenter', fields={'GN' : data}, parent=zone)
     pl = np.arange(PT.Zone.n_cell(zone))[::2].reshape((1,-1), order='F') + ngoffset
     PT.new_IndexArray(value=pl, parent=fs)
-  
 
   part_tree_iso = maia.algo.part.spherical_slice(part_tree, [0,0,0,.5],
                                                  containers_name=['Geometry_2d', 'VtxFull', 'CellPartial'],
@@ -341,6 +340,7 @@ def test_slice_2d(comm):
   assert np.array_equal(PT.find_node_from_path(part_zone_iso, 'CellPartial/GN')[1], expt_cell_partial)
   assert np.array_equal(PT.find_node_from_path(part_zone_iso, 'CellPartial/PointList')[1], expt_cell_partial_pl)
 
+
 @pytest_parallel.mark.parallel(2)
 def test_isosurf_2d(comm):
   dist_tree = maia.factory.generate_dist_block(11, 'TRI_3', comm)
@@ -354,6 +354,6 @@ def test_isosurf_2d(comm):
     PT.new_FlowSolution('FS', fields={'Magnitude' : norm}, parent=zone)
 
   part_tree_iso = maia.algo.part.iso_surface(part_tree, 'FS/Magnitude', comm, iso_val=1., graph_part_tool='hilbert')
-  
+
   assert (PT.get_np_value(PT.get_all_CGNSBase_t(part_tree_iso)[0]) == [1,3]).all()
   assert comm.allreduce(PT.Zone.n_cell(PT.get_all_Zone_t(part_tree_iso)[0])) == 23
