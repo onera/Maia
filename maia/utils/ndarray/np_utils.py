@@ -425,7 +425,6 @@ def transform_cart_vectors(vx: NDArray,
   """
   Apply the defined cartesian transformation on separated components of vectors and return a tuple with each of the modified components of the vectors
   """
-  if inverse: raise NotImplementedError
   assert vx.shape == vy.shape == vz.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy,vz,np.ones(vx.size)], order='F')
@@ -450,7 +449,6 @@ def transform_cart_vectors_2d(vx: NDArray,
                               rotation_center: NDArray = np.zeros(2),
                               rotation_angle: float = 0.,
                               inverse: bool = False) -> Tuple[NDArray, NDArray]:
-  if inverse: raise NotImplementedError
   assert vx.shape == vy.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy,np.ones(vx.size)], order='F')

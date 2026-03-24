@@ -13,21 +13,23 @@ def transform_affine_zone(zone,
                           translation=np.zeros(3),
                           apply_to_fields=False,
                           positional_fields=['Coordinate'],
-                          constant_fields=[]):
+                          constant_fields=[],
+                          inverse=False):
 
   distri_vtx = MT.Zone.vtx_distribution(zone)
-  
+
   all_vtx = np.arange(distri_vtx[0]+1, distri_vtx[1]+1, dtype=distri_vtx.dtype)
   PTP = EP.PartToPart([vtx_ids], [all_vtx], comm)
 
   vtx_mask = np.zeros(all_vtx.size, dtype=bool)
   vtx_mask[PTP.get_referenced_lnum2()[0]-1] = True
 
-  transform.transform_affine_zone(zone, 
+  transform.transform_affine_zone(zone,
                                   vtx_mask,
                                   rotation_center,
                                   rotation_angle,
                                   translation,
                                   apply_to_fields,
                                   positional_fields,
-                                  constant_fields)
+                                  constant_fields,
+                                  inverse)

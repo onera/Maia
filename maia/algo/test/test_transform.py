@@ -75,7 +75,7 @@ def test_transformation_zone_void():
   zone            = PT.yaml.to_node(yz)
   zone_bck        = PT.deep_copy(zone)
   transform.transform_affine(zone)
-  assert PT.is_same_tree(zone_bck, zone) 
+  assert PT.is_same_tree(zone_bck, zone)
 
 def check_vect_field(old_node, new_node, field_name):
   old_data = [PT.get_node_from_name(old_node, f"{field_name}{c}")[1] for c in ['X', 'Y', 'Z']]
@@ -122,6 +122,9 @@ def test_transform_affine(comm):
   check_vect_field(dist_zone_ini, dist_zone, "field")
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
 
+  transform.transform_affine(dist_zone, rotation_angle=np.array([0.,0.,np.pi]), inverse=True)
+  assert PT.is_same_tree(dist_zone_ini, dist_zone, abs_tol=1e-15)
+
 @pytest_parallel.mark.parallel(1)
 @pytest.mark.parametrize('positional_fields', [[],['Coord']])
 @pytest.mark.parametrize('constant_fields',   [[],['Coord']])
@@ -162,6 +165,17 @@ def test_transform_affine_optional_args(comm, positional_fields, constant_fields
     comp_vect_field(dist_zone, "field", dist_zone, "Coord")
   comp_scal_field(dist_zone_ini, "scalar", dist_zone, "scalar")
 
+  transform.transform_affine_zone(dist_zone,
+                                  None,
+                                  translation=np.array([1.,0.,0.]),
+                                  rotation_angle=np.array([0.,0.,np.pi]),
+                                  rotation_center=np.array([0.,0,0]),
+                                  apply_to_fields=True,
+                                  positional_fields=positional_fields,
+                                  constant_fields=constant_fields,
+                                  inverse=True)
+
+  assert PT.is_same_tree(dist_zone_ini, dist_zone, abs_tol=1e-15)
 
 @pytest_parallel.mark.parallel(1)
 def test_transform_affine_on_base(comm):
@@ -193,6 +207,9 @@ def test_transform_affine_on_base(comm):
   check_vect_field(dist_tree_ini, dist_tree, "fusd")
   check_scal_field(dist_tree_ini, dist_tree, "scalar")
 
+  transform.transform_affine(dist_tree, rotation_angle=np.array([0.,0.,np.pi]), inverse=True)
+  assert PT.is_same_tree(dist_tree_ini, dist_tree, abs_tol=1e-15)
+
 @pytest_parallel.mark.parallel(1)
 class Test_transform_affine_gc:
 
@@ -202,6 +219,7 @@ class Test_transform_affine_gc:
     fname = os.path.join(test_utils.mesh_dir, 'cube_bcdataset_and_periodic.yaml')
 
     tree = maia.io.file_to_dist_tree(fname, comm)
+    tree_ini = PT.deep_copy(tree)
     maia.algo.transform_affine(tree, rotation_angle=rotation, translation=[1,2,3]) #Translation should have no effect
     zmin_jn = PT.get_node_from_name(tree, 'Zmin_match')
     zmax_jn = PT.get_node_from_name(tree, 'Zmax_match')
@@ -215,7 +233,9 @@ class Test_transform_affine_gc:
       expt_trans_max = [-1,0,0]
     assert np.allclose(transmin, expt_trans_min) and np.allclose(anglemin, [0,0,0])
     assert np.allclose(transmax, expt_trans_max) and np.allclose(anglemax, [0,0,0])
-  
+
+    maia.algo.transform_affine(tree, rotation_angle=rotation, translation=[1,2,3], inverse=True) #Reversed translation should have no effect
+    assert PT.is_same_tree(tree_ini, tree, abs_tol=1e-15, type_tol=True)
 
   def test_full_transfo(self, comm):
     # This mesh has one Rotation JN (with RotCenter != 0) and one translation JN; with poor precision
@@ -223,24 +243,28 @@ class Test_transform_affine_gc:
     JNS = ['MatchTranslationA', 'MatchTranslationB', 'MatchRotationA', 'MatchRotationB']
 
     tree = maia.io.file_to_dist_tree(fname, comm)
+    tree_ini = PT.deep_copy(tree)
     # Lets apply a crazy transformation
-    maia.algo.transform_affine(tree, rotation_angle=[np.pi/4, -np.pi/3, np.pi/2], rotation_center=[-1,0,1], translation=[4,3,2]) 
+    maia.algo.transform_affine(tree, rotation_angle=[np.pi/4, -np.pi/3, np.pi/2], rotation_center=[-1,0,1], translation=[4,3,2])
     for name in JNS:
         check_perio(tree, name, tol=5e-6)
-      
+
+    maia.algo.transform_affine(tree, rotation_angle=[np.pi/4, -np.pi/3, np.pi/2], rotation_center=[-1,0,1], translation=[4,3,2], inverse=True)
+    assert PT.is_same_tree(tree_ini, tree, abs_tol=1e-14, type_tol=True)
+
   def test_2d(self, comm):
     tree = maia.factory.generate_dist_block([5,5], 'S', comm, origin=[0,0])
     xmin = PT.get_node_from_name(tree, 'Xmin')
     xmax = PT.get_node_from_name(tree, 'Xmax')
-    
+
     PT.rm_nodes_from_name(tree, 'Xm*')
     PT.update_node(xmin, label='GridConnectivity1to1_t', value='zone')
     PT.new_IndexRange('PointRangeDonor', [[5,5],[1,5]], parent=xmin)
-    PT.new_GridConnectivityProperty(periodic={'translation' : [1.,0], 'rotation_center':[0.,0], 'rotation_angle':[0.,0]}, 
+    PT.new_GridConnectivityProperty(periodic={'translation' : [1.,0], 'rotation_center':[0.,0], 'rotation_angle':[0.,0]},
                                     parent=xmin)
     PT.update_node(xmax, label='GridConnectivity1to1_t', value='zone')
     PT.new_IndexRange('PointRangeDonor', [[1,1],[1,5]], parent=xmax)
-    PT.new_GridConnectivityProperty(periodic={'translation' : [-1.,0], 'rotation_center':[0.,0], 'rotation_angle':[0.,0]}, 
+    PT.new_GridConnectivityProperty(periodic={'translation' : [-1.,0], 'rotation_center':[0.,0], 'rotation_angle':[0.,0]},
                                     parent=xmax)
 
     zgc = PT.new_ZoneGridConnectivity(parent=PT.get_node_from_label(tree, 'Zone_t'))
@@ -329,7 +353,7 @@ def test_scale_mesh(comm):
   assert "Scaling mesh does not affect fields, and some are present in tree." in log_collector.logs
 
 @pytest.mark.parametrize('revolution_axis', [(0, 1, 0), [1, 2, 3]])
-@pytest.mark.parametrize('zonetype', ['S', 'Poly'])       
+@pytest.mark.parametrize('zonetype', ['S', 'Poly'])
 @pytest.mark.parametrize('partitioned', [False, True])
 @pytest_parallel.mark.parallel(2)
 class Test_change_basis_simple:
@@ -348,11 +372,11 @@ class Test_change_basis_simple:
         PT.new_FlowSolution('FlowSolution', fields={f'FS{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
         PT.new_ZoneSubRegion('ZoneSubRegion', fields={f'ZSR{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
 
-      # Create the transform matrix and the reverse transform matrix 
+      # Create the transform matrix and the reverse transform matrix
       transform_matrix = np_utils.create_transform_matrix(revolution_axis=revolution_axis)
-      
+
       part_tree_cart_ref = PT.deep_copy(part_tree)
-        
+
       transform.auxiliary_coords_system(part_tree, transform_matrix)
       transform.auxiliary_coords_system(part_tree, transform_matrix)
 
@@ -392,10 +416,10 @@ class Test_change_basis_simple:
 
         bc = PT.get_node_from_name(zone, 'Xmax')
         if bc is not None:
-          pl = PT.get_child_from_name(bc, 'PointList')[1] 
+          pl = PT.get_child_from_name(bc, 'PointList')[1]
           bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
-          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
+          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']:
             PT.new_DataArray(name, np.random.rand(pl.size), parent=bcda)
       else: # Structured:
         bc = PT.get_node_from_name(zone, 'Xmax')
@@ -403,7 +427,7 @@ class Test_change_basis_simple:
           bc_size = MT.Subset.pn_elem(bc) if partitioned else MT.Subset.dn_elem(bc)
           bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
-          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
+          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']:
             PT.new_DataArray(name, np.random.rand(bc_size), parent=bcda)
 
         bc = PT.get_node_from_name(zone, 'Ymin') # Transform to JFaceCenter
@@ -418,13 +442,13 @@ class Test_change_basis_simple:
           bc_size = MT.Subset.pn_elem(bc) if partitioned else MT.Subset.dn_elem(bc)
           bcds = PT.new_child(bc, 'BCDataSet', 'BCDataSet_t')
           bcda = PT.new_child(bcds, 'DirichletData', 'BCData_t')
-          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']: 
+          for name in['Scalar', 'FieldX', 'FieldY', 'FieldZ']:
             PT.new_DataArray(name, np.random.rand(bc_size), parent=bcda)
 
     if revolution_axis in [(1, 0, 0), (0, 1, 0), (0, 0, 1)]:
       cart2cyl = transform.cartesian_to_cylindrical_from_unit_revolution_axis
       cyl2cart = transform.cylindrical_to_cartesian_from_unit_revolution_axis
-    else: 
+    else:
       cart2cyl = transform.cartesian_to_cylindrical
       cyl2cart = transform.cylindrical_to_cartesian
 
@@ -433,7 +457,7 @@ class Test_change_basis_simple:
     cart2cyl(part_tree, revolution_axis, comm, True)
     # Transform cylindric coordinates and fields into cartesian around a unit revolution axis
     cyl2cart(part_tree, revolution_axis, comm, True)
-    
+
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
       for container_name in ['GridCoordinates', 'FlowSolution', 'DiscreteData']:
@@ -442,11 +466,11 @@ class Test_change_basis_simple:
         assert np.allclose(coords[0], val_x)
         assert np.allclose(coords[1], val_y)
         assert np.allclose(coords[2], val_z)
-      
+
     assert PT.is_same_tree(part_tree, tree_bck, abs_tol=1e-12)
 
 @pytest.mark.parametrize('revolution_axis', [(1, 1, 0), [2, 2, 0]])
-@pytest_parallel.mark.parallel([1, 2]) 
+@pytest_parallel.mark.parallel([1, 2])
 class Test_cart_to_cyl:
   def test_S(self, revolution_axis, comm):
 
@@ -457,15 +481,15 @@ class Test_cart_to_cyl:
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
-      
-      # Create fields in zone 
+
+      # Create fields in zone
       PT.new_FlowSolution('FlowSolution', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       dd = PT.new_ZoneSubRegion('DiscreteData', fields={f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])}, parent=zone)
       PT.set_label(dd, 'DiscreteData_t')
 
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
-    transform.cartesian_to_cylindrical(part_tree, revolution_axis)  
-     
+    transform.cartesian_to_cylindrical(part_tree, revolution_axis)
+
     if comm.size == 1:
       radius_ref = np.array([[[0. , 1.41421356], [1. ,  1.73205081]], [[0.5, 1.5       ], [0.5,  1.5       ]], [[1. , 1.73205081], [0. ,  1.41421356]]])
       theta_ref  = np.array([[[0., 1.57079633], [0., 0.95531662]], [[3.14159265, 1.91063324], [0., 1.23095942]], [[3.14159265, 2.18627604], [0., 1.57079633]]])
@@ -503,42 +527,42 @@ class Test_cart_to_cyl:
       # Recover the intial cartesian coordinates
       coords = PT.Zone.coordinates(zone)
       n_vtx = PT.Zone.n_vtx(zone)
-      
-      # Create fields in zone 
+
+      # Create fields in zone
       fields = {f'Coordinate{d}' : coords[i].copy() for i,d in enumerate(['X', 'Y', 'Z'])} # Coords -> use coordinates formulae
       fields.update({'Scalar' : np.ones(n_vtx)}) # Scalar field    -> no transformation
       fields.update({'VectorX' : -0.5*np.ones(n_vtx), 'VectorY' : 0.5*np.ones(n_vtx), 'VectorZ' : 0*np.ones(n_vtx)}) # Vectorial field -> use fields formulae
       # Somehow these values leads to (1,0,0) in (eta, zeta, xi) basis
       PT.new_FlowSolution('FlowSolution', fields=fields, parent=zone)
       PT.new_DiscreteData('DiscreteData', fields=fields, parent=zone)
-    
+
     # Transform cartesian coordinates and fields into cylindric from any revolution axis
     transform.cartesian_to_cylindrical(part_tree, revolution_axis)
 
     if comm.size == 1:
-      radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 
+      radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487,
                     0.8660254 , 0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
-      theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 
+      theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971,
                     0.95531662, 1.57079633, 1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
       z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
                     0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0., 0.35355339,
                     0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
     elif comm.size == 2:
       if comm.rank == 0 :
-        radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487, 
+        radius_ref = [0., 0.5, 1., 0.5, 0., 0.5, 1., 0.5, 0., 0.70710678, 0.8660254, 1.22474487,
                       0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254 , 0.70710678]
-        theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604, 
+        theta_ref  = [0., 3.14159265, 3.14159265, 0., 0., 3.14159265, 0., 0., 0., 1.57079633, 2.18627604,
                       2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633]
         z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
                       0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
       elif comm.rank == 1:
         radius_ref = [0.70710678, 0.8660254, 1.22474487, 0.8660254, 0.70710678, 0.8660254, 1.22474487, 0.8660254,
                       0.70710678, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356, 1.5, 1.73205081, 1.5, 1.41421356]
-        theta_ref  = [1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633, 
+        theta_ref  = [1.57079633, 2.18627604, 2.52611294, 0.95531662, 1.57079633, 2.18627604, 0.61547971, 0.95531662, 1.57079633,
                       1.57079633, 1.91063324, 2.18627604, 1.23095942, 1.57079633, 1.91063324, 0.95531662, 1.23095942, 1.57079633]
         z_ref      = [0., 0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356, 0.,
                       0.35355339, 0.70710678, 0.35355339, 0.70710678, 1.06066017, 0.70710678, 1.06066017, 1.41421356]
-      
+
     for zone in PT.get_all_Zone_t(part_tree):
       # Recover coordinates and fields in the new basis
       for container_name in ['GridCoordinates', 'FlowSolution', 'DiscreteData']:
@@ -558,7 +582,7 @@ class Test_cart_to_cyl:
           assert np.allclose(vectorr, np.cos(theta_ref))
           assert np.allclose(vectort, -1*np.sin(theta_ref))
           assert np.allclose(vectorz, np.zeros(PT.Zone.n_vtx(zone)))
-      
+
   def test_wrong_axis(self, revolution_axis, comm):
     dist_tree = maia.factory.generate_dist_block(3, 'Poly', comm)
     with pytest.raises(AssertionError):
@@ -569,42 +593,42 @@ class Test_cart_to_cyl:
 def test_cart_to_cyl_to_cart_perio(comm, axis):
   abs_tol = 1.e-7
   axis = np.asarray(axis)
-  
+
   dist_tree = maia.factory.generate_dist_block((5,4,5), 'S', comm)
   zone = PT.get_node_from_path(dist_tree, 'Base/zone')
-  
+
   # Creation du raccord périodique par rotation autour de x
   zgc = PT.new_ZoneGridConnectivity(parent=zone)
   xmin_pr = PT.get_value(PT.get_node_from_path(zone, 'ZoneBC/Xmin/PointRange'))
   zmin_pr = PT.get_value(PT.get_node_from_path(zone, 'ZoneBC/Zmin/PointRange'))
-  gc_xmin = PT.new_GridConnectivity1to1('Xmin', 'Base/zone', 
+  gc_xmin = PT.new_GridConnectivity1to1('Xmin', 'Base/zone',
                                         point_range=xmin_pr,
                                         point_range_donor=zmin_pr,
                                         transform=[1,2,3],
                                         parent=zgc)
-  gc_zmin = PT.new_GridConnectivity1to1('Zmin', 'Base/zone', 
+  gc_zmin = PT.new_GridConnectivity1to1('Zmin', 'Base/zone',
                                         point_range=zmin_pr,
                                         point_range_donor=xmin_pr,
                                         transform=[1,2,3],
                                         parent=zgc)
   PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,np.pi/4,0.])}, parent=gc_xmin)
   PT.new_GridConnectivityProperty(periodic={'rotation_angle':np.array([0.,-np.pi/4,0.])}, parent=gc_zmin)
-  
+
   PT.rm_node_from_path(zone, 'ZoneBC/Xmin')
   PT.rm_node_from_path(zone, 'ZoneBC/Zmin')
-  
+
   if axis[0] == 1.:
     maia.algo.transform_affine(zone, rotation_angle=np.array([0.,0., -np.pi/4]))
-  
+
   dist_tree_ref = PT.deep_copy(dist_tree)
-  
+
   maia.algo.transform.cartesian_to_cylindrical(dist_tree, axis, comm)
-  
+
   for perio in PT.get_nodes_from_label(dist_tree, "Periodic_t"):
     for data in PT.get_children_from_label(perio, "DataArray_t"):
       assert abs(PT.get_value(data)[0]) < abs_tol
       assert abs(PT.get_value(data)[2]) < abs_tol
-  
+
   maia.algo.transform.cylindrical_to_cartesian(dist_tree, axis, comm)
-  
+
   assert PT.is_same_tree(dist_tree, dist_tree_ref, abs_tol=abs_tol)

@@ -21,7 +21,6 @@ def _to_rthetaz_vectors(vx, vy, vz, theta):
 
 
 def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, constant_vectors, inverse):
-  if inverse: raise NotImplementedError
   transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
 
   container_paths = set()
@@ -51,10 +50,12 @@ def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np
       if basename in positional_vectors:
         tr_vectors = transform_func(*vectors, translation=translation_np,
                                               rotation_center=rotation_center_np,
-                                              rotation_angle=rotation_angle_np) #type:ignore[operator] #(signature of 2 funcs differs)
+                                              rotation_angle=rotation_angle_np,
+                                              inverse=inverse) #type:ignore[operator] #(signature of 2 funcs differs)
       else:
         tr_vectors = transform_func(*vectors, rotation_center=rotation_center_np,
-                                              rotation_angle=rotation_angle_np) #type:ignore[operator]
+                                              rotation_angle=rotation_angle_np,
+                                              inverse=inverse) #type:ignore[operator]
       for vector_n, tr_vector in zip(vectors_n, tr_vectors):
         vector_val = PT.get_np_value(vector_n)
         if is_full_vtx:
@@ -79,7 +80,6 @@ def transform_affine_zone(zone: CGNSTree,
   In addition, this function takes a bool array of shaped as coords array and
   apply the periodicity only to the vertices evaluating to True.
   """
-  if inverse: raise NotImplementedError
 
   #Global information
   phy_dim = PT.Zone.PhysicalDimension(zone)
@@ -97,7 +97,7 @@ def transform_affine_zone(zone: CGNSTree,
     coords_n = [PT.find_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z'][:phy_dim]]
     coords = [PT.get_np_value(n)[vtx_mask] for n in coords_n]
 
-    tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np, inverse) #type:ignore[operator] #(signature of 2 funcs differs)
+    tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np, inverse=inverse) #type:ignore[operator] #(signature of 2 funcs differs)
     for coord_n, tr_coord in zip(coords_n, tr_coords):
       coord_value = PT.get_np_value(coord_n)
       coord_value[vtx_mask] = tr_coord
@@ -109,7 +109,7 @@ def transform_affine_zone(zone: CGNSTree,
   # We search M_gcnew such that v_opp' = M_gcnew * v_cur'
   # --> This leads to M_gcnew = M_tr * M_gc * (M_tr)^-1
   transf_mat = np_utils._transform_to_homogeneous_matrix(translation_np, rotation_center_np, rotation_angle_np)
-  transf_mat_inv = np.linalg.inv(transf_mat)
+  transf_mat_inv = np_utils._transform_to_homogeneous_matrix(translation_np, rotation_center_np, rotation_angle_np, inverse=True)
   for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
     if PT.GridConnectivity.isperiodic(gc):
       gc_center = PT.find_node_from_name(gc, 'RotationCenter')
