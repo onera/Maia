@@ -10,9 +10,9 @@ import Pypdm.Pypdm as PDM
 import numpy as np
 from maia.utils import np_utils, par_utils, as_pdm_gnum
 from maia.utils.parallel import algo as par_algo
-from maia.factory.partitioning.split_U import cgns_to_pdm_dmesh
 from maia.transfer import protocols as EP
 
+from .             import cgns_to_pdm_dmesh
 from .subset_tools import convert_subset_as_facelist
 
 PointCloud = Dict[str, Any]

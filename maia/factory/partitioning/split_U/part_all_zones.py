@@ -1,11 +1,11 @@
-import numpy              as np
-import Pypdm.Pypdm        as PDM
+import numpy       as np
+import Pypdm.Pypdm as PDM
 
 import maia
-import maia.pytree        as PT
+import maia.pytree as PT
 
-from . import cgns_to_pdm_dmesh
-from .pdm_part_to_cgns_zone   import pdm_part_to_cgns_zone
+from maia.algo.dist         import cgns_to_pdm_dmesh
+from .pdm_part_to_cgns_zone import pdm_part_to_cgns_zone
 
 maia_to_pdm_entity = {"cell"   : PDM._PDM_MESH_ENTITY_CELL,
                       "face"   : PDM._PDM_MESH_ENTITY_FACE,
