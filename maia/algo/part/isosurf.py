@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import time
+import warnings
 from mpi4py import MPI
 
 from maia.typing        import *
@@ -25,13 +26,17 @@ import Pypdm.Pypdm as PDM
 IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
 IS_CNT      = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
 
+def _warn_if_elt_type(options):
+  if 'elt_type' in options and os.environ.get('MAIA_OLD_ISOSURFACE') is None:
+    warnings.warn("Argument 'elt_type' is no longer needed and will be ignored", stacklevel=3)
+
 def _ptp_retrieve_part1_to_part2(ptp, gnum2):
   req = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                           PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
                           gnum2)
-  try:
+  try: # PDM < 2.8
     part1_to_part2_idx = ptp.lpart1_to_part2_idx[0].copy()
-  except AttributeError:
+  except AttributeError: # PDM >= 2.8
     part1_to_part2_idx = ptp.get_part1_to_part2_idx()[0]
   part1_to_part2 = ptp.reverse_wait(req)[1][0]
   return part1_to_part2_idx, part1_to_part2
@@ -197,6 +202,7 @@ def exchange_field_one_domain(part_zones: List[CGNSPartTree],
       container_iso = None # Beware to the loop on containers_name (container_iso could have been initialised with previous container_name)
 
     if partial_field:
+      assert container_loc != 'Vertex' # Not yet supported
       pl_gnum1, stride = get_partial_container_stride_and_order(part_zones, container_name, gridLocation, ptp, comm)
 
     # > Field exchange
@@ -666,7 +672,7 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
   n_iso_vtx = out_vtx_ln_to_gn.shape[0]
   n_iso_elt = out_elt_ln_to_gn.shape[0]
 
-  # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc a priori)
+  # > Zone construction (Zone.P{rank}.N0 because one part of zone on every proc)
   iso_part_zone = PT.new_Zone(MT.conv.add_part_suffix('Zone', comm.Get_rank(), 0),
                               size=[[n_iso_vtx, n_iso_elt, 0]],
                               type='Unstructured')
@@ -743,7 +749,7 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
 
   # > Link between vol and isosurf
   ptp_elt = pdm_isos.part_to_part_get(pdm_iso, PDM_MESH_ENTITY_NATIVE_OUT)
-  elt_part1_to_part2_idx, elt_part1_to_part2 = \
+  _, elt_part1_to_part2 = \
     _ptp_retrieve_part1_to_part2(ptp_elt, [MT.Zone.cell_globalnumbering(z) for z in part_zones])
 
   if zdim == 3:
@@ -783,6 +789,10 @@ def iso_surface_one_domain(part_zones: List[CGNSPartTree],
                            comm: MPIComm) -> CGNSTree:
 
   if os.environ.get('MAIA_OLD_ISOSURFACE') is not None:
+    msg = "You are using the old backend for isosurfaces computation," \
+           " which is no longer maintained. Switch to new backend with" \
+           " `unset MAIA_OLD_ISOSURFACE`."
+    warnings.warn(msg, stacklevel=4)
     return iso_surface_one_domain_old(part_zones, iso_kind, iso_params, elt_type, graph_part_tool, comm)
   else:
     return iso_surface_one_domain_new(part_zones, iso_kind, iso_params, graph_part_tool, comm)
@@ -878,6 +888,7 @@ def iso_surface(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
+  _warn_if_elt_type(options)
   elt_type        = options.get("elt_type", "TRI_3")
   graph_part_tool = options.get("graph_part_tool", "ptscotch")
   assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
@@ -963,6 +974,7 @@ def plane_slice(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
+  _warn_if_elt_type(options)
   elt_type        = options.get("elt_type", "TRI_3")
   graph_part_tool = options.get("graph_part_tool", "ptscotch")
   assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
@@ -1014,6 +1026,7 @@ def spherical_slice(part_tree: CGNSPartTree,
   MT.check_cgns_part_tree(part_tree)
   start = time.time()
 
+  _warn_if_elt_type(options)
   elt_type        = options.get("elt_type", "TRI_3")
   graph_part_tool = options.get("graph_part_tool", "ptscotch")
   assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])
@@ -1065,6 +1078,7 @@ def elliptical_slice(part_tree: CGNSPartTree,
   """
   start = time.time()
 
+  _warn_if_elt_type(options)
   elt_type        = options.get("elt_type", "TRI_3")
   graph_part_tool = options.get("graph_part_tool", "ptscotch")
   assert(elt_type        in ["TRI_3","QUAD_4","NGON_n"])

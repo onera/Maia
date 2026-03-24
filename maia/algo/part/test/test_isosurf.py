@@ -42,6 +42,11 @@ def test_copy_referenced_families():
   assert PT.get_child_from_name(target_base, 'Titi') is not None
   assert PT.get_child_from_name(target_base, 'Tata') is None
 
+def test_find_matching_edge():
+  all = np.array([11,4, 34,19, 45,22, 54,89, 43,98])
+  sub = np.array([22,45, 11,4, 43,98])
+  assert (ISO.find_matching_edge(all, sub) == np.array([2, 0, 4])).all()
+  assert (ISO.find_matching_edge(all, np.empty(0, int)) == np.empty(0, int)).all()
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("from_api", [False, True])
@@ -295,6 +300,7 @@ def test_slice_2d(comm):
     cx, cy, _ = PT.Zone.coordinates(zone)
     PT.new_FlowSolution('VtxFull', fields={'CX' : cx, 'CY' : cy}, parent=zone)
     # Vtx sol, partial ---> apparently not managed, but also not on 3D cases
+    # Add VtxPartial to containers_name when it is ready
     fs = PT.new_FlowSolution('VtxPartial', fields={'CX' : cx[::2], 'CY' : cy[::2]}, parent=zone)
     PT.new_IndexArray(value=np.arange(1, PT.Zone.n_vtx(zone)+1)[::2].reshape((1,-1), order='F'), parent=fs)
 

@@ -27,11 +27,11 @@ def orientation_preserved(part_zones, comm):
   data_list = list()
   for part_zone in part_zones:
 
-    dim = PT.Zone.CellDimension(part_zone)
     if PT.pred.IS_POLY2D_ZONE(part_zone):
-      # Fow 2D zones, only work using ParentElements
+      # Fow 2D zones, only works using ParentElements
       maia.algo.ngon_to_edge_pe(part_zone, comm)
 
+    dim = PT.Zone.CellDimension(part_zone)
     ngon_node = MT.Zone.EdgeNode(part_zone) if dim == 2 else PT.Zone.NGonNode(part_zone)
     pe_n = PT.get_child_from_name(ngon_node, 'ParentElements')
     face_gnum = MT.Element.globalnumbering(ngon_node)

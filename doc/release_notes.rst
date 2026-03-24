@@ -17,7 +17,7 @@ Development version
 - (de)concatenate_subsets_from_families: merge ZoneSubRegion_t nodes if possible
 - IO: Allow to read or write ZoneSubRegion_t nodes when related BCs are missing
 - concatenate_elt_sections: manage ``NGON_n``, ``NFACE_n`` and ``MIXED`` elements type
-- iso_surface & slices : extend to 2D meshes
+- iso_surface & slices : improve robustness and extend to 2D meshes
 
 🐞 Fixes
 ^^^^^^^^
