@@ -366,17 +366,24 @@ def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np
     rotation_matx = np.array([[1, 0, 0], [0, np.cos(alpha), -np.sin(alpha)], [0, np.sin(alpha), np.cos(alpha)]])
     rotation_maty = np.array([[np.cos(beta), 0, np.sin(beta)], [0, 1, 0], [-np.sin(beta), 0, np.cos(beta)]])
     rotation_matz = np.array([[np.cos(gamma), -np.sin(gamma), 0], [np.sin(gamma), np.cos(gamma), 0], [0, 0, 1]])
-    rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
+    if inverse:
+      rotation_mat  = np.dot(rotation_matz.T, np.dot(rotation_maty.T, rotation_matx.T))
+    else:
+      rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
+
   elif dim == 2: # Rotation angle is scalar
     theta = rotation_angle
     rotation_mat  = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+    if inverse:
+      rotation_mat = rotation_mat.T
   homo_matrix[0:dim, 0:dim] = rotation_mat
-  homo_matrix[0:dim,   dim] = rotation_center - np.dot(rotation_mat, rotation_center) + translation
-  homo_matrix[dim,dim] = 1
   if inverse:
-    return np.linalg.inv(homo_matrix)
-
+    homo_matrix[0:dim,   dim] = rotation_center - np.dot(rotation_mat, rotation_center) - np.dot(rotation_mat,translation)
+  else:
+    homo_matrix[0:dim,   dim] = rotation_center - np.dot(rotation_mat, rotation_center) + translation
+  homo_matrix[dim,dim] = 1
   return homo_matrix
+
 def transform_cart_matrix(vectors: NDArray,
                           translation: NDArray = np.zeros(3),
                           rotation_center: NDArray = np.zeros(3),
