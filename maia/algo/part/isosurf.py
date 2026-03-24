@@ -686,7 +686,9 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
                             erange=[1, edge_vtx.size // 2],
                             econn=edge_vtx,
                             parent=iso_part_zone)
-    MT.new_GlobalNumbering({'Element' : out_elt_ln_to_gn}, parent=bar_n)
+    MT.new_GlobalNumbering({'Element'  : out_elt_ln_to_gn,
+                            'Sections' : out_elt_ln_to_gn.copy()},
+                           parent=bar_n)
   else:
     ng_eso, ng_ec = pdm_isos.pconnectivity_get(pdm_iso, 0, PDM._PDM_CONNECTIVITY_TYPE_FACE_VTX)
     # Retrieve edges on 2D mesh
