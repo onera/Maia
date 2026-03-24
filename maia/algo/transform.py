@@ -20,7 +20,8 @@ def _to_rthetaz_vectors(vx, vy, vz, theta):
   return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
 
-def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, constant_vectors):
+def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, constant_vectors, inverse):
+  if inverse: raise NotImplementedError
   transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
 
   container_paths = set()
@@ -48,7 +49,7 @@ def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np
       else:
         vectors = [PT.get_np_value(n) for n in vectors_n]
       if basename in positional_vectors:
-        tr_vectors = transform_func(*vectors, translation=translation_np, 
+        tr_vectors = transform_func(*vectors, translation=translation_np,
                                               rotation_center=rotation_center_np,
                                               rotation_angle=rotation_angle_np) #type:ignore[operator] #(signature of 2 funcs differs)
       else:
@@ -69,14 +70,16 @@ def transform_affine_zone(zone: CGNSTree,
                           translation: Iterable[float],
                           apply_to_fields: bool,
                           positional_fields: List[str] = ['Coordinate'],
-                          constant_fields: List[str] = []) -> None:
+                          constant_fields: List[str] = [],
+                          inverse: bool = False) -> None:
   """
   Implementation of transform affine (see associated documentation) for
   a given zone.
-  
+
   In addition, this function takes a bool array of shaped as coords array and
   apply the periodicity only to the vertices evaluating to True.
   """
+  if inverse: raise NotImplementedError
 
   #Global information
   phy_dim = PT.Zone.PhysicalDimension(zone)
@@ -112,7 +115,7 @@ def transform_affine_zone(zone: CGNSTree,
       gc_center = PT.find_node_from_name(gc, 'RotationCenter')
       gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
       gc_trans  = PT.find_node_from_name(gc, 'Translation')
-      
+
       gc_angle_value = PT.get_np_value(gc_angle)
       if phy_dim == 2: # 2D : angle may be in slot 0 or 1
         gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
@@ -137,7 +140,8 @@ def transform_affine(t: CGNSTree,
                      rotation_angle: Union[None, float, Iterable[float]] = None,
                      translation: Optional[Iterable[float]] = None,
                      apply_to_fields: bool = True,
-                     positional_fields: List[str] = ['Coordinate']) -> None:
+                     positional_fields: List[str] = ['Coordinate'],
+                     inverse: bool = False ) -> None:
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -151,12 +155,12 @@ def transform_affine(t: CGNSTree,
   dimension of the mesh:
 
   - if ``phy_dim == 3``, it must be a vector of 3 floats, storing the
-    `Euler rotation angles <https://en.wikipedia.org/wiki/Euler_angles>`_ 
-    :math:`\\alpha, \\beta \\text{ and } \\gamma`; :math:`R` is then the combination of 
-    
-    - intrinsic elemental rotations :math:`X_\\alpha, Y^{\\prime}_\\beta, Z^{\\prime\\prime}_\\gamma`, 
-      or, equivalently, 
-    - extrinsic elemental rotations :math:`Z_\\gamma, Y_\\beta, X_\\alpha`. 
+    `Euler rotation angles <https://en.wikipedia.org/wiki/Euler_angles>`_
+    :math:`\\alpha, \\beta \\text{ and } \\gamma`; :math:`R` is then the combination of
+
+    - intrinsic elemental rotations :math:`X_\\alpha, Y^{\\prime}_\\beta, Z^{\\prime\\prime}_\\gamma`,
+      or, equivalently,
+    - extrinsic elemental rotations :math:`Z_\\gamma, Y_\\beta, X_\\alpha`.
 
   - if ``phy_dim == 2``, a scalar float :math:`\\theta` is expected, defining the rotation angle in the XY plane.
 
@@ -167,12 +171,14 @@ def transform_affine(t: CGNSTree,
     rotation_center (array): Center coordinates of the rotation
     rotation_angle (array): Angles of the rotation
     translation (array):  Translation vector components
-    apply_to_fields (bool, optional) : 
+    apply_to_fields (bool, optional) :
         If ``True``, apply the rotation part of the transformation to all the vectorial fields (DataArray_t)
         found in the input tree. Defaults to ``True``.
-    positional_fields (list of str, optional): 
+    positional_fields (list of str, optional):
         If ``apply_to_fields`` is ``True``, add the translation part for these specific vectorial fields.
         Defaults to ``['Coordinate']``.
+    inverse (bool,optional) :
+        If ``True``, applies the inverse transformation. Defaults to ``False``
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -194,7 +200,7 @@ def transform_affine(t: CGNSTree,
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
     any_coord = PT.find_child_from_predicate(any_gc_n, PT.pred.name_in(cart_names))
     vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
-    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_fields)
+    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_fields, inverse)
 
   # Deal vectors that are outside zones: family, UserDefined, Convergence history, ...
   if apply_to_fields:
@@ -209,7 +215,7 @@ def transform_affine(t: CGNSTree,
         translation = [0.] * phy_dim
       for child in PT.iter_children_from_predicate(base, ~PT.pred.label_is('Zone_t')):
         update_fields(child, None, phy_dim, np.asarray(rotation_center), np.asarray(rotation_angle),
-                              np.asarray(translation), positional_fields, list())
+                              np.asarray(translation), positional_fields, list(), inverse)
 
 def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
   """Rescale the GridCoordinates of the input mesh.
@@ -234,7 +240,7 @@ def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
         :end-before: #scale_mesh@end
         :dedent: 2
   """
-  scaling = 3 * [s] if isinstance(s, (int, float)) else s 
+  scaling = 3 * [s] if isinstance(s, (int, float)) else s
   fields_found = False
   is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
   for zone in PT.iter_all_Zone_t(t):
@@ -248,7 +254,7 @@ def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
     if PT.get_child_from_predicate(zone, is_container) is not None or \
        PT.get_child_from_predicates(zone, 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t') is not None:
       fields_found = True
-  
+
   if fields_found:
     mlog.warning(f"Scaling mesh does not affect fields, and some are present in tree. Update their value if needed.")
 
@@ -269,7 +275,7 @@ COMPUTE_THETA = {'CellCenter'  : _compute_cellcenter_theta,
 
 def shrink_to_subset(array, zone, subset, comm):
   """
-  Extract a subpart of a full array (eg defined on all Vertex) on a specific 
+  Extract a subpart of a full array (eg defined on all Vertex) on a specific
   patch (U/PointList or S/PointRange). Array / subset can be distributed or partitioned.
   """
   pl = PT.get_child_from_name(subset, 'PointList')
@@ -289,11 +295,11 @@ def shrink_to_subset(array, zone, subset, comm):
       _to_index = {'CellCenter' : 2 ,'EdgeCenter' : 1} if PT.Zone.CellDimension(zone) == 2 else {'CellCenter' : 3 , 'FaceCenter' :2, 'EdgeCenter' : 1}
       range_per_dim = PT.Zone.get_elt_range_per_dim(zone)
       if PT.Zone.CellDimension(zone) == 3 and PT.Zone.has_ngon_elements(zone) and not PT.Zone.has_nface_elements(zone):
-        range_per_dim[3][0] = range_per_dim[2][1] + 1 # Implicit nface 
+        range_per_dim[3][0] = range_per_dim[2][1] + 1 # Implicit nface
         range_per_dim[3][1] = range_per_dim[2][1] + PT.Zone.n_cell(zone)
-      shift = range_per_dim[_to_index[loc]][0] 
+      shift = range_per_dim[_to_index[loc]][0]
     if is_partitioned:
-      return array[pl[1][0]-shift] 
+      return array[pl[1][0]-shift]
     else:
       distri = par_utils.dn_to_distribution(array.size, comm)
       return EP.block_to_part(array, distri, pl[1][0]-shift, comm)
@@ -301,8 +307,8 @@ def shrink_to_subset(array, zone, subset, comm):
     assert pl is None, "PointList are not managed for unstructured meshes"
     if PT.get_label(subset) in ["FlowSolution_t", "DiscreteData_t"]:
       raise NotImplementedError(f"Partial containers are not supported for structured {PT.get_label(subset)}")
-    
-    # We use compute_pointList_from_pointRanges to expand indices corresponding 
+
+    # We use compute_pointList_from_pointRanges to expand indices corresponding
     # to the input PointRange. In partitioned case, create a fake "full" distribution
     bc_size = np.abs(pr[1][:,1] - pr[1][:,0]) + 1
     bc_range = subset_distri if not is_partitioned else np.array([0, bc_size.prod(), bc_size.prod()])
@@ -313,8 +319,8 @@ def shrink_to_subset(array, zone, subset, comm):
     for sub_pr in sub_pr_list:
       sub_pr[:,0] += pr[1][:,0]
       sub_pr[:,1] += pr[1][:,0] - 1
-    idx = pr_utils.compute_pointList_from_pointRanges(sub_pr_list, 
-                                                      PT.Zone.VertexSize(zone), 
+    idx = pr_utils.compute_pointList_from_pointRanges(sub_pr_list,
+                                                      PT.Zone.VertexSize(zone),
                                                       PT.Subset.GridLocation(subset))[0]
 
     if is_partitioned:
@@ -323,7 +329,7 @@ def shrink_to_subset(array, zone, subset, comm):
     else:
       distri = par_utils.dn_to_distribution(array.size, comm)
       return EP.block_to_part(array, distri, idx-1, comm)
-      
+
 def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
                                                        revolution_axis: Sequence[int],
                                                        comm: Optional[MPIComm],
@@ -345,7 +351,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
   if np.array_equal(np_revolution_axis, [1, 0, 0]):
     idx_order = [1,2,0]
     axis_idx = 0
-  elif np.array_equal(np_revolution_axis, [0, 1, 0]):  
+  elif np.array_equal(np_revolution_axis, [0, 1, 0]):
     idx_order = [0,2,1]
     axis_idx = 1
   elif np.array_equal(np_revolution_axis, [0, 0, 1]):
@@ -354,7 +360,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
   else:
     raise AssertionError("Revolution axis is not unitary")
   cyl_suffix = ['R', 'Theta', 'Z']
-  
+
   non_axis_idx=[0,1,2]
   non_axis_idx.pop(axis_idx)
 
@@ -398,7 +404,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
         gc_trans  = PT.find_node_from_name(gc, 'Translation')
         gc_angle_value = PT.get_np_value(gc_angle)
         gc_trans_value = PT.get_np_value(gc_trans)
-        
+
         # Only allowed transformations are managed
         # > only rotation around axis in cartesian system
         # > only translation around axis in cartesian system
@@ -406,7 +412,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
           raise AssertionError(f"Rotation axis of periodic interface {PT.get_name(gc)} is not aligned with revolution axis")
         if not (np.abs(gc_trans_value[non_axis_idx]) < abs_tol).all():
           raise AssertionError(f"Translation axis of periodic interface {PT.get_name(gc)} is not aligned with revolution axis")
-        
+
         gc_angle_new = np.zeros_like(gc_angle_value)
         gc_trans_new = np.zeros_like(gc_trans_value)
         # Rotation around axis (cart) becomes translation in theta (cyl)
@@ -415,7 +421,7 @@ def cartesian_to_cylindrical_from_unit_revolution_axis(t: CGNSTree,
         gc_trans_new[2] = gc_trans_value[axis_idx]
         PT.set_value(gc_angle, gc_angle_new)
         PT.set_value(gc_trans, gc_trans_new)
-     
+
 def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
                                                        revolution_axis: Sequence[float],
                                                        comm: Optional[MPIComm],
@@ -445,7 +451,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
     axis_idx = 2
   else:
     raise AssertionError("Revolution axis is not unitary")
-  
+
   non_axis_idx=[0,1,2]
   non_axis_idx.pop(axis_idx)
 
@@ -461,7 +467,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
     predicates += ['GridCoordinates_t'] # Always treat coordinates (last because needed for centers)
 
     loc_to_theta:Dict[str, Optional[NDArray]]  = {key: None for key in COMPUTE_THETA.keys()}
-  
+
     for predicate in predicates:
       for container in PT.get_children_from_predicates(zone, predicate):
         datapaths = PT.Container.fields(container).keys()
@@ -491,7 +497,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
         gc_trans  = PT.find_node_from_name(gc, 'Translation')
         gc_angle_value = PT.get_np_value(gc_angle)
         gc_trans_value = PT.get_np_value(gc_trans)
-        
+
         # Only allowed transformations are managed
         # > no periodic by rotation in cylindrical system
         # > only translation on theta or z in cylindrical system
@@ -499,7 +505,7 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
           raise AssertionError(f"Rotation of periodic interface {PT.get_name(gc)} is not empty")
         if not abs(gc_trans_value[0]) < abs_tol:
           raise AssertionError(f"Translation axis of periodic interface {PT.get_name(gc)} is not orthogonal to er vector")
-        
+
         # Translation in theta (cyl) becomes rotation around axis (cart)
         gc_angle_new = np.zeros_like(gc_angle_value)
         gc_trans_new = np.zeros_like(gc_trans_value)
@@ -511,10 +517,10 @@ def cylindrical_to_cartesian_from_unit_revolution_axis(t: CGNSTree,
 
 def auxiliary_coords_system(t: CGNSTree,
                             transition_matrix: Optional[NDArray],
-                            apply_to_fields: bool = True) -> None: 
+                            apply_to_fields: bool = True) -> None:
   """Convert the input tree from or to an auxiliary coordinate system.
 
-  Input zone(s) in the tree can be either structured or unstructured, and can have cartesian or 
+  Input zone(s) in the tree can be either structured or unstructured, and can have cartesian or
   auxiliary coordinates system. In the later case, suffixes ``Xi``, ``Eta`` and ``Zeta``
   are used for coordinates and vectorial fields. In addition, the ``CoordinateTransform`` node
   must be used to record the transition matrix.
@@ -522,7 +528,7 @@ def auxiliary_coords_system(t: CGNSTree,
   Depending of the type of ``transition_matrix``, this function can be used to:
 
   - go to (or stay in) auxiliary coordinates (using a matrix of size 3x3);
-  - go back to cartesian coordinates (using None). The operation is done by inverting the 
+  - go back to cartesian coordinates (using None). The operation is done by inverting the
     transition matrix stored in the CoordinateTransform node.
 
   Args:
@@ -561,7 +567,7 @@ def auxiliary_coords_system(t: CGNSTree,
       new_transform_matrix = transition_matrix if coord_transform_n is None else np.dot(transition_matrix, PT.get_np_value(coord_transform_n))
       for gc_n in PT.get_children_from_predicate(zone, 'GridCoordinates_t'):
         PT.update_child(gc_n, 'CoordinateTransform', 'DataArray_t', new_transform_matrix)
-    
+
     predicates = ['GridCoordinates_t'] # Always treat coordinates
     if apply_to_fields:
       predicates.extend(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t', 'ZoneBC_t/BC_t/BCDataSet_t/BCData_t'])
@@ -575,7 +581,7 @@ def auxiliary_coords_system(t: CGNSTree,
           tr_fields = np_utils.matmul_cart_vectors([PT.get_np_value(n) for n in vectors_n], transition_matrix)
           for node, s, new_val in zip(vectors_n, out_suffix, tr_fields):
             PT.update_node(node, f'{basename}{s}', value=new_val)
-            
+
     # Transform GC/Periodic data
     # To update Periodic values of GCs, it is simpler to use homogeneous matrices
     # For a given GC, we have v_opp = M_gc * v_cur
@@ -586,20 +592,20 @@ def auxiliary_coords_system(t: CGNSTree,
     transf_mat[0:3, 0:3] = transition_matrix
     transf_mat[3,3]      = 1
     transf_mat_inv       = np.linalg.inv(transf_mat)
-    
+
     coords_n = PT.Zone.coordinates(zone)
     phy_dim = 2 if coords_n[2] is None else 3
-    
+
     for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
       if PT.GridConnectivity.isperiodic(gc):
         gc_center = PT.find_node_from_name(gc, 'RotationCenter')
         gc_angle  = PT.find_node_from_name(gc, 'RotationAngle')
         gc_trans  = PT.find_node_from_name(gc, 'Translation')
-      
+
         gc_angle_value = PT.get_np_value(gc_angle)
         if phy_dim == 2: # 2D : angle may be in slot 0 or 1
           gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
-  
+
         perio_mat  = np_utils._transform_to_homogeneous_matrix(gc_trans[1], gc_center[1], gc_angle_value)
         perio_mat_new = np.dot(transf_mat, np.dot(perio_mat, transf_mat_inv))
         gc_trans_new, gc_center_new, gc_angle_new = np_utils._homogeneous_matrix_to_transform(perio_mat_new)
@@ -608,7 +614,7 @@ def auxiliary_coords_system(t: CGNSTree,
         PT.set_value(gc_center, gc_center_new)
         PT.set_value(gc_angle, gc_angle_new)
         PT.set_value(gc_trans, gc_trans_new)
-    
+
 
 def cartesian_to_cylindrical(t: CGNSTree,
                              axis: Sequence[float],
@@ -644,7 +650,7 @@ def cartesian_to_cylindrical(t: CGNSTree,
     transform_matrix = np_utils.create_transform_matrix(np_axis) #type:ignore[arg-type] #(ndarray is compliant)
     auxiliary_coords_system(t, transform_matrix, apply_to_fields)
     np_axis = np.dot(transform_matrix, np_axis)
- 
+
   revolution_axis_unit = np_axis / np.linalg.norm(np_axis)
   cartesian_to_cylindrical_from_unit_revolution_axis(t, revolution_axis_unit, comm, apply_to_fields)
 
@@ -675,7 +681,7 @@ def cylindrical_to_cartesian(t: CGNSTree,
         :end-before: #cylindrical_to_cartesian@end
         :dedent: 2
   """
-  
+
   np_axis = np.asarray(axis)
   need_change_basis = np.count_nonzero(np_axis) != 1
 
