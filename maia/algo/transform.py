@@ -97,7 +97,7 @@ def transform_affine_zone(zone: CGNSTree,
     coords_n = [PT.find_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z'][:phy_dim]]
     coords = [PT.get_np_value(n)[vtx_mask] for n in coords_n]
 
-    tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np) #type:ignore[operator] #(signature of 2 funcs differs)
+    tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np, inverse) #type:ignore[operator] #(signature of 2 funcs differs)
     for coord_n, tr_coord in zip(coords_n, tr_coords):
       coord_value = PT.get_np_value(coord_n)
       coord_value[vtx_mask] = tr_coord
@@ -121,7 +121,10 @@ def transform_affine_zone(zone: CGNSTree,
         gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
 
       perio_mat  = np_utils._transform_to_homogeneous_matrix(gc_trans[1], gc_center[1], gc_angle_value)
-      perio_mat_new = np.dot(transf_mat, np.dot(perio_mat, transf_mat_inv))
+      if inverse:
+        perio_mat_new = np.dot(transf_mat_inv, np.dot(perio_mat, transf_mat))
+      else:
+        perio_mat_new = np.dot(transf_mat, np.dot(perio_mat, transf_mat_inv))
       gc_trans_new, gc_center_new, gc_angle_new = np_utils._homogeneous_matrix_to_transform(perio_mat_new)
       if phy_dim == 2:
         gc_angle_new = np.array([gc_angle_new, 0])
@@ -131,7 +134,7 @@ def transform_affine_zone(zone: CGNSTree,
 
   # Transform fields
   if apply_to_fields:
-    update_fields(zone, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_fields, constant_fields)
+    update_fields(zone, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_fields, constant_fields, inverse)
 
 
 

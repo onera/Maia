@@ -45,7 +45,7 @@ def interlaced_to_indexed(n_elem: int, array: NDArray) -> Tuple[NDArray, NDArray
   """ Create two offset + data arrays from an interlaced array (eg. cgns 4 from cgns 3)"""
   return layouts.interleaved_to_indexed_connectivity(n_elem, array)
 
-def concatenate_np_arrays(arrays: List[NDArray], 
+def concatenate_np_arrays(arrays: List[NDArray],
                           dtype: Optional[DTypeLike] = None) -> Tuple[NDArray, NDArray]:
   """
   Merge the input array such that output array is F ordered and
@@ -65,7 +65,7 @@ def concatenate_np_arrays(arrays: List[NDArray],
     stacked = safe_int_cast(stacked, dtype)
   return merged_idx, stacked
 
-def concatenate_point_list(point_lists: List[NDArray], 
+def concatenate_point_list(point_lists: List[NDArray],
                            dtype: Optional[DTypeLike] = None) -> Tuple[NDArray, NDArray]:
   """
   Merge all the PointList arrays in point_lists list
@@ -109,8 +109,8 @@ def shifted_to_local(array: NDArray,
   output = array - offset[interval_num - 1]
   return output, interval_num.astype(np.int32)
 
-def reverse_connectivity(ids: NDArray, 
-                         idx: NDArray, 
+def reverse_connectivity(ids: NDArray,
+                         idx: NDArray,
                          array: NDArray) -> Tuple[NDArray, NDArray, NDArray]:
   """
   Reverse an strided array (idx+array) supported by some elements whose id is given by ids
@@ -132,7 +132,7 @@ def multi_arange(starts: NDArray, stops: NDArray) -> NDArray:
   See https://codereview.stackexchange.com/questions/83018/
   vectorized-numpy-version-of-arange-with-multiple-start-stop
 
-  This is equivalent to 
+  This is equivalent to
   np.concatenate([np.arange(start,stop) for start,stop in zip(starts,stops)])
   but much faster. Don't remplace it !
 
@@ -153,9 +153,9 @@ def arange_with_jumps(multi_interval: NDArray, jumps: NDArray) -> NDArray:
                       multi_interval[1:  ][~jumps])
 
 def repeated_arange(counts: Union[int, NDArray],
-                    start: int = 0, 
+                    start: int = 0,
                     stop: Optional[int] = None,
-                    step: int = 1, 
+                    step: int = 1,
                     dtype: Optional[DTypeLike] = None) -> NDArray:
   if stop is None:
     assert isinstance(counts, np.ndarray)
@@ -166,7 +166,7 @@ def repeated_arange(counts: Union[int, NDArray],
 
 def roll_from(array: NDArray,
               start_idx: Optional[int] = None,
-              start_value: Optional[Any] = None, 
+              start_value: Optional[Any] = None,
               reverse: bool = False) -> NDArray:
   """
   Return a new array starting from given index (or value), in normal or reversed order
@@ -194,16 +194,16 @@ def search(array:NDArray, values:NDArray, all_exists:bool=False) -> NDArray:
   for faster computing. Otherwise, a check is done and the value -1
   is returned for
   """
-  # Search the first apparition index of each value of v in array a 
+  # Search the first apparition index of each value of v in array a
 
   sort_idx = np.argsort(array)
   array_sorted = array[sort_idx]
 
   pos = np.searchsorted(array_sorted, values)
-  
+
   if all_exists:
     return sort_idx[pos]
-  
+
   else:
     # If check are needed: return index if correct, -1 otherwise
     # Clip is needed to not raise, value selected does not matter because mask will be false
@@ -225,7 +225,7 @@ def unique_sorted(sorted_array: NDArray,
   unique_array = sorted_array[is_new]
 
   outputs = [unique_array]
-  
+
   if return_inverse:
     outputs.append(np.cumsum(is_new) - 1)
   if return_counts:
@@ -238,8 +238,8 @@ def unique_sorted(sorted_array: NDArray,
 
   return tuple(outputs) if len(outputs) > 1 else outputs[0]
 
-def is_unique_strided(array: NDArray, 
-                      stride: int, 
+def is_unique_strided(array: NDArray,
+                      stride: int,
                       method: str = 'hash') -> NDArray:
   """
   For a cst strided array (eg. a connectivity), return a bool array indicating
@@ -254,7 +254,7 @@ def is_unique_strided(array: NDArray,
   else:
     raise ValueError(f"Method must be one of ['hash', 'sort']")
 
-def any_in_range(array: ArrayLike, 
+def any_in_range(array: ArrayLike,
                  start: Number,
                  end: Number,
                  strict: bool = False) -> bool:
@@ -285,13 +285,13 @@ def matmul_cart_vectors(vectors: List[NDArray], transform_matrix: NDArray) -> Tu
   Apply the transformation matrix on another matrix composed with components of vectors and return each of the modified components of the vectors
   """
   assert all(v.shape == vectors[0].shape for v in vectors)
-   
+
   _vectors = np.array([v.reshape(-1, order='F') for v in vectors], order='F')
   _res     = np.dot(transform_matrix, _vectors)
-  
+
   return tuple(r.reshape(v.shape, order='F') for r,v in zip(_res, vectors))
 
-def create_transform_matrix(revolution_axis: Tuple[float, float, float] = (0, 0, 1)) -> NDArray:  
+def create_transform_matrix(revolution_axis: Tuple[float, float, float] = (0, 0, 1)) -> NDArray:
   """Create a transform matrix from any axis revolution and return the transformation matrix from the former basis toward the new basis.
 
   Input is any revolution axis but must have cartesian coordinates.
@@ -317,11 +317,11 @@ def create_transform_matrix(revolution_axis: Tuple[float, float, float] = (0, 0,
     revolution_axis_bis = np.array([0, -revolution_axis_np[2]/revolution_axis_np[1], 1])
   elif revolution_axis_np[2] != 0:
     revolution_axis_bis = np.array([1, 0, -revolution_axis_np[1]/revolution_axis_np[2]])
-  
+
   revolution_axis_ter = np.cross(revolution_axis_np, revolution_axis_bis)
 
   transform_matrix = np.array([revolution_axis_np, revolution_axis_bis, revolution_axis_ter], order='F')
-     
+
   return transform_matrix
 
 def _homogeneous_matrix_to_transform(homo_matrix):
@@ -349,11 +349,11 @@ def _homogeneous_matrix_to_transform(homo_matrix):
     rotation_angle = np.arcsin(value)
   return translation, rotation_center, rotation_angle
 
-def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3)):
-  """ Combine Transform data coming from CGNS (rotation_angle, rotation_center, translation) into 
+def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3), inverse=False):
+  """ Combine Transform data coming from CGNS (rotation_angle, rotation_center, translation) into
   an homogeneous matrix of size 4x4 (in 3d). This matrix can be applied to a vector (vx, vy, vz, 1).
   # https://www.f-legrand.fr/scidoc/docmml/graphie/geometrie/affine/affine.html
-  
+
   Important : if dim==3, the order used to apply rotation angle corresponds to :
   - a Z, then Y, then X extrinsic rotation, or equivalently
   - a X, then Y, then Z intrinsic rotation
@@ -373,11 +373,13 @@ def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np
   homo_matrix[0:dim, 0:dim] = rotation_mat
   homo_matrix[0:dim,   dim] = rotation_center - np.dot(rotation_mat, rotation_center) + translation
   homo_matrix[dim,dim] = 1
-  
+  if inverse:
+    return np.linalg.inv(homo_matrix)
+
   return homo_matrix
-def transform_cart_matrix(vectors: NDArray, 
+def transform_cart_matrix(vectors: NDArray,
                           translation: NDArray = np.zeros(3),
-                          rotation_center: NDArray = np.zeros(3), 
+                          rotation_center: NDArray = np.zeros(3),
                           rotation_angle: NDArray = np.zeros(3)) -> NDArray:
   """
   Apply the defined cartesian transformation on concatenated components of vectors described by :
@@ -406,22 +408,24 @@ def transform_cart_matrix_2d(vectors: NDArray,
   homo_vector[0:2,:] = vectors
   return np.dot(homo_matrix, homo_vector)[0:2,:]
 
-def transform_cart_vectors(vx: NDArray, 
+def transform_cart_vectors(vx: NDArray,
                            vy: NDArray,
                            vz: NDArray,
-                           translation: NDArray = np.zeros(3), 
+                           translation: NDArray = np.zeros(3),
                            rotation_center: NDArray = np.zeros(3),
-                           rotation_angle: NDArray = np.zeros(3)) -> Tuple[NDArray, NDArray, NDArray]:
+                           rotation_angle: NDArray = np.zeros(3),
+                           inverse: bool = False) -> Tuple[NDArray, NDArray, NDArray]:
   """
   Apply the defined cartesian transformation on separated components of vectors and return a tuple with each of the modified components of the vectors
   """
+  if inverse: raise NotImplementedError
   assert vx.shape == vy.shape == vz.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy,vz,np.ones(vx.size)], order='F')
   else: #Manage structured blocks
     vectors = np.array([vx.flatten('F'), vy.flatten('F'), vz.flatten('F'), np.ones(vx.size)], order='F')
-  
-  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle)
+
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle, inverse)
   modified_components = np.dot(homo_matrix, vectors)[0:3,:]
 
   if vx.ndim == 1:
@@ -433,17 +437,19 @@ def transform_cart_vectors(vx: NDArray,
 
 
 
-def transform_cart_vectors_2d(vx: NDArray, 
+def transform_cart_vectors_2d(vx: NDArray,
                               vy: NDArray,
-                              translation: NDArray = np.zeros(2), 
+                              translation: NDArray = np.zeros(2),
                               rotation_center: NDArray = np.zeros(2),
-                              rotation_angle: float = 0.) -> Tuple[NDArray, NDArray]:
+                              rotation_angle: float = 0.,
+                              inverse: bool = False) -> Tuple[NDArray, NDArray]:
+  if inverse: raise NotImplementedError
   assert vx.shape == vy.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy,np.ones(vx.size)], order='F')
   else: #Manage structured blocks
     vectors = np.array([vx.flatten('F'), vy.flatten('F'), np.ones(vx.size)], order='F')
-  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle)
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle, inverse)
   modified_components = np.dot(homo_matrix, vectors)[0:2,:]
   if vx.ndim == 1:
     return (modified_components[0], modified_components[1])

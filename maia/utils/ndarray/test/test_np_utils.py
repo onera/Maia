@@ -136,7 +136,7 @@ def test_search():
   assert (np_utils.search(np.array([3,7,9,12,5,39,66,5]), np.array([])) == []).all()
   assert (np_utils.search(np.array([3,7,9,12,5,39,66,5]), np.array([12,10,1001,9,-121])) == [3,-1,-1,2,-1]).all()
 
-  # all_exists used but in fact no --> wrong result or raise 
+  # all_exists used but in fact no --> wrong result or raise
   assert (np_utils.search(np.array([3,7,9,12,5,39,66,5], ), np.array([12,10,9,-6]), all_exists=True) == [3,3,2,0]).all()
   with pytest.raises(IndexError):
     np_utils.search(np.array([3,7,9,12,5,39,66,5], ), np.array([12,10,9,100]), all_exists=True)
@@ -244,7 +244,7 @@ def test_unique_sorted():
   unique, counts = np_utils.unique_sorted(t, return_counts=True)
   assert (unique.size == 0 and unique.dtype==np.int32) and (counts.size == 0 and counts.dtype==int)
 
-  
+
 
 def check_transform(expected_x, expected_y, expected_z, computed_matrix, computed_x, computed_y, computed_z, atol):
   # Check matrix
@@ -257,19 +257,19 @@ def check_transform(expected_x, expected_y, expected_z, computed_matrix, compute
 
 @pytest.mark.parametrize("revolution_axis", [(1, 0, 0), [0, 1, 0], (1, 0, 3), [1, 2, 3]])
 def test_transform_matrix(revolution_axis):
-   
-  # Create the transform matrix and the reverse transform matrix 
+
+  # Create the transform matrix and the reverse transform matrix
   transform_matrix = np_utils.create_transform_matrix(revolution_axis=revolution_axis)
   transform_matrix_inv = np.linalg.inv(transform_matrix)
   id = np.dot(transform_matrix, transform_matrix_inv)
   assert np.allclose(id, np.eye(3))
-  
+
   # Transform the current revolution axis into a unit revolution axis in the new basis
   new_revolution_axis = np.dot(transform_matrix, revolution_axis)
   norm_new_revolution_axis = np.linalg.norm(new_revolution_axis)
   unit_revolution_axis = new_revolution_axis / norm_new_revolution_axis
 
-  # Transform the unit revolution axis in the new basis into the former revolution axis in the former basis 
+  # Transform the unit revolution axis in the new basis into the former revolution axis in the former basis
   reverse_unit_revolution_axis = np.dot(transform_matrix_inv, unit_revolution_axis)
   reverse_revolution_axis = reverse_unit_revolution_axis * norm_new_revolution_axis
 
@@ -287,14 +287,34 @@ def test_transform_to_homogeneous_matrix():
   excepted = np.array([[cos(β)*cos(γ),-cos(β)*sin(γ), sin(β), 5],
                        [cos(α)*sin(γ)+cos(γ)*sin(α)*sin(β), cos(α)*cos(γ)-sin(α)*sin(β)*sin(γ), -cos(β)*sin(α),0],
                        [sin(α)*sin(γ)-cos(α)*cos(γ)*sin(β), cos(γ)*sin(α)+cos(α)*sin(β)*sin(γ), cos(α)*cos(β),6],
-                       [0,0,0,1]]) 
+                       [0,0,0,1]])
   assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[5,0,6], rotation_angle=[α, β, γ]), excepted)
 
   # 2D
   excepted2d = np.array([[cos(β),-sin(β), 4],
                         [sin(β), cos(β), 5],
-                        [0,0,1]]) 
+                        [0,0,1]])
   assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5], rotation_center=[0,0], rotation_angle=β), excepted2d)
+
+  # inverse 3D
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[0,0,0], inverse=True),
+                     np.array([[1.,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]))
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5,6], inverse=True),
+                     np.array([[1.,0,0,-4],[0,1,0,-5],[0,0,1,-6],[0,0,0,1]]))
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(rotation_angle=[0,0,pi/3], inverse=True),
+                     np.array([[cos(pi/3),sin(pi/3),0,0],[-sin(pi/3),cos(pi/3),0,0],[0,0,1,0],[0,0,0,1]]))
+  α, β, γ = pi/2, pi/3, pi/4
+  excepted = np.linalg.inv(np.array([[cos(β)*cos(γ),-cos(β)*sin(γ), sin(β), 5],
+                                     [cos(α)*sin(γ)+cos(γ)*sin(α)*sin(β), cos(α)*cos(γ)-sin(α)*sin(β)*sin(γ), -cos(β)*sin(α),0],
+                                     [sin(α)*sin(γ)-cos(α)*cos(γ)*sin(β), cos(γ)*sin(α)+cos(α)*sin(β)*sin(γ), cos(α)*cos(β),6],
+                                     [0,0,0,1]]))
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[5,0,6], rotation_angle=[α, β, γ], inverse=True), excepted)
+
+  # inverse 2D
+  excepted2d = np.linalg.inv(np.array([[cos(β),-sin(β), 4],
+                                       [sin(β), cos(β), 5],
+                                       [0,0,1]]))
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5], rotation_center=[0,0], rotation_angle=β, inverse=True), excepted2d)
 
 def test_homogeneous_matrix_to_transform():
   from numpy import cos,sin,pi
@@ -302,7 +322,7 @@ def test_homogeneous_matrix_to_transform():
   matrix = np.array([[cos(β)*cos(γ),-cos(β)*sin(γ), sin(β), 5],
                      [cos(α)*sin(γ)+cos(γ)*sin(α)*sin(β), cos(α)*cos(γ)-sin(α)*sin(β)*sin(γ), -cos(β)*sin(α),0],
                      [sin(α)*sin(γ)-cos(α)*cos(γ)*sin(β), cos(γ)*sin(α)+cos(α)*sin(β)*sin(γ), cos(α)*cos(β),6],
-                     [0,0,0,1]]) 
+                     [0,0,0,1]])
   trans, center, angle = np_utils._homogeneous_matrix_to_transform(matrix)
   assert np.allclose(trans, [5,0,6])
   assert np.allclose(center, [0,0,0])
@@ -311,7 +331,7 @@ def test_homogeneous_matrix_to_transform():
   #2D
   matrix = np.array([[cos(β),-sin(β), 4],
                      [sin(β), cos(β), 5],
-                     [0,0,1]]) 
+                     [0,0,1]])
   trans, center, angle = np_utils._homogeneous_matrix_to_transform(matrix)
   assert np.allclose(trans, [4,5])
   assert np.allclose(center, [0,0])
@@ -334,11 +354,11 @@ class Test_apply_cart_to_vectors:
     expected_y = np.array([[[-0.5, -0.5, -0.5], [ 0.,   0.,   0. ], [0.5,  0.5,  0.5]], [[-1.,  -1.,  -1. ], [-0.5, -0.5, -0.5], [ 0.,   0.,   0. ]]])
     expected_z = np.array([[[-0.28867513,  0.28867513,  0.8660254 ], [-0.57735027,  0.,          0.57735027], [-0.8660254,  -0.28867513,  0.28867513]],
                            [[-0.57735027,  0.,          0.57735027], [-0.8660254,  -0.28867513,  0.28867513], [-1.15470054, -0.57735027,  0.        ]]])
-        
+
     assert np.allclose(expected_x, new_x)
     assert np.allclose(expected_y, new_y)
     assert np.allclose(expected_z, new_z)
-  
+
   def test_U(self):
 
       x = np.array([0. , 0.5, 1. , 0. , 0.5, 1. , 0. , 0.5, 1. , 0.,  0.5, 1.,  0. , 0.5, 1. , 0.,  0.5, 1. ])
@@ -352,21 +372,21 @@ class Test_apply_cart_to_vectors:
       expected_y = [0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0., 0., -0.5, -1., 0.5, 0., -0.5, 1., 0.5, 0.]
       expected_z = [0.57735027, 0.28867513, 0., 0.28867513, 0., -0.28867513, 0., -0.28867513, -0.57735027, 1.15470054,
                     0.8660254, 0.57735027, 0.8660254, 0.57735027, 0.28867513, 0.57735027, 0.28867513, 0.]
-      
+
       assert np.allclose(expected_x, new_x)
       assert np.allclose(expected_y, new_y)
       assert np.allclose(expected_z, new_z)
 class Test_transform_simple():
-    #    
+    #
     #                    (1.,1.,0.)(2.,1.,0.)
-    #                       D+---------+C      
-    #                        |         |              
-    #                        |         |              
-    #                        |         |              
-    #                        |         |              
-    #              +        A+---------+B               
+    #                       D+---------+C
+    #                        |         |
+    #                        |         |
+    #                        |         |
+    #                        |         |
+    #              +        A+---------+B
     #          (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)
-    #    
+    #
   vx = np.array([1.,2.,2.,1.])
   vy = np.array([0.,0.,1.,1.])
   vz = np.array([0.,0.,0.,0.])
@@ -381,23 +401,23 @@ class Test_transform_simple():
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(self.vx, self.vy, self.vz, modified_vectors, mod_vx, mod_vy, mod_vz, 0)
 
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_rotation_without_rotation_center(self):
     #                Before rotation                            After rotation
-    #                                                                                               
-    #                                                C'+---------+B'                                 
-    #                                                  |         |                                  
-    #                                                  |         |                                  
-    #                                                  |         |                                  
-    #                                                  |         |                                   
-    #                       D+---------+C       =>   D'+---------+A'      D+---------+C      
-    #                        |         |                                   |         |              
-    #                        |         |                                   |         |              
-    #                        |         |                                   |         |              
-    #                        |         |                                   |         |              
-    #              +        A+---------+B                        +        A+---------+B               
+    #
+    #                                                C'+---------+B'
+    #                                                  |         |
+    #                                                  |         |
+    #                                                  |         |
+    #                                                  |         |
+    #                       D+---------+C       =>   D'+---------+A'      D+---------+C
+    #                        |         |                                   |         |
+    #                        |         |                                   |         |
+    #                        |         |                                   |         |
+    #                        |         |                                   |         |
+    #              +        A+---------+B                        +        A+---------+B
     #          (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)                (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)
-    #     
+    #
     rotation_center = [0.,0.,0.      ]
     rotation_angle  = [0.,0.,np.pi/2.]
     translation     = [0.,0.,0.      ]
@@ -409,20 +429,20 @@ class Test_transform_simple():
     modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-15)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   @pytest.mark.parametrize("phy_dim", [3,2])
   def test_rotation_with_rotation_center(self, phy_dim):
     #                 Before rotation                               After rotation
-    #                                                                                                
+    #
     #                                                                    B' D
-    #                       D+---------+C                      C'+---------+---------+C      
-    #                        |         |                         |         |         |              
-    #                        |         |        =>               |         |         |              
-    #                        |         |                         |         |         |              
-    #                        |         |                         |       A'|A        |              
-    #              +        A+---------+B                      D'+---------+---------+B               
+    #                       D+---------+C                      C'+---------+---------+C
+    #                        |         |                         |         |         |
+    #                        |         |        =>               |         |         |
+    #                        |         |                         |         |         |
+    #                        |         |                         |       A'|A        |
+    #              +        A+---------+B                      D'+---------+---------+B
     #          (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)                (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)
-    #     
+    #
     rotation_center = [1.,0.,0.      ][:phy_dim]
     rotation_angle  = [0.,0.,np.pi/2.][:phy_dim]
     translation     = [0.,0.,0.      ][:phy_dim]
@@ -440,23 +460,23 @@ class Test_transform_simple():
       assert np.allclose(expected_vx, mod_vx, rtol=0., atol=5e-15)
       assert np.allclose(expected_vy, mod_vy, rtol=0., atol=5e-15)
       assert np.allclose(np.array([expected_vx, expected_vy], order='F'), modified_vectors, rtol=0., atol=5e-15)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_translation(self):
     #              Before translation                                  After translation
-    #                                                                       
+    #
     #                                                                                        D'+---------+C'
-    #                                                                                          |         | 
-    #                                                                                          |         | 
-    #                                                                                          |         | 
-    #                                           =>                                             |         | 
+    #                                                                                          |         |
+    #                                                                                          |         |
+    #                                                                                          |         |
+    #                                           =>                                             |         |
     #                       D+---------+C                                  +---------+C      A'+---------+B''
-    #                        |         |                                   |         |              
-    #                        |         |                                   |         |              
-    #                        |         |                                   |         |              
-    #                        |         |                                   |A        |              
-    #              +        A+---------+B                        +         +---------+B               
+    #                        |         |                                   |         |
+    #                        |         |                                   |         |
+    #                        |         |                                   |         |
+    #                        |         |                                   |A        |
+    #              +        A+---------+B                        +         +---------+B
     #          (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)                (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)
-    #     
+    #
     rotation_center = [0.,0.,0.]
     rotation_angle  = [0.,0.,0.]
     translation     = [2.,1.,0.]
@@ -468,23 +488,23 @@ class Test_transform_simple():
     modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-15)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_rotation_and_translation(self):
     #         Before rotation and translation               After rotation and translation
-    #                                                                          
+    #
     #                                                                    D'+---------+C'
-    #                                                                      |         | 
-    #                                                                      |         | 
-    #                                                                      |         | 
+    #                                                                      |         |
+    #                                                                      |         |
+    #                                                                      |         |
     #                                           =>                         |         |A'
     #                       D+---------+C                                  +---------+
-    #                        |         |                                  D|         |C 
-    #                        |         |                                   |         |  
-    #                        |         |                                   |         |  
-    #                        |         |                                   |         |  
-    #              +        A+---------+B                        +        A+---------+B 
+    #                        |         |                                  D|         |C
+    #                        |         |                                   |         |
+    #                        |         |                                   |         |
+    #                        |         |                                   |         |
+    #              +        A+---------+B                        +        A+---------+B
     #          (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)                (0.,0.,0.)(1.,0.,0.)(2.,0.,0.)
-    #     
+    #
     rotation_center = [1.,0.,0.      ]
     rotation_angle  = [0.,0.,np.pi/2.]
     translation     = [1.,1.,0.      ]
@@ -512,7 +532,7 @@ class Test_transform_cart_matrix():
     modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(self.vx, self.vy, self.vz, modified_vectors, mod_vx, mod_vy, mod_vz, 0)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_rotation1(self):
     rotation_center = [0.,1.,2.]
     rotation_angle  = [0.,0.,0.]
@@ -525,7 +545,7 @@ class Test_transform_cart_matrix():
     modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-15)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_rotation2(self):
     rotation_center = [0. ,0.,0.]
     rotation_angle  = [2.5,6.,3.]
@@ -538,7 +558,7 @@ class Test_transform_cart_matrix():
     modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-8)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_rotation3(self):
     rotation_center = [0. ,1.,2.]
     rotation_angle  = [2.5,6.,3.]
@@ -551,7 +571,7 @@ class Test_transform_cart_matrix():
     modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-8)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_translation(self):
     rotation_center = [0. ,0. , 0. ]
     rotation_angle  = [0. ,0. , 0. ]
@@ -564,7 +584,7 @@ class Test_transform_cart_matrix():
     modified_vectors = np_utils.transform_cart_matrix(self.vectors, translation, rotation_center, rotation_angle)
     (mod_vx, mod_vy, mod_vz) = np_utils.transform_cart_vectors(self.vx, self.vy, self.vz, translation, rotation_center, rotation_angle)
     check_transform(expected_vx, expected_vy, expected_vz, modified_vectors, mod_vx, mod_vy, mod_vz, 5.e-15)
-  # --------------------------------------------------------------------------- #  
+  # --------------------------------------------------------------------------- #
   def test_rotation_and_translation(self):
     rotation_center = [0. ,1. , 2. ]
     rotation_angle  = [2.5,6. , 3. ]
@@ -605,7 +625,7 @@ def test_normalize_interweaved_inplace():
 
   a = np.array([3.,0,0,   0,-2,0,  1,1,1,   1,0,1, 1,0,0])
   np_utils.normalize_interweaved_inplace(a, 3)
-  assert np.array_equal(a, [1.,0,0, 0,-1,0, 1/sqrt(3),1/sqrt(3),1/sqrt(3), 
+  assert np.array_equal(a, [1.,0,0, 0,-1,0, 1/sqrt(3),1/sqrt(3),1/sqrt(3),
                             1/sqrt(2),0,1/sqrt(2), 1,0,0])
 
   a = np.array([3.,0,   0,-2,  1,1,  1,0])
