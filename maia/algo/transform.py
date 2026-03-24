@@ -203,7 +203,7 @@ def transform_affine(t: CGNSTree,
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
     any_coord = PT.find_child_from_predicate(any_gc_n, PT.pred.name_in(cart_names))
     vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
-    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_fields, inverse)
+    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_fields, inverse=inverse)
 
   # Deal vectors that are outside zones: family, UserDefined, Convergence history, ...
   if apply_to_fields:
