@@ -1,11 +1,14 @@
 import numpy as np
+from mpi4py import MPI
 
 import maia.pytree      as PT
 import maia.pytree.maia as MT
 
+from maia import npy_pdm_gnum_dtype as pdm_dtype
+
 from maia.utils                       import np_utils
 from maia.factory.dist_from_part      import discover_nodes_from_matching, _recover_elements
-from maia.pytree.maia.pdm_elts        import cgns_elt_name_to_pdm_element_type, elements_dim_to_pdm_kind
+from maia.pytree.maia import pdm_elts
 
 import Pypdm.Pypdm as PDM
 
@@ -42,11 +45,90 @@ def identify_n_group_bc(dist_zone:CGNSDistTree, loc:str) -> int:
   else:
     return len(bcs)
 
+def _add_sections_to_zone(zone_n:CGNSPartTree, sections:List, comm:MPIComm):
+  elt_nodes      = PT.get_children_from_label(zone_n, 'Elements_t')
+  last_elt_range = PT.Element.Range(elt_nodes[-1])[-1] if len(elt_nodes)!=0 else 0
+  loc_offset     = 0
 
-def cgns_part_zones_to_pdm_pmesh_nodal(part_zones: List[CGNSPartTree],
-                                       comm: MPIComm,
-                                       needs_bc:bool = False,
-                                       igroup_from_ordinal:bool = False):
+  g_shift_section = 0
+  for i_section, section in enumerate(sections):
+    n_elmt      = section["n_elmt"]
+    np_numabs   = section["np_numabs"]
+
+    l_shift_section = comm.allreduce(np_numabs.max(initial=0), MPI.MAX)
+
+    if n_elmt == 0:
+      g_shift_section += l_shift_section
+      continue
+
+    elt_range      = np.array([1, n_elmt], dtype=np.int32) + last_elt_range + loc_offset
+    cgns_elmt_name = pdm_elts.pdm_elt_name_to_cgns_element_type(section["pdm_type"])
+    elt_n          = PT.new_Elements(f"{cgns_elmt_name}.{i_section}",
+                                     cgns_elmt_name,
+                                     erange=elt_range,
+                                     econn=section["np_connec"],
+                                     parent=zone_n)
+
+    gns = {"Element" :section["np_numabs"],
+           "Sections":section["np_numabs"]+g_shift_section}
+    if section['np_parent_entity_g_num'] is not None:
+      gns["Entity"] = section['np_parent_entity_g_num']
+
+    key = 'np_element_to_entity' if section['np_element_to_entity'] is not None else 'np_parent_num'
+    if section[key] is not None:
+      lnum_node = PT.new_node(':CGNS#LocalNumbering', 'UserDefinedData_t', parent=elt_n)
+      PT.new_DataArray('Entity', section[key], parent=lnum_node)
+
+    MT.new_GlobalNumbering(gns, parent=elt_n)
+    loc_offset += n_elmt
+    g_shift_section += l_shift_section
+
+def build_cell_gnum(zone_n:CGNSPartTree) -> NDArray:
+  dim = PT.Zone.CellDimension(zone_n)
+  elts = PT.Zone.get_ordered_elements_per_dim(zone_n)[dim]
+  elt_gnums = [PT.get_np_value(MT.get_GlobalNumbering(e, 'Sections')) for e in elts]
+  idx, cat = np_utils.concatenate_np_arrays(elt_gnums, dtype=pdm_dtype)
+  return cat
+
+def _add_group(pdm_pmn, zone_n, i_part, pdm_geom_type):
+
+  GEOM_TO_DIM = {PDM._PDM_GEOMETRY_KIND_VOLUMIC  : 3,
+                 PDM._PDM_GEOMETRY_KIND_SURFACIC : 2,
+                 PDM._PDM_GEOMETRY_KIND_RIDGE    : 1}
+  GEOM_TO_LOC = {PDM._PDM_GEOMETRY_KIND_VOLUMIC  : 'CellCenter',
+                 PDM._PDM_GEOMETRY_KIND_SURFACIC : 'FaceCenter',
+                 PDM._PDM_GEOMETRY_KIND_RIDGE    : 'EdgeCenter'}
+  GEOM_TO_NAME= {PDM._PDM_GEOMETRY_KIND_VOLUMIC  : 'cell_bc_',
+                 PDM._PDM_GEOMETRY_KIND_SURFACIC : 'surf_bc_',
+                 PDM._PDM_GEOMETRY_KIND_RIDGE    : 'line_bc_'}
+
+  if (n_group := pdm_pmn.get_n_group(pdm_geom_type)) == 0:
+    return
+
+  zone_bc_n = PT.update_child(zone_n, "ZoneBC_t", "ZoneBC_t")
+  dim_elt_range = PT.Zone.get_elt_range_per_dim(zone_n)
+  elt_range = dim_elt_range[GEOM_TO_DIM[pdm_geom_type]]
+  loc = GEOM_TO_LOC[pdm_geom_type]
+  if loc == 'FaceCenter' and PT.Zone.CellDimension(zone_n) == 2:
+    loc = 'CellCenter'
+
+  for i_group in range(n_group):
+    group_ids, group_gn = pdm_pmn.get_group(pdm_geom_type, i_part, i_group)
+    bc_pl = group_ids + elt_range[0]-1
+    bc_name = f"{GEOM_TO_NAME[pdm_geom_type]}{i_group}"
+    if bc_pl.size!=0:
+      bc_n = PT.new_BC(name=bc_name,
+                       point_list=bc_pl.reshape((1,-1), order='F'),
+                       loc=loc,
+                       parent=zone_bc_n)
+      MT.new_GlobalNumbering({'Index' : group_gn}, parent=bc_n)
+      PT.new_node('Ordinal', 'Ordinal_t', i_group, parent=bc_n)
+
+
+def part_zones_to_pdm_pmesh_nodal(part_zones: List[CGNSPartTree],
+                                  comm: MPIComm,
+                                  needs_bc:bool = False,
+                                  igroup_from_ordinal:bool = False) -> PDM.PartMeshNodal:
   """
   Create and return a pdm_pmesh_nodal structure from partitioned zones
   """
@@ -70,7 +152,7 @@ def cgns_part_zones_to_pdm_pmesh_nodal(part_zones: List[CGNSPartTree],
   elmt_nodes = PT.Zone.get_ordered_elements(dist_zone)
   section_ids = list()
   for elmt in elmt_nodes:
-    pdm_elt_type = cgns_elt_name_to_pdm_element_type(PT.Element.Type(elmt))
+    pdm_elt_type = pdm_elts.cgns_elt_name_to_pdm_element_type(PT.Element.Type(elmt))
     id_section   = pmesh_nodal.add_section(pdm_elt_type)
     section_ids.append(id_section)
 
@@ -134,6 +216,53 @@ def cgns_part_zones_to_pdm_pmesh_nodal(part_zones: List[CGNSPartTree],
           pl_n = PT.find_child_from_name(part_bc, 'PointList')
           pl   = PT.get_value(pl_n)[0] - (range_by_dim[i_dim+1][0]-1)
           gnum = MT.Subset.globalnumbering(part_bc)
-          pmesh_nodal.group_set(elements_dim_to_pdm_kind[i_dim+1], i_part, i_group, pl, gnum)
+          pmesh_nodal.group_set(pdm_elts.elements_dim_to_pdm_kind[i_dim+1], i_part, i_group, pl, gnum)
 
   return pmesh_nodal
+
+def pdm_pmesh_nodal_to_part_zones(pdm_pmn:PDM.PartMeshNodal,
+                                  comm:MPIComm,
+                                  phy_dim:int = 3,
+                                  zone_name:str = 'zone') -> List[CGNSPartTree]:
+  part_zones = list()
+
+  dim     = pdm_pmn.dim_get()
+  n_part  = pdm_pmn.n_part_get()
+
+  for i_part in range(n_part):
+
+    sections_vol   = pdm_pmn.get_sections(PDM._PDM_GEOMETRY_KIND_VOLUMIC , i_part) if dim==3 else list()
+    sections_surf  = pdm_pmn.get_sections(PDM._PDM_GEOMETRY_KIND_SURFACIC, i_part)
+    sections_ridge = pdm_pmn.get_sections(PDM._PDM_GEOMETRY_KIND_RIDGE   , i_part)
+    coordinates    = pdm_pmn.coord_get(i_part)
+    sections_nat   = sections_surf if dim == 2 else sections_vol
+
+    assert coordinates.size%3==0
+    n_vtx  = coordinates.size//3
+    n_cell = sum([section['n_elmt'] for section in sections_nat])
+
+    zone_n = PT.new_Zone(name=MT.conv.add_part_suffix(zone_name, comm.rank, i_part),
+                         type="Unstructured",
+                         size=[[n_vtx, n_cell, 0]])
+    coords = {f'Coordinate{d}' : coordinates[i::3] for i,d in enumerate('XYZ'[:phy_dim])}
+    PT.new_GridCoordinates(fields=coords, parent=zone_n)
+
+    _add_sections_to_zone(zone_n, sections_vol,   comm)
+    _add_sections_to_zone(zone_n, sections_surf,  comm)
+    _add_sections_to_zone(zone_n, sections_ridge, comm)
+
+    # > Create BCs
+    if len(sections_surf) > 0:
+      _add_group(pdm_pmn, zone_n, i_part, PDM._PDM_GEOMETRY_KIND_SURFACIC)
+    if len(sections_ridge) > 0:
+      _add_group(pdm_pmn, zone_n, i_part, PDM._PDM_GEOMETRY_KIND_RIDGE)
+
+    MT.new_GlobalNumbering({'Vertex' : pdm_pmn.vtx_g_num_get(i_part),
+                            'Cell'   : build_cell_gnum(zone_n)},
+                            parent=zone_n)
+
+    if n_vtx!=0 and n_cell!=0:
+      part_zones.append(zone_n)
+
+  return part_zones
+
