@@ -1,6 +1,10 @@
 import pytest
 import shutil
 
+from packaging.version import Version
+import Pypdm.Pypdm as PDM
+PDM_VERSION = Version(PDM.__version__)
+
 feflo_exists = shutil.which('feflo.a') is not None
 
 def test_convert_s_to_u():
@@ -309,6 +313,7 @@ def test_extract_from_family():
   assert maia.pytree.get_node_from_name(extracted_bc, "WallDistance") is not None
   #extract_from_family@end
 
+@pytest.mark.skipif(PDM_VERSION <= Version('2.7.1'), reason="Require PDM > 2.7.1 because elliptical slice is broken with new API")
 def test_compute_elliptical_slice():
   #compute_elliptical_slice@start
   from mpi4py import MPI

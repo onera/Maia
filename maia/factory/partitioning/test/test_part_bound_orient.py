@@ -7,9 +7,14 @@ import maia.pytree as PT
 from maia.factory.partitioning import part_bound_orient as PBO
 
 @pytest_parallel.mark.parallel([1,3])
+@pytest.mark.parametrize("dim", [3, 2])
 @pytest.mark.parametrize("with_pe", [True, False])
-def test_orientation_preserved(with_pe, comm):
-  tree  = maia.factory.generate_dist_block(11, 'Poly', comm)
+def test_orientation_preserved(with_pe, dim, comm):
+  if dim == 2:
+    tree  = maia.factory.generate_dist_block(11, 'QUAD_4', comm)
+    maia.algo.dist.convert_elements_to_ngon(tree, comm)
+  else:
+    tree  = maia.factory.generate_dist_block(11, 'Poly', comm)
 
   ptree  = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=False)
   pzones = PT.get_all_Zone_t(ptree) 

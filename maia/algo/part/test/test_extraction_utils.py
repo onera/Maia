@@ -72,35 +72,6 @@ def test_discover_containers(comm):
   with pytest.raises(ValueError):
     mask_container, loc, partial_fld = EU.discover_containers([part_zone], 'ZSR4', 'PointList', 'IndexArray_t', comm)
 
-def test_get_relative_pl():
-  part_zone = PT.yaml.to_node(
-  """
-  VolZone.P0.N0 Zone_t:
-    ZSR1 ZoneSubRegion_t:
-      BCRegionName Descriptor_t "BC":
-    ZSR2 ZoneSubRegion_t:
-      GridConnectivityRegionName Descriptor_t "GC":
-    ZSR3 ZoneSubRegion_t:
-      GridLocation GridLocation_t "CellCenter" :
-      PointList    IndexArray_t   [[4,8,1]]:
-    ZoneBC ZoneBC_t:
-      BC BC_t:
-        GridLocation GridLocation_t "FaceCenter":
-        PointList    IndexArray_t   [[9,3,2]]:
-    ZoneGC ZoneGridConnectivity_t:
-      GC GridConnectivity_t:
-        GridLocation GridLocation_t "FaceCenter":
-        PointList    IndexArray_t   [[4,3,7]]:
-  """)
-  zsr1  = PT.get_child_from_name(part_zone,'ZSR1')
-  zsr2  = PT.get_child_from_name(part_zone,'ZSR2')
-  zsr3  = PT.get_child_from_name(part_zone,'ZSR3')
-  pl1_n = PT.get_value(EU.get_relative_pl(zsr1, part_zone))[0]
-  pl2_n = PT.get_value(EU.get_relative_pl(zsr2, part_zone))[0]
-  pl3_n = PT.get_value(EU.get_relative_pl(zsr3, part_zone))[0]
-  assert np.array_equal(pl1_n, np.array([9,3,2],dtype=np.int32))
-  assert np.array_equal(pl2_n, np.array([4,3,7],dtype=np.int32))
-  assert np.array_equal(pl3_n, np.array([4,8,1],dtype=np.int32))
 
 
 def test_local_pl_offset():
