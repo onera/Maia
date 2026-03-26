@@ -39,7 +39,7 @@ def identify_n_group_bc(dist_zone:CGNSDistTree, loc:str) -> int:
   """
   bcs = PT.get_children_from_predicates(dist_zone, ['ZoneBC_t', PT.pred.is_bc_of_location(loc)])
   bcs_ordinal_n = [PT.get_child_from_name(bc, 'Ordinal') for bc in bcs]
-  
+
   if len(bcs) > 0 and all([ord is not None for ord in bcs_ordinal_n]):
     return max(PT.get_np_value(ord)[0] for ord in bcs_ordinal_n) + 1
   else:
@@ -251,6 +251,9 @@ def pdm_pmesh_nodal_to_part_zones(pdm_pmn:PDM.PartMeshNodal,
     _add_sections_to_zone(zone_n, sections_surf,  comm)
     _add_sections_to_zone(zone_n, sections_ridge, comm)
 
+    if n_vtx==0 and n_cell==0:
+      continue
+
     # > Create BCs
     if len(sections_surf) > 0:
       _add_group(pdm_pmn, zone_n, i_part, PDM._PDM_GEOMETRY_KIND_SURFACIC)
@@ -261,8 +264,6 @@ def pdm_pmesh_nodal_to_part_zones(pdm_pmn:PDM.PartMeshNodal,
                             'Cell'   : build_cell_gnum(zone_n)},
                             parent=zone_n)
 
-    if n_vtx!=0 and n_cell!=0:
-      part_zones.append(zone_n)
+    part_zones.append(zone_n)
 
   return part_zones
-
