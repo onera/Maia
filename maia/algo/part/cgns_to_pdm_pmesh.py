@@ -105,7 +105,7 @@ def _add_group(pdm_pmn, zone_n, i_part, pdm_geom_type):
   if (n_group := pdm_pmn.get_n_group(pdm_geom_type)) == 0:
     return
 
-  zone_bc_n = PT.update_child(zone_n, "ZoneBC_t", "ZoneBC_t")
+  zone_bc_n = PT.update_child(zone_n, "ZoneBC", "ZoneBC_t")
   dim_elt_range = PT.Zone.get_elt_range_per_dim(zone_n)
   elt_range = dim_elt_range[GEOM_TO_DIM[pdm_geom_type]]
   loc = GEOM_TO_LOC[pdm_geom_type]
