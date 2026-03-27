@@ -97,14 +97,12 @@ def compute_elements_distribution(zone, comm, distri_func):
 def compute_zone_distribution(zone, comm, distri_func):
   """
   """
-  if PT.get_label(zone) == "Zone_t":
-    zone_distri = {'Vertex' : distri_func(PT.Zone.n_vtx(zone), comm),
-                  'Cell'   : distri_func(PT.Zone.n_cell(zone), comm)}
+  zone_distri = {'Vertex' : distri_func(PT.Zone.n_vtx(zone), comm)}
+  if PT.get_label(zone) == "Zone_t": # Skip ParticleZone_t
+    zone_distri['Cell'] = distri_func(PT.Zone.n_cell(zone), comm)
     if PT.Zone.Type(zone) == 'Structured':
       if PT.Zone.IndexDimension(zone) == 3:
-        zone_distri['Face']  = distri_func(PT.Zone.n_face(zone), comm)
-  elif PT.get_label(zone) == "ParticleZone_t":
-    zone_distri = {'Vertex' : distri_func(PT.get_value(zone), comm),}
+        zone_distri['Face'] = distri_func(PT.Zone.n_face(zone), comm)
 
   MT.new_Distribution(zone_distri, parent=zone)
 
