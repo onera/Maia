@@ -6,6 +6,8 @@ import maia.pytree.maia   as MT
 from   maia.utils.parallel import utils as par_utils
 from   maia.io             import distribution_tree
 
+import numpy as np
+
 @pytest_parallel.mark.parallel(2)
 def test_compute_subset_distribution(comm):
   zone = PT.new_Zone('Zone')
@@ -96,16 +98,16 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     assert MT.get_Distribution(zone, 'Face') is not None
 
   def test_particle(self, comm):
-    yt = """
-ParticleZone ParticleZone_t I4 [5]:
-  ParticleCoordinates ParticleCoordinates_t:
-    CoordinateX DataArray_t R8 [1., 2., 3., 4., 5.]:
-  ParticleSolution ParticleSolution_t:
-    Identifier DataArray_t I4 [1, 2, 3, 4, 5]:
-  """
+    yt = "ParticleZone ParticleZone_t I4 [5]:"
     zone = PT.yaml.to_node(yt)
     distribution_tree.compute_zone_distribution(zone, comm, par_utils.uniform_distribution)
-    assert MT.get_Distribution(zone, 'Vertex') is not None
+    assert MT.Zone.n_vtx(zone) == 5
+    distrib = PT.get_value(MT.get_Distribution(zone, 'Vertex'))
+    rank = comm.Get_rank()
+    if rank == 0:
+        assert np.array_equal(distrib, np.array([0, 3, 5]))
+    elif rank == 1:
+        assert np.array_equal(distrib, np.array([3, 5, 5]))
 
 @pytest_parallel.mark.parallel(2)
 def test_add_distribution_info(comm):
