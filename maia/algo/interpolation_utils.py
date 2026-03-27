@@ -75,6 +75,23 @@ def _combine_geo_results(all_located_inv, all_closest_inv, strategy, src_loc):
 
   return tgt_in_src_gnum, tgt_in_src_wght
 
+def discover_fields_name(zones, container_name, root, comm):
+  fields_per_part = list()
+  container_label = ''
+  for zone in zones:
+    container = PT.find_node_from_path(zone, container_name)
+    container_label = PT.get_label(container)
+    fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
+    fields_per_part.append(fields_name)
+  if len(fields_per_part) > 0:
+    assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+
+  fields_names = fields_per_part[0] if len(fields_per_part) > 0 else []
+  if root is not None: # Some rank have no src partitions, share field names
+    container_label = comm.bcast(container_label, root=root)
+    fields_names = comm.bcast(fields_names, root=root)
+
+  return fields_names, container_label
 
 class Interpolator:
   """ Low level class to perform interpolations.
@@ -147,21 +164,11 @@ class Interpolator:
     """
 
     #Check that solutions are known on each source partition
-    fields_per_part = list()
-    container_label = ''
+    fields_names, container_label = discover_fields_name(self.src_parts, container_name, self.root, self.comm)
+
     for src_part in self.src_parts:
       container = PT.find_node_from_path(src_part, container_name)
-      container_label = PT.get_label(container)
       assert PT.Container.GridLocation(container) == self.input_loc
-      fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-      fields_per_part.append(fields_name)
-    if len(fields_per_part) > 0:
-      assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
-
-    fields_names = fields_per_part[0] if len(fields_per_part) > 0 else None
-    if self.root is not None: # Some rank have no src partitions, share field names
-      container_label = self.comm.bcast(container_label, root=self.root)
-      fields_names = self.comm.bcast(fields_names, root=self.root)
 
     #Cleanup target partitions
     for tgt_part in self.tgt_parts:
