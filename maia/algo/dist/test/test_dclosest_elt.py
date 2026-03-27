@@ -55,6 +55,7 @@ def test_find_closest_bnd(elt_kind, comm):
   PT.set_name(pclo, 'ClosestElement') # Needed to compare but same name in tree
   assert PT.is_same_tree(dclo, pclo, abs_tol=1E-15)
 
+@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest_parallel.mark.parallel(1)
 def test_find_closest_bnd_propagation(comm):
   # Method is not reproductible in // (unless we use compute2 algo) -> test serial only

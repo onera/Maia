@@ -29,7 +29,7 @@ def test_extract_single_zone(comm):
   dtype = 'I4' if pdm_dtype == np.int32 else 'I8'
   yt = f"""
   NGonElements Elements_t [22,0]:
-    ElementRange IndexRange_t [1,8]:
+    ElementRange IndexRange_t {dtype} [1,8]:
     ElementStartOffset DataArray_t {dtype} [0,4,8,12,16,20,24,28,32]:
     ElementConnectivity DataArray_t:
       {dtype} : [1,4,5,2,2,5,6,3,4,7,8,5,5,8,9,6,3,6,11,10,6,9,12,11,10,11,14,13,11,12,15,14]
