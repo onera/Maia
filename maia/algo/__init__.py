@@ -19,3 +19,4 @@ from .transform     import cartesian_to_cylindrical, \
                            transform_affine, \
                            scale_mesh
 
+from .wall_distance import compute_wall_distance

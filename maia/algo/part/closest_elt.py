@@ -340,7 +340,7 @@ def update_closest_to_parent(surface_tree, points_tree, mpi_comm):
 
 PointCloud = Tuple[NDArray, NDArray]
 # ------------------------------------------------------------------------
-def dist_surf_cloud_compute(surf_part_tree: CGNSPartTree,
+def dist_surf_cloud_compute(surf_per_doms: Dict[str, List[CGNSPartTree]],
                             point_clouds: List[List[PointCloud]],
                             periodicities: Dict[str, List[PT.PeriodicValues]],
                             comm:MPIComm) -> List[List[Dict[str, NDArray]]]:
@@ -352,13 +352,13 @@ def dist_surf_cloud_compute(surf_part_tree: CGNSPartTree,
   """
 
   # Exit with default values if no surface
-  if comm.allreduce(sum(PT.Zone.n_cell(zone) for zone in PT.get_all_Zone_t(surf_part_tree))) == 0:
+  n_cell_loc = sum(sum(PT.Zone.n_cell(part) for part in parts) for parts in surf_per_doms.values())
+  if comm.allreduce(n_cell_loc) == 0:
     return [[_wd_get_defaults(cloud[1].size) for cloud in clouds] for clouds in point_clouds]
 
   n_part_per_cloud = [len(clouds) for clouds in point_clouds]
   _walldist = PDM.DistCloudSurf(comm, 1, 0, point_clouds=n_part_per_cloud) # n_part_surf set later
 
-  surf_per_doms = get_parts_per_blocks(surf_part_tree, comm)
   _keep_alive, offsets = _wd_setup_surf_mesh(surf_per_doms, _walldist, periodicities, comm)
 
   for i_dom, clouds in enumerate(point_clouds):
@@ -375,6 +375,35 @@ def dist_surf_cloud_compute(surf_part_tree: CGNSPartTree,
   return all_results
 
 
+def dist_cell_center_surf_compute(surf_per_doms: Dict[str, List[CGNSPartTree]],
+                                  tgt_parts: List[CGNSPartTree],
+                                  comm: MPIComm) -> List[Dict[str, NDArray]]:
+  """ The lowest level of dist cell center surf computation """
+
+  if len(tgt_parts) > 0 and PT.Zone.CellDimension(tgt_parts[0]) != 3:
+    raise NotImplementedError("Wall_distance computation with method 'propagation' only supports 3D meshes")
+
+  _walldist = PDM.DistCellCenterSurf(comm, 1, n_part_vol=1)
+
+  _keep_alive, out = _wd_setup_surf_mesh(surf_per_doms, _walldist, dict(), comm)
+
+  if out['face_offset'][-1] == 0:
+    return [_wd_get_defaults(PT.Zone.n_cell(part)) for part in tgt_parts]
+
+  _walldist.n_part_vol = len(tgt_parts)
+  if len(tgt_parts) > 0 and PT.Zone.Type(tgt_parts[0]) != 'Unstructured':
+    raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
+  _keep_alive.append(_wd_setup_vol_mesh(tgt_parts, _walldist))
+
+  #Compute
+  _walldist.compute()
+
+  fields = [_wd_get(_walldist, 0, i_part, out) for i_part in range(_walldist.n_part_vol)]
+
+  del _keep_alive
+  return fields
+
+
 def find_closest_element(src_part_tree: CGNSPartTree,
                          tgt_part_tree: CGNSPartTree,
                          location: str,
@@ -385,14 +414,16 @@ def find_closest_element(src_part_tree: CGNSPartTree,
   Source tree can be of dimension 1 or 2.
   Return in a container called 'ClosestElement'
   """
+  surf_per_doms = get_parts_per_blocks(src_part_tree, comm)
   parts_per_dom_pts = get_parts_per_blocks(tgt_part_tree, comm).values()
 
   all_clouds = [[get_point_cloud(part_zone, location) for part_zone in part_zones] \
                 for part_zones in parts_per_dom_pts]
 
   periodicities = options.get('periodicities', dict())
-  results = dist_surf_cloud_compute(src_part_tree, all_clouds, periodicities, comm)
+  results = dist_surf_cloud_compute(surf_per_doms, all_clouds, periodicities, comm)
 
+  dom_list = '\n'.join(surf_per_doms.keys())
   for dom_results, part_zones in zip(results, parts_per_dom_pts):
     for result, part_zone in zip(dom_results, part_zones):
       # Retrieve location
@@ -401,6 +432,7 @@ def find_closest_element(src_part_tree: CGNSPartTree,
 
       for key, val in result.items():
         PT.update_child(fs_node, key, 'DataArray_t', val.reshape(shape, order='F'))
+      PT.new_Descriptor("DomainList", dom_list, parent=fs_node)
 
 
 
@@ -424,52 +456,33 @@ def find_closest_boundary(src_part_tree: CGNSPartTree,
 
 
 
-
 def find_closest_boundary_propagation(part_tree: CGNSPartTree,
-                                      location: str,
                                       mpi_comm: MPIComm,
                                       surf_predicate: PT.pred.NodePredicate = IS_BND) -> None:
 
-  parts_per_dom = get_parts_per_blocks(part_tree, mpi_comm)
-  first_dom = next(iter(parts_per_dom.keys()))
-  if len(parts_per_dom) > 1:
+  if len(get_parts_per_blocks(part_tree, mpi_comm)) > 1:
     raise NotImplementedError("Wall_distance computation with method 'propagation' does not support multiple domains")
-  elif len(parts_per_dom[first_dom]) > 0 and PT.Zone.CellDimension(parts_per_dom[first_dom][0]) != 3:
-    raise NotImplementedError("Wall_distance computation with method 'propagation' only supports 3D meshes")
-  _walldist = PDM.DistCellCenterSurf(mpi_comm, 1, n_part_vol=1)
 
-  surface_tree = extract_surf_from_bc(part_tree, surf_predicate, mpi_comm)
-  
-  surf_per_doms = get_parts_per_blocks(surface_tree, mpi_comm)
-  _keep_alive, out = _wd_setup_surf_mesh(surf_per_doms, _walldist, dict(), mpi_comm)
+  bnd_tree = extract_surf_from_bc(part_tree, surf_predicate, mpi_comm)
 
+  fields = dist_cell_center_surf_compute(get_parts_per_blocks(bnd_tree, mpi_comm),
+                                         PT.get_all_Zone_t(part_tree),
+                                         mpi_comm)
 
-  if out['face_offset'][-1] == 0:
-    return
+  for i_part, zone_path in enumerate(PT.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t')):
 
-  for i_domain, part_zones in enumerate(parts_per_dom.values()):
-    _walldist.n_part_vol = len(part_zones)
-    if len(part_zones) > 0 and PT.Zone.Type(part_zones[0]) != 'Unstructured':
-      raise NotImplementedError("Wall_distance computation with method 'propagation' does not support structured blocks")
-    _keep_alive.append(_wd_setup_vol_mesh(part_zones, _walldist))
+    # Retrieve location
+    part_zone = PT.find_node_from_path(part_tree, zone_path)
+    fs_node = _create_output_container(part_zone, 'CellCenter', 'ClosestElement')
+    shape = _get_output_shape(part_zone, fs_node)
 
-  #Compute
-  _walldist.compute()
-  
+    for key, val in fields[i_part].items():
+      PT.update_child(fs_node, key, 'DataArray_t', val.reshape(shape, order='F'))
 
-  for i_domain, part_zones in enumerate(parts_per_dom.values()):
-    for i_part, part_zone in enumerate(part_zones):
-      fields = _wd_get(_walldist, i_domain, i_part, out)
-
-      # Retrieve location
-      fs_node = _create_output_container(part_zone, location, 'ClosestElement')
-      shape = _get_output_shape(part_zone, fs_node)
-
-      for key, val in fields.items():
-        PT.update_child(fs_node, key, 'DataArray_t', val.reshape(shape, order='F'))
+    dom_name = MT.conv.get_part_prefix(zone_path) # Single domain
+    PT.new_Descriptor("DomainList", dom_name, parent=fs_node)
 
 
-
-  update_closest_to_parent(surface_tree, part_tree, mpi_comm)
+  update_closest_to_parent(bnd_tree, part_tree, mpi_comm)
 
 

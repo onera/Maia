@@ -18,6 +18,7 @@ Development version
 - IO: Allow to read or write ZoneSubRegion_t nodes when related BCs are missing
 - concatenate_elt_sections: manage ``NGON_n``, ``NFACE_n`` and ``MIXED`` elements type
 - iso_surface & slices : improve robustness and extend to 2D meshes
+- compute_wall_distance: implementation for distributed meshes
 
 🐞 Fixes
 ^^^^^^^^
@@ -27,6 +28,7 @@ Development version
 - part_tree_to_dist_tree: better detection of global/local ``BCDataSet_t`` nodes
 - merge_zones: add overflow prevention on NGON_n/ElementStartOffset nodes
 - generate_jns_vertex_list: deep-copy metadata nodes to avoid shared references
+- compute_wall_distance: store DomainList in output node for multidomain cases
 
 v1.9 (January 2026)
 -------------------

@@ -253,7 +253,7 @@ def test_compute_iso_surface(comm):
   node = PT.get_node_from_name(dist_tree, 'Zmin')
   PT.set_value(node, 'BCWall')
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, preserve_orientation=True)
-  maia.algo.part.compute_wall_distance(part_tree, comm, point_cloud='Vertex')
+  maia.algo.compute_wall_distance(part_tree, comm, point_cloud='Vertex')
 
   part_tree_iso = maia.algo.part.iso_surface(part_tree, "WallDistance/TurbulentDistance", iso_val=0.25,\
        containers_name=['WallDistance'], comm=comm)
