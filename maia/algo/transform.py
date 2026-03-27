@@ -144,7 +144,7 @@ def transform_affine(t: CGNSTree,
                      translation: Optional[Iterable[float]] = None,
                      apply_to_fields: bool = True,
                      positional_fields: List[str] = ['Coordinate'],
-                     inverse: bool = False ) -> None:
+                     inverse: bool = False) -> None:
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -181,7 +181,7 @@ def transform_affine(t: CGNSTree,
         If ``apply_to_fields`` is ``True``, add the translation part for these specific vectorial fields.
         Defaults to ``['Coordinate']``.
     inverse (bool,optional) :
-        If ``True``, applies the inverse transformation. Defaults to ``False``
+        If ``True``, applies the inverse transformation. Defaults to ``False``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py

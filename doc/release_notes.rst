@@ -19,6 +19,7 @@ Development version
 - concatenate_elt_sections: manage ``NGON_n``, ``NFACE_n`` and ``MIXED`` elements type
 - iso_surface & slices : improve robustness and extend to 2D meshes
 - compute_wall_distance: implementation for distributed meshes
+- transform_affine: add ``inverse`` argument do easily revert a transformation
 
 🐞 Fixes
 ^^^^^^^^

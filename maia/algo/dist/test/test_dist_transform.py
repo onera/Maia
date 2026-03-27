@@ -42,10 +42,6 @@ def test_transform_affine_zone(comm):
 
   cx, cy, cz = PT.Zone.coordinates(zone)
   cx_bck, cy_bck, cz_bck = PT.Zone.coordinates(zone_bck)
-  if comm.Get_rank() == 0:
-    assert (cx == cx_bck).all() # 1 to 14
-  elif comm.Get_rank() == 1:
-    assert (cx == cx_bck).all() # 15 to 27
-  assert (cy == cy_bck).all() and (cz == cz_bck).all()
+  assert (cx == cx_bck).all() and (cy == cy_bck).all() and (cz == cz_bck).all()
   assert (PT.get_node_from_name(zone, 'cx')[1] == cx).all()
 
