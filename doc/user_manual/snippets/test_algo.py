@@ -230,7 +230,7 @@ def test_compute_plane_slice():
   maia.algo.dist.merge_connected_zones(dist_tree, MPI.COMM_WORLD) # Isosurf requires single block mesh
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD, preserve_orientation=True)
 
-  slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.5], MPI.COMM_WORLD, elt_type='QUAD_4')
+  slice_tree = maia.algo.part.plane_slice(part_tree, [0,0,1,0.5], MPI.COMM_WORLD)
   #compute_plane_slice@end
 
 def test_compute_spherical_slice():
@@ -247,8 +247,7 @@ def test_compute_spherical_slice():
   vol_rank  = MPI.COMM_WORLD.Get_rank() * numpy.ones(PT.Zone.n_cell(zone))
   src_sol   = PT.new_FlowSolution('FlowSolution', loc='CellCenter', fields={'i_rank' : vol_rank}, parent=zone)
 
-  slice_tree = maia.algo.part.spherical_slice(part_tree, [0.5,0.5,0.5,0.25], MPI.COMM_WORLD, \
-      ["FlowSolution"], elt_type="NGON_n")
+  slice_tree = maia.algo.part.spherical_slice(part_tree, [0.5,0.5,0.5,0.25], MPI.COMM_WORLD, ["FlowSolution"])
 
   assert maia.pytree.get_node_from_name(slice_tree, "FlowSolution") is not None
   #compute_spherical_slice@end
