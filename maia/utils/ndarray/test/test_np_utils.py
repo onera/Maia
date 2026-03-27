@@ -296,25 +296,25 @@ def test_transform_to_homogeneous_matrix():
                         [0,0,1]])
   assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5], rotation_center=[0,0], rotation_angle=β), excepted2d)
 
-  # inverse 3D
-  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[0,0,0], inverse=True),
+  # reverse 3D
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[0,0,0], reverse=True),
                      np.array([[1.,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]]))
-  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5,6], inverse=True),
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5,6], reverse=True),
                      np.array([[1.,0,0,-4],[0,1,0,-5],[0,0,1,-6],[0,0,0,1]]))
-  assert np.allclose(np_utils._transform_to_homogeneous_matrix(rotation_angle=[0,0,pi/3], inverse=True),
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(rotation_angle=[0,0,pi/3], reverse=True),
                      np.array([[cos(pi/3),sin(pi/3),0,0],[-sin(pi/3),cos(pi/3),0,0],[0,0,1,0],[0,0,0,1]]))
   α, β, γ = pi/2, pi/3, pi/4
   excepted = np.linalg.inv(np.array([[cos(β)*cos(γ),-cos(β)*sin(γ), sin(β), 5],
                                      [cos(α)*sin(γ)+cos(γ)*sin(α)*sin(β), cos(α)*cos(γ)-sin(α)*sin(β)*sin(γ), -cos(β)*sin(α),0],
                                      [sin(α)*sin(γ)-cos(α)*cos(γ)*sin(β), cos(γ)*sin(α)+cos(α)*sin(β)*sin(γ), cos(α)*cos(β),6],
                                      [0,0,0,1]]))
-  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[5,0,6], rotation_angle=[α, β, γ], inverse=True), excepted)
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[5,0,6], rotation_angle=[α, β, γ], reverse=True), excepted)
 
-  # inverse 2D
+  # reverse 2D
   excepted2d = np.linalg.inv(np.array([[cos(β),-sin(β), 4],
                                        [sin(β), cos(β), 5],
                                        [0,0,1]]))
-  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5], rotation_center=[0,0], rotation_angle=β, inverse=True), excepted2d)
+  assert np.allclose(np_utils._transform_to_homogeneous_matrix(translation=[4,5], rotation_center=[0,0], rotation_angle=β, reverse=True), excepted2d)
 
 def test_homogeneous_matrix_to_transform():
   from numpy import cos,sin,pi

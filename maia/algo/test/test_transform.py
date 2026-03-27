@@ -122,7 +122,7 @@ def test_transform_affine(comm):
   check_vect_field(dist_zone_ini, dist_zone, "field")
   check_scal_field(dist_zone_ini, dist_zone, "scalar")
 
-  transform.transform_affine(dist_zone, rotation_angle=np.array([0.,0.,np.pi]), inverse=True)
+  transform.transform_affine(dist_zone, rotation_angle=np.array([0.,0.,np.pi]), reverse=True)
   assert PT.is_same_tree(dist_zone_ini, dist_zone, abs_tol=1e-15)
 
 @pytest_parallel.mark.parallel(1)
@@ -173,7 +173,7 @@ def test_transform_affine_optional_args(comm, positional_fields, constant_fields
                                   apply_to_fields=True,
                                   positional_fields=positional_fields,
                                   constant_fields=constant_fields,
-                                  inverse=True)
+                                  reverse=True)
 
   assert PT.is_same_tree(dist_zone_ini, dist_zone, abs_tol=1e-15)
 
@@ -207,7 +207,7 @@ def test_transform_affine_on_base(comm):
   check_vect_field(dist_tree_ini, dist_tree, "fusd")
   check_scal_field(dist_tree_ini, dist_tree, "scalar")
 
-  transform.transform_affine(dist_tree, rotation_angle=np.array([0.,0.,np.pi]), inverse=True)
+  transform.transform_affine(dist_tree, rotation_angle=np.array([0.,0.,np.pi]), reverse=True)
   assert PT.is_same_tree(dist_tree_ini, dist_tree, abs_tol=1e-15)
 
 @pytest_parallel.mark.parallel(1)
@@ -234,7 +234,7 @@ class Test_transform_affine_gc:
     assert np.allclose(transmin, expt_trans_min) and np.allclose(anglemin, [0,0,0])
     assert np.allclose(transmax, expt_trans_max) and np.allclose(anglemax, [0,0,0])
 
-    maia.algo.transform_affine(tree, rotation_angle=rotation, translation=[1,2,3], inverse=True) #Reversed translation should have no effect
+    maia.algo.transform_affine(tree, rotation_angle=rotation, translation=[1,2,3], reverse=True) #Reversed translation should have no effect
     assert PT.is_same_tree(tree_ini, tree, abs_tol=1e-15, type_tol=True)
 
   def test_full_transfo(self, comm):
@@ -249,7 +249,7 @@ class Test_transform_affine_gc:
     for name in JNS:
         check_perio(tree, name, tol=5e-6)
 
-    maia.algo.transform_affine(tree, rotation_angle=[np.pi/4, -np.pi/3, np.pi/2], rotation_center=[-1,0,1], translation=[4,3,2], inverse=True)
+    maia.algo.transform_affine(tree, rotation_angle=[np.pi/4, -np.pi/3, np.pi/2], rotation_center=[-1,0,1], translation=[4,3,2], reverse=True)
     assert PT.is_same_tree(tree_ini, tree, abs_tol=1e-14, type_tol=True)
 
   def test_2d(self, comm):

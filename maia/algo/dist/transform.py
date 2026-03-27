@@ -14,7 +14,7 @@ def transform_affine_zone(zone,
                           apply_to_fields=False,
                           positional_fields=['Coordinate'],
                           constant_fields=[],
-                          inverse=False):
+                          reverse=False):
 
   distri_vtx = MT.Zone.vtx_distribution(zone)
 
@@ -32,4 +32,4 @@ def transform_affine_zone(zone,
                                   apply_to_fields,
                                   positional_fields,
                                   constant_fields,
-                                  inverse)
+                                  reverse)

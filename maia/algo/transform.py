@@ -20,7 +20,7 @@ def _to_rthetaz_vectors(vx, vy, vz, theta):
   return vx*np.cos(theta)+vy*np.sin(theta), vy*np.cos(theta)-vx*np.sin(theta), vz
 
 
-def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, constant_vectors, inverse):
+def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_vectors, constant_vectors, reverse):
   transform_func = {2: np_utils.transform_cart_vectors_2d, 3: np_utils.transform_cart_vectors}[phy_dim]
 
   container_paths = set()
@@ -51,11 +51,11 @@ def update_fields(node, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np
         tr_vectors = transform_func(*vectors, translation=translation_np,
                                               rotation_center=rotation_center_np,
                                               rotation_angle=rotation_angle_np,
-                                              inverse=inverse) #type:ignore[operator] #(signature of 2 funcs differs)
+                                              reverse=reverse) #type:ignore[operator] #(signature of 2 funcs differs)
       else:
         tr_vectors = transform_func(*vectors, rotation_center=rotation_center_np,
                                               rotation_angle=rotation_angle_np,
-                                              inverse=inverse) #type:ignore[operator]
+                                              reverse=reverse) #type:ignore[operator]
       for vector_n, tr_vector in zip(vectors_n, tr_vectors):
         vector_val = PT.get_np_value(vector_n)
         if is_full_vtx:
@@ -72,7 +72,7 @@ def transform_affine_zone(zone: CGNSTree,
                           apply_to_fields: bool,
                           positional_fields: List[str] = ['Coordinate'],
                           constant_fields: List[str] = [],
-                          inverse: bool = False) -> None:
+                          reverse: bool = False) -> None:
   """
   Implementation of transform affine (see associated documentation) for
   a given zone.
@@ -97,7 +97,7 @@ def transform_affine_zone(zone: CGNSTree,
     coords_n = [PT.find_child_from_name(grid_co, f"Coordinate{c}")  for c in ['X', 'Y', 'Z'][:phy_dim]]
     coords = [PT.get_np_value(n)[vtx_mask] for n in coords_n]
 
-    tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np, inverse=inverse) #type:ignore[operator] #(signature of 2 funcs differs)
+    tr_coords = transform_func(*coords, translation_np, rotation_center_np, rotation_angle_np, reverse=reverse) #type:ignore[operator] #(signature of 2 funcs differs)
     for coord_n, tr_coord in zip(coords_n, tr_coords):
       coord_value = PT.get_np_value(coord_n)
       coord_value[vtx_mask] = tr_coord
@@ -109,7 +109,7 @@ def transform_affine_zone(zone: CGNSTree,
   # We search M_gcnew such that v_opp' = M_gcnew * v_cur'
   # --> This leads to M_gcnew = M_tr * M_gc * (M_tr)^-1
   transf_mat = np_utils._transform_to_homogeneous_matrix(translation_np, rotation_center_np, rotation_angle_np)
-  transf_mat_inv = np_utils._transform_to_homogeneous_matrix(translation_np, rotation_center_np, rotation_angle_np, inverse=True)
+  transf_mat_inv = np_utils._transform_to_homogeneous_matrix(translation_np, rotation_center_np, rotation_angle_np, reverse=True)
   for gc in PT.get_children_from_predicates(zone, ['ZoneGridConnectivity_t', PT.pred.IS_GC]):
     if PT.GridConnectivity.isperiodic(gc):
       gc_center = PT.find_node_from_name(gc, 'RotationCenter')
@@ -121,7 +121,7 @@ def transform_affine_zone(zone: CGNSTree,
         gc_angle_value = gc_angle_value[0] if gc_angle_value[0] != 0 else gc_angle_value[1]
 
       perio_mat  = np_utils._transform_to_homogeneous_matrix(gc_trans[1], gc_center[1], gc_angle_value)
-      if inverse:
+      if reverse:
         perio_mat_new = np.dot(transf_mat_inv, np.dot(perio_mat, transf_mat))
       else:
         perio_mat_new = np.dot(transf_mat, np.dot(perio_mat, transf_mat_inv))
@@ -134,7 +134,7 @@ def transform_affine_zone(zone: CGNSTree,
 
   # Transform fields
   if apply_to_fields:
-    update_fields(zone, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_fields, constant_fields, inverse)
+    update_fields(zone, vtx_mask, phy_dim, rotation_center_np, rotation_angle_np, translation_np, positional_fields, constant_fields, reverse)
 
 
 
@@ -144,7 +144,7 @@ def transform_affine(t: CGNSTree,
                      translation: Optional[Iterable[float]] = None,
                      apply_to_fields: bool = True,
                      positional_fields: List[str] = ['Coordinate'],
-                     inverse: bool = False) -> None:
+                     reverse: bool = False) -> None:
   """Apply the affine transformation to the coordinates of the given zone.
 
   Input zone(s) can be either structured or unstructured, but must have cartesian coordinates.
@@ -180,8 +180,8 @@ def transform_affine(t: CGNSTree,
     positional_fields (list of str, optional):
         If ``apply_to_fields`` is ``True``, add the translation part for these specific vectorial fields.
         Defaults to ``['Coordinate']``.
-    inverse (bool,optional) :
-        If ``True``, applies the inverse transformation. Defaults to ``False``.
+    reverse (bool,optional) :
+        If ``True``, applies the reverse transformation. Defaults to ``False``.
 
   Example:
       .. literalinclude:: snippets/test_algo.py
@@ -203,7 +203,7 @@ def transform_affine(t: CGNSTree,
     # Don't use PT.Zone.VertexSize because it won't work on dist_tree
     any_coord = PT.find_child_from_predicate(any_gc_n, PT.pred.name_in(cart_names))
     vtx_mask = np.ones(PT.get_np_value(any_coord).shape, bool)
-    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_fields, inverse=inverse)
+    transform_affine_zone(zone, vtx_mask, rotation_center, rotation_angle, translation, apply_to_fields, positional_fields, reverse=reverse)
 
   # Deal vectors that are outside zones: family, UserDefined, Convergence history, ...
   if apply_to_fields:
@@ -218,7 +218,7 @@ def transform_affine(t: CGNSTree,
         translation = [0.] * phy_dim
       for child in PT.iter_children_from_predicate(base, ~PT.pred.label_is('Zone_t')):
         update_fields(child, None, phy_dim, np.asarray(rotation_center), np.asarray(rotation_angle),
-                              np.asarray(translation), positional_fields, list(), inverse)
+                              np.asarray(translation), positional_fields, list(), reverse)
 
 def scale_mesh(t: CGNSTree, s: Union[float, Sequence[float]] = 1.) -> None:
   """Rescale the GridCoordinates of the input mesh.

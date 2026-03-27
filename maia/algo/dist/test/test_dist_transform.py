@@ -19,7 +19,7 @@ def test_transform_affine_zone(comm):
   vtx_ids = np.array([], int)
   transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0])
   assert PT.is_same_tree(zone, zone_bck)
-  transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0], inverse=True)
+  transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0], reverse=True)
   assert PT.is_same_tree(zone, zone_bck)
 
   if comm.Get_rank() == 0:
@@ -38,7 +38,7 @@ def test_transform_affine_zone(comm):
   assert (PT.get_node_from_name(zone, 'cx')[1] == cx).all()
 
   # reverting transformation
-  transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0], inverse=True)
+  transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0], reverse=True)
 
   cx, cy, cz = PT.Zone.coordinates(zone)
   cx_bck, cy_bck, cz_bck = PT.Zone.coordinates(zone_bck)

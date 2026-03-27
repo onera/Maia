@@ -349,7 +349,7 @@ def _homogeneous_matrix_to_transform(homo_matrix):
     rotation_angle = np.arcsin(value)
   return translation, rotation_center, rotation_angle
 
-def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3), inverse=False):
+def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np.zeros(3), rotation_angle=np.zeros(3), reverse=False):
   """ Combine Transform data coming from CGNS (rotation_angle, rotation_center, translation) into
   an homogeneous matrix of size 4x4 (in 3d). This matrix can be applied to a vector (vx, vy, vz, 1).
   # https://www.f-legrand.fr/scidoc/docmml/graphie/geometrie/affine/affine.html
@@ -366,7 +366,7 @@ def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np
     rotation_matx = np.array([[1, 0, 0], [0, np.cos(alpha), -np.sin(alpha)], [0, np.sin(alpha), np.cos(alpha)]])
     rotation_maty = np.array([[np.cos(beta), 0, np.sin(beta)], [0, 1, 0], [-np.sin(beta), 0, np.cos(beta)]])
     rotation_matz = np.array([[np.cos(gamma), -np.sin(gamma), 0], [np.sin(gamma), np.cos(gamma), 0], [0, 0, 1]])
-    if inverse:
+    if reverse:
       rotation_mat  = np.dot(rotation_matz.T, np.dot(rotation_maty.T, rotation_matx.T))
     else:
       rotation_mat  = np.dot(rotation_matx, np.dot(rotation_maty, rotation_matz))
@@ -374,10 +374,10 @@ def _transform_to_homogeneous_matrix(translation=np.zeros(3), rotation_center=np
   elif dim == 2: # Rotation angle is scalar
     theta = rotation_angle
     rotation_mat  = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
-    if inverse:
+    if reverse:
       rotation_mat = rotation_mat.T
   homo_matrix[0:dim, 0:dim] = rotation_mat
-  if inverse:
+  if reverse:
     homo_matrix[0:dim,   dim] = rotation_center - np.dot(rotation_mat, rotation_center) - np.dot(rotation_mat,translation)
   else:
     homo_matrix[0:dim,   dim] = rotation_center - np.dot(rotation_mat, rotation_center) + translation
@@ -421,7 +421,7 @@ def transform_cart_vectors(vx: NDArray,
                            translation: NDArray = np.zeros(3),
                            rotation_center: NDArray = np.zeros(3),
                            rotation_angle: NDArray = np.zeros(3),
-                           inverse: bool = False) -> Tuple[NDArray, NDArray, NDArray]:
+                           reverse: bool = False) -> Tuple[NDArray, NDArray, NDArray]:
   """
   Apply the defined cartesian transformation on separated components of vectors and return a tuple with each of the modified components of the vectors
   """
@@ -431,7 +431,7 @@ def transform_cart_vectors(vx: NDArray,
   else: #Manage structured blocks
     vectors = np.array([vx.flatten('F'), vy.flatten('F'), vz.flatten('F'), np.ones(vx.size)], order='F')
 
-  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle, inverse)
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle, reverse)
   modified_components = np.dot(homo_matrix, vectors)[0:3,:]
 
   if vx.ndim == 1:
@@ -448,13 +448,13 @@ def transform_cart_vectors_2d(vx: NDArray,
                               translation: NDArray = np.zeros(2),
                               rotation_center: NDArray = np.zeros(2),
                               rotation_angle: float = 0.,
-                              inverse: bool = False) -> Tuple[NDArray, NDArray]:
+                              reverse: bool = False) -> Tuple[NDArray, NDArray]:
   assert vx.shape == vy.shape
   if vx.ndim == 1:
     vectors = np.array([vx,vy,np.ones(vx.size)], order='F')
   else: #Manage structured blocks
     vectors = np.array([vx.flatten('F'), vy.flatten('F'), np.ones(vx.size)], order='F')
-  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle, inverse)
+  homo_matrix = _transform_to_homogeneous_matrix(translation, rotation_center, rotation_angle, reverse)
   modified_components = np.dot(homo_matrix, vectors)[0:2,:]
   if vx.ndim == 1:
     return (modified_components[0], modified_components[1])
