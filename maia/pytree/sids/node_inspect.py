@@ -25,8 +25,9 @@ class PeriodicValues(NamedTuple):
     else:
       return self._asdict()
   def __neg__(self):
+    raise ArithmeticError(f"Invalid use of PeriodicValues.__neg__")
     return PeriodicValues(self.RotationCenter, -self.RotationAngle, -self.Translation)
-    
+
 class CartesianCoordinates(NamedTuple):
   CoordinateX:Optional[NDArray]
   CoordinateY:Optional[NDArray]
@@ -83,7 +84,7 @@ class Tree:
     matching_gcs_s = lambda n : PT.get_label(n) == 'GridConnectivity1to1_t'
     matching_gcs = lambda n : (matching_gcs_u(n) or matching_gcs_s(n)) \
                             and PT.get_child_from_label(n, 'GridConnectivityProperty_t') is None
-    
+
     for zone_path in PT.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
       group     = [zone_path]
       zone = PT.find_node_from_path(tree, zone_path)
@@ -207,7 +208,7 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      tuple of :func:`IndexDimension` int : number of vertices in each direction 
+      tuple of :func:`IndexDimension` int : number of vertices in each direction
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0], [2,1,0]])
       >>> PT.Zone.VertexSize(zone)
@@ -223,7 +224,7 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      tuple of :func:`IndexDimension` int : number of cells in each direction 
+      tuple of :func:`IndexDimension` int : number of cells in each direction
     Example:
       >>> zone = PT.new_Zone(type='Unstructured', size=[[11,10,0]])
       >>> PT.Zone.CellSize(zone)
@@ -242,7 +243,7 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      tuple of :func:`IndexDimension` int : number of faces in each direction 
+      tuple of :func:`IndexDimension` int : number of faces in each direction
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.FaceSize(zone)
@@ -269,13 +270,13 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input structured Zone_t node
     Returns:
-      tuple of :func:`IndexDimension` int : number of faces in each direction 
+      tuple of :func:`IndexDimension` int : number of faces in each direction
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.IFaceSize(zone)
       (11, 5)
     """
-    
+
     if not Zone.Type(zone_node) == "Structured":
       raise TypeError(f"Zone {N.get_name(zone_node)} is not structured")
 
@@ -289,7 +290,7 @@ class Zone:
     if dim > 2:
       n_iface = n_iface + (cell_size[2],)
     return n_iface
-    
+
   @staticmethod
   def JFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
@@ -298,7 +299,7 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input structured Zone_t node
     Returns:
-      tuple of :func:`IndexDimension` int : number of faces in each direction 
+      tuple of :func:`IndexDimension` int : number of faces in each direction
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0]])
       >>> PT.Zone.JFaceSize(zone)
@@ -316,7 +317,7 @@ class Zone:
     if dim == 3:
       n_jface = n_jface + (cell_size[2],)
     return n_jface
-    
+
   @staticmethod
   def KFaceSize(zone_node:CGNSTree) -> Tuple[int, ...]:
     """
@@ -325,7 +326,7 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input structured Zone_t node
     Returns:
-      tuple of :func:`IndexDimension` int : number of faces in each direction 
+      tuple of :func:`IndexDimension` int : number of faces in each direction
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0], [6,5,0], [4,3,0]])
       >>> PT.Zone.KFaceSize(zone)
@@ -345,7 +346,7 @@ class Zone:
   @staticmethod
   def NGonNode(zone_node:CGNSTree) -> CGNSTree:
     """Return the Element_t node of kind ``NGON_n`` of a Zone_t node
-    
+
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
@@ -360,7 +361,7 @@ class Zone:
   @staticmethod
   def NFaceNode(zone_node:CGNSTree) -> CGNSTree:
     """Return the Element_t node of kind ``NFACE_n`` of a Zone_t node
-    
+
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
@@ -380,7 +381,7 @@ class Zone:
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
-      tuple of :func:`IndexDimension` int : number of boundary vertices in each direction 
+      tuple of :func:`IndexDimension` int : number of boundary vertices in each direction
     Example:
       >>> zone = PT.new_Zone(type='Structured', size=[[11,10,0],[6,5,0]])
       >>> PT.Zone.VertexBoundarySize(zone)
@@ -520,11 +521,11 @@ class Zone:
       if physicalDimension is != 3, stored in a named tuple.
     Example:
       >>> zone = PT.new_Zone(type='Unstructured')
-      >>> PT.new_GridCoordinates(fields={'CoordinateX' : [0., 0.5, 1.], 
+      >>> PT.new_GridCoordinates(fields={'CoordinateX' : [0., 0.5, 1.],
       ...                                'CoordinateY' : [.5, .5, .5]},
       ...                        parent=zone)
       >>> PT.Zone.coordinates(zone)
-      CartesianCoordinates(CoordinateX=array([0. , 0.5, 1. ], dtype=float32), 
+      CartesianCoordinates(CoordinateX=array([0. , 0.5, 1. ], dtype=float32),
                            CoordinateY=array([0.5, 0.5, 0.5], dtype=float32),
                            CoordinateZ=None)
     """
@@ -543,14 +544,14 @@ class Zone:
       factory = CylindricalCoordinates
     else:
       raise RuntimeError("Unsuported coordinate axis system")
-    
+
     val_or_none = lambda n : N.get_value(n) if n is not None else None
     return factory._make([val_or_none(W.get_child_from_name(grid_coord_node, key)) for key in factory._fields])
 
   @staticmethod
   def get_ordered_elements(zone_node:CGNSTree) -> List[CGNSTree]:
     """ Return the Elements under a Zone_t node, sorted according to their ElementRange
-    
+
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
@@ -623,12 +624,12 @@ class Zone:
   @staticmethod
   def elt_ordering_by_dim(zone_node:CGNSTree):
     """Return a flag indicating if elements belonging to a Zone_t node are sorted
-    
+
     Args:
       zone_node (CGNSTree): Input Zone_t node
     Returns:
       int : Flag indicating how elements are sorted:
-      
+
       * 1 if elements of lower dimension have lower ElementRange
       * -1 if elements of lower dimension have higher ElementRange
       * 0 if elements are not sorted
@@ -688,13 +689,13 @@ class Zone:
       elt_dim = []
       for elem_n in W.get_children_from_label(zone_node, 'Elements_t'):
         dim = Element.Dimension(elem_n)
-        if (dim == 2 or Element.Type(elem_n).startswith('BAR')) and (W.get_child_from_name(elem_n, 'ParentElements') is not None): dim += 1 
+        if (dim == 2 or Element.Type(elem_n).startswith('BAR')) and (W.get_child_from_name(elem_n, 'ParentElements') is not None): dim += 1
         elt_dim.append(dim)
       if len(elt_dim)==0:
         raise ValueError(f'Can not infer dimension of zone {N.get_name(zone_node)}, which has no elements')
       dimension = max(elt_dim)
 
-      
+
     return dimension
 
   @staticmethod
@@ -908,7 +909,7 @@ class GridConnectivity:
       >>> gc = PT.new_GridConnectivity('GC')
       >>> PT.new_GridConnectivityProperty({'translation' : [1., 0, 0]}, parent=gc)
       >>> PT.GridConnectivity.periodic_values(gc)
-      PeriodicValues(RotationCenter=array([0., 0., 0.], dtype=float32), 
+      PeriodicValues(RotationCenter=array([0., 0., 0.], dtype=float32),
                      RotationAngle=array([0., 0., 0.], dtype=float32),
                      Translation=array([1., 0., 0.], dtype=float32))
     """
@@ -940,7 +941,7 @@ class Subset:
   A subset is a node defining a subregion of the mesh through a PointList or a PointRange node
   (eg BC_t, *some* ZoneSubRegion_t, ...).
   """
-  
+
   @staticmethod
   def getPatch(subset_node:CGNSTree) -> CGNSTree:
     """ Return the PointList or PointRange node defining the Subset node
@@ -985,7 +986,7 @@ class Subset:
       return (val.shape[1],)
     else:
       return tuple(int(abs(k)+1) for k in val[:,1]-val[:,0])
-   
+
 
   @staticmethod
   def GridLocation(subset_node:CGNSTree) -> str:
@@ -1084,11 +1085,11 @@ class Container:
     else:
       assert parent_node is not None, f"parent_node is mandatory for related container node"
       return _GridLocation(Container.SubsetNode(cnt_node, parent_node))
-      
+
 
   @staticmethod
   def _is_partial(cnt_node:CGNSTree) -> bool:
-    # True if the data is not defined on a whole mesh entity 
+    # True if the data is not defined on a whole mesh entity
     return N.get_label(cnt_node) in ['ZoneSubRegion_t', 'BCDataSet_t'] or Container._is_subset(cnt_node)
 
   @staticmethod
@@ -1102,10 +1103,10 @@ class Container:
   @staticmethod
   def SubsetNode(cnt_node:CGNSTree, parent_node:CGNSTree) -> CGNSTree:
     """ Return the subset node related to the input container node.
-     
+
     This function mainly makes sense for ZoneSubRegion_t or BCDataSet_t containers,
     since their geometrical patch can be defined by an other node.
-    The result can be the input node itself if the container defines its own 
+    The result can be the input node itself if the container defines its own
     geometrical patch.
 
     Args:
@@ -1163,11 +1164,11 @@ class Container:
     except RuntimeError:
       raise ValueError(f"Container {N.get_name(cnt_node)} does not have a valid subset")
     return '/'.join(N.get_name(n) for n in node)
-  
+
   @staticmethod
   def fields(cnt_node) -> Dict[str, NDArray]:
     """ Return the value of fields found under the container node.
-    
+
     Result is returned as a dictionnary mapping field name (str) to
     field value (ndarray).
     Note that if container is a BCDataSet, keys of the dictionnary are actually
@@ -1191,7 +1192,7 @@ class Container:
         fields_dict.update({f'{name}/{N.get_name(node)}' : N.get_np_value(node) \
                             for node in W.get_children_from_label(bcdata, 'DataArray_t')})
     else:
-      fields_dict = {N.get_name(node) : N.get_np_value(node) for node in 
+      fields_dict = {N.get_name(node) : N.get_np_value(node) for node in
                      W.get_children_from_label(cnt_node, 'DataArray_t')}
     return fields_dict
 
