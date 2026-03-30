@@ -437,13 +437,13 @@ Base CGNSBase_t I4 [3, 3]:
     maia.io.dist_tree_to_file(dist_tree, out_file, comm)
 
     t = maia.io.read_tree(out_file)
-    # TODO : update to use dist_tree_to_file when feature is available
     assert (PT.get_value(PT.get_node_from_name(t, "CoordinateX")) == [0., 1., 2.]).all()
     TU.rm_collective_dir(tmp_dir, comm)
 
 @pytest_parallel.mark.parallel(2)
 def test_ptcl_dist_tree_to_file_2procs(comm):
-    if comm.Get_rank() == 0:
+    rank = comm.Get_rank()
+    if rank == 0:
         yt = """
 CGNSTree CGNSTree_t:
   Base CGNSBase_t I4 [3, 3]:
@@ -478,7 +478,14 @@ CGNSTree CGNSTree_t:
     out_file = os.path.join(tmp_dir, 'yt.cgns')
     maia.io.dist_tree_to_file(dist_tree, out_file, comm)
 
-    t = maia.io.read_tree(out_file)
-    assert (PT.get_value(PT.get_node_from_name(t, "CoordinateX")) == [0., 3., 6., 9., 12., 15., 18.]).all()
-    assert (PT.get_value(PT.get_node_from_name(t, "Identifier")) == [0, 3, 6, 9, 12, 15, 18]).all()
+    t = maia.io.file_to_dist_tree(out_file, comm)
+    coordX = PT.get_value(PT.get_node_from_name(t, "CoordinateX"))
+    identifier = PT.get_value(PT.get_node_from_name(t, "Identifier"))
+    if rank == 0:
+        assert (coordX == [0., 3., 6., 9.]).all()
+        assert (identifier == [0, 3, 6, 9]).all()
+    else:
+        assert (coordX == [12., 15., 18.]).all()
+        assert (identifier == [12, 15, 18]).all()
+
     TU.rm_collective_dir(tmp_dir, comm)

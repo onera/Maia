@@ -73,7 +73,7 @@ def compute_subset_distribution(zone, node, comm, distri_func):
     pl_size = PT.get_np_value(pls_n)[1]
     MT.new_Distribution({'Index' : distri_func(pl_size, comm)}, parent=node)
 
-  elif PT.get_label(node) in ['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t']: # In case we are loading a partial CGNS tree where the PR or PL info is not stored
+  elif PT.get_label(node) in ['ZoneSubRegion_t', 'FlowSolution_t', 'ParticleSolution_t' 'DiscreteData_t']: # In case we are loading a partial CGNS tree where the PR or PL info is not stored
     # Get all DataArrays that are not #Size arrays
     data_arrays = PT.get_children_from_predicate(node, PT.pred.label_is('DataArray_t') & PT.pred.value_is(None))
     data_array_sizes = [PT.find_child_from_name(node, PT.get_name(da)+'#Size') for da in data_arrays]
@@ -97,18 +97,19 @@ def compute_elements_distribution(zone, comm, distri_func):
 def compute_zone_distribution(zone, comm, distri_func):
   """
   """
-  zone_distri = {'Vertex' : distri_func(PT.Zone.n_vtx(zone), comm),
-                 'Cell'   : distri_func(PT.Zone.n_cell(zone), comm)}
-  if PT.Zone.Type(zone) == 'Structured':
-    if PT.Zone.IndexDimension(zone) == 3:
-      zone_distri['Face']  = distri_func(PT.Zone.n_face(zone), comm)
+  zone_distri = {'Vertex' : distri_func(PT.Zone.n_vtx(zone), comm)}
+  if PT.get_label(zone) == "Zone_t": # Skip ParticleZone_t
+    zone_distri['Cell'] = distri_func(PT.Zone.n_cell(zone), comm)
+    if PT.Zone.Type(zone) == 'Structured':
+      if PT.Zone.IndexDimension(zone) == 3:
+        zone_distri['Face'] = distri_func(PT.Zone.n_face(zone), comm)
 
   MT.new_Distribution(zone_distri, parent=zone)
 
   compute_elements_distribution(zone, comm, distri_func)
 
   predicate_list = [
-      [PT.pred.label_in(['ZoneSubRegion_t', 'FlowSolution_t', 'DiscreteData_t'])],
+      [PT.pred.label_in(['ZoneSubRegion_t', 'FlowSolution_t', 'ParticleSolution_t', 'DiscreteData_t'])],
       'ZoneBC_t/BC_t',
       'ZoneBC_t/BC_t/BCDataSet_t',
       ['ZoneGridConnectivity_t', PT.pred.IS_GC]

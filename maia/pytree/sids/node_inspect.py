@@ -179,9 +179,13 @@ class Base:
     return int(N.get_np_value(base_node)[1])
 
 # --------------------------------------------------------------------------
-@for_all_methods(check_is_label("Zone_t"))
+@for_all_methods(check_in_labels(["Zone_t", "ParticleZone_t"]))
 class Zone:
   """The following functions apply to any Zone_t node"""
+
+  @staticmethod
+  def is_particle_zone(zone:CGNSTree) -> bool:
+    return N.get_label(zone) == 'ParticleZone_t'
 
   @staticmethod
   def IndexDimension(zone_node:CGNSTree) -> int:
@@ -419,7 +423,10 @@ class Zone:
       >>> PT.Zone.n_vtx(zone)
       11
     """
-    return math.prod(Zone.VertexSize(zone_node))
+    if Zone.is_particle_zone(zone_node):
+      return N.get_np_value(zone_node)[0]
+    else:
+      return math.prod(Zone.VertexSize(zone_node))
 
   @staticmethod
   def n_cell(zone_node:CGNSTree) -> int:
