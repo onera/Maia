@@ -4,8 +4,9 @@ import maia.pytree      as PT
 import maia.pytree.maia as MT
 
 from maia.utils                import vstride as vs
-from maia.algo.part.ngon_tools import pe_to_nface
 from maia.utils import s_numbering
+
+from .ngon_tools import pe_to_nface, edge_pe_to_ngon
 
 import Pypdm.Pypdm as PDM
 
@@ -121,10 +122,12 @@ def cell_vtx_connectivity(zone, dim=3, elts_subset=None):
   if PT.Zone.Type(zone) == 'Structured':
     cell_vtx = cell_vtx_connectivity_S(zone, dim, elts_subset)
   else:
-    if PT.Zone.has_ngon_elements(zone):
+    if PT.pred.is_zone_of_kind('Poly')(zone):
       if dim == 1:
         cell_vtx = cell_vtx_connectivity_elts(zone, dim)
       else:
+        if dim == 2 and not PT.Zone.has_ngon_elements(zone):
+          edge_pe_to_ngon(zone)
         cell_vtx = cell_vtx_connectivity_ngon(zone, dim)
     else: # zone has standard elements
       cell_vtx = cell_vtx_connectivity_elts(zone, dim)

@@ -159,7 +159,7 @@ def _collect_source(src_doms, comm):
   for zone in src_doms:
 
     dim = PT.Zone.CellDimension(zone)
-    if PT.Zone.has_ngon_elements(zone):
+    if PT.pred.is_zone_of_kind('Poly')(zone):
       if connectivity_t=='Element':
         raise NotImplementedError("Source mesh must have NGon or Element connectivity but not both.")
       connectivity_t = 'Poly'

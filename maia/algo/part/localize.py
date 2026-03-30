@@ -14,6 +14,7 @@ from maia.factory.dist_from_part import get_parts_per_blocks
 
 from .point_cloud_utils  import get_point_cloud
 from .connectivity_utils import cell_vtx_connectivity, PDM_connectivity_transpose
+from .ngon_tools         import ngon_to_edge_pe
 import Pypdm.Pypdm as PDM
 
 PointCloud = Tuple[NDArray, NDArray]
@@ -44,20 +45,21 @@ def _get_part_data_ngon(part_zone: CGNSTree) -> List[NDArray]:
 
   elif dim == 2:
     edge  = MT.Zone.EdgeNode(part_zone)
-    ngon  = PT.Zone.NGonNode(part_zone)
+    if PT.get_node_from_name(edge, 'ParentElements') is None:
+      ngon_to_edge_pe(part_zone)
 
     edge_pe  = PT.get_np_value(PT.find_child_from_name(edge, "ParentElements")).reshape(-1, order='C') # Numpy will copy
     edge_vtx = PT.get_np_value(PT.find_child_from_name(edge, "ElementConnectivity"))
 
     # Convert edge_pe to face_edge
-    if PT.Element.Range(ngon)[0] != 1:
-      np_utils.shift_nonzeros(edge_pe, -PT.Element.Range(ngon)[0] + 1)
+    if PT.Element.Range(edge)[0] == 1:
+      np_utils.shift_nonzeros(edge_pe, -PT.Element.Range(edge)[1])
     edge_pe[1::2] *= -1 # Put sign on right edges
     is_internal = edge_pe != 0
     edge_face = edge_pe[is_internal]
     edge_counts = is_internal[0::2].astype(np.int32) + is_internal[1::2].astype(np.int32)
     edge_face = vs.from_counts(edge_counts, edge_face)
-    face_edge = PDM_connectivity_transpose(PT.Element.Size(ngon), edge_face)
+    face_edge = PDM_connectivity_transpose(PT.Zone.n_cell(part_zone), edge_face)
 
     return [face_edge.displs, face_edge.values, cell_ln_to_gn, edge_vtx, vtx_coords, vtx_ln_to_gn]
 
@@ -250,12 +252,13 @@ def _mdom_mesh_location(src_parts_per_dom:List[List[PartData]],
 def _collect_source(src_parts_per_dom:List[List[CGNSPartTree]]) -> List[List[PartData]]:
   connectivity_t = None
   src_parts = []
+  IS_POLY = PT.pred.is_zone_of_kind('Poly')
   for src_part_zones in src_parts_per_dom:
 
     src_parts_domain = list()
     for src_part in src_part_zones:
       dim = PT.Zone.CellDimension(src_part)
-      if PT.Zone.has_ngon_elements(src_part):
+      if IS_POLY(src_part):
         if connectivity_t=='Element':
           raise NotImplementedError("Source mesh must have NGon or Element connectivity but not both.")
         connectivity_t = f'NGon{dim}D'
