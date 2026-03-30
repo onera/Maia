@@ -6,8 +6,6 @@ import maia.pytree.maia   as MT
 from   maia.utils.parallel import utils as par_utils
 from   maia.io             import distribution_tree
 
-import numpy as np
-
 @pytest_parallel.mark.parallel(2)
 def test_compute_subset_distribution(comm):
   zone = PT.new_Zone('Zone')
@@ -105,9 +103,9 @@ Zone Zone_t [[3,3,3],[2,2,2],[0,0,0]]:
     distrib = PT.get_value(MT.get_Distribution(zone, 'Vertex'))
     rank = comm.Get_rank()
     if rank == 0:
-        assert np.array_equal(distrib, np.array([0, 3, 5]))
+        assert (distrib == [0, 3, 5]).all()
     elif rank == 1:
-        assert np.array_equal(distrib, np.array([3, 5, 5]))
+        assert (distrib == [3, 5, 5]).all()
 
 @pytest_parallel.mark.parallel(2)
 def test_add_distribution_info(comm):
