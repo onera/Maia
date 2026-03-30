@@ -240,6 +240,12 @@ PT.rm_nodes_from_name(vtree, 'EdgeElements')
 maia.io.dist_tree_to_file(vtree, 'airplane_walls_visu.cgns', comm)
 maia.algo.scale_mesh(vtree, [1,-1,1])
 maia.io.dist_tree_to_file(vtree, 'airplane_walls_visu2.cgns', comm)
+# For the slice mesh, we remove edges for better paraview support
+dslice_tree_pv = PT.deep_copy(dslice_tree)
+maia.algo.dist.reorder_elt_sections_from_dim(dslice_tree_pv, reverse=True)
+PT.rm_nodes_from_name(dslice_tree_pv, 'EdgeElements')
+PT.rm_nodes_from_name(dslice_tree_pv, 'ZoneBC')
+maia.io.dist_tree_to_file(dslice_tree_pv, 'airplane_slice_pv.cgns', comm)
 ```
 
 Combining the surfacic extraction and slice, we obtain the following visualization.
@@ -258,7 +264,7 @@ plotter.camera_position = [
 ]
 plotter.camera.view_angle = 30.0 # View Angle
 
-reader = pv.CGNSReader("airplane_slice.cgns")
+reader = pv.CGNSReader("airplane_slice_pv.cgns")
 reader.load_boundary_patch = False
 mesh_slice = reader.read()
 
