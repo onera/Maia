@@ -1,443 +1,320 @@
+from   mpi4py import MPI
+import numpy as np
 
-from adaptathon.utils.cgns_to_pmn import cgns_part_zones_to_pdm_pmesh_nodal
+import maia.pytree      as PT
+import maia.pytree.maia as MT
 
 import maia
 import maia.algo.part.point_cloud_utils as PCU
 import maia.algo.part.closest_points    as CLO
-from   maia.factory.dist_from_part      import get_parts_per_blocks
-import maia.pytree                      as PT
-import maia.pytree.maia                 as MT
 import maia.transfer.protocols          as EP
-from   maia.utils                       import par_utils, py_utils
+from   maia.utils                       import par_utils
+from   maia.utils import vstride as vs
 
+from .cgns_to_pdm_pmesh import part_zones_to_pdm_pmesh_nodal
 
-from   mpi4py import MPI
-import numpy as np
+from maia.algo import interpolation_utils as itp_utils
+
 
 import Pypdm.Pypdm as PDM
 
-def compute_dual_volume(tree, comm):
-  from   maia.factory.dist_from_part   import get_parts_per_blocks
-  assert(len(get_parts_per_blocks(tree, comm).values()) == 1)
-  part_zones = list(get_parts_per_blocks(tree, comm).values())[0]
+from maia.typing import *
+
+def _get_native_measure(zone):
+  dim = PT.Zone.CellDimension(zone)
+  return PT.get_np_value(PT.find_node_from_path(zone, f'Geometry_{dim}d/Measure'))
+
+
+def compute_mesh_intersection(src_parts:List[CGNSPartTree],
+                              tgt_parts:List[CGNSPartTree],
+                              comm:MPIComm,
+                              dim:int) -> Tuple[PDM.PartToPart, List[Dict[str, NDArray]]]:
+
+  pmn1 = part_zones_to_pdm_pmesh_nodal(src_parts, comm)
+  pmn2 = part_zones_to_pdm_pmesh_nodal(tgt_parts, comm)
+
+  # NB : the two last args are unused by class
+  mi = PDM.MeshIntersection(comm,  PDM._PDM_MESH_INTERSECTION_KIND_WEIGHT, dim, dim, 1, 1)
+
+  # /!\ Register src as part_2 and tgt as part_1 /!\
+  mi.part_nodal_set(0, pmn2)
+  mi.part_nodal_set(1, pmn1)
+
+  mi.compute()
+  ptp = mi.part_to_part_get()
+  res = [mi.a_to_b_get(ipart) for ipart in range(len(tgt_parts))]
+
+  return ptp, res
+
+
+def cell_data_transfer(ptp:PDM.PartToPart,
+                       tgt_to_src_l:List[Dict],
+                       cons_vars_cells:Dict[str, List[NDArray]]) -> Dict[str, List[NDArray]]:
+
+  # Remainder : in ptp,  part1 is target mesh, part2 is src mesh
+  rq_dict = dict()
+  for name, field_vals in cons_vars_cells.items():
+    
+    rq_dict[name] = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                      PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                      field_vals)
+  output = {}
+  for name, rq in rq_dict.items():
+    _, recv_datas = ptp.reverse_wait(rq)
+ 
+    # Reduce recv data to n_cell_tgt using intersection weights
+    # Now operating on TGT parts
+    output[name] = list()
+    for val, tgt_to_src in zip(recv_datas, tgt_to_src_l):
+      extended_data = vs.from_displs(tgt_to_src['a_to_b_idx'], val*tgt_to_src['a_to_b_frac'])
+      reduced_data = extended_data.reduce(vs.ReduceOp.SUM)
+      print(reduced_data)
+      print("TOTAL", reduced_data.sum())
+      
+
+      output[name].append(reduced_data)
+
+
+  return output
+
+
+
+def tree_dim(tree:CGNSPartTree, comm:MPIComm) -> int:
+  base_dims = set(PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(tree))
+  dims = comm.allreduce(base_dims, lambda s1,s2 : s1 & s2)
+  if len(dims) != 1:
+    raise RuntimeError("Inconsistent mesh dimension")
+  return dims.pop()
+
+class VertexToCell:
+  def __init__(self, tree:CGNSPartTree, comm:MPIComm):
+    self.zones = PT.get_all_Zone_t(tree)
+
+    self.cell_vtx_l = []
+    for zone in self.zones:
+      dim = PT.Zone.CellDimension(zone)
+      elt = PT.find_child_from_predicate(zone, PT.pred.is_element_of_type('TRI_3' if dim == 2 else 'TETRA_4'))
+      self.cell_vtx_l.append(MT.Element.connectivity(elt))
+
+    self.dim = dim if len(self.zones) > 0 else -1
+
+    # Weight must be already extended (size = cell_vtx.dsize)
+    # Method 1: Basic arithmetic mean
+    #   Within a cell, each vertex contributes with a constant weight
+    #   w = 1 / n_vtx_of_cell  
+    self.weight_l = [1./(self.dim+1) * len(self.zones)] # Trick : use cste, numpy will broadcast
+
+    # Method 2: Dual volumes
+    #  Within a cell, each vertex contributes up to the fraction of dual volume provided by this cell:
+    #  w = dual_volume_contribution_from_cell / dual_volume_of_vertex
+    """
+    self.weight_l = []
+    dual_vol_l = PDM.part_mesh_nodal_dual_volume(part_zones_to_pdm_pmesh_nodal(self.zones, comm))
+    for i, zone in enumerate(self.zones):
+      vol = _get_native_measure(zone)
+      vol_dispatch = np.repeat(vol / (self.dim+1), self.dim+1)
+      dual_vol = dual_vol_l[i]
+      self.weight_l.append(vol_dispatch / dual_vol[self.cell_vtx_l[i].values-1])
+    """
+
+  def _exchange_fields(self, vtx_fields:Dict[str, List[NDArray]]) -> Dict[str, List[NDArray]]:
+
+    cell_fields = {key: [] for key in vtx_fields}
+    for i, cell_vtx in enumerate(self.cell_vtx_l):
+      for fname, vtx_vals_l in vtx_fields.items():
+        rep_field = vs.from_displs(cell_vtx.displs, vtx_vals_l[i][cell_vtx.values-1]*self.weight_l[i])
+        cell_field = rep_field.reduce(vs.ReduceOp.SUM)
+        cell_fields[fname].append(cell_field)
+
+    return cell_fields
+
+class CellToVertex:
+  def __init__(self, tree:CGNSPartTree, comm:MPIComm):
+    self.zones = PT.get_all_Zone_t(tree)
+
+    nb_tot_vertex = MT.Zone.n_vtx(self.zones, comm)
+    vtx_distri  = par_utils.uniform_distribution(nb_tot_vertex,  comm)
+
+    cell_vtx_gnum_l = list()
+    vtx_gnum_l = list()
+    for zone in self.zones:
+      dim = PT.Zone.CellDimension(zone)
+      elt = PT.find_child_from_predicate(zone, PT.pred.is_element_of_type('TRI_3' if dim == 2 else 'TETRA_4'))
+      elt_vtx = PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity'))
+      vtx_gnum = MT.Zone.vtx_globalnumbering(zone)
+
+      cell_vtx_gnum_l.append(vtx_gnum[elt_vtx - 1])
+      vtx_gnum_l.append(vtx_gnum)
+  
+    self.dim = dim if len(self.zones) > 0 else -1
+
+    # First indexer for cell_vtx connectivity, second one only for vertices
+    self.cnt_gi = EP.GlobalIndexer(vtx_distri, cell_vtx_gnum_l, comm, gnum_offset=1)
+    self.vtx_gi = EP.GlobalIndexer(vtx_distri, vtx_gnum_l,      comm, gnum_offset=1)
+
+    # Weight must be already extended (size = cell_vtx.dsize)
+
+    # Method 1: Basic arithmetic mean
+    #   From each cell, use constant weight for every vertices
+    #   w = 1 / n_vtx_of_cell  
+    """
+    self.weight_l = [1./(self.dim+1) * len(self.zones)] # Trick : use cste, numpy will broadcast
+    """
+
+    # Method 2: Dual volumes
+    #  From each cell, contribute to each vtx using to the fraction of vtx dual volume provided by the cell:
+    #  w = dual_volume_contribution_from_cell / dual_volume_of_vertex
+    volume_l = [_get_native_measure(zone) for zone in self.zones]
+    vol_dispatch_l = [np.repeat(vol / (self.dim+1), self.dim+1) for vol in volume_l]
+    # We already have indexer so compute dual volume manually
+    dual_vol_rep_l = self.cnt_gi.Take(self.cnt_gi.Put(vol_dispatch_l, reduce=EP.ReduceOp.SUM))
+    self.weight_l = [vol_dispatch / dual_vol_rep for vol_dispatch, dual_vol_rep in zip(vol_dispatch_l, dual_vol_rep_l)]
+
+  def _exchange_fields(self, cell_fields:Dict[str, List[NDArray]]) -> Dict[str, List[NDArray]]:
+
+    vtx_fields = dict()
+
+    for fname, vals in cell_fields.items():
+      data = [np.repeat(val, self.dim+1)*weight for val,weight in zip(vals, self.weight_l)]
+      vtx_fields[fname] = self.vtx_gi.Take(self.cnt_gi.Put(data, reduce=EP.ReduceOp.SUM))
+
+    return vtx_fields
+  
+    
+class ConservativeInterpolator:
+
+  def __init__(self, src_tree, tgt_tree, src_loc, tgt_loc, comm):
+    
+    #  Restrictions
+    # monodomain ? 
+    # elements simpliciaux ?
+    # src_loc == tgt_loc
+
+    maia.algo.compute_elements_measure(src_tree, 'CellCenter', comm)
+    maia.algo.compute_elements_measure(tgt_tree, 'CellCenter', comm)
+
+    src_parts = PT.get_all_Zone_t(src_tree)
+    tgt_parts = PT.get_all_Zone_t(tgt_tree)
+
+    src_dim = tree_dim(src_tree, comm)
+    tgt_dim = tree_dim(tgt_tree, comm)
+    assert src_dim == tgt_dim
+
+    # Compute intersection between src (part 2) and tgt (part 1)
+    self.ptp, self.tgt_to_src = compute_mesh_intersection(src_parts, tgt_parts, comm, src_dim)
+
+    vol_src = [_get_native_measure(zone) for zone in src_parts]
+    vol_tgt = [_get_native_measure(zone) for zone in tgt_parts]
+
+    # Convert PDM weight (which are actually measures) to ratio,
+    # dividing by src volumes (exchange needed to bring this to tgt)
+    rq = self.ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                vol_src)
+    _, recv_vols = self.ptp.reverse_wait(rq)
+    for tgt_to_src, vol in zip(self.tgt_to_src, recv_vols):
+      tgt_to_src['a_to_b_frac'] = tgt_to_src['a_to_b_weight'] / vol
+
+    # Detect tgt cell not completly covered by src cells:
+    #   - outside_mask is True if tgt cell is totally   outside src mesh
+    #   - partial_mask is True       "        partially        "
+    # vol_ratio is the fraction of tgt cell covered by src mesh
+    vol_from_src = [vs.from_displs(tgt_to_src['a_to_b_idx'], tgt_to_src['a_to_b_weight'])
+                   .reduce(vs.ReduceOp.SUM) for tgt_to_src in self.tgt_to_src]
+    self.vol_ratio = [from_src / tgt for from_src, tgt in zip(vol_from_src, vol_tgt)]
+    self.partial_mask = [r*(1-r) > 1E-15 for r in self.vol_ratio]
+    self.outside_mask = [r < 1E-15       for r in self.vol_ratio]
+
+
+    # For outside cells, prepare an additional PtP that link them to closest src cell
+    src_clouds = [PCU.get_point_cloud(part, 'CellCenter') for part in src_parts]
+    tgt_clouds = [PCU.get_point_cloud(part, 'CellCenter') for part in tgt_parts]
+    tgt_clouds = [PCU.extract_sub_cloud_from_flag(cloud, flag) for cloud,flag in zip(tgt_clouds, self.outside_mask)]
+
+    closest_out = CLO._mdom_closest_points([src_clouds], [tgt_clouds], comm, False, n_pts=1, need_shift=True)[0]
+
+    # Use again PART 1 = target, PART 2 = source
+    ptp = PDM.PartToPart(comm,
+                        [tgt_cloud[1] for tgt_cloud in tgt_clouds],
+                        [src_cloud[1] for src_cloud in src_clouds],
+                        [np.arange(closest["closest_src_gnum"].size+1,dtype=np.int32) for closest in closest_out],
+                        [closest["closest_src_gnum"] for closest in closest_out])
+    self.outside_ptp = ptp
+
+    self.src_tree = src_tree
+    self.tgt_tree = tgt_tree
+    self.comm = comm
+
+    # Caching
+    self._vtx_to_cell_src = None
+    self._cell_to_vtx_tgt = None
+
+    # If some rank have no partitions, store a rank used as root to share FS names
+    self.root = None
+    if comm.allreduce(len(src_parts) == 0, MPI.LOR):
+      self.root = self.comm.allreduce(-1 if len(src_parts) == 0 else comm.rank, MPI.MAX)
+
+  @property
+  def vtx_to_cell_src(self):
+    if self._vtx_to_cell_src is None:
+      self._vtx_to_cell_src = VertexToCell(self.src_tree, self.comm)
+    return self._vtx_to_cell_src
+  @property
+  def cell_to_vtx_tgt(self):
+    if self._cell_to_vtx_tgt is None:
+      self._cell_to_vtx_tgt = CellToVertex(self.tgt_tree, self.comm)
+    return self._cell_to_vtx_tgt
+
+  def exchange_fields(self, container_name:str, tgt_loc:str):
+
+    src_parts = PT.get_all_Zone_t(self.src_tree)
+    tgt_parts = PT.get_all_Zone_t(self.tgt_tree)
+    field_names, cnt_label = itp_utils.discover_fields_name(src_parts, container_name, self.root, self.comm)
+
+
+    src_fields_l = {key: [] for key in field_names}
+    for src_zone in src_parts:
+      container = PT.find_node_from_path(src_zone, container_name)
+      loc = PT.Container.GridLocation(container)
+      for key, val in PT.Container.fields(container).items():
+        src_fields_l[key].append(val)
+
+    if loc == 'Vertex':
+      src_fields_l = self.vtx_to_cell_src._exchange_fields(src_fields_l)
+    elif loc != 'CellCenter':
+      raise ValueError(f"Unsupported location for input container: {loc}")
+      
+    tgt_fields_l = cell_data_transfer(self.ptp, self.tgt_to_src, src_fields_l)
+
+    # Partially inside correction
+    for tgt_vals in tgt_fields_l.values():
+      for i, tgt_val in enumerate(tgt_vals):
+        np.divide(tgt_val, self.vol_ratio[i], where=self.partial_mask[i], out=tgt_val)
+
+    # Totaly outside cells correction
+    for field, src_vals in src_fields_l.items():
+      rq = self.outside_ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                          PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                          src_vals)
+      _, recv_data = self.outside_ptp.reverse_wait(rq)
+      for i,(data, flag) in enumerate(zip(recv_data, self.outside_mask)):
+        tgt_fields_l[field][i][flag] = data
+
+    # [30.         30.         38.88888889 45.55555556 40.         92.22222222  1 : 1
+    # [46.66666667 45.         61.11111111 68.33333333 60.         57.91666667] 1 : 2
+    # [ 38.75        31.38888889  52.08333333  67.22222222  57.22222222 123.33333333]  2 : 1
+    # [ 63.47222222  47.08333333  86.80555556 100.83333333  85.83333333 80.72916667] 2 : 2
+    # Back to vertex
+    if tgt_loc == 'Vertex':
+      tgt_fields_l = self.cell_to_vtx_tgt._exchange_fields(tgt_fields_l)
+    elif tgt_loc != 'CellCenter':
+      raise ValueError(f"Unsupported location for output container: {tgt_loc}")
+
+
+    # Update target partitions
+    for i,tgt_part in enumerate(tgt_parts):
+      PT.rm_children_from_name(tgt_part, container_name)
+      fields = {key: vals[i] for key,vals in tgt_fields_l.items()}
+      fs = PT.new_FlowSolution(container_name, loc=tgt_loc, fields=fields, parent=tgt_part)
+      PT.set_label(fs, cnt_label)
 
-  from  adaptathon.utils.cgns_to_pmn import cgns_part_zones_to_pdm_pmesh_nodal
-  pmn = cgns_part_zones_to_pdm_pmesh_nodal(part_zones, comm, needs_bc=False)
-
-  return pmn.dual_volume_get()
-
-def compress_a_to_b_idx(idx_in):
-  referenced =  np.where(np.diff(idx_in) != 0)
-  unreferenced =  np.where(np.diff(idx_in) == 0)
-  idx_out = idx_in[referenced]
-  # print(idx_out)
-
-  return referenced, unreferenced, idx_out
-
-def init_orphan(zones, zones2, volume_from_src,comm,cons_fields_names,cons_B,dim):
-  """
-  For orphan vertices in the tgt mesh, we use a `Closest` method
-  """
-  # vertices which have a cell whose vol_ratio < 1.e-15 (==0)
-  # theses vertices are completely outside the fluid domain should be initialized differently
-  # here we choose the Closest strategy
-
-
-  # phase 1 transfer the cell-based flag to a vtx-based flag
-  # any vtx that uses a cell which is flagged will be flagged
-  flagged_cell = [np.zeros(PT.Zone.n_cell(zone), dtype=int) for zone in zones2]
-
-  volume2 = [PT.get_value(PT.get_node_from_path(zone, _measure_name(dim))) for zone in zones2]
-
-  if(len(zones2) != 0):
-    for i,_ in enumerate(zones2):
-      # [0] is for np.where
-      flagged_cell[i][np.where(volume_from_src[i]/volume2[i] < 1.e-15)[0]] = 1
-      flagged_cell[i] = np.repeat(flagged_cell[i],dim+1)
-
-  primal_vtx_id = [MT.Zone.vtx_globalnumbering(zone) for zone in zones2]
-
-  # MT.Zone.vtx_globalnumbering
-  tri_vtx2 =  [gnum[PT.get_np_value(
-        PT.find_child_from_name(PT.find_child_from_predicate(
-        zone, PT.pred.is_element_of_type(_simplicial_elt_type(dim))), 'ElementConnectivity')) -1] for gnum,zone in zip(primal_vtx_id,zones2)]
-
-  val = 0
-  if(len(zones2) != 0):
-    val = max(max(MT.Zone.vtx_globalnumbering(z)) for z in zones2)
-
-  nb_tot_vertex = comm.allreduce(val, MPI.MAX)
-  vtx_distri  = par_utils.uniform_distribution(nb_tot_vertex,  comm)
-
-  flag_vtx_distrib = EP.part_to_block(flagged_cell,
-                                      vtx_distri, tri_vtx2, comm, reduce_op=EP.ReduceOp.MAX, gnum_offset=1)
-
-
-  flags_vtx = EP.block_to_part(flag_vtx_distrib, vtx_distri, primal_vtx_id, comm, gnum_offset=1)
-  orphan_vtx = [np.where(val == 1)[0].astype(np.int32) for val in flags_vtx]
-
-  #
-  nb_tot_orphan = 0
-  for i, _ in enumerate(zones2):
-    nb_tot_orphan += orphan_vtx[i].size
-  nb_tot_orphan = comm.allreduce(nb_tot_orphan,MPI.SUM)
-
-  if(comm.rank == 0 and nb_tot_orphan > 0):
-    print(f'total orphan vtx (init strategy: Closest): {nb_tot_orphan}')
-
-  # create transfer protocol for flagged vtx
-  # ici on fait une sorte de Closest sur l'ensemble de noeud `flagged_vtx`
-  closest_out:List[List[Dict[str, VStrideArray]]]  = []
-
-  src_loc = "Vertex"
-  tgt_loc = "Vertex"
-  src_clouds = [[PCU.get_point_cloud(part, src_loc) for part in zones]]
-  tgt_clouds = [[PCU.get_point_cloud(part, tgt_loc) for part in zones2]]
-  tgt_need_shift = True
-  tgt_clouds = [[PCU.extract_sub_cloud(*cloud, flag) for cloud,flag in zip(tgt_clouds[0], orphan_vtx)]]
-
-  closest_out = CLO._mdom_closest_points(src_clouds, tgt_clouds, comm, False, n_pts=1, need_shift=tgt_need_shift)
-
-  all_closest = py_utils.to_flat_list(closest_out)
-
-  ptp = PDM.PartToPart(
-    comm,
-    [tgt_cloud[1] for tgt_cloud in tgt_clouds[0]],
-    [src_cloud[1] for src_cloud in src_clouds[0]],
-    [np.arange(closest["closest_src_gnum"].size+1,dtype=np.int32) for closest in all_closest],
-    [closest["closest_src_gnum"] for closest in all_closest]
-  )
-
-  for field in cons_fields_names:
-    to_swap = [PT.get_value(PT.get_node_from_path(zone,f"Fields@Vertex@End/{field}")) for zone in zones]
-
-    request = ptp.reverse_iexch(
-    PDM._PDM_MPI_COMM_KIND_P2P,
-    PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-    to_swap,
-    )
-
-    _, temp= ptp.reverse_wait(request)
-
-    for i, (flag_vtx, _temp) in enumerate(zip(orphan_vtx, temp)):
-      cons_B[field][i][flag_vtx] = _temp
-
-def calc_volume(comm,volume):
-  """sums volume on all zones"""
-
-  tot_vol = 0.
-  for val in volume:
-    tot_vol = np.sum(val)
-  tot_vol =  comm.allreduce(tot_vol, MPI.SUM)
-
-  return tot_vol
-
-def _measure_name(dim):
-  if(dim == 2):
-    return 'Geometry_2d/Measure'
-  else:
-    return 'Geometry_3d/Measure'
-
-def _simplicial_elt_type(dim):
-  if(dim == 2):
-    return 'TRI_3'
-  else:
-    return 'TETRA_4'
-
-def transfer_cons_vars_vtx_2_cell(zones, dim, comm, containers, flowSol_iter):
-  """
-  Simple conservative transfer from vtx to cell on simplicial surface/volume meshes
-
-  Returns : dict of vals at cells and integral value (volume + containers)
-  """
-  integral = dict()
-
-  integral_vars_node  = dict()
-  cons_vars_cells = dict()
-  for field in containers:
-    integral_vars_node[field] = [PT.get_value(PT.get_node_from_name(PT.get_node_from_name(zone,"Fields@Vertex@"+flowSol_iter), field)) for zone in zones]
-
-  volume1 = [PT.get_value(PT.get_node_from_path(zone, _measure_name(dim))) for zone in zones]
-  integral['volume'] = calc_volume(comm,volume1)
-
-  cell_vtx_idx = [np.arange(0, (PT.Zone.n_cell(zone)+1)*(dim+1), dim+1, dtype=np.int32) for zone in zones]
-
-  # TODO: assert all elements are simplices
-
-  tri_vtx = [PT.get_np_value(PT.find_child_from_name(PT.find_child_from_predicate(zone, PT.pred.is_element_of_type(_simplicial_elt_type(dim))), 'ElementConnectivity')) for zone in zones]
-  for field in containers:
-    cons_vars_cells[field] = [np.add.reduceat(integral_vars_node[field][i][tri_vtx[i]-1]/(dim+1), cell_vtx_idx[i][:-1]) for i, _ in enumerate(zones)]
-  mass1_temp = dict()
-
-  if(comm.rank == 0):
-    print("here")
-
-  for field in containers:
-    mass1_temp[field] = 0
-
-  for field in containers:
-    for i, _ in enumerate(zones):
-      mass1_temp[field] += np.sum(cons_vars_cells[field][i] * volume1[i])
-    integral[field] = comm.allreduce(mass1_temp[field], MPI.SUM)
-  # TODO: fin a extraire
-
-  return cons_vars_cells, integral
-
-def _reduce_val_at_cells(zones, dim, comm, containers, cons_vars_subcells, a_to_b):
-  """
-  intput: `cons_vars_subcells` contains vals of conservative fields on intersection cells (subcells)
-
-  returns: cons variables at cells and integral of those values
-  """
-
-  cons_B_cell = dict()
-  integral = dict()
-
-  volume = [PT.get_value(PT.get_node_from_path(zone, _measure_name(dim))) for zone in zones]
-  integral['volume'] = calc_volume(comm,volume)
-
-  if("a_to_b_idx" in a_to_b):
-    referenced_b, _, new_a_to_b_idx = compress_a_to_b_idx(a_to_b["a_to_b_idx"])
-
-  for field in containers:
-    # FIXME: this [0] shouldn't be
-    cons_B_cell[field] = [np.zeros(PT.Zone.n_cell(zone), dtype = cons_vars_subcells[field][0].dtype) for zone in zones]
-
-    if("a_to_b_weight" in a_to_b):
-      cons_B_cell[field][0][referenced_b] = \
-        np.add.reduceat(cons_vars_subcells[field][0] * a_to_b['a_to_b_weight']/(dim+1) , \
-                        new_a_to_b_idx)
-
-  volume_from_src = [np.zeros(PT.Zone.n_cell(zone),dtype=np.float64) for zone in zones]
-
-  #FIXME:
-  if("a_to_b_weight" in a_to_b):
-    volume_from_src[0][referenced_b] = np.add.reduceat(a_to_b['a_to_b_weight'],new_a_to_b_idx)
-
-  return cons_B_cell, integral, volume_from_src
-
-
-def update_mass_2(containers, zones, cons_B_cells,comm, integral):
-  """
-  modifies in-place `integral` to add the sum of all values in cons_B_cells
-  """
-
-  for field in containers:
-    temp = 0
-    for i, _ in enumerate(zones):
-      temp += np.sum(cons_B_cells[field][i])
-    integral[field] = comm.allreduce(temp,MPI.SUM)
-
-
-def calculate_mesh_intersection(part_tree, part_tree2, comm, dim):
-  """
-  wrapping of PDM.MeshIntersection and its compute() method
-
-  returns a PDM.MeshIntersection object
-  """
-  list_pmn1 = list()
-  list_pmn2 = list()
-  for part_zones in get_parts_per_blocks(part_tree, comm).values():
-    list_pmn1.append(cgns_part_zones_to_pdm_pmesh_nodal(part_zones, comm, needs_bc=False))
-
-  for part_zones in get_parts_per_blocks(part_tree2, comm).values():
-    list_pmn2.append(cgns_part_zones_to_pdm_pmesh_nodal(part_zones, comm, needs_bc=False))
-
-  mi2 = PDM.MeshIntersection(comm,
-                            PDM._PDM_MESH_INTERSECTION_KIND_WEIGHT,
-                            dim,
-                            dim,
-                            1,
-                            1)
-
-  #
-  # /!\ CAREFUL HERE : mesh1 is part_2, mesh2 is part_1 /!\
-  #
-  mi2.part_nodal_set(1, list_pmn1[0])
-  mi2.part_nodal_set(0, list_pmn2[0])
-
-  mi2.compute()
-
-  if(comm.rank == 0):
-    print("intersection computed")
-  return mi2
-
-def cut_cell_correction(zones, dim, volume_from_src, comm, cons_B_cells, containers, OUTPUT=True):
-  """
-  for curved surfaces we do a non-conservative correction for cells in the target_mesh which have received only partial information from the src_mesh
-  """
-
-  volume = [PT.get_value(PT.get_node_from_path(zone, _measure_name(dim))) for zone in zones]
-
-  vol_ratio = [volume_from_src[i]/volume[i] for i, _ in enumerate(zones)]
-
-  # le [0] est obligatoire avec le np.where
-  to_correct_idx = [np.where(volume_from_src[i]/volume[i]*(1- volume_from_src[i]/volume[i]) >  1.e-15)[0].astype(np.int32) for i, _ in enumerate(zones)]
-
-  nb_partial_cells = 0
-  for i, _ in enumerate(zones):
-    nb_partial_cells += to_correct_idx[i].size
-
-  nb_partial_cells += comm.allreduce(nb_partial_cells,MPI.SUM)
-
-  if(comm.rank == 0 and OUTPUT):
-    print('************')
-    print(f'Exotic cases:')
-    print(f'total partial intersection in primal mesh: {nb_partial_cells}')
-
-    # TODO: code volume change
-    # print(f'change in simulated volume: {change_vol}')
-  min_val = 1.0
-  for i,_ in enumerate(zones):
-    min_val = min(min_val, np.min(vol_ratio[i][to_correct_idx]))
-
-  max_amplification_factor = comm.allreduce(np.max(1/min_val),MPI.MAX)
-  if(comm.rank == 0 and OUTPUT):
-    print(f'max conservative amplification factor    : {max_amplification_factor}')
-
-  # non cons correction
-  for field in containers:
-    for i, _ in enumerate(zones):
-      cons_B_cells[field][i][to_correct_idx] /= vol_ratio[i][to_correct_idx]
-
-def _volume_change_stats(volume_from_src, integral1, integral2, comm, OUTPUT=True):
-  """
-  simple analysis of the calculation volume associated with the conservative conservative variable
-  """
-
-  total_vol_received = np.sum(volume_from_src)
-
-  total_vol_received = comm.allreduce(total_vol_received, MPI.SUM)
-  if(comm.rank == 0 and OUTPUT):
-    eps_vol = 1.e-16
-    print('******')
-    print("Total fluid volume from src:",integral1["volume"] )
-    print("Fluid Volume received :",total_vol_received)
-    print("Fluid volume tgt:",integral2["volume"])
-    print("Discrepency:",np.abs(integral2["volume"]-total_vol_received), np.abs(integral2["volume"]-total_vol_received)/(integral2["volume"]+eps_vol)*100, "%")
-
-def transfer_cell_to_vtx(zones2, comm, dim, cons_B_cells, containers, part_tree2):
-
-  for field in containers:
-    for i,_ in enumerate(zones2):
-      cons_B_cells[field][i] = np.repeat(cons_B_cells[field][i],(dim+1))
-
-  val = 0
-  if(len(zones2) != 0):
-    val = max(max(MT.Zone.vtx_globalnumbering(z)) for z in zones2)
-
-  nb_tot_vertex = comm.allreduce(val, MPI.MAX)
-
-  primal_vtx_id = [MT.Zone.vtx_globalnumbering(zone) for zone in zones2]
-  tri_vtx2 =  [gnum[PT.get_np_value(
-        PT.find_child_from_name(PT.find_child_from_predicate(
-        zone, PT.pred.is_element_of_type(_simplicial_elt_type(dim))), 'ElementConnectivity')) -1] for gnum,zone in zip(primal_vtx_id,zones2)]
-
-  vtx_distri  = par_utils.uniform_distribution(nb_tot_vertex,  comm)
-
-  cons_O2_distrib = EP.part_to_block(cons_B_cells,
-                                      vtx_distri, tri_vtx2, comm, reduce_op=EP.ReduceOp.SUM, gnum_offset=1)
-
-  dual_vols_B = compute_dual_volume(part_tree2,comm)
-  cons_B = EP.block_to_part(cons_O2_distrib, vtx_distri, primal_vtx_id, comm, gnum_offset=1)#[0] / surf_Dual
-
-  for i, _ in enumerate(zones2):
-    for field in containers:
-      cons_B[field][i]     /= dual_vols_B[i]
-      # print(field,cons_B[field][i])
-
-  return cons_B
-
-def transfer_to_part_2(mesh_intersection,zones,zones2, containers,cons_vars_cells):
-  ptp = mesh_intersection.part_to_part_get()
-  gnum1_come_from = ptp.get_gnum1_come_from()
-  referenced = ptp.get_referenced_lnum2()[0]
-
-  a_to_b = dict()
-  if(len(zones) > 0 and len(zones2)> 0 ):
-    a_to_b = mesh_intersection.a_to_b_get(0)
-
-  # indirection array for gnum1_come_from
-  idx_cells_to_transfer = [np.repeat(referenced, np.diff((gnum1_come_from[i]["come_from_idx"]))) for i,_ in enumerate(zones)]
-
-  # indirection in the data from part1 using idx_cells_to_transfer (by-product of gnum1_come_from)
-  cons_copied = dict()
-  for field in containers:
-    # idx is 1-based
-    cons_copied[field] = [cons_vars_cells[field][i][idx_cells_to_transfer[i] - 1] for i, _ in enumerate(zones)]
-
-  # region - Transfer to mesh B
-  cons_vars_subcells_B = dict()
-  for field in containers:
-    request = ptp.reverse_iexch(
-    PDM._PDM_MPI_COMM_KIND_P2P,
-    PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_GNUM1_COME_FROM,
-    cons_copied[field],
-    )
-
-    _, temp = ptp.reverse_wait(request)
-    cons_vars_subcells_B[field] = temp
-  return cons_vars_subcells_B, a_to_b
-
-def interpCons(containers, part_tree, part_tree2, comm,  flowSol_iter="End",
-  OUTPUT=True):
-  '''First-order accurate interpolation, conservative between two 2D or 3D part trees made only of simplicial elements on their flowSolution. (TRI_3 or TETRA_4)
-  - Only the conservative variables can be used 'Density', 'Momentum', 'EnergyStagnationDensity' and turbulent/multispecies-specific variables -> assert on the containers before calling interpCons()
-  - Works for vertex-centered based solution, but could also be called on cell-centered solutions
-  Vertex-based solution is transferred at cells on mesh 1 then to cells on mesh 2 and finally on vertices
-
-  For partials cells, a non-conservative correction is implemented
-  For orphan issues a Closest method is called
-
-  returns Volume and integral values of conservatives variables of both meshes
-
-  '''
-
-  base_n = PT.get_child_from_label(part_tree,"CGNSBase_t")
-  dim = PT.Base.CellDimension(base_n)
-
-  # region - Geometry Calculation
-  for tree in [part_tree, part_tree2]:
-    maia.algo.compute_elements_measure(tree, dim, comm)
-
-  zones = PT.get_all_Zone_t(part_tree)
-
-  # the mesh intersection calculation is only on the primal mesh, thus we transfer the vertex-fields to the cells in a conservative manner
-  cons_vars_cells, integral1 = transfer_cons_vars_vtx_2_cell(zones, dim, comm, containers, flowSol_iter)
-
-  # set up transfer protocol ptp
-  mesh_intersection = calculate_mesh_intersection(part_tree, part_tree2, comm, dim)
-  # get info from the ptp
-  zones2 = PT.get_all_Zone_t(part_tree2)
-  # FIXME: strangely if a_to_b is not _get() here, then it crashes.
-  # probably some dark python property
-  cons_vars_subcells, a_to_b = transfer_to_part_2(mesh_intersection,zones,zones2, containers,cons_vars_cells)
-
-  # sum subcells from second mesh point of view
-  cons_B_cells, integral2, volume_from_src = _reduce_val_at_cells(zones2, dim, comm, containers, cons_vars_subcells, a_to_b)
-
-  # display info
-  _volume_change_stats(volume_from_src, integral1, integral2, comm, OUTPUT)
-
-  # 1rst correction of the received values
-  cut_cell_correction(zones2, dim, volume_from_src,comm, cons_B_cells,containers)
-
-  # in-place modification of integral2 to add values of conservative fields
-  update_mass_2(containers, zones2, cons_B_cells, comm, integral2)
-
-  cons_B = transfer_cell_to_vtx(zones2, comm, dim, cons_B_cells, containers, part_tree2)
-
-  # 2nd correction - Closest on orphan vtx
-  init_orphan(zones, zones2, volume_from_src, comm, containers, cons_B, dim)
-
-  # put cons_B in part_tree2
-  for i,zone in enumerate(zones2):
-    # PT.print_tree(zone)
-    fs_n = PT.get_node_from_name(zone,"Fields@Vertex@"+flowSol_iter)
-    if fs_n is None:
-      fs_n = PT.new_FlowSolution(name="Fields@Vertex@"+flowSol_iter, loc="Vertex", parent=zone)
-    for field in containers:
-      # print(field)
-      PT.new_DataArray(field, cons_B[field][i], dtype='R8', parent = fs_n)
-
-  return integral1, integral2
