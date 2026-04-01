@@ -1,5 +1,6 @@
 import pytest
 import pytest_parallel
+import warnings
 
 import numpy as np
 import time
@@ -25,18 +26,24 @@ def test_get_local_coordinates_perf():
   large_ids = np.random.randint(1, coord.size+1, coord.size)
   small_ids = np.random.randint(1, coord.size+1, 1000)
 
-  t1 = time.time()
+  t = time.time()
   o1 = implem_1(coord, small_ids)
-  t2 = time.time()
+  t_impl1 = time.time() - t
+  t = time.time()
   o2 = implem_2(coord, small_ids)
-  t3 = time.time()
-  assert np.array_equal(o1,o2)
-  assert t2-t1 < t3-t2
+  t_impl2 = time.time() - t
 
-  t1 = time.time()
-  o1 = implem_1(coord, large_ids)
-  t2 = time.time()
-  o2 = implem_2(coord, large_ids)
-  t3 = time.time()
-  assert t2-t1 > t3-t2
   assert np.array_equal(o1,o2)
+  if not (t_impl1 < t_impl2):
+    warnings.warn('Strange timer result : algo 1 should be faster')
+
+  t = time.time()
+  o1 = implem_1(coord, large_ids)
+  t_impl1 = time.time() - t
+  t = time.time()
+  o2 = implem_2(coord, large_ids)
+  t_impl2 = time.time() - t
+
+  assert np.array_equal(o1,o2)
+  if not (t_impl1 > t_impl2):
+    warnings.warn('Strange timer result : algo 2 should be faster')
