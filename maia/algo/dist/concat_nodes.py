@@ -9,7 +9,7 @@ from maia.algo.dist import matching_jns_tools as MJT
 import numpy as np
 
 
-def find_suffix(perio:PT.PeriodicValues, perio_refs:List[PT.PeriodicValues], add_opp_perio=False,
+def find_suffix(perio:NDArray, perio_refs:List[NDArray], add_opp_perio=False,
                 perio_to_one_side_path_jn={}, cur_path='', donor_path=''):
   found = False
   for i,perio_ref in enumerate(perio_refs):
@@ -29,7 +29,7 @@ def find_suffix(perio:PT.PeriodicValues, perio_refs:List[PT.PeriodicValues], add
     perio_to_one_side_path_jn[len(perio_refs)-1] = [cur_path]
     if add_opp_perio:
       perio_to_one_side_path_jn[len(perio_refs)] = []
-      perio_refs.append(-perio)
+      perio_refs.append(np.linalg.inv(perio))
   return suffix
   
 
@@ -150,8 +150,8 @@ def concatenate_jns(tree: CGNSDistTree, comm: MPIComm) -> None:
   MJT.find_joins_donor_name(tree, comm)
   
   
-  match_perio_refs:List[PT.PeriodicValues]   = []
-  nomatch_perio_refs:List[PT.PeriodicValues] = []
+  match_perio_refs:List[NDArray]   = []
+  nomatch_perio_refs:List[NDArray] = []
   
   perio_to_one_side_path_jn:Dict[int, List[str]] = {}
   
@@ -188,7 +188,8 @@ def concatenate_jns(tree: CGNSDistTree, comm: MPIComm) -> None:
   
         #Manage periodic -- merge only if periodic values are identical
         if is_perio_gc:
-          perio = PT.GridConnectivity.periodic_values(jn)
+          _perio = PT.GridConnectivity.periodic_values(jn)
+          perio = np_utils._transform_to_homogeneous_matrix(**_perio.asdict(True))
           if type=="Abutting1to1":
             suffix = find_suffix(perio, match_perio_refs, add_opp_perio=intra_gc,
                                  perio_to_one_side_path_jn=perio_to_one_side_path_jn,
@@ -216,7 +217,7 @@ def concatenate_jns(tree: CGNSDistTree, comm: MPIComm) -> None:
             else:
               opp_suffix = f'.P{suff_int-1}'
           elif type=="Abutting":
-            opp_suffix = find_suffix(-perio, nomatch_perio_refs)
+            opp_suffix = find_suffix(np.linalg.inv(perio), nomatch_perio_refs)
         else:
           opp_suffix = suffix
   
@@ -284,21 +285,23 @@ def concatenate_jns(tree: CGNSDistTree, comm: MPIComm) -> None:
               opp_suffix = gc_d_n[gc_d_n.rfind('.P'):]
               opp_suffix_index = int(opp_suffix[2:])
               opp_perio_node = match_perio_refs[opp_suffix_index]
-              suffix = find_suffix(-opp_perio_node, match_perio_refs)
+              suffix = find_suffix(np.linalg.inv(opp_perio_node), match_perio_refs)
               try:
                 index_opp = key_index(match_jns_to_merge[location], f"{zone_path}{opp_suffix}")
                 index = min(index, index_opp)
               except ValueError:
                 pass
             elif (not intra_gc) and PT.GridConnectivity.isperiodic(first_jn):
-              perio = PT.GridConnectivity.periodic_values(first_jn)
+              _perio = PT.GridConnectivity.periodic_values(first_jn)
+              perio = np_utils._transform_to_homogeneous_matrix(**_perio.asdict(True))
               suffix = find_suffix(perio, match_perio_refs)
             else:
               suffix = ""
           else:
             index = key_index(nomatch_jns_to_merge[location], donor_path)
             if PT.GridConnectivity.isperiodic(first_jn):
-              perio = PT.GridConnectivity.periodic_values(first_jn)
+              _perio = PT.GridConnectivity.periodic_values(first_jn)
+              perio = np_utils._transform_to_homogeneous_matrix(**_perio.asdict(True))
               suffix = find_suffix(perio, match_perio_refs)
             else:
               suffix = ""

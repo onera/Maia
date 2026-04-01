@@ -24,9 +24,6 @@ class PeriodicValues(NamedTuple):
                'translation' : self.Translation}
     else:
       return self._asdict()
-  def __neg__(self):
-    raise ArithmeticError(f"Invalid use of PeriodicValues.__neg__")
-    return PeriodicValues(self.RotationCenter, -self.RotationAngle, -self.Translation)
 
 class CartesianCoordinates(NamedTuple):
   CoordinateX:Optional[NDArray]

@@ -21,13 +21,13 @@ IS_BND = PT.pred.label_in(['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t
 
 def _are_same_perio_abs(first: PT.PeriodicValues, second: PT.PeriodicValues) -> bool:
   """ Return True if the two periodic transformation are the same in absolute value"""
-  first_center, first_angle, first_trans = first
-  second_center, second_angle, second_trans = second
-  if np.allclose(first_center, second_center):
-    if np.allclose(first_angle, second_angle) and np.allclose(first_trans, second_trans):
-      return True
-    if np.allclose(first_angle, -second_angle) and np.allclose(first_trans, -second_trans):
-      return True
+  vals1 = first.asdict(True)
+  vals2 = second.asdict(True)
+  first_mat = np_utils._transform_to_homogeneous_matrix(**vals1)
+  if np.allclose(first_mat, np_utils._transform_to_homogeneous_matrix(**vals2)):
+    return True
+  if np.allclose(first_mat, np_utils._transform_to_homogeneous_matrix(**vals2, reverse=True)):
+    return True
   return False
 
 def _create_output_container(zone, point_cloud, out_fs_name):
@@ -71,11 +71,12 @@ def _shift_ids(part_dict:Dict[str, NDArray],
   return new_part
 
 def _apply_perio(part_dict:Dict[str, NDArray],
-                  perio) -> Dict[str, NDArray]:
+                 perio:PT.PeriodicValues,
+                 reverse:bool=False) -> Dict[str, NDArray]:
 
   coords = part_dict['vtx_coords']
   cx, cy, cz = np_utils.transform_cart_vectors(coords[0::3], coords[1::3], coords[2::3],
-                                                perio[2], perio[0], perio[1]) #Perio is center, angle, trans
+                                                perio[2], perio[0], perio[1],reverse) #Perio is center, angle, trans
   new_coords = np_utils.interweave_arrays([cx, cy, cz])
 
   new_part = {key: val for key, val in part_dict.items()}
@@ -163,9 +164,6 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
 
     parts_surf_to_dupl_l = [domain_parts]
     for perio_val in periodicities.get(dist_zone_path, []):
-      transf_mat = np_utils._transform_to_homogeneous_matrix(perio_val[2], perio_val[0], perio_val[1], reverse=True)
-      translation_opp, rotation_center_opp, rotation_angle_opp = np_utils._homogeneous_matrix_to_transform(transf_mat)
-      perio_val_opp = PT.PeriodicValues(rotation_center_opp, rotation_angle_opp, translation_opp) #Center, angle, translation
 
       parts_surf_to_dupl_next_l = []
       for parts_surf_to_dupl in parts_surf_to_dupl_l:
@@ -186,7 +184,7 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
 
         # Same with opposite periodicity
 
-        dupl_parts_surf = [_apply_perio(part, perio_val_opp) for part in parts_surf_to_dupl]# Apply periodicity
+        dupl_parts_surf = [_apply_perio(part, perio_val, True) for part in parts_surf_to_dupl]# Apply periodicity
         parts_surf_to_dupl_next_l.append(dupl_parts_surf)
 
         shifted_dupl_parts_surf = [_shift_ids(part, _n_face_bnd_tot_idx[-1], _n_vtx_bnd_tot_idx[-1]) \
