@@ -337,7 +337,9 @@ def exchange_field_one_domain_req(part_zones, extract_zones, dims, exch_tool_box
     if extract_zone is not None:
       i_part = 0
       if part1_data[i_part].size!=0:
-        PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
+        da = PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
+        for desc in PT.get_children_from_label(fld_node, 'Descriptor_t'): #get_children seulement pour etre generique ?
+          PT.add_child(da, desc)
 
   # Build PL with the last exchange stride
   if partial_field:
