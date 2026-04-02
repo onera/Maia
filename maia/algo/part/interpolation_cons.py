@@ -47,33 +47,6 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
   return ptp, res
 
 
-def cell_data_transfer(ptp:PDM.PartToPart,
-                       src_weights_l:List[vs.VStrideArray],
-                       src_fields_l:Dict[str, List[NDArray]]) -> Dict[str, List[NDArray]]:
-
-  # Remainder : in ptp, part1 is target mesh, part2 is src mesh
-  rq_dict = dict()
-  for name, src_fields in src_fields_l.items():
-    
-    rq_dict[name] = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                                      PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                                      src_fields)
-  tgt_fields_l = {}
-  for name, rq in rq_dict.items():
-    _, recv_datas = ptp.reverse_wait(rq)
- 
-    # Ponderate by weights
-    tgt_fields_l[name] = list()
-    for data, src_weights in zip(recv_datas, src_weights_l):
-      extended_data = vs.from_displs(src_weights.displs, data*src_weights.values)
-      reduced_data = extended_data.reduce(vs.ReduceOp.SUM)
-      
-      tgt_fields_l[name].append(reduced_data)
-
-
-  return tgt_fields_l
-
-
 
 def tree_dim(tree:CGNSPartTree, comm:MPIComm) -> int:
   base_dims = set(PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(tree))
@@ -210,8 +183,8 @@ class ConservativeInterpolator:
     # Convert PDM weight (which are actually measures) to ratio,
     # dividing by src volumes (exchange needed to bring this to tgt)
     rq = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                              PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                              vol_src)
+                           PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                           vol_src)
     _, recv_vols = ptp.reverse_wait(rq)
 
     src_weights = [vs.from_displs(tgt_to_src['a_to_b_idx'], tgt_to_src['a_to_b_weight'] / vol)
@@ -269,9 +242,11 @@ class ConservativeInterpolator:
       src_weights = weights_cat
 
     self.ptp = ptp
-    self.src_weights = src_weights
+    self.src_weights_l = src_weights
     self.src_tree = src_tree
     self.tgt_tree = tgt_tree
+    self.src_vol = vol_src
+    self.tgt_vol = vol_tgt
     self.comm = comm
 
     # Caching
@@ -294,7 +269,44 @@ class ConservativeInterpolator:
       self._cell_to_vtx_tgt = CellToVertex(self.tgt_tree, self.comm)
     return self._cell_to_vtx_tgt
 
-  def exchange_fields(self, container_name:str, tgt_loc:str):
+  def cell_data_transfer(self, 
+                         src_fields_l:Dict[str, List[NDArray]],
+                         is_conservative:bool) -> Dict[str, List[NDArray]]:
+
+    # This function is relevant for integrated fields (such as mass) :
+    # if data is in conservative form, we must multiply it by Density
+    # Reminder : in ptp, part1 is target mesh, part2 is src mesh
+    rq_dict = dict()
+    for name, src_fields in src_fields_l.items():
+      
+      # Conservative to integrated, if needed
+      if is_conservative:
+        src_fields = [f*vol for f,vol in zip(src_fields, self.src_vol)]
+
+      rq_dict[name] = self.ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                             src_fields)
+    tgt_fields_l = {}
+    for name, rq in rq_dict.items():
+      _, recv_datas = self.ptp.reverse_wait(rq)
+  
+      # Ponderate by weights
+      tgt_fields = [
+        vs.from_displs(src_weights.displs, data*src_weights.values).reduce(vs.ReduceOp.SUM)
+        for data, src_weights in zip(recv_datas, self.src_weights_l)]
+
+      # Integrated to conservative, if needed
+      if is_conservative:
+        for f, vol in zip(tgt_fields, self.tgt_vol):
+          f /= vol
+      
+      tgt_fields_l[name] = tgt_fields
+
+    return tgt_fields_l
+
+
+
+  def exchange_fields(self, container_name:str, tgt_loc:str, is_conservative=True):
 
     src_parts = PT.get_all_Zone_t(self.src_tree)
     tgt_parts = PT.get_all_Zone_t(self.tgt_tree)
@@ -308,15 +320,15 @@ class ConservativeInterpolator:
         src_fields_l[key].append(val)
 
     if loc == 'Vertex':
-      src_fields_l = self.vtx_to_cell_src._exchange_fields(src_fields_l)
+      src_fields_l = self.vtx_to_cell_src._exchange_fields(src_fields_l, is_conservative)
     elif loc != 'CellCenter':
       raise ValueError(f"Unsupported location for input container: {loc}")
       
-    tgt_fields_l = cell_data_transfer(self.ptp, self.src_weights, src_fields_l)
+    tgt_fields_l = self.cell_data_transfer(src_fields_l, is_conservative)
 
     # Back to vertex
     if tgt_loc == 'Vertex':
-      tgt_fields_l = self.cell_to_vtx_tgt._exchange_fields(tgt_fields_l)
+      tgt_fields_l = self.cell_to_vtx_tgt._exchange_fields(tgt_fields_l, is_conservative)
     elif tgt_loc != 'CellCenter':
       raise ValueError(f"Unsupported location for output container: {tgt_loc}")
 
