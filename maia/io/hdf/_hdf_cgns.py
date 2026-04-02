@@ -4,6 +4,9 @@ import h5py
 from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 
 from maia.pytree.core import graph as PTg
+import maia.pytree as PT
+
+import hashlib
 
 C33_t = h5t.C_S1.copy()
 C33_t.set_size(33)
@@ -17,6 +20,7 @@ DTYPE_TO_CGNSTYPE = {'int8'    : 'B1',
                      'float32' : 'R4',
                      'float64' : 'R8',
                      'bytes8'  : 'C1'}
+FULL_NAME_NODE_NAME = 'FullNameLongerThan32CharsLimit'
 
 class AttributeRW:
   """ A singleton class usefull to read & write hdf attribute w/ allocating buffers """
@@ -314,22 +318,52 @@ def _load_node_partial(gid, parent, load_if, noload_fn, ancestors_stack):
   ancestors_stack[0].pop()
   ancestors_stack[1].pop()
 
+def _unambiguous_short_names(names):
+  """ Find shorter names that are:
+  - less than 32 chars
+  - unambiguous (two different original names should have two different short names)
+  - human-readable as much as possible """
+  if len(set(names)) < len(names):
+    raise RuntimeError(f"There are two siblings of the same name among {names}")
+  short_names = [PT.node.short_name(n) for n in names]
 
-def _write_node_partial(gid, node, write_if, ancestors_stack):
+  idces = np.argsort(short_names)
+  names       = np.array(names      )[idces]
+  short_names = np.array(short_names)[idces]
+
+  group_idces = np.unique(short_names, return_index=True)[1][1:]
+  names       = np.split(names      , group_idces)
+  short_names = np.split(short_names, group_idces)
+
+  unamb_short_names = []
+  for name_group, short_name_group in zip(names, short_names):
+    if len(name_group) == 1: # no ambiguity: use the short name (and make sure it is at most 32 chars long)
+      short_name = short_name_group[0]
+      unamb_short_names.append(short_name[:32])
+    else: # several short names are equal: complete with a 8-char hash
+      for name, short_name in zip(name_group, short_name_group):
+        name =  name.encode('ascii')
+        hash = hashlib.sha256(name).hexdigest()[:8]
+        unamb_short_names.append(short_name[:24]+hash)
+
+  return list(np.array(unamb_short_names)[idces])
+
+def _write_node_partial(gid, node, name, write_if, ancestors_stack):
   """ Internal recursive implementation for write_tree_partial.  """
 
   cgtype = 'MT' if node[1] is None else DTYPE_TO_CGNSTYPE[node[1].dtype.name]
-  ancestors_stack[0].append(node[0])
+  print(node[0], ' | ', name)
+  ancestors_stack[0].append(name)
   ancestors_stack[1].append(node[3])
 
   gc_pl = h5p.create(h5p.GROUP_CREATE)
   gc_pl.set_link_creation_order(h5p.CRT_ORDER_TRACKED | h5p.CRT_ORDER_INDEXED)
 
-  node_id = h5g.create(gid, node[0].encode(), gcpl=gc_pl)
+  node_id = h5g.create(gid, name.encode(), gcpl=gc_pl)
 
   # Write attributes
   attr_writter = AttributeRW()
-  attr_writter.write_str_33(node_id, b'name',  node[0])
+  attr_writter.write_str_33(node_id, b'name',  name)
   attr_writter.write_str_33(node_id, b'label', node[3])
   attr_writter.write_str_3 (node_id, b'type',  cgtype)
   attr_writter.write_flag(node_id) 
@@ -340,8 +374,14 @@ def _write_node_partial(gid, node, write_if, ancestors_stack):
     write_data(node_id, node[1])
 
   # Write children
-  for child in node[2]:
-    _write_node_partial(node_id, child, write_if, ancestors_stack)
+  name_children = _unambiguous_short_names([child[0] for child in node[2]])
+  for child,name_child in zip(node[2],name_children):
+    _write_node_partial(node_id, child, name_child, write_if, ancestors_stack)
+  # Write full name if name is > 32 chars
+  #if len(node[0]) > 32:
+  #  full_name_node = PT.new_UserDefinedData(FULL_NAME_NODE_NAME, node[0])
+  #  _write_node_partial(node_id, full_name_node, full_name_node[0], write_if, ancestors_stack)
+
   ancestors_stack[0].pop()
   ancestors_stack[1].pop()
 
@@ -434,7 +474,8 @@ def write_tree_partial(tree, filename, write_predicate):
   # Write some attributes of root node
   add_root_attributes(rootid)
   for node in tree[2]:
-    _write_node_partial(rootid, node, write_predicate, ([],[]))
+    name = PT.node.short_name(node[0])[0:32]
+    _write_node_partial(rootid, node, name, write_predicate, ([],[]))
 
   fid.close()
 

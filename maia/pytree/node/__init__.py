@@ -72,6 +72,7 @@ __all__ = [
   'print_tree',
 
   # name_utils
+  'short_name',
   'shorten_names',
   'shorten_field_names',
   'rename_zone',

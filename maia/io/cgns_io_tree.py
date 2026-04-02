@@ -14,6 +14,7 @@ from .distribution_tree         import add_distribution_info, clean_distribution
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity
 from .utils                     import create_parent_folder
+from .hdf._hdf_cgns import FULL_NAME_NODE_NAME
 
 if _LEGACY_IO:
   from . import _hdf_io_cass as _hdf_io
@@ -179,8 +180,13 @@ def fill_size_tree(tree: CGNSTree,
 
   PT.rm_nodes_from_name(tree, '*#Size')
 
+def _replace_with_full_names(dist_tree):
+  def _replace_with_full_name(node):
+    if full_name_node := PT.get_child_from_name(node, FULL_NAME_NODE_NAME):
+      node[0] = PT.get_value(full_name_node)
+  #PT.scan(dist_tree, _replace_with_full_name)
 
-def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDistTree:
+def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm, handle_long_names: bool = True) -> CGNSDistTree:
   """file_to_dist_tree(filename, comm)
 
   Distributed load of a CGNS file.
@@ -206,6 +212,8 @@ def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDist
     size_tree = load_size_tree(filename, comm)
     fill_size_tree(size_tree, filename, comm)
     dist_tree = CGNSDistTree(size_tree)
+    if handle_long_names:
+      _replace_with_full_names(dist_tree)
 
   end = time.time()
   dt_size     = sum(metrics.dtree_nbytes(dist_tree))

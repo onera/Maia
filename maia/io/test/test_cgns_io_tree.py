@@ -489,3 +489,29 @@ CGNSTree CGNSTree_t:
         assert (identifier == [12, 15, 18]).all()
 
     TU.rm_collective_dir(tmp_dir, comm)
+
+@pytest_parallel.mark.parallel(1)
+def test_dist_tree_to_file_long_names(comm):
+  yt = """
+Base CGNSBase_t I4 [3, 3]:
+  ZoneWithALongLongLoooooongNameThatIsLongerThan32 Zone_t I4 [[1, 0, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    :CGNS#Distribution UserDefinedData_t:
+      Vertex DataArray_t I4 [0, 1, 1]:
+    FlowSolution FlowSolution_t:
+      AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1 DataArray_t R8 [0.]:
+"""
+
+  dist_tree = PT.yaml.to_cgns_tree(yt)
+
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+  #maia.io.dist_tree_to_file(dist_tree, tmp_dir/'yt.cgns', comm)
+  #PT.node.shorten_names(dist_tree)
+  maia.io.dist_tree_to_file(dist_tree, 'yt.cgns', comm)
+
+  #loaded_dist_tree = maia.io.file_to_dist_tree('yt.cgns', comm)
+  #PT.print_tree(loaded_dist_tree)
+  #assert PT.is_same_tree(dist_tree, incomplete_fs_dist_tree)
+
+
+#TU.rm_collective_dir(tmp_dir, comm)

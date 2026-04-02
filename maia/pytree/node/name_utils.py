@@ -2,11 +2,10 @@ from maia.pytree.typing import *
 import maia.pytree as PT
 
 #begin_api_export()
-
-def shorten_names(t:CGNSTree, quiet:bool=False, labels_to_shorten:Optional[List[str]]=None):
-  old_name = PT.get_name(t)
-  can_shorten_label = labels_to_shorten is None or (PT.get_label(t) in labels_to_shorten)
-  if can_shorten_label and len(old_name)>32:
+def short_name(old_name:str):
+  if len(old_name) <= 32:
+    return old_name
+  else:
     new_name = ""
     cnt = 0
     for c in old_name:
@@ -17,6 +16,13 @@ def shorten_names(t:CGNSTree, quiet:bool=False, labels_to_shorten:Optional[List[
         cnt += 1
         if cnt < 4:
           new_name += c
+    return new_name[:32]
+
+def shorten_names(t:CGNSTree, quiet:bool=False, labels_to_shorten:Optional[List[str]]=None):
+  old_name = PT.get_name(t)
+  can_shorten_label = labels_to_shorten is None or (PT.get_label(t) in labels_to_shorten)
+  if can_shorten_label:
+    new_name = short_name(old_name)
     if not quiet:
       print("WARNING: field "+old_name+" is too long. It will be renamed "+new_name)
     PT.set_name(t,new_name)
