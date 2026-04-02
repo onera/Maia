@@ -47,7 +47,6 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
   return ptp, res
 
 
-
 def tree_dim(tree:CGNSPartTree, comm:MPIComm) -> int:
   base_dims = set(PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(tree))
   dims = comm.allreduce(base_dims, lambda s1,s2 : s1 & s2)
@@ -178,6 +177,13 @@ class ConservativeInterpolator:
     #
     # Target cells that are partially outside src mesh are corrected with the
     # coefficient (1/r) where r = \sum_I Volume_(I∩J)  / Volume_J
+
+    # Since the exchange fields will be usually in conservative form (eg density), we can
+    # report the conservative <-> integrated factor (Volume_I / Volume_J) directly in weights
+    # which become
+    #   Volume_(I∩J) / Volume_J    for standard cells
+    #   1                          for tgt cells outside src mesh, where I is the closest cell
+    # and correction by (1/r) is unchanged
     
     src_dim = tree_dim(src_tree, comm)
     tgt_dim = tree_dim(tgt_tree, comm)
@@ -194,15 +200,22 @@ class ConservativeInterpolator:
     # Compute intersection between src (part 2) and tgt (part 1)
     ptp, tgt_to_src = compute_mesh_intersection(src_parts, tgt_parts, comm, src_dim)
 
-    src_weights_l = [vs.from_displs(r['a_to_b_idx'], r['a_to_b_weight']) for r in tgt_to_src]
+    src_weights_l = [vs.from_displs(r['a_to_b_idx'], r['a_to_b_weight']) / vol \
+                     for r,vol in zip(tgt_to_src, vol_tgt)]
     # Detect tgt cell not completly covered by src cells:
     #   - outside_mask is True if tgt cell is totally   outside src mesh
     #   - partial_mask is True       "        partially        "
-    # vol_ratio is the fraction of tgt cell covered by src mesh
-    vol_from_src = [src_weights.reduce(vs.ReduceOp.SUM) for src_weights in src_weights_l]
-    vol_ratio = [from_src / tgt for from_src, tgt in zip(vol_from_src, vol_tgt)]
+    # vol_ratio is the fraction of tgt cell covered by src mesh, since a_to_b_weight already
+    # include src vol and we divided by tgt_vol, we just have to sum
+    vol_ratio = [src_weights.reduce(vs.ReduceOp.SUM) for src_weights in src_weights_l]
     partial_mask = [r*(1-r) > 1E-15 for r in vol_ratio] # TODO tol reglable
     outside_mask = [r < 1E-15       for r in vol_ratio]
+
+    # Incorporate cut-cell correction for partial cells
+    for i, weight in enumerate(src_weights_l):
+      vol_ratio_rep    = np.repeat(vol_ratio[i], weight.counts)
+      partial_mask_rep = np.repeat(partial_mask[i], weight.counts)
+      np.divide(weight.values, vol_ratio_rep, where=partial_mask_rep, out=weight._values)
 
     # For outside cells, detect the closest cell in src mesh.
     # Incorporate it in PartToPart (update it) with a weight equal to tgt cell volume
@@ -222,7 +235,7 @@ class ConservativeInterpolator:
 
         if closest_out[i]['closest_src_gnum'].size > 0:
           a_to_b_clo = vs.from_counts(outside_mask[i].astype(np.int32), closest_out[i]['closest_src_gnum'])
-          weight_clo = vs.from_counts(a_to_b_clo.counts, vol_tgt[i][outside_mask[i]])
+          weight_clo = vs.from_counts(a_to_b_clo.counts, np.ones(a_to_b_clo.dsize))
           
           a_to_b_cat.append(vs.concatenate([a_to_b_mi, a_to_b_clo], vs.INNER_AXIS))
           weights_cat.append(vs.concatenate([weight_mi, weight_clo], vs.INNER_AXIS))
@@ -237,24 +250,6 @@ class ConservativeInterpolator:
                            [a.displs for a in a_to_b_cat],
                            [a.values for a in a_to_b_cat])
       src_weights_l = weights_cat
-
-    # Convert PDM weight (which are actually measures) to ratio,
-    # dividing by src volumes (exchange needed to bring this to tgt)
-    rq = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                           PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                           vol_src)
-    _, src_vols = ptp.reverse_wait(rq)
-
-    for src_weights, src_vol in zip(src_weights_l, src_vols):
-      src_weights._values /= src_vol
-
-    # Finally, incorporate cut-cell correction for partial cells
-    for i, weight in enumerate(src_weights_l):
-      vol_ratio_rep    = np.repeat(vol_ratio[i], weight.counts)
-      partial_mask_rep = np.repeat(partial_mask[i], weight.counts)
-      np.divide(weight.values, vol_ratio_rep, where=partial_mask_rep, out=weight._values)
-
-
 
     self.ptp = ptp
     self.src_weights_l = src_weights_l
@@ -294,9 +289,9 @@ class ConservativeInterpolator:
     rq_dict = dict()
     for name, src_fields in src_fields_l.items():
       
-      # Conservative to integrated, if needed
-      if is_conservative:
-        src_fields = [f*vol for f,vol in zip(src_fields, self.src_vol)]
+      # Integrated to conservative, if needed
+      if not is_conservative:
+        src_fields = [f/vol for f,vol in zip(src_fields, self.src_vol)]
 
       rq_dict[name] = self.ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                              PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
@@ -310,10 +305,10 @@ class ConservativeInterpolator:
         vs.from_displs(src_weights.displs, data*src_weights.values).reduce(vs.ReduceOp.SUM)
         for data, src_weights in zip(recv_datas, self.src_weights_l)]
 
-      # Integrated to conservative, if needed
-      if is_conservative:
+      # Conservative to integrated, if needed
+      if not is_conservative:
         for f, vol in zip(tgt_fields, self.tgt_vol):
-          f /= vol
+          f *= vol
       
       tgt_fields_l[name] = tgt_fields
 
