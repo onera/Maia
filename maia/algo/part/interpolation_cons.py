@@ -310,19 +310,18 @@ class ConservativeInterpolator:
 
     src_parts = PT.get_all_Zone_t(self.src_tree)
     tgt_parts = PT.get_all_Zone_t(self.tgt_tree)
-    field_names, cnt_label = itp_utils.discover_fields_name(src_parts, container_name, self.root, self.comm)
+    field_names, cnt_label, src_loc = itp_utils.discover_fields_name(src_parts, container_name, self.root, self.comm)
 
     src_fields_l = {key: [] for key in field_names}
     for src_zone in src_parts:
       container = PT.find_node_from_path(src_zone, container_name)
-      loc = PT.Container.GridLocation(container)
       for key, val in PT.Container.fields(container).items():
         src_fields_l[key].append(val)
 
-    if loc == 'Vertex':
+    if src_loc == 'Vertex':
       src_fields_l = self.vtx_to_cell_src._exchange_fields(src_fields_l, is_conservative)
-    elif loc != 'CellCenter':
-      raise ValueError(f"Unsupported location for input container: {loc}")
+    elif src_loc != 'CellCenter':
+      raise ValueError(f"Unsupported location for input container: {src_loc}")
       
     tgt_fields_l = self.cell_data_transfer(src_fields_l, is_conservative)
 
@@ -331,7 +330,6 @@ class ConservativeInterpolator:
       tgt_fields_l = self.cell_to_vtx_tgt._exchange_fields(tgt_fields_l, is_conservative)
     elif tgt_loc != 'CellCenter':
       raise ValueError(f"Unsupported location for output container: {tgt_loc}")
-
 
     # Update target partitions
     for i,tgt_part in enumerate(tgt_parts):

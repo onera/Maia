@@ -9,6 +9,8 @@ from   maia.utils import vstride as vs
 
 import Pypdm.Pypdm as PDM
 
+from maia.typing import *
+
 def _cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_weight, n_vtx):
   """
   Transform cell->tgt (src_to_tgt, src_vtx_weight) information from mesh_location
@@ -75,23 +77,31 @@ def _combine_geo_results(all_located_inv, all_closest_inv, strategy, src_loc):
 
   return tgt_in_src_gnum, tgt_in_src_wght
 
+def _expected_single_val(l:Sequence):
+  assert l.count(l[0]) == len(l)
+  return l[0]
+
 def discover_fields_name(zones, container_name, root, comm):
-  fields_per_part = list()
-  container_label = ''
-  for zone in zones:
-    container = PT.find_node_from_path(zone, container_name)
-    container_label = PT.get_label(container)
-    fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-    fields_per_part.append(fields_name)
-  if len(fields_per_part) > 0:
-    assert fields_per_part.count(fields_per_part[0]) == len(fields_per_part)
+  if len(zones) > 0:
+    fields_name_l = list()
+    label_l = list()
+    loc_l = list()
+    for zone in zones:
+      container = PT.find_node_from_path(zone, container_name)
+      fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
+      label_l.append(PT.get_label(container))
+      loc_l.append(PT.Container.GridLocation(container))
+      fields_name_l.append(fields_name)
+    fields_name = _expected_single_val(fields_name_l)
+    label = _expected_single_val(label_l)
+    loc = _expected_single_val(loc_l)
+  else:
+    fields_name = label = loc = None
 
-  fields_names = fields_per_part[0] if len(fields_per_part) > 0 else []
   if root is not None: # Some rank have no src partitions, share field names
-    container_label = comm.bcast(container_label, root=root)
-    fields_names = comm.bcast(fields_names, root=root)
+    fields_name, label, loc = comm.bcast((fields_name, label, loc), root=root)
 
-  return fields_names, container_label
+  return fields_name, label, loc
 
 class Interpolator:
   """ Low level class to perform interpolations.
@@ -164,7 +174,7 @@ class Interpolator:
     """
 
     #Check that solutions are known on each source partition
-    fields_names, container_label = discover_fields_name(self.src_parts, container_name, self.root, self.comm)
+    fields_names, container_label, _ = discover_fields_name(self.src_parts, container_name, self.root, self.comm)
 
     for src_part in self.src_parts:
       container = PT.find_node_from_path(src_part, container_name)
