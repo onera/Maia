@@ -17,17 +17,6 @@ from maia.typing import *
 
 IS_BND = PT.pred.label_in(['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t'])
 
-def _are_same_perio_abs(first: PT.PeriodicValues, second: PT.PeriodicValues) -> bool:
-  """ Return True if the two periodic transformation are the same in absolute value"""
-  first_center, first_angle, first_trans = first
-  second_center, second_angle, second_trans = second
-  if np.allclose(first_center, second_center):
-    if np.allclose(first_angle, second_angle) and np.allclose(first_trans, second_trans):
-      return True
-    if np.allclose(first_angle, -second_angle) and np.allclose(first_trans, -second_trans):
-      return True
-  return False
-
 def detect_perio(dist_tree:CGNSDistTree, comm:MPIComm) -> Dict[str, List[PT.PeriodicValues]]:
   """
   Create dist_zone_path -> [periodicities] for input tree
@@ -43,7 +32,7 @@ def detect_perio(dist_tree:CGNSDistTree, comm:MPIComm) -> Dict[str, List[PT.Peri
     group_periodicities:List[PT.PeriodicValues] = []
     for perio_val in all_periodicities:
       for u_perio in group_periodicities:
-        if _are_same_perio_abs(perio_val, u_perio):
+        if pclosest_elt._are_same_perio_abs(perio_val, u_perio):
           break
       else:
         group_periodicities.append(perio_val)

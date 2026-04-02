@@ -21,22 +21,22 @@ IS_BND = PT.pred.label_in(['BC_t', 'GridConnectivity_t', 'GridConnectivity1to1_t
 
 def _are_same_perio_abs(first: PT.PeriodicValues, second: PT.PeriodicValues) -> bool:
   """ Return True if the two periodic transformation are the same in absolute value"""
-  first_center, first_angle, first_trans = first
-  second_center, second_angle, second_trans = second
-  if np.allclose(first_center, second_center):
-    if np.allclose(first_angle, second_angle) and np.allclose(first_trans, second_trans):
-      return True
-    if np.allclose(first_angle, -second_angle) and np.allclose(first_trans, -second_trans):
-      return True
+  vals1 = first.asdict(True)
+  vals2 = second.asdict(True)
+  first_mat = np_utils._transform_to_homogeneous_matrix(**vals1)
+  if np.allclose(first_mat, np_utils._transform_to_homogeneous_matrix(**vals2)):
+    return True
+  if np.allclose(first_mat, np_utils._transform_to_homogeneous_matrix(**vals2, reverse=True)):
+    return True
   return False
-      
+
 def _create_output_container(zone, point_cloud, out_fs_name):
 
   if point_cloud in ['Vertex', 'CellCenter']:
     output_loc = point_cloud
   else:
     output_loc = PT.Container.GridLocation(PT.get_child_from_name(zone, point_cloud))
-  
+
   # Test if FlowSolution already exists or create it
   fs_node = PT.get_child_from_name(zone, out_fs_name)
   if fs_node is None:
@@ -71,16 +71,17 @@ def _shift_ids(part_dict:Dict[str, NDArray],
   return new_part
 
 def _apply_perio(part_dict:Dict[str, NDArray],
-                  perio) -> Dict[str, NDArray]:
+                 perio:PT.PeriodicValues,
+                 reverse:bool=False) -> Dict[str, NDArray]:
 
   coords = part_dict['vtx_coords']
   cx, cy, cz = np_utils.transform_cart_vectors(coords[0::3], coords[1::3], coords[2::3],
-                                                perio[2], perio[0], perio[1]) #Perio is center, angle, trans
+                                                perio[2], perio[0], perio[1],reverse) #Perio is center, angle, trans
   new_coords = np_utils.interweave_arrays([cx, cy, cz])
 
   new_part = {key: val for key, val in part_dict.items()}
   new_part['vtx_coords'] = new_coords
-  
+
   return new_part
 
 def detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.PeriodicValues]]:
@@ -92,7 +93,7 @@ def detect_perio(part_tree:CGNSPartTree, comm:MPIComm) -> Dict[str, List[PT.Peri
       merge_rule = lambda path: MT.conv.get_part_prefix(path))
 
   gc_predicate = ['ZoneGridConnectivity_t', MT.pred.is_gc_of_kind(is_intra=False)]
-  
+
   # Recover existing periodicities
   for dist_zone_path in PT.predicates_to_paths(skeleton_tree, 'CGNSBase_t/Zone_t'):
     dist_zone  = PT.find_node_from_path(skeleton_tree, dist_zone_path)
@@ -160,15 +161,14 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
 
     _n_face_bnd_tot_idx.append(_n_face_bnd_tot_idx[-1] + domain_nface)
     _n_vtx_bnd_tot_idx.append(_n_vtx_bnd_tot_idx[-1] + domain_nvtx)
-    
+
     parts_surf_to_dupl_l = [domain_parts]
     for perio_val in periodicities.get(dist_zone_path, []):
-      perio_val_opp = PT.PeriodicValues(perio_val[0], -perio_val[1], -perio_val[2]) #Center, angle, translation
 
       parts_surf_to_dupl_next_l = []
       for parts_surf_to_dupl in parts_surf_to_dupl_l:
         parts_surf_to_dupl_next_l.append(parts_surf_to_dupl)
-        
+
         # Apply periodicity to input partitions, without shifting gnums,
         # and add result to next duplication
         dupl_parts_surf = [_apply_perio(part, perio_val) for part in parts_surf_to_dupl]
@@ -184,13 +184,13 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
 
         # Same with opposite periodicity
 
-        dupl_parts_surf = [_apply_perio(part, perio_val_opp) for part in parts_surf_to_dupl]# Apply periodicity
+        dupl_parts_surf = [_apply_perio(part, perio_val, True) for part in parts_surf_to_dupl]# Apply periodicity
         parts_surf_to_dupl_next_l.append(dupl_parts_surf)
 
         shifted_dupl_parts_surf = [_shift_ids(part, _n_face_bnd_tot_idx[-1], _n_vtx_bnd_tot_idx[-1]) \
                                                     for part in dupl_parts_surf] # Shift
         all_parts_dict.extend(shifted_dupl_parts_surf)
-        
+
         _n_face_bnd_tot_idx.append(_n_face_bnd_tot_idx[-1] + domain_nface)
         _n_vtx_bnd_tot_idx.append(_n_vtx_bnd_tot_idx[-1] + domain_nvtx)
 
@@ -200,7 +200,7 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
   #This create the surf_mesh objects in PDM, thus it must be done before surf_mesh_part_set
   walldist.n_part_surf = len(all_parts_dict)
   walldist.surf_mesh_global_data_set()
-  
+
   #Setup partitions
   keep_alive = list()
   for i_part, part in enumerate(all_parts_dict):
@@ -213,16 +213,16 @@ def _wd_setup_surf_mesh(surf_parts_per_dom, walldist, periodicities, comm: MPICo
                                         part['vtx_coords'],
                                         part['vtx_lngn'])
 
-  
+
   n_dupl_per_dom = np.array([3**len(periodicities.get(key, [])) for key in surf_parts_per_dom])
   all_dom_ids = np_utils.repeated_arange(n_dupl_per_dom)
-  
+
   offsets = {'dom_id'      : all_dom_ids,
              'face_offset' : _n_face_bnd_tot_idx,
              'vtx_offset'  : _n_vtx_bnd_tot_idx}
 
   return keep_alive, offsets
-  
+
 def _wd_setup_vol_mesh(part_zones: List[CGNSPartTree], walldist):
   """
   Setup the volumic mesh for wall distance computing (only for propagation method)
@@ -312,7 +312,7 @@ def update_closest_to_parent(surface_tree, points_tree, mpi_comm):
       face_parent_gnum_l.append(PT.get_node_from_path(surf_zone, 'DiscreteData/Parent')[1])
       face_ln_to_gn_l.append(MT.Zone.cell_globalnumbering(surf_zone) + ini_zone_offset[i]) # -> Surface gnum for each partition of the surface, shifted ignoring periodics
     ini_zone_offset[i+1] = ini_zone_offset[i] + MT.Zone.n_cell(surf_zones, mpi_comm)
-  
+
   if ini_zone_offset[-1] == 0:
     # Early exit if ini_zone_offset = 0 (no surface in tree)
     return

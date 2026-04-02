@@ -19,13 +19,15 @@ def test_transform_affine_zone(comm):
   vtx_ids = np.array([], int)
   transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0])
   assert PT.is_same_tree(zone, zone_bck)
+  transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0], reverse=True)
+  assert PT.is_same_tree(zone, zone_bck)
 
   if comm.Get_rank() == 0:
     vtx_ids = np.array([3,21], int)
   elif comm.Get_rank() == 1:
     vtx_ids = np.array([21,1,18], int)
   transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0])
-  
+
   cx, cy, cz = PT.Zone.coordinates(zone)
   cx_bck, cy_bck, cz_bck = PT.Zone.coordinates(zone_bck)
   if comm.Get_rank() == 0:
@@ -33,5 +35,13 @@ def test_transform_affine_zone(comm):
   elif comm.Get_rank() == 1:
     assert (cx == cx_bck + np.array([0, 0, 0, 10, 0, 0, 10, 0, 0, 0, 0, 0, 0])).all() # 15 to 27
   assert (cy == cy_bck).all() and (cz == cz_bck).all()
+  assert (PT.get_node_from_name(zone, 'cx')[1] == cx).all()
+
+  # reverting transformation
+  transform.transform_affine_zone(zone, vtx_ids, comm, translation=[10, 0, 0], reverse=True)
+
+  cx, cy, cz = PT.Zone.coordinates(zone)
+  cx_bck, cy_bck, cz_bck = PT.Zone.coordinates(zone_bck)
+  assert (cx == cx_bck).all() and (cy == cy_bck).all() and (cz == cz_bck).all()
   assert (PT.get_node_from_name(zone, 'cx')[1] == cx).all()
 
