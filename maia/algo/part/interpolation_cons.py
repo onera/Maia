@@ -217,6 +217,17 @@ class ConservativeInterpolator:
 
       closest_out = CLO._mdom_closest_points([src_clouds], [tgt_clouds], comm, False, n_pts=1, need_shift=True)[0]
 
+      # Get src volumes, for outside tgt cells
+      clo_ptp = PDM.PartToPart(comm,
+                               [c[1] for c in tgt_clouds], # Part 1 is tgt
+                               [c[1] for c in src_clouds], # Part 2 is src
+                               [np.arange(c[1].size+1, dtype=np.int32) for c in tgt_clouds],
+                               [cl['closest_src_gnum'] for cl in closest_out])
+      rq = clo_ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
+                                 PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
+                                 vol_src)
+      _, src_vols = clo_ptp.reverse_wait(rq)
+
       a_to_b_cat = []
       weights_cat = []
       for i in range(len(tgt_clouds)):
@@ -225,7 +236,7 @@ class ConservativeInterpolator:
 
         if closest_out[i]['closest_src_gnum'].size > 0:
           a_to_b_clo = vs.from_counts(outside_mask[i].astype(np.int32), closest_out[i]['closest_src_gnum'])
-          weight_clo = vs.from_counts(a_to_b_clo.counts, np.ones(a_to_b_clo.dsize))
+          weight_clo = vs.from_counts(a_to_b_clo.counts, vol_tgt[i][outside_mask[i]]/src_vols[i])
           
           a_to_b_cat.append(vs.concatenate([a_to_b_mi, a_to_b_clo], vs.INNER_AXIS))
           weights_cat.append(vs.concatenate([weight_mi, weight_clo], vs.INNER_AXIS))
@@ -303,7 +314,6 @@ class ConservativeInterpolator:
       tgt_fields_l[name] = tgt_fields
 
     return tgt_fields_l
-
 
 
   def exchange_fields(self, container_name:str, tgt_loc:str, is_conservative=True):
