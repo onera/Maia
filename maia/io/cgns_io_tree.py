@@ -14,12 +14,14 @@ from .distribution_tree         import add_distribution_info, clean_distribution
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity
 from .utils                     import create_parent_folder
-from .hdf._hdf_cgns import FULL_NAME_NODE_NAME
+import hashlib
 
 if _LEGACY_IO:
   from . import _hdf_io_cass as _hdf_io
 else:
   from . import _hdf_io_h5py as _hdf_io #type:ignore[no-redef]
+
+FULL_NAME_NODE_NAME = 'FullNameLongerThan32CharsLimit'
 
 from maia.factory     import full_to_dist
 
@@ -138,8 +140,50 @@ def load_tree_from_filter(filename: str,
   if(unlock_at_least_one is False):
     raise RuntimeError("Something strange in the loading process")
 
+def _unambiguous_short_names(names):
+  """ Find shorter names that are:
+  - less than 32 chars
+  - unambiguous (two different original names should have two different short names)
+  - human-readable as much as possible """
+  if len(set(names)) < len(names):
+    raise RuntimeError(f"There are two siblings of the same name among {names}")
+  short_names = [PT.node.short_name(n) for n in names]
+
+  perm = np.argsort(short_names)
+  names       = np.array(names      )[perm]
+  short_names = np.array(short_names)[perm]
+
+  group_idces = np.unique(short_names, return_index=True)[1][1:]
+  names       = np.split(names      , group_idces)
+  short_names = np.split(short_names, group_idces)
+
+  unamb_short_names = []
+  for name_group, short_name_group in zip(names, short_names):
+    if len(name_group) == 1: # no ambiguity: use the short name (and make sure it is at most 32 chars long)
+      short_name = short_name_group[0]
+      unamb_short_names.append(short_name[:32])
+    else: # several short names are equal: complete with a 8-char hash
+      for name, short_name in zip(name_group, short_name_group):
+        name =  name.encode('ascii')
+        hash = hashlib.sha256(name).hexdigest()[:8]
+        unamb_short_names.append(short_name[:24]+hash)
+
+  inv_perm = np.empty_like(perm)
+  inv_perm[perm] = np.arange(perm.size)
+  return list(np.array(unamb_short_names)[inv_perm])
+
+def _create_full_name_children(tree):
+  def _create_full_name_child(node):
+    name_children = _unambiguous_short_names([child[0] for child in node[2]])
+    for child,name_child in zip(node[2],name_children):
+      if len(child[0]) > 32:
+        full_name_node = PT.new_UserDefinedData(FULL_NAME_NODE_NAME, child[0])
+        PT.get_children(child).append(full_name_node)
+        child[0] = name_child
+  PT.scan(tree, _create_full_name_child)
+
 def save_tree_from_filter(filename: str,
-                          dist_tree: CGNSDistTree, 
+                          saving_dist_tree: CGNSDistTree, 
                           comm: MPIComm, 
                           hdf_filter: Dict[str, Any], 
                           links: List[List[str]]) -> None:
@@ -152,8 +196,6 @@ def save_tree_from_filter(filename: str,
   for key, f in hdf_filter_with_func.items():
     f(hdf_filter_with_dim)
 
-  #Dont save distribution info, but work on a copy to keep it for further use
-  saving_dist_tree = PT.shallow_copy(dist_tree)
   clean_distribution_info(saving_dist_tree)
 
   _hdf_io.write_partial(filename, saving_dist_tree, hdf_filter_with_dim, links, comm)
@@ -184,7 +226,8 @@ def _replace_with_full_names(dist_tree):
   def _replace_with_full_name(node):
     if full_name_node := PT.get_child_from_name(node, FULL_NAME_NODE_NAME):
       node[0] = PT.get_value(full_name_node)
-  #PT.scan(dist_tree, _replace_with_full_name)
+      PT.rm_children_from_name(node, FULL_NAME_NODE_NAME)
+  PT.scan(dist_tree, _replace_with_full_name)
 
 def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm, handle_long_names: bool = True) -> CGNSDistTree:
   """file_to_dist_tree(filename, comm)
@@ -239,13 +282,20 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
     links   (list)           : List of links to create (see SIDS-to-Python guide)
     comm     (MPIComm)       : MPI communicator
   """
-  MT.check_cgns_dist_tree(dist_tree)
-  if links:
-    dist_tree = PT.shallow_copy(dist_tree)
-    for link in links: # Links override data, so delete data
-      PT.rm_node_from_path(dist_tree, link[3])
+  # work on a copy that we may alter for our specific needs
+  saving_dist_tree = PT.shallow_copy(dist_tree)
+  _create_full_name_children(saving_dist_tree)
+  PT.print_tree(saving_dist_tree)
+  def _print_name(node):
+    print(node[0])
+  PT.scan(saving_dist_tree, _print_name)
 
-  dt_size     = sum(metrics.dtree_nbytes(dist_tree))
+  MT.check_cgns_dist_tree(saving_dist_tree)
+  if links:
+    for link in links: # Links override data, so delete data
+      PT.rm_node_from_path(saving_dist_tree, link[3])
+
+  dt_size     = sum(metrics.dtree_nbytes(saving_dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)
   mlog.info(f"Distributed write of a {mlog.bsize_to_str(dt_size)} dist_tree"
             f" (Σ={mlog.bsize_to_str(all_dt_size)})...")
@@ -254,9 +304,9 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
 
   create_parent_folder(filename, comm)
 
-  recompute_ec_size(dist_tree, comm)
-  hdf_filter = create_tree_hdf_filter(dist_tree, mode='write')
-  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links)
+  recompute_ec_size(saving_dist_tree, comm)
+  hdf_filter = create_tree_hdf_filter(saving_dist_tree, mode='write')
+  save_tree_from_filter(filename, saving_dist_tree, comm, hdf_filter, links)
   end = time.time()
   mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 

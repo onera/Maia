@@ -490,6 +490,34 @@ CGNSTree CGNSTree_t:
 
     TU.rm_collective_dir(tmp_dir, comm)
 
+
+def test_unambiguous_short_names():
+  siblings = [
+    'Name1',
+    'Name2',
+    'Name1',
+  ]
+  with pytest.raises(RuntimeError) as e:
+    IOT._unambiguous_short_names(siblings)
+  assert str(e.value) == "There are two siblings of the same name among ['Name1', 'Name2', 'Name1']"
+
+  siblings = [
+    'Density',
+    'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1',
+    'RSDTurbulentDissipationRateDensityRMS',
+    'AnotherVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual',
+    'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual2',
+  ]
+
+  assert IOT._unambiguous_short_names(siblings) == [
+    'Density',
+    'AVeryLongFielNameWithLot4fd4d905',
+    'RSDTurbDissRateDensRMS',
+    'AnotVeryLongFielNameWithLotsOfDe',
+    'AVeryLongFielNameWithLot628b0bac',
+  ]
+
+
 @pytest_parallel.mark.parallel(1)
 def test_dist_tree_to_file_long_names(comm):
   yt = """
@@ -498,20 +526,22 @@ Base CGNSBase_t I4 [3, 3]:
     ZoneType ZoneType_t 'Unstructured':
     :CGNS#Distribution UserDefinedData_t:
       Vertex DataArray_t I4 [0, 1, 1]:
+      Cell DataArray_t I4 [0, 0, 0]:
     FlowSolution FlowSolution_t:
       AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1 DataArray_t R8 [0.]:
+      Density DataArray_t R8 [0.]:
+      RSDTurbulentDissipationRateDensityRMS DataArray_t R8 [0.]:
+      AnotherVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual DataArray_t R8 [0.]:
+      AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual2 DataArray_t R8 [0.]:
 """
 
   dist_tree = PT.yaml.to_cgns_tree(yt)
 
   tmp_dir = TU.create_collective_tmp_dir(comm)
-  #maia.io.dist_tree_to_file(dist_tree, tmp_dir/'yt.cgns', comm)
-  #PT.node.shorten_names(dist_tree)
-  maia.io.dist_tree_to_file(dist_tree, 'yt.cgns', comm)
 
-  #loaded_dist_tree = maia.io.file_to_dist_tree('yt.cgns', comm)
-  #PT.print_tree(loaded_dist_tree)
-  #assert PT.is_same_tree(dist_tree, incomplete_fs_dist_tree)
+  IOT.dist_tree_to_file(dist_tree, tmp_dir/'yt.cgns', comm)
+  loaded_dist_tree = IOT.file_to_dist_tree(tmp_dir/'yt.cgns', comm)
 
+  assert PT.is_same_tree(loaded_dist_tree, dist_tree)
 
-#TU.rm_collective_dir(tmp_dir, comm)
+  TU.rm_collective_dir(tmp_dir, comm)
