@@ -301,6 +301,9 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   patch = list()
   location = ''
   bcrn = ''
+  # A DISCUTER !!!
+  # > pour moi on peut s'implifier car on ne peut pas avoir plusieurs 'domain'
+  #   car une zsr est par definition sur une unique zone distribuee !
   for domain, part_zones in part_tree_per_dom.items():
     patch_domain = list()
     for part_zone in part_zones:
@@ -357,47 +360,61 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
 
   extractor = Extractor(part_tree, patch, location, comm, **options)
 
-  extractor.exchange_fields(['__maia::TagBCsOnVtx'])
+  if location == 'FaceCenter':
 
-  extract_tree = extractor.get_extract_part_tree()
+    extractor.exchange_fields(['__maia::TagBCsOnVtx'])
 
-  for extract_base in PT.get_all_CGNSBase_t(extract_tree):
-    families = []
-    if PT.get_value(extract_base)[0] == 2:
-      maia.algo.ngon_to_edge_pe(extract_tree, comm)
-      PT.rm_children_from_label(extract_base, 'Family_t')
-      for pz in PT.get_children_from_label(extract_base, 'Zone_t'):
-        coords = PT.get_node_from_name(pz, 'GridCoordinates')
-        edge_elts = MT.Zone.EdgeNode(pz)
-        edge_co = PT.get_value(PT.get_child_from_name(edge_elts, 'ElementConnectivity'))
-        edge_pe = PT.get_value(PT.get_child_from_name(edge_elts, 'ParentElements'))
-        ext_edges = np.where(edge_pe[:,1]==0)[0]
-        ext_edges_n1 = edge_co[2*ext_edges]
-        ext_edges_n2 = edge_co[2*ext_edges+1]
-        pzbc = PT.get_node_from_name(pz, 'ZoneBC')
-        PT.rm_nodes_from_label(pzbc, 'BC_t')
-        pfs_vtx_bc = PT.get_node_from_name(pz, '__maia::TagBCsOnVtx')
-        edge_gnum = PT.get_np_value(MT.get_GlobalNumbering(edge_elts, 'Element'))
-        for da in PT.get_children_from_label(pfs_vtx_bc, 'DataArray_t'):
-          is_bc_n1 = da[1][ext_edges_n1-1]
-          is_bc_n2 = da[1][ext_edges_n2-1]
-          bc_indices = np.where((is_bc_n1==1)&(is_bc_n2==1))[0]
-          is_edge_bc = np.empty(1, dtype=bc_indices.dtype)
-          comm.Allreduce(np.array([len(bc_indices)]), is_edge_bc, op=MPI.SUM)
-          if is_edge_bc[0]==0:
-            continue
-          fm = PT.get_child_from_name(da, 'Family')
-          if fm is not None:
-            family_name = PT.get_value(fm)
-            families.append(family_name)
-            extracted_bc = PT.new_BC(PT.get_name(da), 'FamilySpecified', loc="EdgeCenter", point_list=[ext_edges[bc_indices]+1], family=family_name, parent=pzbc)
-          else:
-            extracted_bc = PT.new_BC(PT.get_name(da), PT.get_value(PT.get_child_from_name(da, 'BCValue')), loc="EdgeCenter", point_list=[ext_edges[bc_indices]+1], parent=pzbc)
-          new_gn = maia.algo.part.point_cloud_utils.create_sub_numbering([edge_gnum[bc_indices]], comm)
-          MT.new_GlobalNumbering({'Index':new_gn}, parent=extracted_bc)
-        PT.rm_children_from_name(pz, '__maia::TagBCsOnVtx')
-      for family_name in set(families):
-        PT.add_child(extract_base, PT.get_node_from_predicates(part_tree, f'CGNSBase_t/{family_name}'))
+    extract_tree = extractor.get_extract_part_tree()
+  
+    for extract_base in PT.get_all_CGNSBase_t(extract_tree):
+      if PT.get_value(extract_base)[0] == 2:
+        maia.algo.ngon_to_edge_pe(extract_tree, comm)
+        PT.rm_children_from_label(extract_base, 'Family_t')
+        families = []
+        for extract_zone in PT.get_children_from_label(extract_base, 'Zone_t'):
+          coords = PT.get_node_from_name(extract_zone, 'GridCoordinates')
+          edge_elts = MT.Zone.EdgeNode(extract_zone)
+          edge_co = PT.get_value(PT.get_child_from_name(edge_elts, 'ElementConnectivity'))
+          edge_pe = PT.get_value(PT.get_child_from_name(edge_elts, 'ParentElements'))
+          ext_edges = np.where(edge_pe[:,1]==0)[0]
+          ext_edges_n1 = edge_co[2*ext_edges]
+          ext_edges_n2 = edge_co[2*ext_edges+1]
+          extract_zbc = PT.get_node_from_name(extract_zone, 'ZoneBC')
+          PT.rm_nodes_from_label(extract_zbc, 'BC_t')
+          pfs_vtx_bc = PT.get_node_from_name(extract_zone, '__maia::TagBCsOnVtx')
+          edge_gnum = PT.get_np_value(MT.get_GlobalNumbering(edge_elts, 'Element'))
+          for da in PT.get_children_from_label(pfs_vtx_bc, 'DataArray_t'):
+            is_bc_n1 = da[1][ext_edges_n1-1]
+            is_bc_n2 = da[1][ext_edges_n2-1]
+            bc_indices = np.where((is_bc_n1==1)&(is_bc_n2==1))[0]
+            if len(bc_indices)>0:
+              fm = PT.get_child_from_name(da, 'Family')
+              if fm is not None:
+                family_name = PT.get_value(fm)
+                families.append(family_name)
+                extracted_bc = PT.new_BC(PT.get_name(da), 'FamilySpecified', loc="EdgeCenter", point_list=[ext_edges[bc_indices]+1], family=family_name, parent=extract_zbc)
+              else:
+                extracted_bc = PT.new_BC(PT.get_name(da), PT.get_value(PT.get_child_from_name(da, 'BCValue')), loc="EdgeCenter", point_list=[ext_edges[bc_indices]+1], parent=extract_zbc)
+              MT.new_GlobalNumbering({'Index':edge_gnum[bc_indices]}, parent=extracted_bc)
+          PT.rm_children_from_name(extract_zone, '__maia::TagBCsOnVtx')
+        families = comm.allgather(list(set(families)))
+        for family_name in list(set(sum(families, []))):
+          PT.add_child(extract_base, PT.get_node_from_predicates(part_tree, f'CGNSBase_t/{family_name}'))
+    PT.rm_nodes_from_name(part_tree, '__maia::TagBCsOnVtx')
+    for extract_base in PT.get_all_CGNSBase_t(extract_tree):
+      if PT.get_value(extract_base)[0] == 2:
+        # WARNING : je fais l'hypothese qu'il ne peut y avoir q'un 'domain'
+        bc_names = [PT.get_name(bc) for bc in bcs_by_domaine[list(bcs_by_domaine.keys())[0]]]
+        for bc_name in bc_names:
+          bc_gnum_l = []
+          bc_l = PT.get_nodes_from_predicates(extract_base, f'Zone_t/ZoneBC_t/{bc_name}')
+          for bc in bc_l:
+            bc_gnum_n = MT.get_GlobalNumbering(bc, 'Index')
+            bc_gnum_l.append(PT.get_value(bc_gnum_n))
+          new_gn = maia.algo.part.point_cloud_utils.create_sub_numbering(bc_gnum_l, comm)
+          for b, bc in enumerate(bc_l):
+            bc_gnum_n = MT.get_GlobalNumbering(bc, 'Index')
+            PT.set_value(bc_gnum_n, new_gn[b])
 
   # This will be usefull to detect self data exchange later
   for subdict in extractor.exch_tool_box.values():
