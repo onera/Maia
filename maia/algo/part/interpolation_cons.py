@@ -8,12 +8,13 @@ import maia
 import maia.algo.part.point_cloud_utils as PCU
 import maia.algo.part.closest_points    as CLO
 import maia.transfer.protocols          as EP
-from   maia.utils                       import par_utils, np_utils
+from   maia.utils                       import py_utils, par_utils, np_utils
 from   maia.utils import vstride as vs
 
 from .cgns_to_pdm_pmesh import part_zones_to_pdm_pmesh_nodal
 from .connectivity_utils import cell_vtx_connectivity_S
 from .ngon_tools import pe_to_nface, edge_pe_to_ngon
+from .geometry import compute_elements_measure
 
 from maia.algo import interpolation_utils as itp_utils
 
@@ -22,10 +23,56 @@ import Pypdm.Pypdm as PDM
 
 from maia.typing import *
 
-def _get_native_measure(zone):
-  dim = PT.Zone.CellDimension(zone)
-  return PT.get_np_value(PT.find_node_from_path(zone, f'Geometry_{dim}d/Measure'))
+def _get_native_measure(zone:CGNSTree) -> NDArray:
+  path = f'Geometry_{PT.Zone.CellDimension(zone)}d/Measure'
+  if (mes := PT.get_node_from_path(zone, path)) is not None:
+    return PT.get_np_value(mes)
+  else:
+    compute_elements_measure(zone, 'CellCenter')
+    return PT.get_np_value(PT.find_node_from_path(zone, path))
 
+def offset_mdom(parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm, revert:bool=False):
+  """ Offset gnum inplace to deal with multidomain cases
+  If revert=True, do the opposite switch.
+  
+  For now, this is "poor multidomain" since shared vtx / faces between domaines does not have
+  the same gnum (because get_mdom_gnum_vtx does not support S meshes)
+  """
+
+  if len(parts_per_dom) == 1:
+    return
+
+  cell_offset = face_offset = vtx_offset = 0
+
+  # Precondition : mix of poly domains and std domains not allowed
+  for parts in parts_per_dom:
+    is_poly3d = comm.allreduce(all(PT.pred.is_zone_of_kind('Poly', 3)(z) for z in parts), MPI.LAND)
+    n_cell_t = MT.Zone.n_cell(parts, comm)
+    n_vtx_t  = MT.Zone.n_vtx(parts, comm)
+    n_face_t = MT.Element.n_elt([PT.Zone.NGonNode(z) for z in parts], comm) if is_poly3d else 0
+
+    for part in parts:
+
+      vtx_gnum = MT.Zone.vtx_globalnumbering(part)
+      cell_gnum = MT.Zone.cell_globalnumbering(part)
+      vtx_gnum += vtx_offset
+      cell_gnum += cell_offset
+
+      # Elts
+      if is_poly3d:
+        face_gnum = MT.Element.globalnumbering(PT.Zone.NGonNode(part))
+        face_gnum += face_offset
+      else:
+        celldim = PT.Zone.CellDimension(part)
+        pred = PT.pred.label_is('Elements_t') & (lambda n : PT.Element.Dimension(n) == celldim and PT.Element.Type(n) != 'NGON_n')
+        for elt in PT.get_children_from_predicate(part, pred):
+          elt_gnum = PT.get_np_value(MT.find_GlobalNumbering(elt, 'Sections'))
+          elt_gnum += cell_offset
+
+    sign = -1 if revert else 1
+    vtx_offset  += sign*n_vtx_t
+    face_offset += sign*n_face_t
+    cell_offset += sign*n_cell_t
 
 def compute_mesh_intersection(src_parts:List[CGNSPartTree],
                               tgt_parts:List[CGNSPartTree],
@@ -51,6 +98,7 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
           cz = np.zeros_like(cx)
         coords = np_utils.interweave_arrays([cx,cy,cz])
         vtx_lngn = MT.Zone.vtx_globalnumbering(part)
+        cell_lngn = MT.Zone.cell_globalnumbering(part)
 
         if PT.Zone.CellDimension(part) == 2:
           if not PT.Zone.has_ngon_elements(part):
@@ -58,11 +106,10 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
 
           ngon_n = PT.Zone.NGonNode(part)
           face_vtx = MT.Element.connectivity(ngon_n)
-          face_lngn = MT.Element.globalnumbering(ngon_n)
-          n_face = face_lngn.size
+          n_face = cell_lngn.size
 
           mi.part_set(i_mesh, i_part, 0, n_face, 0, n_vtx, None, None, None, None, None,
-                      face_vtx.displs, face_vtx.values, None, face_lngn, None, vtx_lngn, coords)
+                      face_vtx.displs, face_vtx.values, None, cell_lngn, None, vtx_lngn, coords)
 
         elif PT.Zone.CellDimension(part) == 3:
           if not PT.Zone.has_nface_elements(part):
@@ -73,7 +120,6 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
           face_vtx = MT.Element.connectivity(ngon_n)
           face_lngn = MT.Element.globalnumbering(ngon_n)
           cell_face = MT.Element.connectivity(nface_n)
-          cell_lngn = MT.Element.globalnumbering(nface_n)
           n_cell = cell_lngn.size
           n_face = face_lngn.size
 
@@ -255,11 +301,16 @@ class ConservativeInterpolator:
     tgt_dim = tree_dim(tgt_tree, comm)
     assert src_dim == tgt_dim
 
-    maia.algo.compute_elements_measure(src_tree, 'CellCenter', comm)
-    maia.algo.compute_elements_measure(tgt_tree, 'CellCenter', comm)
+    # Remove when src_to_tgt are multidom compatible
+    from maia.factory.dist_from_part import get_parts_per_blocks
+    src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
+    tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
-    src_parts = PT.get_all_Zone_t(src_tree)
-    tgt_parts = PT.get_all_Zone_t(tgt_tree)
+    offset_mdom(src_parts_per_dom, comm)
+    offset_mdom(tgt_parts_per_dom, comm)
+
+    src_parts = py_utils.to_flat_list(src_parts_per_dom)
+    tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom)
     vol_src = [_get_native_measure(zone).reshape(-1, order='F') for zone in src_parts]
     vol_tgt = [_get_native_measure(zone).reshape(-1, order='F') for zone in tgt_parts]
 
@@ -317,10 +368,15 @@ class ConservativeInterpolator:
                            [a.values for a in a_to_b_cat])
       src_weights_l = weights_cat
 
+    offset_mdom(src_parts_per_dom, comm, revert=True)
+    offset_mdom(tgt_parts_per_dom, comm, revert=True)
+
     self.ptp = ptp
     self.src_weights_l = src_weights_l
     self.src_tree = src_tree
     self.tgt_tree = tgt_tree
+    self.src_parts = src_parts
+    self.tgt_parts = tgt_parts
     self.src_vol = vol_src
     self.tgt_vol = vol_tgt
     self.comm = comm
@@ -383,12 +439,10 @@ class ConservativeInterpolator:
 
   def exchange_fields(self, container_name:str, tgt_loc:str, is_conservative=True):
 
-    src_parts = PT.get_all_Zone_t(self.src_tree)
-    tgt_parts = PT.get_all_Zone_t(self.tgt_tree)
-    field_names, cnt_label, src_loc = itp_utils.discover_fields_name(src_parts, container_name, self.root, self.comm)
+    field_names, cnt_label, src_loc = itp_utils.discover_fields_name(self.src_parts, container_name, self.root, self.comm)
 
     src_fields_l = {key: [] for key in field_names}
-    for src_zone in src_parts:
+    for src_zone in self.src_parts:
       container = PT.find_node_from_path(src_zone, container_name)
       for key, val in PT.Container.fields(container).items():
         src_fields_l[key].append(val.reshape(-1, order='F')) # Flatten if src zone is S
@@ -407,7 +461,7 @@ class ConservativeInterpolator:
       raise ValueError(f"Unsupported location for output container: {tgt_loc}")
 
     # Update target partitions
-    for i,tgt_part in enumerate(tgt_parts):
+    for i,tgt_part in enumerate(self.tgt_parts):
       shape = PT.Zone.CellSize(tgt_part) if tgt_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
       PT.rm_children_from_name(tgt_part, container_name)
       fields = {key: vals[i].reshape(shape, order='F') for key,vals in tgt_fields_l.items()}

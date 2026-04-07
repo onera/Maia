@@ -65,8 +65,8 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
     Note that ``'Intersection'`` method has the following restrictions:
 
     - source and target tree must be of same dimension
-    - if fields are Vertex located, meshes are restricted to simplicial (``TRI_3`` or ``TETRA_4``) elements
-    - partitions must come from a single initial domain on input tree
+    - if fields are Vertex located, meshes are restricted to simplicial (``TRI_3`` or ``TETRA_4``) elements,
+      and partitions must come from a single initial domain on input trees
     - polyedric meshes must have been partitioned with ``preserve_orientation=True``
 
 

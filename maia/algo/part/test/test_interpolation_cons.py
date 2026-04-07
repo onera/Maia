@@ -222,3 +222,36 @@ def test_from_api(comm):
   ptgt = maia.factory.partition_dist_tree(tgt, comm)
   maia.algo.interpolate(psrc, ptgt, comm, ['Sol'], 'Vertex', strategy='Intersection', is_conservative=False)
   assert PT.get_node_from_name(ptgt, 'Sol') is not None
+
+@pytest.mark.parametrize('dim', [2,3])
+@pytest.mark.parametrize('elt_kind', ["Poly", "Standard"])
+def test_multidom(dim, elt_kind, comm):
+  
+  if dim == 2:
+    src = maia.factory.generate_dist_block(11, 'TRI_3', comm)
+
+    tgt1 = maia.factory.generate_dist_block(11, 'QUAD_4', comm, length=(.5, 1))
+    PT.set_name(PT.get_node_from_label(tgt1, 'Zone_t'), 'Left')
+    tgt2 = maia.factory.generate_dist_block(11, 'QUAD_4', comm, origin=(.5,0,0), length=(.5, 1))
+    PT.set_name(PT.get_node_from_label(tgt1, 'Zone_t'), 'Right')
+    tgt = PT.union(tgt1, tgt2)
+    if elt_kind == 'Poly':
+      maia.algo.dist.convert_elements_to_ngon(tgt, comm)
+    
+  else:
+
+    src = maia.io.file_to_dist_tree(TU.mesh_dir / 'S_twoblocks.yaml', comm)
+    tgt = PT.deep_copy(src)
+    maia.algo.dist.convert_s_to_u(tgt, elt_kind, comm)
+
+  psrc = maia.factory.partition_dist_tree(src, comm, data_transfer='FIELDS')
+  ptgt = maia.factory.partition_dist_tree(tgt, comm)
+
+  for idom,zone in enumerate(PT.get_all_Zone_t(psrc)):
+    PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 1000*(idom) + MT.Zone.cell_globalnumbering(zone)}, parent=zone)
+
+  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection', is_conservative=False)
+
+  src_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(psrc, 'gnum')]))
+  tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
+  assert abs(src_sum - tgt_sum) /  src_sum < 1E-12
