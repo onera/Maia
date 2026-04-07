@@ -28,6 +28,11 @@ minimal_tri = """
       Measure DataArray_t R8 [0.125, 0.125, 0.25, 0.25, 0.25]:
 """
 
+def union(*trees):
+  for i,tree in enumerate(trees):
+    PT.set_name(PT.get_node_from_label(tree, 'Zone_t'), f'Zone_{i}')
+  return PT.union(*trees)
+
 @pytest_parallel.mark.parallel(2)
 def test_vtx2cell(comm):
   
@@ -41,7 +46,7 @@ def test_vtx2cell(comm):
 
   vtx_field = PT.get_np_value(PT.find_node_from_name(ptree, 'field'))
   dual_vol = PT.get_np_value(PT.find_node_from_name(ptree, 'DualVol24')) / 24
-  it = ITP.VertexToCell(ptree, comm)
+  it = ITP.VertexToCell([PT.get_all_Zone_t(ptree)], comm)
   cell_field = it._exchange_fields({'field' : [vtx_field]}, True)
   
   expected_cell_val = np.array([12, 15, 20, 21, 15]) / 3
@@ -75,7 +80,7 @@ def test_cell2vtx(comm):
   vtx_gnum = MT.Zone.vtx_globalnumbering(PT.get_all_Zone_t(ptree)[0])
   cell_field = PT.get_np_value(PT.find_node_from_name(ptree, 'field'))
 
-  it = ITP.CellToVertex(ptree, comm)
+  it = ITP.CellToVertex([PT.get_all_Zone_t(ptree)], comm)
   vtx_field = it._exchange_fields({'field' : [cell_field]}, False)
 
   expected_vtx_val = np.array([7, 8, 9, 11, 13, 24]) / 3
@@ -129,7 +134,7 @@ def test_cell_cell_interpolation(offset, comm):
   psrc = TU.portable_partitioning(src, cell_gnum, comm, data_transfer='FIELDS')
   ptgt = maia.factory.partition_dist_tree(tgt, comm, zone_to_parts=tgt_split_w)
 
-  interpolator = ITP.ConservativeInterpolator(psrc, ptgt, comm)
+  interpolator = ITP.ConservativeInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
   interpolator.exchange_fields('Sol', 'CellCenter', is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
@@ -172,7 +177,7 @@ def test_poly_and_s_meshes(dim, comm):
   for zone in PT.get_all_Zone_t(psrc):
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : MT.Zone.cell_globalnumbering(zone)}, parent=zone)
 
-  interpolator = ITP.ConservativeInterpolator(psrc, ptgt, comm)
+  interpolator = ITP.ConservativeInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
   interpolator.exchange_fields('FlowSolution', 'CellCenter', False)
 
   maia.transfer.part_tree_to_dist_tree_all(tgt, ptgt, comm)
@@ -202,7 +207,7 @@ def test_vertex_fields(in_loc, out_loc, comm):
   # Here we just check that output is produced at good location
   # (results already checked in other tests)
 
-  interpolator = ITP.ConservativeInterpolator(psrc, ptgt, comm)
+  interpolator = ITP.ConservativeInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
   interpolator.exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
@@ -231,10 +236,8 @@ def test_multidom(dim, elt_kind, comm):
     src = maia.factory.generate_dist_block(11, 'TRI_3', comm)
 
     tgt1 = maia.factory.generate_dist_block(11, 'QUAD_4', comm, length=(.5, 1))
-    PT.set_name(PT.get_node_from_label(tgt1, 'Zone_t'), 'Left')
     tgt2 = maia.factory.generate_dist_block(11, 'QUAD_4', comm, origin=(.5,0,0), length=(.5, 1))
-    PT.set_name(PT.get_node_from_label(tgt1, 'Zone_t'), 'Right')
-    tgt = PT.union(tgt1, tgt2)
+    tgt = union(tgt1, tgt2)
     if elt_kind == 'Poly':
       maia.algo.dist.convert_elements_to_ngon(tgt, comm)
     
@@ -249,6 +252,27 @@ def test_multidom(dim, elt_kind, comm):
 
   for idom,zone in enumerate(PT.get_all_Zone_t(psrc)):
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 1000*(idom) + MT.Zone.cell_globalnumbering(zone)}, parent=zone)
+
+  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection', is_conservative=False)
+
+  src_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(psrc, 'gnum')]))
+  tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
+  assert abs(src_sum - tgt_sum) /  src_sum < 1E-12
+
+@pytest_parallel.mark.parallel(2)
+def test_multidom_vtx(comm):
+  src = union(maia.factory.generate_dist_block(5, 'TRI_3', comm, length=(.5, 1), origin=(0,0,0)),
+              maia.factory.generate_dist_block(5, 'TRI_3', comm, length=(.5, 1), origin=(.5,0,0)))
+  tgt = union(maia.factory.generate_dist_block(9, 'TRI_3', comm, length=(1, 1./3), origin=(0,0)),
+              maia.factory.generate_dist_block(9, 'TRI_3', comm, length=(1, 1./3), origin=(0,1./3)),
+              maia.factory.generate_dist_block(9, 'TRI_3', comm, length=(1, 1./3), origin=(0,2./3)))
+
+  psrc = maia.factory.partition_dist_tree(src, comm)
+  ptgt = maia.factory.partition_dist_tree(tgt, comm)
+
+  for zone in PT.get_all_Zone_t(psrc):
+    idom = int(MT.conv.get_part_prefix(PT.get_name(zone))[-1])
+    PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 100*(idom) + MT.Zone.cell_globalnumbering(zone)}, parent=zone)
 
   maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection', is_conservative=False)
 

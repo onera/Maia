@@ -158,19 +158,18 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
 
   return ptp, res
 
-
-def tree_dim(tree:CGNSPartTree, comm:MPIComm) -> int:
-  base_dims = set(PT.Base.CellDimension(b) for b in PT.iter_all_CGNSBase_t(tree))
-  dims = comm.allreduce(base_dims, lambda s1,s2 : s1 & s2)
+def tree_dim(parts:List[CGNSPartTree], comm:MPIComm) -> int:
+  zone_dims = set(PT.Zone.CellDimension(z) for z in parts)
+  dims = comm.allreduce(zone_dims, lambda s1,s2 : s1 | s2)
   if len(dims) != 1:
     raise RuntimeError("Inconsistent mesh dimension")
   return dims.pop()
 
 class VertexToCell:
 
-  def __init__(self, tree:CGNSPartTree, comm:MPIComm):
-    zones = PT.get_all_Zone_t(tree)
+  def __init__(self, parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm):
 
+    zones = py_utils.to_flat_list(parts_per_dom)
     self.cell_vtx_l = []
     for zone in zones:
       dim = PT.Zone.CellDimension(zone)
@@ -192,7 +191,8 @@ class VertexToCell:
     #  w = dual_volume_contribution_from_cell / dual_volume_of_vertex
     #  ---> Suitable for integrated fields (eg mass)
     self.inte_weight_l = []
-    dual_vol_l = PDM.part_mesh_nodal_dual_volume(part_zones_to_pdm_pmesh_nodal(zones, comm))
+    dual_vol_per_dom = [PDM.part_mesh_nodal_dual_volume(part_zones_to_pdm_pmesh_nodal(parts, comm)) for parts in parts_per_dom]
+    dual_vol_l = py_utils.to_flat_list(dual_vol_per_dom)
     for i, zone in enumerate(zones):
       vol = _get_native_measure(zone)
       vol_dispatch = np.repeat(vol / (dim+1), dim+1)
@@ -200,6 +200,7 @@ class VertexToCell:
       self.inte_weight_l.append(vol_dispatch / dual_vol[self.cell_vtx_l[i].values-1])
 
   def _exchange_fields(self, vtx_fields:Dict[str, List[NDArray]], is_conservative:bool) -> Dict[str, List[NDArray]]:
+    # NB : data must be already flattened in parts_per_dom order
 
     weight_l = self.cons_weight_l if is_conservative else self.inte_weight_l
     cell_fields = {key: [] for key in vtx_fields}
@@ -214,28 +215,30 @@ class VertexToCell:
 
 class CellToVertex:
 
-  def __init__(self, tree:CGNSPartTree, comm:MPIComm):
-    zones = PT.get_all_Zone_t(tree)
+  def __init__(self, parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm):
 
-    nb_tot_vertex = MT.Zone.n_vtx(zones, comm)
-    vtx_distri  = par_utils.uniform_distribution(nb_tot_vertex,  comm)
-
+    nb_tot_vertex = 0
     cell_vtx_gnum_l = list()
     vtx_gnum_l = list()
-    for zone in zones:
-      dim = PT.Zone.CellDimension(zone)
-      elt = PT.find_child_from_predicate(zone, PT.pred.is_element_of_type('TRI_3' if dim == 2 else 'TETRA_4'))
-      elt_vtx = PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity'))
-      vtx_gnum = MT.Zone.vtx_globalnumbering(zone)
+    for parts in parts_per_dom:
+      for zone in parts:
+        dim = PT.Zone.CellDimension(zone)
+        elt = PT.find_child_from_predicate(zone, PT.pred.is_element_of_type('TRI_3' if dim == 2 else 'TETRA_4'))
+        elt_vtx = PT.get_np_value(PT.find_child_from_name(elt, 'ElementConnectivity'))
+        vtx_gnum = MT.Zone.vtx_globalnumbering(zone) - 1 + nb_tot_vertex
 
-      cell_vtx_gnum_l.append(vtx_gnum[elt_vtx - 1])
-      vtx_gnum_l.append(vtx_gnum)
+        cell_vtx_gnum_l.append(vtx_gnum[elt_vtx - 1])
+        vtx_gnum_l.append(vtx_gnum)
+
+      nb_tot_vertex += MT.Zone.n_vtx(parts, comm)
   
+    zones = py_utils.to_flat_list(parts_per_dom)
     self.dim = dim if len(zones) > 0 else 0
 
+    vtx_distri  = par_utils.uniform_distribution(nb_tot_vertex,  comm)
     # First indexer for cell_vtx connectivity, second one only for vertices
-    self.cnt_gi = EP.GlobalIndexer(vtx_distri, cell_vtx_gnum_l, comm, gnum_offset=1)
-    self.vtx_gi = EP.GlobalIndexer(vtx_distri, vtx_gnum_l,      comm, gnum_offset=1)
+    self.cnt_gi = EP.GlobalIndexer(vtx_distri, cell_vtx_gnum_l, comm)
+    self.vtx_gi = EP.GlobalIndexer(vtx_distri, vtx_gnum_l,      comm)
 
     # Weight must be already extended (size = cell_vtx.dsize)
 
@@ -256,6 +259,7 @@ class CellToVertex:
     self.cons_weight_l = [vol_dispatch / dual_vol_rep for vol_dispatch, dual_vol_rep in zip(vol_dispatch_l, dual_vol_rep_l)]
 
   def _exchange_fields(self, cell_fields:Dict[str, List[NDArray]], is_conservative:bool) -> Dict[str, List[NDArray]]:
+    # NB : data must be already flattened in parts_per_dom order
 
     weight_l = self.cons_weight_l if is_conservative else self.inte_weight_l
     vtx_fields = dict()
@@ -269,7 +273,7 @@ class CellToVertex:
     
 class ConservativeInterpolator:
 
-  def __init__(self, src_tree, tgt_tree, comm):
+  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, comm):
     
     #  Restrictions
     # monodomain ? 
@@ -296,23 +300,18 @@ class ConservativeInterpolator:
     #   Volume_(I∩J) / Volume_J    for standard cells
     #   1                          for tgt cells outside src mesh, where I is the closest cell
     # and correction by (1/r) is unchanged
-    
-    src_dim = tree_dim(src_tree, comm)
-    tgt_dim = tree_dim(tgt_tree, comm)
-    assert src_dim == tgt_dim
-
-    # Remove when src_to_tgt are multidom compatible
-    from maia.factory.dist_from_part import get_parts_per_blocks
-    src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
-    tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
-
-    offset_mdom(src_parts_per_dom, comm)
-    offset_mdom(tgt_parts_per_dom, comm)
 
     src_parts = py_utils.to_flat_list(src_parts_per_dom)
     tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom)
+    src_dim = tree_dim(src_parts, comm)
+    tgt_dim = tree_dim(tgt_parts, comm)
+    assert src_dim == tgt_dim
+
     vol_src = [_get_native_measure(zone).reshape(-1, order='F') for zone in src_parts]
     vol_tgt = [_get_native_measure(zone).reshape(-1, order='F') for zone in tgt_parts]
+
+    offset_mdom(src_parts_per_dom, comm)
+    offset_mdom(tgt_parts_per_dom, comm)
 
     # Compute intersection between src (part 2) and tgt (part 1)
     ptp, tgt_to_src = compute_mesh_intersection(src_parts, tgt_parts, comm, src_dim)
@@ -373,8 +372,8 @@ class ConservativeInterpolator:
 
     self.ptp = ptp
     self.src_weights_l = src_weights_l
-    self.src_tree = src_tree
-    self.tgt_tree = tgt_tree
+    self.src_parts_per_dom = src_parts_per_dom
+    self.tgt_parts_per_dom = tgt_parts_per_dom
     self.src_parts = src_parts
     self.tgt_parts = tgt_parts
     self.src_vol = vol_src
@@ -393,12 +392,12 @@ class ConservativeInterpolator:
   @property
   def vtx_to_cell_src(self):
     if self._vtx_to_cell_src is None:
-      self._vtx_to_cell_src = VertexToCell(self.src_tree, self.comm)
+      self._vtx_to_cell_src = VertexToCell(self.src_parts_per_dom, self.comm)
     return self._vtx_to_cell_src
   @property
   def cell_to_vtx_tgt(self):
     if self._cell_to_vtx_tgt is None:
-      self._cell_to_vtx_tgt = CellToVertex(self.tgt_tree, self.comm)
+      self._cell_to_vtx_tgt = CellToVertex(self.tgt_parts_per_dom, self.comm)
     return self._cell_to_vtx_tgt
 
   def cell_data_transfer(self, 
