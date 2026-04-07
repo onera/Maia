@@ -8,10 +8,12 @@ import maia
 import maia.algo.part.point_cloud_utils as PCU
 import maia.algo.part.closest_points    as CLO
 import maia.transfer.protocols          as EP
-from   maia.utils                       import par_utils
+from   maia.utils                       import par_utils, np_utils
 from   maia.utils import vstride as vs
 
 from .cgns_to_pdm_pmesh import part_zones_to_pdm_pmesh_nodal
+from .connectivity_utils import cell_vtx_connectivity_S
+from .ngon_tools import pe_to_nface, edge_pe_to_ngon
 
 from maia.algo import interpolation_utils as itp_utils
 
@@ -30,15 +32,79 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
                               comm:MPIComm,
                               dim:int) -> Tuple[PDM.PartToPart, List[Dict[str, NDArray]]]:
 
-  pmn1 = part_zones_to_pdm_pmesh_nodal(src_parts, comm)
-  pmn2 = part_zones_to_pdm_pmesh_nodal(tgt_parts, comm)
+  keep_alive = list()
 
-  # NB : the two last args are unused by class
-  mi = PDM.MeshIntersection(comm,  PDM._PDM_MESH_INTERSECTION_KIND_WEIGHT, dim, dim, 1, 1)
+  mi = PDM.MeshIntersection(comm,  PDM._PDM_MESH_INTERSECTION_KIND_WEIGHT, dim, dim, len(tgt_parts), len(src_parts))
 
   # /!\ Register src as part_2 and tgt as part_1 /!\
-  mi.part_nodal_set(0, pmn2)
-  mi.part_nodal_set(1, pmn1)
+  # For now we treat elt meshes / S meshes as part_mesh_nodal and Poly meshes with raw API
+  # It may be better to use always partmeshnodal but this require some additions in part mesh nodal
+  # cython class
+  for i_mesh, parts in enumerate([tgt_parts, src_parts]):
+
+    if comm.allreduce(all(PT.pred.is_zone_of_kind('Poly')(z) for z in parts), MPI.LAND): # Poly elements
+      mi.n_part_set(i_mesh, len(parts))
+      for i_part,part in enumerate(parts):
+        n_vtx = PT.Zone.n_vtx(part)
+        cx, cy, cz = PT.Zone.coordinates(part)
+        if cz is None:
+          cz = np.zeros_like(cx)
+        coords = np_utils.interweave_arrays([cx,cy,cz])
+        vtx_lngn = MT.Zone.vtx_globalnumbering(part)
+
+        if PT.Zone.CellDimension(part) == 2:
+          if not PT.Zone.has_ngon_elements(part):
+            edge_pe_to_ngon(part)
+
+          ngon_n = PT.Zone.NGonNode(part)
+          face_vtx = MT.Element.connectivity(ngon_n)
+          face_lngn = MT.Element.globalnumbering(ngon_n)
+          n_face = face_lngn.size
+
+          mi.part_set(i_mesh, i_part, 0, n_face, 0, n_vtx, None, None, None, None, None,
+                      face_vtx.displs, face_vtx.values, None, face_lngn, None, vtx_lngn, coords)
+
+        elif PT.Zone.CellDimension(part) == 3:
+          if not PT.Zone.has_nface_elements(part):
+            pe_to_nface(part)
+
+          ngon_n = PT.Zone.NGonNode(part)
+          nface_n = PT.Zone.NFaceNode(part)
+          face_vtx = MT.Element.connectivity(ngon_n)
+          face_lngn = MT.Element.globalnumbering(ngon_n)
+          cell_face = MT.Element.connectivity(nface_n)
+          cell_lngn = MT.Element.globalnumbering(nface_n)
+          n_cell = cell_lngn.size
+          n_face = face_lngn.size
+
+          mi.part_set(i_mesh, i_part, n_cell, n_face, 0, n_vtx, cell_face.displs, cell_face.values, None, None, None,
+                      face_vtx.displs, face_vtx.values, cell_lngn, face_lngn, None, vtx_lngn, coords)
+
+    else:
+
+      if comm.allreduce(all(PT.pred.is_zone_of_kind('S')(z) for z in parts), MPI.LAND): # Struc
+        _parts = []
+        for i_part, part in enumerate(parts):
+          _part = PT.new_Zone(PT.get_name(part), type='Unstructured', size=[[PT.Zone.n_vtx(part), PT.Zone.n_cell(part), 0]])
+          cx, cy, cz = PT.Zone.coordinates(part)
+          if cz is None:
+            cz = np.zeros_like(cx)
+          PT.new_GridCoordinates(fields={f'Coordinate{d}' : c.reshape(-1, order='F') for d,c in zip('XYZ', [cx,cy,cz])}, parent=_part)
+          cell_vtx = cell_vtx_connectivity_S(part, PT.Zone.CellDimension(part))
+          kind = 'QUAD_4' if PT.Zone.CellDimension(part) == 2 else 'HEXA_8'
+          elt = PT.new_Elements('ELTS', kind, erange=[1, PT.Zone.n_cell(part)], econn=cell_vtx.values, parent=_part)
+          MT.new_GlobalNumbering({'Element' : MT.Zone.cell_globalnumbering(part),
+                                  'Sections': MT.Zone.cell_globalnumbering(part)}, elt)
+          PT.add_child(_part, MT.find_GlobalNumbering(part))
+          _parts.append(_part)
+
+      else:
+        _parts = parts
+
+      pmn = part_zones_to_pdm_pmesh_nodal(_parts, comm)
+      mi.part_nodal_set(i_mesh, pmn)
+      keep_alive.append(pmn)
+
 
   mi.compute()
   ptp = mi.part_to_part_get()
@@ -194,8 +260,8 @@ class ConservativeInterpolator:
 
     src_parts = PT.get_all_Zone_t(src_tree)
     tgt_parts = PT.get_all_Zone_t(tgt_tree)
-    vol_src = [_get_native_measure(zone) for zone in src_parts]
-    vol_tgt = [_get_native_measure(zone) for zone in tgt_parts]
+    vol_src = [_get_native_measure(zone).reshape(-1, order='F') for zone in src_parts]
+    vol_tgt = [_get_native_measure(zone).reshape(-1, order='F') for zone in tgt_parts]
 
     # Compute intersection between src (part 2) and tgt (part 1)
     ptp, tgt_to_src = compute_mesh_intersection(src_parts, tgt_parts, comm, src_dim)
@@ -291,7 +357,7 @@ class ConservativeInterpolator:
       
       # Integrated to conservative, if needed
       if not is_conservative:
-        src_fields = [f/vol for f,vol in zip(src_fields, self.src_vol)]
+        src_fields = [f / vol for f,vol in zip(src_fields, self.src_vol)]
 
       rq_dict[name] = self.ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
                                              PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
@@ -325,7 +391,7 @@ class ConservativeInterpolator:
     for src_zone in src_parts:
       container = PT.find_node_from_path(src_zone, container_name)
       for key, val in PT.Container.fields(container).items():
-        src_fields_l[key].append(val)
+        src_fields_l[key].append(val.reshape(-1, order='F')) # Flatten if src zone is S
 
     if src_loc == 'Vertex':
       src_fields_l = self.vtx_to_cell_src._exchange_fields(src_fields_l, is_conservative)
@@ -342,8 +408,9 @@ class ConservativeInterpolator:
 
     # Update target partitions
     for i,tgt_part in enumerate(tgt_parts):
+      shape = PT.Zone.CellSize(tgt_part) if tgt_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
       PT.rm_children_from_name(tgt_part, container_name)
-      fields = {key: vals[i] for key,vals in tgt_fields_l.items()}
+      fields = {key: vals[i].reshape(shape, order='F') for key,vals in tgt_fields_l.items()}
       fs = PT.new_FlowSolution(container_name, loc=tgt_loc, fields=fields, parent=tgt_part)
       PT.set_label(fs, cnt_label)
 

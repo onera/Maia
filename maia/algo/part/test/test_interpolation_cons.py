@@ -154,6 +154,32 @@ def test_cell_cell_interpolation(offset, comm):
   dsol = PT.get_np_value(PT.find_node_from_name(tgt, 'field'))
   assert np.allclose(expected[cell_distri[0]:cell_distri[1]], dsol)
 
+@pytest_parallel.mark.parallel(2)
+@pytest.mark.parametrize('dim', [2,3])
+def test_poly_and_s_meshes(dim, comm):
+  if dim == 2:
+    src = maia.factory.generate_dist_block(11, 'TRI_3', comm)
+    maia.algo.dist.convert_elements_to_ngon(src, comm)
+    tgt = maia.factory.generate_dist_block([8, 14], 'S', comm, origin=(0.,0.))
+  else:
+    src = maia.factory.generate_dist_block(11, 'S', comm)
+    tgt = maia.factory.generate_dist_block(7, 'Poly', comm)
+
+  #  NB : preserve_orientation = True seems required for NG meshes
+  psrc = maia.factory.partition_dist_tree(src, comm, preserve_orientation=True)
+  ptgt = maia.factory.partition_dist_tree(tgt, comm, preserve_orientation=True)
+
+  for zone in PT.get_all_Zone_t(psrc):
+    PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : MT.Zone.cell_globalnumbering(zone)}, parent=zone)
+
+  interpolator = ITP.ConservativeInterpolator(psrc, ptgt,  None, comm)
+  interpolator.exchange_fields('FlowSolution', 'CellCenter', False)
+
+  maia.transfer.part_tree_to_dist_tree_all(tgt, ptgt, comm)
+  maia.transfer.part_tree_to_dist_tree_all(src, psrc, comm)
+  src_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(psrc, 'gnum')]))
+  tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
+  assert abs(src_sum - tgt_sum) /  src_sum < 1E-12
 
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize('in_loc', ['CellCenter', 'Vertex'])
