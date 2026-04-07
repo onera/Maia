@@ -395,7 +395,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
                 extracted_bc = PT.new_BC(PT.get_name(da), 'FamilySpecified', loc="EdgeCenter", point_list=[ext_edges[bc_indices]+1], family=family_name, parent=extract_zbc)
               else:
                 extracted_bc = PT.new_BC(PT.get_name(da), PT.get_value(PT.get_child_from_name(da, 'BCValue')), loc="EdgeCenter", point_list=[ext_edges[bc_indices]+1], parent=extract_zbc)
-              MT.new_GlobalNumbering({'Index':edge_gnum[bc_indices]}, parent=extracted_bc)
+              MT.new_GlobalNumbering({'Index':edge_gnum[ext_edges[bc_indices]]+1}, parent=extracted_bc)
           PT.rm_children_from_name(extract_zone, '__maia::TagBCsOnVtx')
         families = comm.allgather(list(set(families)))
         for family_name in list(set(sum(families, []))):
