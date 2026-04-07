@@ -798,6 +798,7 @@ def test_all_transfer(transfer_dataset, eq, comm):
   PT.new_ZoneSubRegion('FakeZSR', bc_name='Xmin', parent=zone) # Should be ignored (no arrays)
 
   ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer='ALL')
+  # if comm.rank==1: PT.print_tree(ptree)
 
   pext = maia.algo.part.extract_part_from_zsr(ptree, 'ZSR', comm, transfer_dataset, 'ALL', equilibrate=eq)
   # Tr DS = True or False + local mode + ALL ===> KO
@@ -807,6 +808,13 @@ def test_all_transfer(transfer_dataset, eq, comm):
   for name in ['Geometry_3d', 'FakeZSR']:
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'ZSR', comm) == transfer_dataset
+  # Remark : j'ai mis 'not' preference pour '== False' ?
+  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmin', comm)
+  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmax', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymax', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmin', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmax', comm)
   
   pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymin', comm, transfer_dataset, 'ALL', equilibrate=eq)
   ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
@@ -815,6 +823,12 @@ def test_all_transfer(transfer_dataset, eq, comm):
   for name in ['Geometry_3d', 'OtherZSR', 'FakeZSR']:
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
+  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
+  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymax', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmin', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmax', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmin', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmax', comm)
 
   pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, transfer_dataset, 'ALL', equilibrate=eq)
   ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
@@ -824,6 +838,11 @@ def test_all_transfer(transfer_dataset, eq, comm):
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'FAM', comm) == transfer_dataset
   assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
+  # A DISCUTER
+  # normalement on devrait pouvoir tester :
+  # assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
+  # mais le probleme du passage par famille c'est que l'on n'a plus l'info
+  # de la BC concernee !
 
 @pytest_parallel.mark.parallel(2)
 def test_extract_S_2d(comm):
