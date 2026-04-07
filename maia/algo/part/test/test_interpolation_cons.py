@@ -129,7 +129,7 @@ def test_cell_cell_interpolation(offset, comm):
   psrc = TU.portable_partitioning(src, cell_gnum, comm, data_transfer='FIELDS')
   ptgt = maia.factory.partition_dist_tree(tgt, comm, zone_to_parts=tgt_split_w)
 
-  interpolator = ITP.ConservativeInterpolator(psrc, ptgt,  None, comm)
+  interpolator = ITP.ConservativeInterpolator(psrc, ptgt, comm)
   interpolator.exchange_fields('Sol', 'CellCenter', is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
@@ -172,7 +172,7 @@ def test_poly_and_s_meshes(dim, comm):
   for zone in PT.get_all_Zone_t(psrc):
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : MT.Zone.cell_globalnumbering(zone)}, parent=zone)
 
-  interpolator = ITP.ConservativeInterpolator(psrc, ptgt,  None, comm)
+  interpolator = ITP.ConservativeInterpolator(psrc, ptgt, comm)
   interpolator.exchange_fields('FlowSolution', 'CellCenter', False)
 
   maia.transfer.part_tree_to_dist_tree_all(tgt, ptgt, comm)
@@ -202,9 +202,23 @@ def test_vertex_fields(in_loc, out_loc, comm):
   # Here we just check that output is produced at good location
   # (results already checked in other tests)
 
-  interpolator = ITP.ConservativeInterpolator(psrc, ptgt,  None, comm)
+  interpolator = ITP.ConservativeInterpolator(psrc, ptgt, comm)
   interpolator.exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
     fs = PT.get_node_from_name(zone, in_loc+'Sol')
     assert PT.Container.GridLocation(fs) == out_loc and PT.get_label(fs) == 'DiscreteData_t'
+
+def test_from_api(comm):
+  ftree = PT.yaml.to_cgns_tree(minimal_tri + """
+    Sol FlowSolution_t:
+      GridLocation GridLocation_t "CellCenter":
+      field DataArray_t R8 [2, 6, 3, 8, 5]:
+  """)
+  src = maia.factory.full_to_dist_tree(ftree, comm)
+  tgt = maia.factory.generate_dist_block(3, 'TRI_3', comm)
+
+  psrc = maia.factory.partition_dist_tree(src, comm, data_transfer='FIELDS')
+  ptgt = maia.factory.partition_dist_tree(tgt, comm)
+  maia.algo.interpolate(psrc, ptgt, comm, ['Sol'], 'Vertex', strategy='Intersection', is_conservative=False)
+  assert PT.get_node_from_name(ptgt, 'Sol') is not None

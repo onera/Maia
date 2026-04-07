@@ -47,18 +47,35 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
       In both cases, unlocated points take the value ``NaN``.
     - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
       for the unlocated points.
+    - 'Intersection' : Target cells take a fraction of each overlapping source cell value, in a
+      conservative way. Cell ↔ Vertex interpolations are used under the hood to match required locations.
 
   - ``n_closest_pt`` (default = 1) -- If strategy is 'Closest' or 'LocationAndClosest', 
     specify the number of closest points used for interpolation.
 
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
 
+  - ``is_conservative`` (default = ``True``) -- Treat fields as conservative (eg ``Momentum``) or integrated (eg ``Velocity``)
+    fields when using Intersection method.
+
   Inputs trees can be either distributed or partitioned, but both must be of same kind.
+
+  Important:
+
+    Note that ``'Intersection'`` method has the following restrictions:
+
+    - source and target tree must be of same dimension
+    - if fields are Vertex located, meshes are restricted to simplicial (``TRI_3`` or ``TETRA_4``) elements
+    - partitions must come from a single initial domain on input tree
+    - polyedric meshes must have been partitioned with ``preserve_orientation=True``
+
 
   See also:
     :func:`create_interpolator` takes the same parameters (excepted ``containers_name``,
     which must be replaced by ``src_location``), and returns an Interpolator object which can be used
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
+    For ``'Intersection'`` strategy, this method expect the following parameters:
+    ``exchange_fields(container_name, tgt_loc, is_conservative)``.
 
   Args:
     src_tree (CGNSTree): Source tree

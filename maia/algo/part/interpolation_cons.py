@@ -223,7 +223,7 @@ class CellToVertex:
     
 class ConservativeInterpolator:
 
-  def __init__(self, src_tree, tgt_tree, src_loc, tgt_loc, comm):
+  def __init__(self, src_tree, tgt_tree, comm):
     
     #  Restrictions
     # monodomain ? 
