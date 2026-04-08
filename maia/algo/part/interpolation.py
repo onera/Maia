@@ -187,7 +187,7 @@ def create_interpolator(src_tree:CGNSPartTree,
 
   strategy = options.get('strategy', 'Closest')
   if strategy == 'Intersection':
-    return ConservativeInterpolator(src_parts_per_dom, tgt_parts_per_dom, comm)
+    return ConservativeInterpolator(src_parts_per_dom, tgt_parts_per_dom, comm, **options)
   else:
     assert src_location in ['CellCenter', 'Vertex']
     src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, tgt_location, **options)

@@ -273,11 +273,11 @@ class CellToVertex:
     
 class ConservativeInterpolator:
 
-  def __init__(self, src_parts_per_dom, tgt_parts_per_dom, comm):
-    
-    #  Restrictions
-    # monodomain ? 
-    # elements simpliciaux ?
+  def __init__(self,
+               src_parts_per_dom:List[List[CGNSPartTree]],
+               tgt_parts_per_dom:List[List[CGNSPartTree]],
+               comm:MPIComm,
+               **kwargs):
     
 
     # In the init part of the interpolator we build the part to part and weights
@@ -323,9 +323,10 @@ class ConservativeInterpolator:
     #   - partial_mask is True       "        partially        "
     # vol_ratio is the fraction of tgt cell covered by src mesh, since a_to_b_weight already
     # include src vol and we divided by tgt_vol, we just have to sum
+    tol = kwargs.get('measure_ratio_tol', 1E-12)
     vol_ratio = [src_weights.reduce(vs.ReduceOp.SUM) for src_weights in src_weights_l]
-    partial_mask = [r*(1-r) > 1E-15 for r in vol_ratio] # TODO tol reglable
-    outside_mask = [r < 1E-15       for r in vol_ratio]
+    partial_mask = [r*(1-r) > tol for r in vol_ratio]
+    outside_mask = [r < tol       for r in vol_ratio]
 
     # Incorporate cut-cell correction for partial cells
     for i, weight in enumerate(src_weights_l):
