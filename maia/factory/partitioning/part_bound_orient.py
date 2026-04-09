@@ -137,5 +137,23 @@ def preserve_orientation(part_zones, comm):
           parent_cell = pe[iface, 1] - PT.Element.Range(nface_node)[0]
           nface_ec_view = cell_face[parent_cell]
           nface_ec_view[nface_ec_view == (iface+1)] *= -1
-    
-        
+
+
+def shallow_preserve_orientation(part_zones, comm):
+  """
+  Same as preserve_orientation, but return a shallow copy of the input
+  zones where only NF/NG connectivities are copied (to preserve inputs)
+  """
+  new_parts = list()
+  elt_preds = [PT.pred.is_element_of_type(k) for k in ['NGON_n', 'NFACE_n']]
+  ar_pred = PT.pred.name_in(['ElementConnectivity', 'ParentElements'])
+  for part in part_zones:
+    _part = PT.shallow_copy(part)
+    for pred in elt_preds:
+      if (elt_n := PT.get_child_from_predicate(_part, pred)) is not None:
+        for da in PT.get_children_from_predicate(elt_n, ar_pred):
+          PT.set_value(da, PT.get_np_value(da).copy()) # Break link to avoid original data modification
+    new_parts.append(_part)
+
+  preserve_orientation(new_parts, comm)
+  return new_parts

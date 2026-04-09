@@ -171,8 +171,8 @@ def test_poly_and_s_meshes(dim, comm):
     tgt = maia.factory.generate_dist_block(7, 'Poly', comm)
 
   #  NB : preserve_orientation = True seems required for NG meshes
-  psrc = maia.factory.partition_dist_tree(src, comm, preserve_orientation=True)
-  ptgt = maia.factory.partition_dist_tree(tgt, comm, preserve_orientation=True)
+  psrc = maia.factory.partition_dist_tree(src, comm)
+  ptgt = maia.factory.partition_dist_tree(tgt, comm)
 
   for zone in PT.get_all_Zone_t(psrc):
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : MT.Zone.cell_globalnumbering(zone)}, parent=zone)

@@ -50,6 +50,12 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
     - 'Intersection' : Target cells take a fraction of each overlapping source cell value, in a
       conservative way. Cell ↔ Vertex interpolations are used under the hood to match required locations.
 
+      .. important::
+      
+        With this strategy, source and target tree must be of same dimension.
+        In addition, if fields are Vertex located, meshes are restricted to simplicial
+        (``TRI_3`` or ``TETRA_4``) elements.
+
   - ``n_closest_pt`` (default = 1) -- If strategy is 'Closest' or 'LocationAndClosest', 
     specify the number of closest points used for interpolation.
 
@@ -59,15 +65,6 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
     fields when using Intersection method.
 
   Inputs trees can be either distributed or partitioned, but both must be of same kind.
-
-  Important:
-
-    Note that ``'Intersection'`` method has the following restrictions:
-
-    - source and target tree must be of same dimension
-    - if fields are Vertex located, meshes are restricted to simplicial (``TRI_3`` or ``TETRA_4``) elements
-    - polyedric meshes must have been partitioned with ``preserve_orientation=True``
-
 
   See also:
     :func:`create_interpolator` takes the same parameters (excepted ``containers_name``,

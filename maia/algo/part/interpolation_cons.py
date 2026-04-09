@@ -8,7 +8,9 @@ import maia
 import maia.algo.part.point_cloud_utils as PCU
 import maia.algo.part.closest_points    as CLO
 import maia.transfer.protocols          as EP
+from   maia.factory.partitioning        import part_bound_orient as PBO
 from   maia.utils                       import py_utils, par_utils, np_utils
+from   maia.utils import logging as mlog
 from   maia.utils import vstride as vs
 
 from .cgns_to_pdm_pmesh import part_zones_to_pdm_pmesh_nodal
@@ -17,7 +19,6 @@ from .ngon_tools import pe_to_nface, edge_pe_to_ngon
 from .geometry import compute_elements_measure
 
 from maia.algo import interpolation_utils as itp_utils
-
 
 import Pypdm.Pypdm as PDM
 
@@ -90,6 +91,15 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
   for i_mesh, parts in enumerate([tgt_parts, src_parts]):
 
     if comm.allreduce(all(PT.pred.is_zone_of_kind('Poly')(z) for z in parts), MPI.LAND): # Poly elements
+      
+      # NB : 2D poly meshes does not need to be reoriented
+      if dim == 3:
+        if not PBO.orientation_preserved(parts, comm):
+          msg = "Poly3D meshes need to be partitioned with preserve_orientation=True to compute intersections." \
+                " Orientations have been recomputed, but consider using this option for better performances."
+          parts = PBO.shallow_preserve_orientation(parts, comm)
+          mlog.warning(msg)
+
       mi.n_part_set(i_mesh, len(parts))
       for i_part,part in enumerate(parts):
         n_vtx = PT.Zone.n_vtx(part)
