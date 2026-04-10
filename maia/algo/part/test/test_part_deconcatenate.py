@@ -42,8 +42,6 @@ def test_part_deconcatenate_patch(specified, comm):
     GN.concatenate_subsets_from_families(dist_tree, comm)
 
   part_tree = maia.factory.partition_dist_tree(dist_tree, comm, data_transfer='ALL')
-  to_copy1 = ["CGNSBase_t", "Zone_t", "ZoneBC_t", "BC_t", "Descriptor_t"]
-  maia.transfer.dist_tree_to_part_tree_copy(dist_tree, part_tree, to_copy1, comm)
 
   if specified:
     DN.deconcatenate_subsets_from_families(part_tree, comm, families)

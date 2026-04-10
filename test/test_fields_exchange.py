@@ -194,7 +194,7 @@ class Test_multiple_labels_exchange:
     for part_zone in part_zones:
       assert PT.get_node_from_path(part_zone, 'FlowSolution/RankId')   is not None
       assert PT.get_node_from_path(part_zone, 'FlowSolution/CstField') is None
-      assert PT.get_node_from_label(part_zone, 'BCDataSet_t') is None
+      assert PT.get_node_from_path(part_zone, 'BCDataSet_t/BCData')    is None
     self._cleanup(part_tree)
 
     MT.dist_to_part.dist_zone_to_part_zones_only(dist_zone, part_zones, comm, \

@@ -85,6 +85,8 @@ Zone Zone_t:
       GridLocation GridLocation_t 'FaceCenter':
       FamilyName FamilyName_t "FAM":
       .Solver#BC UserDefinedData_t:
+      FullDataSet BCDataSet_t "Null":
+        Descriptor Descriptor_t "Test":
   ZGC ZoneGridConnectivity_t:
     GC GridConnectivity_t:
       PointList IndexArray_t:
@@ -120,6 +122,7 @@ Zone.P2.N3 Zone_t:
   assert PT.get_value(PT.get_node_from_name(dist_zone, 'FlowSolutionPointers')) == \
          PT.get_value(PT.get_node_from_name(part_zone, 'FlowSolutionPointers'))
   assert PT.get_value(PT.get_node_from_path(part_zone, 'SubRegion/FamilyName')) == 'WALL'
+  assert PT.get_value(PT.get_node_from_path(part_zone, 'ZBC/BC/FullDataSet/Descriptor')) == 'Test'
 
 def test_update_zone_pointers():
   part_tree = PT.yaml.to_cgns_tree("""
