@@ -282,15 +282,12 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
     links   (list)           : List of links to create (see SIDS-to-Python guide)
     comm     (MPIComm)       : MPI communicator
   """
+  MT.check_cgns_dist_tree(dist_tree)
+
   # work on a copy that we may alter for our specific needs
   saving_dist_tree = PT.shallow_copy(dist_tree)
   _create_full_name_children(saving_dist_tree)
-  PT.print_tree(saving_dist_tree)
-  def _print_name(node):
-    print(node[0])
-  PT.scan(saving_dist_tree, _print_name)
 
-  MT.check_cgns_dist_tree(saving_dist_tree)
   if links:
     for link in links: # Links override data, so delete data
       PT.rm_node_from_path(saving_dist_tree, link[3])
