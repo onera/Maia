@@ -8,6 +8,7 @@ from maia.algo.dist import matching_jns_tools as MJT
 
 import numpy as np
 
+IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
 
 def find_suffix(perio:NDArray, perio_refs:List[NDArray], add_opp_perio=False,
                 perio_to_one_side_path_jn={}, cur_path='', donor_path=''):
@@ -391,7 +392,9 @@ def concatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
     
-    zone_families = {PT.get_str_value(n) for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t')}
+    # Additional FName
+    zone_families = {PT.get_str_value(n) for n in \
+                     PT.get_nodes_from_predicates(dist_zone, ['ZoneBC_t','BC_t', IS_FAM_NAME])}
 
     # > If all families, we need to discover them first
     if families=='*':
@@ -521,7 +524,8 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
 
     assert PT.Zone.Type(dist_zone)=="Unstructured"
 
-    zone_families = {PT.get_str_value(n) for n in PT.get_nodes_from_predicates(dist_zone, 'ZoneBC_t/BC_t/FamilyName_t')}
+    zone_families = {PT.get_str_value(n) for n in \
+                     PT.get_nodes_from_predicates(dist_zone, ['ZoneBC_t','BC_t', IS_FAM_NAME])}
     # > If all families, we need to discover them first
     if families=='*':
         _families = sorted(zone_families)

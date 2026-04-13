@@ -561,7 +561,8 @@ def test_deconcatenate_patch_zsr(comm):
   assert PT.is_same_tree(dist_tree, dist_tree_cp)
 
 @pytest_parallel.mark.parallel(3)
-def test_families(comm):
+@pytest.mark.parametrize("from_add", [False, True])
+def test_families(from_add, comm):
   tree = maia.factory.generate_dist_block(21, 'HEXA_8', comm)
   tree = maia.factory.dist_to_full_tree(tree, comm, 0)
 
@@ -584,7 +585,8 @@ def test_families(comm):
   tree = maia.factory.full_to_dist_tree(tree, comm, 0)
   tree_bck = PT.deep_copy(tree)
 
-  maia.algo.dist.concatenate_subsets_from_families(tree, comm, ['XMAX'])
-  maia.algo.dist.deconcatenate_subsets_from_families(tree, comm, ['XMAX'])
+  fam = "Airplane" if from_add else 'XMAX'
+  maia.algo.dist.concatenate_subsets_from_families(tree, comm, [fam])
+  maia.algo.dist.deconcatenate_subsets_from_families(tree, comm, [fam])
 
   assert PT.is_same_tree(tree_bck, tree)
