@@ -8,20 +8,18 @@ from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 from   maia.pytree.maia   import metrics
+from   maia.pytree.node   import name_utils as NU
 import maia.utils.logging as mlog
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
 from .hdf.tree                  import create_tree_hdf_filter
 from .fix_tree                  import ensure_PE_global_indexing, ensure_signed_nface_connectivity
 from .utils                     import create_parent_folder
-import hashlib
 
 if _LEGACY_IO:
   from . import _hdf_io_cass as _hdf_io
 else:
   from . import _hdf_io_h5py as _hdf_io #type:ignore[no-redef]
-
-FULL_NAME_NODE_NAME = 'FullNameLongerThan32CharsLimit'
 
 from maia.factory     import full_to_dist
 
@@ -140,48 +138,6 @@ def load_tree_from_filter(filename: str,
   if(unlock_at_least_one is False):
     raise RuntimeError("Something strange in the loading process")
 
-def _unambiguous_short_names(names):
-  """ Find shorter names that are:
-  - less than 32 chars
-  - unambiguous (two different original names should have two different short names)
-  - human-readable as much as possible """
-  if len(set(names)) < len(names):
-    raise RuntimeError(f"There are two siblings of the same name among {names}")
-  short_names = [PT.node.short_name(n) for n in names]
-
-  perm = np.argsort(short_names)
-  names       = np.array(names      )[perm]
-  short_names = np.array(short_names)[perm]
-
-  group_idces = np.unique(short_names, return_index=True)[1][1:]
-  names       = np.split(names      , group_idces)
-  short_names = np.split(short_names, group_idces)
-
-  unamb_short_names = []
-  for name_group, short_name_group in zip(names, short_names):
-    if len(name_group) == 1: # no ambiguity: use the short name (and make sure it is at most 32 chars long)
-      short_name = short_name_group[0]
-      unamb_short_names.append(short_name[:32])
-    else: # several short names are equal: complete with a 8-char hash
-      for name, short_name in zip(name_group, short_name_group):
-        name =  name.encode('ascii')
-        hash = hashlib.sha256(name).hexdigest()[:8]
-        unamb_short_names.append(short_name[:24]+hash)
-
-  inv_perm = np.empty_like(perm)
-  inv_perm[perm] = np.arange(perm.size)
-  return list(np.array(unamb_short_names)[inv_perm])
-
-def _create_full_name_children(tree):
-  def _create_full_name_child(node):
-    name_children = _unambiguous_short_names([child[0] for child in node[2]])
-    for child,name_child in zip(node[2],name_children):
-      if len(child[0]) > 32:
-        full_name_node = PT.new_UserDefinedData(FULL_NAME_NODE_NAME, child[0])
-        PT.get_children(child).append(full_name_node)
-        child[0] = name_child
-  PT.scan(tree, _create_full_name_child)
-
 def save_tree_from_filter(filename: str,
                           saving_dist_tree: CGNSDistTree, 
                           comm: MPIComm, 
@@ -222,12 +178,6 @@ def fill_size_tree(tree: CGNSTree,
 
   PT.rm_nodes_from_name(tree, '*#Size')
 
-def _replace_with_full_names(dist_tree):
-  def _replace_with_full_name(node):
-    if full_name_node := PT.get_child_from_name(node, FULL_NAME_NODE_NAME):
-      node[0] = PT.get_value(full_name_node)
-      PT.rm_children_from_name(node, FULL_NAME_NODE_NAME)
-  PT.scan(dist_tree, _replace_with_full_name)
 
 def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm, handle_long_names: bool = True) -> CGNSDistTree:
   """file_to_dist_tree(filename, comm)
@@ -256,7 +206,7 @@ def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm, handle_long
     fill_size_tree(size_tree, filename, comm)
     dist_tree = CGNSDistTree(size_tree)
     if handle_long_names:
-      _replace_with_full_names(dist_tree)
+      NU.replace_with_full_names(dist_tree)
 
   end = time.time()
   dt_size     = sum(metrics.dtree_nbytes(dist_tree))
@@ -286,7 +236,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
 
   # work on a copy that we may alter for our specific needs
   saving_dist_tree = PT.shallow_copy(dist_tree)
-  _create_full_name_children(saving_dist_tree)
+  NU.create_full_name_children(saving_dist_tree)
 
   if links:
     for link in links: # Links override data, so delete data

@@ -3,8 +3,8 @@ import pytest
 import maia.pytree as PT
 
 from maia.pytree.yaml import parse_yaml_cgns
-from maia.pytree.node import shorten_names, shorten_field_names
-from maia.pytree.node import rename_zone
+
+from maia.pytree.node import name_utils as NU
 
 class Test_shorten_names:
   yt = """
@@ -16,7 +16,7 @@ class Test_shorten_names:
   node = parse_yaml_cgns.to_node(yt)
 
   def test_shorten_field_names(self):
-      shorten_field_names(self.node,quiet=True)
+      NU.shorten_field_names(self.node,quiet=True)
 
       expected_yt = """
       MyVeryLooooonnnggggFlowSolutionName FlowSolution_t:
@@ -28,7 +28,7 @@ class Test_shorten_names:
       assert self.node == expected_node
 
   def test_shorten_names(self):
-      shorten_names(self.node,quiet=True)
+      NU.shorten_names(self.node,quiet=True)
 
       expected_yt = """
       MyVeryLoooFlowSoluName FlowSolution_t:
@@ -38,6 +38,32 @@ class Test_shorten_names:
       """
       expected_node = parse_yaml_cgns.to_node(expected_yt)
       assert self.node == expected_node
+
+def test_unambiguous_short_names():
+  siblings = [
+    'Name1',
+    'Name2',
+    'Name1',
+  ]
+  with pytest.raises(RuntimeError) as e:
+    NU._unambiguous_short_names(siblings)
+  assert str(e.value) == "There are two siblings of the same name among ['Name1', 'Name2', 'Name1']"
+
+  siblings = [
+    'Density',
+    'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1',
+    'RSDTurbulentDissipationRateDensityRMS',
+    'AnotherVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual',
+    'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual2',
+  ]
+
+  assert NU._unambiguous_short_names(siblings) == [
+    'Density',
+    'AVeryLongFielNameWithLo.4fd4d905',
+    'RSDTurbDissRateDensRMS',
+    'AnotVeryLongFielNameWithLotsOfDe',
+    'AVeryLongFielNameWithLo.628b0bac',
+  ]
 
 def test_rename_zone():
   yt = """
@@ -51,7 +77,7 @@ def test_rename_zone():
         match3 GridConnectivity_t "ZoneB":
   """
   t = parse_yaml_cgns.to_cgns_tree(yt)
-  rename_zone(t, 'ZoneB', 'ZoneBB')
+  NU.rename_zone(t, 'ZoneB', 'ZoneBB')
   assert PT.get_node_from_name(t, 'ZoneB') is None
   assert PT.get_node_from_name(t, 'ZoneBB') is not None
 

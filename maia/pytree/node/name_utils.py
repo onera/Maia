@@ -1,7 +1,55 @@
+from collections import defaultdict
+import hashlib
+
 from maia.pytree.typing import *
+from maia.pytree.meta import CGNSNodeNotFoundError
 import maia.pytree as PT
 
 #begin_api_export()
+FULL_NAME_NODE_NAME = 'FullNameLongerThan32CharsLimit'
+
+def _unambiguous_short_names(names:List[str]) -> List[str]:
+  """ Find shorter names that are:
+  - less than 32 chars
+  - unambiguous (two different original names should have two different short names)
+  - human-readable as much as possible """
+  if len(set(names)) < len(names):
+    raise RuntimeError(f"There are two siblings of the same name among {names}")
+  short_names = [PT.node.short_name(n) for n in names]
+
+  name_to_idx = defaultdict(list)
+  for i,name in enumerate(short_names):
+    name_to_idx[name].append(i)
+  
+  # Erase short name
+  for _, idx_l in name_to_idx.items():
+    if len(idx_l) != 1:
+      for idx in idx_l:
+        hash = hashlib.sha256(names[idx].encode('ascii')).hexdigest()[:8]
+        new_name = short_names[idx][:23] + '.' + hash
+        short_names[idx] = new_name
+  return short_names
+
+def create_full_name_children(tree:CGNSTree):
+  def _create_full_name_child(node):
+    children = PT.get_children(node)
+    short_names = _unambiguous_short_names([PT.get_name(c) for c in children])
+    for child, short_name in zip(children, short_names):
+      if len(full_name := PT.get_name(child)) > 32:
+        PT.new_UserDefinedData(FULL_NAME_NODE_NAME, full_name, parent=child)
+        PT.set_name(child, short_name)
+  PT.scan(tree, _create_full_name_child)
+
+def replace_with_full_names(tree:CGNSTree):
+  def _replace_with_full_name(node):
+    try:
+      full_name_node = PT.pop_node_from_path(node, FULL_NAME_NODE_NAME)
+      node[0] = PT.get_value(full_name_node)
+    except CGNSNodeNotFoundError:
+      pass # Short name -> nothing to do
+    
+  PT.scan(tree, _replace_with_full_name)
+
 def short_name(old_name:str):
   if len(old_name) <= 32:
     return old_name

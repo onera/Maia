@@ -490,34 +490,6 @@ CGNSTree CGNSTree_t:
 
     TU.rm_collective_dir(tmp_dir, comm)
 
-
-def test_unambiguous_short_names():
-  siblings = [
-    'Name1',
-    'Name2',
-    'Name1',
-  ]
-  with pytest.raises(RuntimeError) as e:
-    IOT._unambiguous_short_names(siblings)
-  assert str(e.value) == "There are two siblings of the same name among ['Name1', 'Name2', 'Name1']"
-
-  siblings = [
-    'Density',
-    'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1',
-    'RSDTurbulentDissipationRateDensityRMS',
-    'AnotherVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual',
-    'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual2',
-  ]
-
-  assert IOT._unambiguous_short_names(siblings) == [
-    'Density',
-    'AVeryLongFielNameWithLot4fd4d905',
-    'RSDTurbDissRateDensRMS',
-    'AnotVeryLongFielNameWithLotsOfDe',
-    'AVeryLongFielNameWithLot628b0bac',
-  ]
-
-
 @pytest_parallel.mark.parallel(1)
 def test_dist_tree_to_file_long_names(comm):
   yt = """
