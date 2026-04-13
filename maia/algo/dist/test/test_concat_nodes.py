@@ -560,3 +560,31 @@ def test_deconcatenate_patch_zsr(comm):
   GN.deconcatenate_subsets_from_families(dist_tree, comm)
   assert PT.is_same_tree(dist_tree, dist_tree_cp)
 
+@pytest_parallel.mark.parallel(3)
+def test_families(comm):
+  tree = maia.factory.generate_dist_block(21, 'HEXA_8', comm)
+  tree = maia.factory.dist_to_full_tree(tree, comm, 0)
+
+  if comm.rank == 0:
+    zbc = PT.find_node_from_name(tree, 'ZoneBC')
+    xmax = PT.pop_node_from_path(zbc, 'Xmax')
+
+    pl = PT.find_child_from_name(xmax, 'PointList')[1][0]
+
+    sub_pls = np.split(pl, pl.size//10)
+    for i, pl in enumerate(sub_pls):
+      bc = PT.new_BC(f'Xmax_{i}', loc='FaceCenter', point_list=pl.reshape((1,-1),order='F'), family='XMAX', parent=zbc)
+      if i != 33:
+        PT.new_node('Ordinal', 'Ordinal_t', i, parent=bc)
+        PT.new_FamilyName('Wing' if i% 2 == 0 else 'Tail', 'ExtractingFamily', parent=bc)
+        PT.new_FamilyName('Airplane', 'ComputingFamily', parent=bc)
+        if i % 10 == 0:
+          PT.new_FamilyName('Yes', 'ProbesFamily', parent=bc)
+    
+  tree = maia.factory.full_to_dist_tree(tree, comm, 0)
+  tree_bck = PT.deep_copy(tree)
+
+  maia.algo.dist.concatenate_subsets_from_families(tree, comm, ['XMAX'])
+  maia.algo.dist.deconcatenate_subsets_from_families(tree, comm, ['XMAX'])
+
+  assert PT.is_same_tree(tree_bck, tree)
