@@ -31,7 +31,42 @@ def find_suffix(perio:NDArray, perio_refs:List[NDArray], add_opp_perio=False,
       perio_to_one_side_path_jn[len(perio_refs)] = []
       perio_refs.append(np.linalg.inv(perio))
   return suffix
+
+def expand_bcs_metadata(bc_cat:CGNSTree) -> List[CGNSTree]:
+  cat = PT.find_child_from_name(bc_cat, ':maia#concatenate')
+
+  # Position of node changed, try new and old position for compatibility with old files
+  if (name_n := PT.get_child_from_name(cat, 'BCsName')) is None:
+    name_n = PT.find_child_from_name(bc_cat, 'BCNames') # Old Nmame
+  if (ord_n := PT.get_child_from_name(cat, 'BCsOrdinal')) is None:
+    ord_n = PT.get_child_from_name(bc_cat, 'BCOrdinal') # Old Name
+  main_fam_n = PT.get_child_from_name(cat, 'BCsFamily') # No equivalent old name
+  add_fam_n  = PT.get_child_from_name(cat, 'BCsAdditionalFamilies') # No equivalent old name
   
+  # NB : if raw=False, get_value uses strip() which remove last first and last '\n'
+  #      --> decode manually here
+  split_val = lambda n : PT.get_value(n, True).tobytes().decode().split('\n')
+
+  names = PT.get_str_value(name_n).split('\n')
+  void = [''] * len(names)
+  main_fam = split_val(main_fam_n) if main_fam_n else void
+  add_fam  = split_val(add_fam_n)  if add_fam_n  else void
+  ord      = split_val(ord_n)      if ord_n      else void
+
+  bcs = list()
+  for i, name in enumerate(names):
+    bc = PT.new_BC(name)
+    if (val := main_fam[i]) != '':
+      PT.new_FamilyName(val, parent=bc)
+    if (val := add_fam[i]) != '':
+      for sub in val.split('\t'):
+        name, value = sub.split('::')
+        PT.new_FamilyName(value, name, parent=bc)
+    if (val := ord[i]) != '':
+      PT.new_node('Ordinal', 'Ordinal_t', int(val), parent=bc)
+    bcs.append(bc)
+
+  return bcs
 
 def concatenate_subset_nodes(nodes: List[CGNSTree],
                              comm: MPIComm,
@@ -511,41 +546,31 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
       # > Get concatenated BC node informations
       concat_bc_type = PT.get_str_value(concat_bc_n)
       concat_bc_loc  = PT.Subset.GridLocation(concat_bc_n)
-      concat_bc_fam_n = PT.get_child_from_label(concat_bc_n, 'FamilyName_t')
 
       concat_bc_pl_n = PT.find_child_from_name(concat_bc_n, 'PointList')
       concat_bc_pl   = PT.get_np_value(concat_bc_pl_n)[0]
 
       concat_bc_id_n = PT.find_node_from_path(concat_bc_n, ':maia#concatenate/DirichletData/OriginalBCId')
       concat_bc_id   = PT.get_value(concat_bc_id_n)
-      # Position of node changed, try new and old position for compatibility with old files
-      if (orig_bc_names_n := PT.get_node_from_path(concat_bc_n, ':maia#concatenate/BCsName')) is None:
-        orig_bc_names_n = PT.find_node_from_path(concat_bc_n, 'BCNames')
-      if (orig_bc_ordin_n := PT.get_node_from_path(concat_bc_n, ':maia#concatenate/BCsOrdinal')) is None:
-        orig_bc_ordin_n = PT.get_node_from_path(concat_bc_n, 'BCOrdinal')
+
+      orig_bcs = expand_bcs_metadata(concat_bc_n)
+
       PT.rm_children_from_name(concat_bc_n, ':maia#concatenate')
-
-      orig_bc_names = PT.get_str_value(orig_bc_names_n).split('\n')
-      if orig_bc_ordin_n is not None:
-        orig_bc_ordin = PT.get_str_value(orig_bc_ordin_n).split('\n')
-
       PT.rm_child(zone_bc_n, concat_bc_n)
 
-      for bc_id, bc_name in enumerate(orig_bc_names):
+      for bc_id, bc_n in enumerate(orig_bcs):
 
         bc_pl_ids = np.where(concat_bc_id==bc_id)[0]
         bc_pl = concat_bc_pl[bc_pl_ids]
         bc_distrib = par_utils.dn_to_distribution(bc_pl.size, comm)
 
-        bc_n = PT.new_BC(bc_name, concat_bc_type,
-                         point_list=bc_pl.reshape((1,-1), order='F'),
-                         loc=concat_bc_loc,
-                         parent=zone_bc_n)
-        if concat_bc_fam_n is not None:
-          PT.new_FamilyName(PT.get_str_value(concat_bc_fam_n), parent=bc_n)
+        PT.set_value(bc_n, concat_bc_type)
+        PT.new_IndexArray(value=bc_pl.reshape((1,-1), order='F'), parent=bc_n)
+        PT.new_GridLocation(concat_bc_loc, parent=bc_n)
+        
         MT.new_Distribution({'Index':bc_distrib}, parent=bc_n)
-        if orig_bc_ordin_n is not None and (val := orig_bc_ordin[bc_id]) != '':
-          PT.new_node('Ordinal', 'Ordinal_t', int(val), parent=bc_n)
+
+        PT.add_child(zone_bc_n, bc_n)
 
         # > Deconcatenate related BCDataSet children
         for nodes in PT.iter_children_from_predicates(concat_bc_n, 'BCDataSet_t/BCData_t', ancestors=True):
@@ -592,7 +617,7 @@ def deconcatenate_subsets_from_families(dist_tree: CGNSDistTree,
             zsr_name = PT.get_str_value(concat_zsr_names).split("\n")[bc_id]
           else:
             zsr_name = f'{PT.get_name(concat_zsr)}_{bc_id}'
-          PT.new_ZoneSubRegion(zsr_name, bc_name=bc_name,
+          PT.new_ZoneSubRegion(zsr_name, bc_name=PT.get_name(bc_n),
                                loc=PT.Subset.GridLocation(bc_n),
                                fields = fields, parent=dist_zone)
           concat_zsr_to_del.add(PT.get_name(concat_zsr))

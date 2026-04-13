@@ -15,6 +15,55 @@ import maia.utils.test_utils as TU
 
 from maia.algo.dist import concat_nodes as GN
 
+def yaml_to_node(yt):
+  # Escape '::' when parsing yaml
+  node = PT.yaml.to_node(yt.replace('::', '@@'))
+  def replace_str(n):
+    val = PT.get_value(n, True)
+    if isinstance(val, np.ndarray) and val.dtype.kind == 'S':
+      replaced = val.tobytes().decode().replace('@@', '::')
+      PT.set_value(n, replaced)
+  PT.scan(node, replace_str)
+  return node
+
+
+def test_expand_bcs_metadata():
+  # NEW API
+  bc = yaml_to_node("""
+  BC BC_t "Null":
+    :maia#concatenate BCDataSet_t:
+      BCsName Descriptor_t "BC1\\nBC2\\nBC3":
+      BCsOrdinal Descriptor_t "\\n42\\n8":
+      BCsAdditionalFamilies Descriptor_t "AddFam1::Wing\\nAddFam1::Tail\\tAddFam2::Airplane\\n":
+  """)
+  bcs = GN.expand_bcs_metadata(bc)
+  assert [PT.get_name(bc) for bc in bcs] == ['BC1', 'BC2', 'BC3']
+
+  add_fams = PT.get_children_from_label(bcs[0], 'AdditionalFamilyName_t')
+  assert [(PT.get_name(n),  PT.get_value(n)) for n in add_fams] == [('AddFam1', 'Wing')]
+  add_fams = PT.get_children_from_label(bcs[1], 'AdditionalFamilyName_t')
+  assert [(PT.get_name(n),  PT.get_value(n)) for n in add_fams] == \
+    [('AddFam1', 'Tail'), ('AddFam2', 'Airplane')]
+  add_fams = PT.get_children_from_label(bcs[2], 'AdditionalFamilyName_t')
+  assert [(PT.get_name(n),  PT.get_value(n)) for n in add_fams] == []
+
+  assert PT.get_child_from_name(bcs[0], 'Ordinal') is None
+  assert PT.get_value(PT.get_child_from_name(bcs[1], 'Ordinal'))[0] == 42
+  assert PT.get_value(PT.get_child_from_name(bcs[2], 'Ordinal'))[0] == 8
+
+  # OLD API
+  bc = yaml_to_node("""
+  BC BC_t "Null":
+    :maia#concatenate BCDataSet_t:
+    BCNames Descriptor_t "BC1\\nBC2\\nBC3":
+    BCOrdinal Descriptor_t "\\n42\\n8":
+  """)
+  bcs = GN.expand_bcs_metadata(bc)
+  assert [PT.get_name(bc) for bc in bcs] == ['BC1', 'BC2', 'BC3']
+  assert PT.get_child_from_name(bcs[0], 'Ordinal') is None
+  assert PT.get_value(PT.get_child_from_name(bcs[1], 'Ordinal'))[0] == 42
+  assert PT.get_value(PT.get_child_from_name(bcs[2], 'Ordinal'))[0] == 8
+
 @pytest.mark.parametrize("default_bcds", [True, False])
 @pytest_parallel.mark.parallel([1,2])
 def test_concatenate_subset_nodes(default_bcds, comm):
