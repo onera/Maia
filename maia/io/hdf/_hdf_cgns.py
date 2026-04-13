@@ -10,6 +10,10 @@ C33_t.set_size(33)
 C3_t = h5t.C_S1.copy()
 C3_t.set_size(3)
 
+CVAR_t = h5t.C_S1.copy()
+CVAR_t.set_size(h5t.VARIABLE)
+CVAR_t.set_cset(h5t.CSET_UTF8)
+
 MPIIO_CHUNK_SIZE = 2_000_000_000
 DTYPE_TO_CGNSTYPE = {'int8'    : 'B1',
                      'int32'   : 'I4',
@@ -17,6 +21,12 @@ DTYPE_TO_CGNSTYPE = {'int8'    : 'B1',
                      'float32' : 'R4',
                      'float64' : 'R8',
                      'bytes8'  : 'C1'}
+
+def encode(s):
+  HS = 8
+  import hashlib
+  hash = hashlib.sha1(s.encode()).hexdigest()[:HS]
+  return s[:32-HS-1] + '.' + hash
 
 class AttributeRW:
   """ A singleton class usefull to read & write hdf attribute w/ allocating buffers """
@@ -26,6 +36,7 @@ class AttributeRW:
       cls.instance = super(AttributeRW, cls).__new__(cls)
       cls.buff_S33 = np.empty(1, '|S33')
       cls.buff_S3  = np.empty(1, '|S3')
+      cls.buff_var = np.empty(1, object)
       cls.buff_flag1 = np.array([1], np.int32)
     return cls.instance
 
@@ -37,6 +48,10 @@ class AttributeRW:
     #                         ^ Copy attribute type from file, otherwise h5py
     # will create a default that may clash (H5T_CSET_UTF8 vs H5T_CSET_ASCII)
     return self.buff_S33.tobytes().partition(b'\x00')[0].decode() ###UGLY
+  def read_str_var(self, gid, attr_name):
+     attr = h5a.open(gid, attr_name)
+     attr.read(self.buff_var)
+     return self.buff_var[0].decode()
 
   def read_bytes_3(self, gid, attr_name):
     """ Read the attribute attr_name in the object gid and return it
@@ -59,6 +74,12 @@ class AttributeRW:
     space = h5s.create(h5s.SCALAR)
     attr_id = h5a.create(gid, attr_name, C33_t, space)
     attr_id.write(self.buff_S33)
+  def write_str_var(self, gid, attr_name, attr_value):
+    """ Same as write_str33, but for string length of
+    variable size """
+    space = h5s.create(h5s.SCALAR)
+    attr = h5a.create(gid, attr_name, CVAR_t, space)
+    attr.write(np.array(attr_value.encode()))
 
   def write_flag(self, gid):
     """ Create and fill the 'flags' attribute within the object gid.  """
@@ -127,6 +148,8 @@ def open_from_path(fid, path, follow_links=True):
   attr_reader = AttributeRW()
   gid = h5g.open(fid, b'/')
   for name in path.split('/'):
+    if len(name) > 32:
+      name = encode(name)
     gid = h5g.open(gid, name.encode())
     if follow_links and attr_reader.read_bytes_3(gid, b'type') == b'LK': #Follow link
       gid = h5g.open(gid, b' link')
@@ -273,7 +296,10 @@ def _load_node_partial(gid, parent, load_if, noload_fn, ancestors_stack):
   """ Internal recursive implementation for load_tree_partial.  """
 
   attr_reader = AttributeRW()
-  name  = attr_reader.read_str_33(gid, b'name')
+  if h5a.exists(gid, b'fullname'):
+    name = attr_reader.read_str_var(gid, b'fullname')
+  else:
+    name  = attr_reader.read_str_33(gid, b'name')
   label = attr_reader.read_str_33(gid, b'label')
   b_kind = attr_reader.read_bytes_3(gid, b'type')
   value = None
@@ -325,11 +351,17 @@ def _write_node_partial(gid, node, write_if, ancestors_stack):
   gc_pl = h5p.create(h5p.GROUP_CREATE)
   gc_pl.set_link_creation_order(h5p.CRT_ORDER_TRACKED | h5p.CRT_ORDER_INDEXED)
 
-  node_id = h5g.create(gid, node[0].encode(), gcpl=gc_pl)
+  short_name = node[0]
+  if is_long := len(node[0]) > 32:
+    short_name = encode(short_name)
+
+  node_id = h5g.create(gid, short_name.encode(), gcpl=gc_pl)
 
   # Write attributes
   attr_writter = AttributeRW()
-  attr_writter.write_str_33(node_id, b'name',  node[0])
+  attr_writter.write_str_33(node_id, b'name',  short_name)
+  if is_long:
+    attr_writter.write_str_var(node_id, b'fullname', node[0])
   attr_writter.write_str_33(node_id, b'label', node[3])
   attr_writter.write_str_3 (node_id, b'type',  cgtype)
   attr_writter.write_flag(node_id) 
