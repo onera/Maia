@@ -383,10 +383,11 @@ def test_split_and_transfer(data_transfer, comm):
   else:
     assert len(PT.get_nodes_from_name(ptree, 'CstField')) == 0
 
+  assert len(PT.get_nodes_from_label(ptree, 'BCDataSet_t')) == len(PT.get_nodes_from_label(ptree, 'BC_t'))
   if 'BCDataSet_t' in data_transfer or 'ALL' in data_transfer:
-    assert len(PT.get_nodes_from_label(ptree, 'BCDataSet_t')) == len(PT.get_nodes_from_label(ptree, 'BC_t'))
+    assert len(PT.get_nodes_from_name(ptree, '*_bcdata')) == len(PT.get_nodes_from_label(ptree, 'BC_t'))
   else:
-    assert len(PT.get_nodes_from_label(ptree, 'BCDataSet_t')) == 0
+    assert len(PT.get_nodes_from_name(ptree, '*bcdata')) == 0
 
   if 'UserDefinedData_t' in data_transfer or 'ALL' in data_transfer:
     assert PT.get_node_from_path(ptree, 'TopLevelUD') is not None

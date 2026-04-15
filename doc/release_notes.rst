@@ -15,6 +15,7 @@ Development version
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - (de)concatenate_subsets_from_families: merge ZoneSubRegion_t nodes if possible
+- deconcatenate_subsets_from_families: recover (Additional)FamilyName nodes
 - IO: Allow to read or write ZoneSubRegion_t nodes when related BCs are missing
 - concatenate_elt_sections: manage ``NGON_n``, ``NFACE_n`` and ``MIXED`` elements type
 - iso_surface & slices : improve robustness and extend to 2D meshes

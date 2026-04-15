@@ -15,6 +15,55 @@ import maia.utils.test_utils as TU
 
 from maia.algo.dist import concat_nodes as GN
 
+def yaml_to_node(yt):
+  # Escape '::' when parsing yaml
+  node = PT.yaml.to_node(yt.replace('::', '@@'))
+  def replace_str(n):
+    val = PT.get_value(n, True)
+    if isinstance(val, np.ndarray) and val.dtype.kind == 'S':
+      replaced = val.tobytes().decode().replace('@@', '::')
+      PT.set_value(n, replaced)
+  PT.scan(node, replace_str)
+  return node
+
+
+def test_expand_bcs_metadata():
+  # NEW API
+  bc = yaml_to_node("""
+  BC BC_t "Null":
+    :maia#concatenate BCDataSet_t:
+      BCsName Descriptor_t "BC1\\nBC2\\nBC3":
+      BCsOrdinal Descriptor_t "\\n42\\n8":
+      BCsAdditionalFamilies Descriptor_t "AddFam1::Wing\\nAddFam1::Tail\\tAddFam2::Airplane\\n":
+  """)
+  bcs = GN.expand_bcs_metadata(bc)
+  assert [PT.get_name(bc) for bc in bcs] == ['BC1', 'BC2', 'BC3']
+
+  add_fams = PT.get_children_from_label(bcs[0], 'AdditionalFamilyName_t')
+  assert [(PT.get_name(n),  PT.get_value(n)) for n in add_fams] == [('AddFam1', 'Wing')]
+  add_fams = PT.get_children_from_label(bcs[1], 'AdditionalFamilyName_t')
+  assert [(PT.get_name(n),  PT.get_value(n)) for n in add_fams] == \
+    [('AddFam1', 'Tail'), ('AddFam2', 'Airplane')]
+  add_fams = PT.get_children_from_label(bcs[2], 'AdditionalFamilyName_t')
+  assert [(PT.get_name(n),  PT.get_value(n)) for n in add_fams] == []
+
+  assert PT.get_child_from_name(bcs[0], 'Ordinal') is None
+  assert PT.get_value(PT.get_child_from_name(bcs[1], 'Ordinal'))[0] == 42
+  assert PT.get_value(PT.get_child_from_name(bcs[2], 'Ordinal'))[0] == 8
+
+  # OLD API
+  bc = yaml_to_node("""
+  BC BC_t "Null":
+    :maia#concatenate BCDataSet_t:
+    BCNames Descriptor_t "BC1\\nBC2\\nBC3":
+    BCOrdinal Descriptor_t "\\n42\\n8":
+  """)
+  bcs = GN.expand_bcs_metadata(bc)
+  assert [PT.get_name(bc) for bc in bcs] == ['BC1', 'BC2', 'BC3']
+  assert PT.get_child_from_name(bcs[0], 'Ordinal') is None
+  assert PT.get_value(PT.get_child_from_name(bcs[1], 'Ordinal'))[0] == 42
+  assert PT.get_value(PT.get_child_from_name(bcs[2], 'Ordinal'))[0] == 8
+
 @pytest.mark.parametrize("default_bcds", [True, False])
 @pytest_parallel.mark.parallel([1,2])
 def test_concatenate_subset_nodes(default_bcds, comm):
@@ -511,3 +560,33 @@ def test_deconcatenate_patch_zsr(comm):
   GN.deconcatenate_subsets_from_families(dist_tree, comm)
   assert PT.is_same_tree(dist_tree, dist_tree_cp)
 
+@pytest_parallel.mark.parallel(3)
+@pytest.mark.parametrize("from_add", [False, True])
+def test_families(from_add, comm):
+  tree = maia.factory.generate_dist_block(21, 'HEXA_8', comm)
+  tree = maia.factory.dist_to_full_tree(tree, comm, 0)
+
+  if comm.rank == 0:
+    zbc = PT.find_node_from_name(tree, 'ZoneBC')
+    xmax = PT.pop_node_from_path(zbc, 'Xmax')
+
+    pl = PT.find_child_from_name(xmax, 'PointList')[1][0]
+
+    sub_pls = np.split(pl, pl.size//10)
+    for i, pl in enumerate(sub_pls):
+      bc = PT.new_BC(f'Xmax_{i}', loc='FaceCenter', point_list=pl.reshape((1,-1),order='F'), family='XMAX', parent=zbc)
+      if i != 33:
+        PT.new_node('Ordinal', 'Ordinal_t', i, parent=bc)
+        PT.new_FamilyName('Wing' if i% 2 == 0 else 'Tail', 'ExtractingFamily', parent=bc)
+        PT.new_FamilyName('Airplane', 'ComputingFamily', parent=bc)
+        if i % 10 == 0:
+          PT.new_FamilyName('Yes', 'ProbesFamily', parent=bc)
+    
+  tree = maia.factory.full_to_dist_tree(tree, comm, 0)
+  tree_bck = PT.deep_copy(tree)
+
+  fam = "Airplane" if from_add else 'XMAX'
+  maia.algo.dist.concatenate_subsets_from_families(tree, comm, [fam])
+  maia.algo.dist.deconcatenate_subsets_from_families(tree, comm, [fam])
+
+  assert PT.is_same_tree(tree_bck, tree)

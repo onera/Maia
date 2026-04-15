@@ -75,31 +75,46 @@ def copy_additional_nodes(dist_zone, part_zone):
   """
   """
   is_container = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t'])
+  IS_FULL = ~PT.pred.IS_SUBSET
+
+  # Add Full containers (FS, DD & BCDataSet w/PL) -- partial containers are created before
+  for d_fs in PT.iter_children_from_predicate(dist_zone, is_container & IS_FULL):
+    p_fs = PT.new_FlowSolution(PT.get_name(d_fs), loc=PT.Container.GridLocation(d_fs), parent=part_zone)
+    PT.set_label(p_fs, PT.get_label(d_fs))
+  for nodes in PT.iter_children_from_predicates(dist_zone, ['ZoneBC_t', 'BC_t', PT.pred.label_is('BCDataSet_t') & IS_FULL], ancestors=True):
+    bc_path = '/'.join(PT.get_name(n) for n in nodes[:-1])
+    d_dset = nodes[-1]
+    if (p_bc := PT.get_node_from_path(part_zone, bc_path)) is not None:
+      PT.new_child(p_bc, PT.get_name(d_dset), PT.get_label(d_dset), PT.get_value(d_dset))
+
 
   #Zone data
-  types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ZoneIterativeData_t', 
-           'ReferenceState_t', 'FlowEquationSet_t', 'Descriptor_t', 
-           'ConvergenceHistory_t', 'IntegralData_t']
-  for node in PT.get_children(dist_zone):
-    if PT.get_label(node) in types:
-      PT.add_child(part_zone, PT.deep_copy(node))
+  types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ZoneIterativeData_t', 'ReferenceState_t',
+           'FlowEquationSet_t', 'Descriptor_t', 'ConvergenceHistory_t', 'IntegralData_t']
+  for node in PT.get_children_from_predicate(dist_zone, PT.pred.label_in(types)):
+    PT.add_child(part_zone, PT.deep_copy(node))
 
-  # Full containers (FS & DD) -- partial containers are created before
-  types = ['GridLocation_t', 'Descriptor_t']
-  for d_fs in PT.iter_children_from_predicate(dist_zone, is_container & ~PT.pred.IS_SUBSET):
-    p_fs = PT.new_child(part_zone, PT.get_name(d_fs), PT.get_label(d_fs), PT.get_value(d_fs))
-    for node in PT.get_children(d_fs):
-      if PT.get_label(node) in types:
-        PT.add_child(p_fs, PT.deep_copy(node))
+  # Containers (FS & DD)
+  types = ['Descriptor_t']
+  for p_fs in PT.iter_children_from_predicate(part_zone, is_container):
+    d_fs = PT.find_node_from_name(dist_zone, PT.get_name(p_fs))
+    for node in PT.get_children_from_predicate(d_fs, PT.pred.label_in(types)):
+      PT.add_child(p_fs, PT.deep_copy(node))
     
   #BCs
-  types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ReferenceState_t', 'Ordinal_t', 'Descriptor_t']
+  bc_types = ['FamilyName_t', 'AdditionalFamilyName_t', 'ReferenceState_t', 'Ordinal_t', 'Descriptor_t']
+  bcds_types = ['ReferenceState_t', 'Descriptor_t']
   for p_zbc, p_bc in PT.iter_nodes_from_predicates(part_zone, 'ZoneBC_t/BC_t', ancestors=True):
     d_bc = PT.get_node_from_path(dist_zone, PT.get_name(p_zbc)+'/'+PT.get_name(p_bc))
     if d_bc: #Tmp, since S splitting store external JNs as bnd
-      for node in PT.get_children(d_bc):
-        if PT.get_label(node) in types:
-          PT.add_child(p_bc, PT.deep_copy(node))
+      for node in PT.get_children_from_predicate(d_bc, PT.pred.label_in(bc_types)):
+        PT.add_child(p_bc, PT.deep_copy(node))
+      # BCDS
+      for p_dset in PT.iter_children_from_label(p_bc, 'BCDataSet_t'):
+        d_dset = PT.find_child_from_name(d_bc, PT.get_name(p_dset))
+        for node in PT.iter_children_from_predicate(d_dset, PT.pred.label_in(bcds_types)):
+          PT.add_child(p_dset, PT.deep_copy(node))
+    
   #GCs
   names = ['GridConnectivityDonorName']
   types = ['FamilyName_t', 'GridConnectivityProperty_t', 'GridConnectivityType_t', 'Descriptor_t']

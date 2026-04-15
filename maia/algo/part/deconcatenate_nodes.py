@@ -13,7 +13,9 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
   predicates = ['ZoneBC_t', is_bc_from_fam]
   dist_zone = ['MaskedZone', None, [], 'Zone_t']
   dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, predicates, comm,
-    child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'BCNames', 'BCOrdinal'], get_value='leaf')
+    child_list=['FamilyName_t', 'GridLocation_t', 'Ordinal_t', 'BCNames'], get_value='leaf')
+  dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, predicates + [':maia#concatenate'], comm,
+    child_list=['BCsName'], get_value='none')
 
   concat_bc_paths = PT.predicates_to_paths(dist_zone, predicates)
   if len(concat_bc_paths)>1:
@@ -23,7 +25,10 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
   bcds_paths = list()
 
   dist_bc_n = PT.get_node_from_path(dist_zone, concat_bc_path)
-  orig_bc_names = PT.get_value(PT.get_child_from_name(dist_bc_n, 'BCNames')).split('\n')
+  # Position of node changed, try new and old position for compatibility with old files
+  if (orig_bc_names_n := PT.get_node_from_path(dist_bc_n, ':maia#concatenate/BCsName')) is None:
+    orig_bc_names_n = PT.find_child_from_name(dist_bc_n, 'BCNames')
+  orig_bc_names = PT.get_str_value(orig_bc_names_n).split('\n')
 
   for i_part, part_zone in enumerate(part_zones):
     zone_bc_n = PT.get_node_from_label(part_zone, 'ZoneBC_t')
@@ -52,11 +57,14 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
 
       concat_bc_id_n = PT.get_node_from_path(concat_bc_n, ':maia#concatenate/DirichletData/OriginalBCId')
       concat_bc_id   = PT.get_value(concat_bc_id_n)
-      PT.rm_children_from_name(concat_bc_n, ':maia#concatenate')
 
-      orig_bc_ordin_n = PT.get_node_from_name_and_label(concat_bc_n, 'BCOrdinal', 'Descriptor_t')
+      # Position of node changed, try new and old position for compatibility with old files
+      if (orig_bc_ordin_n := PT.get_node_from_path(concat_bc_n, ':maia#concatenate/BCsOrdinal')) is None:
+        orig_bc_ordin_n = PT.get_node_from_path(concat_bc_n, 'BCOrdinal')
       if orig_bc_ordin_n is not None:
-        orig_bc_ordin = np.array(PT.get_value(orig_bc_ordin_n).split('\n'), dtype=np.int32)
+        orig_bc_ordin = PT.get_str_value(orig_bc_ordin_n).split('\n')
+      
+      PT.rm_children_from_name(concat_bc_n, ':maia#concatenate')
 
       for bc_id, bc_name in enumerate(orig_bc_names):
 
@@ -72,8 +80,8 @@ def deconcatenate_subset_from_family(part_zones, family, comm):
 
           if concat_bc_fam_n is not None:
             PT.new_FamilyName(PT.get_value(concat_bc_fam_n), parent=bc_n)
-          if orig_bc_ordin_n is not None:
-            PT.new_node('Ordinal', 'Ordinal_t', orig_bc_ordin[bc_id], parent=bc_n)
+          if orig_bc_ordin_n is not None and (val := orig_bc_ordin[bc_id]) != '':
+            PT.new_node('Ordinal', 'Ordinal_t', int(val), parent=bc_n)
           MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
 
           for nodes in PT.iter_children_from_predicates(concat_bc_n, 'BCDataSet_t/BCData_t', ancestors=True):
