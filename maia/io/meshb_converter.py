@@ -15,7 +15,10 @@ import numpy as np
 
 import Pypdm.Pypdm as PDM
 
-PDM_NEW_WRITER_API = hasattr(PDM, 'writer_gamma_new_api') # Replace by PDM_VERSION when v2.8 is released
+from packaging.version import Version
+from Pypdm.Pypdm import __version__ as _PDM_VERSION
+PDM_VERSION = Version(_PDM_VERSION)
+PDM_NEW_WRITER_API = PDM_VERSION >= Version('2.8.dev') # Replace by PDM_VERSION when v2.8 is released
 
 def get_tree_info(dist_tree, containers_name):
   """
