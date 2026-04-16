@@ -13,8 +13,7 @@ import maia.pytree as PT
 from .hdf._hdf_cgns import open_from_path,\
                            load_tree_partial, write_tree_partial,\
                            load_data_partial, write_data_partial,\
-                           write_link
-
+                           load_tree_links, write_link
 from .fix_tree      import fix_point_ranges, corr_index_range_names,\
                            ensure_symmetric_gc1to1, rm_legacy_nodes,\
                            add_missing_pr_in_bcdataset, check_datasize, \
@@ -22,18 +21,6 @@ from .fix_tree      import fix_point_ranges, corr_index_range_names,\
 
 from maia.utils import logging as mlog
 from maia.pytree.node import name_utils as NU
-
-from maia.pytree.core import graph as PTg
-
-class H5PYGraphAdaptor:
-  """ A class exposing the 'graph interface' for hdf files in order
-  to use graph iterators """
-  def __init__(self, root):
-    self.root = root
-  def root_iterator(self) -> PTg.list_iterator_type:
-    return iter([self.root])
-  def child_iterator(self, node) -> PTg.list_iterator_type:
-    return (g for g in node.values() if isinstance(g, h5py.Group))
 
 def load_data(names, labels, hdf_dataset):
   """ Function used to determine if the data is heavy or not """
@@ -125,34 +112,7 @@ def read_full(filename):
 def read_links(filename):
   if not h5py.is_hdf5(filename):
     raise ValueError(f"{filename} is not a valid HDF5 file")
-
-  class LinkVisitor():
-    def __init__(self):
-      self.links = []
-
-    @staticmethod
-    def _read_str(dset):
-      return dset[()].tobytes().partition(b'\x00')[0].decode()
-
-    def pre(self, nodes):
-      last = nodes[-1]
-      if last.attrs['type'] == b'LK':
-        tgt_file = self._read_str(last[' file'])
-        tgt_path = self._read_str(last[' path'])
-        names = []
-        for node in nodes[1:]:
-          try:
-            names.append(self._read_str(node[NU.FULL_NAME_NODE_NAME][' data']))
-          except KeyError:
-            names.append(node.attrs['name'].decode())
-
-        src_path = '/'.join(names)
-        self.links.append(['.', tgt_file, tgt_path, src_path])
-
-        return PTg.Step.OVER
-
-  PTg.depth_first_search(H5PYGraphAdaptor(h5py.File(filename)), visitor:=LinkVisitor(), depth='all')
-  return visitor.links
+  return load_tree_links(filename)
 
 def _write_links(filename, links):
   fid = h5py.File(filename, 'r+')

@@ -3,6 +3,7 @@ import copy
 import h5py
 from h5py import h5, h5a, h5d, h5f, h5g, h5p, h5s, h5t, h5o
 
+from maia.pytree.node.name_utils import FULL_NAME_NODE_NAME
 from maia.pytree.core import graph as PTg
 
 C33_t = h5t.C_S1.copy()
@@ -17,6 +18,7 @@ DTYPE_TO_CGNSTYPE = {'int8'    : 'B1',
                      'float32' : 'R4',
                      'float64' : 'R8',
                      'bytes8'  : 'C1'}
+FULL_NAME_NODE_NAME_B = FULL_NAME_NODE_NAME.encode()
 
 class AttributeRW:
   """ A singleton class usefull to read & write hdf attribute w/ allocating buffers """
@@ -368,6 +370,54 @@ def load_tree_partial(filename, load_predicate, noload_fn=add_size_node):
 
   fid.close()
   return tree
+
+
+def load_tree_links(filename):
+  """ Collect and return the links present in a CGNS File """
+
+  class LinkVisitor:
+    """ Graph visitor used to collect link information """
+    def __init__(self):
+      self.attr_reader = AttributeRW()
+      self.links = []
+
+    @staticmethod
+    def read_str_dset(gid, ds_name):
+      hdf_dataset = h5d.open(gid, ds_name)
+      array = np.empty(hdf_dataset.shape, hdf_dataset.dtype, order='F')
+      hdf_dataset.read(h5s.ALL, h5s.ALL, array)
+      return array.tobytes().partition(b'\x00')[0].decode()
+
+    def pre(self, node_ids):
+
+      gid = node_ids[-1]
+      b_kind = self.attr_reader.read_bytes_3(gid, b'type')
+
+      if b_kind == b'LK':
+        #Target directory ; the CGNS norm is unclear about how a link should start, 
+        # but other libraries are also doing that
+        link = ['.',
+                self.read_str_dset(gid, b' file'), # Tgt file
+                self.read_str_dset(gid, b' path')] # Tgt path
+        names = []
+        for node_id in node_ids[1:]:
+          try:
+            c_id = h5g.open(node_id, FULL_NAME_NODE_NAME_B)
+            names.append(self.read_str_dset(c_id, b' data'))
+          except KeyError:
+            names.append(self.attr_reader.read_str_33(node_id, b'name'))
+        path = '/'.join(names)
+        link.append(path) #Current path
+        self.links.append(link)
+        return PTg.Step.OVER
+
+  fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
+  rootid = h5g.open(fid, b'/')
+
+  visitor = LinkVisitor()
+  PTg.depth_first_search(HDF5GraphAdaptor(rootid), visitor, depth='all')
+  fid.close()
+  return visitor.links
 
 def write_tree_partial(tree, filename, write_predicate):
   """

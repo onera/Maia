@@ -5,6 +5,7 @@ import numpy as np
 import shutil
 import subprocess
 from pathlib import Path
+import h5py
 from h5py    import h5f, h5g
 
 import maia.pytree as PT
@@ -186,14 +187,13 @@ def test_write_link(tmp_hdf_file):
 
 def test_read_links(tmp_hdf_file):
   assert HCG.load_tree_links(tmp_hdf_file) == []
-  fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
-  gid = HCG.open_from_path(fid, 'Base/ZoneU/GridCoordinates')
-  HCG.write_link(gid, 'CoordinateZ', 'this/hdf/file.hdf', 'this/node')
-  gid.close()
-  gid = HCG.open_from_path(fid, 'Base/ZoneS/GridCoordinates')
-  HCG.write_link(gid, 'CoordinateZ', 'this/hdf/file.hdf', 'this/other_node')
-  gid.close()
-  fid.close()
+
+  with h5py.File(tmp_hdf_file, 'r+') as f:
+    for key, val in {'U' : 'this/node', 'S' : 'this/other_node'}.items():
+      g = f[f'Base/Zone{key}/GridCoordinates'].create_group('CoordinateZ')
+      g.attrs.create('name', 'CoordinateZ', dtype='S33')
+      HCG.write_link(g.id, 'this/hdf/file.hdf', val)
+
   links = HCG.load_tree_links(tmp_hdf_file)
   assert links[0] == ['.', 'this/hdf/file.hdf', 'this/node', 'Base/ZoneU/GridCoordinates/CoordinateZ']
   assert links[1] == ['.', 'this/hdf/file.hdf', 'this/other_node', 'Base/ZoneS/GridCoordinates/CoordinateZ']
