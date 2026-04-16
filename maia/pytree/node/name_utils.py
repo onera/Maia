@@ -30,14 +30,18 @@ def _unambiguous_short_names(names:List[str]) -> List[str]:
         short_names[idx] = new_name
   return short_names
 
+def short_name_with_hash(name:str) -> str:
+  if len(name) < 32:
+    return name
+  hash = hashlib.sha1(name.encode('ascii')).hexdigest()[:8]
+  return short_name(name)[:23] + '.' + hash
+
 def create_full_name_children(tree:CGNSTree):
   def _create_full_name_child(node):
-    children = PT.get_children(node)
-    short_names = _unambiguous_short_names([PT.get_name(c) for c in children])
-    for child, short_name in zip(children, short_names):
-      if len(full_name := PT.get_name(child)) > 32:
-        PT.new_UserDefinedData(FULL_NAME_NODE_NAME, full_name, parent=child)
-        PT.set_name(child, short_name)
+    if len(name := PT.get_name(node)) > 32:
+      PT.new_child(node, FULL_NAME_NODE_NAME, 'Descriptor_t', name)
+      PT.set_name(node, short_name_with_hash(name))
+
   PT.scan(tree, _create_full_name_child)
 
 def replace_with_full_names(tree:CGNSTree):
@@ -54,22 +58,6 @@ def get_full_name(node:CGNSTree) -> str:
   if (child := PT.get_child_from_name(node, FULL_NAME_NODE_NAME)) is not None:
     return PT.get_str_value(child)
   return PT.get_name(node)
-
-def update_path(root:CGNSTree, path:str) -> str:
-  """ Return the new (with short names) path from a old (long names)
-  path and the associated new (with short names) tree """
-  names = path.split('/')
-  _get_value = lambda n : PT.get_str_value(n) if n is not None else None
-  for i, name in enumerate(names):
-    if len(name) > 32:
-      # Search and replace by full name
-      pred = lambda n : _get_value(PT.get_child_from_name(n, FULL_NAME_NODE_NAME)) == name
-    else:
-      pred = PT.pred.name_is(name)
-    root = PT.find_child_from_predicate(root, pred)
-    names[i] = PT.get_name(root)
-
-  return '/'.join(names)
 
 def short_name(old_name:str):
   if len(old_name) <= 32:

@@ -68,48 +68,22 @@ def write_tree(tree: CGNSTree,
   """
   create_parent_folder(filename, MPI.COMM_SELF)
   filename = str(filename)
+  links = [l.copy() for l in links]
 
   if PT.get_node_from_predicate(tree, IS_LONG_NAME) is not None:
-
     tree = PT.shallow_copy(tree) # Work on copy, because name will be updated
-
-    skip_l = list()
     for link in links:
-      # Link preprocessing : create terminal node in tree if not existing, which is allowed,
-      # to have its short name computed by create_full_name_children
-      # In addition we flag non existing src path to skip them we converting pathes
-      assert all(len(n) <= 32 for n in link[2].split('/')), f"Long names are not supported in links target"
-      if (parent := PT.get_node_from_path(tree, PT.utils.path_head(link[3]))) is not None:
-        PT.update_child(parent, PT.utils.path_tail(link[3]))
-      skip_l.append(parent is None)
-
+      src_path = link[3]
+      if (parent := PT.get_node_from_path(tree, PT.utils.path_head(src_path))) is not None:
+        PT.update_child(parent, PT.utils.path_tail(src_path))
+        # Update path if link exist; otherwise, keep old for better error display
+        link[3] = '/'.join(NU.short_name_with_hash(name) for name in src_path.split('/'))
     NU.create_full_name_children(tree)
-    new_links = []
-    for link, skip in zip(links, skip_l):
-      # Si le parent n'existe pas dans l'arbre --> le lien est simplement sauté  ==> On peut detecter ça et ne pas modifier le chemin, il sera sauté
-      # Si le parent existe, mais pas le noeud terminal -> il est créé ==> Si le node terminal est > 32 char, que faire ?
-      #        Rappel : pour créer un lien,
-      #          1. On supprimer le noeud terminal
-      #          2. On trouve le parent
-      #          3. On crée un hdf groupe dans le parent avec name = node_name
-      #                                                       label = ''
-      #                                                       type = 'LK'
-      #                                                       attributs ' file' et ' path'
-      #                et on call links.create_external sur le groupe créé
-      #
-      #   ---> On peut créer le nom long avant raccourcissement de l'arbre
-      #
-      # En lecture, tgt_file et path lus depuis les attributs, src_path créé depuis les noms de groupes
-      #             (à partir des attributs name)
-      #    NB : on aura donc des liens court en lecture, comment retrouver le nom long ?? car le link n'est pas sensé avoir d'enfants
-      #       solution = ajouter un attribut 'fullname' dans write_links ? 
-      # Que se passe il en lecture si on suit un lien et qu'on trouve un enfant 'FullName' ?
-      new_path = link[3] if skip else NU.update_path(tree, link[3])
-      new_links.append( link[:3] + [new_path])
-    links = new_links
 
-
-  _hdf_io.write_full(filename, tree, links=links)
+  for link in links:
+    link[2] = '/'.join(NU.short_name_with_hash(name) for name in link[2].split('/'))
+    
+  _hdf_io.write_full(filename, tree, links)
 
 def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
   """read_tree(filename)
@@ -127,7 +101,9 @@ def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
       tree = PT.yaml.to_cgns_tree(f)
     return tree
   else:
-    return _hdf_io.read_full(filename)
+    tree = _hdf_io.read_full(filename)
+    NU.replace_with_full_names(tree)
+    return tree
 
 def read_links(filename: Union[str, PathLike]) -> List[List[str]]:
   """read_links(filename)
@@ -197,6 +173,9 @@ def save_tree_from_filter(filename: str,
 
   clean_distribution_info(saving_dist_tree)
 
+  for link in links:
+    hdf_filter_with_dim.pop(link[3], None) # Remove linked values from dict
+    
   _hdf_io.write_partial(filename, saving_dist_tree, hdf_filter_with_dim, links, comm)
 
 def fill_size_tree(tree: CGNSTree, 
@@ -222,7 +201,7 @@ def fill_size_tree(tree: CGNSTree,
   PT.rm_nodes_from_name(tree, '*#Size')
 
 
-def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm, handle_long_names: bool = True) -> CGNSDistTree:
+def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDistTree:
   """file_to_dist_tree(filename, comm)
 
   Distributed load of a CGNS file.
@@ -248,8 +227,7 @@ def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm, handle_long
     size_tree = load_size_tree(filename, comm)
     fill_size_tree(size_tree, filename, comm)
     dist_tree = CGNSDistTree(size_tree)
-    if handle_long_names:
-      NU.replace_with_full_names(dist_tree)
+    NU.replace_with_full_names(dist_tree)
 
   end = time.time()
   dt_size     = sum(metrics.dtree_nbytes(dist_tree))
@@ -279,11 +257,20 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
 
   # work on a copy that we may alter for our specific needs
   saving_dist_tree = PT.shallow_copy(dist_tree)
+
+  links = [l.copy() for l in links]
+  for link in links:
+    src_path = link[3]
+    if (parent := PT.get_node_from_path(saving_dist_tree, PT.utils.path_head(src_path))) is not None:
+      node = PT.update_child(parent, PT.utils.path_tail(src_path))
+      PT.keep_children_from_name(node, NU.FULL_NAME_NODE_NAME)
+      # Update path if link exist; otherwise, keep old for better error display
+      link[3] = '/'.join(NU.short_name_with_hash(name) for name in src_path.split('/'))
+
   NU.create_full_name_children(saving_dist_tree)
 
-  if links:
-    for link in links: # Links override data, so delete data
-      PT.rm_node_from_path(saving_dist_tree, link[3])
+  for link in links:
+    link[2] = '/'.join(NU.short_name_with_hash(name) for name in link[2].split('/'))
 
   dt_size     = sum(metrics.dtree_nbytes(saving_dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)

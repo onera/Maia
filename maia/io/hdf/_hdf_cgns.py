@@ -66,16 +66,6 @@ class AttributeRW:
     attr_id = h5a.create(gid, b'flags', h5t.NATIVE_INT32, space)
     attr_id.write(self.buff_flag1)
 
-class H5PYGraphAdaptor:
-  """ A class exposing the 'graph interface' for hdf files in order
-  to use graph iterators """
-  def __init__(self, root):
-    self.root = root
-  def root_iterator(self) -> PTg.list_iterator_type:
-    return iter([self.root])
-  def child_iterator(self, node) -> PTg.list_iterator_type:
-    return (g for g in node.values() if isinstance(g, h5py.Group))
-
 class HDF5GraphAdaptor:
   """ A class exposing the 'graph interface' for hdf files in order
   to use graph iterators """
@@ -253,16 +243,13 @@ def write_data_partial(gid, array, filter):
     _select_file_slabs(file_space, c_filter)
     data.write(mmry_space, file_space, array_view, dxpl=xfer_plist)
 
-def write_link(gid, node_name, target_file, target_node):
-  """ Create a linked child named node_name under the open parent node gid
-  Child links to the node target_node (absolute path) of file target_file. """
-  node_id = h5g.create(gid, node_name.encode())
-
+def write_link(node_id, target_file, target_node):
+  """ Add external link to an existing node """
   attr_writter = AttributeRW()
-  attr_writter.write_str_33(node_id, b'name',  node_name)
-  attr_writter.write_str_33(node_id, b'label', '')
-  attr_writter.write_str_3 (node_id, b'type',  'LK')
-  attr_writter.write_flag(node_id) 
+
+  if h5a.exists(node_id, b'type'):
+    h5a.delete(node_id, b'type')
+  attr_writter.write_str_3(node_id, b'type',  'LK')
 
   write_data(node_id, np.array(tuple(target_file+'\0'), 'S1'), b' file')
   write_data(node_id, np.array(tuple(target_node+'\0'), 'S1'), b' path')
@@ -381,46 +368,6 @@ def load_tree_partial(filename, load_predicate, noload_fn=add_size_node):
 
   fid.close()
   return tree
-
-
-def load_tree_links(filename):
-  """ Collect and return the links present in a CGNS File """
-
-  from maia.pytree.node import name_utils as NU
-  class LinkVisitor():
-    def __init__(self):
-      self.links = []
-
-    @staticmethod
-    def _read_str(dset):
-      return dset[()].tobytes().partition(b'\x00')[0].decode()
-
-
-    def pre(self, nodes):
-      last = nodes[-1]
-      if last.attrs['type'] == b'LK':
-        tgt_file = self._read_str(last[' file'])
-        tgt_path = self._read_str(last[' path'])
-        names = []
-        for node in nodes[1:-1]:
-          try:
-            names.append(self._read_str(node[NU.FULL_NAME_NODE_NAME][' data']))
-          except KeyError:
-            names.append(node.attrs['name'].decode())
-        # Last if different because of link
-        try:
-          names.append(last.attrs['fullname'])
-        except KeyError:
-          names.append(list.attrs['name'].decode())
-
-        src_path = '/'.join(names)
-        self.links.append(['.', tgt_file, tgt_path, src_path])
-
-        return PTg.Step.OVER
-
-  visitor = LinkVisitor()
-  PTg.depth_first_search(H5PYGraphAdaptor(h5py.File(filename)), visitor, depth='all')
-  return visitor.links
 
 def write_tree_partial(tree, filename, write_predicate):
   """

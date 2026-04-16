@@ -168,7 +168,8 @@ def test_write_data(tmp_hdf_file):
 def test_write_link(tmp_hdf_file):
   fid = h5f.open(bytes(tmp_hdf_file, 'utf-8'), h5f.ACC_RDWR)
   gid = HCG.open_from_path(fid, 'Base/ZoneU/GridCoordinates')
-  HCG.write_link(gid, 'CoordinateZ', 'this/hdf/file.hdf', 'this/node')
+  gid = h5g.create(gid, 'CoordinateZ'.encode())
+  HCG.write_link(gid, 'this/hdf/file.hdf', 'this/node')
   gid.close()
   fid.close()
   out = get_subprocess_stdout(f"h5ls -vdg {tmp_hdf_file}/Base/ZoneU/GridCoordinates/CoordinateZ")
