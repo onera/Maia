@@ -126,16 +126,7 @@ def _write_links(filename, links):
       write_link(node.id, target_file, target_node)
   fid.close()
 
-def write_full(filename:str, dist_tree, links=[]):
-  _dist_tree = PT.shallow_copy(dist_tree)
-  for link in links: # Links override data, so delete data
-    if (src_node := PT.get_node_from_path(_dist_tree, link[3])) is not None:
-      # We just keep fullname if existing
-      PT.set_value(src_node, None)
-      PT.keep_children_from_name(src_node, NU.FULL_NAME_NODE_NAME)
-    
-  write_tree_partial(_dist_tree, filename, lambda X,Y,s: True)
-
-  # Add links if any
+def write_full(filename:str, tree, links=[]):
+  write_tree_partial(tree, filename, lambda X,Y,s: True)
   _write_links(filename, links)
 

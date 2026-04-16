@@ -65,6 +65,17 @@ def test_unambiguous_short_names():
     'AVeryLongFielNameWithLo.628b0bac',
   ]
 
+def test_short_name_with_hash():
+   assert NU.short_name_with_hash('Short') == 'Short'
+   name = 'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1'
+   assert NU.short_name_with_hash(name) == 'AVeryLongFielNameWithLo.a2497715'
+
+def test_get_full_name():
+  assert NU.get_full_name(PT.new_Zone('SomeZoneNode')) == 'SomeZoneNode'
+  node = PT.new_Zone('ShortenedName')
+  PT.new_Descriptor(NU.FULL_NAME_NODE_NAME, 'TrueLongName', parent=node)
+  assert NU.get_full_name(node) == 'TrueLongName'
+
 def test_rename_zone():
   yt = """
   Base CGNSBase_t:
