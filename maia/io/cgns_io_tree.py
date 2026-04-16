@@ -68,7 +68,7 @@ def write_tree(tree: CGNSTree,
   """
   create_parent_folder(filename, MPI.COMM_SELF)
   filename = str(filename)
-  links = [l.copy() for l in links]
+  links = [list(l) if isinstance(l, tuple) else l.copy() for l in links]
 
   if PT.get_node_from_predicate(tree, IS_LONG_NAME) is not None:
     tree = PT.shallow_copy(tree) # Work on copy, because name will be updated
@@ -258,7 +258,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
   # work on a copy that we may alter for our specific needs
   saving_dist_tree = PT.shallow_copy(dist_tree)
 
-  links = [l.copy() for l in links]
+  links = [list(l) if isinstance(l, tuple) else l.copy() for l in links]
   for link in links:
     src_path = link[3]
     if (parent := PT.get_node_from_path(saving_dist_tree, PT.utils.path_head(src_path))) is not None:
