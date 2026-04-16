@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+import warnings
+import argparse
+from pathlib import Path
+
+with warnings.catch_warnings(): # Remove h5py / numpy warning
+    warnings.simplefilter("ignore", UserWarning, lineno=493) 
+    import h5py
+
+from maia.pytree.core import graph as PTg
+from maia.pytree.node import name_utils as NU
+
+LABEL_COLOR  = "\u001b[38;5;246m"
+RESET_COLOR  = "\u001b[0m"
+
+class H5PYGraphAdaptor:
+  """ A class exposing the 'graph interface' for hdf files in order
+  to use graph iterators """
+  def __init__(self, root):
+    self.root = root
+  def root_iterator(self) -> PTg.list_iterator_type:
+    return iter([self.root])
+  def child_iterator(self, node) -> PTg.list_iterator_type:
+    return (g for g in node.values() if isinstance(g, h5py.Group))
+
+def dset_to_str(dset) -> str:
+   return dset[:].tobytes().partition(b'\x00')[0].decode()
+
+class Visitor:
+
+    def __init__(self):
+        self.results = []
+        self.long_path = []
+
+    def pre(self, nodes):
+        last = nodes[-1]
+        if NU.FULL_NAME_NODE_NAME in last:
+            name = dset_to_str(last[NU.FULL_NAME_NODE_NAME][' data'])
+        else:
+           name = last.name.split('/')[-1]
+
+        self.long_path.append(name)
+
+    def post(self, nodes):
+        last_long = self.long_path[-1]
+        last_short = nodes[-1].name.split('/')[-1]
+
+        if last_short != last_long:
+            
+            self.results.append((nodes[-1].name,                     # Short_path
+                                 '/'.join(self.long_path),           # Long path
+                                 nodes[-1].attrs['label'].decode())) # Label
+
+        self.long_path.pop()
+
+parser = argparse.ArgumentParser(description='Display shortened node paths')
+parser.add_argument('input', metavar='cgns_file', type=Path, help='input file', nargs=1)
+args = parser.parse_args()
+
+PTg.depth_first_search(H5PYGraphAdaptor(h5py.File(args.input[0])),
+                       visitor:=Visitor(),
+                       depth='all')
+results = visitor.results
+
+if len(results) == 0:
+    print("No nodes have been shortened 😎")
+else:
+    print("Some nodes have been shortened:\n")
+    for r in reversed(visitor.results):
+        print(f"{r[0]} {LABEL_COLOR}[{r[2]}]{RESET_COLOR} <--> {r[1]}")
