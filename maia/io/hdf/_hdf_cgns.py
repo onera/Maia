@@ -66,6 +66,16 @@ class AttributeRW:
     attr_id = h5a.create(gid, b'flags', h5t.NATIVE_INT32, space)
     attr_id.write(self.buff_flag1)
 
+class H5PYGraphAdaptor:
+  """ A class exposing the 'graph interface' for hdf files in order
+  to use graph iterators """
+  def __init__(self, root):
+    self.root = root
+  def root_iterator(self) -> PTg.list_iterator_type:
+    return iter([self.root])
+  def child_iterator(self, node) -> PTg.list_iterator_type:
+    return (g for g in node.values() if isinstance(g, h5py.Group))
+
 class HDF5GraphAdaptor:
   """ A class exposing the 'graph interface' for hdf files in order
   to use graph iterators """
@@ -376,39 +386,40 @@ def load_tree_partial(filename, load_predicate, noload_fn=add_size_node):
 def load_tree_links(filename):
   """ Collect and return the links present in a CGNS File """
 
-  class LinkVisitor:
-    """ Graph visitor used to collect link information """
+  from maia.pytree.node import name_utils as NU
+  class LinkVisitor():
     def __init__(self):
-      self.attr_reader = AttributeRW()
       self.links = []
-    def pre(self, node_ids):
 
-      gid = node_ids[-1]
-      b_kind = self.attr_reader.read_bytes_3(gid, b'type')
+    @staticmethod
+    def _read_str(dset):
+      return dset[()].tobytes().partition(b'\x00')[0].decode()
 
-      if b_kind == b'LK':
-        #Target directory ; the CGNS norm is unclear about how a link should start, 
-        # but other libraries are also doing that
-        link = ['.']
-        for ds_name in [b' file', b' path']: #Target file, then target path
-          hdf_dataset = h5d.open(gid, ds_name)
-          shape = hdf_dataset.shape[::-1]
-          array = np.empty(shape, hdf_dataset.dtype, order='F')
-          array_view = array.T
-          hdf_dataset.read(h5s.ALL, h5s.ALL, array_view)
-          array.dtype = 'S1'
-          link.append(array.tobytes().partition(b'\x00')[0].decode())
-        path = '/'.join([self.attr_reader.read_str_33(id, b'name') for id in node_ids[1:]])
-        link.append(path) #Current path
-        self.links.append(link)
+
+    def pre(self, nodes):
+      last = nodes[-1]
+      if last.attrs['type'] == b'LK':
+        tgt_file = self._read_str(last[' file'])
+        tgt_path = self._read_str(last[' path'])
+        names = []
+        for node in nodes[1:-1]:
+          try:
+            names.append(self._read_str(node[NU.FULL_NAME_NODE_NAME][' data']))
+          except KeyError:
+            names.append(node.attrs['name'].decode())
+        # Last if different because of link
+        try:
+          names.append(last.attrs['fullname'])
+        except KeyError:
+          names.append(list.attrs['name'].decode())
+
+        src_path = '/'.join(names)
+        self.links.append(['.', tgt_file, tgt_path, src_path])
+
         return PTg.Step.OVER
 
-  fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDONLY)
-  rootid = h5g.open(fid, b'/')
-
   visitor = LinkVisitor()
-  PTg.depth_first_search(HDF5GraphAdaptor(rootid), visitor, depth='all')
-  fid.close()
+  PTg.depth_first_search(H5PYGraphAdaptor(h5py.File(filename)), visitor, depth='all')
   return visitor.links
 
 def write_tree_partial(tree, filename, write_predicate):

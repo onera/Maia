@@ -23,6 +23,8 @@ else:
 
 from maia.factory     import full_to_dist
 
+IS_LONG_NAME = PT.pred.NodePredicate(lambda n : len(PT.get_name(n)) > 32)
+
 def recompute_ec_size(tree, comm):
   # In write mode, retrieve ElementConnectivity#Size to feed hdf dataspaces
   pred = PT.pred.label_is('Elements_t') & PT.pred.has_child_of_name('ElementStartOffset')
@@ -66,6 +68,47 @@ def write_tree(tree: CGNSTree,
   """
   create_parent_folder(filename, MPI.COMM_SELF)
   filename = str(filename)
+
+  if PT.get_node_from_predicate(tree, IS_LONG_NAME) is not None:
+
+    tree = PT.shallow_copy(tree) # Work on copy, because name will be updated
+
+    skip_l = list()
+    for link in links:
+      # Link preprocessing : create terminal node in tree if not existing, which is allowed,
+      # to have its short name computed by create_full_name_children
+      # In addition we flag non existing src path to skip them we converting pathes
+      assert all(len(n) <= 32 for n in link[2].split('/')), f"Long names are not supported in links target"
+      if (parent := PT.get_node_from_path(tree, PT.utils.path_head(link[3]))) is not None:
+        PT.update_child(parent, PT.utils.path_tail(link[3]))
+      skip_l.append(parent is None)
+
+    NU.create_full_name_children(tree)
+    new_links = []
+    for link, skip in zip(links, skip_l):
+      # Si le parent n'existe pas dans l'arbre --> le lien est simplement sauté  ==> On peut detecter ça et ne pas modifier le chemin, il sera sauté
+      # Si le parent existe, mais pas le noeud terminal -> il est créé ==> Si le node terminal est > 32 char, que faire ?
+      #        Rappel : pour créer un lien,
+      #          1. On supprimer le noeud terminal
+      #          2. On trouve le parent
+      #          3. On crée un hdf groupe dans le parent avec name = node_name
+      #                                                       label = ''
+      #                                                       type = 'LK'
+      #                                                       attributs ' file' et ' path'
+      #                et on call links.create_external sur le groupe créé
+      #
+      #   ---> On peut créer le nom long avant raccourcissement de l'arbre
+      #
+      # En lecture, tgt_file et path lus depuis les attributs, src_path créé depuis les noms de groupes
+      #             (à partir des attributs name)
+      #    NB : on aura donc des liens court en lecture, comment retrouver le nom long ?? car le link n'est pas sensé avoir d'enfants
+      #       solution = ajouter un attribut 'fullname' dans write_links ? 
+      # Que se passe il en lecture si on suit un lien et qu'on trouve un enfant 'FullName' ?
+      new_path = link[3] if skip else NU.update_path(tree, link[3])
+      new_links.append( link[:3] + [new_path])
+    links = new_links
+
+
   _hdf_io.write_full(filename, tree, links=links)
 
 def read_tree(filename: Union[str, PathLike]) -> CGNSTree:

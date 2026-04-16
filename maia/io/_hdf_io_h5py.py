@@ -116,7 +116,7 @@ def read_links(filename):
 def _write_links(filename, links):
   fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
   for link in links:
-    target_dir, target_file, target_node, local_node = link
+    target_dir, target_file, target_node, local_node, full_name = link
     parent_node_path = PT.utils.path_head(local_node)
     local_node_name  = PT.utils.path_tail(local_node)
     try:
@@ -125,14 +125,21 @@ def _write_links(filename, links):
       mlog.error(f"Can not write link for node {link[3]}: path does not exists in file")
     else:
       write_link(gid, local_node_name, target_file, target_node)
+      if len(full_name) > 32:
+        h5py.Group(gid)[local_node_name].attrs['fullname'] = full_name
   fid.close()
 
+from maia.pytree.node import name_utils as NU
 def write_full(filename:str, dist_tree, links=[]):
   _dist_tree = PT.shallow_copy(dist_tree)
+  _links = []
   for link in links: # Links override data, so delete data
-    PT.rm_node_from_path(_dist_tree, link[3])
+    # Attention n'existe pas tjrs
+    src_node = PT.pop_node_from_path(_dist_tree, link[3])
+    fullname = NU.get_full_name(src_node)
+    _links.append(link + [fullname])
   write_tree_partial(_dist_tree, filename, lambda X,Y,s: True)
 
   # Add links if any
-  _write_links(filename, links)
+  _write_links(filename, _links)
 
