@@ -31,7 +31,7 @@ def _unambiguous_short_names(names:List[str]) -> List[str]:
   return short_names
 
 def short_name_with_hash(name:str) -> str:
-  if len(name) < 32:
+  if len(name) <= 32:
     return name
   hash = hashlib.sha1(name.encode('ascii')).hexdigest()[:8]
   return short_name(name)[:23] + '.' + hash
