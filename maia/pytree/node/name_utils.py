@@ -6,7 +6,7 @@ from maia.pytree.meta import CGNSNodeNotFoundError
 import maia.pytree as PT
 
 #begin_api_export()
-FULL_NAME_NODE_NAME = 'FullNameLongerThan32CharsLimit'
+FULL_NAME_NODE_NAME = 'FullNameLongerThan32CharactersLi'
 
 def _unambiguous_short_names(names:List[str]) -> List[str]:
   """ Find shorter names that are:

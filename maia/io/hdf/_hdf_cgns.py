@@ -401,10 +401,10 @@ def load_tree_links(filename):
                 self.read_str_dset(gid, b' path')] # Tgt path
         names = []
         for node_id in node_ids[1:]:
-          try:
+          if FULL_NAME_NODE_NAME_B in node_id:
             c_id = h5g.open(node_id, FULL_NAME_NODE_NAME_B)
             names.append(self.read_str_dset(c_id, b' data'))
-          except KeyError:
+          else:
             names.append(self.attr_reader.read_str_33(node_id, b'name'))
         path = '/'.join(names)
         link.append(path) #Current path
