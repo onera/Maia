@@ -798,7 +798,6 @@ def test_all_transfer(transfer_dataset, eq, comm):
   PT.new_ZoneSubRegion('FakeZSR', bc_name='Xmin', parent=zone) # Should be ignored (no arrays)
 
   ptree = maia.factory.partition_dist_tree(tree, comm, data_transfer='ALL')
-  # if comm.rank==1: PT.print_tree(ptree)
 
   pext = maia.algo.part.extract_part_from_zsr(ptree, 'ZSR', comm, transfer_dataset, 'ALL', equilibrate=eq)
   # Tr DS = True or False + local mode + ALL ===> KO
@@ -838,11 +837,16 @@ def test_all_transfer(transfer_dataset, eq, comm):
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'FAM', comm) == transfer_dataset
   assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
-  # A DISCUTER
-  # normalement on devrait pouvoir tester :
-  # assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
-  # mais le probleme du passage par famille c'est que l'on n'a plus l'info
-  # de la BC concernee !
+  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmin', comm)
+  # A priori il reste des faces dans Xmax!!! alors que je m'attendais a
+  # sa suppression comme dans le premier cas cf. ligne 802 !
+  # assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmax', comm)
+  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
+  # A priori il reste des faces dans Ymax!!! alors que je m'attendais a
+  # sa suppression comme dans le premier cas cf. ligne 818 !
+  # assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymax', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmin', comm)
+  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmax', comm)
 
 @pytest_parallel.mark.parallel(2)
 def test_extract_S_2d(comm):
