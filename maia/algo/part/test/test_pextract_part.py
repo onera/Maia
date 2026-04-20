@@ -319,6 +319,15 @@ def test_extr_U_local(comm):
     if PT.get_name(zone) == 'Zone.P2.N0':
       assert (MT.Subset.globalnumbering(vtxzsr) == [6, 7, 3, 2, 8, 4, 10, 11, 12, 14, 15, 16]).all()
 
+    origbc = PT.get_child_from_name(zone, 'Original3DBC')
+    assert PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCNames')) == 'Xmax\nXmin\nYmax\nYmin\nZmax\nZmin'
+    if PT.get_name(zone) == 'Zone.P0.N0':
+      assert (PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCIds')) == [1, 1, 1]).all()
+    if PT.get_name(zone) == 'Zone.P0.N1':
+      assert (PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCIds')) == [0, 0, 0, 0, 0, 0]).all()
+    if PT.get_name(zone) == 'Zone.P2.N0':
+      assert (PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCIds')) == [1, 1, 1, 1, 1, 1, 0, 0, 0]).all()
+
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
@@ -807,13 +816,11 @@ def test_all_transfer(transfer_dataset, eq, comm):
   for name in ['Geometry_3d', 'FakeZSR']:
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'ZSR', comm) == transfer_dataset
-  # Remark : j'ai mis 'not' preference pour '== False' ?
-  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmin', comm)
-  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmax', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymax', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmin', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmax', comm)
+  # Remark : j'ai choisi l'évaluation du assert ou du 'not' a la place '== False' ou '==True' ?
+  for name in ['Xmin', 'Xmax']:
+    assert not par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
+  for name in ['Ymin', 'Ymax', 'Zmin', 'Zmax']:
+    assert par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
   
   pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymin', comm, transfer_dataset, 'ALL', equilibrate=eq)
   ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
@@ -822,12 +829,10 @@ def test_all_transfer(transfer_dataset, eq, comm):
   for name in ['Geometry_3d', 'OtherZSR', 'FakeZSR']:
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
-  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
-  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymax', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmin', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmax', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmin', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmax', comm)
+  for name in ['Ymin', 'Ymax']:
+    assert not par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
+  for name in ['Xmin', 'Xmax', 'Zmin', 'Zmax']:
+    assert par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
 
   pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, transfer_dataset, 'ALL', equilibrate=eq)
   ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
@@ -837,16 +842,10 @@ def test_all_transfer(transfer_dataset, eq, comm):
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'FAM', comm) == transfer_dataset
   assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
-  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmin', comm)
-  # A priori il reste des faces dans Xmax!!! alors que je m'attendais a
-  # sa suppression comme dans le premier cas cf. ligne 802 !
-  # assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Xmax', comm)
-  assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymin', comm)
-  # A priori il reste des faces dans Ymax!!! alors que je m'attendais a
-  # sa suppression comme dans le premier cas cf. ligne 818 !
-  # assert not par_utils.exists_anywhere(ext_zones, 'ZoneBC/Ymax', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmin', comm)
-  assert par_utils.exists_anywhere(ext_zones, 'ZoneBC/Zmax', comm)
+  for name in ['Xmin', 'Ymin']:
+    assert not par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
+  for name in ['Xmax', 'Ymax', 'Zmin', 'Zmax']:
+    assert par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
 
 @pytest_parallel.mark.parallel(2)
 def test_extract_S_2d(comm):
