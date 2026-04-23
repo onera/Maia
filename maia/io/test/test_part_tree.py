@@ -151,3 +151,4 @@ def test_file_to_part_tree_redispatch_jns(mpi_tmpdir, comm):
       ymax = PT.get_node_from_predicate(zone, PT.pred.name_matches('*Ymax*'))
       if ymax is not None:
         assert PT.get_name(ymax) == 'Ymax.0' and PT.get_value(ymax) == 'zone.P?.N?'
+  scomm.Free()

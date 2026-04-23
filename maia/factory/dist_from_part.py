@@ -463,6 +463,7 @@ def _recover_base_iterative_data(dist_tree: CGNSDistTree,
         root = comm.allreduce(comm.rank if part_base is not None else -1, MPI.MAX) # A rank knowing part base
         d_it_data = comm.bcast(d_it_data, root=root)
       PT.add_child(dist_base, d_it_data)
+      subcomm.Free()
 
 def recover_dist_tree(part_tree: CGNSPartTree,
                       comm: MPIComm,
