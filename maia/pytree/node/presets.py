@@ -814,6 +814,7 @@ def new_DiscreteData(name:str = 'DiscreteData',
   return dd
 
 def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
+                      region_cell_dim:Optional[int] = None,
                       *,
                       loc:Optional[str] = None,
                       point_range:Optional[ArrayLike] = None,
@@ -835,6 +836,7 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
 
   Args:
     name (str): Name of the created zsr node
+    region_cell_dim (int) : If specified, designates the RegionCellDimension
     loc (str) : If specified, create a GridLocation taking this value
     point_range (ArrayLike) : PointRange array defining the ZSR extent
     point_list (ArrayLike) : PointList array defining the ZSR extent
@@ -857,7 +859,7 @@ def new_ZoneSubRegion(name:str = 'ZoneSubRegion',
     ├───GridLocation GridLocation_t "CellCenter"
     └───PointList IndexArray_t I4 [[104]]
   """
-  zsr = new_node(name, 'ZoneSubRegion_t', None, [], parent)
+  zsr = new_node(name, 'ZoneSubRegion_t', region_cell_dim, [], parent)
   _check_parent_label(zsr, parent, ['Zone_t'])
   if loc is not None:
     new_GridLocation(loc, zsr)

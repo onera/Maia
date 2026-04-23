@@ -109,7 +109,7 @@ class Test__discover_wrapper:
       pt = """
     Zone.P0.N0 Zone_t:
       ZoneType ZoneType_t "Unstructured":
-      CreatedZSR.0 ZoneSubRegion_t:
+      CreatedZSR.0 ZoneSubRegion_t [3]:
         GridConnectivityRegionName Descriptor_t "gc.0":
       """
     elif comm.Get_rank() == 1:
@@ -123,9 +123,9 @@ class Test__discover_wrapper:
       pt = """
     Zone.P2.N0 Zone_t:
       ZoneType ZoneType_t "Unstructured":
-      CreatedZSR.0 ZoneSubRegion_t:
+      CreatedZSR.0 ZoneSubRegion_t [3]:
         GridConnectivityRegionName Descriptor_t "gc.0":
-      CreatedZSR.1 ZoneSubRegion_t:
+      CreatedZSR.1 ZoneSubRegion_t [3]:
         GridConnectivityRegionName Descriptor_t "gc.1":
       """
     dist_tree = PTy.to_cgns_tree(dt)
@@ -138,6 +138,7 @@ class Test__discover_wrapper:
         == ['InitialZSR', 'CreatedZSR']
     assert [PT.get_value(PT.get_node_from_label(n, 'Descriptor_t')) for n in dist_zsr] \
         == ['match', 'gc']
+    assert PT.get_value(PT.get_node_from_name_and_label(dist_tree, "CreatedZSR", "ZoneSubRegion_t")) == 3
 
   def test_dataset(self, comm):
     dt = """

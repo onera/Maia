@@ -7,7 +7,7 @@ from maia.pytree.compare import is_same_tree
 from maia.pytree import node as N
 from maia.pytree import walk as W
 
-from maia.pytree.node import presets
+from maia.pytree.node import presets, access
 
 def test_check_parent_label():
   base = presets.new_CGNSBase()
@@ -291,6 +291,9 @@ def test_new_ZoneSubRegion():
     FamilyName FamilyName_t "Fam":
   """)
   assert is_same_tree(expected, zsr)
+
+  zsr = presets.new_ZoneSubRegion("MyZSR", 3, loc='FaceCenter', family='Fam', bc_name="SomeBC")
+  assert access.get_value(zsr) == 3
 
   with pytest.raises(AssertionError):
     zsr = presets.new_ZoneSubRegion(point_list=[[1,4,6]], bc_name="SomeBC")
