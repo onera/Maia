@@ -222,6 +222,7 @@ def _partitioning(dist_tree: CGNSDistTree,
         s_parts = []
       part_zones_S.append(s_parts)
       dist_zones_S.append(CGNSDistTree(zone))
+      sub_comm.Free()
 
   # Transfert coords for S zones, all at once to avoid multiple block_to_parts
   BTP.dist_coords_to_part_coords_m(dist_zones_S, part_zones_S, comm)
