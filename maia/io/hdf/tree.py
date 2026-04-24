@@ -22,10 +22,10 @@ def create_zone_filter(zone, zone_path, hdf_filter, mode):
   node and, for the structured zones, by the size of the blocks.
   """
   # Coords
-  distrib_vtx  = MT.Zone.vtx_distribution(zone)
-  vtx_shape = zone[1] if PT.get_label(zone) == 'ParticleZone_t' else zone[1][:,0]
-  all_vtx_dataspace   = create_data_array_filter(distrib_vtx, vtx_shape)
   for grid_c in PT.iter_children_from_predicate(zone, PT.pred.label_in(['GridCoordinates_t', 'ParticleCoordinates_t'])):
+    distrib_vtx  = MT.Zone.vtx_distribution(zone)
+    vtx_shape = zone[1] if PT.get_label(zone) == 'ParticleZone_t' else zone[1][:,0]
+    all_vtx_dataspace   = create_data_array_filter(distrib_vtx, vtx_shape)
     grid_coord_path = zone_path + "/" + PT.get_name(grid_c)
     utils.apply_dataspace_to_arrays(grid_c, grid_coord_path, all_vtx_dataspace, hdf_filter)
 

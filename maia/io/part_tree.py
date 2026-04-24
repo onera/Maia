@@ -12,6 +12,7 @@ from maia.factory.dist_from_part import discover_nodes_from_matching
 from maia.factory.partitioning import compute_nosplit_weights
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
+from .cgns_io_tree import replace_long_names
 from .utils        import create_parent_folder
 
 from maia.pytree.node import name_utils as NU
@@ -171,7 +172,7 @@ def file_to_part_tree(filename: Union[str, PathLike],
   PT.rm_children_from_predicate(tree, lambda n: PT.get_label(n) == 'CGNSBase_t' \
           and len(PT.get_children_from_label(n, 'Zone_t')) == 0)
 
-  NU.replace_with_full_names(tree)
+  NU.unhash_long_names(tree)
 
   if redispatch:
     enforce_maia_naming(tree, comm)
@@ -233,21 +234,11 @@ def part_tree_to_file(part_tree: CGNSPartTree,
         if _LEGACY_IO:
           writeZones(part_tree, filename, proc=-1)
         else:
-          fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
-          for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
-            _links = [link for link in links if link[3].startswith(zone_path)]
-            _links = [list(l) if isinstance(l, tuple) else l.copy() for l in _links]
-            zone = PT.shallow_copy(PT.find_node_from_path(part_tree, zone_path))
-            for link in _links: # Remove nodes to be linked
-              src_path = PT.utils.path_tail(link[3], 2)
-              if (parent := PT.get_node_from_path(zone, PT.utils.path_head(src_path))) is not None:
-                # 1. Src links: ensure existance, with no children and no data
-                PT.update_child(parent, PT.utils.path_tail(src_path), value=None, children=[])
-              # 2. Convert links to short names
-              link[2] = '/'.join(NU.short_name_with_hash(name) for name in link[2].split('/'))
-              link[3] = '/'.join(NU.short_name_with_hash(name) for name in link[3].split('/'))
-            NU.create_full_name_children(zone) # 3. Convert tree to short names
+          tree, links = replace_long_names(part_tree, links)
 
+          fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
+          for zone_path in maia.pytree.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
+            zone = PT.find_node_from_path(tree, zone_path)
             gid = open_from_path(fid, zone_path.split('/')[0])
             _write_node_partial(gid, zone, lambda X,Y,s: True, ([],[]))
             gid.close()

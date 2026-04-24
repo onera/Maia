@@ -53,6 +53,6 @@ else:
     from maia.io.hdf._hdf_cgns import load_tree_partial
     from maia.pytree.node import name_utils
     t = load_tree_partial(fname, load_data, noload_fn)
-    name_utils.replace_with_full_names(t)
+    name_utils.unhash_long_names(t)
 
 print_tree(t, verbose=args.verbose, colors=args.no_colors, max_depth=args.depth)

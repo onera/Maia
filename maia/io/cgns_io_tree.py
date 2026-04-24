@@ -24,6 +24,26 @@ else:
 
 from maia.factory     import full_to_dist
 
+def replace_long_names(tree:CGNSTree, links: List[List[str]]) -> Tuple[CGNSTree, List[List[str]]]:
+  """ Return **a copy** of input tree and links list where long names have been shortened """
+  links = [list(l) if isinstance(l, tuple) else l.copy() for l in links]
+  tree = PT.shallow_copy(tree)
+  for link in links:
+    src_path = link[3]
+    if (parent := PT.get_node_from_path(tree, PT.utils.path_head(src_path))) is not None:
+      with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        PT.update_child(parent, PT.utils.path_tail(src_path), value=None, children=[])
+      # Update path if link exist; otherwise, keep old for better error display
+      link[3] = '/'.join(NU.short_name_with_hash(name) for name in src_path.split('/'))
+
+  NU.hash_long_names(tree)
+
+  for link in links:
+    link[2] = '/'.join(NU.short_name_with_hash(name) for name in link[2].split('/'))
+
+  return tree, links
+
 def recompute_ec_size(tree, comm):
   # In write mode, retrieve ElementConnectivity#Size to feed hdf dataspaces
   pred = PT.pred.label_is('Elements_t') & PT.pred.has_child_of_name('ElementStartOffset')
@@ -67,24 +87,7 @@ def write_tree(tree: CGNSTree,
   """
   create_parent_folder(filename, MPI.COMM_SELF)
   filename = str(filename)
-
-  links = [list(l) if isinstance(l, tuple) else l.copy() for l in links]
-  tree = PT.shallow_copy(tree) # Work on copy, because name will be updated
-
-  for link in links:
-    src_path = link[3]
-    if (parent := PT.get_node_from_path(tree, PT.utils.path_head(src_path))) is not None:
-      with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        PT.update_child(parent, PT.utils.path_tail(src_path), value=None, children=[])
-      # Update path if link exist; otherwise, keep old for better error display
-      link[3] = '/'.join(NU.short_name_with_hash(name) for name in src_path.split('/'))
-
-  NU.create_full_name_children(tree)
-
-  for link in links:
-    link[2] = '/'.join(NU.short_name_with_hash(name) for name in link[2].split('/'))
-    
+  tree, links = replace_long_names(tree, links)
   _hdf_io.write_full(filename, tree, links)
 
 def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
@@ -104,7 +107,7 @@ def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
     return tree
   else:
     tree = _hdf_io.read_full(filename)
-    NU.replace_with_full_names(tree)
+    NU.unhash_long_names(tree)
     return tree
 
 def read_links(filename: Union[str, PathLike]) -> List[List[str]]:
@@ -229,7 +232,7 @@ def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDist
     size_tree = load_size_tree(filename, comm)
     fill_size_tree(size_tree, filename, comm)
     dist_tree = CGNSDistTree(size_tree)
-    NU.replace_with_full_names(dist_tree)
+    NU.unhash_long_names(dist_tree)
 
   end = time.time()
   dt_size     = sum(metrics.dtree_nbytes(dist_tree))
@@ -258,23 +261,7 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
   MT.check_cgns_dist_tree(dist_tree)
 
   # work on a copy that we may alter for our specific needs
-  saving_dist_tree = PT.shallow_copy(dist_tree)
-
-  links = [list(l) if isinstance(l, tuple) else l.copy() for l in links]
-  for link in links:
-    src_path = link[3]
-    if (parent := PT.get_node_from_path(saving_dist_tree, PT.utils.path_head(src_path))) is not None:
-      with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        node = PT.update_child(parent, PT.utils.path_tail(src_path))
-      PT.keep_children_from_name(node, NU.FULL_NAME_NODE_NAME)
-      # Update path if link exist; otherwise, keep old for better error display
-      link[3] = '/'.join(NU.short_name_with_hash(name) for name in src_path.split('/'))
-
-  NU.create_full_name_children(saving_dist_tree)
-
-  for link in links:
-    link[2] = '/'.join(NU.short_name_with_hash(name) for name in link[2].split('/'))
+  saving_dist_tree, links = replace_long_names(dist_tree, links)
 
   dt_size     = sum(metrics.dtree_nbytes(saving_dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)

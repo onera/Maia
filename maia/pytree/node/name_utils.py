@@ -36,7 +36,7 @@ def short_name_with_hash(name:str) -> str:
   hash = hashlib.sha1(name.encode('ascii')).hexdigest()[:8]
   return short_name(name)[:23] + '.' + hash
 
-def create_full_name_children(tree:CGNSTree):
+def hash_long_names(tree:CGNSTree):
   def _create_full_name_child(node):
     if len(name := PT.get_name(node)) > 32:
       PT.new_child(node, FULL_NAME_NODE_NAME, 'Descriptor_t', name)
@@ -44,7 +44,7 @@ def create_full_name_children(tree:CGNSTree):
 
   PT.scan(tree, _create_full_name_child)
 
-def replace_with_full_names(tree:CGNSTree):
+def unhash_long_names(tree:CGNSTree):
   def _replace_with_full_name(node):
     try:
       full_name_node = PT.pop_node_from_path(node, FULL_NAME_NODE_NAME)
