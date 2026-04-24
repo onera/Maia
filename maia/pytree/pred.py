@@ -50,7 +50,7 @@ def predicate_generator(func):
 def name_is(name: str) -> NodePredicate:
   """ Name of the node is exactly equal to the provided ``name`` """
   return NodePredicate(lambda n : n[0] == name)
-def name_in(name_l:List[str]) -> NodePredicate:
+def name_in(name_l:Iterable[str]) -> NodePredicate:
   """ Name of the node belongs to the provided ``name_l`` list """
   if isinstance(name_l, str):
     raise ValueError("Invalid type of argument `name_l` (expected list, got str). Use ``name_is`` instead")
@@ -86,7 +86,7 @@ def label_matches(label:str) -> NodePredicate:
   label = _escape_str(label)
   return NodePredicate(lambda n : fnmatch.fnmatch(n[3], label))
 
-def label_in(label_l:List) -> NodePredicate:
+def label_in(label_l:Iterable) -> NodePredicate:
   """ Label of the node belongs to the provided ``label_l`` list """
   if isinstance(label_l, (str, CGK.Label)):
     raise ValueError("Invalid type of argument `label_l` (expected list). Use ``label_is`` instead")

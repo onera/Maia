@@ -208,7 +208,9 @@ def merge_zones(dist_tree: CGNSDistTree,
     gc = PT.find_node_from_path(dist_tree, jn_path)
     if PT.GridConnectivity.is1to1(gc):
       jn_to_pl[jn_path] = \
-          (PT.find_child_from_name(gc, 'PointList')[1], PT.find_child_from_name(gc, 'PointListDonor')[1], MT.get_Distribution(gc))
+          (PT.get_np_value(PT.find_child_from_name(gc, 'PointList')),
+           PT.get_np_value(PT.find_child_from_name(gc, 'PointListDonor')),
+           MT.find_Distribution(gc))
 
   # Update opposite names when going to opp zone (intrazone have been caried before)
   for zgc, gc in PT.get_children_from_predicates(merged_zone, ['ZoneGridConnectivity_t', 'GridConnectivity_t'], ancestors=True):
@@ -277,7 +279,10 @@ def _merge_zones(tree: CGNSDistTree, comm: MPIComm,
 
   if cell_dim == 3:
     expected_elt_tot = sum([PT.Zone.n_cell(z) + PT.Zone.n_face(z) for z in zones])
-    _expected_eso_tot = sum(PT.get_child_from_name(PT.Zone.NGonNode(z), 'ElementStartOffset')[1][-1] for z in zones) if comm.rank == comm.size-1 else 0
+    _expected_eso_tot = 0
+    if comm.rank == comm.size - 1:
+      _expected_eso_tot = sum(PT.get_np_value(PT.find_child_from_name(PT.Zone.NGonNode(z), 'ElementStartOffset'))[-1] \
+                              for z in zones)
     expected_eso_tot = comm.bcast(_expected_eso_tot, root=comm.size-1)
   else:
     n_edge = lambda z: MT.Element.n_elt(MT.Zone.EdgeNode(z))

@@ -144,7 +144,8 @@ def convert_mixed_to_elements(dist_tree: CGNSDistTree, comm: MPIComm) -> None:
                         
             else:
                 assert elem_eso is not None
-                elem_ec_type_pos = elem_ec[elem_eso[1][:-1]-elem_eso[1][0]] # Type of each element
+                eso_val = PT.get_np_value(elem_eso)
+                elem_ec_type_pos = elem_ec[eso_val[:-1]-eso_val[0]] # Type of each element
                 all_elem_pos = {} # For each type, position where elts of this kind are found
                 all_non_cell_pos_tmp = []
                 for elem_type in key_types:

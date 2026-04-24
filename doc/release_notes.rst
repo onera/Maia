@@ -12,6 +12,10 @@ This page contains information about what has changed in each new version of **M
 Development version
 -------------------
 
+💡 New Features
+^^^^^^^^^^^^^^^
+- IO functions: manage nodes names longer than 32 characters
+
 🚀 Feature improvements
 ^^^^^^^^^^^^^^^^^^^^^^^
 - (de)concatenate_subsets_from_families: merge ZoneSubRegion_t nodes if possible

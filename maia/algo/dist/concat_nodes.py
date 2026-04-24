@@ -46,7 +46,7 @@ def expand_bcs_metadata(bc_cat:CGNSTree) -> List[CGNSTree]:
   
   # NB : if raw=False, get_value uses strip() which remove last first and last '\n'
   #      --> decode manually here
-  split_val = lambda n : PT.get_value(n, True).tobytes().decode().split('\n')
+  split_val = lambda n : PT.get_np_value(n).tobytes().decode().split('\n')
 
   names = PT.get_str_value(name_n).split('\n')
   void = [''] * len(names)

@@ -139,9 +139,12 @@ def extract_surf_from_bc(dist_tree: CGNSDistTree,
   # Light / local version of extract_part for WallDistance
 
   ext_tree = PT.new_CGNSTree()
-  for base, zone in PT.iter_children_from_predicates(dist_tree, 'CGNSBase_t/Zone_t', ancestors=True):
-    new_dim = [PT.Base.CellDimension(base)-1, PT.Base.PhysicalDimension(base)]
-    ext_base = PT.update_child(ext_tree, PT.get_name(base), PT.get_label(base), new_dim)
-    PT.add_child(ext_base, extract_surf_from_bc_single(zone, bc_predicate, comm))
+  for base in PT.iter_all_CGNSBase_t(dist_tree):
+    ext_base = PT.new_CGNSBase(PT.get_name(base),
+                               cell_dim=PT.Base.CellDimension(base)-1,
+                               phy_dim=PT.Base.PhysicalDimension(base),
+                               parent=ext_tree)
+    for zone in PT.iter_all_Zone_t(base):
+      PT.add_child(ext_base, extract_surf_from_bc_single(zone, bc_predicate, comm))
   
   return ext_tree

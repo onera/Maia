@@ -77,7 +77,7 @@ def compute_wall_distance(tree: CGNSTree,
   if MT.is_cgns_dist_tree(tree):
     impl = dclosest_elt
   elif MT.is_cgns_part_tree(tree):
-    impl = pclosest_elt
+    impl = pclosest_elt #type: ignore[misc] # Dispatch confuse mypy
   else:
     raise ValueError("Tree must be either distributed or partitioned")
 
@@ -89,8 +89,8 @@ def compute_wall_distance(tree: CGNSTree,
 
 
   if method == "cloud":
-    impl.find_closest_boundary(tree,
-                               tree,
+    impl.find_closest_boundary(tree, # type:ignore[arg-type] # Dispatch confuse mypy
+                               tree, # type:ignore[arg-type] # Dispatch confuse mypy
                                point_cloud,
                                comm,
                                bnd_predicate,
@@ -99,7 +99,7 @@ def compute_wall_distance(tree: CGNSTree,
   else:
     if options.get('perio', True):
       warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
-    impl.find_closest_boundary_propagation(tree,
+    impl.find_closest_boundary_propagation(tree, # type:ignore[arg-type] # Dispatch confuse mypy
                                            comm,
                                            bnd_predicate)
 

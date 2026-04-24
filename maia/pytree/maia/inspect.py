@@ -495,6 +495,7 @@ class Subset:
       pr = PT.get_np_value(pr_n)
       distrib = Subset.distribution(subset_node)
       return pr_utils.unroll_pr(pr, distrib[0], distrib[1])
+    raise ValueError('Input node is not a subset')
 
 class Container:
   """ A container is node designed to store fields, such as FlowSolution_t, ZoneSubRegion_t, ...  """

@@ -34,7 +34,7 @@ def collect_distributed_pl(dist_zone: CGNSDistTree,
       if (s:=pl_raw.shape[0]) > 1:
         assert PT.Zone.Type(dist_zone) == 'Structured'
         func = s_numbering.ij_to_index_from_loc if s == 2 else s_numbering.ijk_to_index_from_loc
-        idx = func(*pl_raw, PT.Subset.GridLocation(node), PT.Zone.VertexSize(dist_zone))
+        idx = func(*pl_raw, PT.Subset.GridLocation(node), PT.Zone.VertexSize(dist_zone)) # type:ignore[call-arg]
         pl = idx.reshape((1,-1), order='F')
       else:
         pl = pl_raw

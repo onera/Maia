@@ -40,14 +40,14 @@ def unpack_metric(dist_tree:CGNSDistTree, metric_paths:Union[None, str, List[str
   # > Get metrics nodes described by path
   if isinstance(metric_paths, str):
     container_name, fld_name = metric_paths.split('/')
-    metric_nodes = [PT.get_node_from_path(zone, f"{container_name}/{fld_name}{suffix}") \
+    _metric_nodes = [PT.get_node_from_path(zone, f"{container_name}/{fld_name}{suffix}") \
             for suffix in ['', 'XX', 'XY', 'XZ', 'YY', 'YZ', 'ZZ']]
-    metric_nodes = [node for node in metric_nodes if node is not None] # Above list contains found node or None
+    metric_nodes = [node for node in _metric_nodes if node is not None] # Above list contains found node or None
   elif isinstance(metric_paths, list):
     assert len(metric_paths) in [3, 6], f"metric argument must be a str path or a list of 3, 6 paths"
     metric_nodes = list()
     for path in metric_paths:
-      metric_nodes.append(PT.get_node_from_path(zone, path))
+      metric_nodes.append(PT.find_node_from_path(zone, path))
   else:
     raise ValueError(f"Incorrect metric type (expected list or str).")
 

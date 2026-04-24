@@ -22,7 +22,7 @@ def _soft_recover_elements(dist_zone:CGNSDistTree, part_zones:List[CGNSPartTree]
   # > Rename ElementConnectivity so _recover_elements won't rebuild connectivity (lighter process)
   for part_zone in part_zones:
     for elt_n in PT.get_children_from_label(part_zone, 'Elements_t'):
-      elt_ec_n = PT.get_child_from_name(elt_n, 'ElementConnectivity')
+      elt_ec_n = PT.find_child_from_name(elt_n, 'ElementConnectivity')
       PT.set_name(elt_ec_n, '__ElementConnectivity__')
 
   _recover_elements(dist_zone, part_zones, comm)
@@ -30,7 +30,7 @@ def _soft_recover_elements(dist_zone:CGNSDistTree, part_zones:List[CGNSPartTree]
   # > Retrieve ElementConnectivity initial name
   for part_zone in part_zones:
     for elt_n in PT.get_children_from_label(part_zone, 'Elements_t'):
-      elt_ec_n = PT.get_child_from_name(elt_n, '__ElementConnectivity__')
+      elt_ec_n = PT.find_child_from_name(elt_n, '__ElementConnectivity__')
       PT.set_name(elt_ec_n, 'ElementConnectivity')
 
 def identify_n_group_bc(dist_zone:CGNSDistTree, loc:str) -> int:
@@ -41,7 +41,7 @@ def identify_n_group_bc(dist_zone:CGNSDistTree, loc:str) -> int:
   bcs_ordinal_n = [PT.get_child_from_name(bc, 'Ordinal') for bc in bcs]
 
   if len(bcs) > 0 and all([ord is not None for ord in bcs_ordinal_n]):
-    return max(PT.get_np_value(ord)[0] for ord in bcs_ordinal_n) + 1
+    return max(PT.get_np_value(ord)[0] for ord in bcs_ordinal_n) + 1 #type:ignore [arg-type] # Not none
   else:
     return len(bcs)
 
@@ -86,7 +86,7 @@ def _add_sections_to_zone(zone_n:CGNSPartTree, sections:List, comm:MPIComm):
 def build_cell_gnum(zone_n:CGNSPartTree) -> NDArray:
   dim = PT.Zone.CellDimension(zone_n)
   elts = PT.Zone.get_ordered_elements_per_dim(zone_n)[dim]
-  elt_gnums = [PT.get_np_value(MT.get_GlobalNumbering(e, 'Sections')) for e in elts]
+  elt_gnums = [PT.get_np_value(MT.find_GlobalNumbering(e, 'Sections')) for e in elts]
   idx, cat = np_utils.concatenate_np_arrays(elt_gnums, dtype=pdm_dtype)
   return cat
 
@@ -172,10 +172,9 @@ def part_zones_to_pdm_pmesh_nodal(part_zones: List[CGNSPartTree],
   for i_part, part_zone in enumerate(part_zones):
 
     # > Coordinates
-    cx, cy, cz = PT.Zone.coordinates(part_zone)
-    if cz is None:
-      cz = np.zeros_like(cx)
-    pvtx_coord = np_utils.interweave_arrays([cx,cy,cz])
+    _coords = PT.Zone.coordinates(part_zone)
+    coords = [c if c is not None else np.zeros_like(_coords[0]) for c in _coords]
+    pvtx_coord = np_utils.interweave_arrays(coords)
     pvtx_ln_to_gn = MT.Zone.vtx_globalnumbering(part_zone)
     pmesh_nodal.set_coordinates(i_part, pvtx_coord, pvtx_ln_to_gn)
 
@@ -214,7 +213,7 @@ def part_zones_to_pdm_pmesh_nodal(part_zones: List[CGNSPartTree],
             i_group = PT.get_np_value(ordinal_n)[0]
 
           pl_n = PT.find_child_from_name(part_bc, 'PointList')
-          pl   = PT.get_value(pl_n)[0] - (range_by_dim[i_dim+1][0]-1)
+          pl   = PT.get_np_value(pl_n)[0] - (range_by_dim[i_dim+1][0]-1)
           gnum = MT.Subset.globalnumbering(part_bc)
           pmesh_nodal.group_set(pdm_elts.elements_dim_to_pdm_kind[i_dim+1], i_part, i_group, pl, gnum)
 

@@ -24,7 +24,8 @@ else:
 
 from maia.factory     import full_to_dist
 
-def replace_long_names(tree:CGNSTree, links: List[List[str]]) -> Tuple[CGNSTree, List[List[str]]]:
+Tree = TypeVar('Tree', bound=CGNSTree)
+def replace_long_names(tree:Tree, links: List[List[str]]) -> Tuple[Tree, List[List[str]]]:
   """ Return **a copy** of input tree and links list where long names have been shortened """
   links = [list(l) if isinstance(l, tuple) else l.copy() for l in links]
   tree = PT.shallow_copy(tree)

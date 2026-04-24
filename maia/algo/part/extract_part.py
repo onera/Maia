@@ -305,9 +305,9 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
       zsr_node = PT.get_node_from_path(part_zone, zsr_path)
       if zsr_node is not None:
         #Follow BC or GC link
-        zsr_node = PT.Container.SubsetNode(zsr_node, part_zone)
-        patch_domain.append(PT.get_np_value(PT.Subset.getPatch(zsr_node)))
-        location = PT.Subset.GridLocation(zsr_node)
+        subset = PT.Container.SubsetNode(zsr_node, part_zone)
+        patch_domain.append(PT.get_np_value(PT.Subset.getPatch(subset)))
+        location = PT.Subset.GridLocation(subset)
       else: # ZSR does not exists on this partition
         patch_domain.append(np.empty((1,0), np.int32))
     patch.append(patch_domain)

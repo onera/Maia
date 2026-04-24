@@ -816,7 +816,8 @@ def _iso_surface(part_tree: CGNSPartTree,
   for domain_path, part_zones in part_tree_per_dom.items():
     dom_base_name, dom_zone_name = domain_path.split('/')
     input_base = PT.find_child_from_name(part_tree, dom_base_name)
-    output_dims = PT.get_np_value(input_base) - np.array([1, 0], np.int32)
+    output_dims = PT.get_np_value(input_base).copy()
+    output_dims[0] -= 1
     iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', output_dims)
 
     field_values = []
@@ -929,7 +930,8 @@ def _surface_from_equation(part_tree: CGNSPartTree,
   for domain_path, part_zones in part_tree_per_dom.items():
     dom_base_name, dom_zone_name = domain_path.split('/')
     input_base = PT.find_child_from_name(part_tree, dom_base_name)
-    output_dims = PT.get_np_value(input_base) - np.array([1, 0], np.int32)
+    output_dims = PT.get_np_value(input_base).copy()
+    output_dims[0] -= 1
     iso_part_base = PT.update_child(iso_part_tree, dom_base_name, 'CGNSBase_t', output_dims)
     iso_part_zone    = iso_surface_one_domain(part_zones, surface_type, equation, elt_type, graph_part_tool, comm)
     PT.set_name(iso_part_zone, MT.conv.add_part_suffix(f'{dom_zone_name}', comm.Get_rank(), 0))
