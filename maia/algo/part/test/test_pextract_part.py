@@ -816,7 +816,6 @@ def test_all_transfer(transfer_dataset, eq, comm):
   for name in ['Geometry_3d', 'FakeZSR']:
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'ZSR', comm) == transfer_dataset
-  # Remark : j'ai choisi l'évaluation du assert ou du 'not' a la place '== False' ou '==True' ?
   for name in ['Xmin', 'Xmax']:
     assert not par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
   for name in ['Ymin', 'Ymax', 'Zmin', 'Zmax']:

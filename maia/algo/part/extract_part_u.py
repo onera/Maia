@@ -239,8 +239,7 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box
     # Extract fields and place in extracted container
     for field in PT.get_children_from_label(container, 'DataArray_t'):
       da = PT.new_DataArray(PT.get_name(field), PT.get_np_value(field)[idx], parent=FS_ep)
-      for desc in PT.get_children_from_label(field, 'Descriptor_t'): #get_children seulement pour etre generique ?
-        PT.add_child(da, desc)
+      PT.set_children(da, [PT.deep_copy(n) for n in PT.get_children_from_label(field, 'Descriptor_t')])
 
   # Update global numbering in extracted FS (only in partial case w/o is_own_data)
   # Again partial_gnum and extract_zones can have different len,
@@ -340,8 +339,7 @@ def exchange_field_one_domain_req(part_zones, extract_zones, dims, exch_tool_box
       i_part = 0
       if part1_data[i_part].size!=0:
         da = PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
-        for desc in PT.get_children_from_label(fld_node, 'Descriptor_t'): #get_children seulement pour etre generique ?
-          PT.add_child(da, desc)
+        PT.set_children(da, [PT.deep_copy(n) for n in PT.get_children_from_label(fld_node, 'Descriptor_t')])
 
   # Build PL with the last exchange stride
   if partial_field:
