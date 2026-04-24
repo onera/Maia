@@ -175,7 +175,7 @@ Zone Zone_t:
   ZSR_BC ZoneSubRegion_t:
     SomeRandomDescriptor Descriptor_t "Let's go party":
     BCRegionName Descriptor_t "BC":
-  ZSR_GC ZoneSubRegion_t:
+  ZSR_GC ZoneSubRegion_t 2:
     GridConnectivityRegionName Descriptor_t "GC":
   ZSR_BC_no_part ZoneSubRegion_t:
     BCRegionName Descriptor_t "FakeBC":
@@ -203,6 +203,8 @@ Zone.P2.N3 Zone_t:
   part_zone = PT.yaml.to_node(pt)
   PS.generate_related_zsr(dist_zone, part_zone)
   assert PT.is_same_node(PT.get_node_from_name(dist_zone, 'ZSR_BC'), PT.get_node_from_name(part_zone, 'ZSR_BC'))
+  assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.0'))[0] == 2
+  assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.1'))[0] == 2
   assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.0/Descriptor_t'))=='GC.0'
   assert PT.get_value(PT.get_node_from_predicates(part_zone, 'ZSR_GC.1/Descriptor_t'))=='GC.1'
   assert PT.get_child_from_name(part_zone, 'ZSR_BC_no_part') is None  # BC does not exists on part zone
