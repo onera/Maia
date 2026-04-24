@@ -489,3 +489,72 @@ CGNSTree CGNSTree_t:
         assert (identifier == [12, 15, 18]).all()
 
     TU.rm_collective_dir(tmp_dir, comm)
+
+@pytest_parallel.mark.parallel(1)
+def test_dist_tree_to_file_long_names(comm):
+  yt = f"""
+Base CGNSBase_t I4 [3, 3]:
+  ZoneWithALongLongLoooooongNameThatIsLongerThan32 Zone_t I4 [[1, 0, 0]]:
+    ZoneType ZoneType_t 'Unstructured':
+    :CGNS#Distribution UserDefinedData_t:
+      Vertex DataArray_t {dtype} [0, 1, 1]:
+      Cell DataArray_t {dtype} [0, 0, 0]:
+    FlowSolution FlowSolution_t:
+      AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1 DataArray_t R8 [0.]:
+      Density DataArray_t R8 [0.]:
+      RSDTurbulentDissipationRateDensityRMS DataArray_t R8 [0.]:
+      AnotherVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual DataArray_t R8 [0.]:
+      AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual2 DataArray_t R8 [0.]:
+"""
+
+  dist_tree = PT.yaml.to_cgns_tree(yt)
+
+  tmp_dir = TU.create_collective_tmp_dir(comm)
+
+  IOT.dist_tree_to_file(dist_tree, tmp_dir/'yt.cgns', comm)
+  loaded_dist_tree = IOT.file_to_dist_tree(tmp_dir/'yt.cgns', comm)
+
+  assert PT.is_same_tree(loaded_dist_tree, dist_tree)
+
+  TU.rm_collective_dir(tmp_dir, comm)
+
+def test_long_links(tmp_path, comm):
+  tree = PT.yaml.to_cgns_tree(f"""
+  Base CGNSBase_t I4 [3, 3]:
+    ZoneWithALongNameThatIsLongerThan32 Zone_t I4 [[1, 0, 0]]:
+      ZoneType ZoneType_t 'Unstructured':
+      FlowSolution FlowSolution_t:
+        Density DataArray_t R8 [0.]:
+        AnotherVeryLongFieldNameWithLotsOfDetails DataArray_t R8 [0.]:
+  """)
+  fname = str(tmp_path / 'tree.cgns')
+  
+  # Intermediate long name
+  links = [['.', 'other/file.cgns', 'other/link', 'Base/ZoneWithALongNameThatIsLongerThan32/FlowSolution']]
+  maia.io.write_tree(tree, fname, links)
+  r_links = maia.io.read_links(fname)
+  assert r_links == links
+
+  # Terminal long name
+  links = [['.', 'other/file.cgns', 'other/link',
+            'Base/ZoneWithALongNameThatIsLongerThan32/FlowSolution/AnotherVeryLongFieldNameWithLotsOfDetails']]
+  with warnings.catch_warnings():
+    warnings.simplefilter("ignore", RuntimeWarning)
+    dtree = PT.deep_copy(tree)
+  distri = PT.yaml.to_node(f"""
+  :CGNS#Distribution UserDefinedData_t:
+    Vertex DataArray_t {dtype} [0, 1, 1]:
+    Cell DataArray_t {dtype} [0, 0, 0]:
+  """)
+  PT.add_child(PT.find_node_from_label(dtree, 'Zone_t'), distri)
+
+  maia.io.dist_tree_to_file(dtree, fname, comm, links)
+  r_links = maia.io.read_links(fname)
+  assert r_links == links
+
+  # Terminal long name, implicit
+  links = [['.', 'other/file.cgns', 'other/link',
+            'Base/ZoneWithALongNameThatIsLongerThan32/FlowSolution/ImplicitLongFieldNameWithLotsOfDetails']]
+  maia.io.write_tree(tree, fname, links)
+  r_links = maia.io.read_links(fname)
+  assert r_links == links

@@ -20,6 +20,7 @@ from .fix_tree      import fix_point_ranges, corr_index_range_names,\
                            fix_structured_pr_shape, check_namings
 
 from maia.utils import logging as mlog
+from maia.pytree.node import name_utils as NU
 
 def load_data(names, labels, hdf_dataset):
   """ Function used to determine if the data is heavy or not """
@@ -114,25 +115,18 @@ def read_links(filename):
   return load_tree_links(filename)
 
 def _write_links(filename, links):
-  fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
+  fid = h5py.File(filename, 'r+')
   for link in links:
     target_dir, target_file, target_node, local_node = link
-    parent_node_path = PT.utils.path_head(local_node)
-    local_node_name  = PT.utils.path_tail(local_node)
     try:
-      gid = open_from_path(fid, parent_node_path)
+      node = fid[local_node]
     except (KeyError,ValueError):
       mlog.error(f"Can not write link for node {link[3]}: path does not exists in file")
     else:
-      write_link(gid, local_node_name, target_file, target_node)
+      write_link(node.id, target_file, target_node)
   fid.close()
 
-def write_full(filename:str, dist_tree, links=[]):
-  _dist_tree = PT.shallow_copy(dist_tree)
-  for link in links: # Links override data, so delete data
-    PT.rm_node_from_path(_dist_tree, link[3])
-  write_tree_partial(_dist_tree, filename, lambda X,Y,s: True)
-
-  # Add links if any
+def write_full(filename:str, tree, links=[]):
+  write_tree_partial(tree, filename, lambda X,Y,s: True)
   _write_links(filename, links)
 

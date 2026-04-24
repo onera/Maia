@@ -12,7 +12,10 @@ from maia.factory.dist_from_part import discover_nodes_from_matching
 from maia.factory.partitioning import compute_nosplit_weights
 from .cgns_io_tree import _LEGACY_IO
 from .cgns_io_tree import write_tree
+from .cgns_io_tree import replace_long_names
 from .utils        import create_parent_folder
+
+from maia.pytree.node import name_utils as NU
 
 def get_str_value(node:CGNSTree) -> str:
   assert isinstance(value := PT.get_value(node), str)
@@ -169,6 +172,8 @@ def file_to_part_tree(filename: Union[str, PathLike],
   PT.rm_children_from_predicate(tree, lambda n: PT.get_label(n) == 'CGNSBase_t' \
           and len(PT.get_children_from_label(n, 'Zone_t')) == 0)
 
+  NU.unhash_long_names(tree)
+
   if redispatch:
     enforce_maia_naming(tree, comm)
 
@@ -229,12 +234,11 @@ def part_tree_to_file(part_tree: CGNSPartTree,
         if _LEGACY_IO:
           writeZones(part_tree, filename, proc=-1)
         else:
+          tree, links = replace_long_names(part_tree, links)
+
           fid = h5f.open(bytes(filename, 'utf-8'), h5f.ACC_RDWR)
-          for zone_path in maia.pytree.predicates_to_paths(part_tree, 'CGNSBase_t/Zone_t'):
-            _links = [link for link in links if link[3].startswith(zone_path)]
-            zone = PT.shallow_copy(PT.find_node_from_path(part_tree, zone_path))
-            for link in _links: # Remove nodes to be linked
-              PT.rm_node_from_path(zone, PT.utils.path_tail(link[3], 2))
+          for zone_path in maia.pytree.predicates_to_paths(tree, 'CGNSBase_t/Zone_t'):
+            zone = PT.find_node_from_path(tree, zone_path)
             gid = open_from_path(fid, zone_path.split('/')[0])
             _write_node_partial(gid, zone, lambda X,Y,s: True, ([],[]))
             gid.close()
@@ -253,5 +257,10 @@ def part_tree_to_file(part_tree: CGNSPartTree,
     if rank == 0:
       assert _zone_links is not None #For mypy
       zone_links  = [l for proc_links in _zone_links for l in proc_links] #Flatten gather result
+      
+      for zone_link in zone_links:
+        b_name, z_name = zone_link[3].split('/')
+        PT.new_child(PT.find_child_from_name(top_tree, b_name), z_name, 'Zone_t')
+
       write_tree(top_tree, filename, links=zone_links)
 

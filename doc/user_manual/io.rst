@@ -12,6 +12,28 @@ been installed on your computer with parallel support.
 All the IO functions accept ``str`` or ``Path`` objects for ``filename`` argument.
 For write operations, intermediate directories are created if they do not already exist.
 
+.. rubric:: A note about 32 characters
+
+CGNS is infamous for its names being limited to 32 characters. However, since the Python/CGNS mapping
+does not *technically* enforce this limitation, Maia allows trees having names longer than 32 chars
+in IO functions. This is achived throught the following hack:
+
+- when **writing** files, nodes having a name longer than 32 chars are shortened, the original name beeing stored
+  in a special ``Descriptor_t`` child called 'FullNameLongerThan32CharactersLi'.
+- when **reading** files, nodes having the special 'FullNameLongerThan32CharactersLi' child have their name updated
+  with the registered value. The descriptor node is then removed.
+
+The same apply to links: users should provide original (possibly long) paths to write functions,
+and automatically get original paths when calling :func:`~maia.io.read_links`.
+
+This ensure a transparent processus for the user, but keep in mind that
+cross tree references are not updated: for exemple, ``FamilyName_t`` values are not updated, even
+if the matching family is shortened. This can confuse applications not using Maia to read files.
+In addition, if such application remove the special Descriptor children nodes from file, original
+names will be lost.
+
+.. hint:: Users can see the shortened ↔ original names mapping of a hdf file using ``maia_show_full_names`` utility.
+
 .. _user_man_dist_io:
 
 Distributed IO

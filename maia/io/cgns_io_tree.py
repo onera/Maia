@@ -1,6 +1,7 @@
 _LEGACY_IO  = False
 import os
 import time
+import warnings
 import mpi4py.MPI as MPI
 import numpy as np
 
@@ -8,6 +9,7 @@ from maia.typing import *
 import maia.pytree        as PT
 import maia.pytree.maia   as MT
 from   maia.pytree.maia   import metrics
+from   maia.pytree.node   import name_utils as NU
 import maia.utils.logging as mlog
 
 from .distribution_tree         import add_distribution_info, clean_distribution_info
@@ -21,6 +23,26 @@ else:
   from . import _hdf_io_h5py as _hdf_io #type:ignore[no-redef]
 
 from maia.factory     import full_to_dist
+
+def replace_long_names(tree:CGNSTree, links: List[List[str]]) -> Tuple[CGNSTree, List[List[str]]]:
+  """ Return **a copy** of input tree and links list where long names have been shortened """
+  links = [list(l) if isinstance(l, tuple) else l.copy() for l in links]
+  tree = PT.shallow_copy(tree)
+  for link in links:
+    src_path = link[3]
+    if (parent := PT.get_node_from_path(tree, PT.utils.path_head(src_path))) is not None:
+      with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        PT.update_child(parent, PT.utils.path_tail(src_path), value=None, children=[])
+      # Update path if link exist; otherwise, keep old for better error display
+      link[3] = '/'.join(NU.short_name_with_hash(name) for name in src_path.split('/'))
+
+  NU.hash_long_names(tree)
+
+  for link in links:
+    link[2] = '/'.join(NU.short_name_with_hash(name) for name in link[2].split('/'))
+
+  return tree, links
 
 def recompute_ec_size(tree, comm):
   # In write mode, retrieve ElementConnectivity#Size to feed hdf dataspaces
@@ -65,7 +87,8 @@ def write_tree(tree: CGNSTree,
   """
   create_parent_folder(filename, MPI.COMM_SELF)
   filename = str(filename)
-  _hdf_io.write_full(filename, tree, links=links)
+  tree, links = replace_long_names(tree, links)
+  _hdf_io.write_full(filename, tree, links)
 
 def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
   """read_tree(filename)
@@ -83,7 +106,9 @@ def read_tree(filename: Union[str, PathLike]) -> CGNSTree:
       tree = PT.yaml.to_cgns_tree(f)
     return tree
   else:
-    return _hdf_io.read_full(filename)
+    tree = _hdf_io.read_full(filename)
+    NU.unhash_long_names(tree)
+    return tree
 
 def read_links(filename: Union[str, PathLike]) -> List[List[str]]:
   """read_links(filename)
@@ -138,7 +163,7 @@ def load_tree_from_filter(filename: str,
     raise RuntimeError("Something strange in the loading process")
 
 def save_tree_from_filter(filename: str,
-                          dist_tree: CGNSDistTree, 
+                          saving_dist_tree: CGNSDistTree, 
                           comm: MPIComm, 
                           hdf_filter: Dict[str, Any], 
                           links: List[List[str]]) -> None:
@@ -151,10 +176,11 @@ def save_tree_from_filter(filename: str,
   for key, f in hdf_filter_with_func.items():
     f(hdf_filter_with_dim)
 
-  #Dont save distribution info, but work on a copy to keep it for further use
-  saving_dist_tree = PT.shallow_copy(dist_tree)
   clean_distribution_info(saving_dist_tree)
 
+  for link in links:
+    hdf_filter_with_dim.pop(link[3], None) # Remove linked values from dict
+    
   _hdf_io.write_partial(filename, saving_dist_tree, hdf_filter_with_dim, links, comm)
 
 def fill_size_tree(tree: CGNSTree, 
@@ -206,6 +232,7 @@ def file_to_dist_tree(filename: Union[str, PathLike], comm: MPIComm) -> CGNSDist
     size_tree = load_size_tree(filename, comm)
     fill_size_tree(size_tree, filename, comm)
     dist_tree = CGNSDistTree(size_tree)
+    NU.unhash_long_names(dist_tree)
 
   end = time.time()
   dt_size     = sum(metrics.dtree_nbytes(dist_tree))
@@ -232,12 +259,11 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
     comm     (MPIComm)       : MPI communicator
   """
   MT.check_cgns_dist_tree(dist_tree)
-  if links:
-    dist_tree = PT.shallow_copy(dist_tree)
-    for link in links: # Links override data, so delete data
-      PT.rm_node_from_path(dist_tree, link[3])
 
-  dt_size     = sum(metrics.dtree_nbytes(dist_tree))
+  # work on a copy that we may alter for our specific needs
+  saving_dist_tree, links = replace_long_names(dist_tree, links)
+
+  dt_size     = sum(metrics.dtree_nbytes(saving_dist_tree))
   all_dt_size = comm.allreduce(dt_size, MPI.SUM)
   mlog.info(f"Distributed write of a {mlog.bsize_to_str(dt_size)} dist_tree"
             f" (Σ={mlog.bsize_to_str(all_dt_size)})...")
@@ -246,9 +272,9 @@ def dist_tree_to_file(dist_tree: CGNSDistTree,
 
   create_parent_folder(filename, comm)
 
-  recompute_ec_size(dist_tree, comm)
-  hdf_filter = create_tree_hdf_filter(dist_tree, mode='write')
-  save_tree_from_filter(filename, dist_tree, comm, hdf_filter, links)
+  recompute_ec_size(saving_dist_tree, comm)
+  hdf_filter = create_tree_hdf_filter(saving_dist_tree, mode='write')
+  save_tree_from_filter(filename, saving_dist_tree, comm, hdf_filter, links)
   end = time.time()
   mlog.info(f"Write completed [{filename}] ({end-start:.2f} s)")
 
