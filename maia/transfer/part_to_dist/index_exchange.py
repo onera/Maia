@@ -340,9 +340,10 @@ def part_elt_to_dist_elt(dist_zone, part_zones, elem_name, comm):
     _, dist_ec = GI.Put_v(data_in_l)
   else:
     dist_ec = None
+  dist_er = np.array([1, distri_elt[2]], dtype=distri_elt.dtype)
 
   # > Add in disttree
-  elt_node = PT.new_Elements(elem_name, type=elt_id, erange=[1, distri_elt[2]], econn=dist_ec, parent=dist_zone)
+  elt_node = PT.new_Elements(elem_name, type=elt_id, erange=dist_er, econn=dist_ec, parent=dist_zone)
 
   MT.new_Distribution({'Element' : distri_elt}, parent=elt_node)
 

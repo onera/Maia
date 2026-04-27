@@ -337,6 +337,7 @@ Zone.P2.N0 Zone_t:
 
   elt = PT.get_node_from_name(dist_zone, 'Quad')
   assert (PT.Element.Range(elt) == [1,8]).all()
+  assert PT.Element.Range(elt).dtype == pdm_gnum_dtype
   assert (elt[1] == [7,0]).all()
   assert (PT.get_child_from_name(elt, 'ElementConnectivity')[1] == expected_ec).all()
   distri_elt  = MT.Element.distribution(elt)
