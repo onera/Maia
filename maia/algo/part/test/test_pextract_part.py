@@ -116,7 +116,7 @@ def test_extract_part_obj(cgns_name, comm):
     pl = [np.array([[1,2],[1,1],[1,3]], np.int32), np.array([[1,2],[1,1],[1,3]], np.int32)] if cgns_name=='Structured' else\
          [np.array([[1,2]], np.int32), np.array([[1,2]], np.int32)]
   loc = 'Vertex' if cgns_name=='Structured' else 'FaceCenter'
-  extractor = EP.Extractor(part_tree, pl, loc, comm)
+  extractor = EP.Extractor(part_tree, [pl], loc, comm)
   extracted_tree = extractor.get_extract_part_tree()
 
   if cgns_name=='Structured':
@@ -154,7 +154,7 @@ def test_exch_field(cgns_name, partial, comm):
       fld = gnum.reshape(PT.Zone.VertexSize(zone), order='F') if cgns_name=='Structured' else gnum
       PT.new_FlowSolution('FlowSol', loc="Vertex", fields={'gnum': fld}, parent=zone)
 
-  extractor = EP.Extractor(part_tree, [np.array([[1,3],[1,5],[1,1]], np.int32)], "Vertex", comm)
+  extractor = EP.Extractor(part_tree, [[np.array([[1,3],[1,5],[1,1]], np.int32)]], "Vertex", comm)
   extractor.exchange_fields(['FlowSol'])
   extr_tree = extractor.get_extract_part_tree()
 
@@ -210,7 +210,7 @@ def test_exch_field_from_bc_zsr(bc_name, comm):
     else:
       bc_pl   = np.empty((1,0), dtype=np.int32, order='F')
 
-  extractor = EP.Extractor(part_tree, [bc_pl], "FaceCenter", comm)
+  extractor = EP.Extractor(part_tree, [[bc_pl]], "FaceCenter", comm)
   extractor.exchange_fields([f'ZSR_{bc_name}'])
   extr_tree = extractor.get_extract_part_tree()
   extr_zone = PT.get_all_Zone_t(extr_tree)[0]

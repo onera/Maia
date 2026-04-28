@@ -269,7 +269,7 @@ def test_extract_cell_from_point_list_U(graph_part_tool, comm, write_output):
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'CellCenter','Poly',comm)
 
   # > Extract part
-  extractor = EXP.Extractor(part_tree, point_list, "CellCenter", comm,
+  extractor = EXP.Extractor(part_tree, [point_list], "CellCenter", comm,
                             # equilibrate=1,
                             # graph_part_tool=graph_part_tool,
                            )
@@ -303,7 +303,7 @@ def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
   part_tree, point_list = generate_test_tree(n_vtx,n_part,'FaceCenter','Poly',comm)
 
   # > Extract part
-  extractor = EXP.Extractor(part_tree, point_list, "FaceCenter", comm,
+  extractor = EXP.Extractor(part_tree, [point_list], "FaceCenter", comm,
                             # equilibrate=1,
                             graph_part_tool=graph_part_tool
                            )  

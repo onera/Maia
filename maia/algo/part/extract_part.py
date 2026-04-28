@@ -60,7 +60,7 @@ def set_transfer_dataset(bc_n: CGNSTree,zsr_bc_n: CGNSTree,
 
 
 class Extractor:
-  def __init__(self, part_tree:CGNSPartTree, patch:List[NDArray],
+  def __init__(self, part_tree:CGNSPartTree, patch:List[List[NDArray]],
                location:str, comm: MPIComm,
                equilibrate:bool=True,
                graph_part_tool:str="hilbert") -> None:
@@ -73,7 +73,6 @@ class Extractor:
     part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
     # Check : monodomain
     assert len(part_tree_per_dom.values()) == 1
-    dom_path, part_zones = list(part_tree_per_dom.items())[0]
 
     # > Check if U or S (working because monodomain)
     zone_type = PT.get_node_from_name(part_tree, 'ZoneType')
@@ -100,11 +99,12 @@ class Extractor:
     if location == 'Vertex':
       if self.is_struct:
         cell_dim = -1
-        for part_pr in patch:
-          if part_pr.size!=0:
-            size_per_dim = np.diff(part_pr)[:,0]
-            idx = np.where(size_per_dim!=0)[0]
-            cell_dim = idx.size
+        for domain_prs in patch:
+          for part_pr in domain_prs:
+            if part_pr.size!=0:
+              size_per_dim = np.diff(part_pr)[:,0]
+              idx = np.where(size_per_dim!=0)[0]
+              cell_dim = idx.size
         cell_dim = comm.allreduce(cell_dim, op=MPI.MAX)
       else:
         cell_dim = celldim
@@ -120,34 +120,37 @@ class Extractor:
     extract_tree = PT.new_CGNSTree()
     extract_base = PT.new_CGNSBase(base_name, cell_dim=cell_dim, phy_dim=phydim, parent=extract_tree)
     # Compute extract part of each domain
-    if self.is_struct:
-      extract_zones, etb = extract_part_one_domain_s(part_zones, patch, self.dims, self.location, comm)
-    else:
-      extract_zones, etb = extract_part_one_domain_u(part_zones, patch, self.dims, comm,
-                                                     equilibrate=equilibrate,
-                                                     graph_part_tool=graph_part_tool)
-    etb['ExtractingCnt'] = None
-    self.exch_tool_box[dom_path] = etb
-    for extract_zone in extract_zones:
-      if PT.Zone.n_vtx(extract_zone)!=0:
-        if phydim == 2:
-          PT.rm_node_from_path(extract_zone, 'GridCoordinates/CoordinateZ')
-        PT.add_child(extract_base, extract_zone)
+    for i_domain, dom_part_zones in enumerate(part_tree_per_dom.items()):
+      dom_path   = dom_part_zones[0]
+      part_zones = dom_part_zones[1]
+      if self.is_struct:
+        extract_zones, etb = extract_part_one_domain_s(part_zones, patch[i_domain], self.dims, self.location, comm)
+      else:
+        extract_zones, etb = extract_part_one_domain_u(part_zones, patch[i_domain], self.dims, comm,
+                                                       equilibrate=equilibrate,
+                                                       graph_part_tool=graph_part_tool)
+      etb['ExtractingCnt'] = None
+      self.exch_tool_box[dom_path] = etb
+      for extract_zone in extract_zones:
+        if PT.Zone.n_vtx(extract_zone)!=0:
+          if phydim == 2:
+            PT.rm_node_from_path(extract_zone, 'GridCoordinates/CoordinateZ')
+          PT.add_child(extract_base, extract_zone)
 
-    # > Clean orphan GC
-    if self.is_struct:
-      all_zone_name_l = [PT.get_name(n) for n in PT.iter_all_Zone_t(extract_base)]
-      all_zone_name_l = comm.allgather(all_zone_name_l)
-      all_zone_name = list(np.concatenate(all_zone_name_l))
+      # > Clean orphan GC
+      if self.is_struct:
+        all_zone_name_l = [PT.get_name(n) for n in PT.iter_all_Zone_t(extract_base)]
+        all_zone_name_l = comm.allgather(all_zone_name_l)
+        all_zone_name = list(np.concatenate(all_zone_name_l))
 
-      for zone_n in PT.get_children_from_label(extract_base, 'Zone_t'):
-        for zgc_n in PT.get_children_from_label(zone_n, 'ZoneGridConnectivity_t'):
-          for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'):
-            matching_zone_name = PT.get_value(gc_n)
-            if matching_zone_name not in all_zone_name:
-              PT.rm_child(zgc_n, gc_n)
-          if len(PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'))==0:
-            PT.rm_child(zone_n, zgc_n)
+        for zone_n in PT.get_children_from_label(extract_base, 'Zone_t'):
+          for zgc_n in PT.get_children_from_label(zone_n, 'ZoneGridConnectivity_t'):
+            for gc_n in PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'):
+              matching_zone_name = PT.get_value(gc_n)
+              if matching_zone_name not in all_zone_name:
+                PT.rm_child(zgc_n, gc_n)
+            if len(PT.get_children_from_label(zgc_n, 'GridConnectivity1to1_t'))==0:
+              PT.rm_child(zone_n, zgc_n)
 
     # Copy Families existing on extracted tree
     is_family_name = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
@@ -346,7 +349,7 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
         if (fm := PT.get_child_from_name(d_bc, 'FamilyName')) is not None:
           PT.new_Descriptor('Family', PT.get_str_value(fm), parent=da)
 
-  extractor = Extractor(part_tree, patch, location, comm, **options)
+  extractor = Extractor(part_tree, [patch], location, comm, **options)
 
   if location == 'FaceCenter':
 
