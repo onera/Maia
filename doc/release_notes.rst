@@ -25,6 +25,7 @@ Development version
 - iso_surface & slices : improve robustness and extend to 2D meshes
 - compute_wall_distance: implementation for distributed meshes
 - transform_affine: add ``reverse`` argument do easily revert a transformation
+- extract_part: rebuild BCs when extracting a surface from a volumic U mesh
 
 🐞 Fixes
 ^^^^^^^^

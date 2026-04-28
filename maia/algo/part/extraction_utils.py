@@ -34,7 +34,8 @@ def discover_containers(part_zones:List[CGNSTree], container_name:str, patch_nam
       child_list=['GridLocation', 'BCRegionName', 'GridConnectivityRegionName'])
 
   fields_query = PT.pred.label_in(['DataArray_t', patch_type])
-  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm)
+  dist_from_part.discover_nodes_from_matching(mask_zone, part_zones, [container_name, fields_query], comm, \
+                                              child_list=['Descriptor_t'])
   mask_container = PT.get_child_from_name(mask_zone, container_name)
   if mask_container is None:
     raise ValueError(f"[maia-extract_part] asked container \"{container_name}\" for exchange is not in tree")

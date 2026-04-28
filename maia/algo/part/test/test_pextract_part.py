@@ -319,6 +319,15 @@ def test_extr_U_local(comm):
     if PT.get_name(zone) == 'Zone.P2.N0':
       assert (MT.Subset.globalnumbering(vtxzsr) == [6, 7, 3, 2, 8, 4, 10, 11, 12, 14, 15, 16]).all()
 
+    origbc = PT.get_child_from_name(zone, 'ParentData')
+    assert PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCsName')) == 'Xmax\nXmin\nYmax\nYmin\nZmax\nZmin'
+    if PT.get_name(zone) == 'Zone.P0.N0':
+      assert (PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCId')) == [1, 1, 1]).all()
+    if PT.get_name(zone) == 'Zone.P0.N1':
+      assert (PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCId')) == [0, 0, 0, 0, 0, 0]).all()
+    if PT.get_name(zone) == 'Zone.P2.N0':
+      assert (PT.get_value(PT.get_child_from_name(origbc, 'OriginalBCId')) == [1, 1, 1, 1, 1, 1, 0, 0, 0]).all()
+
 
 @pytest_parallel.mark.parallel(3)
 @pytest.mark.parametrize("cgns_name" , ['Structured','Poly'])
@@ -601,36 +610,24 @@ Base CGNSBase_t I4 [1, 3]:
         I4 : [7, 1, 2, 8, 3, 9, 4, 10, 8, 7, 5, 11, 9, 8, 6, 12, 10, 9, 13, 7, 11, 10, 8, 14, 12, 11, 9, 15, 10, 16, 14,
               13, 11, 17, 15, 14, 12, 18, 16, 15, 19, 13, 17, 16, 14, 20, 18, 17, 15, 21, 16, 22, 20, 19, 17, 23, 21, 20,
               18, 24, 22, 21, 23, 22, 24, 23]
-    ZoneBC ZoneBC_t:
-      Xmax BC_t 'Null':
-        GridLocation GridLocation_t 'CellCenter':
-        PointList IndexArray_t I4 [[8, 19, 30]]:
-      Ymax BC_t 'Null':
-        GridLocation GridLocation_t 'CellCenter':
-        PointList IndexArray_t I4 [[27, 29, 31, 32, 33]]:
-      Xmin BC_t 'Null':
-        GridLocation GridLocation_t 'CellCenter':
-        PointList IndexArray_t I4 [[1, 10, 21]]:
     ZSR_Edges FlowSolution_t:
       GridLocation GridLocation_t 'CellCenter':
       cx DataArray_t:
         R8 : [-2.5, -1.5, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, -2.5, 1.0,
               -1.5, 2.0, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, -2.5, 1.0,
               -1.5, 2.0, -0.5, 0.5, -2.0, 1.5, -1.0, 2.5, 0.0, 1.0, 2.0]
+    ParentData DiscreteData_t:
+      GridLocation GridLocation_t 'CellCenter':
+      OriginalBCId DataArray_t:
+        I4 : [ 1, -1, -1, -1, -1, -1, -1,  0, -1,  1, -1, -1, -1, -1, -1, -1, -1,
+              -1,  0, -1,  1, -1, -1, -1, -1, -1,  2, -1,  2,  0,  2,  2,  2] 
+      OriginalBCsName Descriptor_t 'Xmax\\nXmin\\nYmax\\nYmin':
     FlowSolution_NC FlowSolution_t:
       GridLocation GridLocation_t 'Vertex':
       cx DataArray_t:
         R8 : [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, -2.5, -1.5,
               -0.5, 0.5, 1.5, 2.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5]
   """)
-  if not equilibrate: # Somehow in local mode, one PL is different
-    if Version('2.7') <= TU.PDM_VERSION:
-      node = PT.find_node_from_name(ref_edge, 'Ymax')
-      pl = PT.find_child_from_name(node, 'PointList')
-      PT.set_value(pl, np.array([[27, 32, 29, 33, 31]]))
-    else: # Was not supported in 2.6
-      PT.rm_nodes_from_label(ref_edge, 'ZoneBC_t')
-
 
   # This switch is because Hilbert splitter differs in local / reeq mode.
   # To remove if this is fixed
@@ -807,6 +804,10 @@ def test_all_transfer(transfer_dataset, eq, comm):
   for name in ['Geometry_3d', 'FakeZSR']:
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'ZSR', comm) == transfer_dataset
+  for name in ['Xmin', 'Xmax']:
+    assert not par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
+  for name in ['Ymin', 'Ymax', 'Zmin', 'Zmax']:
+    assert par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
   
   pext = maia.algo.part.extract_part_from_bc_name(ptree, 'Ymin', comm, transfer_dataset, 'ALL', equilibrate=eq)
   ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
@@ -815,6 +816,10 @@ def test_all_transfer(transfer_dataset, eq, comm):
   for name in ['Geometry_3d', 'OtherZSR', 'FakeZSR']:
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
+  for name in ['Ymin', 'Ymax']:
+    assert not par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
+  for name in ['Xmin', 'Xmax', 'Zmin', 'Zmax']:
+    assert par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
 
   pext = maia.algo.part.extract_part_from_family(ptree, 'FAM', comm, transfer_dataset, 'ALL', equilibrate=eq)
   ext_zones = PT.get_nodes_from_label(pext, 'Zone_t')
@@ -824,6 +829,10 @@ def test_all_transfer(transfer_dataset, eq, comm):
     assert par_utils.exists_anywhere(ext_zones, name, comm) == False
   assert par_utils.exists_anywhere(ext_zones, 'FAM', comm) == transfer_dataset
   assert par_utils.exists_anywhere(ext_zones, 'Ymin', comm) == transfer_dataset
+  for name in ['Xmin', 'Ymin']:
+    assert not par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
+  for name in ['Xmax', 'Ymax', 'Zmin', 'Zmax']:
+    assert par_utils.exists_anywhere(ext_zones, f'ZoneBC/{name}', comm)
 
 @pytest_parallel.mark.parallel(2)
 def test_extract_S_2d(comm):

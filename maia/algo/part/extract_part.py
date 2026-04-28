@@ -7,15 +7,20 @@ import maia.pytree.maia   as MT
 import maia.utils.logging as mlog
 from   maia.factory       import dist_from_part
 from   maia.utils         import np_utils, par_utils
+from   maia.utils         import vstride as vs
 from   .extract_part_s    import exchange_field_s, extract_part_one_domain_s
 from   .extract_part_u    import exchange_field_u, extract_part_one_domain_u
 from   .extraction_utils  import LOC_TO_DIM
+from   .point_cloud_utils import create_sub_numbering
 from   .utils             import _gather_containers_name
 from   maia.typing        import *
+from   maia.pytree.typing import Predicates
 
 import numpy as np
 
 import Pypdm.Pypdm as PDM
+
+SET_UNION = lambda s1,s2 : s1 | s2
 
 def get_stats(extract_tree: CGNSTree, dim: int,
               comm: MPIComm) -> Tuple[str, int, int]:
@@ -74,10 +79,6 @@ class Extractor:
     zone_type = PT.get_node_from_name(part_tree, 'ZoneType')
     is_struct = PT.get_value(zone_type)=='Structured' if zone_type is not None else False
     self.is_struct = comm.allreduce(is_struct)
-    # if self.is_struct and equilibrate:
-    #   raise NotImplementedError('Structured Extractor with equilibrate=True option is not yet implemented.')
-    # if not self.is_struct and not equilibrate:
-    #   raise NotImplementedError('Unstructured Extractor with equilibrate=False option is not yet implemented.')
 
     # Get dim of input tree (monobase + all ranks should know the base)
     celldim, phydim = PT.get_np_value(PT.find_child_from_label(part_tree, 'CGNSBase_t'))
@@ -295,27 +296,125 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
       mlog.warning("extract_part: option `graph_part_tool` is ignored when `equilibrate` is False")
 
   part_tree_per_dom = dist_from_part.get_parts_per_blocks(part_tree, comm)
+  assert len(part_tree_per_dom.values()) == 1
+  dist_zone_path, part_zones = list(part_tree_per_dom.items())[0]
 
-  # Get patch for each partitioned zone and group it by domain
+  # Get patch for each partitioned zone
   patch = list()
   location = ''
-  for domain, part_zones in part_tree_per_dom.items():
-    patch_domain = list()
-    for part_zone in part_zones:
-      zsr_node = PT.get_node_from_path(part_zone, zsr_path)
-      if zsr_node is not None:
-        #Follow BC or GC link
-        subset = PT.Container.SubsetNode(zsr_node, part_zone)
-        patch_domain.append(PT.get_np_value(PT.Subset.getPatch(subset)))
-        location = PT.Subset.GridLocation(subset)
-      else: # ZSR does not exists on this partition
-        patch_domain.append(np.empty((1,0), np.int32))
-    patch.append(patch_domain)
+  region_names = set()
+  for part_zone in part_zones:
+    zsr_node = PT.get_node_from_path(part_zone, zsr_path)
+    if zsr_node is not None:
+      # Collect BCRegionName(s) to exclude some BCs later
+      if (reg := PT.get_child_from_name(zsr_node, 'BCRegionName')) is not None:
+        region_names.add(PT.get_str_value(reg))
+      if (reg := PT.get_child_from_name(zsr_node, '__maia::RegionNames')) is not None:
+        region_names |= set(PT.get_str_value(reg).split('\n'))
+      # Collect patch, following BC or GC link
+      subset = PT.Container.SubsetNode(zsr_node, part_zone)
+      patch.append(PT.get_np_value(PT.Subset.getPatch(subset)))
+      location = PT.Subset.GridLocation(subset)
+    else: # ZSR does not exist on this partition
+      patch.append(np.empty((1,0), np.int32))
 
-  # Get location if proc has no zsr
+  # Get location and bcregionname if proc has no zsr
   location = comm.allreduce(location, op=MPI.MAX)
+  region_names = comm.allreduce(region_names, op=SET_UNION)
 
-  extractor = Extractor(part_tree, patch, location, comm, **options)
+  if location == 'FaceCenter':
+    # Collect all BCs names
+    fake_dist_zone = PT.new_Zone()
+    bc_predicate:Predicates = ['ZoneBC_t', PT.pred.label_is('BC_t') &~PT.pred.name_in(region_names)]
+    child_list = ['FamilyName_t', 'GridLocation_t', 'Descriptor_t']
+    dist_from_part.discover_nodes_from_matching(fake_dist_zone, part_zones, bc_predicate, comm,
+                                                child_list=child_list, get_value='all')
+    all_dist_bcs = PT.get_nodes_from_label(fake_dist_zone, 'BC_t')
+    for part_zone in part_zones:
+      n_vtx = PT.Zone.n_vtx(part_zone)
+      ngon = PT.Zone.NGonNode(part_zone)
+      ng_offset = PT.Element.Range(ngon)[0]
+      face_vtx = MT.Element.connectivity(ngon)
+      # For each BC (excepted the ones of region_names), create
+      # a tag to indicate if vertices belongs to it or not
+      fs_vtx_bc = PT.new_FlowSolution('__maia::TagBCsOnVtx', parent=part_zone)
+      for d_bc in all_dist_bcs:
+        bc_name = PT.get_name(d_bc)
+        bc_tag = np.zeros(n_vtx, dtype=bool)
+        if (bc := PT.get_node_from_name(part_zone, bc_name)) is not None:
+          pl = PT.get_np_value(PT.find_node_from_name(bc, 'PointList'))[0] - ng_offset
+          vtx_ids = vs.take(face_vtx, pl).values
+          bc_tag[vtx_ids-1] = True
+        da = PT.new_DataArray(bc_name, value=bc_tag, parent=fs_vtx_bc)
+        PT.new_Descriptor('BCValue', PT.get_str_value(d_bc), parent=da)
+        if (fm := PT.get_child_from_name(d_bc, 'FamilyName')) is not None:
+          PT.new_Descriptor('Family', PT.get_str_value(fm), parent=da)
+
+  extractor = Extractor(part_tree, [patch], location, comm, **options)
+
+  if location == 'FaceCenter':
+
+    extractor.exchange_fields(['__maia::TagBCsOnVtx'])
+
+    extract_tree = extractor.get_extract_part_tree()
+    extract_base = PT.get_all_CGNSBase_t(extract_tree)[0] # Single domain
+    maia.algo.ngon_to_edge_pe(extract_tree, comm)
+  
+    families = set()
+    for extract_zone in PT.get_children_from_label(extract_base, 'Zone_t'):
+      
+      pfs_vtx_bc = PT.get_node_from_name(extract_zone, '__maia::TagBCsOnVtx')
+      if pfs_vtx_bc is None: 
+        continue
+
+      extract_zbc = PT.update_child(extract_zone, 'ZoneBC', 'ZoneBC_t')
+      edge_elts = MT.Zone.EdgeNode(extract_zone)
+      edge_co = PT.get_np_value(PT.find_child_from_name(edge_elts, 'ElementConnectivity'))
+      edge_pe = PT.get_np_value(PT.find_child_from_name(edge_elts, 'ParentElements'))
+      
+      is_bnd_edge = np.logical_or.reduce(edge_pe == 0, axis=1)
+      edge_gnum = MT.Element.globalnumbering(edge_elts)
+      if (ext_zgc := PT.get_child_from_label(extract_zone, 'ZoneGridConnectivity_t')) is not None:
+        GC_PRED = PT.pred.is_gc_of_kind(is_1to1=True) & PT.pred.has_location('EdgeCenter')
+        gcs = PT.get_children_from_predicate(ext_zgc, GC_PRED)
+        gc_pls = [PT.get_np_value(PT.find_child_from_name(gc, 'PointList')) for gc in gcs]
+        gc_edges = np_utils.concatenate_point_list(gc_pls)[1] - PT.Element.Range(edge_elts)[0]
+        is_bnd_edge[gc_edges] = False
+      bc_edges = np.where(is_bnd_edge)[0] + 1
+      bc_edges_nodes = edge_co.reshape((-1,2))[is_bnd_edge]
+      for da in PT.get_children_from_label(pfs_vtx_bc, 'DataArray_t'):
+        vtx_is_bc = PT.get_np_value(da)[bc_edges_nodes-1]
+        bc_indices = np.logical_and.reduce(vtx_is_bc, axis=1)
+
+        if bc_indices.any():
+          extracted_bc = PT.new_BC(PT.get_name(da),
+                                    PT.get_str_value(PT.find_child_from_name(da, 'BCValue')),
+                                    loc="EdgeCenter",
+                                    point_list=(bc_edges[bc_indices]).reshape((1,-1), order='F'),
+                                    parent=extract_zbc)
+          MT.new_GlobalNumbering({'Index':edge_gnum[bc_edges[bc_indices]-1]}, parent=extracted_bc)
+          if (fm := PT.get_child_from_name(da, 'Family')) is not None:
+            PT.new_FamilyName(family_name:=PT.get_str_value(fm), parent=extracted_bc)
+            families.add(family_name)
+          
+      PT.rm_children_from_name(extract_zone, '__maia::TagBCsOnVtx')
+
+    # Update BCs created gnum
+    for bc in all_dist_bcs:
+      bc_l = PT.get_nodes_from_predicates(extract_base, f'Zone_t/ZoneBC_t/{PT.get_name(bc)}')
+      bc_gnum_l = [MT.Subset.globalnumbering(bc) for bc in bc_l]
+      new_gn = create_sub_numbering(bc_gnum_l, comm)
+      for bc,gn in zip(bc_l, new_gn):
+        MT.new_GlobalNumbering({'Index' : gn}, bc) # Update GlobalNumbering
+
+    # Add families at base level
+    PT.rm_children_from_label(extract_base, 'Family_t')
+    for family_name in comm.allreduce(families, op = SET_UNION):
+      PT.add_child(extract_base, PT.get_node_from_predicates(part_tree, f'CGNSBase_t/{family_name}'))
+
+    # Cleanup input (volumic) tree
+    PT.rm_nodes_from_name(part_tree, '__maia::TagBCsOnVtx')
+
   # This will be usefull to detect self data exchange later
   for subdict in extractor.exch_tool_box.values():
     subdict['ExtractingCnt'] = zsr_path
@@ -447,6 +546,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
 
 
   fam_node_paths = list()
+  region_names_by_domain = dict()
   for domain, part_zones in part_tree_per_dom.items():
     # Create a "fake" dist zone including:
     #   - ZSR belonging to provided family,
@@ -459,6 +559,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
     for zsr_with_regionname_n in PT.get_children_from_predicate(dist_zone, zsr_has_regionname):
       region_node = PT.find_child_from_predicate(zsr_with_regionname_n, is_regionname)
       region_node_names.append(PT.get_str_value(region_node))
+    region_names_by_domain[domain] = region_node_names
     child_list = ['AdditionalFamilyName_t', 'FamilyName_t', 'GridLocation_t']
     bc_gc_in_fam = PT.pred.name_in(region_node_names)
     dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ['ZoneBC_t', in_fam | bc_gc_in_fam], comm, get_value='leaf', child_list=child_list)
@@ -467,6 +568,7 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
     # Add selected ZSR and BCs to fam_node_paths
     fam_node_paths.extend(PT.predicates_to_paths(dist_zone, [PT.pred.label_is("ZoneSubRegion_t")]))
     fam_node_paths.extend(PT.predicates_to_paths(dist_zone, ['ZoneBC_t', in_fam]))
+    region_names_by_domain[domain].extend([PT.utils.path_tail(path) for path in PT.predicates_to_paths(dist_zone, ['ZoneBC_t', in_fam])])
 
     gl_nodes = PT.get_nodes_from_label(dist_zone, 'GridLocation_t')
     location = [PT.get_str_value(n) for n in gl_nodes]
@@ -495,7 +597,9 @@ def _prepare_extract_from_family(part_tree: CGNSPartTree, family_name: str,
         fake_zsr = PT.new_ZoneSubRegion(name=f"__{family_name}", point_list=fam_pl_cat, loc=location[0], parent=part_zone)
         # Store the index array to reorder associated data the same way
         PT.new_UserDefinedData("_UniqueIdx", pl_idx, parent=fake_zsr)
-
+        # Store region names
+        if (regs := region_names_by_domain[domain]):
+          PT.new_Descriptor("__maia::RegionNames", "\n".join(regs), parent=fake_zsr)
   return local_part_tree, fam_node_paths
 
 def _prepare_extract_from_family_fields(local_part_tree, family_name, fam_node_paths, containers_name, comm):

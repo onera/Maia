@@ -238,7 +238,8 @@ def exchange_field_one_domain_loc(part_zones, extract_zones, dims, exch_tool_box
 
     # Extract fields and place in extracted container
     for field in PT.get_children_from_label(container, 'DataArray_t'):
-      PT.new_DataArray(PT.get_name(field), PT.get_np_value(field)[idx], parent=FS_ep)
+      da = PT.new_DataArray(PT.get_name(field), PT.get_np_value(field)[idx], parent=FS_ep)
+      PT.set_children(da, [PT.deep_copy(n) for n in PT.get_children_from_label(field, 'Descriptor_t')])
 
   # Update global numbering in extracted FS (only in partial case w/o is_own_data)
   # Again partial_gnum and extract_zones can have different len,
@@ -337,7 +338,8 @@ def exchange_field_one_domain_req(part_zones, extract_zones, dims, exch_tool_box
     if extract_zone is not None:
       i_part = 0
       if part1_data[i_part].size!=0:
-        PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
+        da = PT.new_DataArray(fld_name, part1_data[i_part], parent=FS_ep)
+        PT.set_children(da, [PT.deep_copy(n) for n in PT.get_children_from_label(fld_node, 'Descriptor_t')])
 
   # Build PL with the last exchange stride
   if partial_field:
@@ -619,6 +621,23 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
               PT.add_child(bc_n, child)
             MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
 
+    # Move CellCenter BCs into a DiscreteData_t node
+    if dim == parent_dim-1 and PT.get_child_from_predicate(zonebc_n, PT.pred.is_bc_of_location('CellCenter')) is not None:
+      key = 'EdgeCenter' if dim == 1 else 'FaceCenter'
+      orig_bc_names = sorted(PT.utils.path_tail(s) for s in gdom_bcs_path_per_dim[key])
+
+      offset = PT.Zone.get_elt_range_per_dim(extract_zone)[dim][0]
+      orig_bc_ids = -np.ones((PT.Zone.n_cell(extract_zone)), dtype=np.int32) # -1 because the extracted ZoneSubRegion can contain sone faces that aren't BC
+      for ibc, bc_name in enumerate(orig_bc_names):
+        if (bc := PT.get_child_from_name(zonebc_n, bc_name)) is not None:
+          pl = PT.get_np_value(PT.find_child_from_name(bc, 'PointList'))[0]
+          orig_bc_ids[pl - offset] = ibc
+          PT.rm_child(zonebc_n, bc)
+      dd = PT.new_DiscreteData('ParentData', loc='CellCenter', fields={'OriginalBCId': orig_bc_ids}, parent=extract_zone)
+      PT.new_Descriptor('OriginalBCsName', "\n".join(orig_bc_names), parent=dd)
+
+    if len(PT.get_children(zonebc_n)) == 0:
+      PT.rm_child(extract_zone, zonebc_n)
     extract_zones.append(extract_zone)
 
   # - Generate intrazones jns
