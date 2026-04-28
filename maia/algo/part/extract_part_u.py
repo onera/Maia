@@ -621,6 +621,23 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
               PT.add_child(bc_n, child)
             MT.new_GlobalNumbering({'Index':bc_gn}, parent=bc_n)
 
+    # Move CellCenter BCs into a DiscreteData_t node
+    if dim == parent_dim-1 and PT.get_child_from_predicate(zonebc_n, PT.pred.is_bc_of_location('CellCenter')) is not None:
+      key = 'EdgeCenter' if dim == 1 else 'FaceCenter'
+      orig_bc_names = sorted(PT.utils.path_tail(s) for s in gdom_bcs_path_per_dim[key])
+
+      offset = PT.Zone.get_elt_range_per_dim(extract_zone)[dim][0]
+      orig_bc_ids = -np.ones((PT.Zone.n_cell(extract_zone)), dtype=np.int32) # -1 because the extracted ZoneSubRegion can contain sone faces that aren't BC
+      for ibc, bc_name in enumerate(orig_bc_names):
+        if (bc := PT.get_child_from_name(zonebc_n, bc_name)) is not None:
+          pl = PT.get_np_value(PT.find_child_from_name(bc, 'PointList'))[0]
+          orig_bc_ids[pl - offset] = ibc
+          PT.rm_child(zonebc_n, bc)
+      dd = PT.new_DiscreteData('ParentData', loc='CellCenter', fields={'OriginalBCId': orig_bc_ids}, parent=extract_zone)
+      PT.new_Descriptor('OriginalBCsName', "\n".join(orig_bc_names), parent=dd)
+
+    if len(PT.get_children(zonebc_n)) == 0:
+      PT.rm_child(extract_zone, zonebc_n)
     extract_zones.append(extract_zone)
 
   # - Generate intrazones jns

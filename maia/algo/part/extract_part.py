@@ -358,23 +358,12 @@ def _create_extractor_from_zsr(part_tree: CGNSPartTree,
   
     families = set()
     for extract_zone in PT.get_children_from_label(extract_base, 'Zone_t'):
-      extract_zbc = PT.get_node_from_name(extract_zone, 'ZoneBC')
-      # A decaller dès la creation du noeud ?
-      if extract_zbc is not None:
-        ngon_elts = PT.Zone.NGonNode(extract_zone)
-        ngon_er   = PT.get_value(PT.get_child_from_name(ngon_elts, 'ElementRange'))
-        orig_bc_ids = -np.ones((PT.Zone.n_cell(extract_zone)), dtype=np.int32) # -1 because the extracted ZoneSubRegion can contain sone faces that aren't BC
-        orig_bc_names = sorted([PT.get_name(d_bc) for d_bc in all_dist_bcs]) #Sort is needed to have // independant bc ids
-        for ibc, bc_name in enumerate(orig_bc_names):
-          bc = PT.get_child_from_name(extract_zbc, bc_name)
-          if bc is not None:
-            orig_bc_ids[PT.get_child_from_name(bc, 'PointList')[1].reshape(-1)-ngon_er[0]] = ibc
-        dd = PT.new_DiscreteData('Original3DBC', loc='CellCenter', fields={'OriginalBCIds': orig_bc_ids}, parent=extract_zone)
-        PT.new_Descriptor('OriginalBCNames', "\n".join(orig_bc_names), parent=dd)
-        PT.rm_children_from_label(extract_zbc, 'BC_t')
+      
       pfs_vtx_bc = PT.get_node_from_name(extract_zone, '__maia::TagBCsOnVtx')
       if pfs_vtx_bc is None: 
         continue
+
+      extract_zbc = PT.update_child(extract_zone, 'ZoneBC', 'ZoneBC_t')
       edge_elts = MT.Zone.EdgeNode(extract_zone)
       edge_co = PT.get_value(PT.get_child_from_name(edge_elts, 'ElementConnectivity'))
       edge_pe = PT.get_value(PT.get_child_from_name(edge_elts, 'ParentElements'))

@@ -311,7 +311,7 @@ def test_extract_face_from_point_list_U(graph_part_tool, comm, write_output):
   part_tree_ep = extractor.get_extract_part_tree()
 
   # > Part to dist
-  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, ['ZoneSubRegion_t', 'FlowSolution_t'])
+  dist_tree_ep = MF.recover_dist_tree(part_tree_ep,comm, ['ZoneSubRegion_t', 'DiscreteData_t', 'FlowSolution_t'])
 
   # > Compare to reference solution
   ref_file = os.path.join(ref_dir, f'extract_face_from_point_list.yaml')
