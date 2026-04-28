@@ -21,6 +21,7 @@ from .import closest_points as CLO
 
 from .utils import gather_containers_name
 
+from .interpolation_cons import ConservativeInterpolator
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
@@ -148,17 +149,25 @@ def interpolate(src_tree:CGNSPartTree,
     for loc, name in zip(input_locs, containers_name):
       loc_to_containers_name[loc].append(name)
 
-  if (lc:=len(loc_to_containers_name)) > 1:
-    mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
+  if options.get('strategy', 'Closest') == 'Intersection':
+    # For intersection, src / tgt loc does not matter
+    interpolator = create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'CellCenter', **options)
+    for loc_containers_name in loc_to_containers_name.values():
+      for container_name in loc_containers_name:
+        interpolator.exchange_fields(container_name, location, options.get('is_conservative', True))
 
-  for input_loc, loc_containers_name in loc_to_containers_name.items():
+  else:
+    if (lc:=len(loc_to_containers_name)) > 1:
+      mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
 
-    _input_loc:Literal['Vertex', 'CellCenter'] = input_loc #type:ignore[assignment]
-    # Create interpolator
-    interpolator = create_interpolator(src_tree, tgt_tree, comm, _input_loc, location, **options)
-    # Exchange fields
-    for container_name in loc_containers_name:
-      interpolator.exchange_fields(container_name)
+    for input_loc, loc_containers_name in loc_to_containers_name.items():
+
+      _input_loc:Literal['Vertex', 'CellCenter'] = input_loc #type:ignore[assignment]
+      # Create interpolator
+      interpolator = create_interpolator(src_tree, tgt_tree, comm, _input_loc, location, **options)
+      # Exchange fields
+      for container_name in loc_containers_name:
+        interpolator.exchange_fields(container_name)
 
 
 
@@ -167,17 +176,21 @@ def create_interpolator(src_tree:CGNSPartTree,
                         comm:MPIComm,
                         src_location:Literal['CellCenter', 'Vertex'],
                         tgt_location:Literal['CellCenter', 'Vertex'],
-                        **options) -> Interpolator:
+                        **options) -> Union[Interpolator, ConservativeInterpolator]:
   """
   Partitioned implementation of maia.algo.interpolate
   """
-  assert src_location in ['CellCenter', 'Vertex']
   check_cgns_part_tree(src_tree)
   check_cgns_part_tree(tgt_tree)
   src_parts_per_dom = list(get_parts_per_blocks(src_tree, comm).values())
   tgt_parts_per_dom = list(get_parts_per_blocks(tgt_tree, comm).values())
 
-  src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, tgt_location, **options)
-  src_parts = py_utils.to_flat_list(src_parts_per_dom)
-  tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom)
-  return Interpolator(src_parts, tgt_parts, src_to_tgt, src_location, tgt_location, comm)
+  strategy = options.get('strategy', 'Closest')
+  if strategy == 'Intersection':
+    return ConservativeInterpolator(src_parts_per_dom, tgt_parts_per_dom, comm, **options)
+  else:
+    assert src_location in ['CellCenter', 'Vertex']
+    src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, tgt_location, **options)
+    src_parts = py_utils.to_flat_list(src_parts_per_dom)
+    tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom)
+    return Interpolator(src_parts, tgt_parts, src_to_tgt, src_location, tgt_location, comm)

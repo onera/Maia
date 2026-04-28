@@ -115,6 +115,12 @@ def extract_sub_cloud(coords: NDArray,
   sub_coords = layouts.extract_from_indices(coords, indices, 3, 0)
   return sub_coords, sub_lngn
 
+def extract_sub_cloud_from_flag(cloud: Tuple[NDArray, NDArray],
+                                flag: NDArray) -> Tuple[NDArray, NDArray]:
+  sub_coords = cloud[0][np.repeat(flag, 3)]
+  sub_lngn   = cloud[1][flag]
+  return sub_coords, sub_lngn
+
 def create_sub_numbering(lngn_l: List[NDArray], comm: MPIComm) -> List[NDArray]:
   """
   Create a new compact, starting at 1 numbering from a list of

@@ -46,3 +46,17 @@ def test_preserve_orientation(with_nface, comm):
 
   PBO.preserve_orientation(pzones, comm)
   assert PBO.orientation_preserved(pzones, comm) == True
+
+@pytest_parallel.mark.parallel(3)
+def test_shallow_preserve_orientation(comm):
+  tree  = maia.factory.generate_dist_block(21, 'Poly', comm)
+  ptree = maia.factory.partition_dist_tree(tree, comm, preserve_orientation=False)
+  pzones = PT.get_all_Zone_t(ptree) 
+
+  pzones_bck = [PT.deep_copy(z) for z in pzones]
+
+  pzones_oriented = PBO.shallow_preserve_orientation(pzones, comm)
+
+  assert PBO.orientation_preserved(pzones_oriented, comm)
+  for z_bck, z in zip(pzones_bck, pzones):
+    assert PT.is_same_tree(z_bck, z)
