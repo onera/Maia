@@ -1,3 +1,4 @@
+from packaging.version import Version
 from   mpi4py import MPI
 import numpy as np
 
@@ -23,6 +24,23 @@ from maia.algo import interpolation_utils as itp_utils
 import Pypdm.Pypdm as PDM
 
 from maia.typing import *
+
+PDM_VERSION = Version(PDM.__version__)
+
+def _init_tetraisation_pt_type(pdm_intersection):
+  """ A wrapper to set mi->tetraisation_pt_type, which is uninitialized if
+  PDM < 2.8 (see paradigm!273) """
+  if PDM_VERSION < Version('2.8'): # Do nothing if Version >= 2.8 (patch in PDM). 
+    # Do dark magic to access directly C API
+    import ctypes
+    addr = id(pdm_intersection)
+
+    # Offset for PyObject_HEAD
+    offset = ctypes.sizeof(ctypes.c_ssize_t) + ctypes.sizeof(ctypes.c_void_p)
+    mi_ptr = ctypes.cast(addr + offset, ctypes.POINTER(ctypes.c_void_p)).contents
+
+    lib = ctypes.CDLL("libpdm.so")
+    lib.PDM_mesh_intersection_tetraisation_pt_set(mi_ptr, ctypes.c_int(0), None)
 
 def _get_native_measure(zone:CGNSTree) -> NDArray:
   path = f'Geometry_{PT.Zone.CellDimension(zone)}d/Measure'
@@ -83,6 +101,7 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
   keep_alive = list()
 
   mi = PDM.MeshIntersection(comm,  PDM._PDM_MESH_INTERSECTION_KIND_WEIGHT, dim, dim, len(tgt_parts), len(src_parts))
+  _init_tetraisation_pt_type(mi)
 
   # /!\ Register src as part_2 and tgt as part_1 /!\
   # For now we treat elt meshes / S meshes as part_mesh_nodal and Poly meshes with raw API
