@@ -34,7 +34,9 @@ def replace_long_names(tree:Tree, links: List[List[str]]) -> Tuple[Tree, List[Li
     if (parent := PT.get_node_from_path(tree, PT.utils.path_head(src_path))) is not None:
       with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        PT.update_child(parent, PT.utils.path_tail(src_path), value=None, children=[])
+        # NB : we use UserDefinedData_t label to skip nodes in hdf filter creation. This rely on
+        # the fact that label is replaced by target one when reading
+        PT.update_child(parent, PT.utils.path_tail(src_path), label='UserDefinedData_t', value=None, children=[])
       # Update path if link exist; otherwise, keep old for better error display
       link[3] = '/'.join(NU.short_name_with_hash(name) for name in src_path.split('/'))
 
@@ -178,9 +180,6 @@ def save_tree_from_filter(filename: str,
     f(hdf_filter_with_dim)
 
   clean_distribution_info(saving_dist_tree)
-
-  for link in links:
-    hdf_filter_with_dim.pop(link[3], None) # Remove linked values from dict
     
   _hdf_io.write_partial(filename, saving_dist_tree, hdf_filter_with_dim, links, comm)
 
