@@ -23,6 +23,9 @@ from .utils             import _gather_containers_name
 
 import Pypdm.Pypdm as PDM
 
+from packaging.version import Version
+PDM_VERSION = Version(PDM.__version__)
+
 IS_FAM_NAME = PT.pred.label_in(['FamilyName_t', 'AdditionalFamilyName_t'])
 IS_CNT      = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegion_t'])
 
@@ -721,12 +724,37 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     MT.new_GlobalNumbering({'Element' : out_elt_ln_to_gn}, parent=elt_n)
 
   # Bnd edges
+  degen_edges = False
   if zdim == 3:
     bnd_group_idx, bnd_group, bnd_lngn = pdm_isos.pgroup_get(pdm_iso, 0, PDM._PDM_MESH_ENTITY_EDGE)
     # Group got from PDM are in "only bnd edges" numbering, but we reconstructed all
     # edges => we need to retrieve matching edge in all edges numbering
     if bnd_group.size > 0:
       bnd_edges = pdm_isos.pconnectivity_get(pdm_iso, 0, PDM._PDM_CONNECTIVITY_TYPE_EDGE_VTX)[1]
+
+      if PDM_VERSION < Version('2.8'): # May have degenerated edges, see paradigm!274
+        is_degen_edge = bnd_edges[0::2] == bnd_edges[1::2]
+        degen_edges = comm.allreduce(is_degen_edge.any(), MPI.LOR)
+      
+      if degen_edges:
+        # Filtering edges is easy
+        bnd_edges = np.delete(bnd_edges, np.repeat(is_degen_edge, 2))
+
+        # Now we need to filter and update BC content
+        rmvds_ids = np.flatnonzero(is_degen_edge) + 1
+        # --> bnd_group_idx : search groups containing removed edges
+        groups_ids = np.searchsorted(bnd_group_idx, rmvds_ids) - 1
+        bnd_group_counts = np.diff(bnd_group_idx)
+        np.add.at(bnd_group_counts, groups_ids, -1)
+        bnd_group_idx = np_utils.sizes_to_indices(bnd_group_counts)
+        # --> bnd_group: (a) remove edges, (b) substract nb of removed edges
+        bnd_group  = np.delete(bnd_group, np.isin(bnd_group, rmvds_ids)) # (a)
+        bnd_group -= np.searchsorted(rmvds_ids, bnd_group) # (b)
+        # --> bnd_lngn: (a) remove edges, (b) recompute numbering (fill holes)    
+        bnd_lngn = np.delete(bnd_lngn, is_degen_edge) # (a)
+      for st,ed in zip(bnd_group_idx[:-1], bnd_group_idx[1:]):  # (b)
+        bnd_lngn[st:ed] = create_sub_numbering([bnd_lngn[st:ed]], comm)[0]
+      
       all_edges = edge_data['np_edge_vtx']
       edge_bnd_to_all = find_matching_edge(all_edges, bnd_edges)
       bnd_group = edge_bnd_to_all[bnd_group-1]+1
@@ -757,6 +785,8 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
     ptp_edge = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_EDGE)
     _, edge_part1_to_part2 = \
       _ptp_retrieve_part1_to_part2(ptp_edge, [MT.Element.globalnumbering(PT.Zone.NGonNode(z)) for z in part_zones])
+    if degen_edges: # Drop entry of degenerated (removed) edges
+      edge_part1_to_part2 = np.delete(edge_part1_to_part2, is_degen_edge)
 
   # Vertices (with weights)
   ptp_vtx = pdm_isos.part_to_part_get(pdm_iso, PDM._PDM_MESH_ENTITY_VTX)
