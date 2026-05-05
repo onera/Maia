@@ -12,29 +12,32 @@ variables:
 default:
   tags:
     - juno-shell
+  before_script:
+    - echo "Cleanup xml files"
+    - rm -f *.xml
   id_tokens:
     CI_JOB_JWT:
       aud: https://gitlab.onera.net
 
 
 stages:
-  - init
-  - build
-  - test
-  - deploy
+  - Init
+  - Test
+  - Quality
+  - Deploy
 
-job:init:
-  stage: init
-  script: # explicitly load modules one by one, so that if one fails, it will be easy to identify
+Initialize repo:
+  stage: Init
+  script: 
     - INIT_ORIGINAL_FOLDER=$(pwd)
-    - cd ~/.jacamar-ci/builds
-    - mkdir -p ${CI_PROJECT_NAME}
-    - cd ${CI_PROJECT_NAME}
-    #- git clone --depth 10 ${CI_REPOSITORY_URL} ${CI_PIPELINE_ID}
+    - WORK_FOLDER=/tmp_user/juno/$(whoami)/.jacamar-ci/${CI_PROJECT_NAME}
+    - mkdir -p ${WORK_FOLDER}
+    - cd ${WORK_FOLDER}
     - git clone ${CI_REPOSITORY_URL} ${CI_PIPELINE_ID}
     - cd ${CI_PIPELINE_ID}
     - git checkout ${CI_COMMIT_SHA}
     - echo "CUSTOM_CI_DIR=$PWD" >> ${INIT_ORIGINAL_FOLDER}/build.env
+    # Explicitly load modules one by one, so that if one fails, it will be easy to identify
     - git submodule update --init external/project_utils
     - git submodule update --init external/cpp_cgns
     - git submodule update --init external/std_e
@@ -45,200 +48,171 @@ job:init:
     reports:
       dotenv: build.env
 
-job:build:
-  stage: build
+Basic tests:
+  stage: Test
+  parallel:
+    matrix:
+      - PDM_PROD: [I4, I8]
   script:
     - cd $CUSTOM_CI_DIR
-    - mkdir -p build/socle6_int32 && cd build/socle6_int32
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - mkdir -p build/socle6_${PDM_PROD} && cd build/socle6_${PDM_PROD}
+    - module purge
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - export CXXFLAGS="-Wall -Werror" # odr (one definition rule) violations are serious and should not be ignored (often linked to PyBind11 wrapping)
-    - cmake -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=ON -Dmaia_ENABLE_COVERAGE=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
+    - export PDM_LONG_G_NUM=$( [ "$PDM_PROD" = "I8" ] && echo ON || echo OFF )
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=${PDM_LONG_G_NUM} -DPDM_ENABLE_EXTENSION_PDMA=ON -DPDM_ENABLE_TESTS=OFF ../../
     - make -j 24
-
-# This build documentation after main build, only if branch is dev or for MR events
-job:doc:
-  stage: build
-  needs: ["job:init", "job:build"] #job:init is needed to get dotenv artifacts
-  rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
-  script:
-    - cd $CUSTOM_CI_DIR/build/socle6_int32
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - source source.sh
-    - export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
-    # For now we have a semi automatic process, we copy notebooks already executed
-    - export PYTHONPATH=/stck/jcoulet/Public/site-packages-mystnb-py3.8:$PYTHONPATH
-    - cp /stck/jcoulet/Public/maia_training/notebooks/*.ipynb $CUSTOM_CI_DIR/doc/tutorials
-    - cp /stck/jcoulet/Public/maia_training/notebooks/_static/* $CUSTOM_CI_DIR/doc/_static
-    - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
-    - make maia_sphinx
-
-
-job:doc_snippets:
-  stage: test
-  script:
-    - cd $CUSTOM_CI_DIR/build/socle6_int32
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - source source.sh; unset PYTEST_PLUGINS
-    - mpirun -np 1 python3 -m pytest ../../doc
-    - python3 ../../maia/pytree/test/run_docstring.py
-
-job:ctest:
-  stage: test
-  before_script:
-    - |
-      cat > $CUSTOM_CI_DIR/build/socle6_int32/.coveragerc << EOF
-      [coverage:run]
-      parallel = true
-      source = maia
-      EOF
-  script:
-    - INIT_ORIGINAL_FOLDER=$(pwd)
-    - rm -rf $INIT_ORIGINAL_FOLDER/reports # Cleanup old builds reports if existing
-    - cd $CUSTOM_CI_DIR/build/socle6_int32
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - source $ELSASPIRO/.env_elsA   # Get Converter
-    - module load gcc/10.2.0
     - export PATH=$FEFLO_ROOT/bin:$PATH  # Get Feflo
-    - export PATH=$MMG_ROOT/bin:$PATH  # Get MMG
-    - export LD_LIBRARY_PATH=$MMG_ROOT/lib64:$LD_LIBRARY_PATH
-    - source source.sh
-
     - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 coverage run -m pytest ../../maia
+    - pytest ../../doc --junitxml=junit_doc.xml
+    - mpirun -np 4 python3 -m pytest ../../maia
     - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
-
-    - coverage combine
-    - coverage report --sort=cover --fail-under=95
-    - coverage xml -o coverage_unit_tests.xml
-    - sed 's@'"$CI_PROJECT_DIR"'/@@' -i coverage_unit_tests.xml
-    # GitLab needs artifacts to be in the folder of the job so move it
-    - mv ./coverage_unit_tests.xml $INIT_ORIGINAL_FOLDER && mv ./reports  $INIT_ORIGINAL_FOLDER
-  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  after_script:
+    - cp $CUSTOM_CI_DIR/build/socle6_${PDM_PROD}/junit_*.xml .
   artifacts:
-    paths:
-      - ./reports/*
-    when: always
-    # Next allows to display a test tab in the pipeline with report but requires a feature flag to be enabled,
-    # see https://docs.gitlab.com/ee/ci/unit_test_reports.html#viewing-unit-test-reports-on-gitlab
-    # Use it in combination with --junitxml=reports/pytest-junit.xml in the pytest launcher (TestCreate.cmake)
     reports:
-      junit: ./reports/*_test.xml
-      coverage_report:
-        coverage_format: cobertura
-        path: ./coverage_unit_tests.xml
+      junit: ./*.xml
 
-job:portability_gnum:
-  stage: test
+# Test various other envs
+Compilers portability:
+  stage: Test
   rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
+  parallel:
+    matrix:
+      - PROD: [socle7-gnu, socle6-llvm, socle6-optim]
   script:
     - cd $CUSTOM_CI_DIR
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - mkdir -p build/socle6_int64 && cd build/socle6_int64
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
-    - make -j 24
-    - source source.sh
-    - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../../maia/
-    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
-
-job:portability_openmpi:
-  stage: test
-  rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
-  script:
-    - cd $CUSTOM_CI_DIR
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/7.0-gnu850-ompi502 cmake/3.29.3
-    - mkdir -p build/socle7_int32 && cd build/socle7_int32
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
+    - module purge
+    - CMAKE_ARGS="-DPDM_ENABLE_EXTENSION_PDMA=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_TESTS=OFF -Dmaia_ENABLE_TESTS=ON"
+    - |
+      case "$PROD" in
+        socle7-gnu)
+          module load socle-cfd/7.0-gnu850-ompi502 cmake/3.29.3
+          CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
+          ;;
+        socle6-llvm)
+          module load socle-cfd/6.0-intel2220-impi
+          export CC=icx CXX=icpx
+          CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17"
+          ;;
+        socle6-optim)
+          module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+          export CFLAGS="-O3 -g -DNDEBUG -ftree-vectorize -ftree-loop-vectorize -fvect-cost-model=unlimited -ftree-loop-optimize -march=native -fopenmp-simd -mtune=intel -mprefer-vector-width=512"
+          export CXXFLAGS=$CFLAGS
+          PYTEST_ARGS=(-k "not test_wall_distance_U")
+          ;;
+        *) echo "Unexpected PROD: $PROD" && exit 1 ;;
+      esac
+    - mkdir -p build/${PROD} && cd build/${PROD}
+    - echo "Run cmake with args ${CMAKE_ARGS}"
+    - cmake ${CMAKE_ARGS} ../../
     - make -j 24
     - source source.sh
     - mpiexec -np 4 test/maia_doctest_unit_tests
-    - mpiexec -np 4 pytest ../../maia/
-    - mpiexec -np 4 pytest ../../test/
+    - mpiexec -np 4 pytest ../../maia
+    - mpiexec -np 4 pytest ../../test "${PYTEST_ARGS[@]}" # Don't use dynamic because of openmpi (?)
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" = "failed" ]; then
+        echo "Job failed → uploading artifacts"
+        cp $CUSTOM_CI_DIR/build/${PROD}/junit_*.xml .
+      else
+        echo "Job succeeded → no artifacts needed"
+      fi
+  artifacts:
+    reports:
+      junit: ./*.xml
 
-job:portability_llvm:
-  stage: test
+# Apptainer image with Alpine image for the stack (in particular with Numpy 2)
+Apptainer portability:
+  stage: Test
   rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
-  script:
-    - cd $CUSTOM_CI_DIR
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi
-    - export CC=icx; export CXX=icpx
-    - mkdir -p build/socle6_llvm_int32 && cd build/socle6_llvm_int32
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
-    - make -j 24
-    - source source.sh
-    - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../../maia/
-    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic
-
-job:portability_optim:
-  stage: test
-  rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
-  script:
-    - cd $CUSTOM_CI_DIR
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - mkdir -p build/socle6_optim_int32 && cd build/socle6_optim_int32
-    - export CFLAGS="-O3 -g -DNDEBUG -ftree-vectorize -ftree-loop-vectorize -fvect-cost-model=unlimited -ftree-loop-optimize -march=native -fopenmp-simd -mtune=intel -mprefer-vector-width=512"
-    - export CXXFLAGS=$CFLAGS
-    - cmake -DCMAKE_BUILD_TYPE=Release -Dmaia_ENABLE_TESTS=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
-    - make -j 24
-    - source source.sh
-    - mpirun -np 4 test/maia_doctest_unit_tests
-    - mpirun -np 4 python3 -m pytest ../../maia/
-    - mpirun -np 8 python3 -m pytest ../../test --scheduler=dynamic -k "not test_wall_distance_U"
-
-
-job:portability_apptainer: # Apptainer image with Alpine image for the stack (in particular with Numpy 2)
-  stage: test
+  - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   tags:
     - juno-slurm
   variables:
     SCHEDULER_PARAMETERS: "--ntasks=24 --nodes=1-1 --time=00:30:00"
-  rules:
-    - if: $CI_OPEN_MERGE_REQUESTS || $CI_COMMIT_BRANCH == "dev"
   script:
     - cd $CUSTOM_CI_DIR
-    - module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
+    - module purge
     - module use --append /tmp_user/juno/sonics/prod/spack/share/spack/modules/linux-rocky8-icelake/
     - module load apptainer
-     # build and test maia on an alpine image where the maia software stack has been installed
+     # Build and test maia on an alpine image where the maia software stack has been installed
     - export MAIA_SOURCE_DIR=$CUSTOM_CI_DIR
     - apptainer exec /stck/sonics/apptainer/alpine_socle_maia.sif $MAIA_SOURCE_DIR/share/apptainer/build_and_test.sh
-
-# Deploy the documentation sphinx documentation to the site and pages, only if branch is dev
-pages:
-  stage: deploy
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-  script:
-    - rm -rf public
-    - mkdir public
-    - cp -r /tmp_user/juno/sonics/usr/maia/doc/html/* public/
-    - cp -r $CUSTOM_CI_DIR/build/socle6_int32/doc/sphinx/html public/dev
+  after_script:
     - |
-      cat > public/index.html << EOF
-      <head>
-        <meta http-equiv='refresh' content='0; URL=dev/index.html'>
-      </head>
-      EOF
-
+      if [ "$CI_JOB_STATUS" = "failed" ]; then
+        echo "Job failed → uploading artifacts"
+        cp $CUSTOM_CI_DIR/build/alpine_int64/junit_*.xml .
+      else
+        echo "Job succeeded → no artifacts needed"
+      fi
   artifacts:
-    paths:
-      - public
+    reports:
+      junit: ./*.xml
 
-init_deploy:
-  stage: deploy
+Coverage:
+  stage: Quality
+  script:
+    # This job reuse the socle6_I4 build
+    - cd $CUSTOM_CI_DIR/build/socle6_I4
+    - module purge
+    - source $ELSASPIRO/.env_elsA        # Get Converter (do before gcc to avoid GLIBCXX issues)
+    - module load gcc/10.2.0
+    - export PATH=$FEFLO_ROOT/bin:$PATH  # Get Feflo
+    - export PATH=$MMG_ROOT/bin:$PATH    # Get MMG
+    - export LD_LIBRARY_PATH=$MMG_ROOT/lib64:$LD_LIBRARY_PATH
+    - source source.sh
+    - mpirun -np 4 coverage run --source=maia --parallel -m pytest ../../maia
+    - coverage combine
+    - coverage xml -o coverage_unit.xml
+    - coverage report --sort=cover --fail-under=95
+  after_script:
+    - cp $CUSTOM_CI_DIR/build/socle6_I4/coverage_unit.xml .
+    - sed 's@'"$CUSTOM_CI_DIR"'/@@' -i coverage_unit.xml # Make paths relative
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: ./coverage_unit.xml
+
+Documentation:
+  stage: Quality
+  script:
+    # This job reuse the socle6_I8 build
+    - cd $CUSTOM_CI_DIR/build/socle6_I8
+    - module purge
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+    - source source.sh
+    # Load custom sphinx version + mystnb
+    - export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
+    - export PYTHONPATH=/stck/jcoulet/Public/site-packages-mystnb-py3.8:$PYTHONPATH
+    # For now we have a semi automatic process, we copy notebooks already executed
+    - cp /stck/jcoulet/Public/maia_training/notebooks/*.ipynb $CUSTOM_CI_DIR/doc/tutorials
+    - cp /stck/jcoulet/Public/maia_training/notebooks/_static/* $CUSTOM_CI_DIR/doc/_static
+    - cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
+    - make maia_sphinx
+    - python3 ../../maia/pytree/test/run_docstring.py
+
+Type checking:
+  stage: Quality
+  allow_failure: true
+  script:
+    # This job reuse the socle6_I8 build
+    - cd $CUSTOM_CI_DIR
+    - module purge
+    - module load socle-cfd/6.0-intel2220-impi
+    # Add mypy to path
+    - export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
+    - export PATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/bin/:$PATH
+    - mypy maia
+
+Initialize deploy:
+  stage: Deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
   variables:
@@ -251,115 +225,89 @@ init_deploy:
     - rsync -a . sonics@sator:/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
     - rsync -a . sonics@juno1:/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}
 
-
-deploy_spiro_socle6:
-  stage: deploy
-  needs: ["init_deploy"]
+Install:
+  stage: Deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
+  needs: ["Initialize deploy"]
+  parallel:
+    matrix:
+      - TARGET: [sator, juno, spiro, ld]
   before_script:
     - |
-      cat > build_spiro6.sh << EOF
-      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-      module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+      MODULES="socle-cfd/6.0-intel2220-impi"
+      GNUM=OFF
+      HOST=$TARGET
+      case "$TARGET" in
+        sator)
+          TMP_DIR=/tmp_user/sator/sonics/tmp
+          INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/dsi-cfd6
+          GNUM=ON
+          ;;
+        juno)
+          TMP_DIR=/tmp_user/juno/sonics/tmp
+          INSTALL_PREFIX=/tmp_user/juno/sonics/usr/maia/dev/dsi-cfd6
+          ;;
+        spiro)
+          HOST=spiro01
+          TMP_DIR=/scratchm/sonics/tmp
+          INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd6
+          ;;
+        ld)
+          HOST=juno
+          MODULES="hdf5/1.10.5-gnu831-ompi405 openmpi/4.0.5-gnu831 python/3.8.14-gnu831 scotch/6.0.9-idx32-gnu831-ompi405 parmetis/4.0.3-gnu831-ompi405 metis/5.1.0-gnu831 cmake/3.19.8-gnu831"
+          TMP_DIR=/tmp_user/juno/sonics/tmp
+          INSTALL_PREFIX=/stck/sonics/LD8/maia/dev/dsi-ompi405
+          ;;
+        *)
+          echo "Unexpected target $TARGET" && exit 1 ;;
+      esac
+      rm -f build.sh
+      cat > build.sh << EOF
+      module purge
       export https_proxy=http://proxy.onera:80
-
+      module load ${MODULES}
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/dev/dsi-cfd6 \
+                -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
-                -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
-                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install > dsi-cfd6.log
+                -Dmaia_ENABLE_TESTS=OFF -DPDM_ENABLE_TESTS=OFF \
+                -DPDM_ENABLE_LONG_G_NUM=${GNUM} -DPDM_ENABLE_EXTENSION_PDMA=ON
+      make -j 24 install > build.log
       EOF
   script:
-    - export JOB_BUILD_DIR=/scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
+    - export JOB_BUILD_DIR=${TMP_DIR}/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
     - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_spiro6.sh sonics@spiro02:${JOB_BUILD_DIR}
-    - ssh sonics@spiro01 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_spiro6.sh"
+    - rsync build.sh sonics@${HOST}:${JOB_BUILD_DIR}
+    - ssh sonics@${HOST} "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build.sh"
 
-deploy_sator_socle6:
-  stage: deploy
-  needs: ["init_deploy"]
+
+Finalize deploy:
+  stage: Deploy
   rules:
     - if: $CI_COMMIT_BRANCH == "dev"
-  before_script:
-    - |
-      cat > build_sator6.sh << EOF
-      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-      module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
-      export https_proxy=http://proxy.onera:80
-      cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/dev/dsi-cfd6 \
-                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
-                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install > dsi-cfd6.log
-      EOF
-  script:
-    - export JOB_BUILD_DIR=/tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
-    - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_sator6.sh sonics@sator:${JOB_BUILD_DIR}
-    - ssh sonics@sator "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_sator6.sh"
-
-
-deploy_juno_socle6:
-  stage: deploy
-  needs: ["init_deploy"]
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-  before_script:
-    - |
-      cat > build_juno6.sh << EOF
-      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-      module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
-      export https_proxy=http://proxy.onera:80
-      cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/tmp_user/juno/sonics/usr/maia/dev/dsi-cfd6 \
-                -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
-                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install > dsi-cfd6.log
-      EOF
-  script:
-    - export JOB_BUILD_DIR=/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
-    - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_juno6.sh sonics@juno:${JOB_BUILD_DIR}
-    - ssh sonics@juno1 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_juno6.sh"
-
-deploy_eos_openmpi:
-  stage: deploy
-  needs: ["init_deploy"]
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-  before_script:
-    - |
-      cat > build_eos.sh << EOF
-      module purge || true # sometimes, some system-related modules can't be unloaded -- proceed anyways
-      module load gcc/10.2.0
-      module load hdf5/1.10.5-gnu831-ompi405
-      module load openmpi/4.0.5-gnu831
-      module load python/3.8.14-gnu831
-      module load scotch/6.0.9-idx32-gnu831-ompi405
-      module load parmetis/4.0.3-gnu831-ompi405
-      module load metis/5.1.0-gnu831
-      module load cmake/3.19.8-gnu831
-      export https_proxy=http://proxy.onera:80
-      cmake ../ -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/stck/sonics/LD8/maia/dev/dsi-ompi405 \
-                -DPDM_ENABLE_TESTS=OFF -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
-      make -j install > openmpi-eos.log
-      EOF
-  script:
-    - export JOB_BUILD_DIR=/tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}/build-${CI_JOB_ID}/
-    - echo "Build directory is ${JOB_BUILD_DIR}"
-    - rsync build_eos.sh sonics@juno:${JOB_BUILD_DIR}
-    - ssh sonics@juno4 "cd $JOB_BUILD_DIR; source /etc/profile; sh ./build_eos.sh"
-
-post_deploy:
-  stage: deploy
-  needs: ["deploy_spiro_socle6", "deploy_sator_socle6", "deploy_juno_socle6", "deploy_eos_openmpi"]
-  rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
-  before_script:
+  needs: ["Install"]
   script:
     - ssh sonics@spiro02 "rm -rf /scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
     - ssh sonics@sator   "rm -rf /tmp_user/sator/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
     - ssh sonics@juno1   "rm -rf /tmp_user/juno/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
+
+
+Pages:
+  stage: Deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == "dev"
+  pages: True
+  script:
+    - rm -rf public
+    - mkdir public
+    - cp -r /tmp_user/juno/sonics/usr/maia/doc/html/* public/
+    - cp -r $CUSTOM_CI_DIR/build/socle6_I8/doc/sphinx/html public/dev
+    - |
+      cat > public/index.html << EOF
+      <head>
+        <meta http-equiv='refresh' content='0; URL=dev/index.html'>
+      </head>
+      EOF
+  artifacts:
+    paths:
+      - public

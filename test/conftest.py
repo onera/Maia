@@ -8,16 +8,9 @@ from maia.utils                              import test_utils as TU
 from maia.utils.py_utils                     import uniform_distribution_at
 
 def rename_reports(config, comm):
-  if comm.Get_rank() == 0:
-    if not os.path.exists('reports'):
-      os.makedirs('reports', exist_ok=True)
-    if not os.path.exists('reports/assets'):
-      os.makedirs('reports/assets', exist_ok=True)
-  comm.barrier()
-
   #Only proc 0 holds test results, others are empty
   if comm.Get_rank() == 0:
-    config.option.xmlpath  = 'reports/' + "report_func_test.xml"
+    config.option.xmlpath = "junit_func.xml"
 
 def generate_cgns_files(comm):
   """
