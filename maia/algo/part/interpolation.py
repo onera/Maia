@@ -152,6 +152,7 @@ def interpolate(src_tree:CGNSPartTree,
   if options.get('strategy', 'Closest') == 'Intersection':
     # For intersection, src / tgt loc does not matter
     interpolator = create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'CellCenter', **options)
+    assert isinstance(interpolator, ConservativeInterpolator)
     for loc_containers_name in loc_to_containers_name.values():
       for container_name in loc_containers_name:
         interpolator.exchange_fields(container_name, location, options.get('is_conservative', True))
@@ -165,6 +166,7 @@ def interpolate(src_tree:CGNSPartTree,
       _input_loc:Literal['Vertex', 'CellCenter'] = input_loc #type:ignore[assignment]
       # Create interpolator
       interpolator = create_interpolator(src_tree, tgt_tree, comm, _input_loc, location, **options)
+      assert isinstance(interpolator, Interpolator)
       # Exchange fields
       for container_name in loc_containers_name:
         interpolator.exchange_fields(container_name)

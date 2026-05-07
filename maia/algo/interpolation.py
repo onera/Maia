@@ -8,6 +8,7 @@ from .dist import interpolation as dist_interpolation
 from .part import interpolation as part_interpolation
 
 from .interpolation_utils import Interpolator
+from .part.interpolation  import ConservativeInterpolator
 
 
 @overload
@@ -102,21 +103,21 @@ def create_interpolator(src_tree:CGNSDistTree,
                         comm:MPIComm,
                         src_location:Literal['CellCenter', 'Vertex'],
                         tgt_location:Literal['CellCenter', 'Vertex'],
-                        **options) -> Interpolator: ...
+                        **options) -> Union[Interpolator, ConservativeInterpolator]: ...
 @overload
 def create_interpolator(src_tree:CGNSPartTree,
                         tgt_tree:CGNSPartTree,
                         comm:MPIComm,
                         src_location:Literal['CellCenter', 'Vertex'],
                         tgt_location:Literal['CellCenter', 'Vertex'],
-                        **options) -> Interpolator: ...
+                        **options) -> Union[Interpolator, ConservativeInterpolator]: ...
 
 def create_interpolator(src_tree:Union[CGNSDistTree, CGNSPartTree],
                         tgt_tree:Union[CGNSDistTree, CGNSPartTree],
                         comm:MPIComm,
                         src_location:Literal['CellCenter', 'Vertex'],
                         tgt_location:Literal['CellCenter', 'Vertex'],
-                        **options) -> Interpolator:
+                        **options) -> Union[Interpolator, ConservativeInterpolator]:
   """
   Same as interpolate, but return the interpolator object instead
   of doing interpolations. Interpolator can be called multiple time to exchange

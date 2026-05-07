@@ -83,7 +83,7 @@ def offset_mdom(parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm, revert:boo
         face_gnum += face_offset
       else:
         celldim = PT.Zone.CellDimension(part)
-        pred = PT.pred.label_is('Elements_t') & (lambda n : PT.Element.Dimension(n) == celldim and PT.Element.Type(n) != 'NGON_n')
+        pred = PT.pred.label_is('Elements_t') & PT.pred.NodePredicate(lambda n : PT.Element.Dimension(n) == celldim and PT.Element.Type(n) != 'NGON_n')
         for elt in PT.get_children_from_predicate(part, pred):
           elt_gnum = PT.get_np_value(MT.find_GlobalNumbering(elt, 'Sections'))
           elt_gnum += cell_offset
@@ -125,6 +125,7 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
         cx, cy, cz = PT.Zone.coordinates(part)
         if cz is None:
           cz = np.zeros_like(cx)
+        assert (cx is not None) and (cy is not None) and (cz is not None)
         coords = np_utils.interweave_arrays([cx,cy,cz])
         vtx_lngn = MT.Zone.vtx_globalnumbering(part)
         cell_lngn = MT.Zone.cell_globalnumbering(part)
@@ -164,6 +165,7 @@ def compute_mesh_intersection(src_parts:List[CGNSPartTree],
           cx, cy, cz = PT.Zone.coordinates(part)
           if cz is None:
             cz = np.zeros_like(cx)
+          assert (cx is not None) and (cy is not None) and (cz is not None)
           PT.new_GridCoordinates(fields={f'Coordinate{d}' : c.reshape(-1, order='F') for d,c in zip('XYZ', [cx,cy,cz])}, parent=_part)
           cell_vtx = cell_vtx_connectivity_S(part, PT.Zone.CellDimension(part))
           kind = 'QUAD_4' if PT.Zone.CellDimension(part) == 2 else 'HEXA_8'
@@ -232,7 +234,7 @@ class VertexToCell:
     # NB : data must be already flattened in parts_per_dom order
 
     weight_l = self.cons_weight_l if is_conservative else self.inte_weight_l
-    cell_fields = {key: [] for key in vtx_fields}
+    cell_fields:Dict[str, List[NDArray]] = {key: [] for key in vtx_fields}
 
     for i, cell_vtx in enumerate(self.cell_vtx_l):
       for fname, vtx_vals_l in vtx_fields.items():
@@ -470,7 +472,7 @@ class ConservativeInterpolator:
 
     field_names, cnt_label, src_loc = itp_utils.discover_fields_name(self.src_parts, container_name, self.root, self.comm)
 
-    src_fields_l = {key: [] for key in field_names}
+    src_fields_l:Dict[str, List[NDArray]] = {key: [] for key in field_names}
     for src_zone in self.src_parts:
       container = PT.find_node_from_path(src_zone, container_name)
       for key, val in PT.Container.fields(container).items():

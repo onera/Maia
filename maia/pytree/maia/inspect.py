@@ -14,13 +14,13 @@ from . conventions import GLBNUM_NAME
 __all__ = ['Zone', 'Element', 'Subset', 'Container']
 
 # --------------------------------------------------------------------------
-def is_single_node(X:Union[CGNSTree, List[CGNSTree]]) -> bool:
+def is_single_node(X:Union[CGNSTree, Sequence[CGNSTree]]) -> bool:
   if len(X) != 4:
     return False
   else:
     return isinstance(X[0], str)
 
-def _n_entity(input:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm], name:str) -> int:
+def _n_entity(input:Union[CGNSTree, Sequence[CGNSTree]], comm:Optional[MPIComm], name:str) -> int:
   if is_single_node(input):
     # Distributed implementation
     node = typing.cast(CGNSTree, input)
@@ -72,7 +72,7 @@ class Zone:
     return gnum.size
 
   @staticmethod
-  def n_cell(zone_node:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
+  def n_cell(zone_node:Union[CGNSTree, Sequence[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
     """ Return the **total** number of cells of a zone.
 
     The input zone can be either distributed (a single node is expected) or partitioned
@@ -134,7 +134,7 @@ class Zone:
 
 
   @staticmethod
-  def n_vtx(zone_node:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
+  def n_vtx(zone_node:Union[CGNSTree, Sequence[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
     """ Return the **total** number of vertices of a zone.
 
     The input zone can be either distributed (a single node is expected) or partitioned
@@ -321,7 +321,7 @@ class Element:
     return gnum.size
 
   @staticmethod
-  def n_elt(elt_node:Union[CGNSTree, List[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
+  def n_elt(elt_node:Union[CGNSTree, Sequence[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
     """ Return the **total** number of elements of a element section.
 
     The input Elements_t can be either distributed (a single node is expected) or partitioned
@@ -451,7 +451,7 @@ class Subset:
     return PT.Subset.n_elem(subset_node)
 
   @staticmethod
-  def n_elem(subset_node:Union[List[CGNSTree], CGNSTree], comm:Optional[MPIComm]=None) -> int:
+  def n_elem(subset_node:Union[CGNSTree, Sequence[CGNSTree]], comm:Optional[MPIComm]=None) -> int:
     """ Return the **total** number of entities of a subset.
 
     The input subset can be either distributed (a single node is expected) or partitioned
