@@ -62,6 +62,26 @@ def _set_n_group_face(pdm_isosurface, n_group):
     lib = ctypes.CDLL("libpdm.so")
     lib.PDM_isosurface_n_group_set(iso_ptr, PDM._PDM_MESH_ENTITY_FACE, ctypes.c_int(n_group))
 
+
+def _filter_groups(group_idx, group_id, group_lngn, flag, comm):
+  """ Remove flagged entities from PDM group output """
+  from maia.utils import vstride as vs
+  rmvds_ids = np.flatnonzero(flag) + 1
+  is_flagged = flag[group_id-1]
+  # --> group_idx : count nb of flagged in each section and substract
+  group_counts = np.diff(group_idx) - vs.from_displs(group_idx, is_flagged).reduce(vs.ReduceOp.SUM)
+  group_idx = np_utils.sizes_to_indices(group_counts)
+  # IDs : old->new table + remove flagged
+  # --> group_id: (a) remove entities, (b) substract nb of removed entities
+  group_id  = np.delete(group_id, is_flagged) # (a)
+  group_id -= np.searchsorted(rmvds_ids, group_id) # (b)
+  # --> group_lngn: (a) remove entries, (b) recompute numbering (fill holes)    
+  group_lngn = np.delete(group_lngn, is_flagged) # (a)
+  for st,ed in zip(group_idx[:-1], group_idx[1:]): # (b)
+    group_lngn[st:ed] = create_sub_numbering([group_lngn[st:ed]], comm)[0]
+
+  return group_idx, group_id, group_lngn
+
 def find_matching_edge(all:NDArray, sub:NDArray) -> NDArray:
   """ For each edge in ``sub`` array, retrieve its position in ``all`` array.
   Edges are supposed to exist once in ``all`` array.
@@ -739,21 +759,8 @@ def iso_surface_one_domain_new(part_zones: List[CGNSPartTree],
       if degen_edges:
         # Filtering edges is easy
         bnd_edges = np.delete(bnd_edges, np.repeat(is_degen_edge, 2))
-
         # Now we need to filter and update BC content
-        rmvds_ids = np.flatnonzero(is_degen_edge) + 1
-        # --> bnd_group_idx : search groups containing removed edges
-        groups_ids = np.searchsorted(bnd_group_idx, rmvds_ids) - 1
-        bnd_group_counts = np.diff(bnd_group_idx)
-        np.add.at(bnd_group_counts, groups_ids, -1)
-        bnd_group_idx = np_utils.sizes_to_indices(bnd_group_counts)
-        # --> bnd_group: (a) remove edges, (b) substract nb of removed edges
-        bnd_group  = np.delete(bnd_group, np.isin(bnd_group, rmvds_ids)) # (a)
-        bnd_group -= np.searchsorted(rmvds_ids, bnd_group) # (b)
-        # --> bnd_lngn: (a) remove edges, (b) recompute numbering (fill holes)    
-        bnd_lngn = np.delete(bnd_lngn, is_degen_edge) # (a)
-      for st,ed in zip(bnd_group_idx[:-1], bnd_group_idx[1:]):  # (b)
-        bnd_lngn[st:ed] = create_sub_numbering([bnd_lngn[st:ed]], comm)[0]
+        bnd_group_idx, bnd_group, bnd_lngn = _filter_groups(bnd_group_idx, bnd_group, bnd_lngn, is_degen_edge, comm)
       
       all_edges = edge_data['np_edge_vtx']
       edge_bnd_to_all = find_matching_edge(all_edges, bnd_edges)

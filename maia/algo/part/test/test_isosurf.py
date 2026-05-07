@@ -48,6 +48,17 @@ def test_find_matching_edge():
   assert (ISO.find_matching_edge(all, sub) == np.array([2, 0, 4])).all()
   assert (ISO.find_matching_edge(all, np.empty(0, int)) == np.empty(0, int)).all()
 
+def test_filter_groups(comm):
+  group_idx  = np.array([0, 3, 7, 7, 9], np.int32)
+  group_ids  = np.array([8,3,5,  6,9,7,1,  10,2], np.int32)
+  group_lngn = np.array([2,1,3,  4,3,2,1,  2,1], pdm_gnum_dtype)
+  flag = np.array([0,1,0,0,1,0,1,0,0,0], bool)  # remove ids 2,5,7
+  # Old to new table is [1, x, 2, 3, x, 4, x, 5, 6, 7] -> expected new group_ids [5, 2, x,   4, 6, x, 1,   7, x]
+  group_idx, group_ids, group_lngn = ISO._filter_groups(group_idx, group_ids, group_lngn, flag, comm)
+  assert np.array_equal(group_idx, [0, 2, 5, 5, 6])
+  assert np.array_equal(group_ids, [5,2, 4,6,1, 7])
+  assert np.array_equal(group_lngn, [2,1, 3,2,1, 1])
+
 @pytest_parallel.mark.parallel(2)
 @pytest.mark.parametrize("from_api", [False, True])
 def test_exchange_field_one_domain(from_api, comm):
