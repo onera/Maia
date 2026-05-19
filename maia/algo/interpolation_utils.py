@@ -81,20 +81,24 @@ def _expected_single_val(l:Sequence):
   assert l.count(l[0]) == len(l)
   return l[0]
 
+def discover_fields_name_loc(zones, container_name):
+  fields_name_l = list()
+  label_l = list()
+  loc_l = list()
+  for zone in zones:
+    container = PT.find_node_from_path(zone, container_name)
+    fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
+    label_l.append(PT.get_label(container))
+    loc_l.append(PT.Container.GridLocation(container))
+    fields_name_l.append(fields_name)
+  fields_name = _expected_single_val(fields_name_l)
+  label = _expected_single_val(label_l)
+  loc = _expected_single_val(loc_l)
+  return fields_name, label, loc
+
 def discover_fields_name(zones, container_name, root, comm):
   if len(zones) > 0:
-    fields_name_l = list()
-    label_l = list()
-    loc_l = list()
-    for zone in zones:
-      container = PT.find_node_from_path(zone, container_name)
-      fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
-      label_l.append(PT.get_label(container))
-      loc_l.append(PT.Container.GridLocation(container))
-      fields_name_l.append(fields_name)
-    fields_name = _expected_single_val(fields_name_l)
-    label = _expected_single_val(label_l)
-    loc = _expected_single_val(loc_l)
+    fields_name, label, loc = discover_fields_name_loc(zones, container_name)
   else:
     fields_name = label = loc = None
 

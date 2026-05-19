@@ -55,7 +55,7 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
       
         With this strategy, source and target tree must be of same dimension.
         In addition, if fields are Vertex located, meshes are restricted to simplicial
-        (``TRI_3`` or ``TETRA_4``) elements. Lastly, implementation for distributed trees is not yet avalaible.
+        (``TRI_3`` or ``TETRA_4``) elements.
 
   - ``n_closest_pt`` (default = 1) -- If strategy is 'Closest' or 'LocationAndClosest', 
     specify the number of closest points used for interpolation.

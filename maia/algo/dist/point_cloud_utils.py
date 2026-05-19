@@ -38,6 +38,10 @@ def get_point_cloud(zone, comm, location):
   ln_to_gn = np.arange(distri[0]+1, distri[1]+1, dtype=distri.dtype)
   return coords, ln_to_gn
 
+def extract_sub_cloud_from_flag(cloud, flag):
+  # Reexport func
+  from maia.algo.part import point_cloud_utils as PCUp
+  return PCUp.extract_sub_cloud_from_flag(cloud, flag)
 
 def extract_sub_cloud(coords, lngn, indices):
   """
