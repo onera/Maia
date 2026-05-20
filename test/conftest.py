@@ -7,10 +7,7 @@ import maia.io
 from maia.utils                              import test_utils as TU
 from maia.utils.py_utils                     import uniform_distribution_at
 
-def rename_reports(config, comm):
-  #Only proc 0 holds test results, others are empty
-  if comm.Get_rank() == 0:
-    config.option.xmlpath = "junit_func.xml"
+from maia.conftest import is_master_process, rewrite_junit_report
 
 def generate_cgns_files(comm):
   """
@@ -38,7 +35,14 @@ def write_output(request):
 def pytest_configure(config):
   comm = MPI.COMM_WORLD
 
-  rename_reports(config, comm)
+  #Only master process holds test results, others are empty
+  if is_master_process(config):
+    config.option.xmlpath = "junit_maia_func.xml"
+
   if config.getoption('gen_hdf'):
     generate_cgns_files(comm)
   comm.barrier()
+
+def pytest_sessionfinish(session, exitstatus):
+  if is_master_process(session.config):
+    rewrite_junit_report(session.config.option.xmlpath, 'Functional')
