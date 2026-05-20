@@ -266,7 +266,7 @@ def test_multidom_vtx(comm):
   assert abs(src_sum - tgt_sum) /  src_sum < 1E-3 # TODO restore 1E-12 when PDM / optim is OK
 
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8.dev'), reason="Require PDM fixes on PtP")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
 def test_multidom_gnum_offset(comm):
   src1 = maia.factory.generate_dist_block(6, 'TRI_3', comm, length=.5)
   src2 = maia.factory.generate_dist_block(6, 'TRI_3', comm, origin=(.5,0,0), length=.5)
