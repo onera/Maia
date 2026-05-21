@@ -13,7 +13,7 @@ from .import closest_points as CLO
 
 from .import point_cloud_utils as PCU
 
-from .interpolation_cons import ConservativeInterpolator
+from .interpolation_cons import ConservativeDistInterpolator
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 
@@ -177,7 +177,7 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **
 
   strategy = options.get('strategy', 'Closest')
   if strategy == 'Intersection':
-    return ConservativeInterpolator(src_dom, tgt_dom, comm, **options)
+    return ConservativeDistInterpolator(src_dom, tgt_dom, comm, **options)
   else:
     src_to_tgt = create_src_to_tgt(src_dom, tgt_dom, comm, src_location, tgt_location, **options)
     return Interpolator(src_dom, tgt_dom, src_to_tgt, src_location, tgt_location, comm)

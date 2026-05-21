@@ -7,7 +7,6 @@ import maia.pytree.maia as MT
 
 import maia
 import maia.algo.part.point_cloud_utils as PCU
-import maia.algo.part.closest_points    as CLO
 import maia.transfer.protocols          as EP
 from   maia.factory.partitioning        import part_bound_orient as PBO
 from   maia.utils                       import py_utils, par_utils, np_utils
@@ -19,7 +18,7 @@ from .connectivity_utils import cell_vtx_connectivity_S
 from .ngon_tools import pe_to_nface, edge_pe_to_ngon
 from .geometry import compute_elements_measure
 
-from maia.algo import interpolation_utils as itp_utils
+from maia.algo.interpolation_utils import ConservativeInterpolator
 
 import Pypdm.Pypdm as PDM
 
@@ -95,10 +94,15 @@ def offset_mdom(parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm, revert:boo
 
 def compute_mesh_intersection(src_parts:List[CGNSPartTree],
                               tgt_parts:List[CGNSPartTree],
-                              comm:MPIComm,
-                              dim:int) -> Tuple[PDM.PartToPart, List[Dict[str, NDArray]]]:
+                              comm:MPIComm) -> Tuple[PDM.PartToPart, List[Dict[str, NDArray]]]:
 
   keep_alive = list()
+
+  src_dim = tree_dim(src_parts, comm)
+  tgt_dim = tree_dim(tgt_parts, comm)
+  assert src_dim == tgt_dim
+  dim = src_dim
+
 
   mi = PDM.MeshIntersection(comm,  PDM._PDM_MESH_INTERSECTION_KIND_WEIGHT, dim, dim, len(tgt_parts), len(src_parts))
   _init_tetraisation_pt_type(mi)
@@ -302,200 +306,44 @@ class CellToVertex:
     return vtx_fields
   
     
-class ConservativeInterpolator:
+class ConservativePartInterpolator(ConservativeInterpolator):
+
+  """ Partitioned implementation of ConservativeInterpolator
+  Multidomain is managed with global offset on gnum arrays """
+
+  @staticmethod
+  def get_native_measure(zone, comm):
+    return _get_native_measure(zone).reshape(-1, order='F')
+  @staticmethod
+  def get_cell_clouds(zones, comm):
+    return [PCU.get_point_cloud(zone, 'CellCenter') for zone in zones]
+  @staticmethod
+  def compute_mesh_intersection(src_parts, tgt_parts, comm):
+    return compute_mesh_intersection(src_parts, tgt_parts, comm)
 
   def __init__(self,
                src_parts_per_dom:List[List[CGNSPartTree]],
                tgt_parts_per_dom:List[List[CGNSPartTree]],
                comm:MPIComm,
                **kwargs):
-    
-
-    # In the init part of the interpolator we build the part to part and weights
-    # used to exchange data from source to target cells.
-    # On each partition, weights are a strided array of size len(tgt_cells),
-    # containing for each tgt cell a weight w_i for each of its related src cells
-    #
-    # Assuming that the exchanged fields will be in integrated from (eg mass),
-    # the weigth from a source cell I to a tgt cell J is
-    # 
-    #   Volume_(I∩J) / Volume_I    for standard cells
-    #   Volume_J / Volume_I        for tgt cells outside src mesh, where I is the closest cell
-    #
-    # Target cells that are partially outside src mesh are corrected with the
-    # coefficient (1/r) where r = \sum_I Volume_(I∩J)  / Volume_J
-
-    # Since the exchange fields will be usually in conservative form (eg density), we can
-    # report the conservative <-> integrated factor (Volume_I / Volume_J) directly in weights
-    # which become
-    #   Volume_(I∩J) / Volume_J    for standard cells
-    #   1                          for tgt cells outside src mesh, where I is the closest cell
-    # and correction by (1/r) is unchanged
-
-    src_parts = py_utils.to_flat_list(src_parts_per_dom)
-    tgt_parts = py_utils.to_flat_list(tgt_parts_per_dom)
-    src_dim = tree_dim(src_parts, comm)
-    tgt_dim = tree_dim(tgt_parts, comm)
-    assert src_dim == tgt_dim
-
-    vol_src = [_get_native_measure(zone).reshape(-1, order='F') for zone in src_parts]
-    vol_tgt = [_get_native_measure(zone).reshape(-1, order='F') for zone in tgt_parts]
 
     offset_mdom(src_parts_per_dom, comm)
     offset_mdom(tgt_parts_per_dom, comm)
 
-    # Compute intersection between src (part 2) and tgt (part 1)
-    ptp, tgt_to_src = compute_mesh_intersection(src_parts, tgt_parts, comm, src_dim)
-
-    src_weights_l = [vs.from_displs(r['a_to_b_idx'], r['a_to_b_weight']) / vol \
-                     for r,vol in zip(tgt_to_src, vol_tgt)]
-    # Detect tgt cell not completly covered by src cells:
-    #   - outside_mask is True if tgt cell is totally   outside src mesh
-    #   - partial_mask is True       "        partially        "
-    # vol_ratio is the fraction of tgt cell covered by src mesh, since a_to_b_weight already
-    # include src vol and we divided by tgt_vol, we just have to sum
-    tol = kwargs.get('measure_ratio_tol', 1E-12)
-    vol_ratio = [src_weights.reduce(vs.ReduceOp.SUM) for src_weights in src_weights_l]
-    partial_mask = [r*(1-r) > tol for r in vol_ratio]
-    outside_mask = [r < tol       for r in vol_ratio]
-
-    # Incorporate cut-cell correction for partial cells
-    for i, weight in enumerate(src_weights_l):
-      vol_ratio_rep    = np.repeat(vol_ratio[i], weight.counts)
-      partial_mask_rep = np.repeat(partial_mask[i], weight.counts)
-      np.divide(weight.values, vol_ratio_rep, where=partial_mask_rep, out=weight._values)
-
-    # For outside cells, detect the closest cell in src mesh.
-    # Incorporate it in PartToPart (update it) with a weight equal to tgt cell volume
-    if comm.allreduce(any([outside.any() for outside in outside_mask]), MPI.LOR):
-      # Perform closest point on outside cells only
-      src_clouds = [PCU.get_point_cloud(part, 'CellCenter') for part in src_parts]
-      tgt_clouds = [PCU.get_point_cloud(part, 'CellCenter') for part in tgt_parts]
-      tgt_clouds = [PCU.extract_sub_cloud_from_flag(cloud, flag) for cloud,flag in zip(tgt_clouds, outside_mask)]
-
-      closest_out = CLO._mdom_closest_points([src_clouds], [tgt_clouds], comm, False, n_pts=1, need_shift=True)[0]
-
-      a_to_b_cat = []
-      weights_cat = []
-      for i in range(len(tgt_clouds)):
-        a_to_b_mi = vs.from_displs(tgt_to_src[i]['a_to_b_idx'], tgt_to_src[i]['a_to_b'])
-        weight_mi = src_weights_l[i]
-
-        if closest_out[i]['closest_src_gnum'].size > 0:
-          a_to_b_clo = vs.from_counts(outside_mask[i].astype(np.int32), closest_out[i]['closest_src_gnum'])
-          weight_clo = vs.from_counts(a_to_b_clo.counts, np.ones(a_to_b_clo.dsize))
-          
-          a_to_b_cat.append(vs.concatenate([a_to_b_mi, a_to_b_clo], vs.INNER_AXIS))
-          weights_cat.append(vs.concatenate([weight_mi, weight_clo], vs.INNER_AXIS))
-        else:
-          a_to_b_cat.append(a_to_b_mi)
-          weights_cat.append(weight_mi)
-
-      # Override PartToPart and weights
-      ptp = PDM.PartToPart(comm,
-                           [MT.Zone.cell_globalnumbering(z) for z in tgt_parts], # Part 1 is tgt
-                           [MT.Zone.cell_globalnumbering(z) for z in src_parts], # Part 2 is src
-                           [a.displs for a in a_to_b_cat],
-                           [a.values for a in a_to_b_cat])
-      src_weights_l = weights_cat
+    ConservativeInterpolator.__init__(self,
+                                      py_utils.to_flat_list(src_parts_per_dom),
+                                      py_utils.to_flat_list(tgt_parts_per_dom),
+                                      comm,
+                                      **kwargs)
 
     offset_mdom(src_parts_per_dom, comm, revert=True)
     offset_mdom(tgt_parts_per_dom, comm, revert=True)
 
-    self.ptp = ptp
-    self.src_weights_l = src_weights_l
     self.src_parts_per_dom = src_parts_per_dom
     self.tgt_parts_per_dom = tgt_parts_per_dom
-    self.src_parts = src_parts
-    self.tgt_parts = tgt_parts
-    self.src_vol = vol_src
-    self.tgt_vol = vol_tgt
-    self.comm = comm
-
-    # Caching
-    self._vtx_to_cell_src = None
-    self._cell_to_vtx_tgt = None
-
-    # If some rank have no partitions, store a rank used as root to share FS names
-    self.root = None
-    if comm.allreduce(len(src_parts) == 0, MPI.LOR):
-      self.root = self.comm.allreduce(-1 if len(src_parts) == 0 else comm.rank, MPI.MAX)
-
-  @property
-  def vtx_to_cell_src(self):
-    if self._vtx_to_cell_src is None:
-      self._vtx_to_cell_src = VertexToCell(self.src_parts_per_dom, self.comm)
-    return self._vtx_to_cell_src
-  @property
-  def cell_to_vtx_tgt(self):
-    if self._cell_to_vtx_tgt is None:
-      self._cell_to_vtx_tgt = CellToVertex(self.tgt_parts_per_dom, self.comm)
-    return self._cell_to_vtx_tgt
-
-  def cell_data_transfer(self, 
-                         src_fields_l:Dict[str, List[NDArray]],
-                         is_conservative:bool) -> Dict[str, List[NDArray]]:
-
-    # This function is relevant for integrated fields (such as mass) :
-    # if data is in conservative form, we must multiply it by Density
-    # Reminder : in ptp, part1 is target mesh, part2 is src mesh
-    rq_dict = dict()
-    for name, src_fields in src_fields_l.items():
-      
-      # Integrated to conservative, if needed
-      if not is_conservative:
-        src_fields = [f / vol for f,vol in zip(src_fields, self.src_vol)]
-
-      rq_dict[name] = self.ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,
-                                             PDM._PDM_PART_TO_PART_DATA_DEF_ORDER_PART2,
-                                             src_fields)
-    tgt_fields_l = {}
-    for name, rq in rq_dict.items():
-      _, recv_datas = self.ptp.reverse_wait(rq)
-  
-      # Ponderate by weights
-      tgt_fields = [
-        vs.from_displs(src_weights.displs, data*src_weights.values).reduce(vs.ReduceOp.SUM)
-        for data, src_weights in zip(recv_datas, self.src_weights_l)]
-
-      # Conservative to integrated, if needed
-      if not is_conservative:
-        for f, vol in zip(tgt_fields, self.tgt_vol):
-          f *= vol
-      
-      tgt_fields_l[name] = tgt_fields
-
-    return tgt_fields_l
 
 
-  def exchange_fields(self, container_name:str, tgt_loc:str, is_conservative=True):
-
-    field_names, cnt_label, src_loc = itp_utils.discover_fields_name(self.src_parts, container_name, self.root, self.comm)
-
-    src_fields_l:Dict[str, List[NDArray]] = {key: [] for key in field_names}
-    for src_zone in self.src_parts:
-      container = PT.find_node_from_path(src_zone, container_name)
-      for key, val in PT.Container.fields(container).items():
-        src_fields_l[key].append(val.reshape(-1, order='F')) # Flatten if src zone is S
-
-    if src_loc == 'Vertex':
-      src_fields_l = self.vtx_to_cell_src._exchange_fields(src_fields_l, is_conservative)
-    elif src_loc != 'CellCenter':
-      raise ValueError(f"Unsupported location for input container: {src_loc}")
-      
-    tgt_fields_l = self.cell_data_transfer(src_fields_l, is_conservative)
-
-    # Back to vertex
-    if tgt_loc == 'Vertex':
-      tgt_fields_l = self.cell_to_vtx_tgt._exchange_fields(tgt_fields_l, is_conservative)
-    elif tgt_loc != 'CellCenter':
-      raise ValueError(f"Unsupported location for output container: {tgt_loc}")
-
-    # Update target partitions
-    for i,tgt_part in enumerate(self.tgt_parts):
-      shape = PT.Zone.CellSize(tgt_part) if tgt_loc == 'CellCenter' else PT.Zone.VertexSize(tgt_part)
-      PT.rm_children_from_name(tgt_part, container_name)
-      fields = {key: vals[i].reshape(shape, order='F') for key,vals in tgt_fields_l.items()}
-      fs = PT.new_FlowSolution(container_name, loc=tgt_loc, fields=fields, parent=tgt_part)
-      PT.set_label(fs, cnt_label)
-
+  def VertexToCell(self):
+    return VertexToCell(self.src_parts_per_dom, self.comm)
+  def CellToVertex(self):
+    return CellToVertex(self.tgt_parts_per_dom, self.comm)

@@ -21,7 +21,7 @@ from .import closest_points as CLO
 
 from .utils import gather_containers_name
 
-from .interpolation_cons import ConservativeInterpolator
+from .interpolation_cons import ConservativePartInterpolator
 from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
@@ -152,7 +152,7 @@ def interpolate(src_tree:CGNSPartTree,
   if options.get('strategy', 'Closest') == 'Intersection':
     # For intersection, src / tgt loc does not matter
     interpolator = create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'CellCenter', **options)
-    assert isinstance(interpolator, ConservativeInterpolator)
+    assert isinstance(interpolator, ConservativePartInterpolator)
     for loc_containers_name in loc_to_containers_name.values():
       for container_name in loc_containers_name:
         interpolator.exchange_fields(container_name, location, options.get('is_conservative', True))
@@ -178,7 +178,7 @@ def create_interpolator(src_tree:CGNSPartTree,
                         comm:MPIComm,
                         src_location:Literal['CellCenter', 'Vertex'],
                         tgt_location:Literal['CellCenter', 'Vertex'],
-                        **options) -> Union[Interpolator, ConservativeInterpolator]:
+                        **options) -> Union[Interpolator, ConservativePartInterpolator]:
   """
   Partitioned implementation of maia.algo.interpolate
   """
@@ -189,7 +189,7 @@ def create_interpolator(src_tree:CGNSPartTree,
 
   strategy = options.get('strategy', 'Closest')
   if strategy == 'Intersection':
-    return ConservativeInterpolator(src_parts_per_dom, tgt_parts_per_dom, comm, **options)
+    return ConservativePartInterpolator(src_parts_per_dom, tgt_parts_per_dom, comm, **options)
   else:
     assert src_location in ['CellCenter', 'Vertex']
     src_to_tgt = create_src_to_tgt(src_parts_per_dom, tgt_parts_per_dom, comm, src_location, tgt_location, **options)

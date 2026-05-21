@@ -115,7 +115,7 @@ def test_cell_cell_interpolation(offset, comm):
   elif offset == 'outside':
     cx += 0.6
 
-  interpolator = ITP.ConservativeInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
+  interpolator = ITP.ConservativeDistInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
   interpolator.exchange_fields('Sol', 'CellCenter', is_conservative=False)
 
   for zone in PT.get_all_Zone_t(tgt):
@@ -153,7 +153,7 @@ def test_poly_and_s_meshes(dim, comm):
     cell_distri = MT.Zone.cell_distribution(zone)
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : np.arange(cell_distri[0], cell_distri[1])}, parent=zone)
 
-  interpolator = ITP.ConservativeInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
+  interpolator = ITP.ConservativeDistInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
   interpolator.exchange_fields('FlowSolution', 'CellCenter', False)
 
   src_sum = comm.allreduce(PT.get_node_from_name(src, 'gnum')[1].sum())
@@ -178,7 +178,7 @@ def test_vertex_fields(in_loc, out_loc, comm):
   # Here we just check that output is produced at good location
   # (results already checked in other tests)
 
-  interpolator = ITP.ConservativeInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
+  interpolator = ITP.ConservativeDistInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
   interpolator.exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(tgt):

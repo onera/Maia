@@ -7,8 +7,7 @@ import maia.pytree.maia   as MT
 from .dist import interpolation as dist_interpolation
 from .part import interpolation as part_interpolation
 
-from .interpolation_utils import Interpolator
-from .part.interpolation  import ConservativeInterpolator
+from .interpolation_utils import Interpolator, ConservativeInterpolator
 
 
 @overload

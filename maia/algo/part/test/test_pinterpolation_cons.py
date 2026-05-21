@@ -135,7 +135,7 @@ def test_cell_cell_interpolation(offset, comm):
   psrc = TU.portable_partitioning(src, cell_gnum, comm, data_transfer='FIELDS')
   ptgt = maia.factory.partition_dist_tree(tgt, comm, zone_to_parts=tgt_split_w)
 
-  interpolator = ITP.ConservativeInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
+  interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
   interpolator.exchange_fields('Sol', 'CellCenter', is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
@@ -178,7 +178,7 @@ def test_poly_and_s_meshes(dim, comm):
   for zone in PT.get_all_Zone_t(psrc):
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : MT.Zone.cell_globalnumbering(zone)}, parent=zone)
 
-  interpolator = ITP.ConservativeInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
+  interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
   interpolator.exchange_fields('FlowSolution', 'CellCenter', False)
 
   maia.transfer.part_tree_to_dist_tree_all(tgt, ptgt, comm)
@@ -208,7 +208,7 @@ def test_vertex_fields(in_loc, out_loc, comm):
   # Here we just check that output is produced at good location
   # (results already checked in other tests)
 
-  interpolator = ITP.ConservativeInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
+  interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
   interpolator.exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
