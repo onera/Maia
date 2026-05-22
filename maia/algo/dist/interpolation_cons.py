@@ -15,7 +15,7 @@ from .geometry import compute_elements_measure
 from .localize    import minimal_partitioning
 from .closest_elt import minimal_partitioning_poly2D
 
-from maia.algo.interpolation_utils import ConservativeInterpolator
+from maia.algo.interpolation_impl import ConservativeInterpolator
 
 import Pypdm.Pypdm as PDM
 

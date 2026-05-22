@@ -1,7 +1,7 @@
 import numpy as np
 from maia.utils import vstride as vs
 
-from maia.algo import interpolation_utils as ITPU
+from maia.algo import interpolation_impl as ITP
 
 def test_cell_tgt_to_vtx_tgt():
   n_vtx = 12
@@ -16,7 +16,7 @@ def test_cell_tgt_to_vtx_tgt():
   # Vtx 2 appears in cells 3 & 5. Thoses cells have localized tgt ids 101,6,2,1 in them, so we
   # expect to get tgt 101,6,2 and 1 for vtx2
 
-  vtx_to_tgt, vtx_to_tgt_wgt = ITPU._cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_wgt, n_vtx)
+  vtx_to_tgt, vtx_to_tgt_wgt = ITP._cell_tgt_to_vtx_tgt(cell_vtx, cell_tgt, cell_vtx_wgt, n_vtx)
 
   # The order of `vtx_to_tgt` does not matter and is not specified by the algorithm,
   # so whatever we get, we can order it before checking it
@@ -39,17 +39,17 @@ def test_interpolator_reductions():
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,1,2,3])}]
   data = np.array([1,2,3], np.int32)
-  out = ITPU.Interpolator._reduce_single_val(fake_interpolator, 0, data)
+  out = ITP.Interpolator._reduce_single_val(fake_interpolator, 0, data)
   assert np.array_equal(out, data)
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,4,6])}]
   fake_interpolator.tgt_weight = [1./np.array([1,1,1E-20,1,3,1])]
   data = np.array([1,2, 10,11, 20,30], np.float64)
-  out = ITPU.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
+  out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
   assert (out == np.array([1.5, 10., 27.5])).all()
 
   fake_interpolator.sending_gnums = [{'come_from_idx' : np.array([0,2,5,6])}]
   fake_interpolator.tgt_weight = [1./np.array([1,1, 1E-20,1,3, 1])]
   data = np.array([1,2, 10,11,20, 30], np.float64)
-  out = ITPU.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
+  out = ITP.Interpolator._reduce_weighted_mean(fake_interpolator, 0, data)
   assert (out == np.array([1.5, 10., 30.0])).all()

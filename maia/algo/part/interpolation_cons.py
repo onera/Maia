@@ -18,7 +18,7 @@ from .connectivity_utils import cell_vtx_connectivity_S
 from .ngon_tools import pe_to_nface, edge_pe_to_ngon
 from .geometry import compute_elements_measure
 
-from maia.algo.interpolation_utils import ConservativeInterpolator
+from maia.algo.interpolation_impl import ConservativeInterpolator
 
 import Pypdm.Pypdm as PDM
 

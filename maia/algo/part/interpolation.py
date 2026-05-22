@@ -22,7 +22,7 @@ from .import closest_points as CLO
 from .utils import gather_containers_name
 
 from .interpolation_cons import ConservativePartInterpolator
-from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
+from maia.algo.interpolation_impl import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
                       tgt_parts_per_dom:List[List[CGNSPartTree]],

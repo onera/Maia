@@ -14,7 +14,7 @@ from .import closest_points as CLO
 from .import point_cloud_utils as PCU
 
 from .interpolation_cons import ConservativeDistInterpolator
-from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
+from maia.algo.interpolation_impl import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 
 def get_shifted_gnum_from_loc(zones, loc):
