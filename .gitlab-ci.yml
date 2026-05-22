@@ -180,6 +180,32 @@ Coverage:
         coverage_format: cobertura
         path: ./coverage_unit.xml
 
+ParaDiGM@latest:
+  stage: Quality
+  rules:
+    - if: $CI_PIPELINE_SCHEDULE_DESCRIPTION == "upstream-check"
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: clone
+  before_script:
+    - git submodule update --init # Clone new repo since we will modify sources
+    - cd external/paradigm
+    - git fetch && git checkout origin/dev
+    - git submodule update --init
+    - cd ../..
+  script:
+    - SRC_FOLDER=$(pwd)
+    - cd $CUSTOM_CI_DIR
+    - mkdir -p build/socle6_pdm-dev && cd build/socle6_pdm-dev
+    - module purge
+    - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+    - cmake $SRC_FOLDER -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON -DPDM_ENABLE_TESTS=OFF
+    - make -j24 > build.log
+    - source source.sh
+    - export PATH=$FEFLO_ROOT/bin:$PATH  # Get Feflo
+    - pytest $SRC_FOLDER/doc
+    - mpirun -np 4 python3 -m pytest $SRC_FOLDER/maia
+    - mpirun -np 8 python3 -m pytest $SRC_FOLDER/test --scheduler=dynamic
 Documentation:
   stage: Quality
   script:
@@ -214,7 +240,7 @@ Type checking:
 Initialize deploy:
   stage: Deploy
   rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE != "schedule"
   variables:
     GIT_STRATEGY: clone
   before_script:
@@ -228,7 +254,7 @@ Initialize deploy:
 Install:
   stage: Deploy
   rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE != "schedule"
   needs: ["Initialize deploy"]
   parallel:
     matrix:
@@ -284,7 +310,7 @@ Install:
 Finalize deploy:
   stage: Deploy
   rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE != "schedule"
   needs: ["Install"]
   script:
     - ssh sonics@spiro02 "rm -rf /scratchm/sonics/tmp/maia-ci-${CI_PIPELINE_ID}"
@@ -295,7 +321,7 @@ Finalize deploy:
 Pages:
   stage: Deploy
   rules:
-    - if: $CI_COMMIT_BRANCH == "dev"
+    - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE != "schedule"
   pages: True
   script:
     - rm -rf public
