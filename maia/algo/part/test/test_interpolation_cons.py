@@ -229,7 +229,7 @@ def test_from_api(comm):
   maia.algo.interpolate(psrc, ptgt, comm, ['Sol'], 'Vertex', strategy='Intersection', is_conservative=False)
   assert PT.get_node_from_name(ptgt, 'Sol') is not None
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8.dev'), reason="Require PDM fixes on PtP")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
 @pytest.mark.parametrize('dim', [2,3])
 @pytest.mark.parametrize('elt_kind', ["Poly", "Standard"])
 def test_multidom(dim, elt_kind, comm):
@@ -261,7 +261,7 @@ def test_multidom(dim, elt_kind, comm):
   tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
   assert abs(src_sum - tgt_sum) /  src_sum < 1E-12
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8.dev'), reason="Require PDM fixes on PtP")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
 @pytest_parallel.mark.parallel(2)
 def test_multidom_vtx(comm):
   src = union(maia.factory.generate_dist_block(5, 'TRI_3', comm, length=(.5, 1), origin=(0,0,0)),

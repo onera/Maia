@@ -63,8 +63,7 @@ def create_pytest_output_dir(comm):
   return out_dir
 
 def portable_partitioning(dist_tree, wanted_cell_l, comm, **kwargs):
-  """ Create a custom partioning (chosing cells for each part) to ensure portability 
-  (require PDM >= 2.7)"""
+  """ Create a custom partioning (chosing cells for each part) to ensure portability """
   import maia.pytree      as PT
   import maia.pytree.maia as MT
   from maia.transfer import protocols as MEP

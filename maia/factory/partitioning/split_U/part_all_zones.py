@@ -246,7 +246,6 @@ def part_U_zones(bases_to_block_u, dzone_to_weighted_parts, comm, part_options):
   # In this case, dzone_to_weighted_parts must be provided, but the weight itself are ignored
   # target_part is provided as a list of n_part_u int32 nparray of size dn_cell
   if part_options['target_part'] is not None:
-    assert hasattr(multi_part, 'dpart_id_set'), f"target_part mode is not supported for PDM < 2.7"
     tgt_parts_id = part_options['target_part']
     assert len(tgt_parts_id) == len(u_zones)
     for i, tgt_part_id in enumerate(tgt_parts_id):

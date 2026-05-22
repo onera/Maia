@@ -1,7 +1,5 @@
-from packaging.version import Version
 from mpi4py import MPI
 import numpy as np
-import operator
 
 import maia
 import maia.pytree        as PT
@@ -25,42 +23,6 @@ from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
 import Pypdm.Pypdm as PDM
 
-PDM_VERSION = Version(PDM.__version__)
-
-# ExtractPart API changed between PDM2.6 and PDM2.7 (see !153), this switch allow to use good API
-EP_OLD_API = hasattr(PDM.ExtractPart, 'extract_part_group_get')
-PDM_EP_group_set   = PDM.ExtractPart.part_group_set         if EP_OLD_API else PDM.ExtractPart.group_set
-PDM_EP_group_get   = PDM.ExtractPart.extract_part_group_get if EP_OLD_API else PDM.ExtractPart.group_get
-PDM_EP_n_group_set = PDM.ExtractPart.part_n_group_set       if EP_OLD_API else PDM.ExtractPart.n_group_set
-
-def pdm_ep_part_set(pdm_ep, i_part, cell_face, face_vtx, face_edge, edge_vtx,
-                    cell_gnum, face_gnum, edge_gnum, vtx_gnum, vtx_coords):
-  # Dispatch for OLD/NEW api, and also manage correctly 2D/3D
-  unwrap = lambda v: (None, None) if v is None else (v.displs, v.values)
-
-  cell_face_idx, cell_face_v = unwrap(cell_face)
-  face_vtx_idx, face_vtx_v   = unwrap(face_vtx)
-  face_edge_idx, face_edge_v = unwrap(face_edge)
-
-  if EP_OLD_API:
-    n_cell, n_face, n_edge, n_vtx = (t.shape[0] if t is not None else 0 for t
-          in [cell_gnum, face_gnum, edge_gnum, vtx_gnum])
-    pdm_ep.part_set(i_part,
-                    n_cell, n_face, n_edge, n_vtx,
-                    cell_face_idx, cell_face_v,
-                    face_edge_idx, face_edge_v, edge_vtx,
-                    face_vtx_idx, face_vtx_v,
-                    cell_gnum, face_gnum, edge_gnum, vtx_gnum,
-                    vtx_coords)
-
-  else:
-    pdm_ep.part_set(i_part,
-                    cell_face_idx, cell_face_v,
-                    face_edge_idx, face_edge_v,
-                    edge_vtx,
-                    face_vtx_idx , face_vtx_v,
-                    cell_gnum, face_gnum, edge_gnum, vtx_gnum,
-                    vtx_coords)
 
 def _generate_entity_graph_comm(entity_gnum_l, comm, key):
   # Simplified version for manifold interfaces, waiting for
@@ -399,14 +361,6 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
   n_part_in  = len(part_zones)
   n_part_out = 1 if equilibrate else n_part_in
 
-  if Version('2.7') <= PDM_VERSION:
-    bc_op = operator.le
-  else:
-    # Some group extractions are not supported in former versions of PDM:
-    #  - cell_dim = parent dim (eg cell group if extracting cells from a 3D mesh)
-    #  - dimgroup = tgt_dim (eg face group if extracting faces from a 3D mesh)
-    bc_op = operator.lt if (dim == parent_dim or not equilibrate) else operator.le
-
   kind = PDM._PDM_EXTRACT_PART_KIND_REEQUILIBRATE if equilibrate else PDM._PDM_EXTRACT_PART_KIND_LOCAL
   pdm_ep = PDM.ExtractPart(dim, # face/cells
                            n_part_in,
@@ -426,12 +380,12 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
     loc_to_pdm_bnd_type = {"CellCenter" : 2, "EdgeCenter": 3, "Vertex" : 4}
   child_list = ['GridLocation', 'FamilyName_t', 'AdditionalFamilyName_t', 'Descriptor_t']
   for dim_name in gdom_bcs_path_per_dim:
-    if bc_op(_LOC_TO_DIM[dim_name], dim):
+    if _LOC_TO_DIM[dim_name] <= dim:
       is_dim_bc = PT.pred.is_bc_of_location(dim_name)
       dist_from_part.discover_nodes_from_matching(dist_zone, part_zones, ["ZoneBC_t", is_dim_bc], comm, child_list=child_list, get_value='leaf')
       gdom_bcs_path_per_dim[dim_name] = PT.predicates_to_paths(dist_zone, ['ZoneBC_t',is_dim_bc])
       n_gdom_bcs = len(gdom_bcs_path_per_dim[dim_name])
-      PDM_EP_n_group_set(pdm_ep, loc_to_pdm_bnd_type[dim_name], n_gdom_bcs)
+      PDM.ExtractPart.n_group_set(pdm_ep, loc_to_pdm_bnd_type[dim_name], n_gdom_bcs)
 
   # Loop over domain zone : preparing extract part
   for i_part, part_zone in enumerate(part_zones):
@@ -459,8 +413,17 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
       edge_vtx = PT.find_child_from_name(bar, "ElementConnectivity")[1]
       cell_ln_to_gn = None # Erase because contains Face
 
-    pdm_ep_part_set(pdm_ep, i_part,
-                    cell_face, face_vtx, face_edge, edge_vtx,
+    # Manage correctly 2D/3D
+    unwrap = lambda v: (None, None) if v is None else (v.displs, v.values)
+    cell_face_idx, cell_face_v = unwrap(cell_face)
+    face_vtx_idx, face_vtx_v   = unwrap(face_vtx)
+    face_edge_idx, face_edge_v = unwrap(face_edge)
+
+    pdm_ep.part_set(i_part,
+                    cell_face_idx, cell_face_v,
+                    face_edge_idx, face_edge_v,
+                    edge_vtx,
+                    face_vtx_idx , face_vtx_v,
                     cell_ln_to_gn, face_ln_to_gn, edge_ln_to_gn, vtx_ln_to_gn,
                     vtx_coords)
 
@@ -469,14 +432,14 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
 
     # Add BCs info
     for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
-      if bc_op(_LOC_TO_DIM[dim_name], dim):
+      if _LOC_TO_DIM[dim_name] <= dim:
         for i_bc, bc_path in enumerate(gdom_bcs_path):
           bc_n  = PT.get_node_from_path(part_zone, bc_path)
           bc_pl = PT.get_value(PT.get_child_from_name(bc_n, 'PointList'))[0] \
                     if bc_n is not None else np.empty(0, np.int32)
           bc_gn = MT.Subset.globalnumbering(bc_n) if bc_n is not None else np.empty(0, pdm_gnum_dtype)
           bc_type = loc_to_pdm_bnd_type[dim_name]
-          PDM_EP_group_set(pdm_ep, i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, _LOC_TO_DIM[dim_name]) , bc_gn)
+          PDM.ExtractPart.group_set(pdm_ep, i_part, i_bc, bc_type, bc_pl-local_pl_offset(part_zone, _LOC_TO_DIM[dim_name]) , bc_gn)
 
   pdm_ep.compute()
 
@@ -599,11 +562,11 @@ def extract_part_one_domain_u(part_zones, point_list, dims, comm,
     # - Get BCs
     zonebc_n = PT.new_ZoneBC(parent=extract_zone)
     for dim_name, gdom_bcs_path in gdom_bcs_path_per_dim.items():
-      if bc_op(_LOC_TO_DIM[dim_name], dim):
+      if _LOC_TO_DIM[dim_name] <= dim:
         for i_bc, bc_path in enumerate(gdom_bcs_path):
           bc_type = loc_to_pdm_bnd_type[dim_name]
 
-          bc_info = PDM_EP_group_get(pdm_ep, i_part, i_bc, bc_type)
+          bc_info = PDM.ExtractPart.group_get(pdm_ep, i_part, i_bc, bc_type)
           bc_pl = bc_info['group_entity']
           bc_gn = bc_info['group_entity_ln_to_gn']
           if bc_pl.size != 0:

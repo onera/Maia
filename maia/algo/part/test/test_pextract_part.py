@@ -526,7 +526,6 @@ def test_extract_fam_dataset(comm, equilibrate):
   assert PT.get_child_from_name(ext_zone, 'ZSR') is None
   assert PT.get_child_from_name(ext_zone, 'Ymin') is None
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.7'), reason="Portable partitioning require PDM >= 2.7")
 @pytest.mark.parametrize("equilibrate", [True, False])
 @pytest_parallel.mark.parallel(2)
 def test_extract_from_zsr_U_2d(equilibrate, comm):
@@ -968,7 +967,6 @@ def test_extract_S_2d(comm):
     assert len(ext_zones) == 0
 
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.7'), reason="Require PDM >= 2.7")
 @pytest_parallel.mark.parallel(2)
 def test_vol_groups(comm):
   tree = maia.factory.generate_dist_block(11, 'Poly', comm)
