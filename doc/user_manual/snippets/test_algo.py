@@ -323,7 +323,7 @@ def test_compute_elliptical_slice():
   part_tree = maia.factory.partition_dist_tree(dist_tree, MPI.COMM_WORLD, preserve_orientation=True)
 
   slice_tree = isosurf.elliptical_slice(part_tree, [0.5,0.5,0.5,.5,1.,1.,.25**2], \
-      MPI.COMM_WORLD, elt_type='NGON_n')
+      MPI.COMM_WORLD)
   #compute_elliptical_slice@end
 
 def test_localize_points():
