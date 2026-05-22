@@ -283,3 +283,25 @@ def test_multidom_vtx(comm):
   tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
   assert abs(src_sum - tgt_sum) /  src_sum < 1E-3 # TODO restore 1E-12 when PDM / optim is OK
 
+
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8.dev'), reason="Require PDM fixes on PtP")
+def test_multidom_gnum_offset(comm):
+  src1 = maia.factory.generate_dist_block(6, 'TRI_3', comm, length=.5)
+  src2 = maia.factory.generate_dist_block(6, 'TRI_3', comm, origin=(.5,0,0), length=.5)
+  src3 = maia.factory.generate_dist_block(6, 'TRI_3', comm, origin=(.0,.5,0), length=.5)
+  src4 = maia.factory.generate_dist_block(6, 'TRI_3', comm, origin=(.5,.5,0), length=.5)
+  src = union(src1, src2, src3, src4)
+
+  tgt1 = maia.factory.generate_dist_block(11, 'QUAD_4', comm, length=(.5, 1))
+  tgt2 = maia.factory.generate_dist_block(11, 'QUAD_4', comm, origin=(.5,0,0), length=(1, 1))
+  tgt = union(tgt1, tgt2)
+
+  for idom,zone in enumerate(PT.get_all_Zone_t(src)):
+    cell_distri = MT.Zone.cell_distribution(zone)
+    PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 1000*(idom) + np.arange(cell_distri[0], cell_distri[1])}, parent=zone)
+
+  psrc = maia.factory.partition_dist_tree(src, comm, data_transfer='ALL')
+  ptgt = maia.factory.partition_dist_tree(tgt, comm, data_transfer='ALL')
+  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection', is_conservative=False)
+  tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
+  assert abs(tgt_sum - 507800) < 1E-3
