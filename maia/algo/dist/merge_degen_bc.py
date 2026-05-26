@@ -75,7 +75,7 @@ def _remove_subset_fictive_faces(zone, comm):
 
   def update_node(node):
     # Because of previous func, pl is sorted
-    # so fake face to remove (if any) if on the last rank knowing data
+    # so fake face to remove (if any) are on the last rank knowing data
     pl_n = PT.get_child_from_name(node, 'PointList')
     pl = PT.get_value(pl_n)
     has_last = pl[0,-1] == n_face+1 if pl.size > 0 else False
@@ -251,14 +251,17 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
     zone_n = PT.find_node_from_path(dist_tree, zone_path)
     vtx_distri = MT.Zone.vtx_distribution(zone_n)
     
+    patches = set()
     pl_degen_faces_list = []
-    for bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t']):
+    for zbc, bc_n in PT.get_children_from_labels(zone_n, ['ZoneBC_t', 'BC_t'], ancestors=True):
       if PT.pred.belongs_to_family(degen_family)(bc_n):
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(bc_n)))
+        patches.add(f"{PT.get_name(zbc)}/{PT.get_name(bc_n)}")
     for zsr_n in PT.get_children_from_label(zone_n, 'ZoneSubRegion_t'):
-      zsr_extent_n = PT.Container.SubsetNode(zsr_n, zone_n)
       if PT.pred.belongs_to_family(degen_family)(zsr_n):
+        zsr_extent_n = PT.Container.SubsetNode(zsr_n, zone_n)
         pl_degen_faces_list.append(PT.get_np_value(PT.Subset.getPatch(zsr_extent_n)))
+        patches.add(PT.get_name(zsr_n))
     if len(pl_degen_faces_list) == 0:
       continue
     
@@ -268,3 +271,7 @@ def remove_degen_faces_from_family(dist_tree: CGNSDistTree,
     nodes_degen_faces = distribute_unique_vtx_ids_from_face_ids(vtx_distri, pl_degen_faces, PT.Zone.NGonNode(zone_n), comm)
     
     remove_degen_faces_for_one_zone(dist_tree, zone_path, pl_degen_faces, nodes_degen_faces, comm)
+
+    # Remove original patch, if not done by the function (if empty)
+    for path in patches:
+      PT.rm_node_from_path(zone_n, path)
