@@ -16,7 +16,7 @@ from   maia.utils import vstride as vs
 from .cgns_to_pdm_pmesh import part_zones_to_pdm_pmesh_nodal
 from .connectivity_utils import cell_vtx_connectivity_S
 from .ngon_tools import pe_to_nface, edge_pe_to_ngon
-from .geometry import compute_elements_measure
+from .geometry import _compute_elements_measure
 
 from maia.algo.interpolation_impl import ConservativeInterpolator
 
@@ -46,8 +46,7 @@ def _get_native_measure(zone:CGNSTree) -> NDArray:
   if (mes := PT.get_node_from_path(zone, path)) is not None:
     return PT.get_np_value(mes)
   else:
-    compute_elements_measure(zone, 'CellCenter')
-    return PT.get_np_value(PT.find_node_from_path(zone, path))
+    return _compute_elements_measure(zone, 'CellCenter')
 
 def offset_mdom(parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm, revert:bool=False):
   """ Offset gnum inplace to deal with multidomain cases
@@ -203,6 +202,10 @@ def tree_dim(parts:List[CGNSPartTree], comm:MPIComm) -> int:
 class VertexToCell:
 
   def __init__(self, parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm):
+    self.volume_l = [_get_native_measure(zone) for zone in py_utils.to_flat_list(parts_per_dom)]
+    self._create(parts_per_dom, comm)
+
+  def _create(self, parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm):
 
     zones = py_utils.to_flat_list(parts_per_dom)
     self.cell_vtx_l = []
@@ -229,7 +232,7 @@ class VertexToCell:
     dual_vol_per_dom = [PDM.part_mesh_nodal_dual_volume(part_zones_to_pdm_pmesh_nodal(parts, comm)) for parts in parts_per_dom]
     dual_vol_l = py_utils.to_flat_list(dual_vol_per_dom)
     for i, zone in enumerate(zones):
-      vol = _get_native_measure(zone)
+      vol = self.volume_l[i]
       vol_dispatch = np.repeat(vol / (dim+1), dim+1)
       dual_vol = dual_vol_l[i]
       self.inte_weight_l.append(vol_dispatch / dual_vol[self.cell_vtx_l[i].values-1])
@@ -251,6 +254,9 @@ class VertexToCell:
 class CellToVertex:
 
   def __init__(self, parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm):
+    self.volume_l = [_get_native_measure(zone) for zone in py_utils.to_flat_list(parts_per_dom)]
+    self._create(parts_per_dom, comm)
+  def _create(self, parts_per_dom:List[List[CGNSPartTree]], comm:MPIComm):
 
     nb_tot_vertex = 0
     cell_vtx_gnum_l = list()
@@ -287,8 +293,7 @@ class CellToVertex:
     #  From each cell, contribute to each vtx using to the fraction of vtx dual volume provided by the cell:
     #  w = dual_volume_contribution_from_cell / dual_volume_of_vertex
     #   ---> Suitable for conservative fields (eg density)
-    volume_l = [_get_native_measure(zone) for zone in zones]
-    vol_dispatch_l = [np.repeat(vol / (self.dim+1), self.dim+1) for vol in volume_l]
+    vol_dispatch_l = [np.repeat(vol / (self.dim+1), self.dim+1) for vol in self.volume_l]
     # We already have indexer so compute dual volume manually
     dual_vol_rep_l = self.cnt_gi.Take(self.cnt_gi.Put(vol_dispatch_l, reduce=EP.ReduceOp.SUM))
     self.cons_weight_l = [vol_dispatch / dual_vol_rep for vol_dispatch, dual_vol_rep in zip(vol_dispatch_l, dual_vol_rep_l)]
@@ -311,9 +316,10 @@ class ConservativePartInterpolator(ConservativeInterpolator):
   """ Partitioned implementation of ConservativeInterpolator
   Multidomain is managed with global offset on gnum arrays """
 
+  # Implementation of specific methods (see ConservativeInterpolator doc)
   @staticmethod
   def get_native_measure(zone, comm):
-    return _get_native_measure(zone).reshape(-1, order='F')
+    return _get_native_measure(zone)
   @staticmethod
   def get_cell_clouds(zones, comm):
     return [PCU.get_point_cloud(zone, 'CellCenter') for zone in zones]
@@ -321,6 +327,18 @@ class ConservativePartInterpolator(ConservativeInterpolator):
   def compute_mesh_intersection(src_parts, tgt_parts, comm):
     return compute_mesh_intersection(src_parts, tgt_parts, comm)
 
+  def VertexToCell(self):
+    obj = VertexToCell.__new__(VertexToCell)
+    obj.volume_l = self.src_vol
+    obj._create(self.src_parts_per_dom, self.comm)
+    return obj
+  def CellToVertex(self):
+    obj = CellToVertex.__new__(CellToVertex)
+    obj.volume_l = self.tgt_vol
+    obj._create(self.tgt_parts_per_dom, self.comm)
+    return obj
+
+  # Specific __init__ to account for multidomain
   def __init__(self,
                src_parts_per_dom:List[List[CGNSPartTree]],
                tgt_parts_per_dom:List[List[CGNSPartTree]],
@@ -342,8 +360,3 @@ class ConservativePartInterpolator(ConservativeInterpolator):
     self.src_parts_per_dom = src_parts_per_dom
     self.tgt_parts_per_dom = tgt_parts_per_dom
 
-
-  def VertexToCell(self):
-    return VertexToCell(self.src_parts_per_dom, self.comm)
-  def CellToVertex(self):
-    return CellToVertex(self.tgt_parts_per_dom, self.comm)

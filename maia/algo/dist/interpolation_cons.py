@@ -11,11 +11,13 @@ from   maia.utils                       import par_utils
 from   maia.utils import vstride as vs
 
 from .         import point_cloud_utils as PCU
-from .geometry import compute_elements_measure
+from .geometry import _compute_elements_measure
 from .localize    import minimal_partitioning
 from .closest_elt import minimal_partitioning_poly2D
 
 from maia.algo.interpolation_impl import ConservativeInterpolator
+
+from maia.algo.part.interpolation_cons import _init_tetraisation_pt_type
 
 import Pypdm.Pypdm as PDM
 
@@ -32,14 +34,11 @@ def _get_native_measure(zone:CGNSTree, comm:MPIComm) -> NDArray:
   if (mes := PT.get_node_from_path(zone, path)) is not None:
     return PT.get_np_value(mes)
   else:
-    compute_elements_measure(zone, 'CellCenter', comm)
-    return PT.get_np_value(PT.find_node_from_path(zone, path))
+    return _compute_elements_measure(zone, 'CellCenter', comm)
 
 def compute_mesh_intersection(src_doms:List[CGNSDistTree],
                               tgt_doms:List[CGNSDistTree],
                               comm:MPIComm) -> Tuple[PDM.PartToPart, List[Dict[str, NDArray]]]:
-
-  from maia.algo.part.interpolation_cons import _init_tetraisation_pt_type
 
   keep_alive = list()
 
@@ -131,6 +130,10 @@ def compute_mesh_intersection(src_doms:List[CGNSDistTree],
 class VertexToCell:
 
   def __init__(self, zones:List[CGNSDistTree], comm:MPIComm):
+    self.volume_l = [_get_native_measure(zone, comm) for zone in zones]
+    self._create(zones, comm)
+
+  def _create(self, zones:List[CGNSDistTree], comm:MPIComm):
 
     self.cell_vtx_l = []
     self.indexer_l = []
@@ -158,7 +161,7 @@ class VertexToCell:
     #  ---> Suitable for integrated fields (eg mass)
     self.inte_weight_l = []
     for i, zone in enumerate(zones):
-      vol = _get_native_measure(zone, comm)
+      vol = self.volume_l[i]
       vol_dispatch = np.repeat(vol / (dim+1), dim+1)
       dual_vol = self.indexer_l[i].Put(vol_dispatch, reduce=EP.ReduceOp.SUM)
       self.inte_weight_l.append(vol_dispatch / self.indexer_l[i].Take(dual_vol))
@@ -179,7 +182,10 @@ class VertexToCell:
 class CellToVertex:
 
   def __init__(self, zones:List[CGNSDistTree], comm:MPIComm):
+    self.volume_l = [_get_native_measure(zone, comm) for zone in zones]
+    self._create(zones, comm)
 
+  def _create(self, zones:List[CGNSDistTree], comm:MPIComm):
     nb_tot_vertex = 0
     cell_vtx_gnum_l = list()
     vtx_gnum_l = list()
@@ -213,8 +219,7 @@ class CellToVertex:
     #  From each cell, contribute to each vtx using to the fraction of vtx dual volume provided by the cell:
     #  w = dual_volume_contribution_from_cell / dual_volume_of_vertex
     #   ---> Suitable for conservative fields (eg density)
-    volume_l = [_get_native_measure(zone, comm) for zone in zones]
-    vol_dispatch_l = [np.repeat(vol / (self.dim+1), self.dim+1) for vol in volume_l]
+    vol_dispatch_l = [np.repeat(vol / (self.dim+1), self.dim+1) for vol in self.volume_l]
     # We already have indexer so compute dual volume manually
     dual_vol_rep_l = self.cnt_gi.Take(self.cnt_gi.Put(vol_dispatch_l, reduce=EP.ReduceOp.SUM))
     self.cons_weight_l = [vol_dispatch / dual_vol_rep for vol_dispatch, dual_vol_rep in zip(vol_dispatch_l, dual_vol_rep_l)]
@@ -237,6 +242,7 @@ class ConservativeDistInterpolator(ConservativeInterpolator):
   """ Distributed implementation of ConservativeInterpolator
   Multidomain is managed with local offset in get_cell_clouds and mesh_intersection """
 
+  # Implementation of specific methods (see ConservativeInterpolator doc)
   @staticmethod
   def get_native_measure(zone, comm):
     return _get_native_measure(zone, comm)
@@ -255,7 +261,15 @@ class ConservativeDistInterpolator(ConservativeInterpolator):
     return compute_mesh_intersection(src_parts, tgt_parts, comm)
 
   def VertexToCell(self):
-    return VertexToCell(self.src_parts, self.comm)
+    obj = VertexToCell.__new__(VertexToCell)
+    obj.volume_l = self.src_vol
+    obj._create(self.src_parts, self.comm)
+    return obj
   def CellToVertex(self):
-    return CellToVertex(self.tgt_parts, self.comm)
+    obj = CellToVertex.__new__(CellToVertex)
+    obj.volume_l = self.tgt_vol
+    obj._create(self.tgt_parts, self.comm)
+    return obj
+
+  # No specific __init__, use the parent one
 

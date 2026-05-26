@@ -245,10 +245,18 @@ class ConservativeInterpolator:
     raise NotImplementedError
 
   def VertexToCell(self):
-    """ Create a VertexToCell conservative local interpolator for source mesh """
+    """ Create a VertexToCell conservative local interpolator for source mesh
+    
+    This object must expose a method _exchange_fields(src_fields_l) to move
+    data from vertices to cell in a conservative way.
+    """
     raise NotImplementedError
   def CellToVertex(self):
-    """ Create a CellToVertex conservative local interpolator for target mesh """
+    """ Create a CellToVertex conservative local interpolator for target mesh
+
+    This object must expose a method _exchange_fields(src_fields_l) to move
+    data from cell to vertices in a conservative way.
+    """
     raise NotImplementedError
 
   """ Note - Multidomain : this class works with a flat view of source and
