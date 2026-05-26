@@ -8,12 +8,6 @@ import maia.pytree.utils as PTu
 from maia.utils import np_utils, par_utils
 from maia import npy_pdm_gnum_dtype as pdm_gnum_dtype
 
-def get_partitioned_zones(part_tree: CGNSPartTree, dist_zone_path: CGNSPath) -> List[CGNSPartTree]:
-  import warnings
-  warnings.warn("This function is deprecated, use MT.get_partitioned_zones", DeprecationWarning, stacklevel=2)
-  return MT.get_partitioned_zones(part_tree, dist_zone_path)
-
-
 def create_all_elt_distribution(dist_elts: List[CGNSTree], comm: MPIComm) -> NDArray:
   """
   Create the :CGNS#Distribution-like distribution array we would

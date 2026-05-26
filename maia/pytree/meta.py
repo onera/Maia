@@ -46,7 +46,6 @@ def check_is_label(label, n=0):
     return wrapped_method
   return _check_is_label
 
-import warnings
 def check_is_subset(n=0):
   IS_SUBSET = PT.pred.label_is('BC_t') | PT.pred.IS_GC | PT.pred.IS_SUBSET
   def _check_is_subset(f):
@@ -54,8 +53,7 @@ def check_is_subset(n=0):
     def wrapped_method(*args, **kwargs):
       node = args[n]
       if not IS_SUBSET(node):
-        msg = f"Node '{node[0]}' is not a subset node, PT.Subset will raise an exception in the future"
-        warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        raise RuntimeError(f"Node '{node[0]}' is not a subset node")
       return f(*args, **kwargs)
     return wrapped_method
   return _check_is_subset

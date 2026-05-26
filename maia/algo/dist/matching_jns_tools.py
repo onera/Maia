@@ -195,11 +195,6 @@ def find_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
   for gc_id, (gc, opp_id) in enumerate(zip(gc_list, opp_join_id)):
     PT.new_node("GridConnectivityDonorName", "Descriptor_t", PT.get_name(gc_list[opp_id]), parent=gc)
 
-def add_joins_donor_name(dist_tree:CGNSDistTree, comm:MPIComm):
-  import warnings
-  warnings.warn('This function is deprecated in favor of find_joins_donor_name', DeprecationWarning, stacklevel=2)
-  find_joins_donor_name(dist_tree, comm)
-
 def get_jn_donor_path(dist_tree, jn_path):
   """
   Return the patch of the matching jn in the tree. GridConnectivityDonorName must exists.
