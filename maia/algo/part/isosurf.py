@@ -31,7 +31,7 @@ IS_CNT      = PT.pred.label_in(['FlowSolution_t', 'DiscreteData_t', 'ZoneSubRegi
 
 def _warn_if_elt_type(options):
   if 'elt_type' in options and os.environ.get('MAIA_OLD_ISOSURFACE') is None:
-    warnings.warn("Argument 'elt_type' is no longer needed and will be ignored", stacklevel=3)
+    warnings.warn("Argument 'elt_type' is no longer needed and will be removed in next release", stacklevel=3)
 
 def _ptp_retrieve_part1_to_part2(ptp, gnum2):
   req = ptp.reverse_iexch(PDM._PDM_MPI_COMM_KIND_P2P,

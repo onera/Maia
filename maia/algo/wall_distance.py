@@ -41,19 +41,12 @@ def compute_wall_distance(tree: CGNSTree,
   BC are considered to be of kind wall if their BCType (or the one of their related family) is one of 
   ``'BCWall'``, ``'BCWallViscous'``, ``'BCWallViscousHeatFlux'`` or ``'BCWallViscousIsothermal'``.
 
-  Note: 
-    Propagation method requires ParaDiGMa access and is only available for unstructured cell centered
-    NGon connectivities grids. In addition, partitions must have been created from a single initial domain
-    with this method.
-
   Tree is modified inplace: computed distance are added in a DiscreteData container whose
-  name can be specified with out_fs_name parameter.
+  name can be specified with ``out_fs_name`` parameter.
 
   The following optional parameters can be used to control the underlying method:
 
-    - ``method`` ({'cloud', 'propagation'}): Choice of the geometric method. Defaults to ``'cloud'``.
     - ``perio`` (bool): Take into account periodic connectivities. Defaults to ``True``.
-      Only available when method=cloud.
 
   Args:
     part_tree (CGNSPartTree)   : Input tree, distributed or partitioned
@@ -71,8 +64,13 @@ def compute_wall_distance(tree: CGNSTree,
         :dedent: 2
   """
 
-  method = options.get('method', 'cloud')
-  assert method in ["cloud", "propagation"], "Unknow method, expected 'cloud' or 'propagation'"
+  if 'method' in options:
+    # Remove whole block for v1.11
+    if options['method'] == 'cloud':
+      import warnings
+      warnings.warn("Optional parameter 'method' is now ignored", DeprecationWarning, stacklevel=2)
+    else:
+      raise ValueError("'propagation' method is no more supported for wall distance computing")
 
   if MT.is_cgns_dist_tree(tree):
     impl = dclosest_elt
@@ -87,22 +85,12 @@ def compute_wall_distance(tree: CGNSTree,
   # with the same name, it can be wrongly selected)
   bnd_predicate = bcwall_pred(tree)
 
-
-  if method == "cloud":
-    impl.find_closest_boundary(tree, # type:ignore[arg-type] # Dispatch confuse mypy
-                               tree, # type:ignore[arg-type] # Dispatch confuse mypy
-                               point_cloud,
-                               comm,
-                               bnd_predicate,
-                               perio=options.get('perio', True))
-
-  else:
-    if options.get('perio', True):
-      warnings.warn("WallDistance do not manage periodicities except for 'cloud' method", RuntimeWarning, stacklevel=2)
-    impl.find_closest_boundary_propagation(tree, # type:ignore[arg-type] # Dispatch confuse mypy
-                                           comm,
-                                           bnd_predicate)
-
+  impl.find_closest_boundary(tree, # type:ignore[arg-type] # Dispatch confuse mypy
+                              tree, # type:ignore[arg-type] # Dispatch confuse mypy
+                              point_cloud,
+                              comm,
+                              bnd_predicate,
+                              perio=options.get('perio', True))
 
   end = time.time()
 

@@ -38,6 +38,11 @@ Development version
 - generate_jns_vertex_list: deep-copy metadata nodes to avoid shared references
 - compute_wall_distance: store DomainList in output node for multidomain cases
 
+🚧 API change
+^^^^^^^^^^^^^
+- Optional argument ``elt_type`` for isosurface functions is now ignored
+- Optional argument ``method`` for wall distance computing is now ignored
+
 v1.9 (January 2026)
 -------------------
 
