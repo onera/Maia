@@ -33,8 +33,13 @@ def _unambiguous_short_names(names:List[str]) -> List[str]:
 def short_name_with_hash(name:str) -> str:
   if len(name) <= 32:
     return name
-  hash = hashlib.sha1(name.encode('ascii')).hexdigest()[:8]
-  return short_name(name)[:23] + '.' + hash
+
+  base, suffix = name, ''
+  while base[-1] in 'XYZ':
+    suffix = base[-1] + suffix
+    base = base[:-1]
+  hash = hashlib.sha1(base.encode('ascii')).hexdigest()[:8]
+  return short_name(base)[:32-1-8-len(suffix)] + '.' + hash + suffix
 
 def hash_long_names(tree:CGNSTree):
   def _create_full_name_child(node):

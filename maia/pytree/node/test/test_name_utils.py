@@ -70,6 +70,16 @@ def test_short_name_with_hash():
    name = 'AVeryLongFieldNameWithLotsOfDetailsAboutTurbulentDensityRootMeanSquareResidual1'
    assert NU.short_name_with_hash(name) == 'AVeryLongFielNameWithLo.a2497715'
 
+   name = 'ALongNameAgainButThisOneIsVectorialX'
+   assert NU.short_name_with_hash(name) == 'ALongNameAgaiButThisOn.81718ddfX'
+   name = 'ALongNameAgainButThisOneIsVectorialY'
+   assert NU.short_name_with_hash(name) == 'ALongNameAgaiButThisOn.81718ddfY'
+
+   name = 'AndToFinishTheSameWithATensor:)XZ'
+   assert NU.short_name_with_hash(name) == 'AndToFinishTheSameWit.2d92541cXZ'
+   name = 'AndToFinishTheSameWithATensor:)ZY'
+   assert NU.short_name_with_hash(name) == 'AndToFinishTheSameWit.2d92541cZY'
+
 def test_get_full_name():
   assert NU.get_full_name(PT.new_Zone('SomeZoneNode')) == 'SomeZoneNode'
   node = PT.new_Zone('ShortenedName')
