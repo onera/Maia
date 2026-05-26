@@ -108,11 +108,12 @@ else()
   set(PDM_ENABLE_SHARED          ON  CACHE BOOL "Maia uses ParaDiGM with shared libs"      FORCE)
   set(PDM_ENABLE_PYTHON_BINDINGS ON  CACHE BOOL "Maia uses ParaDiGM with python"           FORCE)
   set(PDM_ENABLE_MPI_CHECK       OFF CACHE BOOL "Maia uses ParaDiGM without MPI check"     FORCE)
-  set(PDM_ENABLE_UNIT_TEST       OFF CACHE BOOL "Maia uses ParaDiGM without unit tests"    FORCE)
   set(PASS_DEFAULT_FLAGS         ON  CACHE BOOL "Maia does not use ParaDiGM default flags" FORCE)
   # These option values are not FORCE, but the default is different than the one of ParaDiGM
   set(PDM_ENABLE_Fortran         OFF CACHE BOOL "Maia uses ParaDiGM without Fortran"    )
   set(PDM_ENABLE_STATIC          OFF CACHE BOOL "Maia uses ParaDiGM without static libs")
+  set(PDM_ENABLE_UNIT_TEST       OFF CACHE BOOL "Maia uses ParaDiGM without unit tests" )
+  set(PDM_ENABLE_TESTS           OFF CACHE BOOL "Maia uses ParaDiGM without func tests" )
   # Adding paradigm sources from external/paradigm
   include(${PROJECT_UTILS_CMAKE_DIR}/check_local_dependency.cmake)
   check_local_dependency(paradigm REQUIRED)
@@ -123,19 +124,6 @@ endif()
 set(std_e_ENABLE_MPI ON CACHE BOOL "Maia uses std_e with mpi" FORCE)
 project_add_subdir_or_package(std_e REQUIRED)
 project_add_subdir_or_package(cpp_cgns REQUIRED)
-
-
-# ------------------------------------------------------------------------------
-# Code quality tools TODO
-# ------------------------------------------------------------------------------
-find_program( MEMORYCHECK_COMMAND valgrind )
-set( MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full" )
-
-# > Mandatory to put here to have all shared libs compile with the coverage flags
-#if(${${PROJECT_NAME}_ENABLE_COVERAGE})
- #include(CodeCoverage)
- #append_coverage_compiler_flags()
-#endif()
 
 
 # ------------------------------------------------------------------------------
