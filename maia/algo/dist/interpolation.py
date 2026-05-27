@@ -13,7 +13,8 @@ from .import closest_points as CLO
 
 from .import point_cloud_utils as PCU
 
-from maia.algo.interpolation_utils import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
+from .interpolation_cons import ConservativeDistInterpolator
+from maia.algo.interpolation_impl import Interpolator, _cell_tgt_to_vtx_tgt, _combine_geo_results
 
 
 def get_shifted_gnum_from_loc(zones, loc):
@@ -145,16 +146,24 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
       loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, cnt))
       loc_to_containers_name[loc].append(cnt)
 
-  if (lc:=len(loc_to_containers_name)) > 1:
-    mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
+  if options.get('strategy', 'Closest') == 'Intersection':
+    # For intersection, src / tgt loc does not matter
+    interpolator = create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'CellCenter', **options)
+    for loc_containers_name in loc_to_containers_name.values():
+      for container_name in loc_containers_name:
+        interpolator.exchange_fields(container_name, location, options.get('is_conservative', True))
 
-  for input_loc, loc_containers_name in loc_to_containers_name.items():
+  else:
+    if (lc:=len(loc_to_containers_name)) > 1:
+      mlog.info(f"Requested containers have different GridLocation. Interpolation process will be done in {lc} steps")
 
-    # Create interpolator
-    interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)
-    # Exchange fields
-    for container_name in loc_containers_name:
-      interpolator.exchange_fields(container_name)
+    for input_loc, loc_containers_name in loc_to_containers_name.items():
+
+      # Create interpolator
+      interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)
+      # Exchange fields
+      for container_name in loc_containers_name:
+        interpolator.exchange_fields(container_name)
 
 
 
@@ -166,5 +175,9 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **
   src_dom = PT.get_children_from_predicates(src_tree, 'CGNSBase_t/Zone_t')
   tgt_dom = PT.get_children_from_predicates(tgt_tree, 'CGNSBase_t/Zone_t')
 
-  src_to_tgt = create_src_to_tgt(src_dom, tgt_dom, comm, src_location, tgt_location, **options)
-  return Interpolator(src_dom, tgt_dom, src_to_tgt, src_location, tgt_location, comm)
+  strategy = options.get('strategy', 'Closest')
+  if strategy == 'Intersection':
+    return ConservativeDistInterpolator(src_dom, tgt_dom, comm, **options)
+  else:
+    src_to_tgt = create_src_to_tgt(src_dom, tgt_dom, comm, src_location, tgt_location, **options)
+    return Interpolator(src_dom, tgt_dom, src_to_tgt, src_location, tgt_location, comm)

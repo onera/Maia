@@ -14,6 +14,7 @@ Development version
 
 💡 New Features
 ^^^^^^^^^^^^^^^
+- Algo module: add the conservative ``Intersection`` strategy to interpolation
 - IO functions: manage nodes names longer than 32 characters
 
 🚀 Feature improvements

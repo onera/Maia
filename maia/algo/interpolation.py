@@ -7,8 +7,7 @@ import maia.pytree.maia   as MT
 from .dist import interpolation as dist_interpolation
 from .part import interpolation as part_interpolation
 
-from .interpolation_utils import Interpolator
-from .part.interpolation  import ConservativeInterpolator
+from .interpolation_impl import Interpolator, ConservativeInterpolator
 
 
 @overload
@@ -55,7 +54,7 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
       
         With this strategy, source and target tree must be of same dimension.
         In addition, if fields are Vertex located, meshes are restricted to simplicial
-        (``TRI_3`` or ``TETRA_4``) elements. Lastly, implementation for distributed trees is not yet avalaible.
+        (``TRI_3`` or ``TETRA_4``) elements.
 
   - ``n_closest_pt`` (default = 1) -- If strategy is 'Closest' or 'LocationAndClosest', 
     specify the number of closest points used for interpolation.

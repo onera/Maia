@@ -38,7 +38,6 @@ def get_point_cloud(zone, comm, location):
   ln_to_gn = np.arange(distri[0]+1, distri[1]+1, dtype=distri.dtype)
   return coords, ln_to_gn
 
-
 def extract_sub_cloud(coords, lngn, indices):
   """
   Extract coordinates and lngn from a list of indices, starting at 0.
