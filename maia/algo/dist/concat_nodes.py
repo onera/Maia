@@ -91,6 +91,11 @@ def concatenate_subset_nodes(nodes: List[CGNSTree],
     master = nodes[0]
   node = PT.new_node(output_name, PT.get_label(master), PT.get_value(master))
 
+  # NB : Check if nodes are subset because this function can be called to concat ZSR w/ PointList
+  locs = set(PT.Subset.GridLocation(node) for node in nodes if PT.pred.IS_SUBSET(node))
+  if len(locs) > 1:
+    raise ValueError(f"Subset nodes can not be concatenated because they have different GridLocation: {locs}")
+
   data_queries = additional_data_queries + ['PointList', 'DataArray_t']
   for data_query in data_queries:
     #Use master node to understand queries and collect nodes

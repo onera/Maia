@@ -118,6 +118,13 @@ def test_concatenate_subset_nodes(default_bcds, comm):
     assert (PT.get_node_from_name(node, 'Sca')[1] == expected_data_sca).all()
     assert PT.get_node_from_name(node, 'Sca')[1].dtype == np.float32
 
+def test_multiple_loc(comm):
+  bc1 = PT.new_BC('BC1', loc='FaceCenter', point_list=[[4,9,2,5]])
+  bc2 = PT.new_BC('BC2', loc='FaceCenter', point_list=[[11,8,3]])
+  bc3 = PT.new_BC('BC3', loc='Vertex', point_list=[[1,9,13]])
+  with pytest.raises(ValueError):
+    node = GN.concatenate_bc_nodes([bc1,bc2,bc3], comm)
+
 @pytest_parallel.mark.parallel([1])
 def test_concatenate_jns_all_types(comm):
   yt = """
