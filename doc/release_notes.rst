@@ -9,8 +9,8 @@ Release notes
 
 This page contains information about what has changed in each new version of **Maia**.
 
-Development version
--------------------
+v1.10 (May 2026)
+----------------
 
 💡 New Features
 ^^^^^^^^^^^^^^^
@@ -37,6 +37,10 @@ Development version
 - merge_zones: add overflow prevention on NGON_n/ElementStartOffset nodes
 - generate_jns_vertex_list: deep-copy metadata nodes to avoid shared references
 - compute_wall_distance: store DomainList in output node for multidomain cases
+
+🔧 Advanced users / devs
+^^^^^^^^^^^^^^^^^^^^^^^^
+- Introduce the ``maia.pytree.maia`` :ref:`pytree extension <maia_pytree_module>`
 
 🚧 API change
 ^^^^^^^^^^^^^
@@ -114,7 +118,7 @@ v1.8 (September 2025)
 - pytree: Subset.ZSRExtent and the whole Subset.BCDataSet namespace are deprecated
 - adapt_mesh_with_feflo: change ``container_names`` argument into ``containers_name``
 
-v1.7 (May 2024)
+v1.7 (May 2025)
 ---------------
 
 💡 New Features
