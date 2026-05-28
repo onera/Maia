@@ -5,6 +5,7 @@ import numpy as np
 
 import maia
 import maia.pytree      as PT
+import maia.pytree.pred as PTp
 import maia.pytree.maia as MT
 
 from maia.utils    import test_utils as TU
@@ -84,6 +85,7 @@ def test_cell_cell_interpolation(offset, comm):
     Sol FlowSolution_t:
       GridLocation GridLocation_t "CellCenter":
       field DataArray_t R8 [2, 6, 3, 8, 5]:
+      wrongfield DataArray_t R8 [0, 0, 0, 0, 0]:
   """)
   src = maia.factory.full_to_dist_tree(ftree, comm)
   tgt = maia.factory.generate_dist_block(3, 'TRI_3', comm)
@@ -96,10 +98,12 @@ def test_cell_cell_interpolation(offset, comm):
     cx += 0.6
 
   interpolator = ITP.ConservativeDistInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
-  interpolator._exchange_fields('Sol', 'CellCenter', is_conservative=False)
+  interpolator._exchange_fields('Sol', 'CellCenter', PTp.name_is('field'), is_conservative=False)
 
   for zone in PT.get_all_Zone_t(tgt):
     fs = PT.get_node_from_name(zone, 'Sol')
+    assert PT.get_child_from_name(fs, 'field') is not None
+    assert PT.get_child_from_name(fs, 'wrongfield') is None
     assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
 
   if offset == 'none': # Mass should be conserved
@@ -134,7 +138,7 @@ def test_poly_and_s_meshes(dim, comm):
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : np.arange(cell_distri[0], cell_distri[1])}, parent=zone)
 
   interpolator = ITP.ConservativeDistInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
-  interpolator._exchange_fields('FlowSolution', 'CellCenter', False)
+  interpolator._exchange_fields('FlowSolution', 'CellCenter', PTp.ALWAYS_TRUE, False)
 
   src_sum = comm.allreduce(PT.get_node_from_name(src, 'gnum')[1].sum())
   tgt_sum = comm.allreduce(PT.get_node_from_name(tgt, 'gnum')[1].sum())
@@ -159,7 +163,7 @@ def test_vertex_fields(in_loc, out_loc, comm):
   # (results already checked in other tests)
 
   interpolator = ITP.ConservativeDistInterpolator(PT.get_all_Zone_t(src), PT.get_all_Zone_t(tgt), comm)
-  interpolator._exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
+  interpolator._exchange_fields(in_loc+'Sol', out_loc, PTp.ALWAYS_TRUE, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(tgt):
     fs = PT.get_node_from_name(zone, in_loc+'Sol')
@@ -212,7 +216,7 @@ def test_multidom_gnum_offsets(comm):
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 1000*(idom) + np.arange(cell_distri[0], cell_distri[1])}, parent=zone)
 
   itp = maia.algo.create_interpolator(src, tgt, comm, 'CellCenter', 'CellCenter', strategy='Intersection')
-  itp._exchange_fields('FlowSolution', 'CellCenter', False)
+  itp._exchange_fields('FlowSolution', 'CellCenter', PTp.ALWAYS_TRUE, False)
   tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(tgt, 'gnum')]))
   assert abs(tgt_sum - 507800) < 1E-3
 

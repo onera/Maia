@@ -5,6 +5,7 @@ import numpy as np
 
 import maia
 import maia.pytree      as PT
+import maia.pytree.pred as PTp
 import maia.pytree.maia as MT
 
 from maia.transfer import protocols as EP
@@ -116,7 +117,7 @@ def test_cell_cell_interpolation(offset, comm):
   ptgt = maia.factory.partition_dist_tree(tgt, comm, zone_to_parts=tgt_split_w)
 
   interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
-  interpolator._exchange_fields('Sol', 'CellCenter', is_conservative=False)
+  interpolator._exchange_fields('Sol', 'CellCenter', fields_pred=PTp.ALWAYS_TRUE, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
     fs = PT.get_node_from_name(zone, 'Sol')
@@ -188,7 +189,7 @@ def test_vertex_fields(in_loc, out_loc, comm):
   # (results already checked in other tests)
 
   interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
-  interpolator._exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
+  interpolator._exchange_fields(in_loc+'Sol', tgt_loc=out_loc, fields_pred=PTp.ALWAYS_TRUE, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
     fs = PT.get_node_from_name(zone, in_loc+'Sol')
@@ -284,7 +285,7 @@ def test_multidom_gnum_offset(comm):
   psrc = maia.factory.partition_dist_tree(src, comm, data_transfer='ALL')
   ptgt = maia.factory.partition_dist_tree(tgt, comm, data_transfer='ALL')
   itp = maia.algo.create_interpolator(psrc, ptgt, comm, 'CellCenter', 'CellCenter', strategy='Intersection')
-  itp._exchange_fields('FlowSolution', 'CellCenter', False)
+  itp._exchange_fields('FlowSolution', tgt_loc='CellCenter', fields_pred=PTp.ALWAYS_TRUE, is_conservative=False)
   
   tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
   assert abs(tgt_sum - 507800) < 1E-3
