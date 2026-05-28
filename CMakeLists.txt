@@ -203,7 +203,7 @@ endif()
 # ------------------------------------------------------------------------------
 if(${PROJECT_NAME}_ENABLE_DOCUMENTATION)
   include(${PROJECT_UTILS_CMAKE_DIR}/build_documentation.cmake)
-  build_sphinx_documentation()
+  build_sphinx_documentation(DEPENDS Pypdm cmaia)
 endif()
 
 # ------------------------------------------------------------------------------
