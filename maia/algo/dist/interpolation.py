@@ -177,7 +177,9 @@ def create_interpolator(src_tree, tgt_tree, comm, src_location, tgt_location, **
 
   strategy = options.get('strategy', 'Closest')
   if strategy == 'Intersection':
-    return ConservativeDistInterpolator(src_dom, tgt_dom, comm, **options)
+    itp = ConservativeDistInterpolator(src_dom, tgt_dom, comm, **options)
+    itp.default_loc = tgt_location
+    return itp
   else:
     src_to_tgt = create_src_to_tgt(src_dom, tgt_dom, comm, src_location, tgt_location, **options)
     return Interpolator(src_dom, tgt_dom, src_to_tgt, src_location, tgt_location, comm)

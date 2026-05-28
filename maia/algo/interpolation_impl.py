@@ -357,6 +357,7 @@ class ConservativeInterpolator:
     self.tgt_vol = vol_tgt
     self.comm = comm
 
+    self.default_loc = ''
     # Caching
     self._vtx_to_cell_src = None
     self._cell_to_vtx_tgt = None
@@ -413,8 +414,9 @@ class ConservativeInterpolator:
 
     return tgt_fields_l
 
-  def exchange_fields(self, container_name:str, tgt_loc:str):
-    return self._exchange_fields(container_name, tgt_loc, True)
+  def exchange_fields(self, container_name:str, tgt_loc:Optional[str]=None):
+    _tgt_loc = self.default_loc if tgt_loc is None else tgt_loc
+    return self._exchange_fields(container_name, _tgt_loc, True)
 
   def _exchange_fields(self, container_name:str, tgt_loc:str, is_conservative:bool):
     # Low level function allow to exchange integrated fields (eg. Velocity),

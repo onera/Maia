@@ -68,8 +68,6 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
     :func:`create_interpolator` takes the same parameters (excepted ``containers_name``,
     which must be replaced by ``src_location``), and returns an Interpolator object which can be used
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
-    For ``'Intersection'`` strategy, this method expect the following parameters:
-    ``exchange_fields(container_name, tgt_loc)``.
 
   Args:
     src_tree (CGNSTree): Source tree

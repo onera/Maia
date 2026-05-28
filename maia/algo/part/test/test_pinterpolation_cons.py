@@ -257,7 +257,8 @@ def test_multidom_vtx(comm):
     idom = int(MT.conv.get_part_prefix(PT.get_name(zone))[-1])
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 100*(idom) + MT.Zone.cell_globalnumbering(zone)}, parent=zone)
 
-  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection')
+  itp = maia.algo.create_interpolator(psrc, ptgt, comm, 'CellCenter', 'CellCenter', strategy='Intersection')
+  itp.exchange_fields('FlowSolution')
 
   src_sum = integrated_val(psrc, 'gnum', comm)
   tgt_sum = integrated_val(ptgt, 'gnum', comm)
