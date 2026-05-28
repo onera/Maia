@@ -2,6 +2,7 @@ from   mpi4py import MPI
 import numpy as np
 
 import maia.pytree      as PT
+import maia.pytree.pred as PTp
 import maia.pytree.maia as MT
 
 from   maia.utils import np_utils
@@ -81,14 +82,15 @@ def _expected_single_val(l:Sequence):
   assert l.count(l[0]) == len(l)
   return l[0]
 
-def discover_fields_name(zones, container_name, root, comm):
+def discover_fields_name(zones, container_name, fields_pred, root, comm):
+  pred = PTp.label_is('DataArray_t') & fields_pred
   if len(zones) > 0:
     fields_name_l = list()
     label_l = list()
     loc_l = list()
     for zone in zones:
       container = PT.find_node_from_path(zone, container_name)
-      fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_label(container, 'DataArray_t')])
+      fields_name = sorted([PT.get_name(array) for array in PT.iter_children_from_predicate(container, pred)])
       label_l.append(PT.get_label(container))
       loc_l.append(PT.Container.GridLocation(container))
       fields_name_l.append(fields_name)
@@ -165,7 +167,7 @@ class Interpolator:
     return reduced_data / reduced_factor
 
 
-  def exchange_fields(self, container_name, reduce_func=_reduce_weighted_mean):
+  def exchange_fields(self, container_name, *, fields_pred=PTp.ALWAYS_TRUE, reduce_func=_reduce_weighted_mean):
     """
     For all fields found under container_name node,
     - Perform a part to part exchange
@@ -174,7 +176,7 @@ class Interpolator:
     """
 
     #Check that solutions are known on each source partition
-    fields_names, container_label, _ = discover_fields_name(self.src_parts, container_name, self.root, self.comm)
+    fields_names, container_label, _ = discover_fields_name(self.src_parts, container_name, fields_pred, self.root, self.comm)
 
     for src_part in self.src_parts:
       container = PT.find_node_from_path(src_part, container_name)
@@ -357,6 +359,7 @@ class ConservativeInterpolator:
     self.tgt_vol = vol_tgt
     self.comm = comm
 
+    self.default_loc = ''
     # Caching
     self._vtx_to_cell_src = None
     self._cell_to_vtx_tgt = None
@@ -413,15 +416,22 @@ class ConservativeInterpolator:
 
     return tgt_fields_l
 
-  def exchange_fields(self, container_name:str, tgt_loc:str, is_conservative=True):
+  def exchange_fields(self, container_name:str, tgt_loc:Optional[str]=None, *, fields_pred=PTp.ALWAYS_TRUE):
+    _tgt_loc = self.default_loc if tgt_loc is None else tgt_loc
+    return self._exchange_fields(container_name, _tgt_loc, fields_pred, True)
 
-    field_names, cnt_label, src_loc = discover_fields_name(self.src_parts, container_name, self.root, self.comm)
+  def _exchange_fields(self, container_name:str, tgt_loc:str, fields_pred:PTp.NodePredicate, is_conservative:bool):
+    # Low level function allow to exchange integrated fields (eg. Velocity),
+    # contrary to public API
+
+    field_names, cnt_label, src_loc = discover_fields_name(self.src_parts, container_name, fields_pred, self.root, self.comm)
 
     src_fields_l:Dict[str, List[NDArray]] = {key: [] for key in field_names}
     for src_zone in self.src_parts:
       container = PT.find_node_from_path(src_zone, container_name)
-      for key, val in PT.Container.fields(container).items():
-        src_fields_l[key].append(val.reshape(-1, order='F')) # Flatten if src zone is S
+      for field in field_names:
+        val = PT.get_np_value(PT.find_child_from_name(container, field))
+        src_fields_l[field].append(val.reshape(-1, order='F')) # Flatten if src zone is S
 
     if src_loc == 'Vertex':
       src_fields_l = self.vtx_to_cell_src._exchange_fields(src_fields_l, is_conservative)

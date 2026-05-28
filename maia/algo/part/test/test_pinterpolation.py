@@ -307,11 +307,14 @@ def test_interpolation_mdom(strategy, comm):
   for zone in PT.get_all_Zone_t(src_tree):
     dom_flag = {'A': 1, 'B':2}[PT.get_name(zone)[3]]
     fields = {'gnum' : MT.Zone.cell_globalnumbering(zone),
-              'dom'  : dom_flag*np.ones(PT.Zone.n_cell(zone), np.int32)}
+              'dom'  : dom_flag*np.ones(PT.Zone.n_cell(zone), np.int32),
+              'dummy' : np.empty(PT.Zone.n_cell(zone))}
     PT.new_FlowSolution('FlowSol', loc='CellCenter', fields=fields, parent=zone)
-  interpolator.exchange_fields('FlowSol')
+  interpolator.exchange_fields('FlowSol', fields_pred=~PT.pred.name_is('dummy'))
 
   maia.transfer.part_tree_to_dist_tree_all(dtree_tgt, tgt_tree, comm)
+  assert PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/dummy') is None
+  assert PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/dummy') is None
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTA/FlowSol/dom')[1] == 1).all()
   assert (PT.get_node_from_path(dtree_tgt, 'Base/TGTB/FlowSol/dom')[1] == [1,2,1,2]).all()
   # Careful, expected gnum depends on how the mesh is split. Today same value for two ranks
@@ -339,7 +342,7 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
   interpolator = maia.algo.create_interpolator(psrc_tree, ptgt_tree, comm, "Vertex", tgt_loc,
                                                strategy=strategy,
                                                n_closest_pt=1)
-  interpolator.exchange_fields('FS', ITP.Interpolator._reduce_weighted_mean)
+  interpolator.exchange_fields('FS', reduce_func=ITP.Interpolator._reduce_weighted_mean)
 
   # > Check result
   zone = PT.get_node_from_label(ptgt_tree, "Zone_t")
