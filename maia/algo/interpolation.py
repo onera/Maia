@@ -48,7 +48,8 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
     - 'LocationAndClosest' : Use 'Location' method and then 'ClosestPoint' method
       for the unlocated points.
     - 'Intersection' : Target cells take a fraction of each overlapping source cell value, in a
-      conservative way. Cell ↔ Vertex interpolations are used under the hood to match required locations.
+      conservative way (the integrated value of field over the whole domain is preserved).
+      Cell ↔ Vertex interpolations are used under the hood to match required locations.
 
       .. important::
       
@@ -61,9 +62,6 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
 
   - ``loc_tolerance`` (default = 1E-6) -- Geometric tolerance for Location method.
 
-  - ``is_conservative`` (default = ``True``) -- Treat fields as conservative (eg ``Momentum``) or integrated (eg ``Velocity``)
-    fields when using Intersection method.
-
   Inputs trees can be either distributed or partitioned, but both must be of same kind.
 
   See also:
@@ -71,7 +69,7 @@ def interpolate(src_tree:Union[CGNSDistTree, CGNSPartTree],
     which must be replaced by ``src_location``), and returns an Interpolator object which can be used
     to exchange containers more than once through its ``Interpolator.exchange_fields(container_name)`` method.
     For ``'Intersection'`` strategy, this method expect the following parameters:
-    ``exchange_fields(container_name, tgt_loc, is_conservative)``.
+    ``exchange_fields(container_name, tgt_loc)``.
 
   Args:
     src_tree (CGNSTree): Source tree

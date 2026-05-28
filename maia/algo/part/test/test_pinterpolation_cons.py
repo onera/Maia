@@ -12,27 +12,7 @@ from maia.utils    import test_utils as TU
 
 from maia.algo.part import interpolation_cons as ITP
 
-minimal_tri = """
-  zone Zone_t [[6, 5, 0]]:
-    ZoneType ZoneType_t "Unstructured":
-    GridCoordinates GridCoordinates_t:
-      CoordinateX DataArray_t R8 [0, 0, 0, 1, 1, 0.5]:
-      CoordinateY DataArray_t R8 [1, 0.5, 0, 0, 1, 0.5]:
-      CoordinateZ DataArray_t R8 [0, 0, 0, 0, 0, 0]:
-    TRI Elements_t [5, 0]:
-      ElementRange IndexRange_t [1, 5]:
-      ElementConnectivity DataArray_t [1,2,6, 2,3,6, 3,4,6, 4,5,6, 5,1,6]:
-    Geometry_0d DiscreteData_t:
-      DualVol24 DataArray_t R8 [3, 2, 3, 4, 4, 8]:
-    Geometry_2d DiscreteData_t:
-      GridLocation GridLocation_t "CellCenter":
-      Measure DataArray_t R8 [0.125, 0.125, 0.25, 0.25, 0.25]:
-"""
-
-def union(*trees):
-  for i,tree in enumerate(trees):
-    PT.set_name(PT.get_node_from_label(tree, 'Zone_t'), f'Zone_{i}')
-  return PT.union(*trees)
+from maia.algo.test.test_interpolation_impl import minimal_tri, union, integrated_val
 
 @pytest_parallel.mark.parallel(2)
 def test_vtx2cell(comm):
@@ -136,7 +116,7 @@ def test_cell_cell_interpolation(offset, comm):
   ptgt = maia.factory.partition_dist_tree(tgt, comm, zone_to_parts=tgt_split_w)
 
   interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
-  interpolator.exchange_fields('Sol', 'CellCenter', is_conservative=False)
+  interpolator._exchange_fields('Sol', 'CellCenter', is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
     fs = PT.get_node_from_name(zone, 'Sol')
@@ -176,15 +156,14 @@ def test_poly_and_s_meshes(dim, comm):
   ptgt = maia.factory.partition_dist_tree(tgt, comm)
 
   for zone in PT.get_all_Zone_t(psrc):
-    PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : MT.Zone.cell_globalnumbering(zone)}, parent=zone)
+    gnum =  MT.Zone.cell_globalnumbering(zone).reshape(PT.Zone.CellSize(zone))
+    PT.new_FlowSolution(loc='CellCenter', fields={'gnum':gnum}, parent=zone)
 
   interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
-  interpolator.exchange_fields('FlowSolution', 'CellCenter', False)
+  interpolator.exchange_fields('FlowSolution', 'CellCenter')
 
-  maia.transfer.part_tree_to_dist_tree_all(tgt, ptgt, comm)
-  maia.transfer.part_tree_to_dist_tree_all(src, psrc, comm)
-  src_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(psrc, 'gnum')]))
-  tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
+  src_sum = integrated_val(psrc, 'gnum', comm)
+  tgt_sum = integrated_val(ptgt, 'gnum', comm)
   assert abs(src_sum - tgt_sum) /  src_sum < 1E-3 # TODO restore 1E-12 when PDM / optim is OK
 
 @pytest_parallel.mark.parallel(2)
@@ -209,7 +188,7 @@ def test_vertex_fields(in_loc, out_loc, comm):
   # (results already checked in other tests)
 
   interpolator = ITP.ConservativePartInterpolator([PT.get_all_Zone_t(psrc)], [PT.get_all_Zone_t(ptgt)], comm)
-  interpolator.exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
+  interpolator._exchange_fields(in_loc+'Sol', out_loc, is_conservative=False)
 
   for zone in PT.get_all_Zone_t(ptgt):
     fs = PT.get_node_from_name(zone, in_loc+'Sol')
@@ -226,7 +205,7 @@ def test_from_api(comm):
 
   psrc = maia.factory.partition_dist_tree(src, comm, data_transfer='FIELDS')
   ptgt = maia.factory.partition_dist_tree(tgt, comm)
-  maia.algo.interpolate(psrc, ptgt, comm, ['Sol'], 'Vertex', strategy='Intersection', is_conservative=False)
+  maia.algo.interpolate(psrc, ptgt, comm, ['Sol'], 'Vertex', strategy='Intersection')
   assert PT.get_node_from_name(ptgt, 'Sol') is not None
 
 @pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
@@ -253,12 +232,13 @@ def test_multidom(dim, elt_kind, comm):
   ptgt = maia.factory.partition_dist_tree(tgt, comm)
 
   for idom,zone in enumerate(PT.get_all_Zone_t(psrc)):
-    PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 1000*(idom) + MT.Zone.cell_globalnumbering(zone)}, parent=zone)
+    gnum = 1000*(idom) + MT.Zone.cell_globalnumbering(zone).reshape(PT.Zone.CellSize(zone))
+    PT.new_FlowSolution(loc='CellCenter', fields={'gnum':gnum}, parent=zone)
 
-  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection', is_conservative=False)
+  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection')
 
-  src_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(psrc, 'gnum')]))
-  tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
+  src_sum = integrated_val(psrc, 'gnum', comm)
+  tgt_sum = integrated_val(ptgt, 'gnum', comm)
   assert abs(src_sum - tgt_sum) /  src_sum < 1E-12
 
 @pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
@@ -277,10 +257,10 @@ def test_multidom_vtx(comm):
     idom = int(MT.conv.get_part_prefix(PT.get_name(zone))[-1])
     PT.new_FlowSolution(loc='CellCenter', fields={'gnum' : 100*(idom) + MT.Zone.cell_globalnumbering(zone)}, parent=zone)
 
-  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection', is_conservative=False)
+  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection')
 
-  src_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(psrc, 'gnum')]))
-  tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
+  src_sum = integrated_val(psrc, 'gnum', comm)
+  tgt_sum = integrated_val(ptgt, 'gnum', comm)
   assert abs(src_sum - tgt_sum) /  src_sum < 1E-3 # TODO restore 1E-12 when PDM / optim is OK
 
 
@@ -302,6 +282,8 @@ def test_multidom_gnum_offset(comm):
 
   psrc = maia.factory.partition_dist_tree(src, comm, data_transfer='ALL')
   ptgt = maia.factory.partition_dist_tree(tgt, comm, data_transfer='ALL')
-  maia.algo.interpolate(psrc, ptgt, comm, ['FlowSolution'], 'CellCenter', strategy='Intersection', is_conservative=False)
+  itp = maia.algo.create_interpolator(psrc, ptgt, comm, 'CellCenter', 'CellCenter', strategy='Intersection')
+  itp._exchange_fields('FlowSolution', 'CellCenter', False)
+  
   tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(ptgt, 'gnum')]))
   assert abs(tgt_sum - 507800) < 1E-3

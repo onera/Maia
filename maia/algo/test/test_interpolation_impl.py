@@ -1,7 +1,42 @@
 import numpy as np
 from maia.utils import vstride as vs
 
+import maia.pytree as PT
+import maia
+
 from maia.algo import interpolation_impl as ITP
+
+# Sample tree + functions used by test_{d|p}interpolation_cons
+minimal_tri = """
+  zone Zone_t [[6, 5, 0]]:
+    ZoneType ZoneType_t "Unstructured":
+    GridCoordinates GridCoordinates_t:
+      CoordinateX DataArray_t R8 [0, 0, 0, 1, 1, 0.5]:
+      CoordinateY DataArray_t R8 [1, 0.5, 0, 0, 1, 0.5]:
+      CoordinateZ DataArray_t R8 [0, 0, 0, 0, 0, 0]:
+    TRI Elements_t [5, 0]:
+      ElementRange IndexRange_t [1, 5]:
+      ElementConnectivity DataArray_t [1,2,6, 2,3,6, 3,4,6, 4,5,6, 5,1,6]:
+    Geometry_0d DiscreteData_t:
+      DualVol24 DataArray_t R8 [3, 2, 3, 4, 4, 8]:
+    Geometry_2d DiscreteData_t:
+      GridLocation GridLocation_t "CellCenter":
+      Measure DataArray_t R8 [0.125, 0.125, 0.25, 0.25, 0.25]:
+"""
+
+def union(*trees):
+  for i,tree in enumerate(trees):
+    PT.set_name(PT.get_node_from_label(tree, 'Zone_t'), f'Zone_{i}')
+  return PT.union(*trees)
+
+def integrated_val(tree, field, comm):
+  maia.algo.compute_elements_measure(tree, 'CellCenter', comm)
+  tot = 0
+  for zone in PT.get_all_Zone_t(tree):
+    f   = PT.get_np_value(PT.find_node_from_name(zone, field))
+    vol = PT.get_np_value(PT.find_node_from_name(zone, 'Measure'))
+    tot += (f*vol).sum()
+  return comm.allreduce(tot)
 
 def test_cell_tgt_to_vtx_tgt():
   n_vtx = 12

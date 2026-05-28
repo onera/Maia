@@ -413,7 +413,12 @@ class ConservativeInterpolator:
 
     return tgt_fields_l
 
-  def exchange_fields(self, container_name:str, tgt_loc:str, is_conservative=True):
+  def exchange_fields(self, container_name:str, tgt_loc:str):
+    return self._exchange_fields(container_name, tgt_loc, True)
+
+  def _exchange_fields(self, container_name:str, tgt_loc:str, is_conservative:bool):
+    # Low level function allow to exchange integrated fields (eg. Velocity),
+    # contrary to public API
 
     field_names, cnt_label, src_loc = discover_fields_name(self.src_parts, container_name, self.root, self.comm)
 

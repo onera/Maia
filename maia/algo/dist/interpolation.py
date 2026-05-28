@@ -151,7 +151,7 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
     interpolator = create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'CellCenter', **options)
     for loc_containers_name in loc_to_containers_name.values():
       for container_name in loc_containers_name:
-        interpolator.exchange_fields(container_name, location, options.get('is_conservative', True))
+        interpolator.exchange_fields(container_name, location)
 
   else:
     if (lc:=len(loc_to_containers_name)) > 1:
