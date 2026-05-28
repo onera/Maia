@@ -167,7 +167,7 @@ class Interpolator:
     return reduced_data / reduced_factor
 
 
-  def exchange_fields(self, container_name, reduce_func=_reduce_weighted_mean):
+  def exchange_fields(self, container_name, *, fields_pred=PTp.ALWAYS_TRUE, reduce_func=_reduce_weighted_mean):
     """
     For all fields found under container_name node,
     - Perform a part to part exchange
@@ -176,7 +176,7 @@ class Interpolator:
     """
 
     #Check that solutions are known on each source partition
-    fields_names, container_label, _ = discover_fields_name(self.src_parts, container_name, PTp.ALWAYS_TRUE, self.root, self.comm)
+    fields_names, container_label, _ = discover_fields_name(self.src_parts, container_name, fields_pred, self.root, self.comm)
 
     for src_part in self.src_parts:
       container = PT.find_node_from_path(src_part, container_name)

@@ -60,7 +60,7 @@ def test_interpolation_location(comm, elt_type, n_tgt, tgt_loc, strategy):
   interpolator = maia.algo.create_interpolator(src_tree, tgt_tree, comm, "Vertex", tgt_loc,
                                                strategy=strategy,
                                                n_closest_pt=1)
-  interpolator.exchange_fields('FS', ITP.Interpolator._reduce_weighted_mean)
+  interpolator.exchange_fields('FS', reduce_func=ITP.Interpolator._reduce_weighted_mean)
 
   # > Check result
   zone = PT.get_node_from_label(tgt_tree, "Zone_t")
