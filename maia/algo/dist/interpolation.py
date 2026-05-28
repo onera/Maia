@@ -38,13 +38,14 @@ def create_src_to_tgt(src_dom,
                       comm,
                       src_loc = 'CellCenter',
                       tgt_loc = 'CellCenter',
-                      strategy = 'Closest',
-                      loc_tolerance = 1E-6,
-                      n_closest_pt = 1):
+                      **kwargs):
   """ Create a source to target indirection depending of the choosen strategy.
 
   This indirection can then be used to create an interpolator object.
   """
+  strategy = kwargs.get('strategy', 'Closest')
+  loc_tolerance = kwargs.get('loc_tolerance', 1E-6)
+  n_closest_pt = kwargs.get('n_closest_pt', 1)
 
   assert strategy in ['LocationAndClosest', 'Location', 'Closest']
 
@@ -146,12 +147,16 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
       loc = PT.Container.GridLocation(PT.find_child_from_name(first_part, cnt))
       loc_to_containers_name[loc].append(cnt)
 
+  fields_pred = options.get('fields_pred', PT.pred.ALWAYS_TRUE)
+  if isinstance(fields_pred, (list, tuple)):
+    raise ValueError("Multiple fields_pred are not supported")
+
   if options.get('strategy', 'Closest') == 'Intersection':
     # For intersection, src / tgt loc does not matter
     interpolator = create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'CellCenter', **options)
     for loc_containers_name in loc_to_containers_name.values():
       for container_name in loc_containers_name:
-        interpolator.exchange_fields(container_name, location)
+        interpolator.exchange_fields(container_name, location, fields_pred=fields_pred)
 
   else:
     if (lc:=len(loc_to_containers_name)) > 1:
@@ -163,7 +168,7 @@ def interpolate(src_tree, tgt_tree, comm, containers_name, location, **options):
       interpolator = create_interpolator(src_tree, tgt_tree, comm, input_loc, location, **options)
       # Exchange fields
       for container_name in loc_containers_name:
-        interpolator.exchange_fields(container_name)
+        interpolator.exchange_fields(container_name, fields_pred=fields_pred)
 
 
 

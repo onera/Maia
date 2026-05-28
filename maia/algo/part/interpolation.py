@@ -29,13 +29,15 @@ def create_src_to_tgt(src_parts_per_dom:List[List[CGNSPartTree]],
                       comm:MPIComm,
                       src_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',
                       tgt_loc:Literal['CellCenter', 'Vertex'] = 'CellCenter',
-                      strategy:str = 'Closest',
-                      loc_tolerance:float = 1E-6,
-                      n_closest_pt:int = 1):
+                      **kwargs):
   """ Create a source to target indirection depending of the choosen strategy.
 
   This indirection can then be used to create an interpolator object.
   """
+
+  strategy = kwargs.get('strategy', 'Closest')
+  loc_tolerance = kwargs.get('loc_tolerance', 1E-6)
+  n_closest_pt = kwargs.get('n_closest_pt', 1)
 
   assert strategy in ['LocationAndClosest', 'Location', 'Closest']
 
@@ -149,13 +151,16 @@ def interpolate(src_tree:CGNSPartTree,
     for loc, name in zip(input_locs, containers_name):
       loc_to_containers_name[loc].append(name)
 
+  fields_pred = options.get('fields_pred', PT.pred.ALWAYS_TRUE)
+  if isinstance(fields_pred, (list, tuple)):
+    raise ValueError("Multiple fields_pred are not supported")
   if options.get('strategy', 'Closest') == 'Intersection':
     # For intersection, src / tgt loc does not matter
     interpolator = create_interpolator(src_tree, tgt_tree, comm, 'CellCenter', 'CellCenter', **options)
     assert isinstance(interpolator, ConservativePartInterpolator)
     for loc_containers_name in loc_to_containers_name.values():
       for container_name in loc_containers_name:
-        interpolator.exchange_fields(container_name, location)
+        interpolator.exchange_fields(container_name, location, fields_pred=fields_pred)
 
   else:
     if (lc:=len(loc_to_containers_name)) > 1:
@@ -169,7 +174,7 @@ def interpolate(src_tree:CGNSPartTree,
       assert isinstance(interpolator, Interpolator)
       # Exchange fields
       for container_name in loc_containers_name:
-        interpolator.exchange_fields(container_name)
+        interpolator.exchange_fields(container_name, fields_pred=fields_pred)
 
 
 
