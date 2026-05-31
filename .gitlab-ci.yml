@@ -60,7 +60,7 @@ Basic tests:
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
     - export CXXFLAGS="-Wall -Werror" # odr (one definition rule) violations are serious and should not be ignored (often linked to PyBind11 wrapping)
     - export PDM_LONG_G_NUM=$( [ "$PDM_PROD" = "I8" ] && echo ON || echo OFF )
-    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=${PDM_LONG_G_NUM} -DPDM_ENABLE_EXTENSION_PDMA=ON -DPDM_ENABLE_TESTS=OFF ../../
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DPDM_ENABLE_LONG_G_NUM=${PDM_LONG_G_NUM} -DPDM_ENABLE_EXTENSION_PDMA=ON ../../
     - make -j 24
     - source source.sh
     - export PATH=$FEFLO_ROOT/bin:$PATH  # Get Feflo
@@ -85,7 +85,7 @@ Compilers portability:
   script:
     - cd $CUSTOM_CI_DIR
     - module purge
-    - CMAKE_ARGS="-DPDM_ENABLE_EXTENSION_PDMA=ON -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_TESTS=OFF -Dmaia_ENABLE_TESTS=ON"
+    - CMAKE_ARGS="-DPDM_ENABLE_EXTENSION_PDMA=ON -DPDM_ENABLE_LONG_G_NUM=OFF -Dmaia_ENABLE_TESTS=ON"
     - |
       case "$PROD" in
         socle7-gnu)
@@ -199,7 +199,7 @@ ParaDiGM@latest:
     - mkdir -p build/socle6_pdm-dev && cd build/socle6_pdm-dev
     - module purge
     - module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
-    - cmake $SRC_FOLDER -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON -DPDM_ENABLE_TESTS=OFF
+    - cmake $SRC_FOLDER -DCMAKE_BUILD_TYPE=Debug -Dmaia_ENABLE_TESTS=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
     - make -j24 > build.log
     - source source.sh
     - export PATH=$FEFLO_ROOT/bin:$PATH  # Get Feflo
@@ -296,7 +296,7 @@ Install:
       cmake ../ -DCMAKE_BUILD_TYPE=Release \
                 -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX} \
                 -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
-                -Dmaia_ENABLE_TESTS=OFF -DPDM_ENABLE_TESTS=OFF \
+                -Dmaia_ENABLE_TESTS=OFF \
                 -DPDM_ENABLE_LONG_G_NUM=${GNUM} -DPDM_ENABLE_EXTENSION_PDMA=ON
       make -j 24 install > build.log
       EOF

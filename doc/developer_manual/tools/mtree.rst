@@ -1,3 +1,5 @@
+.. _maia_pytree_module:
+
 Pytree extension
 ================
 

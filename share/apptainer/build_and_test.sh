@@ -21,7 +21,7 @@ mkdir -p build/alpine_int64
 cd build/alpine_int64
 
 # Note: the software stack used by Maia is already loaded on the image (PYTHONPATH...)
-cmake -S $MAIA_SOURCE_DIR -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_TESTS=OFF 
+cmake -S $MAIA_SOURCE_DIR
 make -j 24
 source source.sh
 mpirun -np 4 test/maia_doctest_unit_tests

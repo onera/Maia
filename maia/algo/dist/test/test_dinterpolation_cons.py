@@ -169,7 +169,7 @@ def test_vertex_fields(in_loc, out_loc, comm):
     fs = PT.get_node_from_name(zone, in_loc+'Sol')
     assert PT.Container.GridLocation(fs) == out_loc and PT.get_label(fs) == 'DiscreteData_t'
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8.dev'), reason="Require PDM fixes on PtP")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
 @pytest.mark.parametrize('dim', [2, 3])
 @pytest.mark.parametrize('elt_kind', ["Poly", "Standard"])
 def test_multidom(dim, elt_kind, comm):
@@ -199,7 +199,7 @@ def test_multidom(dim, elt_kind, comm):
   tgt_sum = integrated_val(tgt, 'gnum', comm)
   assert abs(src_sum - tgt_sum) /  src_sum < 1E-12
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8.dev'), reason="Require PDM fixes on PtP")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
 def test_multidom_gnum_offsets(comm):
   src1 = maia.factory.generate_dist_block(6, 'TRI_3', comm, length=.5)
   src2 = maia.factory.generate_dist_block(6, 'TRI_3', comm, origin=(.5,0,0), length=.5)
@@ -220,7 +220,7 @@ def test_multidom_gnum_offsets(comm):
   tgt_sum = comm.allreduce(sum([PT.get_np_value(n).sum() for n in PT.get_nodes_from_name(tgt, 'gnum')]))
   assert abs(tgt_sum - 507800) < 1E-3
 
-@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8.dev'), reason="Require PDM fixes on PtP")
+@pytest.mark.skipif(TU.PDM_VERSION < Version('2.8'), reason="Require PDM fixes on PtP")
 @pytest_parallel.mark.parallel(2)
 def test_multidom_vtx(comm):
   src = union(maia.factory.generate_dist_block(5, 'TRI_3', comm, length=(.5, 1), origin=(0,0,0)),

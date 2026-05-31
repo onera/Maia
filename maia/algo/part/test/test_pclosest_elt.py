@@ -7,12 +7,11 @@ import maia.pytree        as PT
 import maia
 
 from maia.algo.part import closest_elt as pCLO
-from maia.algo.part import compute_wall_distance
+from maia.algo import compute_wall_distance
 
 # For U, we reuse the meshes defined in test_interpolate
 from maia.algo.part.test.test_pinterpolation import src_part_0, src_part_1
 
-@pytest.mark.skipif(not maia.pdma_enabled, reason="Require ParaDiGMA")
 @pytest.mark.parametrize("perio", [True, False])
 @pytest_parallel.mark.parallel(2)
 def test_wall_distance_U(perio, comm):
@@ -39,23 +38,8 @@ def test_wall_distance_U(perio, comm):
     """)
   PT.add_child(zone, zone_bc)
 
-  # Test with propagation method + default out_fs_name
-  if perio:
-    with pytest.warns(RuntimeWarning):
-      compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
-  else:
-    compute_wall_distance(part_tree, comm, method="propagation", perio=perio)
-
-  fs = PT.get_child_from_name(zone, 'WallDistance')
-  assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
-  for array in PT.iter_children_from_label(fs, 'DataArray_t'):
-    assert array[1].shape == (4,)
-  assert (PT.get_child_from_name(fs, 'TurbulentDistance')[1] == expected_wd).all()
-  assert (PT.get_child_from_name(fs, 'ClosestEltGnum')[1] == expected_gnum).all()
-
-  #Test with cloud method + custom fs name
   PT.rm_nodes_from_name(part_tree, 'WallDistance')
-  compute_wall_distance(part_tree, comm, method="cloud", out_fs_name='MyWallDistance', perio=perio)
+  compute_wall_distance(part_tree, comm, out_fs_name='MyWallDistance', perio=perio)
 
   fs = PT.get_child_from_name(zone, 'MyWallDistance')
   assert fs is not None and PT.Container.GridLocation(fs) == 'CellCenter'
@@ -251,7 +235,7 @@ def test_walldistance_vtx(comm):
   PT.add_child(zone, zone_bc)
   PT.new_FlowSolution("MyWallDistance", fields={'Dummy' : np.ones(PT.Zone.n_vtx(zone))}, parent=zone)
 
-  compute_wall_distance(part_tree, comm, method="cloud", point_cloud="Vertex", out_fs_name='MyWallDistance')
+  compute_wall_distance(part_tree, comm, point_cloud="Vertex", out_fs_name='MyWallDistance')
 
   fs = PT.get_child_from_name(zone, 'MyWallDistance')
   assert fs is not None and PT.Container.GridLocation(fs) == 'Vertex'
