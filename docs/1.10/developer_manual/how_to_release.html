@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How To : Release Maia &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.10
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">How To : Release Maia</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/developer_manual/how_to_release.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="how-to-release-maia">
+<h1>How To : Release Maia<a class="headerlink" href="#how-to-release-maia" title="Permalink to this heading"></a></h1>
+<p>Régularité est gage de qualité. Les releases Maia sortent le dernier jour du mois, pour un
+rythme de 2 à 3 releases par an.
+Si les développements ont lieu de manière continue, et sont intégrés au fur et à mesure
+sur la branche dev, le processus de release s’en trouve facilité.
+Néanmoins, il y a quelques petits pratiques à ne pas oublier : c’est l’objet de ce guide.</p>
+<p><em>Note:</em> Ce guide est illustré avec la release 1.5 de maia.
+Ne pas oublier d’updater le numéro lors des manipulations !</p>
+<section id="avant-la-release">
+<h2>Avant la release<a class="headerlink" href="#avant-la-release" title="Permalink to this heading"></a></h2>
+<p>Environ 1 mois avant la release : penser à supprimer les <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> introduits dans
+la version précédente, s’il en reste.
+Environ 2 semaines avant la release, il faut également introduire les nouveaux
+<code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> qui apparaitront dans la version courante.</p>
+<p>Arrêter les développements une semaine à dix jours avant la release pour laisser une marge de
+tests. Tester et faire tester au maximum la version de développement : tests unitaires,
+utilisateurs, base de test elsA, Sonics, …
+Pendant cette période, corriger les derniers bugs qui peuvent être remontés sur
+la branche de développment.</p>
+</section>
+<section id="release">
+<h2>Release<a class="headerlink" href="#release" title="Permalink to this heading"></a></h2>
+<section id="tag-de-la-version">
+<h3>Tag de la version<a class="headerlink" href="#tag-de-la-version" title="Permalink to this heading"></a></h3>
+<p>Si elle n’existe pas déjà, créer une branche dédiée à la release (ex. <code class="docutils literal notranslate"><span class="pre">dev_1.5</span></code>).
+Sur cette branche, faire les derniers changements nécessaire à la release :</p>
+<ul>
+<li><p>Dans <code class="docutils literal notranslate"><span class="pre">doc/conf.py</span></code>, ajouter le numéro de la nouvelle version dans la liste l 130:</p>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span># POPULATE LINKS TO OTHER VERSIONS
+html_context[&#39;versions&#39;] = list()
+<span class="gi">+ for version in [&#39;dev&#39;, &#39;1.5&#39;, &#39;1.4&#39;, &#39;1.3&#39;, &#39;1.2&#39;, &#39;1.1&#39;, &#39;1.0&#39;]:</span>
+<span class="gd">- for version in [&#39;dev&#39;, &#39;1.4&#39;, &#39;1.3&#39;, &#39;1.2&#39;, &#39;1.1&#39;, &#39;1.0&#39;]:</span>
+<span class="w"> </span> html_context[&#39;versions&#39;].append( (version, f&#39;/{REPO_NAME}/{version}/&#39;) )
+</pre></div>
+</div>
+<p>Cet ajout permet de faire apparaître la nouvelle version dans le selecteur
+de version en bas à gauche de la page web.</p>
+</li>
+<li><p>Dans les release notes (<code class="docutils literal notranslate"><span class="pre">doc/releases/release_notes.rst</span></code>), remplacer “Developpement
+version” par le numéro et le mois de la release (cf les autres paragraphes):</p>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span><span class="gd">- Developpement version</span>
+<span class="gi">+ v1.5 (September 2024)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Dans la page d’installation (<code class="docutils literal notranslate"><span class="pre">doc/installation.rst</span></code>), ajouter une entrée
+dans le tableau de compatibilité des versions:</p>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span><span class="w"> </span>+-------+----------+
+<span class="w"> </span>| Maia  | ParaDiGM |
+<span class="w"> </span>+=======+==========+
+<span class="gi">+| v1.5  | v2.5.0   |</span>
+<span class="gi">++-------+----------+</span>
+<span class="w"> </span>| v1.4  | v2.5.0   |
+<span class="w"> </span>+-------+----------+
+</pre></div>
+</div>
+</li>
+</ul>
+<p>Commiter ces changements sur la branche <code class="docutils literal notranslate"><span class="pre">dev_1.5</span></code>. Ensuite, réaliser le merge
+avec la branche principale, avec l’option <code class="docutils literal notranslate"><span class="pre">--no-commit</span></code>;
+cette option permet de modifier les fichiers avant de valider la fusion.</p>
+<p>L’idée est de faire cette modification dans le commit de merge, pour avoir un
+unique commit portant ce numéro de version.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>checkout<span class="w"> </span>dev
+git<span class="w"> </span>merge<span class="w"> </span>dev_1.5<span class="w"> </span>--no-ff<span class="w"> </span>--no-commit
+</pre></div>
+</div>
+<p>En l’occurence, modifier le fichier <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> pour updater le numéro de version :</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;1.5&#39;</span>
+</pre></div>
+</div>
+<p>C’est également l’occasion de lancer une dernière fois les tests pour vérifier
+que la fusion n’a rien cassé.</p>
+<p>Penser à stager le fichier, puis finaliser le merge avec <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">commit</span></code>; utiliser le
+message suivant:</p>
+<blockquote>
+<div><p>Merge branch ‘dev_1.5’ into dev</p>
+<p>Release version 1.5</p>
+</div></blockquote>
+<p>Enfin, créer le tag git associé, sur le commit de merge, en suivant le modèle pour les autres tags:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>tag<span class="w"> </span>v1.5
+</pre></div>
+</div>
+<p><strong>Note</strong> Il est préférable de ne pas pousser vers le GitLab Onera à ce stade, car
+certains fichiers (notamment la doc de la version) doivent préalablement être générés
+et copiés dans un espace accessible à la CI.</p>
+<p>Les étapes suivante concernent le déploiement de la release. Il s’agit de la partie
+la plus longue du processus, mais ces étapes peuvent être réalisées en plusieurs temps.</p>
+<p><strong>Note</strong> Dans les étapes suivantes, il est souvent nécessaire de cloner le dépôt
+pour avoir un répertoire de travail propre. Si le code n’a pas encore été push
+(cf remarque précédente) on pourra cloner en mode ‘local’, directement depuis le
+dossier de sources : <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">path/to/maia/local</span></code>.</p>
+</section>
+<section id="deploiement-documentation-onera">
+<h3>Déploiement documentation Onera<a class="headerlink" href="#deploiement-documentation-onera" title="Permalink to this heading"></a></h3>
+<p>Cette étape permet de générer la documentation, et la stocker à un emplacement
+accessible par la CI pour les futurs déploiement de <code class="docutils literal notranslate"><span class="pre">maia/dev</span></code>.
+Deux étapes sont nécessaires :</p>
+<ul class="simple">
+<li><p>Générer et copier les pages de doc pour la version produite (v1.5)</p></li>
+<li><p>Updater les versions antérieures (jusqu’à v1.4) pour inclure l’hyperlink vers la version produite</p></li>
+</ul>
+<p>Il est plus pratique de commencer par le second point: se connecter sur JUNO avec
+le compte sonics et se placer dans le dossier
+<code class="docutils literal notranslate"><span class="pre">/tmp_user/juno/sonics/usr/maia/doc/html</span></code>.</p>
+<p><strong>NB</strong> : il est conseiller de backuper le dossier <code class="docutils literal notranslate"><span class="pre">html</span></code> avant la manipulation</p>
+<p>Exécuter le script suivant (attention à updater les numéros de version):</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>find<span class="w"> </span>.<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.html&#39;</span><span class="w"> </span>-exec<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s@&lt;dd&gt;&lt;a href=&quot;/mesh/maia/1.4/&quot;&gt;1.4&lt;/a&gt;&lt;/dd&gt;@&lt;dd&gt;&lt;a href=&quot;/mesh/maia/1.5/&quot;&gt;1.5&lt;/a&gt;&lt;/dd&gt;\n\n          &lt;dd&gt;&lt;a href=&quot;/mesh/maia/1.4/&quot;&gt;1.4&lt;/a&gt;&lt;/dd&gt;@&#39;</span><span class="w"> </span><span class="o">{}</span><span class="w"> </span>+
+</pre></div>
+</div>
+<p>Pour le premier point, il faut générer complètement la doc pour la version
+nouvellement produite.
+Se connecter sur JUNO, cloner les sources, se placer sur le commit de release
+et initialiser les sous modules.</p>
+<p>Modifier le fichier <code class="docutils literal notranslate"><span class="pre">doc/conf.py</span></code> pour updater la variable <code class="docutils literal notranslate"><span class="pre">current_version</span></code>:
+ceci permet d’indiquer le bon numéro de version en haut à gauche de la page.</p>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span>REPO_NAME = &#39;mesh/maia&#39; #Namespace in the gitlab pages server
+current_language = &#39;en&#39;
+<span class="gd">-current_version = &#39;dev&#39;</span>
+<span class="gi">+current_version = &#39;1.5&#39;</span>
+</pre></div>
+</div>
+<p>Ensuite, compiler la doc en suivant les étapes du job de CI correspondant:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>mkdir build &amp;&amp; cd build
+module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+cmake -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+make -j
+source source.sh
+export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
+cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
+make maia_sphinx
+</pre></div>
+</div>
+<p>Pour finir, copier la doc générée vers l’espace où sont stockées les versions
+précédentes:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>scp -r doc/sphinx/html sonics@juno:/tmp_user/juno/sonics/usr/maia/doc/html/1.5
+</pre></div>
+</div>
+</section>
+<section id="installation-sur-les-machines-onera">
+<h3>Installation sur les machines Onera<a class="headerlink" href="#installation-sur-les-machines-onera" title="Permalink to this heading"></a></h3>
+<p>Le tableau suivant indique les répertoires à utiliser selon la machine:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Machine</p></th>
+<th class="head"><p>Répertoire de compilation</p></th>
+<th class="head"><p>Répertoire <em>modulesfiles</em></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Spiro</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/scratchm/sonics/tmp/maia-ci-v1.5</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/scratchm/sonics/usr/modules/maia</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Sator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/tmp_user/sator/sonics/tmp/maia-ci-v1.5</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/tmp_user/sator/sonics/usr/modules/maia</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Juno</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/tmp_user/juno/sonics/tmp/maia-ci-v1.5</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/tmp_user/juno/sonics/usr/modules/maia</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>LD8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/stck/sonics/tmp/maia-ci-v1.5</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">/stck/sonics/LD8/modules/maia</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>Récupérer le code, se placer sur le commit de release et updater les sous modules.
+Copier (<code class="docutils literal notranslate"><span class="pre">scp</span></code>) le code vers les différentes machines, sur le compte Sonics, dans le
+répertoire de compilation (cf tableau).</p>
+<p>Pour chacune des machines,</p>
+<ol class="arabic simple">
+<li><p>se connecter avec le login sonics</p></li>
+<li><p>créer un dossier de build par socle supporté (cf doc et/ou version précédente)</p></li>
+<li><p>copier le fichier <code class="docutils literal notranslate"><span class="pre">build_xxx.sh</span></code> depuis la version précdente pour chaque socle supporté, et
+updater la variable <code class="docutils literal notranslate"><span class="pre">INSTALL_PREFIX</span></code>.</p></li>
+<li><p>exécuter le fichier de build pour compiler et installer les sources</p></li>
+<li><p>se placer dans le répertoire <em>modulefiles</em> (cf tableau) et créer un fichier <code class="docutils literal notranslate"><span class="pre">1.5.0-xxx</span></code>
+pour chaque socle supporté (à nouveau, copier la version précédent et updater le numéro
+de version).</p></li>
+<li><p>dans ce même répertoire, créer l’alias (lien symbolique) <code class="docutils literal notranslate"><span class="pre">1.5-xxx</span></code> pointant vers le fichier
+<code class="docutils literal notranslate"><span class="pre">1.5.0-xxx</span></code> (dernière version disponible)</p></li>
+</ol>
+<p><strong>Note</strong> Pour l’étape 3, si les fichiers ne sont plus disponibles, on peut les retrouver en annexe de ce document.</p>
+</section>
+<section id="creation-d-une-release-sur-gitlab">
+<h3>Création d’une release sur GitLab<a class="headerlink" href="#creation-d-une-release-sur-gitlab" title="Permalink to this heading"></a></h3>
+<p>Cette étape mineure consiste à ajouter une release dans la section correspondante
+sur la plateforme GitLab.</p>
+<p>Si cela n’a pas encoré été fait, pousser le résultat de la fusion
+(branche <code class="docutils literal notranslate"><span class="pre">dev</span></code> + tag) vers le serveur.</p>
+<p>Sur l’interface web, se rendre dans le menu <code class="docutils literal notranslate"><span class="pre">Deploy</span> <span class="pre">&gt;</span> <span class="pre">Releases</span></code>, puis cliquer sur
+“New release” en haut a droite.
+Selectionner le tag, puis remplir le formulaire</p>
+<ul class="simple">
+<li><p>titre = v1.5</p></li>
+<li><p>release date = date du commit</p></li>
+<li><p>release note = copier le changelog depuis la doc</p></li>
+<li><p>utiliser la partie “Links” en bas pour mettre l’url vers la doc de la release</p></li>
+</ul>
+</section>
+<section id="deploiement-documentation-github">
+<h3>Déploiement documentation GitHub<a class="headerlink" href="#deploiement-documentation-github" title="Permalink to this heading"></a></h3>
+<p>La documentation sur GitHub est deployée via un push sur la branche spécifique <code class="docutils literal notranslate"><span class="pre">deploy_doc</span></code>
+du serveur GitHub.</p>
+<p>De la même manière que dans le paragraphe “Déploiement documentation Onera”,
+il faut updater les fichiers de doc pour faire apparaitre la nouvelle version.</p>
+<p>Une petite adaptation est nécessaire car:</p>
+<ul class="simple">
+<li><p>l’url pour référencer les autres version est de la forme <code class="docutils literal notranslate"><span class="pre">/Maia/v1.4</span></code>
+au lieu de <code class="docutils literal notranslate"><span class="pre">/mesh/maia/v1.4</span></code></p></li>
+<li><p>la version <code class="docutils literal notranslate"><span class="pre">dev</span></code> ne doit pas être referencée car elle n’est pas deployée entre les releases</p></li>
+</ul>
+<p>Les étapes à suivre sont:</p>
+<ol class="arabic">
+<li><p>Cloner le dépot depuis GitHub et se placer sur la branche <code class="docutils literal notranslate"><span class="pre">deploy_doc</span></code></p></li>
+<li><p>Utiliser une version adaptée de la commande <code class="docutils literal notranslate"><span class="pre">sed</span></code> pour ajouter un lien vers la
+v1.5 sur les pages existantes:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>find<span class="w"> </span>.<span class="w"> </span>-name<span class="w"> </span><span class="s1">&#39;*.html&#39;</span><span class="w"> </span>-exec<span class="w"> </span>sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s@&lt;dd&gt;&lt;a href=&quot;/Maia/1.4/&quot;&gt;1.4&lt;/a&gt;&lt;/dd&gt;@&lt;dd&gt;&lt;a href=&quot;/Maia/1.5/&quot;&gt;1.5&lt;/a&gt;&lt;/dd&gt;\n\n          &lt;dd&gt;&lt;a href=&quot;/Maia/1.4/&quot;&gt;1.4&lt;/a&gt;&lt;/dd&gt;@&#39;</span><span class="w"> </span><span class="o">{}</span><span class="w"> </span>+
+</pre></div>
+</div>
+</li>
+<li><p>Copier la doc générée pour la version courante dans un nouveau dossier correspondant</p></li>
+<li><p>Updater ce dossier de la manière suivante:</p>
+<ul class="simple">
+<li><p>créer un fichier vide <code class="docutils literal notranslate"><span class="pre">.nojekyll</span></code> dans le dossier</p></li>
+<li><p>adapter les références aux autres versions avec
+<code class="docutils literal notranslate"><span class="pre">find</span> <span class="pre">.</span> <span class="pre">-name</span> <span class="pre">'*.html'</span> <span class="pre">-exec</span> <span class="pre">sed</span> <span class="pre">-i</span> <span class="pre">'s&#64;href=&quot;/mesh/maia/&#64;href=&quot;/Maia/&#64;'</span> <span class="pre">{}</span> <span class="pre">+</span></code></p></li>
+<li><p>supprimer les références à la version dev avec
+<code class="docutils literal notranslate"><span class="pre">find</span> <span class="pre">.</span> <span class="pre">-name</span> <span class="pre">'*.html'</span> <span class="pre">-exec</span> <span class="pre">sed</span> <span class="pre">-i</span> <span class="pre">'/&lt;dd&gt;&lt;a</span> <span class="pre">href=&quot;\/Maia\/dev\/&quot;&gt;/d'</span> <span class="pre">{}</span> <span class="pre">+</span></code></p></li>
+</ul>
+</li>
+<li><p>Updater le fichier <code class="docutils literal notranslate"><span class="pre">index.html</span></code> pour rediriger par défaut vers la dernière version</p></li>
+<li><p>Commiter et pousser les changements sur <code class="docutils literal notranslate"><span class="pre">deploy_doc</span></code></p></li>
+</ol>
+</section>
+<section id="production-d-une-archive-sans-paradigm">
+<h3>Production d’une archive sans ParaDiGM<a class="headerlink" href="#production-d-une-archive-sans-paradigm" title="Permalink to this heading"></a></h3>
+<p>Pour faire une archive (par ex. pour elsA):</p>
+<ol class="arabic simple">
+<li><p>Récupérer le code, se placer sur le commit de release et updater les sous modules.</p></li>
+<li><p>Supprimer totalement le dossier <code class="docutils literal notranslate"><span class="pre">external/paradigm</span></code></p></li>
+<li><p>Supprimer tout les dossiers <code class="docutils literal notranslate"><span class="pre">.git</span></code>, y compris dans les sous modules</p></li>
+<li><p>Il ne reste plus qu’à archiver avec <code class="docutils literal notranslate"><span class="pre">tar</span> <span class="pre">-zcvf</span> <span class="pre">maia_v1.5.tar.gz</span> <span class="pre">maia/</span></code></p></li>
+</ol>
+</section>
+</section>
+<section id="apres-la-release">
+<h2>Après la release<a class="headerlink" href="#apres-la-release" title="Permalink to this heading"></a></h2>
+<section id="reprise-des-developpements">
+<h3>Reprise des développements<a class="headerlink" href="#reprise-des-developpements" title="Permalink to this heading"></a></h3>
+<p><strong>Important</strong> Au premier commit sur dev, remettre à jour le fichier <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> :</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span> <span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;1.6.dev&#39;</span>
+</pre></div>
+</div>
+<p>de sorte à conserver l’unicité du commit portant le numéro de version.
+(Idéalement, si des branches partent du commit de release, il faudrait faire le changement sur ces branches également, via rebase, au moment de l’intégration)</p>
+<p>Au premier changement dans les relases notes, rééintroduire la section
+“Developpement version”</p>
+<p>Ne pas merger dans <code class="docutils literal notranslate"><span class="pre">dev</span></code> des branches dont l’origine est antérieure au commit de release;
+les rebaser avant (de sorte à isoler clairement le commit de release dans le graphe).</p>
+</section>
+<section id="sorties-de-patchs">
+<h3>Sorties de patchs<a class="headerlink" href="#sorties-de-patchs" title="Permalink to this heading"></a></h3>
+<p><em>Rappel</em> : une patch release (ou version micro) est une version publique visant à corriger des bugs bloquants pour les utilisateurs. Une telle version ne doit pas inclure de nouvelle fonctionnalité.</p>
+<p>Il n’y a pas de contrainte sur la date de déploiement de patchs. En revanche, il convient
+de mener une reflexion pour savoir si un patch est vraiement nécessaire (le problème
+est il bloquant ? Peut-il être contourné facilement par l’utilisateur ? L’utilisateur
+accepte t’il d’attendre la prochaine version, ou d’utiliser <code class="docutils literal notranslate"><span class="pre">maia/dev</span></code> ? ).
+Garder en tête que plus il y a de versions produites, plus le support est complexe.</p>
+<p>On suppose dans la suite que le ou les problèmes ont bien été corrigés sur la branche <code class="docutils literal notranslate"><span class="pre">dev</span></code>.</p>
+<p>Lors de la préparation d’un patch, recréer une branche partant du commit de release
+(ou du patch N-1, si existant).
+Procéder au cherry-pick du ou des correctifs, puis faire un rebase interactif de sorte à:</p>
+<ul>
+<li><p>modifier le fichier <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> pour mettre à jour la variable <code class="docutils literal notranslate"><span class="pre">__version__</span></code>
+(par exemple <code class="docutils literal notranslate"><span class="pre">'1.5.1'</span></code>)</p></li>
+<li><p>suivre la règle 1 patch = 1 commit (squasher) pour faciliter la lisibilité.
+Il est conseillé de suivre le pattern suivant pour le message du commit:</p>
+<blockquote>
+<div><p>Backport fixes to v1.4. The following fixes have been picked:</p>
+<p>cb936031: [doc] Minor : update PDM/maia compatibility table <br />
+48b8a3cf: Fixes in meshb writer (!119) <br />
+21c10fd9: [Fix] Prevent a crash in merge_zone with Abutting (non 1to1) GC_t (#109)</p>
+</div></blockquote>
+<p>(adapter le numéro de release, ainsi que le hash (8 digit) et le message des commit cherry-picked)</p>
+</li>
+<li><p>Editer la page <code class="docutils literal notranslate"><span class="pre">release_notes.rst</span></code> pour faire apparaitre les changements liés au patch
+dans la section correspondante à la version en cours;</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-</span> <span class="o">**</span><span class="p">[</span><span class="n">v1</span><span class="mf">.4.1</span><span class="p">]</span><span class="o">**</span> <span class="n">mesh</span> <span class="n">adaptation</span><span class="p">:</span> <span class="n">fix</span> <span class="n">tensorial</span> <span class="n">metric</span> <span class="ow">and</span> <span class="n">trees</span> <span class="k">with</span> <span class="n">multiple</span> <span class="n">Elements_t</span> <span class="n">of</span> <span class="n">same</span> <span class="nb">type</span>
+<span class="o">-</span> <span class="o">**</span><span class="p">[</span><span class="n">v1</span><span class="mf">.4.1</span><span class="p">]</span><span class="o">**</span> <span class="n">merge_zones</span><span class="p">:</span> <span class="n">prevent</span> <span class="n">a</span> <span class="n">crash</span> <span class="n">when</span> <span class="n">zones</span> <span class="n">have</span> <span class="n">non</span> <span class="mi">1</span><span class="n">to1</span> <span class="n">GridConnectivity</span> <span class="n">nodes</span>
+</pre></div>
+</div>
+<p>Ce dernier changement sera également à réaliser sur la branche <code class="docutils literal notranslate"><span class="pre">dev</span></code>, pour les
+déploiements de la CI et des futures versions.</p>
+</li>
+</ul>
+<p>Tagger le commit de patch (ex. <code class="docutils literal notranslate"><span class="pre">v1.5.1</span></code>) et reprendre les étapes d’installation suivante :</p>
+<ul>
+<li><p>Installation sur les machines Onera</p></li>
+<li><p>Déploiement documentation Onera</p>
+<p><strong>NB</strong> On pourra se contenter de patcher le fichier <code class="docutils literal notranslate"><span class="pre">release_notes.html</span></code> produit
+lors de la release classique pour mettre à jour le changelog, si c’est le seul modifié.</p>
+</li>
+<li><p>Déploiement documentation GitHub (même remarque que le point précédent)</p></li>
+</ul>
+</section>
+</section>
+<section id="annexe-scripts-de-build-pour-deploiement-onera">
+<h2>Annexe : scripts de build pour déploiement Onera<a class="headerlink" href="#annexe-scripts-de-build-pour-deploiement-onera" title="Permalink to this heading"></a></h2>
+<p>Juno, socle DSI 6</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module purge
+module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+export https_proxy=http://proxy.onera:80
+
+
+cmake ../ -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/tmp_user/juno/sonics/usr/maia/v1.5.0/dsi-cfd6 \
+          -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+          -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+make -j install
+</pre></div>
+</div>
+<p>Sator, socle DSI 6</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module purge
+module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+export https_proxy=http://proxy.onera:80
+
+cmake ../ -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/v1.5.0/dsi-cfd6 \
+          -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+          -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+make -j install
+</pre></div>
+</div>
+<p>Sator, socle Spack</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>source /tmp_user/sator/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
+export https_proxy=http://proxy.onera:80
+cmake ../ -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/v1.5.0/default \
+          -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+make -j install
+</pre></div>
+</div>
+<p><strong>NB</strong> : Sur sator, il arrive qu’on installe les versions en <code class="docutils literal notranslate"><span class="pre">LONG_G_NUM=OFF</span></code>
+en suffixant le chemin d’installation par <code class="docutils literal notranslate"><span class="pre">idx_32</span></code></p>
+<p>Spiro, socle DSI 6</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module purge
+module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+export https_proxy=http://proxy.onera:80
+
+cmake ../ -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/v1.5.0/dsi-cfd6 \
+          -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+          -DCMAKE_EXE_LINKER_FLAGS=&#39;-lz -lbz2&#39; -DCMAKE_SHARED_LINKER_FLAGS=&#39;-lz -lbz2&#39; \
+          -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+make -j install
+</pre></div>
+</div>
+<p>Spiro, socle spack</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module purge
+source /scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
+export https_proxy=http://proxy.onera:80
+cmake ../ -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/v1.5.0/default \
+          -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+make -j install
+</pre></div>
+</div>
+<p>Postes linux LD8</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>module purge
+module load gcc/10.2.0
+module load hdf5/1.10.5-gnu831-ompi405
+module load openmpi/4.0.5-gnu831
+module load python/3.8.14-gnu831
+module load scotch/6.0.9-idx32-gnu831-ompi405
+module load parmetis/4.0.3-gnu831-ompi405
+module load metis/5.1.0-gnu831
+module load cmake/3.19.8-gnu831
+
+cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/stck/sonics/LD8/maia/v1.5.0/dsi-ompi405 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+make -j4 install
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.10
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.10/">1.10</a></dd>
+        
+          <dd><a href="/Maia/1.9/">1.9</a></dd>
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

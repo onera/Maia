@@ -1,0 +1,412 @@
+# How To : Release Maia
+
+Régularité est gage de qualité. Les releases Maia sortent le dernier jour du mois, pour un 
+rythme de 2 à 3 releases par an.
+Si les développements ont lieu de manière continue, et sont intégrés au fur et à mesure
+sur la branche dev, le processus de release s'en trouve facilité.
+Néanmoins, il y a quelques petits pratiques à ne pas oublier : c'est l'objet de ce guide.
+
+*Note:* Ce guide est illustré avec la release 1.5 de maia.
+Ne pas oublier d'updater le numéro lors des manipulations !
+
+## Avant la release
+
+Environ 1 mois avant la release : penser à supprimer les `DeprecationWarning` introduits dans
+la version précédente, s'il en reste.
+Environ 2 semaines avant la release, il faut également introduire les nouveaux
+`DeprecationWarning` qui apparaitront dans la version courante.
+
+Arrêter les développements une semaine à dix jours avant la release pour laisser une marge de
+tests. Tester et faire tester au maximum la version de développement : tests unitaires,
+utilisateurs, base de test elsA, Sonics, ... 
+Pendant cette période, corriger les derniers bugs qui peuvent être remontés sur
+la branche de développment.
+
+## Release
+
+### Tag de la version
+
+Si elle n'existe pas déjà, créer une branche dédiée à la release (ex. `dev_1.5`).
+Sur cette branche, faire les derniers changements nécessaire à la release : 
+
+- Dans `doc/conf.py`, ajouter le numéro de la nouvelle version dans la liste l 130:
+
+  ```diff
+  # POPULATE LINKS TO OTHER VERSIONS
+  html_context['versions'] = list()
+  + for version in ['dev', '1.5', '1.4', '1.3', '1.2', '1.1', '1.0']:
+  - for version in ['dev', '1.4', '1.3', '1.2', '1.1', '1.0']:
+    html_context['versions'].append( (version, f'/{REPO_NAME}/{version}/') )
+  ```
+
+  Cet ajout permet de faire apparaître la nouvelle version dans le selecteur
+  de version en bas à gauche de la page web.
+
+- Dans les release notes (`doc/releases/release_notes.rst`), remplacer "Developpement
+  version" par le numéro et le mois de la release (cf les autres paragraphes):
+
+  ```diff
+  - Developpement version
+  + v1.5 (September 2024)
+  ```
+
+- Dans la page d'installation (`doc/installation.rst`), ajouter une entrée
+  dans le tableau de compatibilité des versions:
+  ```diff
+   +-------+----------+
+   | Maia  | ParaDiGM |
+   +=======+==========+
+  +| v1.5  | v2.5.0   |
+  ++-------+----------+
+   | v1.4  | v2.5.0   |
+   +-------+----------+
+  ```
+
+
+Commiter ces changements sur la branche `dev_1.5`. Ensuite, réaliser le merge
+avec la branche principale, avec l'option `--no-commit`;
+cette option permet de modifier les fichiers avant de valider la fusion. 
+
+L'idée est de faire cette modification dans le commit de merge, pour avoir un
+unique commit portant ce numéro de version.
+
+```sh
+git checkout dev
+git merge dev_1.5 --no-ff --no-commit
+```
+
+En l'occurence, modifier le fichier `__init__.py` pour updater le numéro de version : 
+
+```python
+__version__ = '1.5'
+```
+
+C'est également l'occasion de lancer une dernière fois les tests pour vérifier
+que la fusion n'a rien cassé.
+
+Penser à stager le fichier, puis finaliser le merge avec `git commit`; utiliser le
+message suivant:
+
+> Merge branch 'dev_1.5' into dev
+> 
+> Release version 1.5
+
+
+Enfin, créer le tag git associé, sur le commit de merge, en suivant le modèle pour les autres tags:
+
+```sh
+git tag v1.5
+```
+
+**Note** Il est préférable de ne pas pousser vers le GitLab Onera à ce stade, car
+certains fichiers (notamment la doc de la version) doivent préalablement être générés
+et copiés dans un espace accessible à la CI.
+
+
+Les étapes suivante concernent le déploiement de la release. Il s'agit de la partie
+la plus longue du processus, mais ces étapes peuvent être réalisées en plusieurs temps.
+
+**Note** Dans les étapes suivantes, il est souvent nécessaire de cloner le dépôt
+pour avoir un répertoire de travail propre. Si le code n'a pas encore été push
+(cf remarque précédente) on pourra cloner en mode 'local', directement depuis le
+dossier de sources : `git clone path/to/maia/local`.
+
+### Déploiement documentation Onera
+
+Cette étape permet de générer la documentation, et la stocker à un emplacement
+accessible par la CI pour les futurs déploiement de `maia/dev`.
+Deux étapes sont nécessaires : 
+- Générer et copier les pages de doc pour la version produite (v1.5)
+- Updater les versions antérieures (jusqu'à v1.4) pour inclure l'hyperlink vers la version produite
+
+Il est plus pratique de commencer par le second point: se connecter sur JUNO avec
+le compte sonics et se placer dans le dossier
+`/tmp_user/juno/sonics/usr/maia/doc/html`.
+
+**NB** : il est conseiller de backuper le dossier `html` avant la manipulation
+
+Exécuter le script suivant (attention à updater les numéros de version):
+
+```sh
+find . -name '*.html' -exec sed -i 's@<dd><a href="/mesh/maia/1.4/">1.4</a></dd>@<dd><a href="/mesh/maia/1.5/">1.5</a></dd>\n\n          <dd><a href="/mesh/maia/1.4/">1.4</a></dd>@' {} +
+```
+
+Pour le premier point, il faut générer complètement la doc pour la version
+nouvellement produite.
+Se connecter sur JUNO, cloner les sources, se placer sur le commit de release
+et initialiser les sous modules.
+
+Modifier le fichier `doc/conf.py` pour updater la variable `current_version`:
+ceci permet d'indiquer le bon numéro de version en haut à gauche de la page.
+
+  ```diff
+  REPO_NAME = 'mesh/maia' #Namespace in the gitlab pages server
+  current_language = 'en'
+  -current_version = 'dev'
+  +current_version = '1.5'
+  ```
+
+Ensuite, compiler la doc en suivant les étapes du job de CI correspondant:
+
+    mkdir build && cd build
+    module load socle-cfd/6.0-intel2220-impi gcc/10.2.0
+    cmake -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON ../
+    make -j
+    source source.sh
+    export PYTHONPATH=/tmp_user/juno/sonics/dist/socle_cfd6/python_packages/lib/python3.8/site-packages:$PYTHONPATH
+    cmake -Dmaia_ENABLE_DOCUMENTATION=ON .
+    make maia_sphinx
+
+Pour finir, copier la doc générée vers l'espace où sont stockées les versions
+précédentes:
+
+    scp -r doc/sphinx/html sonics@juno:/tmp_user/juno/sonics/usr/maia/doc/html/1.5
+
+
+### Installation sur les machines Onera
+
+Le tableau suivant indique les répertoires à utiliser selon la machine:
+
+|Machine| Répertoire de compilation                | Répertoire *modulesfiles*               |
+|-------|------------------------------------------|-----------------------------------------|
+| Spiro | `/scratchm/sonics/tmp/maia-ci-v1.5`      |`/scratchm/sonics/usr/modules/maia`      |
+| Sator | `/tmp_user/sator/sonics/tmp/maia-ci-v1.5`|`/tmp_user/sator/sonics/usr/modules/maia`|
+| Juno  | `/tmp_user/juno/sonics/tmp/maia-ci-v1.5` |`/tmp_user/juno/sonics/usr/modules/maia` |
+| LD8   | `/stck/sonics/tmp/maia-ci-v1.5`          |`/stck/sonics/LD8/modules/maia`          |
+
+
+Récupérer le code, se placer sur le commit de release et updater les sous modules.
+Copier (`scp`) le code vers les différentes machines, sur le compte Sonics, dans le
+répertoire de compilation (cf tableau).
+
+Pour chacune des machines, 
+1. se connecter avec le login sonics
+2. créer un dossier de build par socle supporté (cf doc et/ou version précédente)
+3. copier le fichier `build_xxx.sh` depuis la version précdente pour chaque socle supporté, et
+   updater la variable `INSTALL_PREFIX`.
+4. exécuter le fichier de build pour compiler et installer les sources
+5. se placer dans le répertoire *modulefiles* (cf tableau) et créer un fichier `1.5.0-xxx`
+   pour chaque socle supporté (à nouveau, copier la version précédent et updater le numéro
+   de version).
+6. dans ce même répertoire, créer l'alias (lien symbolique) `1.5-xxx` pointant vers le fichier
+   `1.5.0-xxx` (dernière version disponible)
+
+**Note** Pour l'étape 3, si les fichiers ne sont plus disponibles, on peut les retrouver en annexe de ce document.
+
+
+### Création d'une release sur GitLab
+
+Cette étape mineure consiste à ajouter une release dans la section correspondante
+sur la plateforme GitLab.
+
+Si cela n'a pas encoré été fait, pousser le résultat de la fusion
+(branche `dev` + tag) vers le serveur.
+
+Sur l'interface web, se rendre dans le menu `Deploy > Releases`, puis cliquer sur
+"New release" en haut a droite.
+Selectionner le tag, puis remplir le formulaire 
+- titre = v1.5
+- release date = date du commit
+- release note = copier le changelog depuis la doc
+- utiliser la partie "Links" en bas pour mettre l'url vers la doc de la release
+
+### Déploiement documentation GitHub
+
+La documentation sur GitHub est deployée via un push sur la branche spécifique `deploy_doc`
+du serveur GitHub.
+
+De la même manière que dans le paragraphe "Déploiement documentation Onera",
+il faut updater les fichiers de doc pour faire apparaitre la nouvelle version.
+
+Une petite adaptation est nécessaire car:
+- l'url pour référencer les autres version est de la forme `/Maia/v1.4`
+  au lieu de `/mesh/maia/v1.4`
+- la version ``dev`` ne doit pas être referencée car elle n'est pas deployée entre les releases
+
+Les étapes à suivre sont:
+
+1. Cloner le dépot depuis GitHub et se placer sur la branche `deploy_doc`
+2. Utiliser une version adaptée de la commande `sed` pour ajouter un lien vers la
+  v1.5 sur les pages existantes:
+    ```sh
+    find . -name '*.html' -exec sed -i 's@<dd><a href="/Maia/1.4/">1.4</a></dd>@<dd><a href="/Maia/1.5/">1.5</a></dd>\n\n          <dd><a href="/Maia/1.4/">1.4</a></dd>@' {} +
+    ```
+3. Copier la doc générée pour la version courante dans un nouveau dossier correspondant
+4. Updater ce dossier de la manière suivante:
+    - créer un fichier vide `.nojekyll` dans le dossier
+    - adapter les références aux autres versions avec
+    `find . -name '*.html' -exec sed -i 's@href="/mesh/maia/@href="/Maia/@' {} +`
+    - supprimer les références à la version dev avec 
+    `find . -name '*.html' -exec sed -i '/<dd><a href="\/Maia\/dev\/">/d' {} +`
+5. Updater le fichier `index.html` pour rediriger par défaut vers la dernière version
+6. Commiter et pousser les changements sur `deploy_doc`
+  
+
+
+
+
+### Production d'une archive sans ParaDiGM
+
+Pour faire une archive (par ex. pour elsA):
+1. Récupérer le code, se placer sur le commit de release et updater les sous modules.
+2. Supprimer totalement le dossier `external/paradigm`
+3. Supprimer tout les dossiers `.git`, y compris dans les sous modules
+4. Il ne reste plus qu'à archiver avec `tar -zcvf maia_v1.5.tar.gz maia/`
+
+## Après la release
+
+### Reprise des développements
+
+**Important** Au premier commit sur dev, remettre à jour le fichier `__init__.py` : 
+
+  ```python
+   __version__ = '1.6.dev'
+  ```
+
+de sorte à conserver l'unicité du commit portant le numéro de version.
+(Idéalement, si des branches partent du commit de release, il faudrait faire le changement sur ces branches également, via rebase, au moment de l'intégration)
+
+Au premier changement dans les relases notes, rééintroduire la section
+"Developpement version"
+
+Ne pas merger dans `dev` des branches dont l'origine est antérieure au commit de release;
+les rebaser avant (de sorte à isoler clairement le commit de release dans le graphe).
+
+### Sorties de patchs
+
+*Rappel* : une patch release (ou version micro) est une version publique visant à corriger des bugs bloquants pour les utilisateurs. Une telle version ne doit pas inclure de nouvelle fonctionnalité.
+
+Il n'y a pas de contrainte sur la date de déploiement de patchs. En revanche, il convient
+de mener une reflexion pour savoir si un patch est vraiement nécessaire (le problème
+est il bloquant ? Peut-il être contourné facilement par l'utilisateur ? L'utilisateur
+accepte t'il d'attendre la prochaine version, ou d'utiliser `maia/dev` ? ).
+Garder en tête que plus il y a de versions produites, plus le support est complexe.
+
+On suppose dans la suite que le ou les problèmes ont bien été corrigés sur la branche `dev`.
+
+Lors de la préparation d'un patch, recréer une branche partant du commit de release
+(ou du patch N-1, si existant). 
+Procéder au cherry-pick du ou des correctifs, puis faire un rebase interactif de sorte à:
+-  modifier le fichier `__init__.py` pour mettre à jour la variable `__version__`
+  (par exemple `'1.5.1'`)
+- suivre la règle 1 patch = 1 commit (squasher) pour faciliter la lisibilité.
+  Il est conseillé de suivre le pattern suivant pour le message du commit:
+
+  > Backport fixes to v1.4. The following fixes have been picked:
+  > 
+  > cb936031: [doc] Minor : update PDM/maia compatibility table \
+  > 48b8a3cf: Fixes in meshb writer (!119) \
+  > 21c10fd9: [Fix] Prevent a crash in merge_zone with Abutting (non 1to1) GC_t (#109)
+
+  (adapter le numéro de release, ainsi que le hash (8 digit) et le message des commit cherry-picked)
+
+- Editer la page `release_notes.rst` pour faire apparaitre les changements liés au patch
+  dans la section correspondante à la version en cours;
+
+  ```
+  - **[v1.4.1]** mesh adaptation: fix tensorial metric and trees with multiple Elements_t of same type
+  - **[v1.4.1]** merge_zones: prevent a crash when zones have non 1to1 GridConnectivity nodes
+  ```
+
+  Ce dernier changement sera également à réaliser sur la branche `dev`, pour les
+  déploiements de la CI et des futures versions.
+
+Tagger le commit de patch (ex. `v1.5.1`) et reprendre les étapes d'installation suivante :
+
+- Installation sur les machines Onera
+- Déploiement documentation Onera
+  
+  **NB** On pourra se contenter de patcher le fichier `release_notes.html` produit
+  lors de la release classique pour mettre à jour le changelog, si c'est le seul modifié.
+- Déploiement documentation GitHub (même remarque que le point précédent)
+
+
+
+## Annexe : scripts de build pour déploiement Onera
+
+Juno, socle DSI 6
+
+    module purge
+    module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+    export https_proxy=http://proxy.onera:80
+
+
+    cmake ../ -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=/tmp_user/juno/sonics/usr/maia/v1.5.0/dsi-cfd6 \
+              -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+              -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+    make -j install
+
+
+Sator, socle DSI 6
+
+    module purge
+    module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+    export https_proxy=http://proxy.onera:80
+
+    cmake ../ -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/v1.5.0/dsi-cfd6 \
+              -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+              -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+    make -j install
+
+Sator, socle Spack
+
+    source /tmp_user/sator/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
+    export https_proxy=http://proxy.onera:80
+    cmake ../ -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=/tmp_user/sator/sonics/usr/maia/v1.5.0/default \
+              -DPDM_ENABLE_LONG_G_NUM=ON -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+    make -j install
+
+
+**NB** : Sur sator, il arrive qu'on installe les versions en `LONG_G_NUM=OFF`
+en suffixant le chemin d'installation par `idx_32`
+
+Spiro, socle DSI 6
+
+
+    module purge
+    module load socle-cfd/6.0-intel2220-impi cmake/3.23.2
+    export https_proxy=http://proxy.onera:80
+
+    cmake ../ -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/v1.5.0/dsi-cfd6 \
+              -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_CXX_STANDARD=17 \
+              -DCMAKE_EXE_LINKER_FLAGS='-lz -lbz2' -DCMAKE_SHARED_LINKER_FLAGS='-lz -lbz2' \
+              -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+    make -j install
+
+
+
+Spiro, socle spack
+
+    module purge
+    source /scratchm/sonics/dist/source.sh --env maia --compiler gcc@12 --mpi intel-oneapi
+    export https_proxy=http://proxy.onera:80
+    cmake ../ -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=/scratchm/sonics/usr/maia/v1.5.0/default \
+              -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+    make -j install
+
+
+
+Postes linux LD8    
+
+    module purge
+    module load gcc/10.2.0
+    module load hdf5/1.10.5-gnu831-ompi405
+    module load openmpi/4.0.5-gnu831
+    module load python/3.8.14-gnu831
+    module load scotch/6.0.9-idx32-gnu831-ompi405
+    module load parmetis/4.0.3-gnu831-ompi405
+    module load metis/5.1.0-gnu831
+    module load cmake/3.19.8-gnu831
+
+    cmake ../ -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/stck/sonics/LD8/maia/v1.5.0/dsi-ompi405 -DPDM_ENABLE_LONG_G_NUM=OFF -DPDM_ENABLE_EXTENSION_PDMA=ON
+
+    make -j4 install

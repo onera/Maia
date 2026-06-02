@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maia basics &mdash; Maia  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/read_the_docs_custom.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/copybutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/togglebutton.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/tabs.css" />
+
+  
+    <link rel="shortcut icon" href="../_static/logo_maia.svg"/>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+        <script src="../_static/clipboard.min.js"></script>
+        <script src="../_static/copybutton.js"></script>
+        <script>let toggleHintShow = 'Click to show';</script>
+        <script>let toggleHintHide = 'Click to hide';</script>
+        <script>let toggleOpenOnPrint = 'true';</script>
+        <script src="../_static/togglebutton.js"></script>
+        <script>var togglebuttonSelector = '.toggle, .admonition.dropdown';</script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Your first workflow" href="02_pre.html" />
+    <link rel="prev" title="Tutorials" href="tutorials.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Maia
+          </a>
+              <div class="version">
+                v1.10
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quick_start.html">Quick start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../introduction/introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Maia basics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#first-script">First script</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#imports">Imports</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#file-reading">File reading</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#algo-module">Algo module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#factory-module">Factory module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#transfer-module">Transfer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#final-write-and-visualization">Final write and visualization</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#more-about-maia-trees">More about maia trees</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="02_pre.html">Your first workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="04_post.html">Towards custom mesh manipulation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../user_manual/user_manual.html">User Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../developer_manual/developer_manual.html">Developer Manual</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../maia_pytree/pytree_module.html">The pytree module</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Appendix</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../release_notes.html">Release notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../related_projects.html">Related projects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../license.html">License</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Maia</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="tutorials.html">Tutorials</a></li>
+      <li class="breadcrumb-item active">Maia basics</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/01_basic.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="maia-basics">
+<span id="tuto1"></span><h1>Maia basics<a class="headerlink" href="#maia-basics" title="Permalink to this heading"></a></h1>
+<p>This first tutorial will teach you the basics of maia, namely how to:</p>
+<ul class="simple">
+<li><p>use <code class="docutils literal notranslate"><span class="pre">mpi4py</span></code> to setup and execute python scripts in parallel,</p></li>
+<li><p>make the distinction between the parallel trees representations used in maia,</p></li>
+<li><p>understand how the functionalities are organised within the different modules.</p></li>
+</ul>
+<p>This first tutorial just require you to read carefuly the snippets and to answer questions
+identified by the ❓ symbol.
+Howerver, if you prefer to reproduce the steps by yourself, ensure that you have:</p>
+<ul class="simple">
+<li><p>a valid installation of maia,</p></li>
+<li><p>the input mesh file <a class="reference external" href="https://github.com/onera/Maia/releases/download/v1.8/naca_2d.cgns">naca_2d.cgns</a>,</p></li>
+<li><p>the script <a class="reference download internal" download="" href="../_downloads/c6bee0c8776fa9e7fde8273963a6a97a/01_basic.py"><code class="xref download docutils literal notranslate"><span class="pre">01_basic.py</span></code></a>,</p></li>
+</ul>
+<p>and remember that the command to run the script in parallel, using <em>eg</em> 4 processes, is</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mpirun</span> <span class="o">-</span><span class="n">np</span> <span class="mi">4</span> <span class="n">python3</span> <span class="mi">01</span><span class="n">_basic</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<section id="first-script">
+<h2>First script<a class="headerlink" href="#first-script" title="Permalink to this heading"></a></h2>
+<section id="imports">
+<h3>Imports<a class="headerlink" href="#imports" title="Permalink to this heading"></a></h3>
+<p>Maia is a parallel application ! Almost every function require an MPI communicator, used
+to synchronize the running processes.</p>
+<p>👉️ First, we import the <code class="docutils literal notranslate"><span class="pre">COMM_WORLD</span></code> communicator object provided by the <code class="docutils literal notranslate"><span class="pre">mpi4py</span></code> package.
+️</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hello from rank </span><span class="si">{</span><span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span><span class="si">}</span><span class="s2"> out of size </span><span class="si">{</span><span class="n">comm</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Hello from rank 0 out of size 3
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:2] Hello from rank 2 out of size 3
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:1] Hello from rank 1 out of size 3
+</pre></div>
+</div>
+</div>
+</div>
+<p>This communicator includes all the processes spawned by the <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> command,
+so the displayed size should be what you put after the <code class="docutils literal notranslate"><span class="pre">-np</span></code> on the command line.</p>
+<p>❓ How many processes have been used on this exemple ?</p>
+<p>👉️ Then, we import the main <code class="docutils literal notranslate"><span class="pre">maia</span></code> package, and the <code class="docutils literal notranslate"><span class="pre">maia.pytree</span></code> package that will help
+us for tree manipulations.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">maia</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">maia.pytree</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">PT</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="file-reading">
+<h3>File reading<a class="headerlink" href="#file-reading" title="Permalink to this heading"></a></h3>
+<p>The input and output functions are gathered in <code class="docutils literal notranslate"><span class="pre">maia.io</span></code> module.</p>
+<p>👉️ Let’s read the CGNS file from the disk using the main file reading function
+<a class="reference internal" href="../user_manual/io.html#maia.io.file_to_dist_tree" title="maia.io.file_to_dist_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.io.file_to_dist_tree()</span></code></a>:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">file_to_dist_tree</span><span class="p">(</span><span class="s1">&#39;naca_2d.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Distributed read of file naca_2d.cgns...
+Read completed (0.05 s) -- Size of dist_tree for current rank is 85.6KiB (Σ=256.9KiB)
+</pre></div>
+</div>
+</div>
+</div>
+<p>❓ Is the output a distributed (DistTree) or a partitioned (PartTree) tree ?
+You can check your answer by printing the tree with <a class="reference internal" href="../maia_pytree/basic.html#maia.pytree.print_tree" title="maia.pytree.print_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">print_tree()</span></code></a>.</p>
+<div class="toggle docutils container">
+<p>The output is a <strong>distributed</strong> tree. We can guess it from function name (file_to_<strong>dist_tree</strong>),
+from function documentation (see <em>Returns</em> keyword), or from type hints (<code class="docutils literal notranslate"><span class="pre">CGNSDistTree</span></code>).</p>
+<p>If we print the tree, we observe the presence of nodes named <code class="docutils literal notranslate"><span class="pre">:CGNS#Distribution</span></code>,
+which are specific to distributed trees.</p>
+</div>
+</section>
+<section id="algo-module">
+<h3>Algo module<a class="headerlink" href="#algo-module" title="Permalink to this heading"></a></h3>
+<p>To apply treatments to our distributed tree, we can use functions
+from <code class="docutils literal notranslate"><span class="pre">maia.algo</span></code>. The functions of this module are sorted in
+three namespaces:</p>
+<ul class="simple">
+<li><p>functions of <code class="docutils literal notranslate"><span class="pre">maia.algo.dist</span></code> only apply to distributed trees,</p></li>
+<li><p>functions of <code class="docutils literal notranslate"><span class="pre">maia.algo.part</span></code> only apply to partitioned trees,</p></li>
+<li><p>functions directly below <code class="docutils literal notranslate"><span class="pre">maia.algo</span></code> apply to both distributed or partitioned trees.</p></li>
+</ul>
+<p>👉️ Here we apply the <a class="reference internal" href="../user_manual/algo.html#maia.algo.dist.extrude" title="maia.algo.dist.extrude"><code class="xref py py-func docutils literal notranslate"><span class="pre">extrude()</span></code></a> function, which will extrude our
+2D input mesh into a 3D mesh.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">dist</span><span class="o">.</span><span class="n">extrude</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">),</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>❓ This function operate inplace (tree is modified). Is our <code class="docutils literal notranslate"><span class="pre">tree</span></code> distributed or partitioned now ?</p>
+<div class="toggle docutils container">
+<p>The tree is still a distributed tree. A key rule of <code class="docutils literal notranslate"><span class="pre">maia.algo</span></code> functions is that they do not
+change the ‘parallel kind’ of trees.</p>
+</div>
+<p>❓ Say that we want to apply another function : <code class="xref py py-func docutils literal notranslate"><span class="pre">compute_wall_distance()</span></code>.
+Why is this not possible ?</p>
+<div class="toggle docutils container">
+<p><code class="xref py py-func docutils literal notranslate"><span class="pre">compute_wall_distance()</span></code> function only applies to partitioned trees.
+Since we have a distributed tree, calling the function would raise an exception.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="../user_manual/algo.html#user-algo"><span class="std std-ref">Algo module</span></a> is the main module of maia. It contains several functions for applying various treatments to
+CGNS trees, such as connectivity conversions, mesh conversion, geometry transformations,
+interpolations, extractions…</p>
+</div>
+</section>
+<section id="factory-module">
+<h3>Factory module<a class="headerlink" href="#factory-module" title="Permalink to this heading"></a></h3>
+<p>The functions transforming the parallel kind of tree are avaiable in <code class="docutils literal notranslate"><span class="pre">maia.factory</span></code> module.</p>
+<p>👉️ ️Here we create a partitioned tree from a distributed tree (this is know as the partitioning operation):</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ptree</span> <span class="o">=</span> <span class="n">maia</span><span class="o">.</span><span class="n">factory</span><span class="o">.</span><span class="n">partition_dist_tree</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Partitioning tree of 1 initial block...
+Partitioning completed (0.35 s) -- Nb of cells for current rank is 1.8K (Σ=5.5K)
+</pre></div>
+</div>
+</div>
+</div>
+<p>We now have two ‘views’ of our original data: a distributed view and a partitioned view.
+Although these views are different, they both represent the same mesh and data.</p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If we displayed <code class="docutils literal notranslate"><span class="pre">ptree</span></code>, we would notice the presence of nodes named <code class="docutils literal notranslate"><span class="pre">:CGNS#GlobalNumbering</span></code>,
+which are specific to partitioned trees.</p>
+</div>
+<p>👉️ Since <code class="docutils literal notranslate"><span class="pre">ptree</span></code> is a partitioned tree, we can call <code class="xref py py-func docutils literal notranslate"><span class="pre">compute_wall_distance()</span></code> on it:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">algo</span><span class="o">.</span><span class="n">part</span><span class="o">.</span><span class="n">compute_wall_distance</span><span class="p">(</span><span class="n">ptree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Wall distance computed (0.37 s)
+</pre></div>
+</div>
+</div>
+</div>
+<p>❓ What happens to the distributed view (<code class="docutils literal notranslate"><span class="pre">tree</span></code>) after the function is called ?</p>
+<div class="toggle docutils container">
+<p>Nothing happens to <code class="docutils literal notranslate"><span class="pre">tree</span></code>. Only <code class="docutils literal notranslate"><span class="pre">ptree</span></code>, the partitioned view, is updated by the function.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="../user_manual/factory.html#user-factory"><span class="std std-ref">Factory module</span></a> also contains <a class="reference internal" href="../user_manual/factory.html#maia.factory.recover_dist_tree" title="maia.factory.recover_dist_tree"><code class="xref py py-func docutils literal notranslate"><span class="pre">recover_dist_tree()</span></code></a>,
+which rebuild a distributed tree from a partitioned tree, and some functions
+to create a distributed tree from a full (non parallel) cgns tree, and vice-versa.</p>
+</div>
+</section>
+<section id="transfer-module">
+<h3>Transfer module<a class="headerlink" href="#transfer-module" title="Permalink to this heading"></a></h3>
+<p>The last main module of maia is <code class="docutils literal notranslate"><span class="pre">maia.transfer</span></code>. The purpose of this
+module is to <em>exchange</em> data between the distributed and partitioned views
+of a same mesh.</p>
+<p>👉️ Using <a class="reference internal" href="../user_manual/transfer.html#maia.transfer.part_tree_to_dist_tree_all" title="maia.transfer.part_tree_to_dist_tree_all"><code class="xref py py-func docutils literal notranslate"><span class="pre">part_tree_to_dist_tree_all()</span></code></a>, we can bring back
+the wall distance fields to the distributed view:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">transfer</span><span class="o">.</span><span class="n">part_tree_to_dist_tree_all</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="n">ptree</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>We can see that “WallDistance” container is now present on the distributed tree <code class="docutils literal notranslate"><span class="pre">tree</span></code>,
+meaning that data has been transfered:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nb">print</span><span class="p">(</span><span class="n">PT</span><span class="o">.</span><span class="n">get_node_from_name</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;WallDistance&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] True
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:1] True
+</pre></div>
+</div>
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:2] True
+</pre></div>
+</div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="../user_manual/transfer.html#user-transfer"><span class="std std-ref">Transfer module</span></a> mainly expose to end-users this function and its counterpart which transfer data from
+the distributed to the paritioned view.
+Keep in mind that calling a function of <code class="docutils literal notranslate"><span class="pre">maia.transfer</span></code> on two trees that does not describe the
+same mesh makes no sense !</p>
+</div>
+</section>
+<section id="final-write-and-visualization">
+<h3>Final write and visualization<a class="headerlink" href="#final-write-and-visualization" title="Permalink to this heading"></a></h3>
+<p>👉️ Finally, we write our distributed tree using <a class="reference internal" href="../user_manual/io.html#maia.io.dist_tree_to_file" title="maia.io.dist_tree_to_file"><code class="xref py py-func docutils literal notranslate"><span class="pre">maia.io.dist_tree_to_file()</span></code></a> :</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maia</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">dist_tree_to_file</span><span class="p">(</span><span class="n">tree</span><span class="p">,</span> <span class="s1">&#39;naca_3d.cgns&#39;</span><span class="p">,</span> <span class="n">comm</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>[stdout:0] Distributed write of a 338.3KiB dist_tree (Σ=1014.7KiB)...
+Write completed [naca_3d.cgns] (4.42 s)
+</pre></div>
+</div>
+</div>
+</div>
+<p>We can check (using <em>eg</em> the command line tool <code class="docutils literal notranslate"><span class="pre">maia_print_tree</span></code>) that the output file
+is a standard CGNS file that does not contains any information about parallelism anymore:</p>
+<div class="cell tag_remove-input tag_no-parallel docutils container">
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-C33">CGNSTree</span> <span class=" -Color -Color-C246">CGNSTree_t</span> 
+├───CGNSLibraryVersion <span class=" -Color -Color-C246">CGNSLibraryVersion_t</span> R4 [4.2]
+└───<span class=" -Color -Color-Bold -Color-Bold-C33">Base</span> <span class=" -Color -Color-C246">CGNSBase_t</span> I4 [3 3]
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C220">WALL</span> <span class=" -Color -Color-C246">Family_t</span> 
+    │   └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;BCWall&quot;
+    ├───<span class=" -Color -Color-Bold -Color-Bold-C220">FARFIELD</span> <span class=" -Color -Color-C246">Family_t</span> 
+    │   └───FamilyBC <span class=" -Color -Color-C246">FamilyBC_t</span> &quot;BCFarfield&quot;
+    └───<span class=" -Color -Color-Bold -Color-Bold-C33">Zone</span> <span class=" -Color -Color-C246">Zone_t</span> I4 [[11328  5546     0]]
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">ZoneType</span> <span class=" -Color -Color-C246">ZoneType_t</span> &quot;Unstructured&quot;
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">GridCoordinates</span> <span class=" -Color -Color-C246">GridCoordinates_t</span> 
+        │   ╵╴╴╴ (3 children masked)
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">HEXA_8.0</span> <span class=" -Color -Color-C246">Elements_t</span> I4 [17  0]
+        │   ╵╴╴╴ (2 children masked)
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">QUAD_4.0</span> <span class=" -Color -Color-C246">Elements_t</span> I4 [7 0]
+        │   ╵╴╴╴ (2 children masked)
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">ZoneBC</span> <span class=" -Color -Color-C246">ZoneBC_t</span> 
+        │   ╵╴╴╴ (2 children masked)
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">QUAD_4.0a</span> <span class=" -Color -Color-C246">Elements_t</span> I4 [7 0]
+        │   ╵╴╴╴ (2 children masked)
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">QUAD_4.0b</span> <span class=" -Color -Color-C246">Elements_t</span> I4 [7 0]
+        │   ╵╴╴╴ (2 children masked)
+        ├───<span class=" -Color -Color-Bold -Color-Bold-C183">ZoneGridConnectivity</span> <span class=" -Color -Color-C246">ZoneGridConnectivity_t</span> 
+        │   ╵╴╴╴ (2 children masked)
+        └───<span class=" -Color -Color-Bold -Color-Bold-C183">WallDistance</span> <span class=" -Color -Color-C246">DiscreteData_t</span> 
+            ╵╴╴╴ (8 children masked)
+</pre></div>
+</div>
+</div>
+</div>
+<p>In other words, the final result does not depends on the number of processes used to run the script.</p>
+<p>We can thus open it with ParaView (or an other visualization software) an see our input 2D mesh (left)
+and our output 3D mesh with wall distance field computed (right):</p>
+<div class="cell tag_remove-input tag_no-parallel docutils container">
+<div class="cell_output docutils container">
+<img alt="../_images/7899472060eee6a87d4e17eddcb0c5b65d48ff706205c6f8aa012747bfa529ba.png" src="../_images/7899472060eee6a87d4e17eddcb0c5b65d48ff706205c6f8aa012747bfa529ba.png" />
+</div>
+</div>
+<div class="admonition attention">
+<p class="admonition-title">Attention</p>
+<p>Since ParaView does not manage <code class="docutils literal notranslate"><span class="pre">DiscreteData_t</span></code> containers, you need to change the label
+of “WallDistance” node into for <code class="docutils literal notranslate"><span class="pre">FlowSolution_t</span></code> if you want to do the same figure.</p>
+</div>
+<p>This conclude this first script 🎉!</p>
+<p>Indeed, this minimal workflow
+is not so far from realistic applications ; we usually follow the same steps
+when doing computations with a solver:</p>
+<ol class="arabic simple">
+<li><p>Read the mesh and perform some preprocessing steps</p></li>
+<li><p>Partition the mesh in order to call the solver</p></li>
+<li><p>Move back the fields computed by the solver on the input tree</p></li>
+<li><p>Save the results on the disk and/or do some postprocessing steps</p></li>
+</ol>
+</section>
+</section>
+<section id="more-about-maia-trees">
+<h2>More about maia trees<a class="headerlink" href="#more-about-maia-trees" title="Permalink to this heading"></a></h2>
+<p>🏗️ Under construction</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="tutorials.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="02_pre.html" class="btn btn-neutral float-right" title="Your first workflow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2021, ONERA The French Aerospace Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+
+  <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      <span class="fa fa-book"> Read the Docs</span>
+      v: 1.10
+      <span class="fa fa-caret-down"></span>
+    </span>
+    <div class="rst-other-versions">
+      
+      
+      <dl>
+        <dt>Versions</dt>
+        
+        
+          <dd><a href="/Maia/1.10/">1.10</a></dd>
+        
+          <dd><a href="/Maia/1.9/">1.9</a></dd>
+        
+          <dd><a href="/Maia/1.8/">1.8</a></dd>
+        
+          <dd><a href="/Maia/1.7/">1.7</a></dd>
+        
+          <dd><a href="/Maia/1.6/">1.6</a></dd>
+        
+          <dd><a href="/Maia/1.5/">1.5</a></dd>
+        
+          <dd><a href="/Maia/1.4/">1.4</a></dd>
+        
+          <dd><a href="/Maia/1.3/">1.3</a></dd>
+        
+          <dd><a href="/Maia/1.2/">1.2</a></dd>
+        
+          <dd><a href="/Maia/1.1/">1.1</a></dd>
+        
+          <dd><a href="/Maia/1.0/">1.0</a></dd>
+        
+      </dl>
+      
+      
+      
+      <hr/>
+      Free document hosting provided by <a href="http://www.readthedocs.org">Read the Docs</a>.
+ 
+    </div>
+  </div>
+
+ <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
