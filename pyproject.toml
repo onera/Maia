@@ -1,0 +1,42 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.10",
+    "pybind11>=2.12",
+    "Cython>=3.0",
+    "numpy",
+    "mpi4py",
+]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "maia"
+dynamic = ["version"]
+description = "Distributed algorithms and manipulations over CGNS meshes"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "mpi4py",
+    "h5py",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+test = ["pytest>6"]
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build"
+cmake.build-type = "Release"
+cmake.args = [
+    "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+    "-DPYTHON_FLAT_INSTALL=ON",
+    "-Dmaia_ENABLE_TESTS=OFF",
+]
+wheel.packages = []
+editable.rebuild = false
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "maia/__init__.py"
+regex = "__version__ = ['\"](?P<value>[^'\"]+)['\"]"
