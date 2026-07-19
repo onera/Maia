@@ -23,7 +23,21 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_UTILS_CMAKE_DIR}/find_package") # for c
 include(${PROJECT_UTILS_CMAKE_DIR}/dependency_management.cmake) # project_add_subdirectory, project_find_package and target_install...
 
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+if(APPLE)
+  # Also add @loader_path-relative candidates (at various depths below CMAKE_INSTALL_PREFIX):
+  # the absolute rpath above is only valid for the exact prefix used at build time, which breaks
+  # for relocatable installs (e.g. a pip wheel built into a temporary staging directory, later
+  # installed elsewhere). Unused entries are harmless; dyld tries each until one resolves.
+  set(CMAKE_INSTALL_RPATH
+    "${CMAKE_INSTALL_PREFIX}/lib"
+    "@loader_path"
+    "@loader_path/lib"
+    "@loader_path/../lib"
+    "@loader_path/../../lib"
+  )
+else()
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+endif()
 
 
 # ------------------------------------------------------------------------------

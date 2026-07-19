@@ -18,6 +18,9 @@ create_doctest(
   N_PROC        ${n_proc_max_test}
 )
 set_tests_properties(maia_doctest_unit_tests PROPERTIES TIMEOUT 60)
+# embedded_interpreter.test.cpp uses pybind11::scoped_interpreter (Py_Initialize), which needs
+# the full embedding target (unlike the rest of maia, which only needs Python::Module)
+target_link_libraries(maia_doctest_unit_tests PRIVATE Python::Python)
 
 
 create_pytest(
